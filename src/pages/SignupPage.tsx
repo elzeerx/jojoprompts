@@ -1,9 +1,11 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Card,
   CardContent,
@@ -18,25 +20,44 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // This will be replaced with actual Supabase authentication
+
     try {
-      // simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log("Signup with", { email, password });
-      
-      // For now, just log the credentials
-      setIsLoading(false);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message,
+        });
+      } else {
+        toast({
+          title: "Success!",
+          description: "Check your email to confirm your account.",
+        });
+        navigate("/login");
+      }
     } catch (error) {
-      console.error("Signup error", error);
-      setIsLoading(false);
+      console.error("Signup error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+      });
     }
+
+    setIsLoading(false);
   };
-  
+
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-9rem)] p-4 md:p-8">
       <Card className="mx-auto max-w-sm">
@@ -72,50 +93,25 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
               <p className="text-xs text-muted-foreground">
-                Password must be at least 8 characters long
+                Password must be at least 6 characters long
               </p>
             </div>
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Create Account"}
             </Button>
-            
-            {/* Will integrate with Supabase Auth */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-            
-            <Button variant="outline" className="w-full" type="button" disabled={isLoading}>
-              Google
-            </Button>
-          </CardContent>
+            <p className="text-sm text-muted-foreground text-center">
+              Already have an account?{" "}
+              <Button variant="link" className="p-0" onClick={() => navigate("/login")}>
+                Sign in
+              </Button>
+            </p>
+          </CardFooter>
         </form>
-        <CardFooter className="flex flex-col items-center justify-center gap-2">
-          <div className="text-sm text-muted-foreground text-center">
-            Already have an account?{" "}
-            <Link to="/login" className="text-primary underline-offset-4 hover:underline">
-              Sign in
-            </Link>
-          </div>
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            By creating an account, you agree to our{" "}
-            <Link to="/terms" className="underline underline-offset-4 hover:text-primary">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link to="/privacy" className="underline underline-offset-4 hover:text-primary">
-              Privacy Policy
-            </Link>
-          </p>
-        </CardFooter>
       </Card>
     </div>
   );
