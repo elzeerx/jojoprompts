@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   userRole: string | null;
   isAdmin: boolean;
+  loading: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -17,7 +18,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -36,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setUserRole(null);
         }
+        setLoading(false);
       }
     );
 
@@ -53,7 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .single()
           .then(({ data }) => {
             setUserRole(data?.role ?? null);
+            setLoading(false);
           });
+      } else {
+        setLoading(false);
       }
     });
 
@@ -72,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       userRole,
       isAdmin: userRole === 'admin',
+      loading,
       signOut
     }}>
       {children}
