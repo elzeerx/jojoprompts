@@ -9,13 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          role?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      prompts: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_url: string | null
+          metadata: Json | null
+          prompt_text: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          prompt_text: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          prompt_text?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
