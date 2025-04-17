@@ -14,6 +14,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const debug = (msg: string, extra = {}) => 
+  console.log("[AUTH]", msg, extra);
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -35,8 +38,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .eq('id', session.user.id)
             .single();
           setUserRole(data?.role ?? null);
+          debug("state updated", { event, session, userRole: data?.role, loading: false });
         } else {
           setUserRole(null);
+          debug("state cleared", { event, loading: false });
         }
         setLoading(false);
       }
@@ -57,9 +62,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .then(({ data }) => {
             setUserRole(data?.role ?? null);
             setLoading(false);
+            debug("initial state loaded", { session, userRole: data?.role, loading: false });
           });
       } else {
         setLoading(false);
+        debug("no initial session", { loading: false });
       }
     });
 
