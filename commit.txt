@@ -1,0 +1,10 @@
+
+chore(init): scaffold jojoprompts project
+
+- Setup basic UI with shadcn/ui components and purple theme
+- Create route structure with homepage, prompts, auth, and admin areas
+- Implement prompt card components for browsing and selection
+- Add PDF export functionality with jsPDF
+- Configure admin dashboard with prompts management
+- Add role-based access (admin/user) structure
+- Prepare for Supabase integration with auth, storage, and edge functions

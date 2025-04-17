@@ -1,73 +1,126 @@
-# Welcome to your Lovable project
 
-## Project info
+# JojoPrompts
 
-**URL**: https://lovable.dev/projects/766f3370-d38c-42e5-8566-5e4946986dd2
+A web application for browsing, managing, and exporting high-quality image generation prompts.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Browse Prompts**: Explore a curated collection of prompts for AI image generation tools
+- **Copy & Use**: Quickly copy prompts to use with ChatGPT, Midjourney, DALL-E, etc.
+- **PDF Export**: Select and export multiple prompts to a PDF document
+- **Role-based Access**: User roles (admin/user) with different permissions
+- **AI Helpers**: Admin-only tools to generate metadata and suggest new prompts
 
-**Use Lovable**
+## Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/766f3370-d38c-42e5-8566-5e4946986dd2) and start prompting.
+- **Frontend**: Vite, React, TypeScript, TailwindCSS, shadcn-ui
+- **Backend**: Supabase (Auth, Database, Storage, Edge Functions)
+- **AI**: OpenAI API for metadata and prompt generation
+- **PDF**: jsPDF for client-side PDF export
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1. Node.js and npm installed
+2. A Supabase account and project
+3. An OpenAI API key
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Setup Instructions
 
-Follow these steps:
+1. Clone the repository:
+   ```
+   git clone https://github.com/jojocompany/jojoprompts.git
+   cd jojoprompts
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. Install dependencies:
+   ```
+   npm install
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. Connect to Supabase through the Lovable interface
+   
+   > **Important Note**: This project requires connecting to Supabase via the Lovable integration. 
+   > Click the green Supabase button in the top-right of the Lovable interface to connect your project.
 
-# Step 3: Install the necessary dependencies.
-npm i
+4. Store your OpenAI API key in Supabase Edge Function Secrets
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+5. Run the development server:
+   ```
+   npm run dev
+   ```
+
+## Database Schema
+
+### `prompts` Table
+- `id`: UUID (Primary Key)
+- `user_id`: UUID (Foreign Key to auth.users)
+- `title`: String
+- `prompt_text`: Text
+- `image_url`: String (optional)
+- `metadata`: JSON (category, style, tags)
+- `created_at`: Timestamp
+
+## Row Level Security (RLS)
+
+### Prompts Table
+- `SELECT`: Everyone (authenticated and public)
+- `INSERT`, `UPDATE`, `DELETE`: Only users with role = 'admin'
+
+Example RLS policies:
+
+```sql
+-- Allow anyone to read prompts
+CREATE POLICY "Anyone can read prompts"
+ON prompts
+FOR SELECT
+USING (true);
+
+-- Only admins can create prompts
+CREATE POLICY "Only admins can create prompts"
+ON prompts
+FOR INSERT
+WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin');
+
+-- Only admins can update prompts
+CREATE POLICY "Only admins can update prompts"
+ON prompts
+FOR UPDATE
+USING (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin');
+
+-- Only admins can delete prompts
+CREATE POLICY "Only admins can delete prompts"
+ON prompts
+FOR DELETE
+USING (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin');
 ```
 
-**Edit a file directly in GitHub**
+## AI Edge Functions
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### `generate-metadata`
+Analyzes prompt text to extract structured metadata:
+- Category
+- Style
+- Tags
 
-**Use GitHub Codespaces**
+### `suggest-prompt`
+Generates a new creative prompt based on existing ones:
+- Analyzes patterns in existing prompts
+- Creates a unique, high-quality prompt
+- Generates accompanying metadata
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Deployment
 
-## What technologies are used for this project?
+This project is deployed using Lovable's built-in deployment workflow to jojoprompts.com.
 
-This project is built with:
+## License
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+MIT License
 
-## How can I deploy this project?
+## Acknowledgements
 
-Simply open [Lovable](https://lovable.dev/projects/766f3370-d38c-42e5-8566-5e4946986dd2) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- [Supabase](https://supabase.io/)
+- [shadcn/ui](https://ui.shadcn.com/)
+- [OpenAI](https://openai.com/)
+- [Lovable](https://lovable.dev/)
