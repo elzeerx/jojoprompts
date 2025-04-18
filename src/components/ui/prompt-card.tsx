@@ -1,3 +1,5 @@
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { Badge } from "./badge";
 import { CopyButton } from "./copy-button";
@@ -6,7 +8,6 @@ import { Checkbox } from "./checkbox";
 import { Download, Heart, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type Prompt, type PromptRow } from "@/types";
-import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
