@@ -44,3 +44,5 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
     </Dialog>
   );
 }
+
+export default PromptDetailsDialog;
