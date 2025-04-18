@@ -1,7 +1,6 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useEffect } from "react";
-import { Zap } from "lucide-react";
+import { useState } from "react";
+import { Loader2, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +14,8 @@ export default function AdminDashboard() {
   const [favoritedPromptIds, setFavoritedPromptIds] = useState<string[]>([]);
   const [loadingMeta, setLoadingMeta] = useState(false);
   const [loadingSuggest, setLoadingSuggest] = useState(false);
+  const [promptDialogOpen, setPromptDialogOpen] = useState(false);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const { user } = useAuth();
   
   useEffect(() => {
@@ -123,18 +124,45 @@ export default function AdminDashboard() {
                   disabled={loadingSuggest}
                   onClick={async () => {
                     setLoadingSuggest(true);
-                    const { data, error } = await supabase.functions.invoke(
-                      "suggest-prompt"
-                    );
-                    setLoadingSuggest(false);
-                    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-                    else {
-                      toast({ title: "Success", description: "Prompt generated!" });
-                      console.log(data);
+                    try {
+                      const { data, error } = await supabase.functions.invoke(
+                        "suggest-prompt"
+                      );
+                      
+                      if (error) throw error;
+                      
+                      toast({
+                        title: "Success",
+                        description: "Prompt saved successfully!",
+                      });
+                      
+                      if (data?.id) {
+                        setSelectedPromptId(data.id);
+                        setActiveTab("prompts");
+                      }
+                    } catch (error) {
+                      console.error('Error suggesting prompt:', error);
+                      toast({
+                        title: "Error",
+                        description: error.message || "Failed to generate prompt",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setLoadingSuggest(false);
                     }
                   }}
                 >
-                  {loadingSuggest ? "Running…" : <><Zap className="mr-2 w-4 h-4" />Run</>}
+                  {loadingSuggest ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-2 w-4 h-4" />
+                      Run
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>

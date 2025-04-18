@@ -68,14 +68,38 @@ serve(async (req) => {
     const openAiData = await openAiResponse.json()
     const suggestedPrompt = JSON.parse(openAiData.choices[0].message.content)
 
+    // Get the current user's ID
+    const { data: { user } } = await supabaseClient.auth.getUser()
+    if (!user) throw new Error('User not found')
+
+    // Insert the generated prompt into the database
+    const { data: insertedPrompt, error: insertError } = await supabaseClient
+      .from('prompts')
+      .insert({
+        title: suggestedPrompt.title,
+        prompt_text: suggestedPrompt.prompt_text,
+        metadata: suggestedPrompt.metadata || {},
+        user_id: user.id
+      })
+      .select('id, title')
+      .single()
+
+    if (insertError) {
+      console.error('Error inserting prompt:', insertError)
+      throw new Error(`Database error: ${insertError.code}`)
+    }
+
     return new Response(
-      JSON.stringify(suggestedPrompt),
+      JSON.stringify(insertedPrompt),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        code: error.code // Include PG error code if available
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
