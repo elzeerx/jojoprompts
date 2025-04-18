@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,7 @@ interface ExportPromptsDialogProps {
 }
 
 export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromptsDialogProps) {
-  const [options, setOptions] = useState<Omit<PdfOptions, "logo" | "selected">>({
+  const [options, setOptions] = useState<Omit<PdfOptions, "logo" | "selected" | "onProgress">>({
     cover: true,
     quality: "medium"
   });
@@ -61,30 +60,20 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       const pdfBytes = await buildPromptsPdf({
         ...options,
         selected: prompts,
-        logo: logoData
+        logo: logoData,
+        onProgress: (current, total) => {
+          const percentage = Math.round((current / total) * 100);
+          setProgress(percentage);
+          
+          // Update toast on significant progress (every ~20%)
+          if (percentage % 20 === 0 || percentage === 100) {
+            toastObjRef.current?.update({
+              id: toastIdRef.current,
+              description: `${percentage}%`
+            });
+          }
+        }
       });
-      
-      // Update progress during generation
-      const updateProgress = (current: number, total: number) => {
-        const percentage = Math.round((current / total) * 100);
-        setProgress(percentage);
-        
-        // Update toast on significant progress (every ~20%)
-        if (percentage % 20 === 0 || percentage === 100) {
-          toastObjRef.current?.update({
-            id: toastIdRef.current,
-            description: `${percentage}%`
-          });
-        }
-      };
-      
-      // Simulate progress for now
-      for (let i = 1; i <= prompts.length; i++) {
-        updateProgress(i, prompts.length);
-        if (i < prompts.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
       
       // Create and trigger download
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
