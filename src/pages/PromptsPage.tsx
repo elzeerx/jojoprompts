@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Button } from "@/components/ui/button";
@@ -12,23 +13,28 @@ import { Download, Grid, List, Search, SlidersHorizontal } from "lucide-react";
 import { type Prompt, type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";          // 👈 NEW
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function PromptsPage() {
-  const { loading: authLoading, session } = useAuth();     // 👈 NEW
+  const { loading: authLoading, session } = useAuth();
   const [view, setView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
   const [category, setCategory] = useState<string>("all");
   const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>(["all"]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (authLoading) return;                               // 👈 wait for auth
-
+    let mounted = true;
+    
     const fetchPrompts = async () => {
+      if (authLoading) return; // Wait for auth to complete
+      
       setIsLoading(true);
+      setError(null);
+      
       try {
         const { data, error } = await supabase
           .from("prompts")
@@ -37,6 +43,8 @@ export default function PromptsPage() {
           .returns<PromptRow[]>();
 
         if (error) throw error;
+        
+        if (!mounted) return;
 
         const transformedData = (data ?? []).map((item) => ({
           id: item.id,
@@ -56,6 +64,7 @@ export default function PromptsPage() {
 
         setPrompts(transformedData);
 
+        // Extract unique categories
         const uniqueCategories = [
           ...new Set(
             transformedData
@@ -64,20 +73,29 @@ export default function PromptsPage() {
           ),
         ];
         setCategories(["all", ...uniqueCategories]);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching prompts:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load prompts. Please try again later.",
-          variant: "destructive",
-        });
+        if (mounted) {
+          setError("Failed to load prompts");
+          toast({
+            title: "Error",
+            description: "Failed to load prompts. Please try again later.",
+            variant: "destructive",
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchPrompts();
-  }, [authLoading, session]);              // 👈 rerun if session changes
+
+    return () => {
+      mounted = false;
+    };
+  }, [authLoading, session]);
   
   const isGridView = view === "grid";
   
@@ -126,6 +144,73 @@ export default function PromptsPage() {
     
     return matchesSearch && matchesCategory;
   });
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <p className="text-muted-foreground mb-2">Loading prompts...</p>
+          <div className="h-1 w-64 bg-secondary overflow-hidden rounded-full">
+            <div className="h-full bg-primary animate-pulse rounded-full"></div>
+          </div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <p className="text-destructive mb-4">{error}</p>
+          <Button 
+            variant="outline"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </div>
+      );
+    }
+
+    if (filteredPrompts.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <p className="text-muted-foreground mb-4">
+            {searchQuery || category !== "all" 
+              ? "No prompts found matching your search." 
+              : "No prompts available."}
+          </p>
+          {(searchQuery || category !== "all") && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchQuery("");
+                setCategory("all");
+              }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className={isGridView 
+        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" 
+        : "flex flex-col gap-3"
+      }>
+        {filteredPrompts.map((prompt) => (
+          <PromptCard 
+            key={prompt.id}
+            prompt={prompt}
+            isSelectable={true}
+            isSelected={selectedPrompts.includes(prompt.id)}
+            onSelect={handleSelectPrompt}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="container py-8">
@@ -237,35 +322,7 @@ export default function PromptsPage() {
         </div>
       )}
 
-      {filteredPrompts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12">
-          <p className="text-muted-foreground mb-4">No prompts found matching your search.</p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setSearchQuery("");
-              setCategory("all");
-            }}
-          >
-            Clear Filters
-          </Button>
-        </div>
-      ) : (
-        <div className={isGridView 
-          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" 
-          : "flex flex-col gap-3"
-        }>
-          {filteredPrompts.map((prompt) => (
-            <PromptCard 
-              key={prompt.id}
-              prompt={prompt}
-              isSelectable={true}
-              isSelected={selectedPrompts.includes(prompt.id)}
-              onSelect={handleSelectPrompt}
-            />
-          ))}
-        </div>
-      )}
+      {renderContent()}
     </div>
   );
 }

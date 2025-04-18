@@ -1,7 +1,9 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   session: Session | null;
@@ -24,66 +26,105 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Helper function to fetch user profile safely
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      
+      debug("profile fetched", { profile, role: profile?.role ?? "user" });
+      setUserRole(profile?.role ?? "user");
+    } catch (error) {
+      console.error("[AUTH] Error fetching profile:", error);
+      setUserRole("user"); // Default to user role on error
+      toast({
+        title: "Warning",
+        description: "Could not load user profile data. Some features may be limited.",
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
+    let mounted = true;
+    
+    // Setup auth state change listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (event, currentSession) => {
+        if (!mounted) return;
         
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-          
-          console.log("[AUTH] profile fetched", { profile, role: profile?.role ?? "user" });
-          setUserRole(profile?.role ?? "user");
-          setLoading(false);
-          
-          debug("state updated", { event, session, userRole: profile?.role ?? "user", loading: false });
+        debug("Auth state changed", { event, currentSession });
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        // For profile fetching, use setTimeout to avoid potential deadlocks with Supabase auth
+        if (currentSession?.user) {
+          setTimeout(() => {
+            if (mounted) {
+              fetchUserProfile(currentSession.user.id).finally(() => {
+                if (mounted) setLoading(false);
+              });
+            }
+          }, 0);
         } else {
           setUserRole(null);
-          debug("state cleared", { event, loading: false });
+          if (mounted) setLoading(false);
         }
-        setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session: initialSession }, error }) => {
+      if (!mounted) return;
       
-      if (session?.user) {
-        supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data: profile }) => {
-            console.log("[AUTH] profile fetched", { profile, role: profile?.role ?? "user" });
-            setUserRole(profile?.role ?? "user");
-            setLoading(false);
-            debug("initial state loaded", { session, userRole: profile?.role ?? "user", loading: false });
-          });
+      if (error) {
+        console.error("[AUTH] Error getting session:", error);
+        setLoading(false);
+        return;
+      }
+      
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+      
+      if (initialSession?.user) {
+        fetchUserProfile(initialSession.user.id).finally(() => {
+          if (mounted) setLoading(false);
+        });
       } else {
         setLoading(false);
-        debug("no initial session", { loading: false });
       }
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (!error) {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
       setSession(null);
       setUser(null);
       setUserRole(null);
       navigate('/login');
+    } catch (error) {
+      console.error("[AUTH] Sign out error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
