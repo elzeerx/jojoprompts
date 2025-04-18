@@ -1,27 +1,21 @@
-
 import { useState, useEffect } from "react";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Download, Grid, List, Search, SlidersHorizontal } from "lucide-react";
 import { type Prompt, type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";          // 👈 NEW
 
 export default function PromptsPage() {
+  const { loading: authLoading, session } = useAuth();     // 👈 NEW
   const [view, setView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
@@ -29,8 +23,10 @@ export default function PromptsPage() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   useEffect(() => {
+    if (authLoading) return;                               // 👈 wait for auth
+
     const fetchPrompts = async () => {
       setIsLoading(true);
       try {
@@ -39,11 +35,10 @@ export default function PromptsPage() {
           .select("*")
           .order("created_at", { ascending: false })
           .returns<PromptRow[]>();
-        
+
         if (error) throw error;
-        
-        // Transform data to match our Prompt type
-        const transformedData = data?.map(item => ({
+
+        const transformedData = (data ?? []).map((item) => ({
           id: item.id,
           user_id: item.user_id,
           title: item.title,
@@ -51,35 +46,38 @@ export default function PromptsPage() {
           image_url: item.image_url,
           created_at: item.created_at || "",
           metadata: {
-            category: item.metadata?.category || undefined,
-            style: item.metadata?.style || undefined,
-            tags: Array.isArray(item.metadata?.tags) ? item.metadata?.tags : []
-          }
-        })) || [];
-        
+            category: (item.metadata as any)?.category ?? undefined,
+            style: (item.metadata as any)?.style ?? undefined,
+            tags: Array.isArray((item.metadata as any)?.tags)
+              ? (item.metadata as any).tags
+              : [],
+          },
+        }));
+
         setPrompts(transformedData);
-        
-        // Extract unique categories for filtering
-        const uniqueCategories = [...new Set(transformedData
-          .map(p => p.metadata?.category)
-          .filter(Boolean) as string[]
-        )];
-        
+
+        const uniqueCategories = [
+          ...new Set(
+            transformedData
+              .map((p) => p.metadata?.category)
+              .filter(Boolean) as string[]
+          ),
+        ];
         setCategories(["all", ...uniqueCategories]);
       } catch (error) {
         console.error("Error fetching prompts:", error);
         toast({
           title: "Error",
           description: "Failed to load prompts. Please try again later.",
-          variant: "destructive"
+          variant: "destructive",
         });
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     fetchPrompts();
-  }, []);
+  }, [authLoading, session]);              // 👈 rerun if session changes
   
   const isGridView = view === "grid";
   
