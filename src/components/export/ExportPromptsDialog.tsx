@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       setProgress(0);
       
       // Show initial toast
-      const toastId = toast({
+      const toastRef = toast({
         title: "Preparing PDF...",
         description: "0%",
       });
@@ -63,7 +64,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
         
         // Update toast on significant progress (every ~20%)
         if (percentage % 20 === 0 || percentage === 100) {
-          toast.update(toastId, { description: `${percentage}%` });
+          toastRef.update({ description: `${percentage}%` });
         }
       };
       
@@ -84,7 +85,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       a.href = url;
       a.download = `jojoprompts_${new Date().toISOString().slice(0, 10)}_${count}.pdf`;
       
-      toast.update(toastId, {
+      toastRef.update({
         title: "Ready!",
         description: "Download will start shortly",
       });
@@ -99,7 +100,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       
     } catch (e: any) {
       console.error("PDF export error:", e);
-      toast.update(toastId, {
+      toastRef.update({
         title: "Error",
         description: e.message || "Failed to generate PDF",
         variant: "destructive",
