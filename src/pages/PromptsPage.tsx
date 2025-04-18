@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { cdnUrl } from "@/utils/image";
+import { ExportPromptsDialog } from "@/components/export/ExportPromptsDialog";
+import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 
 export default function PromptsPage() {
   const { loading: authLoading, session } = useAuth();
@@ -25,6 +27,9 @@ export default function PromptsPage() {
   const [categories, setCategories] = useState<string[]>(["all"]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [selectedPrompt, setSelectedPrompt] = useState<PromptRow | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   const fetchPrompts = async () => {
     setIsLoading(true);
@@ -123,19 +128,8 @@ export default function PromptsPage() {
     }
   };
   
-  const handleExportPDF = async () => {
-    try {
-      const promptsToExport = filteredPrompts.filter(p => selectedPrompts.includes(p.id));
-      const { downloadPromptsPDF } = await import('@/utils/pdf-export');
-      await downloadPromptsPDF(promptsToExport);
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      toast({
-        title: "Error", 
-        description: "Failed to create PDF. Please try again.",
-        variant: "destructive"
-      });
-    }
+  const handleExportPDF = () => {
+    setExportDialogOpen(true);
   };
 
   const handleDeletePrompt = async (promptId: string) => {
@@ -202,6 +196,8 @@ export default function PromptsPage() {
     
     return matchesSearch && matchesCategory;
   });
+
+  const promptsToExport = filteredPrompts.filter(p => selectedPrompts.includes(p.id));
 
   const renderContent = () => {
     if (isLoading) {
@@ -381,6 +377,21 @@ export default function PromptsPage() {
       )}
 
       {renderContent()}
+
+      <ExportPromptsDialog 
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        prompts={promptsToExport}
+      />
+
+      {selectedPrompt && (
+        <PromptDetailsDialog
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          prompt={selectedPrompt}
+          promptList={prompts as PromptRow[]}
+        />
+      )}
     </div>
   );
 }

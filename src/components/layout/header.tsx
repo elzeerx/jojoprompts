@@ -1,7 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { FileText, LogOut, User, ShieldCheck } from "lucide-react";
+import { LogOut, User, ShieldCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,8 +33,7 @@ export function Header({ userEmail, onLogout }: HeaderProps) {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            <FileText className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">JojoPrompts</span>
+            <img src="/assets/jojoprompts-logo.png" alt="JojoPrompts logo" className="h-6 w-auto" />
           </Link>
           
           <nav className="hidden md:flex gap-6">
