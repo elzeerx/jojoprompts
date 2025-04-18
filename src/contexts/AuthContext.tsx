@@ -1,7 +1,7 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   session: Session | null;
@@ -22,16 +22,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user role from profiles
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')
@@ -51,13 +50,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        // Fetch initial role
         supabase
           .from('profiles')
           .select('role')
@@ -81,7 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (!error) {
+      setSession(null);
+      setUser(null);
+      setUserRole(null);
+      navigate('/login');
+    }
   };
 
   return (
@@ -105,4 +108,3 @@ export function useAuth() {
   }
   return context;
 }
-
