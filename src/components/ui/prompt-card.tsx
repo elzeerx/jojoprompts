@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { Badge } from "./badge";
@@ -12,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
+import { cdnUrl } from "@/utils/image";
 
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
@@ -41,6 +41,7 @@ export function PromptCard({
   
   const tags = metadata?.tags || [];
   
+  const thumb = cdnUrl(prompt.image_url);
   const placeholderImage = "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=400&q=80";
 
   const handleSelectChange = () => {
@@ -125,10 +126,11 @@ export function PromptCard({
             </div>
           )}
           <div className="aspect-video relative bg-muted">
-            {image_url ? (
+            {thumb ? (
               <img 
-                src={image_url} 
+                src={thumb}
                 alt={title}
+                loading="lazy"
                 className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
@@ -136,6 +138,7 @@ export function PromptCard({
                 <img 
                   src={placeholderImage} 
                   alt="Placeholder"
+                  loading="lazy"
                   className="object-cover w-full h-full opacity-50 transition-transform duration-300 group-hover:scale-105"
                 />
               </div>

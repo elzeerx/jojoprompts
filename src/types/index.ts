@@ -10,7 +10,7 @@ export interface Prompt {
   user_id: string;
   title: string;
   prompt_text: string;
-  image_url: string | null;
+  image_path: string | null;
   metadata: {
     category?: string;
     style?: string;
@@ -24,7 +24,7 @@ export interface PromptRow {
   user_id: string;
   title: string;
   prompt_text: string;
-  image_url: string | null;
+  image_path: string | null;
   created_at: string | null;
   metadata: {
     category?: string;

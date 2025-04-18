@@ -57,7 +57,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          image_url: string | null
+          image_path: string | null
           metadata: Json | null
           prompt_text: string
           title: string
@@ -66,7 +66,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
-          image_url?: string | null
+          image_path?: string | null
           metadata?: Json | null
           prompt_text: string
           title: string
@@ -75,7 +75,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
-          image_url?: string | null
+          image_path?: string | null
           metadata?: Json | null
           prompt_text?: string
           title?: string

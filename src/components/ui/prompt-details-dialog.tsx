@@ -1,8 +1,8 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type PromptRow } from "@/types";
+import { cdnUrl } from "@/utils/image";
 
 interface PromptDetailsDialogProps {
   open: boolean;
@@ -12,6 +12,8 @@ interface PromptDetailsDialogProps {
 
 export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetailsDialogProps) {
   if (!prompt) return null;
+  
+  const fullImage = cdnUrl(prompt.image_path, 1200, 90);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -22,11 +24,12 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
               <DialogTitle className="text-2xl font-bold tracking-tight">{prompt.title}</DialogTitle>
             </DialogHeader>
 
-            {prompt.image_url && (
+            {prompt.image_path && (
               <div className="mt-4 rounded-lg overflow-hidden">
                 <img 
-                  src={prompt.image_url} 
-                  alt={prompt.title} 
+                  src={fullImage!}
+                  alt={prompt.title}
+                  loading="lazy"
                   className="w-full aspect-video object-cover hover:scale-[1.02] transition-transform duration-200"
                 />
               </div>
