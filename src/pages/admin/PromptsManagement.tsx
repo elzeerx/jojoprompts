@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { PlusCircle, Trash, Edit, AlertCircle } from "lucide-react";
-import { type Prompt } from "@/types";
+import { type Prompt, type PromptRow } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,7 +64,8 @@ export default function PromptsManagement() {
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .returns<PromptRow[]>();
 
       if (error) throw error;
 
@@ -74,12 +76,11 @@ export default function PromptsManagement() {
         prompt_text: item.prompt_text,
         image_url: item.image_url,
         created_at: item.created_at || "",
-        metadata: typeof item.metadata === 'object' ? 
-          {
-            category: item.metadata?.category as string || undefined,
-            style: item.metadata?.style as string || undefined,
-            tags: Array.isArray(item.metadata?.tags) ? item.metadata?.tags as string[] : []
-          } : { category: undefined, style: undefined, tags: [] }
+        metadata: {
+          category: item.metadata?.category || undefined,
+          style: item.metadata?.style || undefined,
+          tags: Array.isArray(item.metadata?.tags) ? item.metadata?.tags : []
+        }
       })) || [];
 
       setPrompts(transformedData);
@@ -108,13 +109,18 @@ export default function PromptsManagement() {
     setSubmitting(true);
 
     try {
-      let metadata = {};
+      let metadata: {
+        category?: string;
+        style?: string;
+        tags?: string[];
+      } = {};
+      
       try {
         const { data: meta } = await supabase.functions.invoke(
           "generate-metadata",
           { body: { prompt_text: formData.prompt_text } }
         );
-        metadata = meta ?? {};
+        metadata = meta || {};
       } catch (e) {
         console.warn("Metadata generation failed:", e);
       }
@@ -128,9 +134,9 @@ export default function PromptsManagement() {
         title: formData.title,
         prompt_text: formData.prompt_text,
         metadata: {
-          category: metadata.category ?? formData.category,
-          style: metadata.style ?? formData.style,
-          tags: metadata.tags ?? tags,
+          category: metadata.category || formData.category,
+          style: metadata.style || formData.style,
+          tags: metadata.tags || tags,
         },
         image_url: formData.image_url || null,
         user_id: user?.id,

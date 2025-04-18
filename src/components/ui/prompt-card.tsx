@@ -6,10 +6,10 @@ import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { Download, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type Prompt } from "@/types";
+import { type Prompt, type PromptRow } from "@/types";
 
 interface PromptCardProps {
-  prompt: Prompt;
+  prompt: Prompt | PromptRow;
   isSelectable?: boolean;
   isSelected?: boolean;
   onSelect?: (promptId: string) => void;

@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Download, Grid, List, Search, SlidersHorizontal } from "lucide-react";
-import { type Prompt } from "@/types";
+import { type Prompt, type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -37,7 +37,8 @@ export default function PromptsPage() {
         const { data, error } = await supabase
           .from("prompts")
           .select("*")
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .returns<PromptRow[]>();
         
         if (error) throw error;
         
@@ -49,12 +50,11 @@ export default function PromptsPage() {
           prompt_text: item.prompt_text,
           image_url: item.image_url,
           created_at: item.created_at || "",
-          metadata: typeof item.metadata === 'object' ? 
-            {
-              category: item.metadata?.category as string || undefined,
-              style: item.metadata?.style as string || undefined,
-              tags: Array.isArray(item.metadata?.tags) ? item.metadata?.tags as string[] : []
-            } : { category: undefined, style: undefined, tags: [] }
+          metadata: {
+            category: item.metadata?.category || undefined,
+            style: item.metadata?.style || undefined,
+            tags: Array.isArray(item.metadata?.tags) ? item.metadata?.tags : []
+          }
         })) || [];
         
         setPrompts(transformedData);
