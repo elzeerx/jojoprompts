@@ -8,7 +8,7 @@ import { RootLayout } from "./components/layout/root-layout";
 import { AuthProvider } from "./contexts/AuthContext";
 import HomePage from "./pages/HomePage";
 import PromptsPage from "./pages/PromptsPage";
-import DashboardPage from "./pages/DashboardPage";
+import UserDashboard from "./pages/UserDashboard";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -34,13 +34,15 @@ const App = () => {
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/about" element={<AboutPage />} />
               
-              {/* Protected routes */}
+              {/* User dashboard */}
               <Route path="/dashboard" element={
                 <ProtectedRoute>
-                  <DashboardPage />
+                  <UserDashboard />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/*" element={
+              
+              {/* Admin dashboard */}
+              <Route path="/admin" element={
                 <ProtectedRoute requireAdmin>
                   <AdminDashboard />
                 </ProtectedRoute>
