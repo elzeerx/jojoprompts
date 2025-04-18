@@ -64,7 +64,9 @@ export function AddPromptDialog({ isOpen, onClose, onPromptAdded }: AddPromptDia
     setSubmitting(true);
 
     try {
-      let metadata = {};
+      // Initialize with proper typing to avoid TypeScript errors
+      let metadata: { category?: string; style?: string; tags?: string[] } = {};
+      
       try {
         const { data: meta } = await supabase.functions.invoke(
           "generate-metadata",
