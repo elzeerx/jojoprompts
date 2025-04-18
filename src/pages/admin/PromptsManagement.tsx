@@ -42,6 +42,7 @@ export default function PromptsManagement() {
   const [loading, setLoading] = useState(true);
   const [editingPrompt, setEditingPrompt] = useState<null | Prompt>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     prompt_text: "",
@@ -66,7 +67,6 @@ export default function PromptsManagement() {
 
       if (error) throw error;
 
-      // Transform data to match our Prompt type
       const transformedData = data?.map(item => ({
         id: item.id,
         user_id: item.user_id,
@@ -96,33 +96,49 @@ export default function PromptsManagement() {
   };
 
   const handleAddPrompt = async () => {
-    if (!user) return;
-    
+    if (!formData.title || !formData.prompt_text) {
+      toast({
+        title: "Error",
+        description: "Title and Prompt Text are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+
     try {
+      let metadata = {};
+      try {
+        const { data: meta } = await supabase.functions.invoke(
+          "generate-metadata",
+          { body: { prompt_text: formData.prompt_text } }
+        );
+        metadata = meta ?? {};
+      } catch (e) {
+        console.warn("Metadata generation failed:", e);
+      }
+
       const tags = formData.tags
         .split(",")
         .map((tag) => tag.trim())
         .filter(Boolean);
 
-      const newPrompt = {
+      const { error } = await supabase.from("prompts").insert({
         title: formData.title,
         prompt_text: formData.prompt_text,
-        image_url: formData.image_url || null,
-        user_id: user.id,
         metadata: {
-          category: formData.category,
-          style: formData.style,
-          tags,
+          category: metadata.category ?? formData.category,
+          style: metadata.style ?? formData.style,
+          tags: metadata.tags ?? tags,
         },
-      };
-
-      const { data, error } = await supabase.from("prompts").insert([newPrompt]);
+        image_url: formData.image_url || null,
+        user_id: user?.id,
+      });
 
       if (error) throw error;
 
-      // Refetch to get the new prompt with its ID and other server-generated fields
       await fetchPrompts();
-      
       setIsDialogOpen(false);
       resetForm();
       
@@ -137,6 +153,8 @@ export default function PromptsManagement() {
         description: "Failed to add prompt",
         variant: "destructive",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -422,11 +440,19 @@ export default function PromptsManagement() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => setIsDialogOpen(false)}>
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={() => setIsDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit" onClick={editingPrompt ? handleUpdatePrompt : handleAddPrompt}>
-              {editingPrompt ? "Update Prompt" : "Add Prompt"}
+            <Button 
+              type="submit" 
+              onClick={handleAddPrompt} 
+              disabled={submitting}
+            >
+              {submitting ? "Adding..." : "Add Prompt"}
             </Button>
           </DialogFooter>
         </DialogContent>
