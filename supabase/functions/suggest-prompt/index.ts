@@ -1,47 +1,41 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import "https://deno.land/x/xhr@0.1.0/mod.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('No authorization header')
+    // Create client that forwards the caller's JWT
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+    );
+
+    // Auth check
+    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: Admin access required" }), 
+        { status: 401, headers: corsHeaders }
+      );
     }
 
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    )
-
-    // Check if user is admin
-    const { data: isAdmin } = await supabaseClient.rpc('is_admin')
-    if (!isAdmin) {
-      throw new Error('Unauthorized: Admin access required')
-    }
-
-    // Get existing prompts
-    const { data: prompts } = await supabaseClient
+    // Get existing prompts for context
+    const { data: prompts } = await supabase
       .from('prompts')
       .select('prompt_text, metadata')
-      .limit(5)
+      .limit(5);
 
     // Call OpenAI API
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -63,44 +57,41 @@ serve(async (req) => {
           }
         ],
       }),
-    })
+    });
 
-    const openAiData = await openAiResponse.json()
-    const suggestedPrompt = JSON.parse(openAiData.choices[0].message.content)
+    const openAiData = await openAiResponse.json();
+    const newPrompt = JSON.parse(openAiData.choices[0].message.content);
 
-    // Get the current user's ID
-    const { data: { user } } = await supabaseClient.auth.getUser()
-    if (!user) throw new Error('User not found')
-
-    // Insert the generated prompt into the database
-    const { data: insertedPrompt, error: insertError } = await supabaseClient
-      .from('prompts')
+    // Insert the generated prompt
+    const { data: inserted, error: insertErr } = await supabase
+      .from("prompts")
       .insert({
-        title: suggestedPrompt.title,
-        prompt_text: suggestedPrompt.prompt_text,
-        metadata: suggestedPrompt.metadata || {},
-        user_id: user.id
+        user_id: user.id,
+        title: newPrompt.title,
+        prompt_text: newPrompt.prompt_text,
+        metadata: newPrompt.metadata || {},
+        image_path: null,
       })
-      .select('id, title')
-      .single()
+      .select("id, title")
+      .single();
 
-    if (insertError) {
-      console.error('Error inserting prompt:', insertError)
-      throw new Error(`Database error: ${insertError.code}`)
+    if (insertErr) {
+      console.error("Error inserting prompt:", insertErr);
+      return new Response(
+        JSON.stringify({ error: insertErr.message }), 
+        { status: 500, headers: corsHeaders }
+      );
     }
 
     return new Response(
-      JSON.stringify(insertedPrompt),
+      JSON.stringify(inserted),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    );
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        code: error.code // Include PG error code if available
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    )
+      JSON.stringify({ error: error.message }), 
+      { status: 500, headers: corsHeaders }
+    );
   }
-})
+});

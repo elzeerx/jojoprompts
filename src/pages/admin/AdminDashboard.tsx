@@ -1,4 +1,3 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { Loader2, Zap } from "lucide-react";
@@ -17,7 +16,7 @@ export default function AdminDashboard() {
   const [loadingSuggest, setLoadingSuggest] = useState(false);
   const [promptDialogOpen, setPromptDialogOpen] = useState(false);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -127,25 +126,27 @@ export default function AdminDashboard() {
                     setLoadingSuggest(true);
                     try {
                       const { data, error } = await supabase.functions.invoke(
-                        "suggest-prompt"
+                        "suggest-prompt",
+                        {
+                          headers: {
+                            Authorization: `Bearer ${session?.access_token}`,
+                          },
+                        }
                       );
                       
                       if (error) throw error;
                       
                       toast({
-                        title: "Success",
-                        description: "Prompt saved successfully!",
+                        title: "Prompt generated!",
+                        description: `Added "${data.title}" to your prompts.`,
                       });
                       
-                      if (data?.id) {
-                        setSelectedPromptId(data.id);
-                        setActiveTab("prompts");
-                      }
+                      setActiveTab("prompts");
                     } catch (error) {
                       console.error('Error suggesting prompt:', error);
                       toast({
                         title: "Error",
-                        description: error.message || "Failed to generate prompt",
+                        description: error.message ?? "Edge Function failed",
                         variant: "destructive",
                       });
                     } finally {
