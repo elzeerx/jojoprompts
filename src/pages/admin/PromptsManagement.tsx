@@ -7,6 +7,7 @@ import { PromptDialog } from "./components/prompts/PromptDialog";
 import { type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PromptsManagementProps {
   favoritedPromptIds?: string[];
@@ -15,8 +16,9 @@ interface PromptsManagementProps {
 export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsManagementProps) {
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedPrompt, setSelectedPrompt] = useState<PromptRow | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<PromptRow | null>(null);
+  const { user } = useAuth();
   
   const fetchPrompts = async () => {
     setIsLoading(true);
@@ -24,6 +26,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
+        .returns<PromptRow[]>()
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -45,15 +48,15 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   }, []);
   
   const handleAddPrompt = () => {
-    setSelectedPrompt(null);
-    setIsDialogOpen(true);
+    setEditing(null);
+    setDialogOpen(true);
   };
   
   const handleEditPrompt = (promptId: string) => {
     const prompt = prompts.find(p => p.id === promptId);
     if (prompt) {
-      setSelectedPrompt(prompt);
-      setIsDialogOpen(true);
+      setEditing(prompt);
+      setDialogOpen(true);
     }
   };
   
@@ -83,22 +86,22 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     }
   };
   
-  const handleSavePrompt = async (prompt: Partial<PromptRow>) => {
-    setIsDialogOpen(false);
+  const handleSave = async (prompt: Partial<PromptRow>) => {
+    setDialogOpen(false);
     
     try {
-      if (selectedPrompt) {
+      if (editing) {
         // Update existing prompt
         const { error } = await supabase
           .from("prompts")
           .update(prompt)
-          .eq("id", selectedPrompt.id);
+          .eq("id", editing.id);
         
         if (error) throw error;
         
         // Update local state
         setPrompts(prompts.map(p => 
-          p.id === selectedPrompt.id ? { ...p, ...prompt } : p
+          p.id === editing.id ? { ...p, ...prompt } : p
         ));
         
         toast({
@@ -107,10 +110,16 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         });
       } else {
         // Create new prompt
+        const payload = {
+          ...prompt,
+          user_id: user?.id
+        };
+        
         const { data, error } = await supabase
           .from("prompts")
-          .insert(prompt)
+          .insert(payload as any)
           .select()
+          .returns<PromptRow[]>()
           .single();
         
         if (error) throw error;
@@ -165,10 +174,10 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       )}
       
       <PromptDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        prompt={selectedPrompt}
-        onSave={handleSavePrompt}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        initial={editing}
+        onSave={handleSave}
       />
     </div>
   );

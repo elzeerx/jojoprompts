@@ -1,4 +1,5 @@
 
+import { FC, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,15 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { type PromptRow } from "@/types";
 
-interface PromptDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onPromptAdded: () => void;
+export interface PromptDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   initial?: PromptRow | null;
+  onSave: (prompt: Partial<PromptRow>) => Promise<void>;
 }
 
 const EMPTY: PromptRow["metadata"] = {
@@ -29,15 +29,15 @@ const EMPTY: PromptRow["metadata"] = {
   tags: []
 };
 
-export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: PromptDialogProps) {
+export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initial, onSave }) => {
   const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState("");
   const [promptText, setPromptText] = useState("");
-  const [metadata, setMetadata] = useState(EMPTY);
+  const [metadata, setMetadata] = useState<PromptRow["metadata"]>(EMPTY);
   const [imageURL, setImageURL] = useState("");
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!open) return;
     if (initial) {
       // edit mode
       setTitle(initial.title);
@@ -55,7 +55,7 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
       setMetadata(EMPTY);
       setImageURL("");
     }
-  }, [isOpen, initial]);
+  }, [open, initial]);
 
   const handleSubmit = async () => {
     if (!title.trim() || !promptText.trim()) {
@@ -83,7 +83,7 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
         console.warn("Metadata generation failed:", err);
       }
 
-      const promptData = {
+      const promptData: Partial<PromptRow> = {
         title: title,
         prompt_text: promptText,
         metadata: {
@@ -94,35 +94,7 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
         image_url: imageURL || null,
       };
 
-      let error;
-
-      if (initial) {
-        // Update existing prompt
-        const { error: updateError } = await supabase
-          .from("prompts")
-          .update(promptData)
-          .eq("id", initial.id);
-        error = updateError;
-      } else {
-        // Insert new prompt
-        const { error: insertError } = await supabase.from("prompts").insert({
-          ...promptData,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-        });
-        error = insertError;
-      }
-
-      console.log("[PROMPT_DIALOG]", { error });
-      
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: initial ? "Prompt updated successfully" : "Prompt added successfully",
-      });
-      
-      onClose();
-      onPromptAdded();
+      await onSave(promptData);
     } catch (error) {
       console.error("Error saving prompt:", error);
       toast({
@@ -136,7 +108,7 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Prompt" : "Add Prompt"}</DialogTitle>
@@ -175,7 +147,7 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
             <Input
               type="text"
               id="category"
-              value={metadata.category}
+              value={metadata.category || ""}
               onChange={(e) => setMetadata({ ...metadata, category: e.target.value })}
               className="col-span-3"
             />
@@ -187,7 +159,7 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
             <Input
               type="text"
               id="style"
-              value={metadata.style}
+              value={metadata.style || ""}
               onChange={(e) => setMetadata({ ...metadata, style: e.target.value })}
               className="col-span-3"
             />
@@ -200,11 +172,11 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
               type="text"
               id="tags"
               placeholder="tag1, tag2, tag3"
-              value={metadata.tags.join(", ")}
-              onChange={(e) => setMetadata({ 
-                ...metadata, 
-                tags: e.target.value.split(",").map(tag => tag.trim()).filter(Boolean)
-              })}
+              value={metadata.tags?.join(", ") || ""}
+              onChange={(e) => {
+                const tags = e.target.value.split(",").map(tag => tag.trim()).filter(Boolean);
+                setMetadata({ ...metadata, tags });
+              }}
               className="col-span-3"
             />
           </div>
@@ -222,7 +194,7 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
@@ -236,5 +208,6 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
       </DialogContent>
     </Dialog>
   );
-}
+};
 
+export default PromptDialog;
