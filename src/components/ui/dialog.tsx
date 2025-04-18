@@ -3,7 +3,6 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import PromptDetailsDialog from "@/components/dialog/PromptDetailsDialog";
 
 const Dialog = DialogPrimitive.Root
 
@@ -119,4 +118,3 @@ export {
   DialogTitle,
   DialogDescription,
 }
-
