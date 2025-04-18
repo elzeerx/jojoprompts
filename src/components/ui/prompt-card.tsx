@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { Badge } from "./badge";
@@ -44,7 +45,7 @@ export function PromptCard({
   const thumb = cdnUrl(prompt.image_path);
   const placeholderImage = "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=400&q=80";
 
-  const handleSelectChange = () => {
+  const handleSelectChange = (checked: boolean) => {
     if (onSelect) {
       onSelect(prompt.id);
     }
@@ -52,7 +53,7 @@ export function PromptCard({
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
+    e.stopPropagation(); // Stop event propagation
     
     if (!session) {
       toast({
@@ -105,6 +106,8 @@ export function PromptCard({
               <Checkbox 
                 checked={isSelected}
                 onCheckedChange={handleSelectChange}
+                onClick={(e) => e.stopPropagation()} // Stop event propagation
+                onKeyDown={(e) => e.stopPropagation()} // Stop keydown event
                 className="h-5 w-5 border-2 border-white bg-white/50 backdrop-blur-sm"
               />
             </div>
@@ -120,6 +123,7 @@ export function PromptCard({
                   favorited && "text-red-500 hover:text-red-600"
                 )}
                 onClick={toggleFavorite}
+                onKeyDown={(e) => e.stopPropagation()} // Stop keydown event
               >
                 <Heart className={cn("h-5 w-5", favorited && "fill-current")} />
               </Button>
@@ -187,7 +191,7 @@ export function PromptCard({
                 variant="ghost" 
                 size="sm"
                 onClick={(e) => {
-                  e.stopPropagation();
+                  e.stopPropagation(); // Stop event propagation
                   onEdit?.(prompt.id);
                 }}
               >
@@ -198,7 +202,7 @@ export function PromptCard({
                 size="sm" 
                 className="text-destructive"
                 onClick={(e) => {
-                  e.stopPropagation();
+                  e.stopPropagation(); // Stop event propagation
                   onDelete?.(prompt.id);
                 }}
               >
@@ -217,3 +221,4 @@ export function PromptCard({
     </>
   );
 }
+
