@@ -61,24 +61,34 @@ serve(async (req) => {
 
     const openAiData = await openAiResponse.json();
     const newPrompt = JSON.parse(openAiData.choices[0].message.content);
+    
+    // Normalize keys the model might return
+    const title = newPrompt.title ?? newPrompt.heading ?? "Untitled";
+    const promptText = newPrompt.prompt_text ?? newPrompt.text ?? newPrompt.prompt;
+    
+    if (!promptText) {
+      return new Response(
+        JSON.stringify({ error: "OpenAI response missing prompt_text" }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
-    // Insert the generated prompt
-    const { data: inserted, error: insertErr } = await supabase
+    // Insert the normalized prompt
+    const { data: inserted, error: insErr } = await supabase
       .from("prompts")
       .insert({
         user_id: user.id,
-        title: newPrompt.title,
-        prompt_text: newPrompt.prompt_text,
-        metadata: newPrompt.metadata || {},
-        image_path: null,
+        title: title,
+        prompt_text: promptText,
+        metadata: newPrompt.metadata ?? {},
       })
       .select("id, title")
       .single();
 
-    if (insertErr) {
-      console.error("Error inserting prompt:", insertErr);
+    if (insErr) {
+      console.error("Error inserting prompt:", insErr);
       return new Response(
-        JSON.stringify({ error: insertErr.message }), 
+        JSON.stringify({ error: insErr.message }), 
         { status: 500, headers: corsHeaders }
       );
     }
