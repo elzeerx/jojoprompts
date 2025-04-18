@@ -3,81 +3,82 @@ import { Button } from "@/components/ui/button";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, FileText } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { type Prompt } from "@/types";
-
-// Temporary mock data - will be replaced with Supabase data
-const mockFavorites: Prompt[] = [
-  {
-    id: "1",
-    user_id: "admin-user",
-    title: "Cyberpunk City Night",
-    prompt_text: "A futuristic cyberpunk city at night, with neon signs, flying cars, and holographic billboards. The scene is illuminated by a mix of purple and blue lights reflecting on wet streets.",
-    image_url: "https://images.unsplash.com/photo-1559650656-5d1d361ad10e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&h=600&q=80",
-    metadata: {
-      category: "Environments",
-      style: "Cyberpunk",
-      tags: ["neon", "futuristic", "cityscape", "night", "scifi"]
-    },
-    created_at: "2023-06-15T10:00:00Z"
-  },
-  {
-    id: "4",
-    user_id: "admin-user",
-    title: "Steampunk Airship Battle",
-    prompt_text: "Epic battle between steampunk airships in a cloudy sky. Brass, copper, and wooden ships with giant propellers and billowing steam, exchanging cannon fire. Sunset colors the clouds in orange and gold.",
-    image_url: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&h=600&q=80",
-    metadata: {
-      category: "Action",
-      style: "Steampunk",
-      tags: ["airship", "battle", "steampunk", "clouds", "fantasy"]
-    },
-    created_at: "2023-06-18T14:45:00Z"
-  }
-];
-
-const mockRecent: Prompt[] = [
-  {
-    id: "3",
-    user_id: "admin-user",
-    title: "Astronaut on Alien Planet",
-    prompt_text: "An astronaut standing on a vibrant alien planet with impossible floating rock formations. Two moons visible in the purple sky. Strange plant life and crystalline structures dot the landscape.",
-    image_url: null,
-    metadata: {
-      category: "Sci-Fi",
-      style: "Space Exploration",
-      tags: ["astronaut", "alien", "space", "exploration", "planets"]
-    },
-    created_at: "2023-06-17T09:15:00Z"
-  },
-  {
-    id: "2",
-    user_id: "admin-user",
-    title: "Fantasy Forest Portal",
-    prompt_text: "A magical portal in the middle of an ancient forest. Glowing mushrooms and plants surround the swirling energy gate. Magical particles float in the air, and ethereal creatures peek from behind trees.",
-    image_url: "https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&h=600&q=80",
-    metadata: {
-      category: "Fantasy",
-      style: "Magical Realism",
-      tags: ["forest", "portal", "magic", "fantasy", "ethereal"]
-    },
-    created_at: "2023-06-16T11:30:00Z"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const [selectedTab, setSelectedTab] = useState("favorites");
   const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<Prompt[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Prompt[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    const fetchUserPrompts = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      try {
+        // In a real app, you'd have favorites and recently viewed tables
+        // For now, we'll just fetch all prompts and split them
+        const { data, error } = await supabase
+          .from("prompts")
+          .select("*")
+          .order("created_at", { ascending: false });
+          
+        if (error) throw error;
+        
+        // Transform data to match Prompt type
+        const transformedData = data?.map(item => ({
+          id: item.id,
+          user_id: item.user_id,
+          title: item.title,
+          prompt_text: item.prompt_text,
+          image_url: item.image_url,
+          created_at: item.created_at || "",
+          metadata: typeof item.metadata === 'object' ? 
+            {
+              category: item.metadata?.category as string || undefined,
+              style: item.metadata?.style as string || undefined,
+              tags: Array.isArray(item.metadata?.tags) ? item.metadata?.tags as string[] : []
+            } : { category: undefined, style: undefined, tags: [] }
+        })) || [];
+        
+        // For demo purposes, split the data to simulate favorites and recently viewed
+        // In a real app, these would come from different queries
+        setFavorites(transformedData.slice(0, 2));
+        setRecentlyViewed(transformedData.slice(2, 4));
+      } catch (error) {
+        console.error("Error fetching user prompts:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load prompts. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserPrompts();
+  }, [user]);
   
   const handleExportPDF = async () => {
     try {
       const promptsToExport = currentPrompts.filter(p => selectedPrompts.includes(p.id));
-      // Import dynamically to avoid loading jsPDF unnecessarily
       const { downloadPromptsPDF } = await import('@/utils/pdf-export');
       await downloadPromptsPDF(promptsToExport);
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      alert('There was an error creating the PDF. Please try again.');
+      toast({
+        title: "Error",
+        description: "Failed to create PDF. Please try again.",
+        variant: "destructive"
+      });
     }
   };
   
@@ -89,7 +90,7 @@ export default function DashboardPage() {
     );
   };
   
-  const currentPrompts = selectedTab === "favorites" ? mockFavorites : mockRecent;
+  const currentPrompts = selectedTab === "favorites" ? favorites : recentlyViewed;
   
   return (
     <div className="container py-8">
@@ -124,7 +125,11 @@ export default function DashboardPage() {
         </TabsList>
         
         <TabsContent value="favorites">
-          {mockFavorites.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          ) : favorites.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="rounded-full bg-primary/10 p-3 mb-4">
                 <FileText className="h-6 w-6 text-primary" />
@@ -139,7 +144,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockFavorites.map((prompt) => (
+              {favorites.map((prompt) => (
                 <PromptCard 
                   key={prompt.id}
                   prompt={prompt}
@@ -153,7 +158,11 @@ export default function DashboardPage() {
         </TabsContent>
         
         <TabsContent value="recent">
-          {mockRecent.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          ) : recentlyViewed.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="rounded-full bg-primary/10 p-3 mb-4">
                 <FileText className="h-6 w-6 text-primary" />
@@ -168,7 +177,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockRecent.map((prompt) => (
+              {recentlyViewed.map((prompt) => (
                 <PromptCard 
                   key={prompt.id}
                   prompt={prompt}

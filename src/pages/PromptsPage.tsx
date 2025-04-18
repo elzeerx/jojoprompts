@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
 import { Download, Grid, List, Search, SlidersHorizontal } from "lucide-react";
 import { type Prompt } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export default function PromptsPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -26,18 +28,54 @@ export default function PromptsPage() {
   const [category, setCategory] = useState<string>("all");
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     const fetchPrompts = async () => {
-      const { data } = await supabase
-        .from("prompts")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
-      setPrompts(data || []);
-      
-      const uniqueCategories = [...new Set(data?.map(p => p.metadata?.category || "") || [])];
-      setCategories(["all", ...uniqueCategories.filter(Boolean)]);
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("prompts")
+          .select("*")
+          .order("created_at", { ascending: false });
+        
+        if (error) throw error;
+        
+        // Transform data to match our Prompt type
+        const transformedData = data?.map(item => ({
+          id: item.id,
+          user_id: item.user_id,
+          title: item.title,
+          prompt_text: item.prompt_text,
+          image_url: item.image_url,
+          created_at: item.created_at || "",
+          metadata: typeof item.metadata === 'object' ? 
+            {
+              category: item.metadata?.category as string || undefined,
+              style: item.metadata?.style as string || undefined,
+              tags: Array.isArray(item.metadata?.tags) ? item.metadata?.tags as string[] : []
+            } : { category: undefined, style: undefined, tags: [] }
+        })) || [];
+        
+        setPrompts(transformedData);
+        
+        // Extract unique categories for filtering
+        const uniqueCategories = [...new Set(transformedData
+          .map(p => p.metadata?.category)
+          .filter(Boolean) as string[]
+        )];
+        
+        setCategories(["all", ...uniqueCategories]);
+      } catch (error) {
+        console.error("Error fetching prompts:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load prompts. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     fetchPrompts();
@@ -72,7 +110,11 @@ export default function PromptsPage() {
       await downloadPromptsPDF(promptsToExport);
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      alert('There was an error creating the PDF. Please try again.');
+      toast({
+        title: "Error", 
+        description: "Failed to create PDF. Please try again.",
+        variant: "destructive"
+      });
     }
   };
   
