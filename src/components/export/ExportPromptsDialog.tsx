@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -23,6 +24,12 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
   });
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  
+  /* ------------------------------------------------------------------ */
+  /* Toast refs live in component scope (not inside try / callbacks)    */
+  const toastObjRef = useRef<ReturnType<typeof toast> | null>(null);
+  const toastIdRef = useRef<string>("");
+  /* ------------------------------------------------------------------ */
 
   const handleExport = async () => {
     if (prompts.length === 0) return;
@@ -31,12 +38,12 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       setIsExporting(true);
       setProgress(0);
       
-      // Create toast and keep handle + id
-      const toastObj = toast({
+      // Initialize toast
+      toastObjRef.current = toast({
         title: "Preparing PDF...",
         description: "0%",
       });
-      const toastId = toastObj.id;
+      toastIdRef.current = toastObjRef.current.id;
       
       // Get logo as data URL
       const logoUrl = '/assets/jojoprompts-logo.png';
@@ -64,8 +71,8 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
         
         // Update toast on significant progress (every ~20%)
         if (percentage % 20 === 0 || percentage === 100) {
-          toastObj.update({
-            id: toastId,
+          toastObjRef.current?.update({
+            id: toastIdRef.current,
             description: `${percentage}%`
           });
         }
@@ -88,8 +95,8 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       a.href = url;
       a.download = `jojoprompts_${new Date().toISOString().slice(0, 10)}_${count}.pdf`;
       
-      toastObj.update({
-        id: toastId,
+      toastObjRef.current?.update({
+        id: toastIdRef.current,
         title: "Ready!",
         description: "Download will start shortly",
       });
@@ -104,8 +111,8 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       
     } catch (e: any) {
       console.error("PDF export error:", e);
-      toastObj.update({
-        id: toastId,
+      toastObjRef.current?.update({
+        id: toastIdRef.current,
         title: "Error",
         description: e.message || "Failed to generate PDF",
         variant: "destructive",
