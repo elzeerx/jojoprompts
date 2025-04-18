@@ -33,10 +33,11 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       setProgress(0);
       
       // Show initial toast
-      const toastRef = toast({
+      const toastHandle = toast({
         title: "Preparing PDF...",
         description: "0%",
       });
+      const toastId = toastHandle.id;
       
       // Get logo as data URL
       const logoUrl = '/assets/jojoprompts-logo.png';
@@ -64,7 +65,10 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
         
         // Update toast on significant progress (every ~20%)
         if (percentage % 20 === 0 || percentage === 100) {
-          toastRef.update({ description: `${percentage}%` });
+          toastHandle.update({
+            id: toastId,
+            description: `${percentage}%`
+          });
         }
       };
       
@@ -85,7 +89,8 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       a.href = url;
       a.download = `jojoprompts_${new Date().toISOString().slice(0, 10)}_${count}.pdf`;
       
-      toastRef.update({
+      toastHandle.update({
+        id: toastId,
         title: "Ready!",
         description: "Download will start shortly",
       });
@@ -100,7 +105,8 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       
     } catch (e: any) {
       console.error("PDF export error:", e);
-      toastRef.update({
+      toastHandle.update({
+        id: toastId,
         title: "Error",
         description: e.message || "Failed to generate PDF",
         variant: "destructive",
