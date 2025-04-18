@@ -30,7 +30,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      setPrompts(data || []);
+      return data || [];
     } catch (error) {
       console.error("Error fetching prompts:", error);
       toast({
@@ -38,13 +38,27 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         description: "Failed to load prompts",
         variant: "destructive"
       });
+      return [];
     } finally {
       setIsLoading(false);
     }
   };
   
+  const updatePromptsState = (data: PromptRow[] | null) => {
+    if (data) {
+      setPrompts(data);
+    }
+  };
+  
   useEffect(() => {
-    fetchPrompts();
+    let mounted = true;
+    fetchPrompts().then((data) => {
+      if (mounted) {
+        setPrompts(data);
+      }
+    });
+    
+    return () => { mounted = false; };
   }, []);
   
   const handleAddPrompt = () => {
@@ -62,6 +76,10 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   
   const handleDeletePrompt = async (promptId: string) => {
     try {
+      // Optimistic update - remove from UI immediately
+      setPrompts((prev) => prev.filter(p => p.id !== promptId));
+      
+      // Then process the actual delete in the background
       const { error } = await supabase
         .from("prompts")
         .delete()
@@ -69,8 +87,13 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       
       if (error) throw error;
       
-      // Remove from local state
-      setPrompts(prompts.filter(p => p.id !== promptId));
+      // Refetch in background to ensure UI is in sync
+      supabase
+        .from("prompts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .returns<PromptRow[]>()
+        .then(({ data }) => updatePromptsState(data));
       
       toast({
         title: "Success",
@@ -78,6 +101,10 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       });
     } catch (error) {
       console.error("Error deleting prompt:", error);
+      
+      // Revert the optimistic update on error
+      fetchPrompts().then(updatePromptsState);
+      
       toast({
         title: "Error",
         description: "Failed to delete prompt",

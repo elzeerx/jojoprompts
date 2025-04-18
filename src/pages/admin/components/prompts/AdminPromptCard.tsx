@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -43,6 +44,7 @@ export function AdminPromptCard({
   const { session } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -81,6 +83,21 @@ export function AdminPromptCard({
     }
   };
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit(prompt.id);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setConfirmOpen(false);
+    onDelete(prompt.id);
+  };
+
   return (
     <>
       <Card onClick={() => setDetailsOpen(true)} className="cursor-pointer hover:shadow-md transition-shadow">
@@ -114,14 +131,18 @@ export function AdminPromptCard({
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => onEdit(prompt.id)}
+            onClick={handleEditClick}
           >
             <Edit className="mr-2 h-4 w-4" />
             Edit
           </Button>
-          <AlertDialog>
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={handleDeleteClick}
+              >
                 <Trash className="mr-2 h-4 w-4" />
                 Delete
               </Button>
@@ -136,7 +157,7 @@ export function AdminPromptCard({
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onDelete(prompt.id)}>
+                <AlertDialogAction onClick={handleConfirmDelete}>
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>

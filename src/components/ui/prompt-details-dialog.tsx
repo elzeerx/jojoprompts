@@ -1,19 +1,34 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type PromptRow } from "@/types";
 import { cdnUrl } from "@/utils/image";
+import { useEffect } from "react";
 
 interface PromptDetailsDialogProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   prompt: PromptRow | null;
+  promptList?: PromptRow[];
 }
 
-export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetailsDialogProps) {
+export function PromptDetailsDialog({ 
+  open, 
+  onOpenChange, 
+  prompt,
+  promptList = []
+}: PromptDetailsDialogProps) {
   if (!prompt) return null;
   
   const fullImage = cdnUrl(prompt.image_path, 1200, 90);
+
+  // Close dialog if the prompt is deleted
+  useEffect(() => {
+    if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
+      onOpenChange(false);
+    }
+  }, [promptList, prompt.id, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

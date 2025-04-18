@@ -26,70 +26,75 @@ export default function PromptsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchPrompts = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase
+        .from("prompts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .returns<PromptRow[]>();
+
+      if (error) throw error;
+      
+      const transformedData = (data ?? []).map((item) => ({
+        id: item.id,
+        user_id: item.user_id,
+        title: item.title,
+        prompt_text: item.prompt_text,
+        image_path: item.image_path,
+        created_at: item.created_at || "",
+        metadata: {
+          category: (item.metadata as any)?.category ?? undefined,
+          style: (item.metadata as any)?.style ?? undefined,
+          tags: Array.isArray((item.metadata as any)?.tags)
+            ? (item.metadata as any).tags
+            : [],
+        },
+      }));
+
+      return transformedData;
+    } catch (error: any) {
+      console.error("Error fetching prompts:", error);
+      setError("Failed to load prompts");
+      toast({
+        title: "Error",
+        description: "Failed to load prompts. Please try again later.",
+        variant: "destructive",
+      });
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updatePromptsState = (data: Prompt[] | null) => {
+    if (data) {
+      setPrompts(data);
+      
+      const uniqueCategories = [
+        ...new Set(
+          data
+            .map((p) => p.metadata?.category)
+            .filter(Boolean) as string[]
+        ),
+      ];
+      setCategories(["all", ...uniqueCategories]);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     
-    const fetchPrompts = async () => {
-      if (authLoading) return;
-      
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        const { data, error } = await supabase
-          .from("prompts")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .returns<PromptRow[]>();
-
-        if (error) throw error;
-        
-        if (!mounted) return;
-
-        const transformedData = (data ?? []).map((item) => ({
-          id: item.id,
-          user_id: item.user_id,
-          title: item.title,
-          prompt_text: item.prompt_text,
-          image_path: item.image_path,
-          created_at: item.created_at || "",
-          metadata: {
-            category: (item.metadata as any)?.category ?? undefined,
-            style: (item.metadata as any)?.style ?? undefined,
-            tags: Array.isArray((item.metadata as any)?.tags)
-              ? (item.metadata as any).tags
-              : [],
-          },
-        }));
-
-        setPrompts(transformedData);
-
-        const uniqueCategories = [
-          ...new Set(
-            transformedData
-              .map((p) => p.metadata?.category)
-              .filter(Boolean) as string[]
-          ),
-        ];
-        setCategories(["all", ...uniqueCategories]);
-      } catch (error: any) {
-        console.error("Error fetching prompts:", error);
+    if (!authLoading) {
+      fetchPrompts().then((data) => {
         if (mounted) {
-          setError("Failed to load prompts");
-          toast({
-            title: "Error",
-            description: "Failed to load prompts. Please try again later.",
-            variant: "destructive",
-          });
+          updatePromptsState(data);
         }
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchPrompts();
+      });
+    }
 
     return () => {
       mounted = false;
@@ -128,6 +133,60 @@ export default function PromptsPage() {
       toast({
         title: "Error", 
         description: "Failed to create PDF. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeletePrompt = async (promptId: string) => {
+    try {
+      setPrompts((prev) => prev.filter(p => p.id !== promptId));
+      
+      const { error } = await supabase
+        .from("prompts")
+        .delete()
+        .eq("id", promptId);
+      
+      if (error) throw error;
+      
+      supabase
+        .from("prompts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .returns<PromptRow[]>()
+        .then(({ data }) => {
+          if (data) {
+            const transformedData = data.map((item) => ({
+              id: item.id,
+              user_id: item.user_id,
+              title: item.title,
+              prompt_text: item.prompt_text,
+              image_path: item.image_path,
+              created_at: item.created_at || "",
+              metadata: {
+                category: (item.metadata as any)?.category ?? undefined,
+                style: (item.metadata as any)?.style ?? undefined,
+                tags: Array.isArray((item.metadata as any)?.tags)
+                  ? (item.metadata as any).tags
+                  : [],
+              },
+            }));
+            updatePromptsState(transformedData);
+          }
+        });
+      
+      toast({
+        title: "Success",
+        description: "Prompt deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting prompt:", error);
+      
+      fetchPrompts().then(updatePromptsState);
+      
+      toast({
+        title: "Error",
+        description: "Failed to delete prompt",
         variant: "destructive"
       });
     }
