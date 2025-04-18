@@ -4,9 +4,13 @@ import { Badge } from "./badge";
 import { CopyButton } from "./copy-button";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
-import { Download, ImageIcon } from "lucide-react";
+import { Download, Heart, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type Prompt, type PromptRow } from "@/types";
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
@@ -16,6 +20,7 @@ interface PromptCardProps {
   isAdmin?: boolean;
   onEdit?: (promptId: string) => void;
   onDelete?: (promptId: string) => void;
+  initiallyFavorited?: boolean;
 }
 
 export function PromptCard({ 
@@ -25,9 +30,13 @@ export function PromptCard({
   onSelect,
   isAdmin = false,
   onEdit,
-  onDelete
+  onDelete,
+  initiallyFavorited = false
 }: PromptCardProps) {
   const { title, prompt_text, image_url, metadata } = prompt;
+  const { session } = useAuth();
+  const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
+  
   const tags = metadata?.tags || [];
   
   // Placeholder image if no image is provided
@@ -36,6 +45,43 @@ export function PromptCard({
   const handleSelectChange = () => {
     if (onSelect) {
       onSelect(prompt.id);
+    }
+  };
+
+  const toggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!session) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to favorite prompts",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      if (favorited) {
+        await supabase
+          .from("favorites")
+          .delete()
+          .eq("user_id", session.user.id)
+          .eq("prompt_id", prompt.id);
+      } else {
+        await supabase
+          .from("favorites")
+          .insert({ user_id: session.user.id, prompt_id: prompt.id });
+      }
+      
+      setFavorited(!favorited);
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update favorites",
+        variant: "destructive"
+      });
     }
   };
 
@@ -52,6 +98,21 @@ export function PromptCard({
               onCheckedChange={handleSelectChange}
               className="h-5 w-5 border-2 border-white bg-white/50 backdrop-blur-sm"
             />
+          </div>
+        )}
+        {session && (
+          <div className="absolute top-2 right-2 z-10">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn(
+                "h-8 w-8 rounded-full bg-white/50 backdrop-blur-sm",
+                favorited && "text-red-500 hover:text-red-600"
+              )}
+              onClick={toggleFavorite}
+            >
+              <Heart className={cn("h-5 w-5", favorited && "fill-current")} />
+            </Button>
           </div>
         )}
         <div className="aspect-video relative bg-muted group overflow-hidden">

@@ -1,11 +1,34 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PromptsManagement from "./PromptsManagement";
 import DashboardOverview from "./components/DashboardOverview";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [favoritedPromptIds, setFavoritedPromptIds] = useState<string[]>([]);
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!user) return;
+      
+      try {
+        const { data } = await supabase
+          .from("favorites")
+          .select("prompt_id")
+          .eq("user_id", user.id);
+          
+        setFavoritedPromptIds(data?.map(item => item.prompt_id) || []);
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+      }
+    };
+    
+    fetchFavorites();
+  }, [user]);
   
   return (
     <div className="container py-8">
@@ -36,7 +59,7 @@ export default function AdminDashboard() {
         </TabsContent>
         
         <TabsContent value="prompts">
-          <PromptsManagement />
+          <PromptsManagement favoritedPromptIds={favoritedPromptIds} />
         </TabsContent>
         
         <TabsContent value="users">
