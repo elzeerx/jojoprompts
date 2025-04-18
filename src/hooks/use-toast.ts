@@ -140,14 +140,14 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
-  const id = genId()
+  const id = genId();
 
   const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
-    })
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+    });
+  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
 
   dispatch({
     type: "ADD_TOAST",
@@ -156,17 +156,48 @@ function toast({ ...props }: Toast) {
       id,
       open: true,
       onOpenChange: (open) => {
-        if (!open) dismiss()
+        if (!open) dismiss();
       },
     },
-  })
+  });
 
   return {
-    id: id,
+    id,
     dismiss,
     update,
-  }
+  };
 }
+
+toast.loading = (message: string) => {
+  return toast({
+    title: "Loading",
+    description: message,
+  }).id;
+};
+
+toast.success = ({ id, description }: { id: string; description: string }) => {
+  dispatch({
+    type: "UPDATE_TOAST",
+    toast: {
+      id,
+      title: "Success",
+      description,
+      variant: "default",
+    },
+  });
+};
+
+toast.error = ({ id, description }: { id: string; description: string }) => {
+  dispatch({
+    type: "UPDATE_TOAST",
+    toast: {
+      id,
+      title: "Error",
+      description,
+      variant: "destructive",
+    },
+  });
+};
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
@@ -188,4 +219,4 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
+export { useToast, toast };

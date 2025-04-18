@@ -2,6 +2,13 @@ import { type Prompt } from "@/types";
 import { cdnUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
 
+// Layout constants
+const MARGIN = 40;
+const IMAGE_MAX_W = 400;          // px on page
+const IMAGE_MAX_H = 380;
+const FONT_SIZE_TITLE = 18;
+const FONT_SIZE_BODY = 12;
+
 export type PdfOptions = {
   cover: boolean;
   quality: "thumb" | "medium" | "hq";
@@ -10,56 +17,20 @@ export type PdfOptions = {
   onProgress?: (current: number, total: number) => void;
 };
 
+async function tryEmbedImage(pdf: PDFDocument, bytes: ArrayBuffer) {
+  try {
+    return await pdf.embedJpg(bytes);
+  } catch {
+    return await pdf.embedPng(bytes);
+  }
+}
+
 export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
-  // Import PDF-lib dynamically to reduce initial load
   const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
   
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.HelveticaBold);
   const regularFont = await doc.embedFont(StandardFonts.Helvetica);
-
-  const addImage = async (imagePath: string, width: number) => {
-    try {
-      // Get appropriate URL based on quality
-      const url = getCdnUrl(imagePath, opts.quality);
-      
-      // Fetch the image
-      const response = await fetch(url);
-      
-      // Check if response is successful and is an image
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
-      
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.startsWith('image/')) {
-        throw new Error(`Not an image: ${contentType}`);
-      }
-      
-      const imageBytes = new Uint8Array(await response.arrayBuffer());
-      
-      // Use appropriate embed method based on content type
-      if (contentType.startsWith('image/png')) {
-        const img = await doc.embedPng(imageBytes);
-        const ratio = width / img.width;                 // keep aspect
-        return { img, h: img.height * ratio };
-      } else {
-        // Default to JPG for other image types
-        const img = await doc.embedJpg(imageBytes);
-        const ratio = width / img.width;                 // keep aspect
-        return { img, h: img.height * ratio };
-      }
-    } catch (error) {
-      // Handle error but continue building PDF
-      toast({
-        title: "Image error",
-        description: `${imagePath} not found`,
-        variant: "destructive"
-      });
-      console.error(`Image embedding error: ${error}`);
-      return null;
-    }
-  };
 
   // ▸ 1 Cover
   if (opts.cover) {
@@ -91,32 +62,69 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     });
   }
 
-  // ▸ 2 Each prompt page
+  // Process each prompt
   let completedPrompts = 0;
   for (const p of opts.selected) {
-    const page = doc.addPage([595, 842]);
-    page.drawText(p.title, { x: 50, y: 780, size: 24, font });
+    const page = doc.addPage([595, 842]); // A4
 
-    // image
+    // 1. Draw title
+    page.drawText(p.title, {
+      x: MARGIN,
+      y: page.getHeight() - MARGIN - FONT_SIZE_TITLE,
+      size: FONT_SIZE_TITLE,
+      font
+    });
+
+    // 2. Draw image if available
     if (p.image_path) {
-      const imageResult = await addImage(p.image_path, 400);
-      if (imageResult) {
-        const { img, h } = imageResult;
-        page.drawImage(img, { x: 97, y: 540 - h, width: 400, height: h });
+      try {
+        const url = getCdnUrl(p.image_path, opts.quality);
+        const response = await fetch(url);
+        
+        if (!response.ok || !response.headers.get("content-type")?.startsWith("image/")) {
+          console.warn("Skip image", url);
+          toast({
+            title: "Image error",
+            description: `${p.image_path} not found`,
+            variant: "destructive"
+          });
+          continue;
+        }
+
+        const imageBytes = await response.arrayBuffer();
+        const img = await tryEmbedImage(doc, imageBytes);
+        
+        const scale = Math.min(IMAGE_MAX_W / img.width, IMAGE_MAX_H / img.height, 1);
+        const imgW = img.width * scale;
+        const imgH = img.height * scale;
+        
+        page.drawImage(img, {
+          x: MARGIN,
+          y: page.getHeight() - MARGIN - imgH - FONT_SIZE_TITLE - 10,
+          width: imgW,
+          height: imgH
+        });
+
+        // 3. Draw text block below image
+        const startY = page.getHeight() - MARGIN - imgH - FONT_SIZE_TITLE - 30;
+        page.drawText(p.prompt_text, {
+          x: MARGIN,
+          y: startY,
+          size: FONT_SIZE_BODY,
+          font: regularFont,
+          maxWidth: page.getWidth() - 2 * MARGIN,
+          lineHeight: FONT_SIZE_BODY + 2
+        });
+      } catch (error) {
+        console.error("Image processing error:", error);
+        toast({
+          title: "Image error",
+          description: `${p.image_path} could not be processed`,
+          variant: "destructive"
+        });
       }
     }
 
-    // prompt text
-    const wrapped = splitText(p.prompt_text, 80);
-    wrapped.forEach((line, i) =>
-      page.drawText(line, { x: 50, y: 480 - 14 * i, size: 12, font: regularFont })
-    );
-
-    // metadata
-    page.drawText(`Category: ${p.metadata.category ?? "-"}`, { x: 50, y: 140, size: 10, font: regularFont });
-    page.drawText(`Style:    ${p.metadata.style ?? "-"}`, { x: 50, y: 125, size: 10, font: regularFont });
-    page.drawText(`Tags: ${p.metadata.tags?.join(", ") ?? "-"}`, { x: 50, y: 110, size: 10, font: regularFont });
-    
     // Update progress
     completedPrompts++;
     if (opts.onProgress) {

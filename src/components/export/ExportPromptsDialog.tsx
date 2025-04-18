@@ -31,19 +31,9 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
   /* ------------------------------------------------------------------ */
 
   const handleExport = async () => {
-    if (prompts.length === 0) return;
-    
+    const toastId = toast.loading("Generating PDF...");
+
     try {
-      setIsExporting(true);
-      setProgress(0);
-      
-      // Initialize toast
-      toastObjRef.current = toast({
-        title: "Preparing PDF...",
-        description: "0%",
-      });
-      toastIdRef.current = toastObjRef.current.id;
-      
       // Get logo as data URL
       const logoUrl = '/assets/jojoprompts-logo.png';
       const logoData = await fetch(logoUrl)
@@ -55,27 +45,20 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
             reader.readAsDataURL(blob);
           });
         });
-      
-      // Create PDF with progress updates
+
       const pdfBytes = await buildPromptsPdf({
         ...options,
         selected: prompts,
         logo: logoData,
         onProgress: (current, total) => {
           const percentage = Math.round((current / total) * 100);
-          setProgress(percentage);
-          
-          // Update toast on significant progress (every ~20%)
-          if (percentage % 20 === 0 || percentage === 100) {
-            toastObjRef.current?.update({
-              id: toastIdRef.current,
-              description: `${percentage}%`
-            });
-          }
-        }
+          toast({
+            id: toastId,
+            description: `Progress: ${percentage}%`,
+          });
+        },
       });
-      
-      // Create and trigger download
+
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       
@@ -84,30 +67,21 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       a.href = url;
       a.download = `jojoprompts_${new Date().toISOString().slice(0, 10)}_${count}.pdf`;
       
-      toastObjRef.current?.update({
-        id: toastIdRef.current,
-        title: "Ready!",
-        description: "Download will start shortly",
-      });
-      
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
-      // Close dialog after successful export
-      setTimeout(() => onOpenChange(false), 1000);
-      
-    } catch (e: any) {
-      console.error("PDF export error:", e);
-      toastObjRef.current?.update({
-        id: toastIdRef.current,
-        title: "Error",
-        description: e.message || "Failed to generate PDF",
-        variant: "destructive",
+
+      toast.success({
+        id: toastId,
+        description: "Done! PDF downloaded."
       });
-    } finally {
-      setIsExporting(false);
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error({
+        id: toastId,
+        description: error.message
+      });
     }
   };
 
