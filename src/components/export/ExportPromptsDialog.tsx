@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -32,12 +31,12 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       setIsExporting(true);
       setProgress(0);
       
-      // Show initial toast
-      const toastHandle = toast({
+      // Create toast and keep handle + id
+      const toastObj = toast({
         title: "Preparing PDF...",
         description: "0%",
       });
-      const toastId = toastHandle.id;
+      const toastId = toastObj.id;
       
       // Get logo as data URL
       const logoUrl = '/assets/jojoprompts-logo.png';
@@ -65,18 +64,18 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
         
         // Update toast on significant progress (every ~20%)
         if (percentage % 20 === 0 || percentage === 100) {
-          toastHandle.update({
+          toastObj.update({
             id: toastId,
             description: `${percentage}%`
           });
         }
       };
       
-      // Simulate progress for now (this would be replaced by actual progress from PDF generation)
+      // Simulate progress for now
       for (let i = 1; i <= prompts.length; i++) {
         updateProgress(i, prompts.length);
         if (i < prompts.length) {
-          await new Promise(resolve => setTimeout(resolve, 100)); // Just for demo
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
       
@@ -89,7 +88,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       a.href = url;
       a.download = `jojoprompts_${new Date().toISOString().slice(0, 10)}_${count}.pdf`;
       
-      toastHandle.update({
+      toastObj.update({
         id: toastId,
         title: "Ready!",
         description: "Download will start shortly",
@@ -105,7 +104,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       
     } catch (e: any) {
       console.error("PDF export error:", e);
-      toastHandle.update({
+      toastObj.update({
         id: toastId,
         title: "Error",
         description: e.message || "Failed to generate PDF",
