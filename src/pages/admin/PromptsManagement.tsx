@@ -1,17 +1,17 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { type PromptRow } from "@/types";
-import { AddPromptDialog } from "./components/prompts/AddPromptDialog";
+import { PromptDialog } from "./components/prompts/PromptDialog";
 import { AdminPromptCard } from "./components/prompts/AdminPromptCard";
 
 export default function PromptsManagement() {
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<PromptRow | null>(null);
 
   useEffect(() => {
     fetchPrompts();
@@ -61,6 +61,11 @@ export default function PromptsManagement() {
     }
   };
 
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditing(null);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -79,17 +84,21 @@ export default function PromptsManagement() {
             <AdminPromptCard
               key={prompt.id}
               prompt={prompt}
-              onEdit={(id) => console.log("Edit prompt:", id)}
+              onEdit={() => {
+                setEditing(prompt);
+                setIsDialogOpen(true);
+              }}
               onDelete={handleDeletePrompt}
             />
           ))}
         </div>
       )}
 
-      <AddPromptDialog
+      <PromptDialog
         isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        onClose={handleCloseDialog}
         onPromptAdded={fetchPrompts}
+        initial={editing}
       />
     </div>
   );
