@@ -32,13 +32,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (session?.user) {
           // Fetch user role from profiles
-          const { data } = await supabase
+          const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', session.user.id)
             .single();
-          setUserRole(data?.role ?? null);
-          debug("state updated", { event, session, userRole: data?.role, loading: false });
+          
+          console.log("[AUTH] profile fetched", { profile, role: profile?.role ?? "user" });
+          setUserRole(profile?.role ?? "user");
+          setLoading(false);
+          
+          debug("state updated", { event, session, userRole: profile?.role ?? "user", loading: false });
         } else {
           setUserRole(null);
           debug("state cleared", { event, loading: false });
@@ -59,10 +63,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .select('role')
           .eq('id', session.user.id)
           .single()
-          .then(({ data }) => {
-            setUserRole(data?.role ?? null);
+          .then(({ data: profile }) => {
+            console.log("[AUTH] profile fetched", { profile, role: profile?.role ?? "user" });
+            setUserRole(profile?.role ?? "user");
             setLoading(false);
-            debug("initial state loaded", { session, userRole: data?.role, loading: false });
+            debug("initial state loaded", { session, userRole: profile?.role ?? "user", loading: false });
           });
       } else {
         setLoading(false);
@@ -100,3 +105,4 @@ export function useAuth() {
   }
   return context;
 }
+
