@@ -5,7 +5,7 @@ import { Badge } from "./badge";
 import { CopyButton } from "./copy-button";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
-import { Download, Heart, ImageIcon } from "lucide-react";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type Prompt, type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -90,14 +90,17 @@ export function PromptCard({
     <>
       <Card 
         className={cn(
-          "overflow-hidden transition-all duration-200 hover:shadow-md cursor-pointer",
-          isSelected && "ring-2 ring-primary"
+          "overflow-hidden transition-all duration-200 hover:shadow-lg",
+          "border border-border/50 hover:border-border/100",
+          "bg-gradient-to-b from-card to-card/95",
+          isSelected && "ring-2 ring-primary",
+          "cursor-pointer"
         )}
         onClick={() => setDetailsOpen(true)}
       >
         <div className="relative">
           {isSelectable && (
-            <div className="absolute top-2 left-2 z-10">
+            <div className="absolute top-3 left-3 z-10">
               <Checkbox 
                 checked={isSelected}
                 onCheckedChange={handleSelectChange}
@@ -106,12 +109,13 @@ export function PromptCard({
             </div>
           )}
           {session && (
-            <div className="absolute top-2 right-2 z-10">
+            <div className="absolute top-3 right-3 z-10">
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className={cn(
                   "h-8 w-8 rounded-full bg-white/50 backdrop-blur-sm",
+                  "hover:bg-white/60 transition-colors",
                   favorited && "text-red-500 hover:text-red-600"
                 )}
                 onClick={toggleFavorite}
@@ -120,7 +124,7 @@ export function PromptCard({
               </Button>
             </div>
           )}
-          <div className="aspect-video relative bg-muted group overflow-hidden">
+          <div className="aspect-video relative bg-muted">
             {image_url ? (
               <img 
                 src={image_url} 
@@ -128,49 +132,61 @@ export function PromptCard({
                 className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-full bg-gradient-to-br from-primary/5 to-primary/10">
                 <img 
                   src={placeholderImage} 
                   alt="Placeholder"
-                  className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                  className="object-cover w-full h-full opacity-50 transition-transform duration-300 group-hover:scale-105"
                 />
               </div>
             )}
           </div>
         </div>
         
-        <CardHeader className="p-4 pb-0">
-          <CardTitle className="text-lg line-clamp-1">{title}</CardTitle>
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-lg font-semibold leading-tight tracking-tight line-clamp-1">
+            {title}
+          </CardTitle>
         </CardHeader>
         
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground line-clamp-3 min-h-[4.5rem]">
+        <CardContent className="p-4 pt-2 space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[4.5rem]">
             {prompt_text}
           </p>
           
-          <div className="flex flex-wrap gap-1 mt-3">
+          <div className="flex flex-wrap gap-1.5 mt-2">
             {tags.slice(0, 3).map((tag, i) => (
-              <Badge key={i} variant="secondary" className="text-xs">
+              <Badge 
+                key={i} 
+                variant="secondary" 
+                className="text-xs font-medium px-2 py-0.5"
+              >
                 {tag}
               </Badge>
             ))}
             {tags.length > 3 && (
-              <Badge variant="outline" className="text-xs">
+              <Badge 
+                variant="outline" 
+                className="text-xs font-medium px-2 py-0.5"
+              >
                 +{tags.length - 3}
               </Badge>
             )}
           </div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 flex flex-wrap gap-2">
-          <CopyButton value={prompt_text} />
+        <CardFooter className="p-4 pt-2 flex flex-wrap items-center gap-2">
+          <CopyButton value={prompt_text} className="flex-shrink-0" />
           
           {isAdmin && (
             <div className="flex gap-2 ml-auto">
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => onEdit?.(prompt.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(prompt.id);
+                }}
               >
                 Edit
               </Button>
@@ -178,7 +194,10 @@ export function PromptCard({
                 variant="ghost" 
                 size="sm" 
                 className="text-destructive"
-                onClick={() => onDelete?.(prompt.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(prompt.id);
+                }}
               >
                 Delete
               </Button>
