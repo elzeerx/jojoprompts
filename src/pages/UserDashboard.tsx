@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,7 +33,6 @@ export default function DashboardPage() {
         if (error) throw error;
         if (!mounted) return;
 
-        // Transform data to match Prompt type
         const transformedData = data?.map(item => {
           const promptData = item.prompt as any;
           return {
@@ -42,7 +40,7 @@ export default function DashboardPage() {
             user_id: promptData.user_id,
             title: promptData.title,
             prompt_text: promptData.prompt_text,
-            image_url: promptData.image_url,
+            image_path: promptData.image_url,
             created_at: promptData.created_at || "",
             metadata: {
               category: promptData.metadata?.category || undefined,

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Button } from "@/components/ui/button";
@@ -51,7 +50,7 @@ export default function PromptsPage() {
           user_id: item.user_id,
           title: item.title,
           prompt_text: item.prompt_text,
-          image_url: item.image_url,
+          image_path: item.image_url,
           created_at: item.created_at || "",
           metadata: {
             category: (item.metadata as any)?.category ?? undefined,

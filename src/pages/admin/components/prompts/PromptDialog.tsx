@@ -48,7 +48,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
         style: initial.metadata?.style ?? "",
         tags: initial.metadata?.tags ?? []
       });
-      setImageURL(initial.image_url ?? "");
+      setImageURL(initial.image_path ?? "");
     } else {
       setTitle("");
       setPromptText("");
@@ -71,7 +71,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
     setSubmitting(true);
 
     try {
-      let uploadedUrl = initial?.image_url ?? "";
+      let imagePath = initial?.image_path ?? "";
 
       if (file) {
         const path = `${session?.user.id}/${crypto.randomUUID()}-${file.name}`;
@@ -83,12 +83,9 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
           throw new Error("Image upload failed");
         }
 
-        uploadedUrl = supabase.storage
-          .from("prompt-images")
-          .getPublicUrl(path).data.publicUrl;
+        imagePath = path;
       }
 
-      // --- generate metadata (optional) --------------
       let meta = { category: "", style: "", tags: [] as string[] };
       try {
         const { data, error } = await supabase.functions.invoke(
@@ -109,7 +106,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
           style: meta.style || metadata.style,
           tags: meta.tags.length ? meta.tags : metadata.tags,
         },
-        image_url: uploadedUrl,
+        image_path: imagePath,
       };
 
       await onSave(promptData);
