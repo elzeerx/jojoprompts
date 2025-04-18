@@ -10,7 +10,7 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import PromptDetailsDialog from "@/components/PromptDetailsDialog";
+
 
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
