@@ -52,7 +52,7 @@ export function AddPromptDialog({ isOpen, onClose, onPromptAdded }: AddPromptDia
   };
 
   const handleAddPrompt = async () => {
-    if (!formData.title || !formData.prompt_text) {
+    if (!formData.title.trim() || !formData.prompt_text.trim()) {
       toast({
         title: "Error",
         description: "Title and Prompt Text are required",
@@ -64,17 +64,17 @@ export function AddPromptDialog({ isOpen, onClose, onPromptAdded }: AddPromptDia
     setSubmitting(true);
 
     try {
-      // Initialize with proper typing to avoid TypeScript errors
-      let metadata: { category?: string; style?: string; tags?: string[] } = {};
-      
+      // --- generate metadata (optional) --------------
+      let meta = { category: "", style: "", tags: [] as string[] };
       try {
-        const { data: meta } = await supabase.functions.invoke(
+        const { data, error } = await supabase.functions.invoke(
           "generate-metadata",
           { body: { prompt_text: formData.prompt_text } }
         );
-        metadata = meta || {};
-      } catch (e) {
-        console.warn("Metadata generation failed:", e);
+        if (!error && data) meta = data as typeof meta;
+        console.log("Metadata generated:", meta);
+      } catch (err) {
+        console.warn("Metadata generation failed:", err);
       }
 
       const tags = formData.tags
@@ -82,18 +82,21 @@ export function AddPromptDialog({ isOpen, onClose, onPromptAdded }: AddPromptDia
         .map((tag) => tag.trim())
         .filter(Boolean);
 
+      // --- insert prompt ------------------------------
       const { error } = await supabase.from("prompts").insert({
         title: formData.title,
         prompt_text: formData.prompt_text,
         metadata: {
-          category: metadata.category || formData.category,
-          style: metadata.style || formData.style,
-          tags: metadata.tags || tags,
+          category: meta.category || formData.category,
+          style: meta.style || formData.style,
+          tags: meta.tags.length ? meta.tags : tags,
         },
         image_url: formData.image_url || null,
         user_id: (await supabase.auth.getUser()).data.user?.id,
       });
 
+      console.log("[ADD_PROMPT]", { error });
+      
       if (error) throw error;
 
       toast({
