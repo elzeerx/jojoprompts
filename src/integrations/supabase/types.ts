@@ -9,32 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      favorites: {
-        Row: {
-          created_at: string | null
-          prompt_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          prompt_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          prompt_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "favorites_prompt_id_fkey"
-            columns: ["prompt_id"]
-            isOneToOne: false
-            referencedRelation: "prompts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           created_at: string | null
