@@ -119,5 +119,4 @@ export {
   DialogTitle,
   DialogDescription,
 }
-export default PromptDetailsDialog;
 
