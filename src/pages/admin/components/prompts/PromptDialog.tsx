@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,50 +23,42 @@ interface PromptDialogProps {
   initial?: PromptRow | null;
 }
 
+const EMPTY: PromptRow["metadata"] = {
+  category: "",
+  style: "",
+  tags: []
+};
+
 export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: PromptDialogProps) {
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    prompt_text: "",
-    category: "",
-    style: "",
-    tags: "",
-    image_url: "",
-  });
+  const [title, setTitle] = useState("");
+  const [promptText, setPromptText] = useState("");
+  const [metadata, setMetadata] = useState(EMPTY);
+  const [imageURL, setImageURL] = useState("");
 
-  // Pre-fill form data when editing
   useEffect(() => {
+    if (!isOpen) return;
     if (initial) {
-      setFormData({
-        title: initial.title,
-        prompt_text: initial.prompt_text,
-        category: initial.metadata?.category || "",
-        style: initial.metadata?.style || "",
-        tags: initial.metadata?.tags?.join(", ") || "",
-        image_url: initial.image_url || "",
+      // edit mode
+      setTitle(initial.title);
+      setPromptText(initial.prompt_text);
+      setMetadata({
+        category: initial.metadata?.category ?? "",
+        style: initial.metadata?.style ?? "",
+        tags: initial.metadata?.tags ?? []
       });
+      setImageURL(initial.image_url ?? "");
     } else {
-      // Reset form when not editing
-      setFormData({
-        title: "",
-        prompt_text: "",
-        category: "",
-        style: "",
-        tags: "",
-        image_url: "",
-      });
+      // add mode → clear every field
+      setTitle("");
+      setPromptText("");
+      setMetadata(EMPTY);
+      setImageURL("");
     }
-  }, [initial]);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  }, [isOpen, initial]);
 
   const handleSubmit = async () => {
-    if (!formData.title.trim() || !formData.prompt_text.trim()) {
+    if (!title.trim() || !promptText.trim()) {
       toast({
         title: "Error",
         description: "Title and Prompt Text are required",
@@ -82,7 +75,7 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
       try {
         const { data, error } = await supabase.functions.invoke(
           "generate-metadata",
-          { body: { prompt_text: formData.prompt_text } }
+          { body: { prompt_text: promptText } }
         );
         if (!error && data) meta = data as typeof meta;
         console.log("Metadata generated:", meta);
@@ -90,20 +83,15 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
         console.warn("Metadata generation failed:", err);
       }
 
-      const tags = formData.tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean);
-
       const promptData = {
-        title: formData.title,
-        prompt_text: formData.prompt_text,
+        title: title,
+        prompt_text: promptText,
         metadata: {
-          category: meta.category || formData.category,
-          style: meta.style || formData.style,
-          tags: meta.tags.length ? meta.tags : tags,
+          category: meta.category || metadata.category,
+          style: meta.style || metadata.style,
+          tags: meta.tags.length ? meta.tags : metadata.tags,
         },
-        image_url: formData.image_url || null,
+        image_url: imageURL || null,
       };
 
       let error;
@@ -164,9 +152,8 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
             <Input
               type="text"
               id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               className="col-span-3"
             />
           </div>
@@ -176,9 +163,8 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
             </Label>
             <Textarea
               id="prompt_text"
-              name="prompt_text"
-              value={formData.prompt_text}
-              onChange={handleChange}
+              value={promptText}
+              onChange={(e) => setPromptText(e.target.value)}
               className="col-span-3"
             />
           </div>
@@ -189,9 +175,8 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
             <Input
               type="text"
               id="category"
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
+              value={metadata.category}
+              onChange={(e) => setMetadata({ ...metadata, category: e.target.value })}
               className="col-span-3"
             />
           </div>
@@ -202,9 +187,8 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
             <Input
               type="text"
               id="style"
-              name="style"
-              value={formData.style}
-              onChange={handleChange}
+              value={metadata.style}
+              onChange={(e) => setMetadata({ ...metadata, style: e.target.value })}
               className="col-span-3"
             />
           </div>
@@ -215,10 +199,12 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
             <Input
               type="text"
               id="tags"
-              name="tags"
               placeholder="tag1, tag2, tag3"
-              value={formData.tags}
-              onChange={handleChange}
+              value={metadata.tags.join(", ")}
+              onChange={(e) => setMetadata({ 
+                ...metadata, 
+                tags: e.target.value.split(",").map(tag => tag.trim()).filter(Boolean)
+              })}
               className="col-span-3"
             />
           </div>
@@ -229,9 +215,8 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
             <Input
               type="text"
               id="image_url"
-              name="image_url"
-              value={formData.image_url}
-              onChange={handleChange}
+              value={imageURL}
+              onChange={(e) => setImageURL(e.target.value)}
               className="col-span-3"
             />
           </div>
@@ -252,3 +237,4 @@ export function PromptDialog({ isOpen, onClose, onPromptAdded, initial }: Prompt
     </Dialog>
   );
 }
+
