@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +11,10 @@ import { type Prompt } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-const mockPrompts: Prompt[] = [
-  // ... keep existing mock data
-];
-
 export default function PromptsManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [newPrompt, setNewPrompt] = useState({
     title: "",
     prompt_text: "",
@@ -31,48 +28,135 @@ export default function PromptsManagement() {
   const [isGeneratingMetadata, setIsGeneratingMetadata] = useState(false);
   const [isSuggestingPrompt, setIsSuggestingPrompt] = useState(false);
 
-  const filteredPrompts = searchQuery
-    ? mockPrompts.filter(prompt => 
-        prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prompt.metadata.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    : mockPrompts;
-
-  const handleAddPrompt = () => {
-    console.log("Adding new prompt:", newPrompt);
-    // This will be replaced with actual Supabase database call
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      const { data, error } = await supabase
+        .from("prompts")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) {
+        toast({
+          title: "Error loading prompts",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setPrompts(data || []);
+    };
     
-    // Reset form and close dialog
-    setNewPrompt({
-      title: "",
-      prompt_text: "",
-      image_url: "",
-      category: "",
-      style: "",
-      tags: ""
-    });
-    setIsAddDialogOpen(false);
+    fetchPrompts();
+  }, []);
+
+  const handleAddPrompt = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("prompts")
+        .insert([{
+          title: newPrompt.title,
+          prompt_text: newPrompt.prompt_text,
+          image_url: newPrompt.image_url || null,
+          metadata: {
+            category: newPrompt.category,
+            style: newPrompt.style,
+            tags: newPrompt.tags.split(",").map(tag => tag.trim()).filter(Boolean)
+          }
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPrompts(prev => [data, ...prev]);
+      setNewPrompt({
+        title: "",
+        prompt_text: "",
+        image_url: "",
+        category: "",
+        style: "",
+        tags: ""
+      });
+      setIsAddDialogOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Prompt added successfully"
+      });
+    } catch (error) {
+      console.error("Error adding prompt:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add prompt. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleUpdatePrompt = () => {
+  const handleUpdatePrompt = async () => {
     if (!editingPrompt) return;
     
-    console.log("Updating prompt:", editingPrompt);
-    // This will be replaced with actual Supabase database call
-    
-    // Reset editing state
-    setEditingPrompt(null);
+    try {
+      const { data, error } = await supabase
+        .from("prompts")
+        .update({
+          title: editingPrompt.title,
+          prompt_text: editingPrompt.prompt_text,
+          image_url: editingPrompt.image_url,
+          metadata: editingPrompt.metadata
+        })
+        .eq("id", editingPrompt.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPrompts(prev => 
+        prev.map(p => p.id === editingPrompt.id ? data : p)
+      );
+      setEditingPrompt(null);
+      
+      toast({
+        title: "Success",
+        description: "Prompt updated successfully"
+      });
+    } catch (error) {
+      console.error("Error updating prompt:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update prompt. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDeletePrompt = () => {
+  const handleDeletePrompt = async () => {
     if (!deletingPromptId) return;
     
-    console.log("Deleting prompt with ID:", deletingPromptId);
-    // This will be replaced with actual Supabase database call
-    
-    // Reset deletion state
-    setDeletingPromptId(null);
+    try {
+      const { error } = await supabase
+        .from("prompts")
+        .delete()
+        .eq("id", deletingPromptId);
+
+      if (error) throw error;
+
+      setPrompts(prev => prev.filter(p => p.id !== deletingPromptId));
+      setDeletingPromptId(null);
+      
+      toast({
+        title: "Success",
+        description: "Prompt deleted successfully"
+      });
+    } catch (error) {
+      console.error("Error deleting prompt:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete prompt. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleGenerateMetadata = async () => {
@@ -134,8 +218,16 @@ export default function PromptsManagement() {
     }
   };
 
+  const filteredPrompts = searchQuery
+    ? prompts.filter(prompt => 
+        prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prompt.metadata.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : prompts;
+
   const deletingPrompt = deletingPromptId 
-    ? mockPrompts.find(p => p.id === deletingPromptId) 
+    ? prompts.find(p => p.id === deletingPromptId) 
     : null;
 
   return (

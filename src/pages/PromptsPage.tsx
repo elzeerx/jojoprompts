@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,101 +15,36 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Download, Grid, List, Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Download, Grid, List, Search, SlidersHorizontal } from "lucide-react";
 import { type Prompt } from "@/types";
-
-// Temporary mock data - will be replaced with Supabase data
-const mockPrompts: Prompt[] = [
-  {
-    id: "1",
-    user_id: "admin-user",
-    title: "Cyberpunk City Night",
-    prompt_text: "A futuristic cyberpunk city at night, with neon signs, flying cars, and holographic billboards. The scene is illuminated by a mix of purple and blue lights reflecting on wet streets.",
-    image_url: "https://images.unsplash.com/photo-1559650656-5d1d361ad10e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&h=600&q=80",
-    metadata: {
-      category: "Environments",
-      style: "Cyberpunk",
-      tags: ["neon", "futuristic", "cityscape", "night", "scifi"]
-    },
-    created_at: "2023-06-15T10:00:00Z"
-  },
-  {
-    id: "2",
-    user_id: "admin-user",
-    title: "Fantasy Forest Portal",
-    prompt_text: "A magical portal in the middle of an ancient forest. Glowing mushrooms and plants surround the swirling energy gate. Magical particles float in the air, and ethereal creatures peek from behind trees.",
-    image_url: "https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&h=600&q=80",
-    metadata: {
-      category: "Fantasy",
-      style: "Magical Realism",
-      tags: ["forest", "portal", "magic", "fantasy", "ethereal"]
-    },
-    created_at: "2023-06-16T11:30:00Z"
-  },
-  {
-    id: "3",
-    user_id: "admin-user",
-    title: "Astronaut on Alien Planet",
-    prompt_text: "An astronaut standing on a vibrant alien planet with impossible floating rock formations. Two moons visible in the purple sky. Strange plant life and crystalline structures dot the landscape.",
-    image_url: null,
-    metadata: {
-      category: "Sci-Fi",
-      style: "Space Exploration",
-      tags: ["astronaut", "alien", "space", "exploration", "planets"]
-    },
-    created_at: "2023-06-17T09:15:00Z"
-  },
-  {
-    id: "4",
-    user_id: "admin-user",
-    title: "Steampunk Airship Battle",
-    prompt_text: "Epic battle between steampunk airships in a cloudy sky. Brass, copper, and wooden ships with giant propellers and billowing steam, exchanging cannon fire. Sunset colors the clouds in orange and gold.",
-    image_url: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&h=600&q=80",
-    metadata: {
-      category: "Action",
-      style: "Steampunk",
-      tags: ["airship", "battle", "steampunk", "clouds", "fantasy"]
-    },
-    created_at: "2023-06-18T14:45:00Z"
-  },
-  {
-    id: "5",
-    user_id: "admin-user",
-    title: "Underwater Ancient Ruins",
-    prompt_text: "Submerged ancient ruins of a forgotten civilization deep under the ocean. Ornate stone architecture covered in coral and seaweed. Shafts of light penetrate the water surface, illuminating the scene.",
-    image_url: null,
-    metadata: {
-      category: "Environments",
-      style: "Underwater",
-      tags: ["underwater", "ruins", "ancient", "ocean", "mysterious"]
-    },
-    created_at: "2023-06-19T16:20:00Z"
-  },
-  {
-    id: "6",
-    user_id: "admin-user",
-    title: "Dragon's Mountain Lair",
-    prompt_text: "A majestic dragon perched on a mountain peak. Its scales shimmer with iridescent colors. The landscape shows a vast fantasy kingdom below with tiny castles and villages. Clouds surround the mountain.",
-    image_url: "https://images.unsplash.com/photo-1506466010722-395aa2bef877?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&h=600&q=80",
-    metadata: {
-      category: "Fantasy",
-      style: "Dragons",
-      tags: ["dragon", "mountain", "fantasy", "creature", "landscape"]
-    },
-    created_at: "2023-06-20T08:10:00Z"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 export default function PromptsPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
   const [category, setCategory] = useState<string>("all");
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   
-  // View options
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      const { data } = await supabase
+        .from("prompts")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      setPrompts(data || []);
+      
+      const uniqueCategories = [...new Set(data?.map(p => p.metadata?.category || "") || [])];
+      setCategories(["all", ...uniqueCategories.filter(Boolean)]);
+    };
+    
+    fetchPrompts();
+  }, []);
+  
   const isGridView = view === "grid";
   
-  // Handlers
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
@@ -134,7 +68,6 @@ export default function PromptsPage() {
   const handleExportPDF = async () => {
     try {
       const promptsToExport = filteredPrompts.filter(p => selectedPrompts.includes(p.id));
-      // Import dynamically to avoid loading jsPDF unnecessarily
       const { downloadPromptsPDF } = await import('@/utils/pdf-export');
       await downloadPromptsPDF(promptsToExport);
     } catch (error) {
@@ -143,8 +76,7 @@ export default function PromptsPage() {
     }
   };
   
-  // Filtering logic
-  const filteredPrompts = mockPrompts.filter(prompt => {
+  const filteredPrompts = prompts.filter(prompt => {
     const matchesSearch = searchQuery === "" || 
       prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -154,13 +86,9 @@ export default function PromptsPage() {
     
     return matchesSearch && matchesCategory;
   });
-  
-  // Extract unique categories for filter
-  const categories = ["all", ...new Set(mockPrompts.map(p => p.metadata.category || ""))];
-  
+
   return (
     <div className="container py-8">
-      {/* Header */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Browse Prompts</h1>
@@ -206,7 +134,6 @@ export default function PromptsPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -246,7 +173,6 @@ export default function PromptsPage() {
         </div>
       </div>
 
-      {/* Selection bar */}
       {selectedPrompts.length > 0 && (
         <div className="flex items-center justify-between p-3 mb-4 bg-secondary rounded-md">
           <div className="flex items-center gap-2">
@@ -271,7 +197,6 @@ export default function PromptsPage() {
         </div>
       )}
 
-      {/* Prompts Grid/List */}
       {filteredPrompts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-muted-foreground mb-4">No prompts found matching your search.</p>
