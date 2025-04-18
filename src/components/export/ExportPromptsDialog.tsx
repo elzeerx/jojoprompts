@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -33,10 +32,9 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       setProgress(0);
       
       // Show initial toast
-      toast({
+      const toastId = toast({
         title: "Preparing PDF...",
         description: "0%",
-        id: "pdf-export"
       });
       
       // Get logo as data URL
@@ -65,11 +63,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
         
         // Update toast on significant progress (every ~20%)
         if (percentage % 20 === 0 || percentage === 100) {
-          toast({
-            title: "Preparing PDF...",
-            description: `${percentage}%`,
-            id: "pdf-export"
-          });
+          toast.update(toastId, { description: `${percentage}%` });
         }
       };
       
@@ -90,10 +84,9 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       a.href = url;
       a.download = `jojoprompts_${new Date().toISOString().slice(0, 10)}_${count}.pdf`;
       
-      toast({
+      toast.update(toastId, {
         title: "Ready!",
         description: "Download will start shortly",
-        id: "pdf-export"
       });
       
       document.body.appendChild(a);
@@ -106,11 +99,10 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
       
     } catch (e: any) {
       console.error("PDF export error:", e);
-      toast({
+      toast.update(toastId, {
         title: "Error",
         description: e.message || "Failed to generate PDF",
         variant: "destructive",
-        id: "pdf-export"
       });
     } finally {
       setIsExporting(false);
