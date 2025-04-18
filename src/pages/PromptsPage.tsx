@@ -29,7 +29,7 @@ export default function PromptsPage() {
     let mounted = true;
     
     const fetchPrompts = async () => {
-      if (authLoading) return; // Wait for auth to complete
+      if (authLoading) return;
       
       setIsLoading(true);
       setError(null);
@@ -50,7 +50,7 @@ export default function PromptsPage() {
           user_id: item.user_id,
           title: item.title,
           prompt_text: item.prompt_text,
-          image_path: item.image_url,
+          image_path: item.image_path,
           created_at: item.created_at || "",
           metadata: {
             category: (item.metadata as any)?.category ?? undefined,
@@ -63,7 +63,6 @@ export default function PromptsPage() {
 
         setPrompts(transformedData);
 
-        // Extract unique categories
         const uniqueCategories = [
           ...new Set(
             transformedData

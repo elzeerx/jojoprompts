@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { Badge } from "./badge";
@@ -34,14 +35,14 @@ export function PromptCard({
   onDelete,
   initiallyFavorited = false
 }: PromptCardProps) {
-  const { title, prompt_text, image_url, metadata } = prompt;
+  const { title, prompt_text, image_path, metadata } = prompt;
   const { session } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
   
   const tags = metadata?.tags || [];
   
-  const thumb = cdnUrl(prompt.image_url);
+  const thumb = cdnUrl(image_path);
   const placeholderImage = "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=400&q=80";
 
   const handleSelectChange = () => {
@@ -217,3 +218,4 @@ export function PromptCard({
     </>
   );
 }
+
