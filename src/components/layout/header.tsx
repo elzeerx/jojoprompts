@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { FileText, LogOut, User } from "lucide-react";
+import { FileText, LogOut, User, ShieldCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   userRole?: string | null;
@@ -17,7 +18,8 @@ interface HeaderProps {
   onLogout?: () => void;
 }
 
-export function Header({ userRole, userEmail, onLogout }: HeaderProps) {
+export function Header({ userEmail, onLogout }: HeaderProps) {
+  const { userRole } = useAuth();
   const isLoggedIn = !!userEmail;
   const isAdmin = userRole === "admin";
   
@@ -47,7 +49,8 @@ export function Header({ userRole, userEmail, onLogout }: HeaderProps) {
             )}
             {isAdmin && (
               <Link to="/admin" className="text-sm font-medium hover:text-primary">
-                Admin
+                <ShieldCheck className="mr-2 h-4 w-4 inline" />
+                Admin Dashboard
               </Link>
             )}
           </nav>
