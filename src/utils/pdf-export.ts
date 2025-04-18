@@ -1,3 +1,4 @@
+
 import { type Prompt } from "@/types";
 import { cdnUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
@@ -17,7 +18,7 @@ export type PdfOptions = {
   onProgress?: (current: number, total: number) => void;
 };
 
-async function tryEmbedImage(pdf: PDFDocument, bytes: ArrayBuffer) {
+async function tryEmbedImage(pdf: any, bytes: ArrayBuffer) {
   try {
     return await pdf.embedJpg(bytes);
   } catch {
@@ -45,9 +46,13 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     
     try {
       const logoBytes = await fetch(opts.logo).then(r => r.arrayBuffer());
-      const { img, h } = await addImage(opts.logo, 300) || { img: null, h: 0 };
+      const img = await tryEmbedImage(doc, logoBytes);
+      
       if (img) {
-        page.drawImage(img, { x: 147, y: 600, width: 300, height: h });
+        const scale = Math.min(300 / img.width, 100 / img.height, 1);
+        const imgW = img.width * scale;
+        const imgH = img.height * scale;
+        page.drawImage(img, { x: 147, y: 600, width: 300, height: imgH });
       }
     } catch (error) {
       console.error("Error adding logo to cover:", error);

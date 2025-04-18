@@ -52,10 +52,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
         logo: logoData,
         onProgress: (current, total) => {
           const percentage = Math.round((current / total) * 100);
-          toast({
-            id: toastId,
-            description: `Progress: ${percentage}%`,
-          });
+          setProgress(percentage);
         },
       });
 
