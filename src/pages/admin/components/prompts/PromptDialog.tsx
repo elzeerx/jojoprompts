@@ -1,4 +1,3 @@
-
 import { FC, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { type PromptRow } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface PromptDialogProps {
   open: boolean;
@@ -35,11 +35,12 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
   const [promptText, setPromptText] = useState("");
   const [metadata, setMetadata] = useState<PromptRow["metadata"]>(EMPTY);
   const [imageURL, setImageURL] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const { session } = useAuth();
 
   useEffect(() => {
     if (!open) return;
     if (initial) {
-      // edit mode
       setTitle(initial.title);
       setPromptText(initial.prompt_text);
       setMetadata({
@@ -49,11 +50,11 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
       });
       setImageURL(initial.image_url ?? "");
     } else {
-      // add mode → clear every field
       setTitle("");
       setPromptText("");
       setMetadata(EMPTY);
       setImageURL("");
+      setFile(null);
     }
   }, [open, initial]);
 
@@ -70,6 +71,23 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
     setSubmitting(true);
 
     try {
+      let uploadedUrl = initial?.image_url ?? "";
+
+      if (file) {
+        const path = `${session?.user.id}/${crypto.randomUUID()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("prompt-images")
+          .upload(path, file, { upsert: false });
+
+        if (uploadError) {
+          throw new Error("Image upload failed");
+        }
+
+        uploadedUrl = supabase.storage
+          .from("prompt-images")
+          .getPublicUrl(path).data.publicUrl;
+      }
+
       // --- generate metadata (optional) --------------
       let meta = { category: "", style: "", tags: [] as string[] };
       try {
@@ -91,7 +109,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
           style: meta.style || metadata.style,
           tags: meta.tags.length ? meta.tags : metadata.tags,
         },
-        image_url: imageURL || null,
+        image_url: uploadedUrl,
       };
 
       await onSave(promptData);
@@ -99,7 +117,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
       console.error("Error saving prompt:", error);
       toast({
         title: "Error",
-        description: initial ? "Failed to update prompt" : "Failed to add prompt",
+        description: error instanceof Error ? error.message : "Failed to save prompt",
         variant: "destructive",
       });
     } finally {
@@ -141,6 +159,29 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="image" className="text-right">
+              Image
+            </Label>
+            <div className="col-span-3 space-y-4">
+              <Input
+                type="file"
+                id="image"
+                accept="image/*"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="cursor-pointer"
+              />
+              {(imageURL || file) && (
+                <div className="rounded-lg overflow-hidden bg-muted">
+                  <img
+                    src={file ? URL.createObjectURL(file) : imageURL}
+                    alt="Preview"
+                    className="w-full aspect-video object-cover"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="category" className="text-right">
               Category
             </Label>
@@ -177,18 +218,6 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
                 const tags = e.target.value.split(",").map(tag => tag.trim()).filter(Boolean);
                 setMetadata({ ...metadata, tags });
               }}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="image_url" className="text-right">
-              Image URL
-            </Label>
-            <Input
-              type="text"
-              id="image_url"
-              value={imageURL}
-              onChange={(e) => setImageURL(e.target.value)}
               className="col-span-3"
             />
           </div>
