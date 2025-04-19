@@ -1,4 +1,5 @@
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+
+import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
 import { type Prompt } from "@/types";
 import { cdnUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
@@ -120,7 +121,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
 
         // Auto-rotate page for landscape images
         if (imgDims.width > imgDims.height) {
-          page.setRotation(90);
+          page.setRotation(degrees(90));
         }
 
         const { width, height, x, y } = fitIntoPage(
