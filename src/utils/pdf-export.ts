@@ -1,4 +1,4 @@
-
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { type Prompt } from "@/types";
 import { cdnUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +17,24 @@ export type PdfOptions = {
   logo: string;
   onProgress?: (current: number, total: number) => void;
 };
+
+function fitIntoPage(
+  pageWidth: number,
+  pageHeight: number,
+  imgWidth: number,
+  imgHeight: number,
+  margin = 40
+) {
+  const maxW = pageWidth - margin * 2;
+  const maxH = pageHeight - margin * 2;
+  const ratio = Math.min(maxW / imgWidth, maxH / imgHeight);
+  return {
+    width: imgWidth * ratio,
+    height: imgHeight * ratio,
+    x: (pageWidth - imgWidth * ratio) / 2,
+    y: (pageHeight - imgHeight * ratio) / 2,
+  };
+}
 
 async function tryEmbedImage(pdf: any, bytes: ArrayBuffer) {
   try {
@@ -98,23 +116,27 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
 
         const imageBytes = await response.arrayBuffer();
         const img = await tryEmbedImage(doc, imageBytes);
+        const imgDims = img.scale(1);  // Get real pixel size
+
+        // Auto-rotate page for landscape images
+        if (imgDims.width > imgDims.height) {
+          page.setRotation(90);
+        }
+
+        const { width, height, x, y } = fitIntoPage(
+          page.getWidth(),
+          page.getHeight(),
+          imgDims.width,
+          imgDims.height
+        );
         
-        const scale = Math.min(IMAGE_MAX_W / img.width, IMAGE_MAX_H / img.height, 1);
-        const imgW = img.width * scale;
-        const imgH = img.height * scale;
-        
-        page.drawImage(img, {
-          x: MARGIN,
-          y: page.getHeight() - MARGIN - imgH - FONT_SIZE_TITLE - 10,
-          width: imgW,
-          height: imgH
-        });
+        page.drawImage(img, { x, y, width, height });
 
         // 3. Draw text block below image
-        const startY = page.getHeight() - MARGIN - imgH - FONT_SIZE_TITLE - 30;
+        const textY = y - FONT_SIZE_BODY - 20;
         page.drawText(p.prompt_text, {
           x: MARGIN,
-          y: startY,
+          y: textY,
           size: FONT_SIZE_BODY,
           font: regularFont,
           maxWidth: page.getWidth() - 2 * MARGIN,

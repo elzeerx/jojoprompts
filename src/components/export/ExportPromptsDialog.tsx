@@ -24,17 +24,13 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
   
-  /* ------------------------------------------------------------------ */
-  /* Toast refs live in component scope (not inside try / callbacks)    */
   const toastObjRef = useRef<ReturnType<typeof toast> | null>(null);
   const toastIdRef = useRef<string>("");
-  /* ------------------------------------------------------------------ */
 
   const handleExport = async () => {
     const toastId = toast.loading("Generating PDF...");
 
     try {
-      // Get logo as data URL
       const logoUrl = '/assets/jojoprompts-logo.png';
       const logoData = await fetch(logoUrl)
         .then(r => r.blob())
@@ -103,6 +99,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
                 onCheckedChange={(checked) => 
                   setOptions(prev => ({ ...prev, cover: !!checked }))
                 }
+                disabled={isExporting}
               />
               <Label htmlFor="cover-page">Include cover page</Label>
             </div>
@@ -116,6 +113,7 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
                 setOptions(prev => ({ ...prev, quality: value }))
               }
               className="flex flex-col space-y-1"
+              disabled={isExporting}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="thumb" id="quality-thumb" />
