@@ -1,5 +1,6 @@
 
 import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
+import fontkit from '@pdf-lib/fontkit';
 import { type Prompt } from "@/types";
 import { cdnUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
@@ -59,8 +60,41 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
   const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
   
   const doc = await PDFDocument.create();
-  const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
-  const regularFont = await doc.embedFont(StandardFonts.Helvetica);
+  doc.registerFontkit(fontkit);
+  
+  // Load custom fonts with Unicode support
+  let fontRegular, fontBold, helvetica, helveticaBold;
+  
+  try {
+    const notoRegular = await fetch('/fonts/NotoSans-Regular.ttf').then(r => r.arrayBuffer());
+    const notoBold = await fetch('/fonts/NotoSans-Bold.ttf').then(r => r.arrayBuffer());
+    
+    fontRegular = await doc.embedFont(notoRegular, { subset: true });
+    fontBold = await doc.embedFont(notoBold, { subset: true });
+    
+    // Fallback fonts for WinAnsi-safe snippets
+    helvetica = await doc.embedFont(StandardFonts.Helvetica);
+    helveticaBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  } catch (error) {
+    console.error("Failed to load custom fonts:", error);
+    // Fallback to standard fonts if custom fonts fail to load
+    fontRegular = await doc.embedFont(StandardFonts.Helvetica);
+    fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+    helvetica = fontRegular;
+    helveticaBold = fontBold;
+  }
+
+  // Helper: pick font that can encode full string
+  const pickFont = (str: string, bold = false) => {
+    try {
+      if ((bold ? fontBold : fontRegular).encodeText(str).length === [...str].length) {
+        return bold ? fontBold : fontRegular;
+      }
+    } catch (e) {
+      console.warn("Font encoding issue, using fallback font:", e);
+    }
+    return bold ? helveticaBold : helvetica;
+  };
 
   // Load the logo once
   let logoImage = null;
@@ -95,19 +129,21 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
       });
     }
     
+    const titleFont = pickFont(`Generated: ${new Date().toLocaleDateString()}`, true);
     page.drawText(`Generated: ${new Date().toLocaleDateString()}`, {
       x: MARGIN, 
       y: 520, 
       size: FONT_SIZE_TITLE, 
-      font: boldFont, 
+      font: titleFont, 
       color: rgb(1, 1, 1)
     });
     
+    const promptsFont = pickFont(`Total prompts: ${opts.selected.length}`, true);
     page.drawText(`Total prompts: ${opts.selected.length}`, {
       x: MARGIN, 
       y: 490, 
       size: FONT_SIZE_TITLE, 
-      font: boldFont, 
+      font: promptsFont, 
       color: rgb(1, 1, 1)
     });
   }
@@ -119,11 +155,12 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     let cursorY = page.getHeight() - MARGIN;
 
     // 1. Draw title
+    const titleFont = pickFont(prompt.title, true);
     page.drawText(prompt.title, {
       x: MARGIN,
       y: cursorY - FONT_SIZE_TITLE,
       size: FONT_SIZE_TITLE,
-      font: boldFont,
+      font: titleFont,
       color: rgb(0, 0, 0)
     });
     cursorY -= (FONT_SIZE_TITLE + GAP);
@@ -184,11 +221,12 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     // 3. Draw prompt text
     const textLines = splitText(prompt.prompt_text, 70);
     for (const line of textLines) {
+      const textFont = pickFont(line, false);
       page.drawText(line, {
         x: MARGIN,
         y: cursorY - FONT_SIZE_BODY,
         size: FONT_SIZE_BODY,
-        font: regularFont,
+        font: textFont,
         color: rgb(0, 0, 0),
         lineHeight: LINE_HEIGHT
       });
@@ -211,11 +249,12 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
       }
       
       if (categoryText) {
+        const catFont = pickFont(categoryText, true);
         page.drawText(categoryText, {
           x: MARGIN,
           y: cursorY - FONT_SIZE_BODY,
           size: FONT_SIZE_BODY,
-          font: boldFont,
+          font: catFont,
           color: rgb(0, 0, 0),
         });
         cursorY -= (FONT_SIZE_BODY + 8);
@@ -228,7 +267,8 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
         const pillPadding = 8;
         
         for (const tag of tags) {
-          const tagWidth = tag.length * (FONT_SIZE_BODY * 0.6) + (pillPadding * 2);
+          const tagFont = pickFont(tag, false);
+          const tagWidth = tagFont.widthOfTextAtSize(tag, FONT_SIZE_BODY - 1) + (pillPadding * 2);
           
           // Check if we need to wrap to next line
           if (xPos + tagWidth > page.getWidth() - MARGIN) {
@@ -252,7 +292,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
             x: xPos + pillPadding,
             y: cursorY - tagHeight + pillPadding - 1,
             size: FONT_SIZE_BODY - 1,
-            font: regularFont,
+            font: tagFont,
             color: rgb(0.33, 0.33, 0.33),
           });
           
