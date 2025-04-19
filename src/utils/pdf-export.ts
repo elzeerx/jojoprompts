@@ -197,12 +197,17 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     cursorY -= GAP;
 
     // 4. Draw category/style/tags section (if available)
-    if (prompt.category || prompt.style || (prompt.tags && prompt.tags.length > 0)) {
+    const meta = prompt.metadata || {};
+    const category = meta.category || "";
+    const style = meta.style || "";
+    const tags = Array.isArray(meta.tags) ? meta.tags : [];
+
+    if (category || style || tags.length > 0) {
       let categoryText = '';
-      if (prompt.category) categoryText += `Category: ${prompt.category}`;
-      if (prompt.style) {
+      if (category) categoryText += `Category: ${category}`;
+      if (style) {
         if (categoryText) categoryText += ' • ';
-        categoryText += `Style: ${prompt.style}`;
+        categoryText += `Style: ${style}`;
       }
       
       if (categoryText) {
@@ -217,12 +222,12 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
       }
       
       // Draw tags as pills
-      if (prompt.tags && prompt.tags.length > 0) {
+      if (tags.length > 0) {
         let xPos = MARGIN;
         const tagHeight = FONT_SIZE_BODY + 6;
         const pillPadding = 8;
         
-        for (const tag of prompt.tags) {
+        for (const tag of tags) {
           const tagWidth = tag.length * (FONT_SIZE_BODY * 0.6) + (pillPadding * 2);
           
           // Check if we need to wrap to next line
@@ -231,7 +236,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
             cursorY -= (tagHeight + 4);
           }
           
-          // Draw pill background
+          // Draw pill background - removed borderRadius as it's not supported
           page.drawRectangle({
             x: xPos,
             y: cursorY - tagHeight,
@@ -240,7 +245,6 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
             color: rgb(0.95, 0.95, 0.95),
             borderColor: rgb(0.9, 0.9, 0.9),
             borderWidth: 1,
-            borderRadius: tagHeight / 2,
           });
           
           // Draw tag text
