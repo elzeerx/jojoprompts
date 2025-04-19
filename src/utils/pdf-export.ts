@@ -6,17 +6,13 @@ import { toast } from "@/hooks/use-toast";
 
 // Layout constants
 const MARGIN = 40;
-const IMAGE_MAX_W = 400;          // px on page
-const IMAGE_MAX_H = 380;
-const FONT_SIZE_TITLE = 18;
-const FONT_SIZE_BODY = 12;
+const PPI = 72;  // Points per inch (pdf-lib uses points)
 
-export type PdfOptions = {
-  cover: boolean;
-  quality: "thumb" | "medium" | "hq";
-  selected: Prompt[];
-  logo: string;
-  onProgress?: (current: number, total: number) => void;
+// Max widths for each quality option in pixels
+export const QUALITY_WIDTH: Record<"thumb" | "medium" | "hq", number> = {
+  thumb: 300,
+  medium: 600,
+  hq: 1200,
 };
 
 function fitIntoPage(
@@ -119,22 +115,29 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
         const img = await tryEmbedImage(doc, imageBytes);
         const imgDims = img.scale(1);  // Get real pixel size
 
-        // Auto-rotate page for landscape images
-        if (imgDims.width > imgDims.height) {
-          page.setRotation(degrees(90));
-        }
+        const maxImgPx = QUALITY_WIDTH[opts.quality];          // 300 / 600 / 1200 px
+        const maxImgPts = (maxImgPx / 96) * PPI;              // convert px → points (assumes 96 dpi)
 
-        const { width, height, x, y } = fitIntoPage(
-          page.getWidth(),
-          page.getHeight(),
-          imgDims.width,
-          imgDims.height
-        );
-        
-        page.drawImage(img, { x, y, width, height });
+        // maintain aspect-ratio & never exceed page content width
+        const availableW = page.getWidth() - MARGIN * 2;
+        const targetW = Math.min(availableW, maxImgPts, imgDims.width);
+        const scale = targetW / imgDims.width;
+        const targetH = imgDims.height * scale;
+
+        // centre horizontally
+        const imgX = (page.getWidth() - targetW) / 2;
+        const imgY = page.getHeight() - MARGIN - FONT_SIZE_TITLE - 20 - targetH;
+
+        // draw scaled image
+        page.drawImage(img, {
+          x: imgX,
+          y: imgY,
+          width: targetW,
+          height: targetH,
+        });
 
         // 3. Draw text block below image
-        const textY = y - FONT_SIZE_BODY - 20;
+        const textY = imgY - FONT_SIZE_BODY - 12;  // 12px spacing before text
         page.drawText(p.prompt_text, {
           x: MARGIN,
           y: textY,
