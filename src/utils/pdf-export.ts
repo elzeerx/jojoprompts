@@ -4,6 +4,8 @@ import { type Prompt } from "@/types";
 import { cdnUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
 
+export const FONT_SIZE_TITLE = 18;   // bold prompt title
+export const FONT_SIZE_BODY  = 11;   // normal prompt text
 // Layout constants
 const MARGIN = 40;
 const PPI = 72;  // Points per inch (pdf-lib uses points)
