@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -23,15 +24,15 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
   });
   const [isExporting, setIsExporting] = useState(false);
   const [progress, setProgress] = useState(0);
-  
-  const toastObjRef = useRef<ReturnType<typeof toast> | null>(null);
-  const toastIdRef = useRef<string>("");
 
   const handleExport = async () => {
+    setIsExporting(true);
+    setProgress(0);
+    
     const toastId = toast.loading("Generating PDF...");
 
     try {
-      const logoUrl = '/assets/jojoprompts-logo.png';
+      const logoUrl = '/jojo-logo.png';
       const logoData = await fetch(logoUrl)
         .then(r => r.blob())
         .then(blob => {
@@ -73,8 +74,10 @@ export function ExportPromptsDialog({ open, onOpenChange, prompts }: ExportPromp
     } catch (error: any) {
       toast.error({
         id: toastId,
-        description: error.message
+        description: error.message || "Failed to generate PDF"
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
