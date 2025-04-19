@@ -120,7 +120,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     
     const titleFont = pickFont(`Generated: ${new Date().toLocaleDateString()}`, true);
     page.drawText(`Generated: ${new Date().toLocaleDateString()}`, {
-      x: MARGIN, 
+      x: PAGE_MARGIN, 
       y: 520, 
       size: FONT_SIZE_TITLE, 
       font: titleFont, 
@@ -129,7 +129,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     
     const promptsFont = pickFont(`Total prompts: ${opts.selected.length}`, true);
     page.drawText(`Total prompts: ${opts.selected.length}`, {
-      x: MARGIN, 
+      x: PAGE_MARGIN, 
       y: 490, 
       size: FONT_SIZE_TITLE, 
       font: promptsFont, 
@@ -284,7 +284,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
       const logoWidth = LOGO_HEIGHT * (logoImage.width / logoImage.height);
       page.drawImage(logoImage, {
         x: (page.getWidth() - logoWidth) / 2,
-        y: MARGIN - (LOGO_HEIGHT / 2),
+        y: PAGE_MARGIN - (LOGO_HEIGHT / 2),
         width: logoWidth,
         height: LOGO_HEIGHT,
       });
