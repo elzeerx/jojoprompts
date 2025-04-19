@@ -1,4 +1,3 @@
-
 import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
 import fontkit from '@pdf-lib/fontkit';
 import { type Prompt } from "@/types";
@@ -6,16 +5,18 @@ import { cdnUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
 
 // Layout constants
-export const MARGIN = 32;
-export const FONT_SIZE_TITLE = 20;
-export const FONT_SIZE_BODY = 11;
-export const LINE_HEIGHT = 14;  // ≈ 11 pt × 1.3
-export const LOGO_HEIGHT = 24;
-export const GAP = 12;  // vertical gap between blocks
+const PAGE_MARGIN = 40;
+const IMAGE_RATIO = 4 / 5;          // width / height (portrait 4:5)
+const IMAGE_MAX_WIDTH_PX = 400;     // fallback if page width is huge
+const FONT_SIZE_TITLE = 20;
+const FONT_SIZE_BODY = 11;
+const LINE_HEIGHT = 14;  // ≈ 11 pt × 1.3
+const LOGO_HEIGHT = 24;
+const GAP = 12;  // vertical gap between blocks
 const PPI = 72;  // Points per inch (pdf-lib uses points)
 
 // Max widths for each quality option in pixels
-export const QUALITY_WIDTH: Record<"thumb" | "medium" | "hq", number> = {
+const QUALITY_WIDTH: Record<"thumb" | "medium" | "hq", number> = {
   thumb: 300,
   medium: 600,
   hq: 1200,
@@ -30,23 +31,11 @@ export interface PdfOptions {
   onProgress?: (current: number, total: number) => void;
 }
 
-function fitIntoPage(
-  pageWidth: number,
-  pageHeight: number,
-  imgWidth: number,
-  imgHeight: number,
-  margin = MARGIN
-) {
-  const maxW = pageWidth - margin * 2;
-  const maxH = pageHeight - margin * 2;
-  const ratio = Math.min(maxW / imgWidth, maxH / imgHeight);
-  return {
-    width: imgWidth * ratio,
-    height: imgHeight * ratio,
-    x: (pageWidth - imgWidth * ratio) / 2,
-    y: (pageHeight - imgHeight * ratio) / 2,
-  };
-}
+// Helper - returns scaled w/h that fit page and keep 4:5
+const getImageBox = (pageWidth: number) => {
+  const maxW = Math.min(pageWidth - PAGE_MARGIN * 2, IMAGE_MAX_WIDTH_PX);
+  return { w: maxW, h: maxW / IMAGE_RATIO };
+};
 
 async function tryEmbedImage(pdf: any, bytes: ArrayBuffer) {
   try {
@@ -106,7 +95,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     console.error("Failed to load logo:", error);
   }
 
-  // ▸ 1 Cover
+  // Cover page
   if (opts.cover) {
     const page = doc.addPage([595, 842]);        // A4 portrait
     page.drawRectangle({ 
@@ -152,29 +141,33 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
   let completedPrompts = 0;
   for (const prompt of opts.selected) {
     const page = doc.addPage([595, 842]); // A4
-    let cursorY = page.getHeight() - MARGIN;
+    const { width: pw, height: ph } = page.getSize();
+    
+    // Calculate image dimensions using 4:5 ratio
+    const { w: imgW, h: imgH } = getImageBox(pw);
+    
+    // Start drawing from top
+    let cursorY = ph - PAGE_MARGIN;
 
-    // 1. Draw title
+    // Draw title
     const titleFont = pickFont(prompt.title, true);
     page.drawText(prompt.title, {
-      x: MARGIN,
+      x: PAGE_MARGIN,
       y: cursorY - FONT_SIZE_TITLE,
       size: FONT_SIZE_TITLE,
       font: titleFont,
       color: rgb(0, 0, 0)
     });
-    cursorY -= (FONT_SIZE_TITLE + GAP);
+    cursorY -= FONT_SIZE_TITLE + 24;
 
-    // 2. Draw image if available
+    // Draw image in 4:5 box
     if (prompt.image_path) {
       try {
         const url = getCdnUrl(prompt.image_path, opts.quality);
         const response = await fetch(url);
         
-        // Get image dimensions and embed in PDF
         let img;
         if (!response.ok || !response.headers.get("content-type")?.startsWith("image/")) {
-          // Create placeholder for unavailable image
           const placeholderResponse = await fetch('/placeholder.svg');
           const placeholderBytes = await placeholderResponse.arrayBuffer();
           img = await tryEmbedImage(doc, placeholderBytes);
@@ -183,30 +176,14 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
           img = await tryEmbedImage(doc, imageBytes);
         }
 
-        const imgDims = img.scale(1);  // Get real pixel size
-
-        const maxImgPx = QUALITY_WIDTH[opts.quality];
-        const maxImgPts = (maxImgPx / 96) * PPI;  // convert px → points (assumes 96 dpi)
-
-        // Maintain aspect-ratio & never exceed page content width
-        const availableW = page.getWidth() - MARGIN * 2;
-        const targetW = Math.min(availableW, maxImgPts, imgDims.width);
-        const scale = targetW / imgDims.width;
-        const targetH = imgDims.height * scale;
-
-        // Center horizontally
-        const imgX = (page.getWidth() - targetW) / 2;
-        const imgY = cursorY - targetH;
-
-        // Draw scaled image
         page.drawImage(img, {
-          x: imgX,
-          y: imgY,
-          width: targetW,
-          height: targetH,
+          x: (pw - imgW) / 2,
+          y: cursorY - imgH,
+          width: imgW,
+          height: imgH,
         });
 
-        cursorY = imgY - GAP;  // Move cursor below image
+        cursorY -= imgH + 24;  // Move cursor below image with gap
       } catch (error) {
         console.error("Image processing error:", error);
         toast({
@@ -218,12 +195,12 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
       }
     }
 
-    // 3. Draw prompt text
+    // Draw prompt text
     const textLines = splitText(prompt.prompt_text, 70);
     for (const line of textLines) {
       const textFont = pickFont(line, false);
       page.drawText(line, {
-        x: MARGIN,
+        x: PAGE_MARGIN,
         y: cursorY - FONT_SIZE_BODY,
         size: FONT_SIZE_BODY,
         font: textFont,
@@ -234,7 +211,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     }
     cursorY -= GAP;
 
-    // 4. Draw category/style/tags section (if available)
+    // Draw category/style/tags section (if available)
     const meta = prompt.metadata || {};
     const category = meta.category || "";
     const style = meta.style || "";
@@ -251,7 +228,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
       if (categoryText) {
         const catFont = pickFont(categoryText, true);
         page.drawText(categoryText, {
-          x: MARGIN,
+          x: PAGE_MARGIN,
           y: cursorY - FONT_SIZE_BODY,
           size: FONT_SIZE_BODY,
           font: catFont,
@@ -262,7 +239,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
       
       // Draw tags as pills
       if (tags.length > 0) {
-        let xPos = MARGIN;
+        let xPos = PAGE_MARGIN;
         const tagHeight = FONT_SIZE_BODY + 6;
         const pillPadding = 8;
         
@@ -271,8 +248,8 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
           const tagWidth = tagFont.widthOfTextAtSize(tag, FONT_SIZE_BODY - 1) + (pillPadding * 2);
           
           // Check if we need to wrap to next line
-          if (xPos + tagWidth > page.getWidth() - MARGIN) {
-            xPos = MARGIN;
+          if (xPos + tagWidth > page.getWidth() - PAGE_MARGIN) {
+            xPos = PAGE_MARGIN;
             cursorY -= (tagHeight + 4);
           }
           
@@ -302,7 +279,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
       }
     }
 
-    // 5. Draw logo at bottom center
+    // Draw logo at bottom
     if (logoImage) {
       const logoWidth = LOGO_HEIGHT * (logoImage.width / logoImage.height);
       page.drawImage(logoImage, {
