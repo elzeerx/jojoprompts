@@ -1,7 +1,7 @@
+
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { Download, Grid, List, Search, SlidersHorizontal } from "lucide-react";
 import { type Prompt, type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { cdnUrl } from "@/utils/image";
+import { getCdnUrl } from "@/utils/image";
 import { ExportPromptsDialog } from "@/components/export/ExportPromptsDialog";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 

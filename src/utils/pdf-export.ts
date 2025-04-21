@@ -1,7 +1,7 @@
 import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
 import fontkit from '@pdf-lib/fontkit';
 import { type Prompt } from "@/types";
-import { cdnUrl } from "@/utils/image";
+import { getCdnUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
 
 // Layout constants
@@ -43,6 +43,17 @@ async function tryEmbedImage(pdf: any, bytes: ArrayBuffer) {
   } catch {
     return await pdf.embedPng(bytes);
   }
+}
+
+// Helper to get appropriate CDN URL based on quality setting
+function getQualityAdjustedCdnUrl(path: string, quality: "thumb" | "medium" | "hq"): string {
+  const qualityMap = {
+    thumb: 400,
+    medium: 800,
+    hq: 1200
+  };
+  
+  return getCdnUrl(path, qualityMap[quality], 90) || '';
 }
 
 export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
@@ -144,7 +155,7 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
     // Draw image in 4:5 box
     if (prompt.image_path) {
       try {
-        const url = getCdnUrl(prompt.image_path, opts.quality);
+        const url = getQualityAdjustedCdnUrl(prompt.image_path, opts.quality);
         const response = await fetch(url);
         
         let img;
@@ -276,17 +287,6 @@ export async function buildPromptsPdf(opts: PdfOptions): Promise<Uint8Array> {
   }
 
   return await doc.save();
-}
-
-// Helper to get appropriate CDN URL based on quality setting
-function getCdnUrl(path: string, quality: "thumb" | "medium" | "hq"): string {
-  const qualityMap = {
-    thumb: 400,
-    medium: 800,
-    hq: 1200
-  };
-  
-  return cdnUrl(path, qualityMap[quality], 90) || '';
 }
 
 // Text wrapper to fit within page width
