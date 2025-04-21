@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { LogOut, User, ShieldCheck } from "lucide-react";
@@ -32,16 +33,21 @@ export function Header({
           </Link>
           
           <nav className="hidden md:flex gap-6">
-            <Link to="/prompts" className="text-sm font-medium hover:text-primary">
-              Browse Prompts
-            </Link>
-            {isLoggedIn && <Link to="/dashboard" className="text-sm font-medium hover:text-primary">
-                Dashboard
-              </Link>}
-            {isAdmin && <Link to="/admin" className="text-sm font-medium hover:text-primary">
-                <ShieldCheck className="mr-2 h-4 w-4 inline" />
-                Admin Dashboard
-              </Link>}
+            {/* Only show nav links if authenticated */}
+            {isLoggedIn && (
+              <>
+                <Link to="/prompts" className="text-sm font-medium hover:text-primary">
+                  Browse Prompts
+                </Link>
+                <Link to="/dashboard" className="text-sm font-medium hover:text-primary">
+                  Dashboard
+                </Link>
+                {isAdmin && <Link to="/admin" className="text-sm font-medium hover:text-primary">
+                    <ShieldCheck className="mr-2 h-4 w-4 inline" />
+                    Admin Dashboard
+                  </Link>}
+              </>
+            )}
           </nav>
         </div>
         

@@ -28,8 +28,14 @@ const App = () => {
           <Routes>
             <Route element={<RootLayout />}>
               {/* Public routes */}
+              {/* Only landing page and about are public */}
               <Route path="/" element={<HomePage />} />
-              {/* Make PromptsPage protected, for logged-in members only */}
+              <Route path="/about" element={<AboutPage />} />
+              {/* Login & Signup are public for non-auth users */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+
+              {/* Protected: PromptsPage & Dashboard */}
               <Route
                 path="/prompts"
                 element={
@@ -38,11 +44,7 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route path="/about" element={<AboutPage />} />
 
-              {/* User dashboard */}
               <Route
                 path="/dashboard"
                 element={
@@ -52,7 +54,7 @@ const App = () => {
                 }
               />
 
-              {/* Admin dashboard */}
+              {/* Admin dashboard (admin only) */}
               <Route
                 path="/admin"
                 element={
@@ -73,3 +75,4 @@ const App = () => {
 };
 
 export default App;
+
