@@ -29,25 +29,39 @@ const App = () => {
             <Route element={<RootLayout />}>
               {/* Public routes */}
               <Route path="/" element={<HomePage />} />
-              <Route path="/prompts" element={<PromptsPage />} />
+              {/* Make PromptsPage protected, for logged-in members only */}
+              <Route
+                path="/prompts"
+                element={
+                  <ProtectedRoute>
+                    <PromptsPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/about" element={<AboutPage />} />
-              
+
               {/* User dashboard */}
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <UserDashboard />
-                </ProtectedRoute>
-              } />
-              
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <UserDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Admin dashboard */}
-              <Route path="/admin" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
-              
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* 404 catch-all */}
               <Route path="*" element={<NotFoundPage />} />
             </Route>

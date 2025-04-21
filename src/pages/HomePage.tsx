@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { FileText, Sparkles, Copy, Download } from "lucide-react";
+import { FileText, Sparkles, Copy, Download, ShieldCheck } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -12,16 +12,19 @@ export default function HomePage() {
           <div className="flex flex-col items-center space-y-4 text-center">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
-                Discover & Create Amazing
-                <span className="text-primary"> AI Image Prompts</span>
+                Public AI Image Prompts Gallery
               </h1>
               <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-                Browse high-quality prompts for AI image generation. Copy, export, and create stunning visuals with ease.
+                Discover a curated gallery of AI-generated image prompts. Browse and export high-quality prompts, handpicked by our curators and admin team. 
+                <span className="block mt-4 text-primary font-semibold">
+                  <Sparkles className="inline h-5 w-5 mb-1 mr-1" />
+                  Only admins can create and add prompts. Members can discover, search, and export prompts after logging in.
+                </span>
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
               <Button asChild size="lg">
-                <Link to="/prompts">Browse Prompts</Link>
+                <Link to="/login">Log In to Browse Prompts</Link>
               </Button>
               <Button asChild variant="outline" size="lg">
                 <Link to="/signup">Create Account</Link>
@@ -37,43 +40,47 @@ export default function HomePage() {
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Your Creative Toolkit
+                Your AI Visual Discovery Toolkit
               </h2>
               <p className="mx-auto max-w-[700px] text-muted-foreground">
-                Everything you need to take your AI image generation to the next level.
+                Easily browse prompts for AI image generation—no prompt creation required!
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
               <div className="flex flex-col items-center space-y-2 p-6 bg-background rounded-lg shadow-sm border">
                 <div className="p-3 rounded-full bg-primary/10 text-primary">
                   <FileText className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-bold">Browse Prompts</h3>
+                <h3 className="text-xl font-bold">Curated Prompts</h3>
                 <p className="text-muted-foreground text-center">
-                  Explore our curated collection of high-quality prompts for various styles and concepts.
+                  Explore prompts added and quality-checked by admins—members only need to log in to access the collection.
                 </p>
               </div>
-              
+
               <div className="flex flex-col items-center space-y-2 p-6 bg-background rounded-lg shadow-sm border">
                 <div className="p-3 rounded-full bg-primary/10 text-primary">
                   <Copy className="h-6 w-6" />
                 </div>
                 <h3 className="text-xl font-bold">Copy & Use</h3>
                 <p className="text-muted-foreground text-center">
-                  Quickly copy prompts to use with ChatGPT, Midjourney, DALL-E, or your favorite AI image generator.
+                  Easily copy prompt text or export a collection for use with your favorite AI image generator.
                 </p>
               </div>
-              
+
               <div className="flex flex-col items-center space-y-2 p-6 bg-background rounded-lg shadow-sm border">
                 <div className="p-3 rounded-full bg-primary/10 text-primary">
                   <Download className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-bold">Export Collection</h3>
+                <h3 className="text-xl font-bold">Export, Don’t Create</h3>
                 <p className="text-muted-foreground text-center">
-                  Select multiple prompts and export them to PDF for your personal collection.
+                  Download prompts as a PDF for inspiration and exploration. Prompt creation and curation are handled by admins.
                 </p>
               </div>
+            </div>
+            <div className="mt-4 text-muted-foreground flex items-center justify-center gap-2 text-sm">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              Want to contribute? Contact the site admin to suggest new prompts.
             </div>
           </div>
         </div>
@@ -85,10 +92,10 @@ export default function HomePage() {
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Ready to Create Amazing Images?
+                Unlock easy access to inspiring AI image ideas!
               </h2>
               <p className="mx-auto max-w-[700px] opacity-90">
-                Join our community today and unlock your creative potential with AI prompts.
+                Sign up or log in to start browsing our ever-growing library of prompts curated just for you.
               </p>
             </div>
             <Button asChild size="lg" variant="secondary" className="mt-4">
