@@ -1,3 +1,6 @@
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Button } from "@/components/ui/button";
@@ -12,13 +15,13 @@ import { Download, Grid, List, Search, SlidersHorizontal } from "lucide-react";
 import { type Prompt, type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 import { cdnUrl } from "@/utils/image";
 import { ExportPromptsDialog } from "@/components/export/ExportPromptsDialog";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 
 export default function PromptsPage() {
   const { loading: authLoading, session } = useAuth();
+  const navigate = useNavigate();
   const [view, setView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
@@ -30,6 +33,12 @@ export default function PromptsPage() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptRow | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !session) {
+      navigate("/login");
+    }
+  }, [authLoading, session, navigate]);
 
   const fetchPrompts = async () => {
     setIsLoading(true);
