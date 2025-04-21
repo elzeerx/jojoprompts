@@ -1,4 +1,3 @@
-
 // PromptCard main file — refactored with atoms
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
@@ -41,7 +40,7 @@ export function PromptCard({
   const { session } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const aspect = 4 / 5;
+  const aspect = 4 / 3;
 
   const imgUrl = getCdnUrl(image_path, 400, 80);
 
@@ -110,13 +109,13 @@ export function PromptCard({
             {title}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 pt-2 space-y-4">
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[3.8em]">
+        <CardContent className="p-4 pt-2 space-y-2">
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[4em]">
             {prompt_text}
           </p>
           <TagList tags={tags} />
         </CardContent>
-        <CardFooter className="p-4 pt-2 flex flex-wrap items-center gap-2">
+        <CardFooter className="p-4 pt-0 flex flex-wrap items-center gap-2">
           <CopyButton value={prompt_text} className="flex-shrink-0" />
           {isAdmin && (
             <div className="flex gap-2 ml-auto">
@@ -149,5 +148,3 @@ export function PromptCard({
     </>
   );
 }
-
-// NOTE: This file is getting quite long! Please consider asking me to refactor it into more focused files if you want.

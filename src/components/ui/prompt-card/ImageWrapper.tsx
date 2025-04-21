@@ -6,7 +6,7 @@ import { ImgHTMLAttributes, useState } from "react";
 export function ImageWrapper({
   src,
   alt,
-  aspect = 4 / 5,
+  aspect = 4 / 3,
   className = "",
   ...props
 }: {
@@ -32,16 +32,18 @@ export function ImageWrapper({
         {loading && (
           <Skeleton className="absolute z-10 inset-0 rounded-lg animate-pulse" />
         )}
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          aria-busy={loading}
-          onLoad={() => setLoading(false)}
-          className={`object-contain w-full h-full transition duration-300 ${loading ? "opacity-0" : "opacity-100"} mx-auto`}
-          style={{ background: "#F1F0FB" }}
-          {...props}
-        />
+        <div className="w-full h-full flex items-center justify-center">
+          <img
+            src={src}
+            alt={alt}
+            loading="lazy"
+            aria-busy={loading}
+            onLoad={() => setLoading(false)}
+            className={`w-full h-full transition duration-300 ${loading ? "opacity-0" : "opacity-100"}`}
+            style={{ objectFit: "cover" }}
+            {...props}
+          />
+        </div>
       </>
     </AspectRatio>
   );
