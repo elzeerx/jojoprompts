@@ -1,62 +1,52 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { LogOut, User, ShieldCheck } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-
 interface HeaderProps {
   userRole?: string | null;
   userEmail?: string | null;
   onLogout?: () => void;
 }
-
-export function Header({ userEmail, onLogout }: HeaderProps) {
-  const { userRole } = useAuth();
+export function Header({
+  userEmail,
+  onLogout
+}: HeaderProps) {
+  const {
+    userRole
+  } = useAuth();
   const isLoggedIn = !!userEmail;
   const isAdmin = userRole === "admin";
-  
+
   // Get initials from email for avatar
   const getInitials = (email: string) => {
     if (!email) return "U";
     return email.charAt(0).toUpperCase();
   };
-
-  return (
-    <header className="border-b">
+  return <header className="border-b">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/assets/jojoprompts-logo.png" alt="JojoPrompts logo" className="h-6 w-auto" />
+            <img alt="JojoPrompts logo" className="h-6 w-auto" src="/lovable-uploads/ff979f5e-633f-404f-8799-bd078ad6c678.png" />
           </Link>
           
           <nav className="hidden md:flex gap-6">
             <Link to="/prompts" className="text-sm font-medium hover:text-primary">
               Browse Prompts
             </Link>
-            {isLoggedIn && (
-              <Link to="/dashboard" className="text-sm font-medium hover:text-primary">
+            {isLoggedIn && <Link to="/dashboard" className="text-sm font-medium hover:text-primary">
                 Dashboard
-              </Link>
-            )}
-            {isAdmin && (
-              <Link to="/admin" className="text-sm font-medium hover:text-primary">
+              </Link>}
+            {isAdmin && <Link to="/admin" className="text-sm font-medium hover:text-primary">
                 <ShieldCheck className="mr-2 h-4 w-4 inline" />
                 Admin Dashboard
-              </Link>
-            )}
+              </Link>}
           </nav>
         </div>
         
         <div className="flex items-center gap-4">
-          {isLoggedIn ? (
-            <DropdownMenu>
+          {isLoggedIn ? <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
@@ -69,14 +59,10 @@ export function Header({ userEmail, onLogout }: HeaderProps) {
               <DropdownMenuContent align="end">
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
-                    {userEmail && (
-                      <p className="font-medium">{userEmail}</p>
-                    )}
-                    {userRole && (
-                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                    {userEmail && <p className="font-medium">{userEmail}</p>}
+                    {userRole && <p className="w-[200px] truncate text-sm text-muted-foreground">
                         {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-                      </p>
-                    )}
+                      </p>}
                   </div>
                 </div>
                 <DropdownMenuSeparator />
@@ -85,35 +71,26 @@ export function Header({ userEmail, onLogout }: HeaderProps) {
                     Dashboard
                   </Link>
                 </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem asChild>
+                {isAdmin && <DropdownMenuItem asChild>
                     <Link to="/admin" className="cursor-pointer">
                       Admin Panel
                     </Link>
-                  </DropdownMenuItem>
-                )}
+                  </DropdownMenuItem>}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="cursor-pointer text-destructive"
-                  onClick={onLogout}
-                >
+                <DropdownMenuItem className="cursor-pointer text-destructive" onClick={onLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <div className="flex gap-2">
+            </DropdownMenu> : <div className="flex gap-2">
               <Button asChild variant="outline">
                 <Link to="/login">Login</Link>
               </Button>
               <Button asChild>
                 <Link to="/signup">Sign Up</Link>
               </Button>
-            </div>
-          )}
+            </div>}
         </div>
       </div>
-    </header>
-  );
+    </header>;
 }
