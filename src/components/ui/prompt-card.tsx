@@ -1,3 +1,4 @@
+
 // PromptCard main file — refactored with atoms
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
@@ -105,9 +106,21 @@ export function PromptCard({
           />
         </div>
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-lg font-semibold leading-tight tracking-tight line-clamp-1">
-            {title}
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            {/* Render the mini thumbnail */}
+            <div className="shrink-0">
+              <ImageWrapper
+                src={imgUrl}
+                alt={title}
+                aspect={4 / 3}
+                className="w-14 h-10 min-w-[56px] min-h-[40px] rounded-md border border-border"
+                style={{ maxWidth: 56, maxHeight: 40 }}
+              />
+            </div>
+            <CardTitle className="text-lg font-semibold leading-tight tracking-tight line-clamp-1">
+              {title}
+            </CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="p-4 pt-2 space-y-2">
           <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[4em]">
@@ -148,3 +161,4 @@ export function PromptCard({
     </>
   );
 }
+
