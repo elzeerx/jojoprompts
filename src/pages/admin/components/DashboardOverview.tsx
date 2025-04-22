@@ -35,7 +35,7 @@ export default function DashboardOverview() {
   });
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
   // Fetch initial data
   useEffect(() => {
@@ -73,10 +73,12 @@ export default function DashboardOverview() {
       supabase.removeChannel(promptsChannel);
       supabase.removeChannel(profilesChannel);
     };
-  }, []);
+  }, [session]);
 
   const fetchStats = async () => {
     try {
+      setLoading(true);
+      
       // Fetch prompts count
       const { data: prompts, error: promptsError } = await supabase
         .from("prompts")
@@ -84,17 +86,34 @@ export default function DashboardOverview() {
       
       if (promptsError) throw promptsError;
       
-      // Fetch users count
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id", { count: 'exact' });
+      // Fetch users count from the edge function that accesses auth.users
+      let usersCount = 0;
       
-      if (profilesError) throw profilesError;
+      if (session?.access_token) {
+        try {
+          const { data: allUsers, error: usersError } = await supabase.functions.invoke(
+            "get-all-users",
+            {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+            }
+          );
+          
+          if (usersError) {
+            console.error("Error fetching users from edge function:", usersError);
+          } else {
+            usersCount = Array.isArray(allUsers) ? allUsers.length : 0;
+          }
+        } catch (err) {
+          console.error("Failed to call get-all-users edge function:", err);
+        }
+      }
       
       setStats({
         prompts: prompts?.length ?? 0,
-        users: profiles?.length ?? 0,
-        signups: profiles?.length ?? 0, // update if you track sign-up date
+        users: usersCount,
+        signups: usersCount, // Same as users count
         aiRuns: 0 // placeholder for future AI run tracking
       });
       
@@ -106,6 +125,7 @@ export default function DashboardOverview() {
         description: "Failed to fetch dashboard statistics.",
         variant: "destructive",
       });
+      setLoading(false);
     }
   };
 
