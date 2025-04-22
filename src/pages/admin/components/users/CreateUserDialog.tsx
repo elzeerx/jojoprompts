@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -24,15 +25,14 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
     setLoading(true);
     
     try {
-      // Instead of directly using the admin createUser API, we'll insert into profiles
-      // directly and let the RLS handle permissions
+      // First, check if admin is logged in
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData.session) {
         throw new Error("You must be logged in to create users");
       }
       
-      // First register the user using the signUp method
+      // Register the user using signUp method
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -55,6 +55,9 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
 
       if (profileError) throw profileError;
       
+      // Send email notification manually if needed
+      await sendWelcomeEmail(email);
+      
       toast({
         title: "User created",
         description: `Successfully created user ${email}`,
@@ -75,6 +78,23 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendWelcomeEmail = async (userEmail: string) => {
+    try {
+      // Attempt to send a welcome email using Supabase Auth API
+      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+        redirectTo: `${window.location.origin}/login`,
+      });
+      
+      if (error) {
+        console.warn("Could not send welcome email:", error.message);
+      } else {
+        console.log("Welcome email sent successfully");
+      }
+    } catch (err) {
+      console.warn("Failed to send welcome email:", err);
     }
   };
 

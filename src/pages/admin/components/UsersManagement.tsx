@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, UserCheck, UserX, Search, Mail } from "lucide-react";
@@ -43,41 +44,53 @@ export default function UsersManagement() {
     try {
       setLoading(true);
       
+      // Get the current session to get the access token for authorization
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        toast({
+          title: "Error fetching users",
+          description: "You need to be logged in to view users",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Fetch users from the Edge Function
+      const { data: usersData, error } = await supabase.functions.invoke(
+        "get-all-users",
+        {
+          headers: {
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+          },
+        }
+      );
+      
+      if (error) throw error;
+      
+      // Fetch roles from profiles table
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, role');
         
       if (profilesError) throw profilesError;
       
-      if (!profilesData || profilesData.length === 0) {
-        setUsers([]);
-        setLoading(false);
-        return;
-      }
+      // Create a map of user IDs to roles
+      const userRoles = new Map(
+        profilesData?.map(profile => [profile.id, profile.role]) || []
+      );
       
-      const userRoles = new Map(profilesData.map(p => [p.id, p.role]));
+      // Combine the user data with roles
+      const combinedUsers: UserProfile[] = usersData.map((user: any) => ({
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        role: userRoles.get(user.id) || 'user', // Default to 'user' if no role found
+        last_sign_in_at: user.last_sign_in_at
+      }));
       
-      const { data: session } = await supabase.auth.getSession();
-      
-      const userProfiles: UserProfile[] = profilesData.map(profile => {
-        const userProfile: UserProfile = {
-          id: profile.id,
-          email: "User " + profile.id.substring(0, 6),
-          created_at: new Date().toISOString(),
-          role: profile.role,
-          last_sign_in_at: null
-        };
-        
-        if (session?.session?.user && profile.id === session.session.user.id) {
-          userProfile.email = session.session.user.email || userProfile.email;
-          userProfile.created_at = session.session.user.created_at || userProfile.created_at;
-          userProfile.last_sign_in_at = session.session.user.last_sign_in_at;
-        }
-        
-        return userProfile;
-      });
-      
-      setUsers(userProfiles);
+      setUsers(combinedUsers);
     } catch (error: any) {
       console.error("Error fetching users:", error);
       toast({
