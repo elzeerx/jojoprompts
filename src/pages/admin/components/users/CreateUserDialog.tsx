@@ -25,25 +25,37 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
     setLoading(true);
     
     try {
-      // Create the user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Instead of directly using the admin createUser API, we'll insert into profiles
+      // directly and let the RLS handle permissions
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        throw new Error("You must be logged in to create users");
+      }
+      
+      // First register the user using the signUp method
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        email_confirm: true
+        options: {
+          emailRedirect: `${window.location.origin}/login`,
+        }
       });
-
-      if (authError) throw authError;
-
-      // Update the user's role in the profiles table
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ role })
-          .eq('id', authData.user.id);
-
-        if (profileError) throw profileError;
+      
+      if (signUpError) throw signUpError;
+      
+      if (!signUpData.user) {
+        throw new Error("Failed to create user");
       }
+      
+      // Update the user's role in the profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role })
+        .eq('id', signUpData.user.id);
 
+      if (profileError) throw profileError;
+      
       toast({
         title: "User created",
         description: `Successfully created user ${email}`,
@@ -59,7 +71,7 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
       console.error("Error creating user:", error);
       toast({
         title: "Error creating user",
-        description: error.message,
+        description: error.message || "An unknown error occurred",
         variant: "destructive",
       });
     } finally {
