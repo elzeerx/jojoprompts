@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, UserCheck, UserX, Search, Mail } from "lucide-react";
@@ -42,30 +43,49 @@ export default function UsersManagement() {
     try {
       setLoading(true);
       
-      // Call the function to get all users
-      const { data, error } = await supabase.functions.invoke('get-all-users');
-      
-      if (error) throw error;
-      
-      // Fetch profiles to get roles
-      const { data: profiles, error: profilesError } = await supabase
+      // Get all auth users ids from profiles
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, role');
         
       if (profilesError) throw profilesError;
       
-      // Combine the data
-      const profilesMap = new Map(profiles.map(p => [p.id, p.role]));
+      // If there are no profiles, no need to continue
+      if (!profilesData || profilesData.length === 0) {
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
       
-      const combinedUsers = data.map((user: any) => ({
-        id: user.id,
-        email: user.email,
-        created_at: user.created_at,
-        role: profilesMap.get(user.id) || 'user',
-        last_sign_in_at: user.last_sign_in_at
-      }));
+      // Create a map of user IDs to roles
+      const userRoles = new Map(profilesData.map(p => [p.id, p.role]));
       
-      setUsers(combinedUsers);
+      // Get user details from auth.users indirectly by querying public user data
+      // We'll use session info for authenticated users
+      const { data: session } = await supabase.auth.getSession();
+      
+      // Create user profiles from the data we have
+      const userProfiles: UserProfile[] = profilesData.map(profile => {
+        // Set default values
+        const userProfile: UserProfile = {
+          id: profile.id,
+          email: "User " + profile.id.substring(0, 6), // Fallback email
+          created_at: new Date().toISOString(), // Fallback date
+          role: profile.role,
+          last_sign_in_at: null
+        };
+        
+        // If this is the current user, we can get their email from the session
+        if (session?.session?.user && profile.id === session.session.user.id) {
+          userProfile.email = session.session.user.email || userProfile.email;
+          userProfile.created_at = session.session.user.created_at || userProfile.created_at;
+          userProfile.last_sign_in_at = session.session.user.last_sign_in_at;
+        }
+        
+        return userProfile;
+      });
+      
+      setUsers(userProfiles);
     } catch (error: any) {
       console.error("Error fetching users:", error);
       toast({
@@ -225,14 +245,16 @@ export default function UsersManagement() {
                         : "Never"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => sendPasswordResetEmail(user.email)}
-                      >
-                        <Mail className="h-4 w-4 mr-1" />
-                        Reset
-                      </Button>
+                      {user.email && !user.email.startsWith("User ") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => sendPasswordResetEmail(user.email)}
+                        >
+                          <Mail className="h-4 w-4 mr-1" />
+                          Reset
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
