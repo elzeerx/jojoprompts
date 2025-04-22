@@ -1,10 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, UserCheck, UserX, Search, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -44,10 +42,10 @@ export default function UsersManagement() {
     try {
       setLoading(true);
       
-      // Fetch all users from auth.users (via function call)
-      const { data: authUsers, error: authError } = await supabase.rpc('get_all_users');
+      // Call the function to get all users
+      const { data, error } = await supabase.functions.invoke('get-all-users');
       
-      if (authError) throw authError;
+      if (error) throw error;
       
       // Fetch profiles to get roles
       const { data: profiles, error: profilesError } = await supabase
@@ -59,7 +57,7 @@ export default function UsersManagement() {
       // Combine the data
       const profilesMap = new Map(profiles.map(p => [p.id, p.role]));
       
-      const combinedUsers = authUsers.map(user => ({
+      const combinedUsers = data.map((user: any) => ({
         id: user.id,
         email: user.email,
         created_at: user.created_at,
