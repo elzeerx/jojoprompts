@@ -1,3 +1,4 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { Loader2, Zap } from "lucide-react";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import PromptsManagement from "./PromptsManagement";
 import DashboardOverview from "./components/DashboardOverview";
+import UsersManagement from "./components/UsersManagement";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function AdminDashboard() {
@@ -70,14 +72,7 @@ export default function AdminDashboard() {
         </TabsContent>
         
         <TabsContent value="users">
-          <div className="rounded-lg border shadow-sm">
-            <div className="p-6">
-              <h3 className="text-lg font-medium">User Management</h3>
-              <p className="text-muted-foreground">
-                This will be implemented with Supabase authentication
-              </p>
-            </div>
-          </div>
+          <UsersManagement />
         </TabsContent>
         
         <TabsContent value="ai">
