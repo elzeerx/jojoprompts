@@ -1,26 +1,11 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, UserCheck, UserX, Search, Mail } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { CreateUserDialog } from "./users/CreateUserDialog";
+import { CreateUserDialog } from "./CreateUserDialog";
+import { UserSearch } from "./UserSearch";
+import { UsersTable } from "./UsersTable";
 
 interface UserProfile {
   id: string;
@@ -166,15 +151,10 @@ export default function UsersManagement() {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">User Management</h3>
         <div className="flex items-center gap-4">
-          <div className="relative w-64">
-            <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
-            />
-          </div>
+          <UserSearch 
+            searchTerm={searchTerm} 
+            onSearchChange={setSearchTerm} 
+          />
           <CreateUserDialog onUserCreated={fetchUsers} />
         </div>
       </div>
@@ -185,88 +165,12 @@ export default function UsersManagement() {
         </div>
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                    No users found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>
-                      <Select
-                        defaultValue={user.role}
-                        onValueChange={(value) => updateUserRole(user.id, value)}
-                        disabled={updatingUserId === user.id}
-                      >
-                        <SelectTrigger className="w-[110px]">
-                          <SelectValue>
-                            <div className="flex items-center">
-                              {updatingUserId === user.id ? (
-                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                              ) : user.role === "admin" ? (
-                                <UserCheck className="mr-2 h-3 w-3 text-primary" />
-                              ) : (
-                                <UserX className="mr-2 h-3 w-3 text-muted-foreground" />
-                              )}
-                              {user.role}
-                            </div>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">
-                            <div className="flex items-center">
-                              <UserCheck className="mr-2 h-4 w-4 text-primary" />
-                              admin
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="user">
-                            <div className="flex items-center">
-                              <UserX className="mr-2 h-4 w-4 text-muted-foreground" />
-                              user
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {user.last_sign_in_at 
-                        ? new Date(user.last_sign_in_at).toLocaleDateString() 
-                        : "Never"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {user.email && !user.email.startsWith("User ") && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => sendPasswordResetEmail(user.email)}
-                        >
-                          <Mail className="h-4 w-4 mr-1" />
-                          Reset
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <UsersTable 
+            users={filteredUsers} 
+            updatingUserId={updatingUserId}
+            onUpdateRole={updateUserRole}
+            onSendResetEmail={sendPasswordResetEmail}
+          />
         </div>
       )}
     </div>

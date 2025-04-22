@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import PromptsManagement from "./PromptsManagement";
 import DashboardOverview from "./components/DashboardOverview";
-import UsersManagement from "./components/UsersManagement";
+import UsersManagement from "./components/users/UsersManagement";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function AdminDashboard() {
