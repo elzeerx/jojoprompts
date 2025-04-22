@@ -6,6 +6,8 @@ import { toast } from "@/hooks/use-toast";
 import { CreateUserDialog } from "./CreateUserDialog";
 import { UserSearch } from "./UserSearch";
 import { UsersTable } from "./UsersTable";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -18,6 +20,7 @@ interface UserProfile {
 export default function UsersManagement() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
@@ -28,6 +31,7 @@ export default function UsersManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // Get the current session
       const { data: sessionData } = await supabase.auth.getSession();
@@ -39,6 +43,7 @@ export default function UsersManagement() {
           variant: "destructive",
         });
         setLoading(false);
+        setError("Authentication required");
         return;
       }
       
@@ -61,17 +66,26 @@ export default function UsersManagement() {
       } catch (edgeFunctionError) {
         console.warn("Edge function failed, falling back to direct query:", edgeFunctionError);
         
-        // Fallback: Use Supabase auth API directly
-        // This requires the user to have admin rights in Supabase
-        const { data, error } = await supabase.auth.admin.listUsers();
-        
-        if (error) throw error;
-        userData = data.users.map((user: any) => ({
-          id: user.id,
-          email: user.email || '',
-          created_at: user.created_at || '',
-          last_sign_in_at: user.last_sign_in_at,
-        }));
+        try {
+          // Fallback: Use Supabase auth API directly
+          // This requires the user to have admin rights in Supabase
+          const { data, error } = await supabase.auth.admin.listUsers();
+          
+          if (error) throw error;
+          userData = data.users.map((user: any) => ({
+            id: user.id,
+            email: user.email || '',
+            created_at: user.created_at || '',
+            last_sign_in_at: user.last_sign_in_at,
+          }));
+        } catch (authApiError: any) {
+          console.error("Error fetching users:", authApiError);
+          // More specific error message based on the error
+          if (authApiError.status === 403 || authApiError.code === 'not_admin') {
+            throw new Error("You need Supabase admin privileges to access user data. Please check your role in Supabase or contact the system administrator.");
+          }
+          throw authApiError;
+        }
       }
       
       // Fetch roles from profiles table
@@ -98,6 +112,7 @@ export default function UsersManagement() {
       setUsers(combinedUsers);
     } catch (error: any) {
       console.error("Error fetching users:", error);
+      setError(error.message || "Failed to load users");
       toast({
         title: "Error fetching users",
         description: error.message || "Failed to load users",
@@ -178,6 +193,14 @@ export default function UsersManagement() {
           <CreateUserDialog onUserCreated={fetchUsers} />
         </div>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-8">

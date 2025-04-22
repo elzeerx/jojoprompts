@@ -9,7 +9,21 @@ interface User {
   last_sign_in_at: string | null;
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+};
+
 serve(async (req) => {
+  // Handle CORS preflight request
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
@@ -18,9 +32,9 @@ serve(async (req) => {
     // Check if the user is an admin
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized - Missing authorization header' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
@@ -28,9 +42,9 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
@@ -41,10 +55,17 @@ serve(async (req) => {
       .eq('id', user.id)
       .single();
       
-    if (profileError || profile?.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+    if (profileError) {
+      return new Response(JSON.stringify({ error: 'Error fetching user profile', details: profileError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (profile?.role !== 'admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden - Admin role required' }), {
         status: 403,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
@@ -52,9 +73,9 @@ serve(async (req) => {
     const { data: users, error } = await supabase.auth.admin.listUsers();
     
     if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: 'Error fetching users', details: error.message }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
@@ -68,12 +89,16 @@ serve(async (req) => {
     
     return new Response(JSON.stringify(formattedUsers), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Edge function error:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Server error', 
+      message: error.message || 'An unexpected error occurred',
+    }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
