@@ -40,11 +40,24 @@ export function UsersTable({
 }: UsersTableProps) {
   if (users.length === 0) {
     return (
-      <TableRow>
-        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-          No users found
-        </TableCell>
-      </TableRow>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Joined</TableHead>
+            <TableHead>Last Login</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+              No users found
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
     );
   }
 

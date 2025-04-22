@@ -29,7 +29,7 @@ export default function UsersManagement() {
     try {
       setLoading(true);
       
-      // Get the current session to get the access token for authorization
+      // Get the current session
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData.session) {
@@ -42,17 +42,37 @@ export default function UsersManagement() {
         return;
       }
       
-      // Fetch users from the Edge Function
-      const { data: usersData, error } = await supabase.functions.invoke(
-        "get-all-users",
-        {
-          headers: {
-            Authorization: `Bearer ${sessionData.session.access_token}`,
-          },
-        }
-      );
+      let userData = [];
       
-      if (error) throw error;
+      try {
+        // First, try to fetch using the Edge Function
+        const { data, error } = await supabase.functions.invoke(
+          "get-all-users",
+          {
+            headers: {
+              Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+          }
+        );
+        
+        if (error) throw error;
+        userData = data;
+        
+      } catch (edgeFunctionError) {
+        console.warn("Edge function failed, falling back to direct query:", edgeFunctionError);
+        
+        // Fallback: Use Supabase auth API directly
+        // This requires the user to have admin rights in Supabase
+        const { data, error } = await supabase.auth.admin.listUsers();
+        
+        if (error) throw error;
+        userData = data.users.map((user: any) => ({
+          id: user.id,
+          email: user.email || '',
+          created_at: user.created_at || '',
+          last_sign_in_at: user.last_sign_in_at,
+        }));
+      }
       
       // Fetch roles from profiles table
       const { data: profilesData, error: profilesError } = await supabase
@@ -67,7 +87,7 @@ export default function UsersManagement() {
       );
       
       // Combine the user data with roles
-      const combinedUsers: UserProfile[] = usersData.map((user: any) => ({
+      const combinedUsers: UserProfile[] = userData.map((user: any) => ({
         id: user.id,
         email: user.email,
         created_at: user.created_at,
