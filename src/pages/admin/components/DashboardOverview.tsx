@@ -111,27 +111,45 @@ export default function DashboardOverview() {
 
   const fetchRecentActivity = async () => {
     try {
-      // Fetch 5 most recent prompts as activity
-      const { data, error } = await supabase
+      // Fetch 5 most recent prompts
+      const { data: promptsData, error: promptsError } = await supabase
         .from("prompts")
         .select(`
           id,
           title,
           created_at,
-          user_id,
-          profiles:user_id(email:id)
+          user_id
         `)
         .order('created_at', { ascending: false })
         .limit(5);
       
-      if (error) throw error;
+      if (promptsError) throw promptsError;
+      
+      // Fetch user emails in a separate query
+      const userIds = promptsData.map(prompt => prompt.user_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, email:id")
+        .in("id", userIds);
+        
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+      }
+      
+      // Create a map of user IDs to emails
+      const userEmailMap = new Map();
+      if (profilesData) {
+        profilesData.forEach(profile => {
+          userEmailMap.set(profile.id, profile.email);
+        });
+      }
       
       // Format the activity data
-      const formattedActivity: ActivityItem[] = data.map(item => ({
+      const formattedActivity: ActivityItem[] = promptsData.map(item => ({
         id: item.id,
         description: `New prompt created: "${item.title}"`,
         timestamp: item.created_at,
-        user_email: item.profiles?.email || 'Unknown user'
+        user_email: userEmailMap.get(item.user_id) || 'Unknown user'
       }));
       
       setRecentActivity(formattedActivity);
