@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, UserCheck, UserX, Search, Mail } from "lucide-react";
@@ -20,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { CreateUserDialog } from "./users/CreateUserDialog";
 
 interface UserProfile {
   id: string;
@@ -43,39 +43,31 @@ export default function UsersManagement() {
     try {
       setLoading(true);
       
-      // Get all auth users ids from profiles
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, role');
         
       if (profilesError) throw profilesError;
       
-      // If there are no profiles, no need to continue
       if (!profilesData || profilesData.length === 0) {
         setUsers([]);
         setLoading(false);
         return;
       }
       
-      // Create a map of user IDs to roles
       const userRoles = new Map(profilesData.map(p => [p.id, p.role]));
       
-      // Get user details from auth.users indirectly by querying public user data
-      // We'll use session info for authenticated users
       const { data: session } = await supabase.auth.getSession();
       
-      // Create user profiles from the data we have
       const userProfiles: UserProfile[] = profilesData.map(profile => {
-        // Set default values
         const userProfile: UserProfile = {
           id: profile.id,
-          email: "User " + profile.id.substring(0, 6), // Fallback email
-          created_at: new Date().toISOString(), // Fallback date
+          email: "User " + profile.id.substring(0, 6),
+          created_at: new Date().toISOString(),
           role: profile.role,
           last_sign_in_at: null
         };
         
-        // If this is the current user, we can get their email from the session
         if (session?.session?.user && profile.id === session.session.user.id) {
           userProfile.email = session.session.user.email || userProfile.email;
           userProfile.created_at = session.session.user.created_at || userProfile.created_at;
@@ -109,7 +101,6 @@ export default function UsersManagement() {
         
       if (error) throw error;
       
-      // Update local state
       setUsers(users.map(user => 
         user.id === userId ? { ...user, role: newRole } : user
       ));
@@ -152,7 +143,6 @@ export default function UsersManagement() {
     }
   };
 
-  // Filter users based on search term
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.role.toLowerCase().includes(searchTerm.toLowerCase())
@@ -162,14 +152,17 @@ export default function UsersManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">User Management</h3>
-        <div className="relative w-64">
-          <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
-          />
+        <div className="flex items-center gap-4">
+          <div className="relative w-64">
+            <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <CreateUserDialog onUserCreated={fetchUsers} />
         </div>
       </div>
 
