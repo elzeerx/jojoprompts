@@ -92,7 +92,7 @@ export default function PromptsPage() {
   };
 
   return (
-    <div className="container py-8 max-w-full overflow-x-hidden">
+    <div className="container px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
       <PromptsHeader
         view={view}
         setView={setView}
@@ -109,8 +109,6 @@ export default function PromptsPage() {
         view={view}
         setView={setView}
       />
-
-      {/* No PromptsBulkActions since selection is removed */}
 
       <PromptsContent
         view={view}
