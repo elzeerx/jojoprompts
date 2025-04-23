@@ -28,7 +28,13 @@ export function PromptDetailsDialog({
     }
   }, [promptList, prompt.id, onOpenChange]);
 
-  const dialogImgUrl = getPromptImage(prompt.image_path || prompt.image_url, 1200, 90);
+  // Use either image_path or image_url, with image_path having priority
+  const imagePath = prompt.image_path || prompt.image_url || null;
+  const dialogImgUrl = getPromptImage(imagePath, 1200, 90);
+
+  // Log for debugging
+  console.debug("Details dialog image path:", imagePath);
+  console.debug("Details dialog image URL:", dialogImgUrl);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,7 +57,7 @@ export function PromptDetailsDialog({
                 aspect={16/9}
                 className="cursor-zoom-in"
                 onClick={() => {
-                  const fullImage = getPromptImage(prompt.image_path || prompt.image_url, 2000, 100);
+                  const fullImage = getPromptImage(imagePath, 2000, 100);
                   if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
                 }}
               />

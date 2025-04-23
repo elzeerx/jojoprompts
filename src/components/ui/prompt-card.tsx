@@ -1,6 +1,6 @@
 
 // PromptCard main file — refactored with atoms
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { CopyButton } from "./copy-button";
 import { Button } from "./button";
@@ -43,8 +43,17 @@ export function PromptCard({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const aspect = 4 / 3;
 
-  // Use the universal helper, support both "image_path" (preferred) and "image_url" (legacy)
-  const imgUrl = getPromptImage(prompt.image_path || prompt.image_url, 400, 80);
+  // Determine the image path, with image_path having priority over image_url
+  const imagePath = prompt.image_path || prompt.image_url || null;
+  
+  // Use the universal helper with the appropriate path
+  const imgUrl = getPromptImage(imagePath, 400, 80);
+
+  // Debug log for image loading
+  useEffect(() => {
+    console.debug(`Card image path: ${imagePath}`);
+    console.debug(`Card image URL: ${imgUrl}`);
+  }, [imagePath, imgUrl]);
 
   const handleSelectChange = (checked: boolean) => {
     onSelect?.(prompt.id);
@@ -146,7 +155,7 @@ export function PromptCard({
           )}
         </CardFooter>
       </Card>
-      <PromptDetailsDialog open={detailsOpen} onOpenChange={setDetailsOpen} prompt={prompt} />
+      <PromptDetailsDialog open={detailsOpen} onOpenChange={setDetailsOpen} prompt={prompt as PromptRow} />
     </>
   );
 }

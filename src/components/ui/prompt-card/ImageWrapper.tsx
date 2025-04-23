@@ -40,7 +40,7 @@ export function ImageWrapper({
   }
 
   const handleError = () => {
-    console.log(`Image failed to load: ${imageSrc}`);
+    console.error(`Image failed to load: ${imageSrc}`);
     setError(true);
     setLoading(false);
   };
@@ -59,12 +59,13 @@ export function ImageWrapper({
         {error ? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
             <span role="img" aria-label="Image failed to load" className="text-3xl">📷</span>
+            <span className="sr-only">Image failed to load</span>
           </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <img
               src={imageSrc}
-              alt={alt}
+              alt={alt || "Prompt image"}
               loading="lazy"
               aria-busy={loading}
               onLoad={handleLoad}
