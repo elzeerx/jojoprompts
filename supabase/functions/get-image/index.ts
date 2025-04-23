@@ -24,6 +24,10 @@ serve(async (req) => {
       rawPath = rawPath.substring(getImageIndex + '/get-image/'.length);
     } else {
       console.error("Path format error: Could not find '/get-image/' in path:", rawPath);
+      return new Response(JSON.stringify({ error: 'Invalid path format' }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+      });
     }
     
     const imagePath = decodeURIComponent(rawPath);

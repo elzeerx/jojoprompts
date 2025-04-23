@@ -9,13 +9,17 @@ export function ImageWrapper({
   alt,
   aspect = 4 / 3,
   className = "",
+  onLoad,
+  onError,
   ...props
 }: {
   src?: string | null;
   alt?: string;
   aspect?: number;
   className?: string;
-} & Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt">) {
+  onLoad?: () => void;
+  onError?: () => void;
+} & Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt" | "onLoad" | "onError">) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(src);
@@ -96,6 +100,9 @@ export function ImageWrapper({
     setError(true);
     setLoading(false);
     
+    // Call the external error handler if provided
+    onError?.();
+    
     // Try fallback method if we haven't already
     if (retries < 2) {
       setRetries(prev => prev + 1);
@@ -106,6 +113,9 @@ export function ImageWrapper({
     console.log(`Image loaded successfully: ${imageSrc}`);
     setLoading(false);
     setError(false);
+    
+    // Call the external load handler if provided
+    onLoad?.();
   };
 
   return (
