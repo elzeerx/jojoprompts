@@ -28,7 +28,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
     
-    // Always use service role key for admin operations
+    // Create client with service role key for admin operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if the user is an admin
@@ -50,7 +50,9 @@ serve(async (req) => {
       });
     }
     
-    // Verify admin role
+    console.log(`User ${user.id} is attempting to access admin functionality`);
+    
+    // Verify admin role using the profiles table
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
@@ -58,6 +60,7 @@ serve(async (req) => {
       .single();
       
     if (profileError) {
+      console.error('Error fetching user profile:', profileError);
       return new Response(JSON.stringify({ error: 'Error fetching user profile', details: profileError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -65,6 +68,7 @@ serve(async (req) => {
     }
     
     if (profile?.role !== 'admin') {
+      console.error(`User ${user.id} is not an admin. Role: ${profile?.role}`);
       return new Response(JSON.stringify({ error: 'Forbidden - Admin role required' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -106,7 +110,7 @@ serve(async (req) => {
     }
     
     // Default behavior: Get all users
-    console.log('Admin fetching all users');
+    console.log(`Admin ${user.id} is fetching all users`);
     const { data: users, error } = await supabase.auth.admin.listUsers();
     
     if (error) {

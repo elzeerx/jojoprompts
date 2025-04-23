@@ -8,6 +8,8 @@ import { UserSearch } from "./UserSearch";
 import { UsersTable } from "./UsersTable";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface UserProfile {
   id: string;
@@ -23,6 +25,7 @@ export default function UsersManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const { session } = useAuth();
 
   useEffect(() => {
     fetchUsers();
@@ -33,10 +36,7 @@ export default function UsersManagement() {
       setLoading(true);
       setError(null);
       
-      // Get the current session
-      const { data: sessionData } = await supabase.auth.getSession();
-      
-      if (!sessionData.session) {
+      if (!session) {
         toast({
           title: "Error fetching users",
           description: "You need to be logged in to view users",
@@ -47,45 +47,27 @@ export default function UsersManagement() {
         return;
       }
       
-      let userData = [];
-      
-      try {
-        // First, try to fetch using the Edge Function
-        const { data, error } = await supabase.functions.invoke(
-          "get-all-users",
-          {
-            headers: {
-              Authorization: `Bearer ${sessionData.session.access_token}`,
-            },
-          }
-        );
-        
-        if (error) throw error;
-        userData = data;
-        
-      } catch (edgeFunctionError) {
-        console.warn("Edge function failed, falling back to direct query:", edgeFunctionError);
-        
-        try {
-          // Fallback: Use Supabase auth API directly
-          // This requires the user to have admin rights in Supabase
-          const { data, error } = await supabase.auth.admin.listUsers();
-          
-          if (error) throw error;
-          userData = data.users.map((user: any) => ({
-            id: user.id,
-            email: user.email || '',
-            created_at: user.created_at || '',
-            last_sign_in_at: user.last_sign_in_at,
-          }));
-        } catch (authApiError: any) {
-          console.error("Error fetching users:", authApiError);
-          // More specific error message based on the error
-          if (authApiError.status === 403 || authApiError.code === 'not_admin') {
-            throw new Error("You need Supabase admin privileges to access user data. Please check your role in Supabase or contact the system administrator.");
-          }
-          throw authApiError;
+      // Call the edge function to get users
+      const { data, error } = await supabase.functions.invoke(
+        "get-all-users",
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         }
+      );
+      
+      if (error) {
+        console.error("Error fetching users from edge function:", error);
+        throw new Error(error.message || "Failed to fetch users");
+      }
+      
+      if (!Array.isArray(data)) {
+        // This might be an error response from our edge function
+        if (data.error) {
+          throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
+        }
+        throw new Error("Invalid response format from server");
       }
       
       // Fetch roles from profiles table
@@ -101,7 +83,7 @@ export default function UsersManagement() {
       );
       
       // Combine the user data with roles
-      const combinedUsers: UserProfile[] = userData.map((user: any) => ({
+      const combinedUsers: UserProfile[] = data.map((user: any) => ({
         id: user.id,
         email: user.email,
         created_at: user.created_at,
@@ -112,10 +94,19 @@ export default function UsersManagement() {
       setUsers(combinedUsers);
     } catch (error: any) {
       console.error("Error fetching users:", error);
-      setError(error.message || "Failed to load users");
+      
+      // Format the error message to be user-friendly
+      let errorMessage = "Failed to load users";
+      if (error.message && error.message.includes("admin privileges")) {
+        errorMessage = "You need Supabase admin privileges to access user data. Please check your role in Supabase or contact the system administrator.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
       toast({
         title: "Error fetching users",
-        description: error.message || "Failed to load users",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -183,10 +174,7 @@ export default function UsersManagement() {
 
     setUpdatingUserId(userId);
     try {
-      // Instead of using the auth.admin API directly, we'll use the edge function
-      // This approach should work better with Supabase's permission model
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      if (!session) {
         toast({
           title: "Authentication Error",
           description: "Admin authentication is required for user deletion.",
@@ -195,25 +183,28 @@ export default function UsersManagement() {
         return;
       }
       
+      // Use the edge function to delete the user
       const { data, error } = await supabase.functions.invoke(
         "get-all-users",
         {
           headers: {
-            Authorization: `Bearer ${sessionData.session.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: { userId, action: "delete" }
         }
       );
 
-      if (error) throw error;
+      if (error || (data && data.error)) {
+        throw new Error(error?.message || data?.error || "Error deleting user");
+      }
       
       toast({
         title: "User Deleted",
         description: `User ${email} has been permanently deleted.`,
       });
 
-      // Refresh users list
-      fetchUsers();
+      // Remove the user from the local state
+      setUsers(users.filter(user => user.id !== userId));
 
     } catch (error: any) {
       console.error("Error deleting user:", error);
@@ -225,6 +216,10 @@ export default function UsersManagement() {
     } finally {
       setUpdatingUserId(null);
     }
+  };
+
+  const retryFetchUsers = () => {
+    fetchUsers();
   };
 
   const filteredUsers = users.filter(user => 
@@ -249,7 +244,18 @@ export default function UsersManagement() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {error}
+            {error.includes("admin privileges") && (
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-destructive-foreground hover:text-destructive-foreground/80 ml-2"
+                onClick={retryFetchUsers}
+              >
+                Retry
+              </Button>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 
