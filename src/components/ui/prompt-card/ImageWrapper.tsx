@@ -30,6 +30,13 @@ export function ImageWrapper({
     }
   }, [src]);
 
+  useEffect(() => {
+    if (imageSrc) {
+      // Log the image URL for debugging
+      console.debug(`Loading image: ${imageSrc}`);
+    }
+  }, [imageSrc]);
+
   if (!imageSrc) {
     // SVG placeholder for empty image
     return (
@@ -46,6 +53,7 @@ export function ImageWrapper({
   };
 
   const handleLoad = () => {
+    console.debug(`Image loaded successfully: ${imageSrc}`);
     setLoading(false);
     setError(false);
   };

@@ -33,8 +33,12 @@ export function PromptDetailsDialog({
   const dialogImgUrl = getPromptImage(imagePath, 1200, 90);
 
   // Log for debugging
-  console.debug("Details dialog image path:", imagePath);
-  console.debug("Details dialog image URL:", dialogImgUrl);
+  useEffect(() => {
+    if (open) {
+      console.debug("Details dialog image path:", imagePath);
+      console.debug("Details dialog image URL:", dialogImgUrl);
+    }
+  }, [open, imagePath, dialogImgUrl]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

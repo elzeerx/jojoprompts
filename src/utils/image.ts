@@ -1,8 +1,7 @@
 
-// The VITE_SUPABASE_URL environment variable should be accessed properly
-const STORAGE_BASE = import.meta.env.VITE_SUPABASE_URL ? 
-  `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public` : 
-  "https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public";
+// The correct Supabase URL for this project
+const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
+const STORAGE_BASE = `${SUPABASE_URL}/storage/v1/object/public`;
 const BUCKET = 'prompt-images';
 
 export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80) {
