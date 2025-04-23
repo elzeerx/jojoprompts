@@ -12,9 +12,20 @@ export default {
 	theme: {
 		container: {
 			center: true,
-			padding: '2rem',
+			padding: {
+        DEFAULT: "1.25rem", // 20px for default use
+        sm: "2rem",
+        md: "2.5rem",
+        lg: "3rem",
+        xl: "4rem",
+        "2xl": "6rem",
+      },
 			screens: {
-				'2xl': '1400px'
+				'2xl': '1340px', // a bit smaller than before for better centering
+        xl: '1140px',
+        lg: '960px',
+        md: '720px',
+        sm: '100vw',
 			}
 		},
 		extend: {

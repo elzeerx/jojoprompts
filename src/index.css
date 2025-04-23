@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -85,22 +84,56 @@
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
+/* Ensure container always uses correct max-width and padding */
+.container {
+  max-width: 100%;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.25rem !important; /* match Tailwind config */
+  padding-right: 1.25rem !important;
+}
 
-  body {
-    @apply bg-background text-foreground;
-    overflow-x: hidden;
-  }
-
+@media (min-width: 640px) {
   .container {
-    max-width: 100vw !important;
-    overflow-x: hidden;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+    max-width: 100vw;
   }
+}
+@media (min-width: 768px) {
+  .container {
+    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
+    max-width: 720px;
+  }
+}
+@media (min-width: 1024px) {
+  .container {
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+    max-width: 960px;
+  }
+}
+@media (min-width: 1280px) {
+  .container {
+    padding-left: 4rem !important;
+    padding-right: 4rem !important;
+    max-width: 1140px;
+  }
+}
+@media (min-width: 1536px) {
+  .container {
+    padding-left: 6rem !important;
+    padding-right: 6rem !important;
+    max-width: 1340px;
+  }
+}
+
+/* Remove any unnecessary hardcoded padding/margin in body */
+body {
+  @apply bg-background text-foreground;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
