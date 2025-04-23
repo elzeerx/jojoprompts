@@ -27,6 +27,8 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
+    
+    // Always use service role key for admin operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if the user is an admin
@@ -71,30 +73,44 @@ serve(async (req) => {
     
     // Check if this is a delete request
     if (req.method === 'POST') {
-      const { userId, action } = await req.json();
-      
-      if (action === 'delete' && userId) {
-        // Delete the user
-        const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+      try {
+        const { userId, action } = await req.json();
         
-        if (deleteError) {
-          return new Response(JSON.stringify({ error: 'Error deleting user', details: deleteError.message }), {
-            status: 500,
+        if (action === 'delete' && userId) {
+          console.log(`Admin ${user.id} is attempting to delete user ${userId}`);
+          
+          // Delete the user with service role client
+          const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+          
+          if (deleteError) {
+            console.error(`Error deleting user ${userId}:`, deleteError);
+            return new Response(JSON.stringify({ error: 'Error deleting user', details: deleteError.message }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          console.log(`Successfully deleted user ${userId}`);
+          return new Response(JSON.stringify({ success: true, message: 'User deleted successfully' }), {
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        
-        return new Response(JSON.stringify({ success: true, message: 'User deleted successfully' }), {
-          status: 200,
+      } catch (parseError) {
+        console.error('Error parsing JSON body:', parseError);
+        return new Response(JSON.stringify({ error: 'Invalid JSON body', details: parseError.message }), {
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
     }
     
     // Default behavior: Get all users
+    console.log('Admin fetching all users');
     const { data: users, error } = await supabase.auth.admin.listUsers();
     
     if (error) {
+      console.error('Error listing users:', error);
       return new Response(JSON.stringify({ error: 'Error fetching users', details: error.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
