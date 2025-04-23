@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -176,6 +175,48 @@ export default function UsersManagement() {
     }
   };
 
+  const deleteUser = async (userId: string, email: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete user: ${email}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setUpdatingUserId(userId);
+    try {
+      // Get session to be able to call admin.deleteUser
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast({
+          title: "Authentication Error",
+          description: "Admin authentication is required for user deletion.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Must use Supabase Admin API to delete the user
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+
+      if (error) throw error;
+      toast({
+        title: "User Deleted",
+        description: `User ${email} has been permanently deleted.`,
+      });
+
+      // Refresh users list
+      fetchUsers();
+
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete user",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.role.toLowerCase().includes(searchTerm.toLowerCase())
@@ -213,6 +254,7 @@ export default function UsersManagement() {
             updatingUserId={updatingUserId}
             onUpdateRole={updateUserRole}
             onSendResetEmail={sendPasswordResetEmail}
+            onDeleteUser={deleteUser}
           />
         </div>
       )}

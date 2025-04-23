@@ -1,5 +1,5 @@
 
-import { Loader2, UserCheck, UserX, Mail } from "lucide-react";
+import { Loader2, UserCheck, UserX, Mail, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -30,6 +30,7 @@ interface UsersTableProps {
   updatingUserId: string | null;
   onUpdateRole: (userId: string, newRole: string) => void;
   onSendResetEmail: (email: string) => void;
+  onDeleteUser: (userId: string, email: string) => void;
 }
 
 export function UsersTable({
@@ -37,6 +38,7 @@ export function UsersTable({
   updatingUserId,
   onUpdateRole,
   onSendResetEmail,
+  onDeleteUser,
 }: UsersTableProps) {
   if (users.length === 0) {
     return (
@@ -120,16 +122,27 @@ export function UsersTable({
                 ? new Date(user.last_sign_in_at).toLocaleDateString() 
                 : "Never"}
             </TableCell>
-            <TableCell className="text-right">
+            <TableCell className="text-right flex gap-2 justify-end">
               {user.email && !user.email.startsWith("User ") && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onSendResetEmail(user.email)}
-                >
-                  <Mail className="h-4 w-4 mr-1" />
-                  Reset
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onSendResetEmail(user.email)}
+                  >
+                    <Mail className="h-4 w-4 mr-1" />
+                    Reset
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="hover:bg-red-700"
+                    onClick={() => onDeleteUser(user.id, user.email)}
+                    title="Delete User"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                </>
               )}
             </TableCell>
           </TableRow>
