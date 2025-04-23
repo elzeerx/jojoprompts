@@ -1,4 +1,3 @@
-
 // PromptCard main file — refactored with atoms
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
@@ -110,9 +109,6 @@ export function PromptCard({
           <CardActions
             favorited={favorited}
             onToggleFavorite={toggleFavorite}
-            isSelectable={isSelectable}
-            isSelected={isSelected}
-            onSelect={handleSelectChange}
           />
         </div>
         <CardHeader className="p-4 pb-2">

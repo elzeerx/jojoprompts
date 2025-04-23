@@ -1,6 +1,5 @@
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,17 +7,11 @@ import { useAuth } from "@/contexts/AuthContext";
 export function CardActions({
   favorited,
   onToggleFavorite,
-  isSelectable,
-  isSelected,
-  onSelect,
   showHeart = true,
   className = ""
 }: {
   favorited: boolean;
   onToggleFavorite: (e: React.MouseEvent) => void;
-  isSelectable?: boolean;
-  isSelected?: boolean;
-  onSelect?: (checked: boolean) => void;
   showHeart?: boolean;
   className?: string;
 }) {
@@ -26,22 +19,12 @@ export function CardActions({
 
   return (
     <div className={cn(
-      "flex items-center justify-between w-full px-2",
+      "flex items-center justify-end w-full px-2",
       "absolute top-3 left-0 z-10",
       className
     )}>
-      {isSelectable && (
-        <div className="backdrop-blur bg-black/30 rounded-full p-1">
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={onSelect}
-            onClick={e => e.stopPropagation()}
-            onKeyDown={e => e.stopPropagation()}
-            className="h-5 w-5 border-2 border-white bg-white/40"
-          />
-        </div>
-      )}
-      <div className="ml-auto">
+      {/* Only show Heart for authenticated users */}
+      <div>
         {showHeart && session && (
           <Button
             variant="ghost"

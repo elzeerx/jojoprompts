@@ -12,7 +12,7 @@ interface PromptsHeaderProps {
 }
 
 export function PromptsHeader({
-  view, setView, selectedPromptsLength, onClearSelections
+  view, setView,
 }: PromptsHeaderProps) {
   return (
     <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-6">
@@ -23,32 +23,24 @@ export function PromptsHeader({
         </p>
       </div>
       <div className="flex items-center gap-2">
-        {selectedPromptsLength > 0 ? (
-          <>
-            <Button size="sm" onClick={onClearSelections}>
-              Clear ({selectedPromptsLength})
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="ml-auto flex gap-1">
+              <SlidersHorizontal className="h-4 w-4" />
+              <span className="hidden sm:inline">View</span>
             </Button>
-          </>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="ml-auto flex gap-1">
-                <SlidersHorizontal className="h-4 w-4" />
-                <span className="hidden sm:inline">View</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setView("grid")}>
-                <Grid className="h-4 w-4 mr-2" />
-                Grid View
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setView("list")}>
-                <List className="h-4 w-4 mr-2" />
-                List View
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setView("grid")}>
+              <Grid className="h-4 w-4 mr-2" />
+              Grid View
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setView("list")}>
+              <List className="h-4 w-4 mr-2" />
+              List View
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

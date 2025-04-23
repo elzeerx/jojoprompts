@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -9,7 +10,6 @@ import { toast } from "@/hooks/use-toast";
 import { usePromptsData } from "./usePromptsData";
 import { PromptsHeader } from "./PromptsHeader";
 import { PromptsFilters } from "./PromptsFilters";
-import { PromptsBulkActions } from "./PromptsBulkActions";
 import { PromptsContent } from "./PromptsContent";
 
 export default function PromptsPage() {
@@ -18,7 +18,6 @@ export default function PromptsPage() {
 
   const [view, setView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
   const [category, setCategory] = useState<string>("all");
 
   const [selectedPrompt, setSelectedPrompt] = useState<PromptRow | null>(null);
@@ -40,22 +39,6 @@ export default function PromptsPage() {
     const matchesCategory = category === "all" || prompt.metadata.category === category;
     return matchesSearch && matchesCategory;
   });
-
-  const handleSelectPrompt = (promptId: string) => {
-    setSelectedPrompts(prev =>
-      prev.includes(promptId)
-        ? prev.filter(id => id !== promptId)
-        : [...prev, promptId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedPrompts.length === filteredPrompts.length) {
-      setSelectedPrompts([]);
-    } else {
-      setSelectedPrompts(filteredPrompts.map(p => p.id));
-    }
-  };
 
   const handleDeletePrompt = async (promptId: string) => {
     try {
@@ -109,12 +92,12 @@ export default function PromptsPage() {
   };
 
   return (
-    <div className="container py-8">
+    <div className="container py-8 max-w-full overflow-x-hidden">
       <PromptsHeader
         view={view}
         setView={setView}
-        selectedPromptsLength={selectedPrompts.length}
-        onClearSelections={() => setSelectedPrompts([])}
+        selectedPromptsLength={0} // No selection logic
+        onClearSelections={() => {}} // No-op
       />
 
       <PromptsFilters
@@ -127,13 +110,7 @@ export default function PromptsPage() {
         setView={setView}
       />
 
-      {selectedPrompts.length > 0 && (
-        <PromptsBulkActions
-          selectedPromptsLength={selectedPrompts.length}
-          totalFiltered={filteredPrompts.length}
-          onSelectAll={handleSelectAll}
-        />
-      )}
+      {/* No PromptsBulkActions since selection is removed */}
 
       <PromptsContent
         view={view}
@@ -146,8 +123,8 @@ export default function PromptsPage() {
           setSearchQuery("");
           setCategory("all");
         }}
-        selectedPrompts={selectedPrompts}
-        onSelectPrompt={handleSelectPrompt}
+        selectedPrompts={[]} // Not used anymore, safe to pass empty
+        onSelectPrompt={() => {}} // Not used anymore, safe to noop
       />
 
       {selectedPrompt && (

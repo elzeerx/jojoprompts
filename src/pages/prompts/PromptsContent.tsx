@@ -11,13 +11,13 @@ interface PromptsContentProps {
   searchQuery: string;
   category: string;
   onClearFilters: () => void;
-  selectedPrompts: string[];
-  onSelectPrompt: (id: string) => void;
+  selectedPrompts?: string[]; // now optional
+  onSelectPrompt?: (id: string) => void; // now optional
 }
 
 export function PromptsContent({
   view, filteredPrompts, isLoading, error, searchQuery, category,
-  onClearFilters, selectedPrompts, onSelectPrompt
+  onClearFilters
 }: PromptsContentProps) {
   const isGridView = view === "grid";
 
@@ -75,9 +75,6 @@ export function PromptsContent({
         <PromptCard
           key={prompt.id}
           prompt={prompt}
-          isSelectable={true}
-          isSelected={selectedPrompts.includes(prompt.id)}
-          onSelect={onSelectPrompt}
         />
       ))}
     </div>
