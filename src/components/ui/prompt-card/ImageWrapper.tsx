@@ -35,8 +35,8 @@ export function ImageWrapper({
 
   // For edge function access logging
   useEffect(() => {
-    if (imageSrc && (imageSrc.includes('/api/get-image/') || imageSrc.includes('/api/images/')) && retries === 0) {
-      console.debug(`Loading image via edge function: ${imageSrc}`);
+    if (imageSrc && imageSrc.includes('/api/get-image/') && retries === 0) {
+      console.log(`Loading image via edge function: ${imageSrc}`);
     }
   }, [imageSrc, retries]);
 
@@ -44,18 +44,18 @@ export function ImageWrapper({
   useEffect(() => {
     const fetchPrivateImage = async () => {
       // Only try direct fetch if we had an error with the edge function
-      if (error && retries === 1 && imageSrc && 
-          (imageSrc.includes('/api/get-image/') || imageSrc.includes('/api/images/'))) {
+      if (error && retries === 1 && imageSrc && imageSrc.includes('/api/get-image/')) {
         try {
-          let path: string;
+          // Extract the path from the URL more reliably
+          const pathStart = imageSrc.indexOf('/api/get-image/') + '/api/get-image/'.length;
+          const pathEnd = imageSrc.indexOf('?', pathStart);
+          const encodedPath = pathEnd > 0 
+            ? imageSrc.substring(pathStart, pathEnd) 
+            : imageSrc.substring(pathStart);
           
-          if (imageSrc.includes('/api/get-image/')) {
-            path = decodeURIComponent(imageSrc.split('/api/get-image/')[1].split('?')[0]);
-          } else {
-            path = decodeURIComponent(imageSrc.split('/api/images/')[1].split('?')[0]);
-          }
+          const path = decodeURIComponent(encodedPath);
           
-          console.debug(`Trying direct fetch for: ${path}`);
+          console.log(`Trying direct fetch for: ${path}`);
           
           // Get signed URL for the image
           const { data, error: fetchError } = await supabase
@@ -103,7 +103,7 @@ export function ImageWrapper({
   };
 
   const handleLoad = () => {
-    console.debug(`Image loaded successfully: ${imageSrc}`);
+    console.log(`Image loaded successfully: ${imageSrc}`);
     setLoading(false);
     setError(false);
   };

@@ -16,14 +16,20 @@ serve(async (req) => {
   try {
     // Get the path and query parameters
     const url = new URL(req.url);
-    const pathSegments = url.pathname.split('/');
-    const imagePath = decodeURIComponent(pathSegments.slice(pathSegments.indexOf('get-image') + 1).join('/') || 
-                                          url.pathname.replace('/get-image/', ''));
     
+    // Extract the path more reliably by getting everything after get-image
+    let rawPath = url.pathname;
+    const getImageIndex = rawPath.indexOf('/get-image/');
+    if (getImageIndex !== -1) {
+      rawPath = rawPath.substring(getImageIndex + '/get-image/'.length);
+    }
+    
+    const imagePath = decodeURIComponent(rawPath);
     const width = url.searchParams.get('width') || '400';
     const quality = url.searchParams.get('quality') || '80';
     
     console.log(`Processing image request for: ${imagePath} (width: ${width}, quality: ${quality})`);
+    console.log(`Full URL was: ${req.url}`);
     
     // Create a Supabase client using the service role key for internal operations
     const supabaseAdmin = createClient(

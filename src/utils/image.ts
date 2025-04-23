@@ -8,9 +8,11 @@ export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q 
   if (!pathOrUrl) return '/img/placeholder.png';
   if (pathOrUrl.startsWith('http')) return pathOrUrl;
   
+  // Clean the path to ensure no double encoding happens
+  const cleanPath = pathOrUrl.startsWith('/') ? pathOrUrl.substring(1) : pathOrUrl;
+  
   // Make sure we're using the correct endpoint for private images
-  // We'll use the get-image edge function instead of a direct storage URL
-  return `/api/get-image/${encodeURIComponent(pathOrUrl)}?width=${w}&quality=${q}`;
+  return `/api/get-image/${encodeURIComponent(cleanPath)}?width=${w}&quality=${q}`;
 }
 
 // For backward compatibility (e.g., used by pdf-export)

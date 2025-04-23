@@ -36,10 +36,13 @@ export function PromptDetailsDialog({
   // Set image URL when the dialog opens or prompt changes
   useEffect(() => {
     if (open && imagePath) {
+      // For detailed view, use higher quality
       const imageUrl = getPromptImage(imagePath, 1200, 90);
       setDialogImgUrl(imageUrl);
-      console.debug("Details dialog image path:", imagePath);
-      console.debug("Details dialog image URL:", imageUrl);
+      console.log("Details dialog image path:", imagePath);
+      console.log("Details dialog image URL:", imageUrl);
+    } else {
+      setDialogImgUrl(null);
     }
   }, [open, imagePath, prompt.id]);
 
@@ -64,8 +67,10 @@ export function PromptDetailsDialog({
                 aspect={16/9}
                 className="cursor-zoom-in transition-all duration-300"
                 onClick={() => {
-                  const fullImage = getPromptImage(imagePath, 2000, 100);
-                  if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
+                  if (imagePath) {
+                    const fullImage = getPromptImage(imagePath, 2000, 100);
+                    if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
+                  }
                 }}
               />
             </div>
