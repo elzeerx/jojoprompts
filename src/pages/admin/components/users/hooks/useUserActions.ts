@@ -32,7 +32,7 @@ export function useUserActions() {
 
   const deleteUser = async (userId: string, email: string) => {
     if (!window.confirm(`Are you sure you want to permanently delete user: ${email}? This action cannot be undone.`)) {
-      return;
+      return false;
     }
 
     setProcessingUserId(userId);
@@ -43,16 +43,20 @@ export function useUserActions() {
           description: "Admin authentication is required for user deletion.",
           variant: "destructive",
         });
-        return;
+        return false;
       }
       
+      // Fix: Pass a well-formed JSON object
       const { data, error } = await supabase.functions.invoke(
         "get-all-users",
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: { userId, action: "delete" }
+          body: { 
+            userId, 
+            action: "delete"
+          }
         }
       );
 

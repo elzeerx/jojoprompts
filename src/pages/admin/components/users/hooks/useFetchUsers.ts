@@ -34,22 +34,24 @@ export function useFetchUsers() {
         return;
       }
       
-      const { data, error } = await supabase.functions.invoke(
+      // Fix: Pass a valid JSON object as the body
+      const { data, error: functionError } = await supabase.functions.invoke(
         "get-all-users",
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
           },
+          body: { action: "list" }, // Always provide a valid JSON body
         }
       );
       
-      if (error) {
-        console.error("Error fetching users from edge function:", error);
-        throw new Error(error.message || "Failed to fetch users");
+      if (functionError) {
+        console.error("Error fetching users from edge function:", functionError);
+        throw new Error(functionError.message || "Failed to fetch users");
       }
       
       if (!Array.isArray(data)) {
-        if (data.error) {
+        if (data && data.error) {
           throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
         }
         throw new Error("Invalid response format from server");

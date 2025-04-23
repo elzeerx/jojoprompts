@@ -75,41 +75,45 @@ serve(async (req) => {
       });
     }
     
-    // Check if this is a delete request
-    if (req.method === 'POST') {
-      try {
-        const { userId, action } = await req.json();
-        
-        if (action === 'delete' && userId) {
-          console.log(`Admin ${user.id} is attempting to delete user ${userId}`);
-          
-          // Delete the user with service role client
-          const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
-          
-          if (deleteError) {
-            console.error(`Error deleting user ${userId}:`, deleteError);
-            return new Response(JSON.stringify({ error: 'Error deleting user', details: deleteError.message }), {
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-          
-          console.log(`Successfully deleted user ${userId}`);
-          return new Response(JSON.stringify({ success: true, message: 'User deleted successfully' }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      } catch (parseError) {
-        console.error('Error parsing JSON body:', parseError);
-        return new Response(JSON.stringify({ error: 'Invalid JSON body', details: parseError.message }), {
-          status: 400,
+    // Parse the request body safely
+    let requestData = {};
+    try {
+      if (req.headers.get('content-type')?.includes('application/json')) {
+        requestData = await req.json();
+      } else {
+        // Default empty object if no valid JSON
+        requestData = {};
+      }
+    } catch (e) {
+      console.error('Failed to parse request body:', e);
+      requestData = {}; // Default to empty object on parsing error
+    }
+    
+    // Handle different actions based on request
+    const { action, userId } = requestData as { action?: string, userId?: string };
+    
+    if (action === 'delete' && userId) {
+      console.log(`Admin ${user.id} is attempting to delete user ${userId}`);
+      
+      // Delete the user with service role client
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (deleteError) {
+        console.error(`Error deleting user ${userId}:`, deleteError);
+        return new Response(JSON.stringify({ error: 'Error deleting user', details: deleteError.message }), {
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+      
+      console.log(`Successfully deleted user ${userId}`);
+      return new Response(JSON.stringify({ success: true, message: 'User deleted successfully' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
     
-    // Default behavior: Get all users
+    // Default behavior: Get all users (for action 'list' or if no action specified)
     console.log(`Admin ${user.id} is fetching all users`);
     const { data: users, error } = await supabase.auth.admin.listUsers();
     
