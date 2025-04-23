@@ -22,6 +22,8 @@ serve(async (req) => {
     const getImageIndex = rawPath.indexOf('/get-image/');
     if (getImageIndex !== -1) {
       rawPath = rawPath.substring(getImageIndex + '/get-image/'.length);
+    } else {
+      console.error("Path format error: Could not find '/get-image/' in path:", rawPath);
     }
     
     const imagePath = decodeURIComponent(rawPath);
@@ -37,6 +39,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
     );
 
+    if (!imagePath) {
+      throw new Error('Image path is missing or invalid');
+    }
+
     // Download image from private bucket
     const { data, error } = await supabaseAdmin
       .storage
@@ -51,7 +57,7 @@ serve(async (req) => {
     if (error) {
       console.error('Error fetching image:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch image', details: error.message }),
+        JSON.stringify({ error: 'Failed to fetch image', details: error.message, path: imagePath }),
         { 
           status: 404, 
           headers: { 

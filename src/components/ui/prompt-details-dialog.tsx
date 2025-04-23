@@ -23,6 +23,7 @@ export function PromptDetailsDialog({
   if (!prompt) return null;
   
   const [dialogImgUrl, setDialogImgUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
   
   useEffect(() => {
     if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
@@ -39,12 +40,22 @@ export function PromptDetailsDialog({
       // For detailed view, use higher quality
       const imageUrl = getPromptImage(imagePath, 1200, 90);
       setDialogImgUrl(imageUrl);
+      setImageLoading(true);
       console.log("Details dialog image path:", imagePath);
       console.log("Details dialog image URL:", imageUrl);
     } else {
       setDialogImgUrl(null);
     }
   }, [open, imagePath, prompt.id]);
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
+
+  const handleImageError = () => {
+    console.error("Failed to load image in details dialog:", dialogImgUrl);
+    setImageLoading(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -60,20 +71,26 @@ export function PromptDetailsDialog({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="rounded-xl overflow-hidden max-w-full mx-auto">
-              <ImageWrapper
-                src={dialogImgUrl}
-                alt={prompt.title}
-                aspect={16/9}
-                className="cursor-zoom-in transition-all duration-300"
-                onClick={() => {
-                  if (imagePath) {
-                    const fullImage = getPromptImage(imagePath, 2000, 100);
-                    if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
-                  }
-                }}
-              />
-            </div>
+            {imagePath ? (
+              <div className="rounded-xl overflow-hidden max-w-full mx-auto">
+                <ImageWrapper
+                  src={dialogImgUrl}
+                  alt={prompt.title}
+                  aspect={16/9}
+                  className="cursor-zoom-in transition-all duration-300"
+                  onClick={() => {
+                    if (imagePath) {
+                      const fullImage = getPromptImage(imagePath, 2000, 100);
+                      if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="rounded-xl overflow-hidden bg-muted/50 flex items-center justify-center h-48">
+                <span className="text-muted-foreground text-lg">No image available</span>
+              </div>
+            )}
 
             <div>
               <h3 className="text-lg font-semibold mb-2">Prompt Text</h3>

@@ -11,6 +11,9 @@ export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q 
   // Clean the path to ensure no double encoding happens
   const cleanPath = pathOrUrl.startsWith('/') ? pathOrUrl.substring(1) : pathOrUrl;
   
+  // Log path for debugging
+  console.log(`Getting image for path: ${cleanPath}`);
+  
   // Make sure we're using the correct endpoint for private images
   return `/api/get-image/${encodeURIComponent(cleanPath)}?width=${w}&quality=${q}`;
 }
