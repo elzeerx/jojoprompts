@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,15 +21,13 @@ export function PromptDetailsDialog({
 }: PromptDetailsDialogProps) {
   if (!prompt) return null;
   
-  // Close dialog if the prompt is deleted
   useEffect(() => {
     if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
       onOpenChange(false);
     }
   }, [promptList, prompt.id, onOpenChange]);
 
-  // Compose the best image for this prompt, fallback handled inside util
-  const dialogImgUrl = getPromptImage(prompt, 1200, 90);
+  const dialogImgUrl = getPromptImage(prompt.image_path || prompt.image_url, 1200, 90);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -46,15 +43,14 @@ export function PromptDetailsDialog({
               </DialogDescription>
             </DialogHeader>
 
-            {/* Always display an image in dialog, fallback inside ImageWrapper */}
             <div className="rounded-xl overflow-hidden max-w-full mx-auto">
-              <ImageWrapper 
+              <ImageWrapper
                 src={dialogImgUrl}
                 alt={prompt.title}
                 aspect={16/9}
                 className="cursor-zoom-in"
                 onClick={() => {
-                  const fullImage = getPromptImage(prompt, 2000, 100);
+                  const fullImage = getPromptImage(prompt.image_path || prompt.image_url, 2000, 100);
                   if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
                 }}
               />
@@ -99,4 +95,3 @@ export function PromptDetailsDialog({
 }
 
 export default PromptDetailsDialog;
-

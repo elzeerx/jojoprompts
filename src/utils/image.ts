@@ -1,16 +1,12 @@
 
-import { supabase } from "@/integrations/supabase/client";
+const STORAGE_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public`;
+const BUCKET = 'prompt-images';
 
-// Unified image URL helper for prompt cards and dialogs
-export const getPromptImage = (
-  p: { image_path?: string | null; image_url?: string | null },
-  width = 400,
-  quality = 80
-) => {
-  if (p.image_path)
-    return `${supabase.storageUrl}/render/image/${encodeURIComponent(
-      p.image_path!
-    )}?width=${width}&quality=${quality}`;
-  if (p.image_url) return p.image_url;
-  return "/img/placeholder.svg";
-};
+export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80) {
+  if (!pathOrUrl) return '/img/placeholder.png';
+  if (pathOrUrl.startsWith('http')) return pathOrUrl;
+  return `${STORAGE_BASE}/${BUCKET}/${encodeURIComponent(pathOrUrl)}?width=${w}&quality=${q}`;
+}
+
+// For backward compatibility (e.g., used by pdf-export)
+export const getCdnUrl = getPromptImage;
