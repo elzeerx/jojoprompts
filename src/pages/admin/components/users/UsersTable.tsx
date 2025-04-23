@@ -1,21 +1,13 @@
 
-import { Loader2, UserCheck, UserX, Mail, Trash } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UserTableRow } from "./components/UserTableRow";
+import { EmptyTableState } from "./components/EmptyTableState";
 
 interface UserProfile {
   id: string;
@@ -41,26 +33,7 @@ export function UsersTable({
   onDeleteUser,
 }: UsersTableProps) {
   if (users.length === 0) {
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Joined</TableHead>
-            <TableHead>Last Login</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow>
-            <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-              No users found
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    );
+    return <EmptyTableState />;
   }
 
   return (
@@ -76,76 +49,14 @@ export function UsersTable({
       </TableHeader>
       <TableBody>
         {users.map((user) => (
-          <TableRow key={user.id}>
-            <TableCell className="font-medium">{user.email}</TableCell>
-            <TableCell>
-              <Select
-                defaultValue={user.role}
-                onValueChange={(value) => onUpdateRole(user.id, value)}
-                disabled={updatingUserId === user.id}
-              >
-                <SelectTrigger className="w-[110px]">
-                  <SelectValue>
-                    <div className="flex items-center">
-                      {updatingUserId === user.id ? (
-                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      ) : user.role === "admin" ? (
-                        <UserCheck className="mr-2 h-3 w-3 text-primary" />
-                      ) : (
-                        <UserX className="mr-2 h-3 w-3 text-muted-foreground" />
-                      )}
-                      {user.role}
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">
-                    <div className="flex items-center">
-                      <UserCheck className="mr-2 h-4 w-4 text-primary" />
-                      admin
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="user">
-                    <div className="flex items-center">
-                      <UserX className="mr-2 h-4 w-4 text-muted-foreground" />
-                      user
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </TableCell>
-            <TableCell>
-              {new Date(user.created_at).toLocaleDateString()}
-            </TableCell>
-            <TableCell>
-              {user.last_sign_in_at 
-                ? new Date(user.last_sign_in_at).toLocaleDateString() 
-                : "Never"}
-            </TableCell>
-            <TableCell className="text-right flex gap-2 justify-end">
-              {user.email && !user.email.startsWith("User ") && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onSendResetEmail(user.email)}
-                  >
-                    <Mail className="h-4 w-4 mr-1" />
-                    Reset
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="hover:bg-red-700"
-                    onClick={() => onDeleteUser(user.id, user.email)}
-                    title="Delete User"
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-            </TableCell>
-          </TableRow>
+          <UserTableRow
+            key={user.id}
+            user={user}
+            isUpdating={updatingUserId === user.id}
+            onUpdateRole={onUpdateRole}
+            onSendResetEmail={onSendResetEmail}
+            onDeleteUser={onDeleteUser}
+          />
         ))}
       </TableBody>
     </Table>
