@@ -1,7 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { ExportPromptsDialog } from "@/components/export/ExportPromptsDialog";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 import { type Prompt, type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,14 +21,12 @@ export default function PromptsPage() {
   const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
   const [category, setCategory] = useState<string>("all");
 
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptRow | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   // Fetch prompts & categories
   const { prompts, setPrompts, categories, isLoading, error, reloadPrompts } = usePromptsData({ authLoading, session });
 
-  // Redirect if not logged in (after auth loading)
   if (!authLoading && !session) {
     navigate("/login");
   }
@@ -43,8 +40,6 @@ export default function PromptsPage() {
     const matchesCategory = category === "all" || prompt.metadata.category === category;
     return matchesSearch && matchesCategory;
   });
-
-  const promptsToExport = filteredPrompts.filter(p => selectedPrompts.includes(p.id));
 
   const handleSelectPrompt = (promptId: string) => {
     setSelectedPrompts(prev =>
@@ -62,9 +57,6 @@ export default function PromptsPage() {
     }
   };
 
-  const handleExportPDF = () => setExportDialogOpen(true);
-
-  // (For delete: triggers DB update & reloads)
   const handleDeletePrompt = async (promptId: string) => {
     try {
       setPrompts((prev) => prev.filter(p => p.id !== promptId));
@@ -123,7 +115,6 @@ export default function PromptsPage() {
         setView={setView}
         selectedPromptsLength={selectedPrompts.length}
         onClearSelections={() => setSelectedPrompts([])}
-        onExportPDF={handleExportPDF}
       />
 
       <PromptsFilters
@@ -141,7 +132,6 @@ export default function PromptsPage() {
           selectedPromptsLength={selectedPrompts.length}
           totalFiltered={filteredPrompts.length}
           onSelectAll={handleSelectAll}
-          onExportPDF={handleExportPDF}
         />
       )}
 
@@ -158,12 +148,6 @@ export default function PromptsPage() {
         }}
         selectedPrompts={selectedPrompts}
         onSelectPrompt={handleSelectPrompt}
-      />
-
-      <ExportPromptsDialog
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-        prompts={promptsToExport}
       />
 
       {selectedPrompt && (

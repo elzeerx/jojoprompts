@@ -5,6 +5,7 @@ import { LogOut, User, ShieldCheck } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
+
 interface HeaderProps {
   userRole?: string | null;
   userEmail?: string | null;
@@ -15,7 +16,8 @@ export function Header({
   onLogout
 }: HeaderProps) {
   const {
-    userRole
+    userRole,
+    user
   } = useAuth();
   const isLoggedIn = !!userEmail;
   const isAdmin = userRole === "admin";
@@ -28,9 +30,9 @@ export function Header({
   return <header className="border-b">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2">
+          <a href={isLoggedIn ? "/prompts" : "/"} className="flex items-center gap-2">
             <img alt="JojoPrompts logo" className="h-6 w-auto" src="/lovable-uploads/ff979f5e-633f-404f-8799-bd078ad6c678.png" />
-          </Link>
+          </a>
           
           <nav className="hidden md:flex gap-6">
             {/* Only show nav links if authenticated */}
@@ -100,3 +102,4 @@ export function Header({
       </div>
     </header>;
 }
+

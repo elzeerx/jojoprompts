@@ -1,14 +1,12 @@
-
 import { Button } from "@/components/ui/button";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { type Prompt } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { ExportPromptsDialog } from "@/components/export/ExportPromptsDialog";
 
 export default function DashboardPage() {
   const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
@@ -16,7 +14,6 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -78,10 +75,6 @@ export default function DashboardPage() {
     };
   }, [user, authLoading]);
 
-  const handleExportPDF = () => {
-    setExportDialogOpen(true);
-  };
-
   const handleSelectPrompt = (promptId: string) => {
     setSelectedPrompts(prev =>
       prev.includes(promptId)
@@ -89,8 +82,6 @@ export default function DashboardPage() {
         : [...prev, promptId]
     );
   };
-
-  const promptsToExport = favorites.filter(p => selectedPrompts.includes(p.id));
 
   const renderContent = () => {
     if (authLoading) {
@@ -177,13 +168,6 @@ export default function DashboardPage() {
             <Button size="sm" variant="ghost" onClick={() => setSelectedPrompts([])}>
               Clear ({selectedPrompts.length})
             </Button>
-            <Button
-              size="sm"
-              onClick={handleExportPDF}
-              className="flex items-center gap-1"
-            >
-              <Download className="h-4 w-4" /> Export PDF
-            </Button>
           </div>
         )}
       </div>
@@ -197,12 +181,6 @@ export default function DashboardPage() {
           {renderContent()}
         </TabsContent>
       </Tabs>
-
-      <ExportPromptsDialog 
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-        prompts={promptsToExport}
-      />
     </div>
   );
 }

@@ -1,20 +1,18 @@
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { Download, Grid, List, SlidersHorizontal } from "lucide-react";
+import { Grid, List, SlidersHorizontal } from "lucide-react";
 
 interface PromptsHeaderProps {
   view: "grid" | "list";
   setView: (v: "grid" | "list") => void;
   selectedPromptsLength: number;
   onClearSelections: () => void;
-  onExportPDF: () => void;
 }
 
 export function PromptsHeader({
-  view, setView, selectedPromptsLength, onClearSelections, onExportPDF
+  view, setView, selectedPromptsLength, onClearSelections
 }: PromptsHeaderProps) {
   return (
     <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-6">
@@ -29,14 +27,6 @@ export function PromptsHeader({
           <>
             <Button size="sm" onClick={onClearSelections}>
               Clear ({selectedPromptsLength})
-            </Button>
-            <Button
-              size="sm"
-              variant="default"
-              onClick={onExportPDF}
-              className="flex items-center gap-1"
-            >
-              <Download className="h-4 w-4" /> Export PDF
             </Button>
           </>
         ) : (
