@@ -1,5 +1,5 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type PromptRow } from "@/types";
@@ -31,13 +31,16 @@ export function PromptDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] p-0">
+      <DialogContent className="max-w-2xl max-h-[85vh] p-0" aria-describedby="prompt-details-description">
         <ScrollArea className="h-full max-h-[85vh]">
           <div className="p-6 flex flex-col space-y-6">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold tracking-tight">
                 {prompt.title}
               </DialogTitle>
+              <DialogDescription id="prompt-details-description" className="text-muted-foreground">
+                View details and content for this prompt
+              </DialogDescription>
             </DialogHeader>
 
             {prompt.image_path && (
