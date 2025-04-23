@@ -69,8 +69,7 @@ export function ImageWrapper({
               aria-busy={loading}
               onLoad={handleLoad}
               onError={handleError}
-              className={`w-full h-full transition duration-300 ${loading ? "opacity-0" : "opacity-100"}`}
-              style={{ objectFit: "cover" }}
+              className={`w-full h-full object-cover transition duration-300 ${loading ? "opacity-0" : "opacity-100"}`}
               {...props}
             />
           </div>
