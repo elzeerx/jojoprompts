@@ -28,7 +28,7 @@ export function Header({
     return email.charAt(0).toUpperCase();
   };
   return <header className="border-b">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container max-w-6xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-6">
           <a href={isLoggedIn ? "/prompts" : "/"} className="flex items-center gap-2">
             <img alt="JojoPrompts logo" className="h-6 w-auto" src="/lovable-uploads/ff979f5e-633f-404f-8799-bd078ad6c678.png" />
