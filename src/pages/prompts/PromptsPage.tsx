@@ -92,47 +92,49 @@ export default function PromptsPage() {
   };
 
   return (
-    <div className="container px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
-      <PromptsHeader
-        view={view}
-        setView={setView}
-        selectedPromptsLength={0} // No selection logic
-        onClearSelections={() => {}} // No-op
-      />
-
-      <PromptsFilters
-        category={category}
-        setCategory={setCategory}
-        categories={categories}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        view={view}
-        setView={setView}
-      />
-
-      <PromptsContent
-        view={view}
-        filteredPrompts={filteredPrompts}
-        isLoading={isLoading}
-        error={error}
-        searchQuery={searchQuery}
-        category={category}
-        onClearFilters={() => {
-          setSearchQuery("");
-          setCategory("all");
-        }}
-        selectedPrompts={[]} // Not used anymore, safe to pass empty
-        onSelectPrompt={() => {}} // Not used anymore, safe to noop
-      />
-
-      {selectedPrompt && (
-        <PromptDetailsDialog
-          open={detailsDialogOpen}
-          onOpenChange={setDetailsDialogOpen}
-          prompt={selectedPrompt}
-          promptList={prompts as PromptRow[]}
+    <div className="w-full bg-background">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-8">
+        <PromptsHeader
+          view={view}
+          setView={setView}
+          selectedPromptsLength={0} // No selection logic
+          onClearSelections={() => {}} // No-op
         />
-      )}
+
+        <PromptsFilters
+          category={category}
+          setCategory={setCategory}
+          categories={categories}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          view={view}
+          setView={setView}
+        />
+
+        <PromptsContent
+          view={view}
+          filteredPrompts={filteredPrompts}
+          isLoading={isLoading}
+          error={error}
+          searchQuery={searchQuery}
+          category={category}
+          onClearFilters={() => {
+            setSearchQuery("");
+            setCategory("all");
+          }}
+          selectedPrompts={[]} // Not used anymore, safe to pass empty
+          onSelectPrompt={() => {}} // Not used anymore, safe to noop
+        />
+
+        {selectedPrompt && (
+          <PromptDetailsDialog
+            open={detailsDialogOpen}
+            onOpenChange={setDetailsDialogOpen}
+            prompt={selectedPrompt}
+            promptList={prompts as PromptRow[]}
+          />
+        )}
+      </div>
     </div>
   );
 }
