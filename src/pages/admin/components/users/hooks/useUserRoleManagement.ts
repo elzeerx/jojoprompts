@@ -10,19 +10,51 @@ export function useUserRoleManagement() {
     try {
       setUpdatingUserId(userId);
       
-      const { error } = await supabase
+      // First verify if the role actually changed in the database
+      const { data: currentData, error: fetchError } = await supabase
         .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
+        .select('role')
+        .eq('id', userId)
+        .single();
         
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       
-      toast({
-        title: "Role updated",
-        description: `User role has been changed to ${newRole}`,
-      });
-
-      return true;
+      // Only update if the role is actually different
+      if (currentData?.role !== newRole) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ role: newRole })
+          .eq('id', userId);
+          
+        if (error) throw error;
+        
+        // Verify the update was successful
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .single();
+          
+        if (verifyError) throw verifyError;
+        
+        if (verifyData?.role !== newRole) {
+          throw new Error(`Role update failed: Database shows role as ${verifyData?.role}`);
+        }
+        
+        toast({
+          title: "Role updated",
+          description: `User role has been changed to ${newRole}`,
+        });
+        
+        return true;
+      } else {
+        // Role was already set to the requested value
+        toast({
+          title: "No change needed",
+          description: `User already has the role ${newRole}`,
+        });
+        return true;
+      }
     } catch (error: any) {
       console.error("Error updating user role:", error);
       toast({

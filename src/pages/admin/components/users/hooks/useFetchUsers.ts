@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -18,7 +18,7 @@ export function useFetchUsers() {
   const [error, setError] = useState<string | null>(null);
   const { session } = useAuth();
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -34,14 +34,14 @@ export function useFetchUsers() {
         return;
       }
       
-      // Fix: Pass a valid JSON object as the body
-      const { data, error: functionError } = await supabase.functions.invoke(
+      // Get users from the edge function
+      const { data: authUsersData, error: functionError } = await supabase.functions.invoke(
         "get-all-users",
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: { action: "list" }, // Always provide a valid JSON body
+          body: { action: "list" },
         }
       );
       
@@ -50,24 +50,32 @@ export function useFetchUsers() {
         throw new Error(functionError.message || "Failed to fetch users");
       }
       
-      if (!Array.isArray(data)) {
-        if (data && data.error) {
-          throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
+      if (!Array.isArray(authUsersData)) {
+        if (authUsersData && authUsersData.error) {
+          throw new Error(authUsersData.error + (authUsersData.details ? `: ${authUsersData.details}` : ''));
         }
         throw new Error("Invalid response format from server");
       }
       
+      // Get fresh role data directly from profiles table to ensure we have the latest roles
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, role');
         
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        throw profilesError;
+      }
       
+      console.log("Profiles data fetched:", profilesData);
+      
+      // Create a map of user IDs to their roles
       const userRoles = new Map(
         profilesData?.map(profile => [profile.id, profile.role]) || []
       );
       
-      const combinedUsers: UserProfile[] = data.map((user: any) => ({
+      // Combine auth users with their roles
+      const combinedUsers: UserProfile[] = authUsersData.map((user: any) => ({
         id: user.id,
         email: user.email,
         created_at: user.created_at,
@@ -75,6 +83,7 @@ export function useFetchUsers() {
         last_sign_in_at: user.last_sign_in_at
       }));
       
+      console.log("Combined users data:", combinedUsers);
       setUsers(combinedUsers);
     } catch (error: any) {
       console.error("Error fetching users:", error);
@@ -90,11 +99,11 @@ export function useFetchUsers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   return { users, loading, error, fetchUsers };
 }
