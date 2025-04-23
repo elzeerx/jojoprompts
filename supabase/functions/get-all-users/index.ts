@@ -12,7 +12,7 @@ interface User {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 serve(async (req) => {
@@ -69,7 +69,29 @@ serve(async (req) => {
       });
     }
     
-    // Get all users
+    // Check if this is a delete request
+    if (req.method === 'POST') {
+      const { userId, action } = await req.json();
+      
+      if (action === 'delete' && userId) {
+        // Delete the user
+        const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+        
+        if (deleteError) {
+          return new Response(JSON.stringify({ error: 'Error deleting user', details: deleteError.message }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        return new Response(JSON.stringify({ success: true, message: 'User deleted successfully' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    
+    // Default behavior: Get all users
     const { data: users, error } = await supabase.auth.admin.listUsers();
     
     if (error) {

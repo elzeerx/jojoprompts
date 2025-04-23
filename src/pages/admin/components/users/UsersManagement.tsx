@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -182,7 +183,8 @@ export default function UsersManagement() {
 
     setUpdatingUserId(userId);
     try {
-      // Get session to be able to call admin.deleteUser
+      // Instead of using the auth.admin API directly, we'll use the edge function
+      // This approach should work better with Supabase's permission model
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
         toast({
@@ -192,11 +194,19 @@ export default function UsersManagement() {
         });
         return;
       }
-
-      // Must use Supabase Admin API to delete the user
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      const { data, error } = await supabase.functions.invoke(
+        "get-all-users",
+        {
+          headers: {
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+          },
+          body: { userId, action: "delete" }
+        }
+      );
 
       if (error) throw error;
+      
       toast({
         title: "User Deleted",
         description: `User ${email} has been permanently deleted.`,
