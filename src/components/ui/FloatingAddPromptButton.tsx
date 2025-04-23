@@ -52,7 +52,10 @@ export function FloatingAddPromptButton() {
         open={open}
         onOpenChange={setOpen}
         initial={null}
-        onSave={() => setOpen(false)}
+        onSave={async () => {
+          setOpen(false);
+          return Promise.resolve();
+        }}
       />
     </>
   );
