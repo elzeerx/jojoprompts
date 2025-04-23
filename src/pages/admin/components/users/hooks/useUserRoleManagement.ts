@@ -10,7 +10,7 @@ export function useUserRoleManagement() {
     try {
       setUpdatingUserId(userId);
       
-      // First verify if the role actually changed in the database - use maybeSingle() to avoid JSON errors
+      // First check if profile exists
       const { data: currentData, error: fetchError } = await supabase
         .from('profiles')
         .select('role')
@@ -22,8 +22,25 @@ export function useUserRoleManagement() {
         throw new Error(`Failed to verify current role: ${fetchError.message}`);
       }
       
+      // If profile doesn't exist, create it
       if (!currentData) {
-        throw new Error("User profile not found");
+        console.log(`Profile for user ${userId} not found, creating it with role ${newRole}`);
+        
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({ id: userId, role: newRole });
+          
+        if (insertError) {
+          console.error("Error creating profile:", insertError);
+          throw new Error(`Failed to create user profile: ${insertError.message}`);
+        }
+        
+        toast({
+          title: "Profile created",
+          description: `New user profile has been created with role ${newRole}`,
+        });
+        
+        return true;
       }
       
       console.log("Current role data:", currentData);

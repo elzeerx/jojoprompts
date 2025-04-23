@@ -23,7 +23,7 @@ export function useUserManagement() {
           fetchUsers().catch(err => {
             console.error("Error refreshing users after role update:", err);
           });
-        }, 700); // Increased delay to ensure database updates propagate
+        }, 1000); // Increased delay to ensure database updates propagate
       } else {
         console.log("Role update was not successful");
       }
@@ -44,7 +44,7 @@ export function useUserManagement() {
           fetchUsers().catch(err => {
             console.error("Error refreshing users after deletion:", err);
           });
-        }, 700);
+        }, 1000);
       }
       return success;
     } catch (err) {

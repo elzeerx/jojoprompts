@@ -34,7 +34,7 @@ export function useFetchUsers() {
         return;
       }
       
-      // Get users from the edge function - ensure body is a properly formatted object
+      // Get users from the edge function
       const { data: authUsersData, error: functionError } = await supabase.functions.invoke(
         "get-all-users",
         {
@@ -59,7 +59,7 @@ export function useFetchUsers() {
       
       console.log("Auth users data fetched:", authUsersData);
       
-      // Get fresh role data directly from profiles table to ensure we have the latest roles
+      // If no users found, return early
       if (authUsersData.length === 0) {
         console.log("No users found");
         setUsers([]);
@@ -88,12 +88,12 @@ export function useFetchUsers() {
         profilesData?.map(profile => [profile.id, profile.role]) || []
       );
       
-      // Combine auth users with their roles
+      // Combine auth users with their roles, defaulting to 'user' if no profile found
       const combinedUsers: UserProfile[] = authUsersData.map((user: any) => ({
         id: user.id,
         email: user.email,
         created_at: user.created_at,
-        role: userRoles.get(user.id) || 'user',
+        role: userRoles.get(user.id) || 'user', // Default to 'user' if no profile exists
         last_sign_in_at: user.last_sign_in_at
       }));
       
