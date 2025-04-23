@@ -1,3 +1,4 @@
+
 // PromptCard main file — refactored with atoms
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
@@ -9,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
-import { getCdnUrl } from "@/utils/image";
+import { getPromptImage } from "@/utils/image";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 import { CardActions } from "./prompt-card/CardActions";
 import { TagList } from "./prompt-card/TagList";
@@ -42,7 +43,8 @@ export function PromptCard({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const aspect = 4 / 3;
 
-  const imgUrl = getCdnUrl(image_path, 400, 80);
+  // Use new helper to handle both new and legacy prompt images
+  const imgUrl = getPromptImage(prompt, 400, 80);
 
   const handleSelectChange = (checked: boolean) => {
     onSelect?.(prompt.id);
@@ -148,3 +150,4 @@ export function PromptCard({
     </>
   );
 }
+

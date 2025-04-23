@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type PromptRow } from "@/types";
-import { getCdnUrl } from "@/utils/image";
+import { getPromptImage } from "@/utils/image";
 import { useEffect } from "react";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 
@@ -29,6 +29,9 @@ export function PromptDetailsDialog({
     }
   }, [promptList, prompt.id, onOpenChange]);
 
+  // Compose the best image for this prompt, fallback handled inside util
+  const dialogImgUrl = getPromptImage(prompt, 1200, 90);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] p-0" aria-describedby="prompt-details-description">
@@ -43,20 +46,19 @@ export function PromptDetailsDialog({
               </DialogDescription>
             </DialogHeader>
 
-            {prompt.image_path && (
-              <div className="rounded-xl overflow-hidden max-w-full mx-auto">
-                <ImageWrapper 
-                  src={getCdnUrl(prompt.image_path, 1200, 90)}
-                  alt={prompt.title}
-                  aspect={16/9}
-                  className="cursor-zoom-in"
-                  onClick={() => {
-                    const fullImage = getCdnUrl(prompt.image_path, 2000, 100);
-                    if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
-                  }}
-                />
-              </div>
-            )}
+            {/* Always display an image in dialog, fallback inside ImageWrapper */}
+            <div className="rounded-xl overflow-hidden max-w-full mx-auto">
+              <ImageWrapper 
+                src={dialogImgUrl}
+                alt={prompt.title}
+                aspect={16/9}
+                className="cursor-zoom-in"
+                onClick={() => {
+                  const fullImage = getPromptImage(prompt, 2000, 100);
+                  if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
+                }}
+              />
+            </div>
 
             <div>
               <h3 className="text-lg font-semibold mb-2">Prompt Text</h3>
@@ -97,3 +99,4 @@ export function PromptDetailsDialog({
 }
 
 export default PromptDetailsDialog;
+

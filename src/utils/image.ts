@@ -1,30 +1,16 @@
 
-// CDN helper for prompt images
-export const SUPABASE_CDN = "https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/render/image/public";
+import { supabase } from "@/integrations/supabase/client";
 
-// General-purpose dynamic CDN image url builder
-export function getCdnUrl(path: string | null, width = 400, quality = 80) {
-  if (!path) return null;
-  
-  // Handle legacy URLs (already complete URLs)
-  if (path.startsWith("http")) return path;
-  
-  // Clean path to ensure consistent format
-  const cleanPath = path.startsWith("/") ? path.substring(1) : path;
-  
-  // Construct and return the CDN URL
-  return `${SUPABASE_CDN}/prompt-images/${cleanPath}?width=${width}&quality=${quality}`;
-}
-
-// Validate if a URL is reachable
-export async function isImageUrlValid(url: string | null): Promise<boolean> {
-  if (!url) return false;
-  
-  try {
-    const response = await fetch(url, { method: 'HEAD' });
-    return response.ok;
-  } catch (error) {
-    console.error("Error checking image URL:", error);
-    return false;
-  }
-}
+// Unified image URL helper for prompt cards and dialogs
+export const getPromptImage = (
+  p: { image_path?: string | null; image_url?: string | null },
+  width = 400,
+  quality = 80
+) => {
+  if (p.image_path)
+    return `${supabase.storageUrl}/render/image/${encodeURIComponent(
+      p.image_path!
+    )}?width=${width}&quality=${quality}`;
+  if (p.image_url) return p.image_url;
+  return "/img/placeholder.svg";
+};
