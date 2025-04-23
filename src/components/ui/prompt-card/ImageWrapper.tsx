@@ -3,6 +3,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImgHTMLAttributes, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AlertCircle } from "lucide-react";
 
 export function ImageWrapper({
   src,
@@ -125,8 +126,9 @@ export function ImageWrapper({
           <Skeleton className="absolute z-10 inset-0 rounded-lg animate-pulse" />
         )}
         {error && retries >= 2 ? (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            <span role="img" aria-label="Image failed to load" className="text-3xl">📷</span>
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground flex-col gap-2">
+            <AlertCircle className="h-6 w-6 mb-1" />
+            <span role="img" aria-label="Image failed to load" className="text-sm">Image failed to load</span>
             <span className="sr-only">Image failed to load</span>
           </div>
         ) : (

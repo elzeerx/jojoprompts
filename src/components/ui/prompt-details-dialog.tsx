@@ -7,6 +7,7 @@ import { getPromptImage } from "@/utils/image";
 import { useEffect, useState } from "react";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 import { Skeleton } from "./skeleton";
+import { AlertCircle } from "lucide-react";
 
 interface PromptDetailsDialogProps {
   open: boolean;
@@ -26,6 +27,7 @@ export function PromptDetailsDialog({
   const [dialogImgUrl, setDialogImgUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [imageRetried, setImageRetried] = useState(false);
 
   useEffect(() => {
     if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
@@ -44,6 +46,7 @@ export function PromptDetailsDialog({
       setDialogImgUrl(imageUrl);
       setImageLoading(true);
       setImageError(false);
+      setImageRetried(false);
       console.log("Details dialog image path:", imagePath);
       console.log("Details dialog image URL:", imageUrl);
     } else {
@@ -60,6 +63,26 @@ export function PromptDetailsDialog({
     console.error("Failed to load image in details dialog:", dialogImgUrl);
     setImageLoading(false);
     setImageError(true);
+    
+    // Try one more time with direct URL if we haven't already
+    if (!imageRetried && imagePath) {
+      setImageRetried(true);
+      // Try with direct image URL from Supabase as a last resort
+      const directUrl = `https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/prompt-images/${encodeURIComponent(imagePath)}`;
+      console.log("Trying direct URL as fallback:", directUrl);
+      setDialogImgUrl(directUrl);
+    }
+  };
+
+  const handleImageRetry = () => {
+    if (imagePath) {
+      setImageLoading(true);
+      setImageError(false);
+      setImageRetried(false);
+      const refreshedUrl = getPromptImage(imagePath, 1200, 90) + `&t=${Date.now()}`;
+      console.log("Retrying with refreshed URL:", refreshedUrl);
+      setDialogImgUrl(refreshedUrl);
+    }
   };
 
   return (
@@ -87,8 +110,15 @@ export function PromptDetailsDialog({
                   </div>
                 )}
                 {imageError ? (
-                  <div className="bg-muted/50 aspect-video flex items-center justify-center">
-                    <span className="text-muted-foreground">Image could not be loaded</span>
+                  <div className="bg-muted/50 aspect-video flex items-center justify-center flex-col gap-2 p-4">
+                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-muted-foreground text-center">Image could not be loaded</span>
+                    <button 
+                      onClick={handleImageRetry}
+                      className="mt-2 px-3 py-1 text-xs bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-colors"
+                    >
+                      Try again
+                    </button>
                   </div>
                 ) : (
                   <ImageWrapper 
@@ -99,7 +129,7 @@ export function PromptDetailsDialog({
                     onLoad={handleImageLoad}
                     onError={handleImageError}
                     onClick={() => {
-                      if (imagePath) {
+                      if (imagePath && !imageError) {
                         const fullImage = getPromptImage(imagePath, 2000, 100);
                         if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
                       }
