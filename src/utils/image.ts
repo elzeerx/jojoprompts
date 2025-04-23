@@ -1,16 +1,16 @@
 
 // The correct Supabase URL for this project
 const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
-const STORAGE_BASE = `${SUPABASE_URL}/storage/v1/object/public`;
+// For private bucket access, we need to use authenticated endpoints
 const BUCKET = 'prompt-images';
 
 export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80) {
   if (!pathOrUrl) return '/img/placeholder.png';
   if (pathOrUrl.startsWith('http')) return pathOrUrl;
   
-  // Properly encode the path components
-  const encodedPath = encodeURIComponent(pathOrUrl);
-  return `${STORAGE_BASE}/${BUCKET}/${encodedPath}?width=${w}&quality=${q}`;
+  // When using private bucket, we need to fetch the image via the supabase client
+  // instead of direct URL access
+  return `/api/images/${encodeURIComponent(pathOrUrl)}?width=${w}&quality=${q}`;
 }
 
 // For backward compatibility (e.g., used by pdf-export)

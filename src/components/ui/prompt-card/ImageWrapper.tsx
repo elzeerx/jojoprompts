@@ -2,6 +2,7 @@
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImgHTMLAttributes, useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export function ImageWrapper({
   src,
@@ -18,6 +19,7 @@ export function ImageWrapper({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(src);
+  const [retries, setRetries] = useState(0);
 
   // Reset state when src changes
   useEffect(() => {
@@ -25,17 +27,52 @@ export function ImageWrapper({
       setLoading(true);
       setError(false);
       setImageSrc(src);
+      setRetries(0);
     } else {
       setImageSrc(null);
     }
   }, [src]);
 
+  // For direct bucket access if needed
   useEffect(() => {
-    if (imageSrc) {
-      // Log the image URL for debugging
-      console.debug(`Loading image: ${imageSrc}`);
+    if (imageSrc && imageSrc.includes('/api/images/') && retries === 0) {
+      console.debug(`Loading image via edge function: ${imageSrc}`);
     }
-  }, [imageSrc]);
+  }, [imageSrc, retries]);
+
+  // Fallback to direct authenticated fetch if edge function fails
+  useEffect(() => {
+    const fetchPrivateImage = async () => {
+      // Only try direct fetch if we had an error with the edge function
+      if (error && retries === 1 && imageSrc && imageSrc.includes('/api/images/')) {
+        try {
+          const path = decodeURIComponent(imageSrc.split('/api/images/')[1].split('?')[0]);
+          console.debug(`Trying direct fetch for: ${path}`);
+          
+          // Get signed URL for the image
+          const { data, error: fetchError } = await supabase
+            .storage
+            .from('prompt-images')
+            .createSignedUrl(path, 60); // 60 seconds expiry
+            
+          if (fetchError || !data?.signedUrl) {
+            console.error('Error getting signed URL:', fetchError);
+            return;
+          }
+          
+          // Try with the signed URL
+          setImageSrc(data.signedUrl);
+          setError(false);
+          setLoading(true);
+          setRetries(2); // Mark that we've tried the signed URL approach
+        } catch (err) {
+          console.error('Error in direct fetch fallback:', err);
+        }
+      }
+    };
+    
+    fetchPrivateImage();
+  }, [error, retries, imageSrc]);
 
   if (!imageSrc) {
     // SVG placeholder for empty image
@@ -50,6 +87,11 @@ export function ImageWrapper({
     console.error(`Image failed to load: ${imageSrc}`);
     setError(true);
     setLoading(false);
+    
+    // Try fallback method if we haven't already
+    if (retries < 1) {
+      setRetries(prev => prev + 1);
+    }
   };
 
   const handleLoad = () => {
@@ -64,7 +106,7 @@ export function ImageWrapper({
         {loading && (
           <Skeleton className="absolute z-10 inset-0 rounded-lg animate-pulse" />
         )}
-        {error ? (
+        {error && retries >= 1 ? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
             <span role="img" aria-label="Image failed to load" className="text-3xl">📷</span>
             <span className="sr-only">Image failed to load</span>
