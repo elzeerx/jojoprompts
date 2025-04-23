@@ -17,28 +17,41 @@ export function useUserRoleManagement() {
         .eq('id', userId)
         .single();
         
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error("Error fetching current role:", fetchError);
+        throw new Error(`Failed to verify current role: ${fetchError.message}`);
+      }
       
       // Only update if the role is actually different
       if (currentData?.role !== newRole) {
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from('profiles')
           .update({ role: newRole })
           .eq('id', userId);
           
-        if (error) throw error;
+        if (updateError) {
+          console.error("Error updating role:", updateError);
+          throw new Error(`Failed to update role: ${updateError.message}`);
+        }
         
-        // Verify the update was successful
+        // Verify the update was successful - use maybeSingle() instead of single() to avoid the JSON error
         const { data: verifyData, error: verifyError } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
           
-        if (verifyError) throw verifyError;
+        if (verifyError) {
+          console.error("Error verifying role update:", verifyError);
+          throw new Error(`Failed to verify role update: ${verifyError.message}`);
+        }
         
-        if (verifyData?.role !== newRole) {
-          throw new Error(`Role update failed: Database shows role as ${verifyData?.role}`);
+        if (!verifyData) {
+          throw new Error("User profile not found after update");
+        }
+        
+        if (verifyData.role !== newRole) {
+          throw new Error(`Role update failed: Database shows role as ${verifyData.role}`);
         }
         
         toast({

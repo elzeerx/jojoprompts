@@ -34,7 +34,7 @@ export function useFetchUsers() {
         return;
       }
       
-      // Get users from the edge function
+      // Get users from the edge function - ensure body is an object
       const { data: authUsersData, error: functionError } = await supabase.functions.invoke(
         "get-all-users",
         {
@@ -57,10 +57,22 @@ export function useFetchUsers() {
         throw new Error("Invalid response format from server");
       }
       
+      console.log("Auth users data fetched:", authUsersData);
+      
       // Get fresh role data directly from profiles table to ensure we have the latest roles
+      // Use .eq with a 'in' filter to get all profiles at once
+      const userIds = authUsersData.map((user: any) => user.id);
+      
+      if (userIds.length === 0) {
+        console.log("No users found");
+        setUsers([]);
+        return;
+      }
+      
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, role');
+        .select('id, role')
+        .in('id', userIds);
         
       if (profilesError) {
         console.error("Error fetching profiles:", profilesError);
@@ -69,7 +81,7 @@ export function useFetchUsers() {
       
       console.log("Profiles data fetched:", profilesData);
       
-      // Create a map of user IDs to their roles
+      // Create a map of user IDs to their roles for efficient lookups
       const userRoles = new Map(
         profilesData?.map(profile => [profile.id, profile.role]) || []
       );
@@ -87,9 +99,7 @@ export function useFetchUsers() {
       setUsers(combinedUsers);
     } catch (error: any) {
       console.error("Error fetching users:", error);
-      const errorMessage = error.message.includes("admin privileges") 
-        ? "You need Supabase admin privileges to access user data. Please check your role in Supabase or contact the system administrator."
-        : error.message;
+      const errorMessage = error.message || "An unknown error occurred";
       setError(errorMessage);
       toast({
         title: "Error fetching users",
