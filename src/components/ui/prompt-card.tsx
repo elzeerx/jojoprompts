@@ -1,4 +1,5 @@
-// PromptCard main file — refactored with atoms
+
+// PromptCard main file — refactored with atoms
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { CopyButton } from "./copy-button";
@@ -35,7 +36,7 @@ export function PromptCard({
   onDelete,
   initiallyFavorited = false,
 }: PromptCardProps) {
-  const { title, prompt_text, image_path, metadata } = prompt;
+  const { title, prompt_text, metadata } = prompt;
   const tags = metadata?.tags || [];
   const { session } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
@@ -43,7 +44,7 @@ export function PromptCard({
   const aspect = 4 / 3;
 
   // Use the universal helper, support both "image_path" (preferred) and "image_url" (legacy)
-  const imgUrl = getPromptImage(image_path || (prompt.image_url as string | undefined), 400, 80);
+  const imgUrl = getPromptImage(prompt.image_path || prompt.image_url, 400, 80);
 
   const handleSelectChange = (checked: boolean) => {
     onSelect?.(prompt.id);
