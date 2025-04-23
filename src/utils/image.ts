@@ -6,7 +6,7 @@ export const SUPABASE_CDN = "https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1
 export function getCdnUrl(path: string | null, width = 400, quality = 80) {
   if (!path) return null;
   
-  // Handle legacy URLs
+  // Handle legacy URLs (already complete URLs)
   if (path.startsWith("http")) return path;
   
   // Clean path to ensure consistent format
