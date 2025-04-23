@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { type PromptRow } from "@/types";
 import { getCdnUrl } from "@/utils/image";
 import { useEffect } from "react";
+import { ImageWrapper } from "./prompt-card/ImageWrapper";
 
 interface PromptDetailsDialogProps {
   open: boolean;
@@ -20,19 +21,13 @@ export function PromptDetailsDialog({
   promptList = [],
 }: PromptDetailsDialogProps) {
   if (!prompt) return null;
-  const image = getCdnUrl(prompt.image_path, 1200, 90);
-
+  
   // Close dialog if the prompt is deleted
   useEffect(() => {
     if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
       onOpenChange(false);
     }
   }, [promptList, prompt.id, onOpenChange]);
-
-  // Open image in new tab/lightbox
-  const openFullImage = () => {
-    if (image) window.open(image, "_blank", "noopener,noreferrer");
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -46,15 +41,16 @@ export function PromptDetailsDialog({
             </DialogHeader>
 
             {prompt.image_path && (
-              <div className="rounded-xl overflow-hidden max-w-full mx-auto flex flex-col items-center">
-                <img
-                  src={image!}
+              <div className="rounded-xl overflow-hidden max-w-full mx-auto">
+                <ImageWrapper 
+                  src={getCdnUrl(prompt.image_path, 1200, 90)}
                   alt={prompt.title}
-                  loading="lazy"
-                  className="block max-w-full h-auto max-h-[80vh] cursor-zoom-in transition-shadow duration-300"
-                  style={{ objectFit: "contain" }}
-                  onClick={openFullImage}
-                  title="Click to enlarge"
+                  aspect={16/9}
+                  className="cursor-zoom-in"
+                  onClick={() => {
+                    const fullImage = getCdnUrl(prompt.image_path, 2000, 100);
+                    if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
+                  }}
                 />
               </div>
             )}
