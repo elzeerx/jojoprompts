@@ -57,7 +57,7 @@ serve(async (req) => {
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
       
     if (profileError) {
       console.error('Error fetching user profile:', profileError);
@@ -67,8 +67,8 @@ serve(async (req) => {
       });
     }
     
-    if (profile?.role !== 'admin') {
-      console.error(`User ${user.id} is not an admin. Role: ${profile?.role}`);
+    if (!profile || profile.role !== 'admin') {
+      console.error(`User ${user.id} is not an admin. Role: ${profile?.role || 'unknown'}`);
       return new Response(JSON.stringify({ error: 'Forbidden - Admin role required' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -76,21 +76,20 @@ serve(async (req) => {
     }
     
     // Parse the request body safely
-    let requestData = {};
+    let requestData = { action: "list" };
     try {
       if (req.headers.get('content-type')?.includes('application/json')) {
-        requestData = await req.json();
-      } else {
-        // Default empty object if no valid JSON
-        requestData = {};
+        const body = await req.text();
+        if (body) {
+          requestData = JSON.parse(body);
+        }
       }
     } catch (e) {
       console.error('Failed to parse request body:', e);
-      requestData = {}; // Default to empty object on parsing error
     }
     
     // Handle different actions based on request
-    const { action, userId } = requestData as { action?: string, userId?: string };
+    const { action, userId } = requestData;
     
     if (action === 'delete' && userId) {
       console.log(`Admin ${user.id} is attempting to delete user ${userId}`);

@@ -10,20 +10,28 @@ export function useUserRoleManagement() {
     try {
       setUpdatingUserId(userId);
       
-      // First verify if the role actually changed in the database
+      // First verify if the role actually changed in the database - use maybeSingle() to avoid JSON errors
       const { data: currentData, error: fetchError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
         
       if (fetchError) {
         console.error("Error fetching current role:", fetchError);
         throw new Error(`Failed to verify current role: ${fetchError.message}`);
       }
       
+      if (!currentData) {
+        throw new Error("User profile not found");
+      }
+      
+      console.log("Current role data:", currentData);
+      
       // Only update if the role is actually different
-      if (currentData?.role !== newRole) {
+      if (currentData.role !== newRole) {
+        console.log(`Updating role for user ${userId} from ${currentData.role} to ${newRole}`);
+        
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ role: newRole })
@@ -34,7 +42,12 @@ export function useUserRoleManagement() {
           throw new Error(`Failed to update role: ${updateError.message}`);
         }
         
-        // Verify the update was successful - use maybeSingle() instead of single() to avoid the JSON error
+        console.log("Role update success, verifying...");
+        
+        // Wait a moment before verifying to ensure database consistency
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Verify the update was successful - use maybeSingle() to avoid JSON errors
         const { data: verifyData, error: verifyError } = await supabase
           .from('profiles')
           .select('role')
@@ -49,6 +62,8 @@ export function useUserRoleManagement() {
         if (!verifyData) {
           throw new Error("User profile not found after update");
         }
+        
+        console.log("Verification data:", verifyData);
         
         if (verifyData.role !== newRole) {
           throw new Error(`Role update failed: Database shows role as ${verifyData.role}`);

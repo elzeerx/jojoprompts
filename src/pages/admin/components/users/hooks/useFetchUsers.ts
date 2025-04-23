@@ -34,7 +34,7 @@ export function useFetchUsers() {
         return;
       }
       
-      // Get users from the edge function - ensure body is an object
+      // Get users from the edge function - ensure body is a properly formatted object
       const { data: authUsersData, error: functionError } = await supabase.functions.invoke(
         "get-all-users",
         {
@@ -60,15 +60,17 @@ export function useFetchUsers() {
       console.log("Auth users data fetched:", authUsersData);
       
       // Get fresh role data directly from profiles table to ensure we have the latest roles
-      // Use .eq with a 'in' filter to get all profiles at once
-      const userIds = authUsersData.map((user: any) => user.id);
-      
-      if (userIds.length === 0) {
+      if (authUsersData.length === 0) {
         console.log("No users found");
         setUsers([]);
+        setLoading(false);
         return;
       }
       
+      // Get user IDs from auth users data
+      const userIds = authUsersData.map((user: any) => user.id);
+      
+      // Fetch profiles with latest role data
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, role')

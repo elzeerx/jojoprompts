@@ -12,12 +12,20 @@ export function useUserManagement() {
   // Wrap the updateRole handler with explicit refresh logic
   const handleUpdateRole = useCallback(async (userId: string, newRole: string) => {
     try {
+      console.log(`Attempting to update role for user ${userId} to ${newRole}`);
       const success = await updateUserRole(userId, newRole);
+      
       if (success) {
-        // Force a refresh of the users data after a short delay to ensure the database has updated
+        console.log("Role update reported successful, scheduling data refresh");
+        // Force a refresh of the users data after a delay to ensure the database has updated
         setTimeout(() => {
-          fetchUsers();
-        }, 500); // Increased delay to ensure database updates propagate
+          console.log("Refreshing user data after role update");
+          fetchUsers().catch(err => {
+            console.error("Error refreshing users after role update:", err);
+          });
+        }, 700); // Increased delay to ensure database updates propagate
+      } else {
+        console.log("Role update was not successful");
       }
       return success;
     } catch (err) {
@@ -33,8 +41,10 @@ export function useUserManagement() {
       if (success) {
         // Delay the fetch to ensure database updates have propagated
         setTimeout(() => {
-          fetchUsers();
-        }, 500);
+          fetchUsers().catch(err => {
+            console.error("Error refreshing users after deletion:", err);
+          });
+        }, 700);
       }
       return success;
     } catch (err) {
