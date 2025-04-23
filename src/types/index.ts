@@ -11,6 +11,7 @@ export interface Prompt {
   title: string;
   prompt_text: string;
   image_path: string | null;
+  image_url?: string | null; // Add image_url property for backward compatibility
   metadata: {
     category?: string;
     style?: string;
@@ -25,6 +26,7 @@ export interface PromptRow {
   title: string;
   prompt_text: string;
   image_path: string | null;
+  image_url?: string | null; // Add image_url property for backward compatibility
   created_at: string | null;
   metadata: {
     category?: string;

@@ -35,7 +35,7 @@ export function PromptCard({
   onDelete,
   initiallyFavorited = false,
 }: PromptCardProps) {
-  const { title, prompt_text, image_path, metadata, image_url } = prompt;
+  const { title, prompt_text, image_path, metadata } = prompt;
   const tags = metadata?.tags || [];
   const { session } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
@@ -43,7 +43,7 @@ export function PromptCard({
   const aspect = 4 / 3;
 
   // Use the universal helper, support both "image_path" (preferred) and "image_url" (legacy)
-  const imgUrl = getPromptImage(image_path || (image_url as string | undefined), 400, 80);
+  const imgUrl = getPromptImage(image_path || (prompt.image_url as string | undefined), 400, 80);
 
   const handleSelectChange = (checked: boolean) => {
     onSelect?.(prompt.id);
