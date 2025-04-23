@@ -1,7 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { LogOut, User, ShieldCheck } from "lucide-react";
+import { LogOut, User, ShieldCheck, Heart } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,14 +34,14 @@ export function Header({
           </a>
           
           <nav className="hidden md:flex gap-6">
-            {/* Only show nav links if authenticated */}
             {isLoggedIn && (
               <>
                 <Link to="/prompts" className="text-sm font-medium hover:text-primary">
                   Browse Prompts
                 </Link>
-                <Link to="/dashboard" className="text-sm font-medium hover:text-primary">
-                  Dashboard
+                <Link to="/dashboard" className="text-sm font-medium hover:text-primary flex items-center gap-1">
+                  <Heart className="h-4 w-4" />
+                  Favorites
                 </Link>
                 {isAdmin && <Link to="/admin" className="text-sm font-medium hover:text-primary">
                     <ShieldCheck className="mr-2 h-4 w-4 inline" />
@@ -75,8 +74,9 @@ export function Header({
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/dashboard" className="cursor-pointer">
-                    Dashboard
+                  <Link to="/dashboard" className="cursor-pointer flex items-center gap-2">
+                    <Heart className="h-4 w-4" />
+                    Favorites
                   </Link>
                 </DropdownMenuItem>
                 {isAdmin && <DropdownMenuItem asChild>
