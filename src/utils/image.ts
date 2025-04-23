@@ -8,9 +8,9 @@ export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q 
   if (!pathOrUrl) return '/img/placeholder.png';
   if (pathOrUrl.startsWith('http')) return pathOrUrl;
   
-  // For private bucket, we use the get-image edge function
-  // This ensures proper authentication and transformation
-  return `/api/images/${encodeURIComponent(pathOrUrl)}?width=${w}&quality=${q}`;
+  // Make sure we're using the correct endpoint for private images
+  // We'll use the get-image edge function instead of a direct storage URL
+  return `/api/get-image/${encodeURIComponent(pathOrUrl)}?width=${w}&quality=${q}`;
 }
 
 // For backward compatibility (e.g., used by pdf-export)

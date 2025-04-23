@@ -33,9 +33,9 @@ export function ImageWrapper({
     }
   }, [src]);
 
-  // For direct bucket access if needed
+  // For edge function access logging
   useEffect(() => {
-    if (imageSrc && imageSrc.includes('/api/images/') && retries === 0) {
+    if (imageSrc && (imageSrc.includes('/api/get-image/') || imageSrc.includes('/api/images/')) && retries === 0) {
       console.debug(`Loading image via edge function: ${imageSrc}`);
     }
   }, [imageSrc, retries]);
@@ -44,9 +44,17 @@ export function ImageWrapper({
   useEffect(() => {
     const fetchPrivateImage = async () => {
       // Only try direct fetch if we had an error with the edge function
-      if (error && retries === 1 && imageSrc && imageSrc.includes('/api/images/')) {
+      if (error && retries === 1 && imageSrc && 
+          (imageSrc.includes('/api/get-image/') || imageSrc.includes('/api/images/'))) {
         try {
-          const path = decodeURIComponent(imageSrc.split('/api/images/')[1].split('?')[0]);
+          let path: string;
+          
+          if (imageSrc.includes('/api/get-image/')) {
+            path = decodeURIComponent(imageSrc.split('/api/get-image/')[1].split('?')[0]);
+          } else {
+            path = decodeURIComponent(imageSrc.split('/api/images/')[1].split('?')[0]);
+          }
+          
           console.debug(`Trying direct fetch for: ${path}`);
           
           // Get signed URL for the image

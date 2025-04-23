@@ -16,7 +16,10 @@ serve(async (req) => {
   try {
     // Get the path and query parameters
     const url = new URL(req.url);
-    const imagePath = decodeURIComponent(url.pathname.replace('/get-image/', ''));
+    const pathSegments = url.pathname.split('/');
+    const imagePath = decodeURIComponent(pathSegments.slice(pathSegments.indexOf('get-image') + 1).join('/') || 
+                                          url.pathname.replace('/get-image/', ''));
+    
     const width = url.searchParams.get('width') || '400';
     const quality = url.searchParams.get('quality') || '80';
     
