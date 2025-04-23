@@ -35,7 +35,6 @@ serve(async (req) => {
     const quality = url.searchParams.get('quality') || '80';
     
     console.log(`Processing image request for: ${imagePath} (width: ${width}, quality: ${quality})`);
-    console.log(`Full URL was: ${req.url}`);
     
     // Create a Supabase client using the service role key for internal operations
     const supabaseAdmin = createClient(

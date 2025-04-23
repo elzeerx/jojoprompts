@@ -14,7 +14,8 @@ export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q 
   // Log path for debugging
   console.log(`Getting image for path: ${cleanPath}`);
   
-  // Make sure we're using the correct endpoint for private images
+  // Make sure we're using the correct endpoint for private images - edge function
+  // This will handle authentication and permissions
   return `/api/get-image/${encodeURIComponent(cleanPath)}?width=${w}&quality=${q}`;
 }
 

@@ -25,6 +25,7 @@ export function ImageWrapper({
   const [error, setError] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(src);
   const [retries, setRetries] = useState(0);
+  const MAX_RETRIES = 2;
 
   // Reset state when src changes
   useEffect(() => {
@@ -80,6 +81,7 @@ export function ImageWrapper({
           setRetries(2); // Mark that we've tried the signed URL approach
         } catch (err) {
           console.error('Error in direct fetch fallback:', err);
+          setRetries(MAX_RETRIES); // Move to final error state
         }
       }
     };
@@ -104,8 +106,8 @@ export function ImageWrapper({
     // Call the external error handler if provided
     onError?.();
     
-    // Try fallback method if we haven't already
-    if (retries < 2) {
+    // Try fallback method if we haven't already reached max retries
+    if (retries < MAX_RETRIES) {
       setRetries(prev => prev + 1);
     }
   };
@@ -119,16 +121,37 @@ export function ImageWrapper({
     onLoad?.();
   };
 
+  const handleRetry = () => {
+    if (src) {
+      setLoading(true);
+      setError(false);
+      // Add a timestamp to bust cache
+      const timestamp = Date.now();
+      if (src.includes('?')) {
+        setImageSrc(`${src}&t=${timestamp}`);
+      } else {
+        setImageSrc(`${src}?t=${timestamp}`);
+      }
+      setRetries(0);
+    }
+  };
+
   return (
     <AspectRatio ratio={aspect} className={`rounded-lg overflow-hidden bg-muted ${className}`}>
       <>
         {loading && (
           <Skeleton className="absolute z-10 inset-0 rounded-lg animate-pulse" />
         )}
-        {error && retries >= 2 ? (
+        {error && retries >= MAX_RETRIES ? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground flex-col gap-2">
             <AlertCircle className="h-6 w-6 mb-1" />
             <span role="img" aria-label="Image failed to load" className="text-sm">Image failed to load</span>
+            <button 
+              onClick={handleRetry}
+              className="mt-2 px-3 py-1 text-xs bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-colors"
+            >
+              Try again
+            </button>
             <span className="sr-only">Image failed to load</span>
           </div>
         ) : (

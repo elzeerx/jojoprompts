@@ -93,38 +93,20 @@ export function PromptDetailsDialog({
 
             {imagePath ? (
               <div className="rounded-xl overflow-hidden max-w-full mx-auto relative">
-                {imageLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Skeleton className="h-full w-full rounded-xl" />
-                  </div>
-                )}
-                {imageError ? (
-                  <div className="bg-muted/50 aspect-video flex items-center justify-center flex-col gap-2 p-4">
-                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-muted-foreground text-center">Image could not be loaded</span>
-                    <button 
-                      onClick={handleImageRetry}
-                      className="mt-2 px-3 py-1 text-xs bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-colors"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                ) : (
-                  <ImageWrapper 
-                    src={dialogImgUrl} 
-                    alt={prompt.title} 
-                    aspect={16 / 9} 
-                    className="cursor-zoom-in transition-all duration-300"
-                    onLoad={handleImageLoad}
-                    onError={handleImageError}
-                    onClick={() => {
-                      if (imagePath && !imageError) {
-                        const fullImage = getPromptImage(imagePath, 2000, 100);
-                        if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
-                      }
-                    }} 
-                  />
-                )}
+                <ImageWrapper 
+                  src={dialogImgUrl} 
+                  alt={prompt.title} 
+                  aspect={16 / 9} 
+                  className="cursor-zoom-in transition-all duration-300"
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
+                  onClick={() => {
+                    if (imagePath && !imageError && !imageLoading) {
+                      const fullImage = getPromptImage(imagePath, 2000, 100);
+                      if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
+                    }
+                  }} 
+                />
               </div>
             ) : (
               <div className="rounded-xl overflow-hidden bg-muted/50 flex items-center justify-center aspect-video">
