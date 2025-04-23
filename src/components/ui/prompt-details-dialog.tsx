@@ -27,7 +27,6 @@ export function PromptDetailsDialog({
   const [dialogImgUrl, setDialogImgUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
-  const [imageRetried, setImageRetried] = useState(false);
 
   useEffect(() => {
     if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
@@ -46,7 +45,6 @@ export function PromptDetailsDialog({
       setDialogImgUrl(imageUrl);
       setImageLoading(true);
       setImageError(false);
-      setImageRetried(false);
       console.log("Details dialog image path:", imagePath);
       console.log("Details dialog image URL:", imageUrl);
     } else {
@@ -63,22 +61,13 @@ export function PromptDetailsDialog({
     console.error("Failed to load image in details dialog:", dialogImgUrl);
     setImageLoading(false);
     setImageError(true);
-    
-    // Try one more time with direct URL if we haven't already
-    if (!imageRetried && imagePath) {
-      setImageRetried(true);
-      // Try with direct image URL from Supabase as a last resort
-      const directUrl = `https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/prompt-images/${encodeURIComponent(imagePath)}`;
-      console.log("Trying direct URL as fallback:", directUrl);
-      setDialogImgUrl(directUrl);
-    }
   };
 
   const handleImageRetry = () => {
     if (imagePath) {
       setImageLoading(true);
       setImageError(false);
-      setImageRetried(false);
+      // Add a timestamp to bust cache
       const refreshedUrl = getPromptImage(imagePath, 1200, 90) + `&t=${Date.now()}`;
       console.log("Retrying with refreshed URL:", refreshedUrl);
       setDialogImgUrl(refreshedUrl);

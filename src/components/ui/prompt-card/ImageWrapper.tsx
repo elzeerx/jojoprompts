@@ -60,9 +60,9 @@ export function ImageWrapper({
           
           const path = decodeURIComponent(encodedPath);
           
-          console.log(`Trying direct fetch for: ${path}`);
+          console.log(`Trying direct authenticated fetch for: ${path}`);
           
-          // Get signed URL for the image
+          // Get signed URL for the image from private bucket
           const { data, error: fetchError } = await supabase
             .storage
             .from('prompt-images')
