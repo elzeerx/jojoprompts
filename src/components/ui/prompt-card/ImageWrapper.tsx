@@ -138,16 +138,19 @@ export function ImageWrapper({
 
   return (
     <AspectRatio ratio={aspect} className={`rounded-lg overflow-hidden bg-muted ${className}`}>
-      <>
+      <div className="w-full h-full flex items-center justify-center">
         {loading && (
-          <Skeleton className="absolute z-10 inset-0 rounded-lg animate-pulse" />
+          <Skeleton className="absolute inset-0 z-10 rounded-lg animate-pulse" />
         )}
         {error && retries >= MAX_RETRIES ? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground flex-col gap-2">
             <AlertCircle className="h-6 w-6 mb-1" />
             <span role="img" aria-label="Image failed to load" className="text-sm">Image failed to load</span>
             <button 
-              onClick={handleRetry}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRetry();
+              }}
               className="mt-2 px-3 py-1 text-xs bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-colors"
             >
               Try again
@@ -155,20 +158,18 @@ export function ImageWrapper({
             <span className="sr-only">Image failed to load</span>
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <img
-              src={imageSrc}
-              alt={alt || "Prompt image"}
-              loading="lazy"
-              aria-busy={loading}
-              onLoad={handleLoad}
-              onError={handleError}
-              className={`w-full h-full object-cover transition duration-300 ${loading ? "opacity-0" : "opacity-100"}`}
-              {...props}
-            />
-          </div>
+          <img
+            src={imageSrc}
+            alt={alt || "Prompt image"}
+            loading="lazy"
+            aria-busy={loading}
+            onLoad={handleLoad}
+            onError={handleError}
+            className={`w-full h-full object-cover transition duration-300 ${loading ? "opacity-0" : "opacity-100"}`}
+            {...props}
+          />
         )}
-      </>
+      </div>
     </AspectRatio>
   );
 }
