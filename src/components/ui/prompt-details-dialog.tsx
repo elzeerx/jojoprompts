@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type PromptRow } from "@/types";
 import { getPromptImage } from "@/utils/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 
 interface PromptDetailsDialogProps {
@@ -22,6 +22,8 @@ export function PromptDetailsDialog({
 }: PromptDetailsDialogProps) {
   if (!prompt) return null;
   
+  const [dialogImgUrl, setDialogImgUrl] = useState<string | null>(null);
+  
   useEffect(() => {
     if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
       onOpenChange(false);
@@ -30,15 +32,16 @@ export function PromptDetailsDialog({
 
   // Use either image_path or image_url, with image_path having priority
   const imagePath = prompt.image_path || prompt.image_url || null;
-  const dialogImgUrl = getPromptImage(imagePath, 1200, 90);
-
-  // Log for debugging
+  
+  // Set image URL when the dialog opens or prompt changes
   useEffect(() => {
-    if (open) {
+    if (open && imagePath) {
+      const imageUrl = getPromptImage(imagePath, 1200, 90);
+      setDialogImgUrl(imageUrl);
       console.debug("Details dialog image path:", imagePath);
-      console.debug("Details dialog image URL:", dialogImgUrl);
+      console.debug("Details dialog image URL:", imageUrl);
     }
-  }, [open, imagePath, dialogImgUrl]);
+  }, [open, imagePath, prompt.id]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -59,7 +62,7 @@ export function PromptDetailsDialog({
                 src={dialogImgUrl}
                 alt={prompt.title}
                 aspect={16/9}
-                className="cursor-zoom-in"
+                className="cursor-zoom-in transition-all duration-300"
                 onClick={() => {
                   const fullImage = getPromptImage(imagePath, 2000, 100);
                   if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");

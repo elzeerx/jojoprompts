@@ -8,8 +8,8 @@ export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q 
   if (!pathOrUrl) return '/img/placeholder.png';
   if (pathOrUrl.startsWith('http')) return pathOrUrl;
   
-  // When using private bucket, we need to fetch the image via the supabase client
-  // instead of direct URL access
+  // For private bucket, we use the get-image edge function
+  // This ensures proper authentication and transformation
   return `/api/images/${encodeURIComponent(pathOrUrl)}?width=${w}&quality=${q}`;
 }
 

@@ -20,6 +20,8 @@ serve(async (req) => {
     const width = url.searchParams.get('width') || '400';
     const quality = url.searchParams.get('quality') || '80';
     
+    console.log(`Processing image request for: ${imagePath} (width: ${width}, quality: ${quality})`);
+    
     // Create a Supabase client using the service role key for internal operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') || '',
@@ -40,7 +42,7 @@ serve(async (req) => {
     if (error) {
       console.error('Error fetching image:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch image' }),
+        JSON.stringify({ error: 'Failed to fetch image', details: error.message }),
         { 
           status: 404, 
           headers: { 
@@ -54,6 +56,8 @@ serve(async (req) => {
     // Return the image with appropriate content type
     const imageData = await data.arrayBuffer();
     const contentType = data.type || 'image/jpeg';
+    
+    console.log(`Successfully retrieved image: ${imagePath} (${contentType}, ${imageData.byteLength} bytes)`);
 
     return new Response(imageData, {
       headers: {
@@ -65,7 +69,7 @@ serve(async (req) => {
   } catch (err) {
     console.error('Error in get-image function:', err);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: err.message }),
       { 
         status: 500, 
         headers: { 

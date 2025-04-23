@@ -53,7 +53,7 @@ export function ImageWrapper({
           const { data, error: fetchError } = await supabase
             .storage
             .from('prompt-images')
-            .createSignedUrl(path, 60); // 60 seconds expiry
+            .createSignedUrl(path, 300); // 5 minutes expiry
             
           if (fetchError || !data?.signedUrl) {
             console.error('Error getting signed URL:', fetchError);
@@ -89,7 +89,7 @@ export function ImageWrapper({
     setLoading(false);
     
     // Try fallback method if we haven't already
-    if (retries < 1) {
+    if (retries < 2) {
       setRetries(prev => prev + 1);
     }
   };
@@ -106,7 +106,7 @@ export function ImageWrapper({
         {loading && (
           <Skeleton className="absolute z-10 inset-0 rounded-lg animate-pulse" />
         )}
-        {error && retries >= 1 ? (
+        {error && retries >= 2 ? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
             <span role="img" aria-label="Image failed to load" className="text-3xl">📷</span>
             <span className="sr-only">Image failed to load</span>
