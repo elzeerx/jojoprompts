@@ -1,28 +1,29 @@
+
 import { Button } from "@/components/ui/button";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText } from "lucide-react";
+import { FileText, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { type Prompt } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
-export default function DashboardPage() {
-  const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<Prompt[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default function FavoritesPage() {
+  const [selectedFavoritePrompts, setSelectedFavoritePrompts] = useState<string[]>([]);
+  const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     let mounted = true;
 
-    const fetchFavorites = async () => {
+    const loadFavoritePrompts = async () => {
       if (authLoading || !user) return;
 
-      setIsLoading(true);
-      setError(null);
+      setIsLoadingFavorites(true);
+      setLoadError(null);
 
       try {
         const { data, error } = await supabase
@@ -33,14 +34,14 @@ export default function DashboardPage() {
         if (error) throw error;
         if (!mounted) return;
 
-        const transformedData = data?.map(item => {
+        const transformedPrompts = data?.map(item => {
           const promptData = item.prompt as any;
           return {
             id: promptData.id,
             user_id: promptData.user_id,
             title: promptData.title,
             prompt_text: promptData.prompt_text,
-            image_path: promptData.image_path, // Fix: Use image_path instead of image_url
+            image_path: promptData.image_path,
             created_at: promptData.created_at || "",
             metadata: {
               category: promptData.metadata?.category || undefined,
@@ -50,40 +51,40 @@ export default function DashboardPage() {
           } as Prompt;
         }) || [];
 
-        setFavorites(transformedData);
+        setFavoritePrompts(transformedPrompts);
       } catch (error: any) {
-        console.error("Error fetching favorites:", error);
+        console.error("Error loading favorites:", error);
         if (mounted) {
-          setError("Failed to load favorites");
+          setLoadError("Failed to load favorite prompts");
           toast({
             title: "Error",
-            description: "Failed to load favorites. Please try again later.",
+            description: "Failed to load your favorite prompts. Please try again later.",
             variant: "destructive"
           });
         }
       } finally {
         if (mounted) {
-          setIsLoading(false);
+          setIsLoadingFavorites(false);
         }
       }
     };
 
-    fetchFavorites();
+    loadFavoritePrompts();
 
     return () => {
       mounted = false;
     };
   }, [user, authLoading]);
 
-  const handleSelectPrompt = (promptId: string) => {
-    setSelectedPrompts(prev =>
+  const handleSelectFavorite = (promptId: string) => {
+    setSelectedFavoritePrompts(prev =>
       prev.includes(promptId)
         ? prev.filter(id => id !== promptId)
         : [...prev, promptId]
     );
   };
 
-  const renderContent = () => {
+  const renderFavoritesContent = () => {
     if (authLoading) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -95,10 +96,10 @@ export default function DashboardPage() {
       );
     }
 
-    if (isLoading) {
+    if (isLoadingFavorites) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-muted-foreground mb-2">Loading your favorites...</p>
+          <p className="text-muted-foreground mb-2">Loading your favorite prompts...</p>
           <div className="h-1 w-64 bg-secondary overflow-hidden rounded-full">
             <div className="h-full bg-primary animate-pulse rounded-full"></div>
           </div>
@@ -106,10 +107,10 @@ export default function DashboardPage() {
       );
     }
 
-    if (error) {
+    if (loadError) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-destructive mb-4">{error}</p>
+          <p className="text-destructive mb-4">{loadError}</p>
           <Button
             variant="outline"
             onClick={() => window.location.reload()}
@@ -120,13 +121,13 @@ export default function DashboardPage() {
       );
     }
 
-    if (favorites.length === 0) {
+    if (favoritePrompts.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="rounded-full bg-primary/10 p-3 mb-4">
-            <FileText className="h-6 w-6 text-primary" />
+            <Heart className="h-6 w-6 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold mb-1">No favorites yet</h3>
+          <h3 className="text-lg font-semibold mb-1">No favorite prompts yet</h3>
           <p className="text-muted-foreground mb-4 max-w-md">
             You haven't added any prompts to your favorites. Browse and save the ones you like!
           </p>
@@ -139,13 +140,13 @@ export default function DashboardPage() {
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {favorites.map((prompt) => (
+        {favoritePrompts.map((prompt) => (
           <PromptCard
             key={prompt.id}
             prompt={prompt}
             isSelectable={true}
-            isSelected={selectedPrompts.includes(prompt.id)}
-            onSelect={handleSelectPrompt}
+            isSelected={selectedFavoritePrompts.includes(prompt.id)}
+            onSelect={handleSelectFavorite}
             initiallyFavorited={true}
           />
         ))}
@@ -157,16 +158,16 @@ export default function DashboardPage() {
     <div className="container py-8">
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">My Favorites</h1>
           <p className="text-muted-foreground">
             Manage your favorite prompts
           </p>
         </div>
 
-        {selectedPrompts.length > 0 && (
+        {selectedFavoritePrompts.length > 0 && (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setSelectedPrompts([])}>
-              Clear ({selectedPrompts.length})
+            <Button size="sm" variant="ghost" onClick={() => setSelectedFavoritePrompts([])}>
+              Clear ({selectedFavoritePrompts.length})
             </Button>
           </div>
         )}
@@ -178,7 +179,7 @@ export default function DashboardPage() {
         </TabsList>
 
         <TabsContent value="favorites">
-          {renderContent()}
+          {renderFavoritesContent()}
         </TabsContent>
       </Tabs>
     </div>

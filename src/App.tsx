@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFoundPage from "./pages/NotFoundPage";
 import AboutPage from "./pages/AboutPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import FavoritesPage from "./pages/FavoritesPage";
 
 const queryClient = new QueryClient();
 
@@ -49,7 +49,7 @@ const App = () => {
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <UserDashboard />
+                    <FavoritesPage />
                   </ProtectedRoute>
                 }
               />
@@ -75,4 +75,3 @@ const App = () => {
 };
 
 export default App;
-
