@@ -2,6 +2,7 @@
 import { Loader2, UserCheck, UserX, Mail, Trash, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { UserProfile } from "@/types";
 import {
   Select,
   SelectContent,
@@ -11,16 +12,6 @@ import {
 } from "@/components/ui/select";
 import { EditUserDialog } from "./EditUserDialog";
 import { useState } from "react";
-
-interface UserProfile {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  created_at: string;
-  role: string;
-  last_sign_in_at: string | null;
-}
 
 interface UserTableRowProps {
   user: UserProfile;

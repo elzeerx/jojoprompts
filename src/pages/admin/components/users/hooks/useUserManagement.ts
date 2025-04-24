@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useFetchUsers } from "./useFetchUsers";
 import { useUserRoleManagement } from "./useUserRoleManagement";
+import { UserProfile } from "@/types";
 
 interface UserUpdateData {
-  first_name?: string;
-  last_name?: string;
+  first_name?: string | null;
+  last_name?: string | null;
   role?: string;
   email?: string;
 }
@@ -15,7 +16,7 @@ interface UserUpdateData {
 export function useUserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
-  const { users, loading, error, fetchUsers } = useFetchUsers(currentPage, pageSize);
+  const { users, loading, error, fetchUsers } = useFetchUsers();
   const { updatingUserId, updateUserRole } = useUserRoleManagement();
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
 
@@ -29,7 +30,7 @@ export function useUserManagement() {
       }
 
       // Update profile data if provided
-      if (data.first_name || data.last_name) {
+      if (data.first_name !== undefined || data.last_name !== undefined) {
         const { error: profileError } = await supabase
           .from('profiles')
           .update({

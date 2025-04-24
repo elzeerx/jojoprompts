@@ -3,14 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-
-interface UserProfile {
-  id: string;
-  email: string;
-  created_at: string;
-  role: string;
-  last_sign_in_at: string | null;
-}
+import { UserProfile } from "@/types";
 
 export function useFetchUsers() {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -73,7 +66,7 @@ export function useFetchUsers() {
       // Fetch profiles with latest role data
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, role')
+        .select('id, role, first_name, last_name')
         .in('id', userIds);
         
       if (profilesError) {
@@ -83,19 +76,28 @@ export function useFetchUsers() {
       
       console.log("Profiles data fetched:", profilesData);
       
-      // Create a map of user IDs to their roles for efficient lookups
-      const userRoles = new Map(
-        profilesData?.map(profile => [profile.id, profile.role]) || []
+      // Create a map of user IDs to their profiles for efficient lookups
+      const userProfiles = new Map(
+        profilesData?.map(profile => [profile.id, {
+          role: profile.role || 'user',
+          first_name: profile.first_name,
+          last_name: profile.last_name
+        }]) || []
       );
       
-      // Combine auth users with their roles, defaulting to 'user' if no profile found
-      const combinedUsers: UserProfile[] = authUsersData.map((user: any) => ({
-        id: user.id,
-        email: user.email,
-        created_at: user.created_at,
-        role: userRoles.get(user.id) || 'user', // Default to 'user' if no profile exists
-        last_sign_in_at: user.last_sign_in_at
-      }));
+      // Combine auth users with their profiles, defaulting to 'user' if no profile found
+      const combinedUsers: UserProfile[] = authUsersData.map((user: any) => {
+        const profile = userProfiles.get(user.id) || { role: 'user', first_name: null, last_name: null };
+        return {
+          id: user.id,
+          email: user.email,
+          created_at: user.created_at,
+          role: profile.role,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          last_sign_in_at: user.last_sign_in_at
+        };
+      });
       
       console.log("Combined users data:", combinedUsers);
       setUsers(combinedUsers);

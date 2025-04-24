@@ -10,14 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-
-interface UserProfile {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  role: string;
-}
+import { UserProfile } from "@/types";
 
 interface EditUserDialogProps {
   user: UserProfile;

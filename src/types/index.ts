@@ -3,6 +3,8 @@ export interface User {
   id: string;
   email: string;
   role: 'admin' | 'user';
+  first_name?: string | null;
+  last_name?: string | null;
 }
 
 export interface Prompt {
@@ -33,4 +35,14 @@ export interface PromptRow {
     style?: string;
     tags?: string[];
   };
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  created_at: string;
+  role: string;
+  last_sign_in_at: string | null;
 }

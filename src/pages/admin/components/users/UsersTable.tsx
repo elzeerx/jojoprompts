@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { UserTableRow } from "./components/UserTableRow";
 import { EmptyTableState } from "./components/EmptyTableState";
+import { UserProfile } from "@/types";
 import {
   Pagination,
   PaginationContent,
@@ -16,16 +17,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-
-interface UserProfile {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  created_at: string;
-  role: string;
-  last_sign_in_at: string | null;
-}
 
 interface UsersTableProps {
   users: UserProfile[];
