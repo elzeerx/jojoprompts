@@ -42,14 +42,23 @@ export function useUserManagement() {
         if (profileError) throw profileError;
       }
 
-      // Update email if provided
+      // Update email if provided - use edge function
       if (data.email) {
-        const { error: emailError } = await supabase.auth.admin.updateUserById(
-          userId,
-          { email: data.email }
+        const { data: updateResult, error: updateError } = await supabase.functions.invoke(
+          "get-all-users",
+          {
+            body: { 
+              userId,
+              action: "update",
+              userData: {
+                email: data.email
+              }
+            }
+          }
         );
 
-        if (emailError) throw emailError;
+        if (updateError) throw updateError;
+        if (updateResult?.error) throw new Error(updateResult.error);
       }
 
       toast({
@@ -100,7 +109,7 @@ export function useUserManagement() {
         return false;
       }
 
-      const { error } = await supabase.functions.invoke(
+      const { data, error } = await supabase.functions.invoke(
         "get-all-users",
         {
           body: { 
@@ -111,6 +120,7 @@ export function useUserManagement() {
       );
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
       toast({
         title: "User deleted",

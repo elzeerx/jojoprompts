@@ -89,8 +89,9 @@ serve(async (req) => {
     }
     
     // Handle different actions based on request
-    const { action, userId } = requestData;
+    const { action, userId, userData } = requestData;
     
+    // DELETE USER
     if (action === 'delete' && userId) {
       console.log(`Admin ${user.id} is attempting to delete user ${userId}`);
       
@@ -107,6 +108,69 @@ serve(async (req) => {
       
       console.log(`Successfully deleted user ${userId}`);
       return new Response(JSON.stringify({ success: true, message: 'User deleted successfully' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // UPDATE USER
+    if (action === 'update' && userId && userData) {
+      console.log(`Admin ${user.id} is attempting to update user ${userId}`, userData);
+      
+      // Update the user with service role client
+      const { data: updateData, error: updateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        userData
+      );
+      
+      if (updateError) {
+        console.error(`Error updating user ${userId}:`, updateError);
+        return new Response(JSON.stringify({ error: 'Error updating user', details: updateError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      console.log(`Successfully updated user ${userId}`);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'User updated successfully',
+        user: updateData.user
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // CREATE USER
+    if (action === 'create' && userData) {
+      console.log(`Admin ${user.id} is attempting to create a new user`, userData);
+      
+      // Create the user with service role client
+      const { data: createData, error: createError } = await supabase.auth.admin.createUser({
+        email: userData.email,
+        password: userData.password,
+        email_confirm: true, // Automatically confirm the email
+        user_metadata: {
+          first_name: userData.first_name,
+          last_name: userData.last_name
+        }
+      });
+      
+      if (createError) {
+        console.error(`Error creating user:`, createError);
+        return new Response(JSON.stringify({ error: 'Error creating user', details: createError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      console.log(`Successfully created user ${createData.user.id}`);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'User created successfully',
+        user: createData.user
+      }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
