@@ -1,0 +1,139 @@
+
+import { corsHeaders } from './cors.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+
+interface UserData {
+  email?: string;
+  password?: string;
+  first_name?: string;
+  last_name?: string;
+  role?: string;
+}
+
+export async function listUsers(supabase: ReturnType<typeof createClient>, adminId: string) {
+  console.log(`Admin ${adminId} is fetching all users`);
+  const { data: users, error } = await supabase.auth.admin.listUsers();
+
+  if (error) {
+    console.error('Error listing users:', error);
+    throw new Error(`Error fetching users: ${error.message}`);
+  }
+
+  return users.users.map(user => ({
+    id: user.id,
+    email: user.email || '',
+    created_at: user.created_at || '',
+    last_sign_in_at: user.last_sign_in_at,
+  }));
+}
+
+export async function deleteUser(supabase: ReturnType<typeof createClient>, userId: string, adminId: string) {
+  console.log(`Admin ${adminId} is attempting to delete user ${userId}`);
+  const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+
+  if (deleteError) {
+    console.error(`Error deleting user ${userId}:`, deleteError);
+    throw new Error(`Error deleting user: ${deleteError.message}`);
+  }
+
+  console.log(`Successfully deleted user ${userId}`);
+  return { success: true, message: 'User deleted successfully' };
+}
+
+export async function updateUser(
+  supabase: ReturnType<typeof createClient>, 
+  userId: string, 
+  userData: UserData,
+  adminId: string
+) {
+  console.log(`Admin ${adminId} is attempting to update user ${userId}`, userData);
+  let updateResult = { user: null, profileData: null };
+
+  if (userData.email) {
+    const { data: authUpdate, error: updateError } = await supabase.auth.admin.updateUserById(
+      userId,
+      { email: userData.email }
+    );
+
+    if (updateError) {
+      console.error(`Error updating user ${userId}:`, updateError);
+      throw new Error(`Error updating user email: ${updateError.message}`);
+    }
+
+    updateResult.user = authUpdate.user;
+    console.log(`Successfully updated user email for ${userId}`);
+  }
+
+  if (userData.first_name !== undefined || userData.last_name !== undefined) {
+    const updateData: Partial<UserData> = {};
+    if (userData.first_name !== undefined) updateData.first_name = userData.first_name;
+    if (userData.last_name !== undefined) updateData.last_name = userData.last_name;
+
+    console.log(`Updating profile data for user ${userId}:`, updateData);
+
+    const { data: profileUpdate, error: profileUpdateError } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', userId)
+      .select();
+
+    if (profileUpdateError) {
+      console.error(`Error updating profile for ${userId}:`, profileUpdateError);
+      throw new Error(`Error updating user profile: ${profileUpdateError.message}`);
+    }
+
+    updateResult.profileData = profileUpdate;
+    console.log(`Successfully updated profile for ${userId}:`, profileUpdate);
+  }
+
+  return {
+    success: true,
+    message: 'User updated successfully',
+    data: updateResult
+  };
+}
+
+export async function createUser(
+  supabase: ReturnType<typeof createClient>,
+  userData: UserData,
+  adminId: string
+) {
+  console.log(`Admin ${adminId} is attempting to create a new user`, userData);
+
+  const { data: createData, error: createError } = await supabase.auth.admin.createUser({
+    email: userData.email,
+    password: userData.password,
+    email_confirm: true,
+    user_metadata: {
+      first_name: userData.first_name,
+      last_name: userData.last_name
+    }
+  });
+
+  if (createError) {
+    console.error(`Error creating user:`, createError);
+    throw new Error(`Error creating user: ${createError.message}`);
+  }
+
+  if (createData.user) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: createData.user.id,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        role: userData.role || 'user'
+      });
+
+    if (profileError) {
+      console.error(`Error creating profile for new user:`, profileError);
+    }
+  }
+
+  console.log(`Successfully created user ${createData.user.id}`);
+  return {
+    success: true,
+    message: 'User created successfully',
+    user: createData.user
+  };
+}

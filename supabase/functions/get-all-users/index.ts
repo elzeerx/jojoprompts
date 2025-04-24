@@ -1,80 +1,18 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-
-interface User {
-  id: string;
-  email: string;
-  created_at: string;
-  last_sign_in_at: string | null;
-}
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-};
+import { corsHeaders, handleCors } from './cors.ts';
+import { verifyAdmin } from './auth.ts';
+import { listUsers, deleteUser, updateUser, createUser } from './users.ts';
 
 serve(async (req) => {
-  // Handle CORS preflight request
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders,
-    });
-  }
-
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
-    
-    // Create client with service role key for admin operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Handle CORS preflight request
+    const corsResponse = handleCors(req);
+    if (corsResponse) return corsResponse;
 
-    // Check if the user is an admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized - Missing authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    console.log(`User ${user.id} is attempting to access admin functionality`);
-    
-    // Verify admin role using the profiles table
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle();
-      
-    if (profileError) {
-      console.error('Error fetching user profile:', profileError);
-      return new Response(JSON.stringify({ error: 'Error fetching user profile', details: profileError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    if (!profile || profile.role !== 'admin') {
-      console.error(`User ${user.id} is not an admin. Role: ${profile?.role || 'unknown'}`);
-      return new Response(JSON.stringify({ error: 'Forbidden - Admin role required' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
+    // Verify admin access and get Supabase client
+    const { supabase, userId } = await verifyAdmin(req);
+
     // Parse the request body safely
     let requestData = { action: "list" };
     try {
@@ -87,185 +25,38 @@ serve(async (req) => {
     } catch (e) {
       console.error('Failed to parse request body:', e);
     }
-    
-    // Handle different actions based on request
-    const { action, userId, userData } = requestData;
-    
-    // DELETE USER
-    if (action === 'delete' && userId) {
-      console.log(`Admin ${user.id} is attempting to delete user ${userId}`);
-      
-      // Delete the user with service role client
-      const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
-      
-      if (deleteError) {
-        console.error(`Error deleting user ${userId}:`, deleteError);
-        return new Response(JSON.stringify({ error: 'Error deleting user', details: deleteError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      
-      console.log(`Successfully deleted user ${userId}`);
-      return new Response(JSON.stringify({ success: true, message: 'User deleted successfully' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    // UPDATE USER
-    if (action === 'update' && userId && userData) {
-      console.log(`Admin ${user.id} is attempting to update user ${userId}`, userData);
-      
-      let updateResult = { user: null, profileData: null };
 
-      // Update the auth user if email is provided
-      if (userData.email) {
-        // Update the user with service role client
-        const { data: authUpdate, error: updateError } = await supabase.auth.admin.updateUserById(
-          userId,
-          { email: userData.email }
-        );
-        
-        if (updateError) {
-          console.error(`Error updating user ${userId}:`, updateError);
-          return new Response(JSON.stringify({ error: 'Error updating user email', details: updateError.message }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        
-        updateResult.user = authUpdate.user;
-        console.log(`Successfully updated user email for ${userId}`);
-      }
+    const { action } = requestData;
+    let response;
 
-      // Update profile data if first_name or last_name is provided
-      if (userData.first_name !== undefined || userData.last_name !== undefined) {
-        const updateData = {};
-        
-        if (userData.first_name !== undefined) {
-          updateData.first_name = userData.first_name;
-        }
-        
-        if (userData.last_name !== undefined) {
-          updateData.last_name = userData.last_name;
-        }
-        
-        console.log(`Updating profile data for user ${userId}:`, updateData);
-        
-        const { data: profileUpdate, error: profileUpdateError } = await supabase
-          .from('profiles')
-          .update(updateData)
-          .eq('id', userId)
-          .select();
-          
-        if (profileUpdateError) {
-          console.error(`Error updating profile for ${userId}:`, profileUpdateError);
-          return new Response(JSON.stringify({ 
-            error: 'Error updating user profile', 
-            details: profileUpdateError.message 
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        
-        updateResult.profileData = profileUpdate;
-        console.log(`Successfully updated profile for ${userId}:`, profileUpdate);
-      }
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'User updated successfully',
-        data: updateResult
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Handle different actions
+    switch (action) {
+      case 'delete':
+        response = await deleteUser(supabase, requestData.userId, userId);
+        break;
+      case 'update':
+        response = await updateUser(supabase, requestData.userId, requestData.userData, userId);
+        break;
+      case 'create':
+        response = await createUser(supabase, requestData.userData, userId);
+        break;
+      default: // 'list' is the default action
+        response = await listUsers(supabase, userId);
     }
-    
-    // CREATE USER
-    if (action === 'create' && userData) {
-      console.log(`Admin ${user.id} is attempting to create a new user`, userData);
-      
-      // Create the user with service role client
-      const { data: createData, error: createError } = await supabase.auth.admin.createUser({
-        email: userData.email,
-        password: userData.password,
-        email_confirm: true, // Automatically confirm the email
-        user_metadata: {
-          first_name: userData.first_name,
-          last_name: userData.last_name
-        }
-      });
-      
-      if (createError) {
-        console.error(`Error creating user:`, createError);
-        return new Response(JSON.stringify({ error: 'Error creating user', details: createError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      
-      // Also update the profiles table directly in case the trigger doesn't work
-      if (createData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: createData.user.id,
-            first_name: userData.first_name,
-            last_name: userData.last_name,
-            role: userData.role || 'user'
-          });
-          
-        if (profileError) {
-          console.error(`Error creating profile for new user:`, profileError);
-          // We won't fail the whole operation if just the profile update fails
-        }
-      }
-      
-      console.log(`Successfully created user ${createData.user.id}`);
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'User created successfully',
-        user: createData.user
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    // Default behavior: Get all users (for action 'list' or if no action specified)
-    console.log(`Admin ${user.id} is fetching all users`);
-    const { data: users, error } = await supabase.auth.admin.listUsers();
-    
-    if (error) {
-      console.error('Error listing users:', error);
-      return new Response(JSON.stringify({ error: 'Error fetching users', details: error.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    // Format the response
-    const formattedUsers: User[] = users.users.map(user => ({
-      id: user.id,
-      email: user.email || '',
-      created_at: user.created_at || '',
-      last_sign_in_at: user.last_sign_in_at,
-    }));
-    
-    return new Response(JSON.stringify(formattedUsers), {
+
+    return new Response(JSON.stringify(response), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
     console.error('Edge function error:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Server error', 
+    return new Response(JSON.stringify({
+      error: 'Server error',
       message: error.message || 'An unexpected error occurred',
     }), {
-      status: 500,
+      status: error.message?.includes('Unauthorized') ? 401 : 
+             error.message?.includes('Forbidden') ? 403 : 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
