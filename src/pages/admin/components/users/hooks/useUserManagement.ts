@@ -1,66 +1,147 @@
 
+import { useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import { useFetchUsers } from "./useFetchUsers";
 import { useUserRoleManagement } from "./useUserRoleManagement";
-import { useUserActions } from "./useUserActions";
-import { useCallback } from "react";
+
+interface UserUpdateData {
+  first_name?: string;
+  last_name?: string;
+  role?: string;
+  email?: string;
+}
 
 export function useUserManagement() {
-  const { users, loading, error, fetchUsers } = useFetchUsers();
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const { users, loading, error, fetchUsers } = useFetchUsers(currentPage, pageSize);
   const { updatingUserId, updateUserRole } = useUserRoleManagement();
-  const { processingUserId, sendPasswordResetEmail, deleteUser } = useUserActions();
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
 
-  // Wrap the updateRole handler with explicit refresh logic
-  const handleUpdateRole = useCallback(async (userId: string, newRole: string) => {
+  const handleUpdateUser = async (userId: string, data: UserUpdateData) => {
     try {
-      console.log(`Attempting to update role for user ${userId} to ${newRole}`);
-      const success = await updateUserRole(userId, newRole);
+      setProcessingUserId(userId);
       
-      if (success) {
-        console.log("Role update reported successful, scheduling data refresh");
-        // Force a refresh of the users data after a delay to ensure the database has updated
-        setTimeout(() => {
-          console.log("Refreshing user data after role update");
-          fetchUsers().catch(err => {
-            console.error("Error refreshing users after role update:", err);
-          });
-        }, 1000); // Increased delay to ensure database updates propagate
-      } else {
-        console.log("Role update was not successful");
+      // If role is being updated, use existing function
+      if (data.role) {
+        await updateUserRole(userId, data.role);
       }
-      return success;
-    } catch (err) {
-      console.error("Error in handleUpdateRole:", err);
-      return false;
-    }
-  }, [updateUserRole, fetchUsers]);
 
-  // Similarly ensure deletion is followed by a data refresh
-  const handleDeleteUser = useCallback(async (userId: string, email: string) => {
-    try {
-      const success = await deleteUser(userId, email);
-      if (success) {
-        // Delay the fetch to ensure database updates have propagated
-        setTimeout(() => {
-          fetchUsers().catch(err => {
-            console.error("Error refreshing users after deletion:", err);
-          });
-        }, 1000);
+      // Update profile data if provided
+      if (data.first_name || data.last_name) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            first_name: data.first_name,
+            last_name: data.last_name
+          })
+          .eq('id', userId);
+
+        if (profileError) throw profileError;
       }
-      return success;
-    } catch (err) {
-      console.error("Error in handleDeleteUser:", err);
-      return false;
+
+      // Update email if provided
+      if (data.email) {
+        const { error: emailError } = await supabase.auth.admin.updateUserById(
+          userId,
+          { email: data.email }
+        );
+
+        if (emailError) throw emailError;
+      }
+
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      });
+
+      await fetchUsers();
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingUserId(null);
     }
-  }, [deleteUser, fetchUsers]);
+  };
+
+  const sendPasswordResetEmail = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Reset email sent",
+        description: `Password reset email has been sent to ${email}`,
+      });
+    } catch (error: any) {
+      console.error("Error sending reset email:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reset email",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteUser = async (userId: string, email: string) => {
+    try {
+      setProcessingUserId(userId);
+      
+      if (!window.confirm(`Are you sure you want to delete user: ${email}?`)) {
+        return false;
+      }
+
+      const { error } = await supabase.functions.invoke(
+        "get-all-users",
+        {
+          body: { 
+            userId,
+            action: "delete"
+          }
+        }
+      );
+
+      if (error) throw error;
+      
+      toast({
+        title: "User deleted",
+        description: `User ${email} has been permanently deleted.`,
+      });
+
+      await fetchUsers();
+      return true;
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Delete failed",
+        description: error.message || "Failed to delete user",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
 
   return {
     users,
     loading,
     error,
+    currentPage,
+    totalPages: Math.ceil(users.length / pageSize),
+    onPageChange: setCurrentPage,
     updatingUserId: updatingUserId || processingUserId,
     fetchUsers,
-    updateUserRole: handleUpdateRole,
+    updateUser: handleUpdateUser,
     sendPasswordResetEmail,
-    deleteUser: handleDeleteUser
+    deleteUser
   };
 }

@@ -1,5 +1,5 @@
 
-import { Loader2, UserCheck, UserX, Mail, Trash } from "lucide-react";
+import { Loader2, UserCheck, UserX, Mail, Trash, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import {
@@ -9,17 +9,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EditUserDialog } from "./EditUserDialog";
+import { useState } from "react";
+
+interface UserProfile {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  created_at: string;
+  role: string;
+  last_sign_in_at: string | null;
+}
 
 interface UserTableRowProps {
-  user: {
-    id: string;
-    email: string;
-    created_at: string;
-    role: string;
-    last_sign_in_at: string | null;
-  };
+  user: UserProfile;
   isUpdating: boolean;
-  onUpdateRole: (userId: string, newRole: string) => void;
+  onUpdateUser: (userId: string, data: Partial<UserProfile>) => void;
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string) => void;
 }
@@ -27,17 +33,32 @@ interface UserTableRowProps {
 export function UserTableRow({
   user,
   isUpdating,
-  onUpdateRole,
+  onUpdateUser,
   onSendResetEmail,
   onDeleteUser,
 }: UserTableRowProps) {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const handleDeleteClick = () => {
+    if (window.confirm(`Are you sure you want to delete user ${user.email}?`)) {
+      onDeleteUser(user.id, user.email);
+    }
+  };
+
   return (
     <TableRow>
-      <TableCell className="font-medium">{user.email}</TableCell>
+      <TableCell>
+        {user.first_name || user.last_name ? (
+          `${user.first_name || ''} ${user.last_name || ''}`
+        ) : (
+          <span className="text-muted-foreground italic">Not set</span>
+        )}
+      </TableCell>
+      <TableCell>{user.email}</TableCell>
       <TableCell>
         <Select
           defaultValue={user.role}
-          onValueChange={(value) => onUpdateRole(user.id, value)}
+          onValueChange={(value) => onUpdateUser(user.id, { role: value })}
           disabled={isUpdating}
         >
           <SelectTrigger className="w-[110px]">
@@ -78,29 +99,40 @@ export function UserTableRow({
           ? new Date(user.last_sign_in_at).toLocaleDateString() 
           : "Never"}
       </TableCell>
-      <TableCell className="text-right flex gap-2 justify-end">
-        {user.email && !user.email.startsWith("User ") && (
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onSendResetEmail(user.email)}
-            >
-              <Mail className="h-4 w-4 mr-1" />
-              Reset
-            </Button>
-            <Button
-              variant="destructive"
-              size="icon"
-              className="hover:bg-red-700"
-              onClick={() => onDeleteUser(user.id, user.email)}
-              title="Delete User"
-            >
-              <Trash className="h-4 w-4" />
-            </Button>
-          </>
-        )}
+      <TableCell className="text-right">
+        <div className="flex gap-2 justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsEditDialogOpen(true)}
+          >
+            <Edit className="h-4 w-4 mr-1" />
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onSendResetEmail(user.email)}
+          >
+            <Mail className="h-4 w-4 mr-1" />
+            Reset
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDeleteClick}
+            className="hover:bg-red-700"
+          >
+            <Trash className="h-4 w-4" />
+          </Button>
+        </div>
       </TableCell>
+      <EditUserDialog
+        user={user}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onUpdate={(data) => onUpdateUser(user.id, data)}
+      />
     </TableRow>
   );
 }

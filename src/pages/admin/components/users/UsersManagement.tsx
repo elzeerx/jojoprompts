@@ -12,16 +12,21 @@ export default function UsersManagement() {
     users,
     loading,
     error,
+    currentPage,
+    totalPages,
+    onPageChange,
     updatingUserId,
     fetchUsers,
-    updateUserRole,
+    updateUser,
     sendPasswordResetEmail,
     deleteUser
   } = useUserManagement();
 
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.first_name && user.first_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (user.last_name && user.last_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -44,8 +49,11 @@ export default function UsersManagement() {
         <div className="rounded-md border">
           <UsersTable 
             users={filteredUsers}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
             updatingUserId={updatingUserId}
-            onUpdateRole={updateUserRole}
+            onUpdateUser={updateUser}
             onSendResetEmail={sendPasswordResetEmail}
             onDeleteUser={deleteUser}
           />
