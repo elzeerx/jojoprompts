@@ -22,12 +22,15 @@ export default function UsersManagement() {
     deleteUser
   } = useUserManagement();
 
-  const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.first_name && user.first_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (user.last_name && user.last_name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredUsers = users.filter(user => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      user.email.toLowerCase().includes(searchLower) ||
+      user.role.toLowerCase().includes(searchLower) ||
+      (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
+      (user.last_name && user.last_name.toLowerCase().includes(searchLower))
+    );
+  });
 
   return (
     <div className="space-y-6">
