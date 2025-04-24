@@ -36,14 +36,15 @@ export function UserTableRow({
     }
   };
 
+  // Format user's name for display
+  const displayName = user.first_name || user.last_name 
+    ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+    : <span className="text-muted-foreground italic">Not set</span>;
+
   return (
     <TableRow>
       <TableCell>
-        {user.first_name || user.last_name ? (
-          `${user.first_name || ''} ${user.last_name || ''}`
-        ) : (
-          <span className="text-muted-foreground italic">Not set</span>
-        )}
+        {displayName}
       </TableCell>
       <TableCell>{user.email}</TableCell>
       <TableCell>
