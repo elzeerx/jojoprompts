@@ -1,4 +1,3 @@
-
 import { Loader2, UserCheck, UserX, Mail, Trash, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -41,19 +40,10 @@ export function UserTableRow({
     ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
     : <span className="text-muted-foreground italic">Not set</span>;
 
-  // Add console logging to debug the name display issue
-  console.log("User data in UserTableRow:", {
-    id: user.id,
-    email: user.email,
-    firstName: user.first_name,
-    lastName: user.last_name,
-    displayName
-  });
-
   return (
     <TableRow>
       <TableCell>
-        {typeof displayName === 'string' ? displayName : displayName}
+        {displayName}
       </TableCell>
       <TableCell>{user.email}</TableCell>
       <TableCell>

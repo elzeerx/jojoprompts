@@ -1,4 +1,3 @@
-
 import { corsHeaders } from './cors.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -12,19 +11,50 @@ interface UserData {
 
 export async function listUsers(supabase: ReturnType<typeof createClient>, adminId: string) {
   console.log(`Admin ${adminId} is fetching all users`);
-  const { data: users, error } = await supabase.auth.admin.listUsers();
+  
+  // First get all users from auth
+  const { data: users, error: authError } = await supabase.auth.admin.listUsers();
 
-  if (error) {
-    console.error('Error listing users:', error);
-    throw new Error(`Error fetching users: ${error.message}`);
+  if (authError) {
+    console.error('Error listing auth users:', authError);
+    throw new Error(`Error fetching auth users: ${authError.message}`);
   }
 
-  return users.users.map(user => ({
-    id: user.id,
-    email: user.email || '',
-    created_at: user.created_at || '',
-    last_sign_in_at: user.last_sign_in_at,
-  }));
+  // Get all profiles in one query
+  const { data: profiles, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, role, first_name, last_name');
+
+  if (profileError) {
+    console.error('Error fetching profiles:', profileError);
+    throw new Error(`Error fetching profiles: ${profileError.message}`);
+  }
+
+  // Create a map of profiles for efficient lookup
+  const profileMap = new Map(profiles?.map(profile => [profile.id, profile]));
+
+  // Combine the data
+  const combinedUsers = users.users.map(user => {
+    const profile = profileMap.get(user.id) || { role: 'user', first_name: null, last_name: null };
+    
+    console.log(`Combining data for user ${user.id}:`, { 
+      auth: user,
+      profile: profile 
+    });
+    
+    return {
+      id: user.id,
+      email: user.email,
+      created_at: user.created_at,
+      last_sign_in_at: user.last_sign_in_at,
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      role: profile.role || 'user'
+    };
+  });
+
+  console.log('Final combined users data:', combinedUsers);
+  return combinedUsers;
 }
 
 export async function deleteUser(supabase: ReturnType<typeof createClient>, userId: string, adminId: string) {
