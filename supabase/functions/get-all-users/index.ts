@@ -117,25 +117,67 @@ serve(async (req) => {
     if (action === 'update' && userId && userData) {
       console.log(`Admin ${user.id} is attempting to update user ${userId}`, userData);
       
-      // Update the user with service role client
-      const { data: updateData, error: updateError } = await supabase.auth.admin.updateUserById(
-        userId,
-        userData
-      );
-      
-      if (updateError) {
-        console.error(`Error updating user ${userId}:`, updateError);
-        return new Response(JSON.stringify({ error: 'Error updating user', details: updateError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      let updateResult = { user: null, profileData: null };
+
+      // Update the auth user if email is provided
+      if (userData.email) {
+        // Update the user with service role client
+        const { data: authUpdate, error: updateError } = await supabase.auth.admin.updateUserById(
+          userId,
+          { email: userData.email }
+        );
+        
+        if (updateError) {
+          console.error(`Error updating user ${userId}:`, updateError);
+          return new Response(JSON.stringify({ error: 'Error updating user email', details: updateError.message }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        updateResult.user = authUpdate.user;
+        console.log(`Successfully updated user email for ${userId}`);
+      }
+
+      // Update profile data if first_name or last_name is provided
+      if (userData.first_name !== undefined || userData.last_name !== undefined) {
+        const updateData = {};
+        
+        if (userData.first_name !== undefined) {
+          updateData.first_name = userData.first_name;
+        }
+        
+        if (userData.last_name !== undefined) {
+          updateData.last_name = userData.last_name;
+        }
+        
+        console.log(`Updating profile data for user ${userId}:`, updateData);
+        
+        const { data: profileUpdate, error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', userId)
+          .select();
+          
+        if (profileUpdateError) {
+          console.error(`Error updating profile for ${userId}:`, profileUpdateError);
+          return new Response(JSON.stringify({ 
+            error: 'Error updating user profile', 
+            details: profileUpdateError.message 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        updateResult.profileData = profileUpdate;
+        console.log(`Successfully updated profile for ${userId}:`, profileUpdate);
       }
       
-      console.log(`Successfully updated user ${userId}`);
       return new Response(JSON.stringify({ 
         success: true, 
         message: 'User updated successfully',
-        user: updateData.user
+        data: updateResult
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -163,6 +205,23 @@ serve(async (req) => {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+      
+      // Also update the profiles table directly in case the trigger doesn't work
+      if (createData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: createData.user.id,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            role: userData.role || 'user'
+          });
+          
+        if (profileError) {
+          console.error(`Error creating profile for new user:`, profileError);
+          // We won't fail the whole operation if just the profile update fails
+        }
       }
       
       console.log(`Successfully created user ${createData.user.id}`);

@@ -24,42 +24,31 @@ export function useUserManagement() {
     try {
       setProcessingUserId(userId);
       
-      // If role is being updated, use existing function
-      if (data.role) {
+      // If only role is being updated and no other fields, use existing function
+      if (data.role && !data.first_name && !data.last_name && !data.email) {
         await updateUserRole(userId, data.role);
+        await fetchUsers();
+        return;
       }
 
-      // Update profile data if provided
-      if (data.first_name !== undefined || data.last_name !== undefined) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            first_name: data.first_name,
-            last_name: data.last_name
-          })
-          .eq('id', userId);
-
-        if (profileError) throw profileError;
-      }
-
-      // Update email if provided - use edge function
-      if (data.email) {
-        const { data: updateResult, error: updateError } = await supabase.functions.invoke(
-          "get-all-users",
-          {
-            body: { 
-              userId,
-              action: "update",
-              userData: {
-                email: data.email
-              }
-            }
+      console.log("Updating user with data:", data);
+      
+      // Use the edge function to update the user
+      const { data: updateResult, error: updateError } = await supabase.functions.invoke(
+        "get-all-users",
+        {
+          body: { 
+            userId,
+            action: "update",
+            userData: data
           }
-        );
+        }
+      );
 
-        if (updateError) throw updateError;
-        if (updateResult?.error) throw new Error(updateResult.error);
-      }
+      if (updateError) throw updateError;
+      if (updateResult?.error) throw new Error(updateResult.error);
+      
+      console.log("Update result:", updateResult);
 
       toast({
         title: "Success",
