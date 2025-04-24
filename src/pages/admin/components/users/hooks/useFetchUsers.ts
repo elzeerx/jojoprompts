@@ -27,6 +27,8 @@ export function useFetchUsers() {
         return;
       }
       
+      console.log("Fetching users with session:", session.access_token.substring(0, 10) + "...");
+      
       // Get users from the edge function
       const { data: authUsersData, error: functionError } = await supabase.functions.invoke(
         "get-all-users",
@@ -88,6 +90,10 @@ export function useFetchUsers() {
       // Combine auth users with their profiles, defaulting to 'user' if no profile found
       const combinedUsers: UserProfile[] = authUsersData.map((user: any) => {
         const profile = userProfiles.get(user.id) || { role: 'user', first_name: null, last_name: null };
+        
+        // Debug data
+        console.log(`User ${user.id} profile data:`, profile);
+        
         return {
           id: user.id,
           email: user.email,
