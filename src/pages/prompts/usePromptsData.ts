@@ -1,8 +1,7 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { type Prompt, type PromptRow } from "@/types";
+import { type Prompt } from "@/types";
 
 export function usePromptsData({ authLoading, session }: { authLoading: boolean; session: any }) {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -17,8 +16,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
-        .order("created_at", { ascending: false })
-        .returns<PromptRow[]>();
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       const transformedData = (data ?? []).map((item) => ({
@@ -27,6 +25,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         title: item.title,
         prompt_text: item.prompt_text,
         image_path: item.image_path,
+        prompt_type: item.prompt_type as 'text' | 'image',
         created_at: item.created_at || "",
         metadata: {
           category: (item.metadata as any)?.category ?? undefined,
@@ -51,7 +50,6 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
     }
   };
 
-  // Fetch prompts initially
   useEffect(() => {
     let mounted = true;
     if (!authLoading) {
