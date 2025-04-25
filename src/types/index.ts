@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   email: string;
@@ -13,6 +14,7 @@ export interface Prompt {
   prompt_text: string;
   image_path: string | null;
   image_url?: string | null;
+  default_image_path?: string | null;
   prompt_type: 'text' | 'image';
   metadata: {
     category?: string;
@@ -31,6 +33,7 @@ export interface PromptRow {
   prompt_text: string;
   image_path: string | null;
   image_url?: string | null; // Add image_url property for backward compatibility
+  default_image_path?: string | null;
   created_at: string | null;
   metadata: {
     category?: string;

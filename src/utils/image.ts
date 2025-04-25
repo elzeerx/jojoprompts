@@ -1,3 +1,6 @@
+
+import { supabase } from "@/integrations/supabase/client";
+
 // The correct Supabase URL for this project
 const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
 // For private bucket access, we need to use authenticated endpoints
