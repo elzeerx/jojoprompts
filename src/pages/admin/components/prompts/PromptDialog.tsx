@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { TextPromptFields } from "./components/TextPromptFields";
 import { ImageUploadField } from "./components/ImageUploadField";
 import { PromptFormField } from "./components/PromptFormField";
+import { Label } from "@/components/ui/label";
 
 export interface PromptDialogProps {
   open: boolean;
