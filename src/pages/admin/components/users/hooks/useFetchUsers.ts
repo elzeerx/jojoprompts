@@ -27,7 +27,7 @@ export function useFetchUsers() {
         return;
       }
       
-      console.log("Fetching users with session:", session.access_token.substring(0, 10) + "...");
+      console.log("Fetching users with session token");
       
       const { data: users, error: functionError } = await supabase.functions.invoke(
         "get-all-users",

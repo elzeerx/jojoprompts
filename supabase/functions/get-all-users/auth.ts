@@ -13,33 +13,45 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
+    console.error('Missing Authorization header');
     throw new Error('Unauthorized - Missing authorization header');
   }
 
   const token = authHeader.split(' ')[1];
-  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-  if (userError || !user) {
-    throw new Error('Unauthorized - Invalid token');
+  if (!token) {
+    console.error('Invalid Authorization header format');
+    throw new Error('Unauthorized - Invalid authorization format');
   }
 
-  console.log(`User ${user.id} is attempting to access admin functionality`);
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      console.error('Error validating token:', userError);
+      throw new Error('Unauthorized - Invalid token');
+    }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
+    console.log(`User ${user.id} is attempting to access admin functionality`);
 
-  if (profileError) {
-    console.error('Error fetching user profile:', profileError);
-    throw new Error(`Error fetching user profile: ${profileError.message}`);
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+      throw new Error(`Error fetching user profile: ${profileError.message}`);
+    }
+
+    if (!profile || profile.role !== 'admin') {
+      console.error(`User ${user.id} is not an admin. Role: ${profile?.role || 'unknown'}`);
+      throw new Error('Forbidden - Admin role required');
+    }
+
+    return { supabase, userId: user.id };
+  } catch (error) {
+    console.error('Authentication error:', error);
+    throw error;
   }
-
-  if (!profile || profile.role !== 'admin') {
-    console.error(`User ${user.id} is not an admin. Role: ${profile?.role || 'unknown'}`);
-    throw new Error('Forbidden - Admin role required');
-  }
-
-  return { supabase, userId: user.id };
 }

@@ -5,6 +5,9 @@ import { useUserManagement } from "./hooks/useUserManagement";
 import { UsersHeader } from "./components/UsersHeader";
 import { UsersError } from "./components/UsersError";
 import { UsersTable } from "./UsersTable";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 export default function UsersManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,7 +44,22 @@ export default function UsersManagement() {
       />
 
       {error && (
-        <UsersError error={error} onRetry={fetchUsers} />
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription className="flex flex-col gap-2">
+            <p>{error}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchUsers}
+              className="w-fit flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
 
       {loading ? (
