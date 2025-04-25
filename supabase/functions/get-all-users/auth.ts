@@ -1,5 +1,5 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 
 interface AuthContext {
   supabase: ReturnType<typeof createClient>;
@@ -24,11 +24,13 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
   }
 
   try {
+    console.log(`Attempting to validate token: ${token.substring(0, 10)}...`);
+    
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
       console.error('Error validating token:', userError);
-      throw new Error('Unauthorized - Invalid token');
+      throw new Error(`Unauthorized - Invalid token: ${userError?.message || 'User not found'}`);
     }
 
     console.log(`User ${user.id} is attempting to access admin functionality`);
@@ -49,6 +51,7 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
       throw new Error('Forbidden - Admin role required');
     }
 
+    console.log(`Admin user ${user.id} authenticated successfully`);
     return { supabase, userId: user.id };
   } catch (error) {
     console.error('Authentication error:', error);

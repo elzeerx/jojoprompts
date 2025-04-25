@@ -16,14 +16,15 @@ export function useFetchUsers() {
       setLoading(true);
       setError(null);
       
-      if (!session) {
+      if (!session || !session.access_token) {
+        console.error("No valid session found for admin operation");
         toast({
-          title: "Error fetching users",
-          description: "You need to be logged in to view users",
+          title: "Authentication error",
+          description: "Please log in again to access admin functions",
           variant: "destructive",
         });
         setLoading(false);
-        setError("Authentication required");
+        setError("Authentication required - Please log in again");
         return;
       }
       
@@ -68,8 +69,10 @@ export function useFetchUsers() {
   }, [session]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    if (session) {
+      fetchUsers();
+    }
+  }, [fetchUsers, session]);
 
   return { users, loading, error, fetchUsers };
 }
