@@ -7,21 +7,28 @@ import { cn } from "@/lib/utils";
 import { type Prompt } from "@/types";
 import { BookText } from "lucide-react";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
-import { ImageWrapper } from "./prompt-card/ImageWrapper";
 import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
+import { ImageWrapper } from "./prompt-card/ImageWrapper";
+import { CardActions } from "./prompt-card/CardActions";
 
 interface TextPromptCardProps {
   prompt: Prompt;
   className?: string;
+  initiallyFavorited?: boolean;
 }
 
-export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
+export function TextPromptCard({ 
+  prompt, 
+  className, 
+  initiallyFavorited = false 
+}: TextPromptCardProps) {
   const { title, prompt_text, metadata } = prompt;
   const tags = metadata?.tags || [];
   const model = metadata?.target_model || 'ChatGPT';
   const useCase = metadata?.use_case;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
+  const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
 
   // Use the default_image_path from the prompt, or if not available, use textpromptdefaultimg.jpg
   const imagePath = prompt.default_image_path || 'textpromptdefaultimg.jpg';
@@ -45,17 +52,25 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
     loadImage();
   }, [imagePath]);
 
+  const toggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Placeholder for favorite logic - would need to be implemented similarly to other cards
+    setFavorited(!favorited);
+  };
+
   return (
     <>
       <Card 
         className={cn(
-          "overflow-hidden transition-all duration-200 hover:shadow-lg group cursor-pointer bg-gradient-to-b from-card to-card/95",
+          "overflow-hidden transition-all duration-200 hover:shadow-lg group cursor-pointer bg-gradient-to-b from-card to-card/95 h-[32rem] flex flex-col",
           className
         )}
         onClick={() => setDetailsOpen(true)}
       >
         <div className="relative">
-          <ImageWrapper src={imageUrl} alt={title} aspect={4/3} />
+          <ImageWrapper src={imageUrl} alt={title} aspect={4/3} isCard={true} />
+          <CardActions favorited={favorited} onToggleFavorite={toggleFavorite} />
         </div>
         <CardHeader className="p-4 pb-2 flex items-start gap-3">
           <BookText className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
@@ -70,11 +85,11 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
             )}
           </div>
         </CardHeader>
-        <CardContent className="p-4 pt-2 space-y-2">
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4 min-h-[5em]">
+        <CardContent className="p-4 pt-2 space-y-2 flex-grow">
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[4em]">
             {prompt_text}
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 mt-auto">
             <Badge variant="outline" className="text-xs font-medium">
               {model}
             </Badge>
@@ -107,3 +122,4 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
     </>
   );
 }
+
