@@ -49,7 +49,7 @@ export default function UsersManagement() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-visible">
           <UsersTable 
             users={filteredUsers}
             currentPage={currentPage}
