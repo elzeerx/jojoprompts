@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   email: string;
@@ -37,7 +36,10 @@ export interface PromptRow {
     category?: string;
     style?: string;
     tags?: string[];
+    target_model?: string;
+    use_case?: string;
   };
+  prompt_type: 'text' | 'image';
 }
 
 export interface UserProfile {

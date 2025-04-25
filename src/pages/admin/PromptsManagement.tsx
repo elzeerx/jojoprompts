@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -76,10 +75,8 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   
   const handleDeletePrompt = async (promptId: string) => {
     try {
-      // Optimistic update - remove from UI immediately
       setPrompts((prev) => prev.filter(p => p.id !== promptId));
       
-      // Then process the actual delete in the background
       const { error } = await supabase
         .from("prompts")
         .delete()
@@ -87,7 +84,6 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       
       if (error) throw error;
       
-      // Refetch in background to ensure UI is in sync
       supabase
         .from("prompts")
         .select("*")
@@ -102,7 +98,6 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     } catch (error) {
       console.error("Error deleting prompt:", error);
       
-      // Revert the optimistic update on error
       fetchPrompts().then(updatePromptsState);
       
       toast({
@@ -118,7 +113,6 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     
     try {
       if (editing) {
-        // Update existing prompt
         const { error } = await supabase
           .from("prompts")
           .update(prompt)
@@ -126,7 +120,6 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         
         if (error) throw error;
         
-        // Update local state
         setPrompts(prompts.map(p => 
           p.id === editing.id ? { ...p, ...prompt } : p
         ));
@@ -136,7 +129,6 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
           description: "Prompt updated successfully",
         });
       } else {
-        // Create new prompt
         const payload = {
           ...prompt,
           user_id: user?.id
@@ -151,7 +143,6 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         
         if (error) throw error;
         
-        // Add to local state
         setPrompts([data, ...prompts]);
         
         toast({
@@ -204,6 +195,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initial={editing}
+        promptType={editing?.prompt_type || "image"}
         onSave={handleSave}
       />
     </div>
