@@ -1,30 +1,46 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { ResetPasswordFormValues, resetPasswordSchema } from "./validation";
 
 interface ResetPasswordFormProps {
   onSuccess: () => void;
 }
 
 export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const onSubmit = async (values: ResetPasswordFormValues) => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({ 
-        password 
+      const { error } = await supabase.auth.updateUser({
+        password: values.password,
       });
 
       if (error) {
@@ -54,24 +70,36 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
   };
 
   return (
-    <form onSubmit={handlePasswordReset}>
-      <div className="space-y-4 pt-4">
-        <div className="space-y-2">
-          <Label htmlFor="newPassword">New Password</Label>
-          <Input
-            id="newPassword"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
-          <p className="text-xs text-muted-foreground">
-            Password must be at least 6 characters long
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-col space-y-4 pt-6">
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>New Password</FormLabel>
+              <FormControl>
+                <Input type="password" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirm Password</FormLabel>
+              <FormControl>
+                <Input type="password" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (
             <>
@@ -82,7 +110,7 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
             "Update Password"
           )}
         </Button>
-      </div>
-    </form>
+      </form>
+    </Form>
   );
 }

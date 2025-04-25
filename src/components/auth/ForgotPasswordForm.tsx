@@ -1,29 +1,47 @@
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { ForgotPasswordFormValues, forgotPasswordSchema } from "./validation";
 
 export function ForgotPasswordForm() {
-  const [resetEmail, setResetEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
   const { toast } = useToast();
 
-  const handleResetRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      resetEmail: "",
+    },
+  });
+
+  const onSubmit = async (values: ForgotPasswordFormValues) => {
     setIsLoading(true);
 
     try {
       const origin = window.location.origin;
       const resetUrl = `${origin}/login?tab=reset`;
       
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: resetUrl,
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        values.resetEmail,
+        {
+          redirectTo: resetUrl,
+        }
+      );
 
       if (error) {
         toast({
@@ -50,56 +68,61 @@ export function ForgotPasswordForm() {
     setIsLoading(false);
   };
 
+  if (resetRequested) {
+    return (
+      <div className="text-center py-4">
+        <p className="mb-4">Password reset email sent!</p>
+        <p className="text-sm text-muted-foreground">
+          Check your inbox for a link to reset your password. If it doesn't appear
+          within a few minutes, check your spam folder.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 w-full"
+          onClick={() => {
+            setResetRequested(false);
+            form.reset();
+          }}
+        >
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={handleResetRequest}>
-      <div className="space-y-4 pt-4">
-        {resetRequested ? (
-          <div className="text-center py-4">
-            <p className="mb-4">Password reset email sent!</p>
-            <p className="text-sm text-muted-foreground">
-              Check your inbox for a link to reset your password. If it doesn't appear within a few minutes, check your spam folder.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Label htmlFor="resetEmail">Email</Label>
-            <Input
-              id="resetEmail"
-              type="email"
-              placeholder="name@example.com"
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-              required
-            />
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col space-y-4 pt-6">
-        {!resetRequested ? (
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              "Send Reset Link"
-            )}
-          </Button>
-        ) : (
-          <Button 
-            type="button" 
-            variant="outline" 
-            className="w-full"
-            onClick={() => {
-              setResetRequested(false);
-              setResetEmail("");
-            }}
-          >
-            Try Again
-          </Button>
-        )}
-      </div>
-    </form>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+        <FormField
+          control={form.control}
+          name="resetEmail"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  placeholder="name@example.com"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Sending...
+            </>
+          ) : (
+            "Send Reset Link"
+          )}
+        </Button>
+      </form>
+    </Form>
   );
 }
