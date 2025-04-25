@@ -46,8 +46,11 @@ export async function getPromptImage(pathOrUrl: string | null | undefined, w = 4
 export const getCdnUrl = getPromptImage;
 
 export async function uploadDefaultPromptImage(file: File): Promise<string> {
+  console.log(`Uploading to DEFAULT_BUCKET: ${DEFAULT_BUCKET}`);
   const path = `text-prompt-default.${file.name.split('.').pop()}`;
-  const { error } = await supabase.storage
+  
+  // Explicitly use the DEFAULT_BUCKET for default prompt images
+  const { data, error } = await supabase.storage
     .from(DEFAULT_BUCKET)
     .upload(path, file, { upsert: true });
     
@@ -56,10 +59,10 @@ export async function uploadDefaultPromptImage(file: File): Promise<string> {
     throw error;
   }
   
+  console.log(`Successfully uploaded to ${DEFAULT_BUCKET}:`, path);
   return path;
 }
 
 export async function getTextPromptDefaultImage(): Promise<string> {
   return getPromptImage('text-prompt-default.png');
 }
-

@@ -1,3 +1,4 @@
+
 import { FC, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,10 +68,13 @@ export const PromptDialog: FC<PromptDialogProps> = ({
       if (promptType === "text" && !defaultImagePath) {
         try {
           if (form.file) {
+            // Use the uploadDefaultPromptImage function that will ensure the image goes to default-prompt-images bucket
             defaultImagePath = await uploadDefaultPromptImage(form.file);
           } else {
+            // Use the default image which should be in the default-prompt-images bucket
             defaultImagePath = 'text-prompt-default.png';
           }
+          console.log(`Using default image path: ${defaultImagePath}`);
         } catch (error) {
           console.error('Error uploading default text prompt image:', error);
           toast({
