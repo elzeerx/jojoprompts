@@ -72,7 +72,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
             defaultImagePath = await uploadDefaultPromptImage(form.file);
           } else {
             // Use the default image which should be in the default-prompt-images bucket
-            defaultImagePath = 'text-prompt-default.png';
+            defaultImagePath = 'textpromptdefaultimg.jpg';
           }
           console.log(`Using default image path: ${defaultImagePath}`);
         } catch (error) {

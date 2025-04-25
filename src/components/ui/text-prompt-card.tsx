@@ -8,7 +8,7 @@ import { type Prompt } from "@/types";
 import { BookText } from "lucide-react";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
-import { getPromptImage } from "@/utils/image";
+import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 
 interface TextPromptCardProps {
   prompt: Prompt;
@@ -23,13 +23,24 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
 
-  const imagePath = prompt.default_image_path || 'text-prompt-default.png';
+  // Use the default_image_path from the prompt, or if not available, use textpromptdefaultimg.jpg
+  const imagePath = prompt.default_image_path || 'textpromptdefaultimg.jpg';
 
   // Fetch the image URL when the component mounts or the imagePath changes
   useEffect(() => {
     async function loadImage() {
-      const url = await getPromptImage(imagePath, 400, 80);
-      setImageUrl(url);
+      try {
+        // If this is the default image, use the specific function that knows to look in the default-prompt-images bucket
+        const url = imagePath === 'textpromptdefaultimg.jpg' 
+          ? await getTextPromptDefaultImage()
+          : await getPromptImage(imagePath, 400, 80);
+          
+        console.log(`Loading text prompt image from path: ${imagePath}, URL: ${url}`);
+        setImageUrl(url);
+      } catch (error) {
+        console.error('Error loading text prompt image:', error);
+        setImageUrl('/img/placeholder.png');
+      }
     }
     loadImage();
   }, [imagePath]);

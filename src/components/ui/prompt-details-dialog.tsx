@@ -1,8 +1,9 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type PromptRow } from "@/types";
-import { getPromptImage } from "@/utils/image";
+import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { useEffect, useState } from "react";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 import { Skeleton } from "./skeleton";
@@ -32,17 +33,30 @@ export function PromptDetailsDialog({
     }
   }, [promptList, prompt.id, onOpenChange]);
 
-  const imagePath = prompt.image_path || prompt.image_url || null;
+  // For text prompts, use the default image path or fallback to the textpromptdefaultimg.jpg
+  const imagePath = prompt.prompt_type === "text" 
+    ? prompt.default_image_path || 'textpromptdefaultimg.jpg'
+    : prompt.image_path || prompt.image_url || null;
 
   useEffect(() => {
     if (open && imagePath) {
       async function loadImage() {
-        const imgUrl = await getPromptImage(imagePath, 1200, 90);
-        setDialogImgUrl(imgUrl);
-        setImageLoading(true);
-        setImageError(false);
-        console.log("Details dialog image path:", imagePath);
-        console.log("Details dialog image URL:", imgUrl);
+        try {
+          // Use specific function for default image
+          const imgUrl = imagePath === 'textpromptdefaultimg.jpg'
+            ? await getTextPromptDefaultImage()
+            : await getPromptImage(imagePath, 1200, 90);
+            
+          setDialogImgUrl(imgUrl);
+          setImageLoading(true);
+          setImageError(false);
+          console.log("Details dialog image path:", imagePath);
+          console.log("Details dialog image URL:", imgUrl);
+        } catch (error) {
+          console.error("Error loading dialog image:", error);
+          setImageError(true);
+          setImageLoading(false);
+        }
       }
       loadImage();
     } else {
@@ -67,9 +81,18 @@ export function PromptDetailsDialog({
       setImageError(false);
       
       async function refreshImage() {
-        const refreshedUrl = await getPromptImage(imagePath, 1200, 90) + `&t=${Date.now()}`;
-        console.log("Retrying with refreshed URL:", refreshedUrl);
-        setDialogImgUrl(refreshedUrl);
+        try {
+          const refreshedUrl = imagePath === 'textpromptdefaultimg.jpg'
+            ? await getTextPromptDefaultImage() + `&t=${Date.now()}`
+            : await getPromptImage(imagePath, 1200, 90) + `&t=${Date.now()}`;
+            
+          console.log("Retrying with refreshed URL:", refreshedUrl);
+          setDialogImgUrl(refreshedUrl);
+        } catch (error) {
+          console.error("Error refreshing image:", error);
+          setImageError(true);
+          setImageLoading(false);
+        }
       }
       
       refreshImage();
@@ -78,8 +101,15 @@ export function PromptDetailsDialog({
 
   const handleImageClick = async () => {
     if (imagePath && !imageError && !imageLoading) {
-      const fullImage = await getPromptImage(imagePath, 2000, 100);
-      if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
+      try {
+        const fullImage = imagePath === 'textpromptdefaultimg.jpg'
+          ? await getTextPromptDefaultImage()
+          : await getPromptImage(imagePath, 2000, 100);
+          
+        if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        console.error("Error opening full image:", error);
+      }
     }
   };
 
