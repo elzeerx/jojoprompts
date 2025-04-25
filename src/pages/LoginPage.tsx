@@ -22,18 +22,19 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<string>("login");
 
   useEffect(() => {
-    // Check URL parameters for password reset flow
     const token = searchParams.get('token');
     const type = searchParams.get('type');
 
     if (token && type === 'recovery') {
       setActiveTab("reset");
+      setResetToken(token);
     }
   }, [searchParams]);
 
@@ -77,7 +78,6 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Get the current origin for the redirect URL
       const origin = window.location.origin;
       const resetUrl = `${origin}/login?tab=reset`;
       
@@ -115,7 +115,12 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const { error } = await supabase.auth.updateUser(
+        { password },
+        { 
+          recoveryToken: resetToken || undefined 
+        }
+      );
 
       if (error) {
         toast({
@@ -126,7 +131,7 @@ export default function LoginPage() {
       } else {
         toast({
           title: "Password Updated",
-          description: "Your password has been successfully updated. You can now log in with your new password.",
+          description: "Your password has been successfully updated. You can now log in.",
         });
         setActiveTab("login");
       }
