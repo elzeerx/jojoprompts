@@ -1,4 +1,3 @@
-
 // PromptCard main file — refactored with atoms
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
@@ -42,7 +41,7 @@ export function PromptCard({
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
-  const aspect = 4 / 3;
+  const aspect = 1;
 
   // Determine the image path, with image_path having priority over image_url
   const imagePath = prompt.image_path || prompt.image_url || null;
@@ -115,7 +114,7 @@ export function PromptCard({
         )}
         onClick={() => setDetailsOpen(true)}
       >
-        <div className="relative">
+        <div className="relative aspect-square">
           <ImageWrapper src={imageUrl} alt={title} aspect={aspect} isCard={true} />
           <CardActions
             favorited={favorited}
@@ -167,4 +166,3 @@ export function PromptCard({
     </>
   );
 }
-
