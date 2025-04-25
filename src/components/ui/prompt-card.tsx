@@ -1,4 +1,3 @@
-// PromptCard main file — refactored with atoms
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { CopyButton } from "./copy-button";
@@ -13,6 +12,7 @@ import { getPromptImage } from "@/utils/image";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 import { CardActions } from "./prompt-card/CardActions";
 import { TagList } from "./prompt-card/TagList";
+
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
   isSelectable?: boolean;
@@ -23,6 +23,7 @@ interface PromptCardProps {
   onDelete?: (promptId: string) => void;
   initiallyFavorited?: boolean;
 }
+
 export function PromptCard({
   prompt,
   isSelectable = false,
@@ -45,16 +46,13 @@ export function PromptCard({
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
-  // Set a 1:1 aspect ratio for card images
   const aspect = 1;
 
-  // Determine the image path, with image_path having priority over image_url
   const imagePath = prompt.image_path || prompt.image_url || null;
 
-  // Fetch the image URL when the component mounts or the imagePath changes
   useEffect(() => {
     async function loadImage() {
-      const url = await getPromptImage(imagePath, 300, 80); // Reduced size to 300px
+      const url = await getPromptImage(imagePath, 300, 80);
       setImageUrl(url);
     }
     if (imagePath) {
@@ -62,14 +60,15 @@ export function PromptCard({
     }
   }, [imagePath]);
 
-  // Debug log for image loading
   useEffect(() => {
     console.debug(`Card image path: ${imagePath}`);
     console.debug(`Card image URL: ${imageUrl}`);
   }, [imagePath, imageUrl]);
+
   const handleSelectChange = (checked: boolean) => {
     onSelect?.(prompt.id);
   };
+
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -100,6 +99,7 @@ export function PromptCard({
       });
     }
   };
+
   return <>
       <Card className={cn("overflow-hidden transition-all duration-200 hover:shadow-2xl hover:scale-[1.025] group cursor-pointer border border-border/50 hover:border-border/100 bg-gradient-to-b from-card to-card/95", isSelected && "ring-2 ring-primary")} onClick={() => setDetailsOpen(true)}>
         <div className="relative">
@@ -118,7 +118,7 @@ export function PromptCard({
           <TagList tags={tags} />
         </CardContent>
         <CardFooter className="p-4 pt-0 flex flex-wrap items-center gap-2">
-          <CopyButton value={prompt_text} className="flex-shrink-0" />
+          <CopyButton value={prompt_text} className="flex-shrink-0 w-full" />
           {isAdmin && <div className="flex gap-2 ml-auto">
               <Button variant="ghost" size="sm" onClick={e => {
             e.stopPropagation();
