@@ -1,4 +1,3 @@
-
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImgHTMLAttributes, useState, useEffect } from "react";
@@ -8,12 +7,12 @@ import { AlertCircle } from "lucide-react";
 export function ImageWrapper({
   src,
   alt,
-  aspect = 1, // Default to 1:1 aspect ratio
+  aspect = 1,
   className = "",
   onLoad,
   onError,
   disableAspectRatio = false,
-  isCard = true, // Prop to distinguish between card and dialog usage
+  isCard = true,
   ...props
 }: {
   src?: string | null;
@@ -43,7 +42,6 @@ export function ImageWrapper({
   }, [src]);
 
   useEffect(() => {
-    // Check if imageSrc is a string before trying to use includes
     if (imageSrc && typeof imageSrc === 'string' && imageSrc.includes('/api/get-image/') && retries === 0) {
       console.log(`Loading image via edge function: ${imageSrc}`);
     }
@@ -51,7 +49,6 @@ export function ImageWrapper({
 
   useEffect(() => {
     const fetchPrivateImage = async () => {
-      // Add type check for imageSrc
       if (error && retries === 1 && imageSrc && typeof imageSrc === 'string' && imageSrc.includes('/api/get-image/')) {
         try {
           const pathStart = imageSrc.indexOf('/api/get-image/') + '/api/get-image/'.length;
@@ -110,9 +107,7 @@ export function ImageWrapper({
     console.error(`Image failed to load: ${imageSrc}`);
     setError(true);
     setLoading(false);
-    
     onError?.();
-    
     if (retries < MAX_RETRIES) {
       setRetries(prev => prev + 1);
     }
@@ -122,7 +117,6 @@ export function ImageWrapper({
     console.log(`Image loaded successfully: ${imageSrc}`);
     setLoading(false);
     setError(false);
-    
     onLoad?.();
   };
 
@@ -145,10 +139,14 @@ export function ImageWrapper({
   };
 
   return (
-    <ImageContainer {...containerProps} className={`rounded-lg overflow-hidden bg-muted ${className}`}>
+    <ImageContainer {...containerProps} className={`rounded-lg overflow-hidden bg-muted relative ${className}`}>
       <div className="w-full h-full flex items-center justify-center">
         {loading && (
-          <Skeleton className="absolute inset-0 z-10 rounded-lg animate-pulse" />
+          <div className="absolute inset-0 z-10">
+            <div className="w-full h-full animate-pulse bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200">
+              <div className="w-full h-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+            </div>
+          </div>
         )}
         {error && retries >= MAX_RETRIES ? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground flex-col gap-2">
@@ -173,10 +171,8 @@ export function ImageWrapper({
             aria-busy={loading}
             onLoad={handleLoad}
             onError={handleError}
-            className={`w-full h-full transition duration-300 ${loading ? "opacity-0" : "opacity-100"} ${
-              isCard 
-                ? "object-contain max-h-full" // Changed to object-contain for cards
-                : "object-contain max-h-[70vh]"
+            className={`w-full h-full transition-opacity duration-300 ${loading ? "opacity-0" : "opacity-100"} ${
+              isCard ? "object-contain max-h-full" : "object-contain max-h-[70vh]"
             }`}
             {...props}
           />
