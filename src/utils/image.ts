@@ -3,10 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 // The correct Supabase URL for this project
 const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
-// For private bucket access, we need to use authenticated endpoints
 const BUCKET = 'prompt-images';
+const DEFAULT_BUCKET = 'default-prompt-images';
 
-export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80) {
+export async function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80) {
   if (!pathOrUrl) return '/img/placeholder.png';
   if (pathOrUrl.startsWith('http')) return pathOrUrl;
   
@@ -16,18 +16,32 @@ export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q 
   // Log path for debugging
   console.log(`Getting image for path: ${cleanPath}`);
   
-  // Make sure we're using the correct endpoint for private images - edge function
-  // This will handle authentication and permissions
-  return `/api/get-image/${encodeURIComponent(cleanPath)}?width=${w}&quality=${q}`;
+  // Get a signed URL for private bucket access
+  const bucket = pathOrUrl.includes('text-prompt-default') ? DEFAULT_BUCKET : BUCKET;
+  const { data, error } = await supabase
+    .storage
+    .from(bucket)
+    .createSignedUrl(cleanPath, 300, {
+      transform: {
+        width: w,
+        quality: q
+      }
+    });
+    
+  if (error || !data?.signedUrl) {
+    console.error('Error getting signed URL:', error);
+    return '/img/placeholder.png';
+  }
+  
+  return data.signedUrl;
 }
 
-// For backward compatibility (e.g., used by pdf-export)
 export const getCdnUrl = getPromptImage;
 
 export async function uploadDefaultPromptImage(file: File) {
   const path = `text-prompt-default.${file.name.split('.').pop()}`;
   const { error } = await supabase.storage
-    .from('default-prompt-images')
+    .from(DEFAULT_BUCKET)
     .upload(path, file, { upsert: true });
     
   if (error) {
@@ -38,6 +52,6 @@ export async function uploadDefaultPromptImage(file: File) {
   return path;
 }
 
-export function getTextPromptDefaultImage() {
-  return getPromptImage('text-prompt-default.png', 400, 80);
+export async function getTextPromptDefaultImage() {
+  return getPromptImage('text-prompt-default.png');
 }
