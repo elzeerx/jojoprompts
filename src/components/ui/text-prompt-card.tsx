@@ -26,11 +26,9 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
   // Use the default_image_path from the prompt, or if not available, use textpromptdefaultimg.jpg
   const imagePath = prompt.default_image_path || 'textpromptdefaultimg.jpg';
 
-  // Fetch the image URL when the component mounts or the imagePath changes
   useEffect(() => {
     async function loadImage() {
       try {
-        // If this is the default image, use the specific function that knows to look in the default-prompt-images bucket
         const url = imagePath === 'textpromptdefaultimg.jpg' 
           ? await getTextPromptDefaultImage()
           : await getPromptImage(imagePath, 400, 80);
@@ -57,24 +55,24 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
         <div className="relative">
           <ImageWrapper src={imageUrl} alt={title} aspect={4/3} />
         </div>
-        <CardHeader className="p-4 pb-2 flex items-start gap-3">
-          <BookText className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-          <div className="space-y-1 flex-1">
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center gap-2">
+            <BookText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
             <CardTitle className="text-lg font-semibold leading-tight line-clamp-1">
               {title}
             </CardTitle>
-            {useCase && (
-              <Badge variant="secondary" className="text-xs">
-                {useCase}
-              </Badge>
-            )}
           </div>
+          {useCase && (
+            <Badge variant="secondary" className="mt-2 text-xs">
+              {useCase}
+            </Badge>
+          )}
         </CardHeader>
-        <CardContent className="p-4 pt-2 space-y-2">
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4 min-h-[5em]">
+        <CardContent className="p-4 pt-0">
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
             {prompt_text}
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 mt-2">
             <Badge variant="outline" className="text-xs font-medium">
               {model}
             </Badge>
