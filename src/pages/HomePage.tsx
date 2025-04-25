@@ -1,22 +1,13 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
 export default function HomePage() {
-  return (
-    <main className="min-h-screen flex flex-col items-center justify-start bg-gradient-to-b from-white to-[#F1F0FB]">
+  return <main className="min-h-screen flex flex-col items-center justify-start bg-gradient-to-b from-white to-[#F1F0FB]">
       <section className="w-full max-w-4xl text-center my-20 px-4">
-        <img
-          src="/lovable-uploads/eea1bdcd-7738-4e5f-810a-15c96fe07b94.png"
-          alt="JojoPrompts hero"
-          className="mx-auto mb-10 w-full rounded-xl shadow-xl object-cover"
-        />
-        <h1 className="text-4xl font-extrabold mb-5 text-primary tracking-tight">
-          Discover Unique AI Image Prompts
-        </h1>
+        <img src="/lovable-uploads/eea1bdcd-7738-4e5f-810a-15c96fe07b94.png" alt="JojoPrompts hero" className="mx-auto mb-10 w-full rounded-xl shadow-xl object-cover" />
+        <h1 className="text-4xl font-extrabold mb-5 text-primary tracking-tight">Discover Unique AI Prompts</h1>
         <p className="text-lg text-muted-foreground mb-6">
           Unlock a curated collection of high-quality, ready-to-use AI image generation prompts.<br />
-          <span className="font-semibold text-primary">Anyone can browse and use the prompts.</span><br />
+          <span className="font-semibold text-primary">Browse and use the prompts in ChatGPT</span><br />
           <span className="font-medium text-secondary">
             Only admins can add or create new prompts.
           </span>
@@ -30,6 +21,5 @@ export default function HomePage() {
           </Button>
         </div>
       </section>
-    </main>
-  );
+    </main>;
 }
