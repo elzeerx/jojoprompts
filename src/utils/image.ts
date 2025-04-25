@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
 const BUCKET = 'prompt-images';
 const DEFAULT_BUCKET = 'default-prompt-images';
+const DEFAULT_TEXT_PROMPT_IMAGE = 'textpromptdefaultimg.jpg';
 
 export async function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80): Promise<string> {
   if (!pathOrUrl) return '/img/placeholder.png';
@@ -18,7 +19,7 @@ export async function getPromptImage(pathOrUrl: string | null | undefined, w = 4
   
   try {
     // Get a signed URL for private bucket access
-    const bucket = typeof pathOrUrl === 'string' && pathOrUrl.includes('text-prompt-default') ? DEFAULT_BUCKET : BUCKET;
+    const bucket = typeof pathOrUrl === 'string' && pathOrUrl === DEFAULT_TEXT_PROMPT_IMAGE ? DEFAULT_BUCKET : BUCKET;
     const { data, error } = await supabase
       .storage
       .from(bucket)
@@ -47,7 +48,7 @@ export const getCdnUrl = getPromptImage;
 
 export async function uploadDefaultPromptImage(file: File): Promise<string> {
   console.log(`Uploading to DEFAULT_BUCKET: ${DEFAULT_BUCKET}`);
-  const path = `text-prompt-default.${file.name.split('.').pop()}`;
+  const path = DEFAULT_TEXT_PROMPT_IMAGE;
   
   // Explicitly use the DEFAULT_BUCKET for default prompt images
   const { data, error } = await supabase.storage
@@ -64,5 +65,5 @@ export async function uploadDefaultPromptImage(file: File): Promise<string> {
 }
 
 export async function getTextPromptDefaultImage(): Promise<string> {
-  return getPromptImage('text-prompt-default.png');
+  return getPromptImage(DEFAULT_TEXT_PROMPT_IMAGE);
 }
