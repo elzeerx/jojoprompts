@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { CopyButton } from "./copy-button";
@@ -7,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { type Prompt } from "@/types";
 import { BookText } from "lucide-react";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
+import { ImageWrapper } from "./prompt-card/ImageWrapper";
+import { getPromptImage } from "@/utils/image";
 
 interface TextPromptCardProps {
   prompt: Prompt;
@@ -20,6 +21,9 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
   const useCase = metadata?.use_case;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  const imagePath = prompt.default_image_path || 'text-prompt-default.png';
+  const imageUrl = getPromptImage(imagePath, 400, 80);
+
   return (
     <>
       <Card 
@@ -29,6 +33,9 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
         )}
         onClick={() => setDetailsOpen(true)}
       >
+        <div className="relative">
+          <ImageWrapper src={imageUrl} alt={title} aspect={4/3} />
+        </div>
         <CardHeader className="p-4 pb-2 flex items-start gap-3">
           <BookText className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
           <div className="space-y-1 flex-1">

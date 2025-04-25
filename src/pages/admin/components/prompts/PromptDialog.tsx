@@ -49,6 +49,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
 
     try {
       let imagePath = initial?.image_path ?? "";
+      let defaultImagePath = initial?.default_image_path;
 
       if (promptType === "image" && form.file) {
         const path = `${session?.user.id}/${crypto.randomUUID()}-${form.file.name}`;
@@ -84,6 +85,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
         prompt_type: promptType,
         metadata: meta,
         image_path: promptType === "image" ? imagePath : null,
+        default_image_path: promptType === "text" ? defaultImagePath : null
       };
 
       await onSave(promptData);

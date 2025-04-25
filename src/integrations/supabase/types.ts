@@ -62,6 +62,7 @@ export type Database = {
       prompts: {
         Row: {
           created_at: string | null
+          default_image_path: string | null
           id: string
           image_path: string | null
           metadata: Json | null
@@ -72,6 +73,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          default_image_path?: string | null
           id?: string
           image_path?: string | null
           metadata?: Json | null
@@ -82,6 +84,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          default_image_path?: string | null
           id?: string
           image_path?: string | null
           metadata?: Json | null

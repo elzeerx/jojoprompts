@@ -1,4 +1,3 @@
-
 // The correct Supabase URL for this project
 const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
 // For private bucket access, we need to use authenticated endpoints
@@ -21,3 +20,21 @@ export function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q 
 
 // For backward compatibility (e.g., used by pdf-export)
 export const getCdnUrl = getPromptImage;
+
+export async function uploadDefaultPromptImage(file: File) {
+  const path = `text-prompt-default.${file.name.split('.').pop()}`;
+  const { error } = await supabase.storage
+    .from('default-prompt-images')
+    .upload(path, file, { upsert: true });
+    
+  if (error) {
+    console.error('Error uploading default image:', error);
+    throw error;
+  }
+  
+  return path;
+}
+
+export function getTextPromptDefaultImage() {
+  return getPromptImage('text-prompt-default.png', 400, 80);
+}
