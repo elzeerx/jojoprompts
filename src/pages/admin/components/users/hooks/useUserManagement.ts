@@ -70,8 +70,14 @@ export function useUserManagement() {
 
   const sendPasswordResetEmail = async (email: string) => {
     try {
+      // Get the current origin with protocol
+      const origin = window.location.origin;
+      const resetUrl = `${origin}/reset-password`; // Use a dedicated reset password page
+
+      console.log(`Sending password reset email to ${email} with redirect URL: ${resetUrl}`);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: resetUrl,
       });
       
       if (error) throw error;

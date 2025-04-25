@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { RootLayout } from "./components/layout/root-layout";
 import { AuthProvider } from "./contexts/AuthContext";
 import HomePage from "./pages/HomePage";
@@ -34,6 +34,8 @@ const App = () => {
               {/* Login & Signup are public for non-auth users */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
+              {/* Add a redirect route for reset password */}
+              <Route path="/reset-password" element={<Navigate to="/login?tab=reset" />} />
 
               {/* Protected: PromptsPage & Dashboard */}
               <Route
@@ -75,4 +77,3 @@ const App = () => {
 };
 
 export default App;
-

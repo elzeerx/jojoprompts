@@ -32,12 +32,18 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
         throw new Error("You must be logged in to create users");
       }
       
+      // Get the current origin with protocol
+      const origin = window.location.origin;
+      const loginUrl = `${origin}/login`;
+      
+      console.log(`Creating user with email ${email} and redirect URL: ${loginUrl}`);
+      
       // Register the user using signUp method
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`,
+          emailRedirectTo: loginUrl,
         }
       });
       
@@ -83,9 +89,13 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
 
   const sendWelcomeEmail = async (userEmail: string) => {
     try {
+      // Get the current origin with protocol
+      const origin = window.location.origin;
+      const loginUrl = `${origin}/login`;
+      
       // Attempt to send a welcome email using Supabase Auth API
       const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: loginUrl,
       });
       
       if (error) {
