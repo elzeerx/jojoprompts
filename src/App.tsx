@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,16 +27,18 @@ const App = () => {
           <Routes>
             <Route element={<RootLayout />}>
               {/* Public routes */}
-              {/* Only landing page and about are public */}
               <Route path="/" element={<HomePage />} />
               <Route path="/about" element={<AboutPage />} />
-              {/* Login & Signup are public for non-auth users */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
-              {/* Add a redirect route for reset password */}
-              <Route path="/reset-password" element={<Navigate to="/login?tab=reset" />} />
+              
+              {/* Update reset password route to point to login page with tab parameter */}
+              <Route 
+                path="/reset-password" 
+                element={<Navigate to="/login?tab=reset" replace />} 
+              />
 
-              {/* Protected: PromptsPage & Dashboard */}
+              {/* Protected routes */}
               <Route
                 path="/prompts"
                 element={

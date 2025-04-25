@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -24,7 +23,6 @@ export function useUserManagement() {
     try {
       setProcessingUserId(userId);
       
-      // If only role is being updated and no other fields, use existing function
       if (data.role && !data.first_name && !data.last_name && !data.email) {
         await updateUserRole(userId, data.role);
         await fetchUsers();
@@ -33,7 +31,6 @@ export function useUserManagement() {
 
       console.log("Updating user with data:", data);
       
-      // Use the edge function to update the user
       const { data: updateResult, error: updateError } = await supabase.functions.invoke(
         "get-all-users",
         {
@@ -70,10 +67,9 @@ export function useUserManagement() {
 
   const sendPasswordResetEmail = async (email: string) => {
     try {
-      // Get the current origin with protocol
       const origin = window.location.origin;
-      const resetUrl = `${origin}/reset-password`; // Use a dedicated reset password page
-
+      const resetUrl = `${origin}/login?tab=reset`;
+      
       console.log(`Sending password reset email to ${email} with redirect URL: ${resetUrl}`);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {

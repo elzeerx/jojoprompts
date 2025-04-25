@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,11 +28,10 @@ export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
 
   useEffect(() => {
-    // Check if user was redirected with a password reset token
-    const token = searchParams.get('token') || null;
-    const type = searchParams.get('type') || null;
+    // Check URL parameters for password reset flow
+    const token = searchParams.get('token');
+    const type = searchParams.get('type');
 
-    // If we have a recovery token, handle it
     if (token && type === 'recovery') {
       setActiveTab("reset");
     }
@@ -79,7 +77,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Get the current origin with protocol for proper redirect
+      // Get the current origin for the redirect URL
       const origin = window.location.origin;
       const resetUrl = `${origin}/login?tab=reset`;
       
