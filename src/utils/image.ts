@@ -62,3 +62,4 @@ export async function uploadDefaultPromptImage(file: File): Promise<string> {
 export async function getTextPromptDefaultImage(): Promise<string> {
   return getPromptImage('text-prompt-default.png');
 }
+

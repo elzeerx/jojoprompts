@@ -1,4 +1,3 @@
-
 import { FC, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +14,7 @@ import { type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { DialogForm } from "./components/DialogForm";
 import { usePromptForm } from "./hooks/usePromptForm";
+import { uploadDefaultPromptImage } from "@/utils/image";
 
 export interface PromptDialogProps {
   open: boolean;
@@ -62,6 +62,24 @@ export const PromptDialog: FC<PromptDialogProps> = ({
         }
 
         imagePath = path;
+      }
+
+      if (promptType === "text" && !defaultImagePath) {
+        try {
+          if (form.file) {
+            defaultImagePath = await uploadDefaultPromptImage(form.file);
+          } else {
+            defaultImagePath = 'text-prompt-default.png';
+          }
+        } catch (error) {
+          console.error('Error uploading default text prompt image:', error);
+          toast({
+            title: "Error",
+            description: "Failed to upload default text prompt image",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       let meta = { ...form.metadata };
