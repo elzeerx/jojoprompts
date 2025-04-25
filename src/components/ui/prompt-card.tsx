@@ -42,7 +42,8 @@ export function PromptCard({
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
-  const aspect = 4 / 3;
+  // Set a 1:1 aspect ratio for card images
+  const aspect = 1;
 
   // Determine the image path, with image_path having priority over image_url
   const imagePath = prompt.image_path || prompt.image_url || null;
@@ -50,7 +51,7 @@ export function PromptCard({
   // Fetch the image URL when the component mounts or the imagePath changes
   useEffect(() => {
     async function loadImage() {
-      const url = await getPromptImage(imagePath, 400, 80);
+      const url = await getPromptImage(imagePath, 300, 80); // Reduced size to 300px
       setImageUrl(url);
     }
     
@@ -116,7 +117,13 @@ export function PromptCard({
         onClick={() => setDetailsOpen(true)}
       >
         <div className="relative">
-          <ImageWrapper src={imageUrl} alt={title} aspect={aspect} isCard={true} />
+          <ImageWrapper 
+            src={imageUrl} 
+            alt={title} 
+            aspect={aspect} 
+            isCard={true}
+            className="w-full aspect-square" 
+          />
           <CardActions
             favorited={favorited}
             onToggleFavorite={toggleFavorite}

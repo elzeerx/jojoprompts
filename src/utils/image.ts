@@ -25,7 +25,9 @@ export async function getPromptImage(pathOrUrl: string | null | undefined, w = 4
       .createSignedUrl(cleanPath, 300, {
         transform: {
           width: w,
-          quality: q
+          height: w, // Add height to maintain aspect ratio
+          quality: q,
+          resize: 'contain' // Use contain to avoid stretching
         }
       });
       

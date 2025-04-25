@@ -8,12 +8,12 @@ import { AlertCircle } from "lucide-react";
 export function ImageWrapper({
   src,
   alt,
-  aspect,
+  aspect = 1, // Default to 1:1 aspect ratio
   className = "",
   onLoad,
   onError,
   disableAspectRatio = false,
-  isCard = true, // New prop to distinguish between card and dialog usage
+  isCard = true, // Prop to distinguish between card and dialog usage
   ...props
 }: {
   src?: string | null;
@@ -174,7 +174,9 @@ export function ImageWrapper({
             onLoad={handleLoad}
             onError={handleError}
             className={`w-full h-full transition duration-300 ${loading ? "opacity-0" : "opacity-100"} ${
-              isCard ? "object-cover" : "object-contain max-h-[70vh]"
+              isCard 
+                ? "object-contain max-h-full" // Changed to object-contain for cards
+                : "object-contain max-h-[70vh]"
             }`}
             {...props}
           />
@@ -183,4 +185,3 @@ export function ImageWrapper({
     </ImageContainer>
   );
 }
-
