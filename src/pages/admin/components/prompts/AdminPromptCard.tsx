@@ -101,8 +101,8 @@ export function AdminPromptCard({
 
   return (
     <>
-      <Card onClick={() => setDetailsOpen(true)} className="cursor-pointer hover:shadow-md transition-shadow h-[32rem] flex flex-col">
-        <CardHeader className="relative flex-none">
+      <Card onClick={() => setDetailsOpen(true)} className="cursor-pointer hover:shadow-md transition-shadow">
+        <CardHeader className="relative">
           <CardTitle>{prompt.title}</CardTitle>
           <CardDescription>
             Category: {prompt.metadata?.category || "N/A"}
@@ -123,12 +123,12 @@ export function AdminPromptCard({
             </div>
           )}
         </CardHeader>
-        <CardContent className="flex-grow">
-          <p className="text-sm text-muted-foreground line-clamp-4">
-            {prompt.prompt_text}
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            {prompt.prompt_text.substring(0, 100)}...
           </p>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2 flex-none">
+        <CardFooter className="flex flex-col gap-2">
           <CopyButton value={prompt.prompt_text} className="w-full" />
           <div className="flex justify-between w-full">
             <Button

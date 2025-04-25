@@ -49,15 +49,15 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
     <>
       <Card 
         className={cn(
-          "overflow-hidden transition-all duration-200 hover:shadow-lg group cursor-pointer bg-gradient-to-b from-card to-card/95 h-[32rem] flex flex-col",
+          "overflow-hidden transition-all duration-200 hover:shadow-lg group cursor-pointer bg-gradient-to-b from-card to-card/95",
           className
         )}
         onClick={() => setDetailsOpen(true)}
       >
-        <div className="relative h-48">
-          <ImageWrapper src={imageUrl} alt={title} aspect={4/3} className="w-full h-full object-cover" />
+        <div className="relative">
+          <ImageWrapper src={imageUrl} alt={title} aspect={4/3} />
         </div>
-        <CardHeader className="p-4 pb-2 flex items-start gap-3 flex-none">
+        <CardHeader className="p-4 pb-2 flex items-start gap-3">
           <BookText className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
           <div className="space-y-1 flex-1">
             <CardTitle className="text-lg font-semibold leading-tight line-clamp-1">
@@ -70,8 +70,8 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
             )}
           </div>
         </CardHeader>
-        <CardContent className="p-4 pt-2 space-y-2 flex-grow">
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">
+        <CardContent className="p-4 pt-2 space-y-2">
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4 min-h-[5em]">
             {prompt_text}
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -94,7 +94,7 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
             )}
           </div>
         </CardContent>
-        <CardFooter className="p-4 pt-0 flex-none">
+        <CardFooter className="p-4 pt-0">
           <CopyButton value={prompt_text} className="w-full" />
         </CardFooter>
       </Card>
