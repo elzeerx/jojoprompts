@@ -19,10 +19,23 @@ export function FloatingAddPromptButton() {
 
   const handleSave = async (prompt: Partial<PromptRow>) => {
     try {
+      // Check if required fields are present
+      if (!prompt.title || !prompt.prompt_text) {
+        toast({
+          title: "Error",
+          description: "Title and prompt text are required fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const payload = {
-        ...prompt,
+        title: prompt.title,
+        prompt_text: prompt.prompt_text,
         user_id: user.id,
-        prompt_type: promptType
+        prompt_type: promptType,
+        metadata: prompt.metadata || {},
+        image_path: promptType === "image" ? prompt.image_path : null
       };
       
       const { error } = await supabase
