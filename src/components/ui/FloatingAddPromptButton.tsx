@@ -4,13 +4,50 @@ import { PlusCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PromptDialog } from "@/pages/admin/components/prompts/PromptDialog";
 import { PromptTypeMenu } from "./prompt-type-menu";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import type { PromptRow } from "@/types";
 
 export function FloatingAddPromptButton() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [promptType, setPromptType] = useState<"text" | "image">("image");
+  const navigate = useNavigate();
 
   if (!user) return null;
+
+  const handleSave = async (prompt: Partial<PromptRow>) => {
+    try {
+      const payload = {
+        ...prompt,
+        user_id: user.id,
+        prompt_type: promptType
+      };
+      
+      const { error } = await supabase
+        .from("prompts")
+        .insert(payload);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Prompt created successfully",
+      });
+
+      setOpen(false);
+      // Navigate to prompts page after successful creation
+      navigate("/prompts");
+    } catch (error) {
+      console.error("Error saving prompt:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save prompt. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <>
@@ -57,10 +94,7 @@ export function FloatingAddPromptButton() {
         onOpenChange={setOpen}
         initial={null}
         promptType={promptType}
-        onSave={async () => {
-          setOpen(false);
-          return Promise.resolve();
-        }}
+        onSave={handleSave}
       />
     </>
   );
