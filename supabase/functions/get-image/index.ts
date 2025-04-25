@@ -7,6 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Cache duration in seconds - 7 days for images
+const CACHE_DURATION = 7 * 24 * 60 * 60;
+
 serve(async (req) => {
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
@@ -33,8 +36,9 @@ serve(async (req) => {
     const imagePath = decodeURIComponent(rawPath);
     const width = url.searchParams.get('width') || '400';
     const quality = url.searchParams.get('quality') || '80';
+    const format = url.searchParams.get('format') || 'webp'; // Default to WebP for better compression
     
-    console.log(`Processing image request for: ${imagePath} (width: ${width}, quality: ${quality})`);
+    console.log(`Processing image request for: ${imagePath} (width: ${width}, quality: ${quality}, format: ${format})`);
     
     // Create a Supabase client using the service role key for internal operations
     const supabaseAdmin = createClient(
@@ -46,7 +50,23 @@ serve(async (req) => {
       throw new Error('Image path is missing or invalid');
     }
 
-    // Download image from private bucket
+    // Check if we have a client-side cache hit
+    const ifNoneMatch = req.headers.get('if-none-match');
+    const cacheKey = `${imagePath}-w${width}-q${quality}-${format}`;
+    const etag = `"${cacheKey}"`;
+
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      return new Response(null, {
+        status: 304, // Not Modified
+        headers: {
+          ...corsHeaders,
+          'Cache-Control': `public, max-age=${CACHE_DURATION}, immutable`,
+          'ETag': etag,
+        }
+      });
+    }
+
+    // Download image from private bucket with transformation
     const { data, error } = await supabaseAdmin
       .storage
       .from('prompt-images')
@@ -54,6 +74,7 @@ serve(async (req) => {
         transform: {
           width: parseInt(width),
           quality: parseInt(quality),
+          format: format as 'webp' | 'jpeg' | 'png', // Type cast for accepted formats
         },
       });
 
@@ -71,16 +92,20 @@ serve(async (req) => {
       );
     }
 
-    // Return the image with appropriate content type
+    // Return the image with appropriate content type and caching headers
     const imageData = await data.arrayBuffer();
-    const contentType = data.type || 'image/jpeg';
+    // Set the correct content type based on the requested format
+    let contentType = 'image/jpeg';
+    if (format === 'webp') contentType = 'image/webp';
+    if (format === 'png') contentType = 'image/png';
     
     console.log(`Successfully retrieved image: ${imagePath} (${contentType}, ${imageData.byteLength} bytes)`);
 
     return new Response(imageData, {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Cache-Control': `public, max-age=${CACHE_DURATION}, immutable`,
+        'ETag': etag,
         ...corsHeaders,
       }
     });

@@ -4,12 +4,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ImgHTMLAttributes, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertCircle } from "lucide-react";
+import { getResponsiveImageSources } from "@/utils/image";
 
 export function ImageWrapper({
   src,
   alt,
   aspect = 4 / 3,
   className = "",
+  priority = false,
   onLoad,
   onError,
   ...props
@@ -18,6 +20,7 @@ export function ImageWrapper({
   alt?: string;
   aspect?: number;
   className?: string;
+  priority?: boolean;
   onLoad?: () => void;
   onError?: () => void;
 } & Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt" | "onLoad" | "onError">) {
@@ -27,6 +30,9 @@ export function ImageWrapper({
   const [retries, setRetries] = useState(0);
   const MAX_RETRIES = 2;
 
+  // For responsive images
+  const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
+  
   // Reset state when src changes
   useEffect(() => {
     if (src) {
@@ -38,11 +44,35 @@ export function ImageWrapper({
       setImageSrc(null);
     }
   }, [src]);
+  
+  // Update viewport width for responsive images
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // For edge function access logging
   useEffect(() => {
     if (imageSrc && imageSrc.includes('/api/get-image/') && retries === 0) {
-      console.log(`Loading image via edge function: ${imageSrc}`);
+      const startTime = performance.now();
+      
+      // Add a timestamp to mark the load beginning
+      console.log(`Starting image load via edge function: ${imageSrc}`);
+      
+      // After the image loads, log the time it took
+      const imageLoadComplete = () => {
+        const loadTime = performance.now() - startTime;
+        console.log(`Image loaded in ${loadTime.toFixed(2)}ms: ${imageSrc}`);
+      };
+      
+      // Set up a one-time event listener
+      const img = new Image();
+      img.onload = imageLoadComplete;
+      img.src = imageSrc;
     }
   }, [imageSrc, retries]);
 
@@ -88,6 +118,24 @@ export function ImageWrapper({
     
     fetchPrivateImage();
   }, [error, retries, imageSrc]);
+
+  // Generate responsive sources based on the original src
+  const responsiveSources = src ? getResponsiveImageSources(src) : null;
+  
+  // Choose appropriate image size based on viewport
+  const getResponsiveImageSrc = () => {
+    if (!responsiveSources) return imageSrc;
+    
+    if (viewportWidth <= 640) {
+      return responsiveSources.small;
+    } else if (viewportWidth <= 1024) {
+      return responsiveSources.medium;
+    } else {
+      return responsiveSources.large;
+    }
+  };
+  
+  const responsiveImageSrc = getResponsiveImageSrc() || imageSrc;
 
   if (!imageSrc) {
     // SVG placeholder for empty image
@@ -159,10 +207,18 @@ export function ImageWrapper({
           </div>
         ) : (
           <img
-            src={imageSrc}
+            src={responsiveImageSrc}
+            srcSet={responsiveSources ? `
+              ${responsiveSources.small} 400w,
+              ${responsiveSources.medium} 800w,
+              ${responsiveSources.large} 1200w
+            ` : undefined}
+            sizes={responsiveSources ? '(max-width: 640px) 400px, (max-width: 1024px) 800px, 1200px' : undefined}
             alt={alt || "Prompt image"}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             aria-busy={loading}
+            decoding="async"
             onLoad={handleLoad}
             onError={handleError}
             className={`w-full h-full object-cover transition duration-300 ${loading ? "opacity-0" : "opacity-100"}`}

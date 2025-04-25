@@ -39,8 +39,8 @@ export function PromptDetailsDialog({
   // Set image URL when the dialog opens or prompt changes
   useEffect(() => {
     if (open && imagePath) {
-      // For detailed view, use higher quality
-      const imageUrl = getPromptImage(imagePath, 1200, 90);
+      // For detailed view, use higher quality WebP image
+      const imageUrl = getPromptImage(imagePath, 1200, 90, 'webp');
       setDialogImgUrl(imageUrl);
       setImageLoading(true);
       setImageError(false);
@@ -67,7 +67,7 @@ export function PromptDetailsDialog({
       setImageLoading(true);
       setImageError(false);
       // Add a timestamp to bust cache
-      const refreshedUrl = getPromptImage(imagePath, 1200, 90) + `&t=${Date.now()}`;
+      const refreshedUrl = getPromptImage(imagePath, 1200, 90, 'webp') + `&t=${Date.now()}`;
       console.log("Retrying with refreshed URL:", refreshedUrl);
       setDialogImgUrl(refreshedUrl);
     }
@@ -93,12 +93,13 @@ export function PromptDetailsDialog({
                   src={dialogImgUrl} 
                   alt={prompt.title} 
                   aspect={16 / 9} 
-                  className="w-full transition-all duration-300" 
+                  className="w-full transition-all duration-300"
+                  priority={true}
                   onLoad={handleImageLoad} 
                   onError={handleImageError} 
                   onClick={() => {
                     if (imagePath && !imageError && !imageLoading) {
-                      const fullImage = getPromptImage(imagePath, 2000, 100);
+                      const fullImage = getPromptImage(imagePath, 2000, 100, 'webp');
                       if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
                     }
                   }}
