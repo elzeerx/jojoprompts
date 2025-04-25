@@ -115,10 +115,9 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser(
-        { password }, 
-        { recoveryToken: resetToken || undefined }
-      );
+      const { error } = await supabase.auth.updateUser({ 
+        password 
+      });
 
       if (error) {
         toast({
@@ -132,6 +131,7 @@ export default function LoginPage() {
           description: "Your password has been successfully updated. You can now log in.",
         });
         setActiveTab("login");
+        navigate("/login");
       }
     } catch (error) {
       console.error("Password update error:", error);
