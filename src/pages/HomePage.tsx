@@ -8,9 +8,7 @@ export default function HomePage() {
         <p className="text-lg text-muted-foreground mb-6">
           Unlock a curated collection of high-quality, ready-to-use AI image generation prompts.<br />
           <span className="font-semibold text-primary">Browse and use the prompts in ChatGPT</span><br />
-          <span className="font-medium text-secondary">
-            Only admins can add or create new prompts.
-          </span>
+          
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
           <Button asChild size="lg" className="font-semibold text-base px-8 py-4">
