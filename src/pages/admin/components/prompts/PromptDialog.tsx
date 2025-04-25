@@ -1,3 +1,4 @@
+
 import { FC, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { type PromptRow } from "@/types";
@@ -20,16 +28,25 @@ export interface PromptDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial?: PromptRow | null;
+  promptType: "text" | "image";
   onSave: (prompt: Partial<PromptRow>) => Promise<void>;
 }
 
 const EMPTY: PromptRow["metadata"] = {
   category: "",
   style: "",
-  tags: []
+  tags: [],
+  target_model: "",
+  use_case: "",
 };
 
-export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initial, onSave }) => {
+export const PromptDialog: FC<PromptDialogProps> = ({ 
+  open, 
+  onOpenChange, 
+  initial, 
+  promptType,
+  onSave 
+}) => {
   const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState("");
   const [promptText, setPromptText] = useState("");
@@ -46,7 +63,9 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
       setMetadata({
         category: initial.metadata?.category ?? "",
         style: initial.metadata?.style ?? "",
-        tags: initial.metadata?.tags ?? []
+        tags: initial.metadata?.tags ?? [],
+        target_model: initial.metadata?.target_model ?? "",
+        use_case: initial.metadata?.use_case ?? "",
       });
       setImageURL(initial.image_path ?? "");
     } else {
@@ -73,7 +92,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
     try {
       let imagePath = initial?.image_path ?? "";
 
-      if (file) {
+      if (promptType === "image" && file) {
         const path = `${session?.user.id}/${crypto.randomUUID()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("prompt-images")
@@ -86,27 +105,33 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
         imagePath = path;
       }
 
-      let meta = { category: "", style: "", tags: [] as string[] };
+      let meta = { 
+        category: metadata.category || "", 
+        style: metadata.style || "", 
+        tags: metadata.tags || [],
+        target_model: metadata.target_model || "",
+        use_case: metadata.use_case || "",
+      };
+
       try {
         const { data, error } = await supabase.functions.invoke(
           "generate-metadata",
           { body: { prompt_text: promptText } }
         );
-        if (!error && data) meta = data as typeof meta;
+        if (!error && data) {
+          meta = { ...meta, ...data };
+        }
         console.log("Metadata generated:", meta);
       } catch (err) {
         console.warn("Metadata generation failed:", err);
       }
 
       const promptData: Partial<PromptRow> = {
-        title: title,
+        title,
         prompt_text: promptText,
-        metadata: {
-          category: meta.category || metadata.category,
-          style: meta.style || metadata.style,
-          tags: meta.tags.length ? meta.tags : metadata.tags,
-        },
-        image_path: imagePath,
+        prompt_type: promptType,
+        metadata: meta,
+        image_path: promptType === "image" ? imagePath : null,
       };
 
       await onSave(promptData);
@@ -126,7 +151,9 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{initial ? "Edit Prompt" : "Add Prompt"}</DialogTitle>
+          <DialogTitle>
+            {initial ? "Edit" : "Add"} {promptType === "image" ? "Image" : "Text"} Prompt
+          </DialogTitle>
           <DialogDescription>
             {initial ? "Update the prompt details below." : "Create a new prompt by entering the details below."}
           </DialogDescription>
@@ -155,29 +182,66 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
               className="col-span-3"
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="image" className="text-right">
-              Image
-            </Label>
-            <div className="col-span-3 space-y-4">
-              <Input
-                type="file"
-                id="image"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="cursor-pointer"
-              />
-              {(imageURL || file) && (
-                <div className="rounded-lg overflow-hidden bg-muted">
-                  <img
-                    src={file ? URL.createObjectURL(file) : imageURL}
-                    alt="Preview"
-                    className="w-full aspect-video object-cover"
-                  />
-                </div>
-              )}
+          {promptType === "image" && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="image" className="text-right">
+                Image
+              </Label>
+              <div className="col-span-3 space-y-4">
+                <Input
+                  type="file"
+                  id="image"
+                  accept="image/*"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="cursor-pointer"
+                />
+                {(imageURL || file) && (
+                  <div className="rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={file ? URL.createObjectURL(file) : imageURL}
+                      alt="Preview"
+                      className="w-full aspect-video object-cover"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+          {promptType === "text" && (
+            <>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="target_model" className="text-right">
+                  Target Model
+                </Label>
+                <Select
+                  value={metadata.target_model}
+                  onValueChange={(value) => setMetadata({ ...metadata, target_model: value })}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select target model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                    <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                    <SelectItem value="gpt-4.5-preview">GPT-4.5 Preview</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="use_case" className="text-right">
+                  Use Case
+                </Label>
+                <Input
+                  type="text"
+                  id="use_case"
+                  value={metadata.use_case || ""}
+                  onChange={(e) => setMetadata({ ...metadata, use_case: e.target.value })}
+                  className="col-span-3"
+                  placeholder="e.g., Writing Assistant, Code Helper"
+                />
+              </div>
+            </>
+          )}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="category" className="text-right">
               Category
@@ -190,18 +254,20 @@ export const PromptDialog: FC<PromptDialogProps> = ({ open, onOpenChange, initia
               className="col-span-3"
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="style" className="text-right">
-              Style
-            </Label>
-            <Input
-              type="text"
-              id="style"
-              value={metadata.style || ""}
-              onChange={(e) => setMetadata({ ...metadata, style: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
+          {promptType === "image" && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="style" className="text-right">
+                Style
+              </Label>
+              <Input
+                type="text"
+                id="style"
+                value={metadata.style || ""}
+                onChange={(e) => setMetadata({ ...metadata, style: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+          )}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="tags" className="text-right">
               Tags
