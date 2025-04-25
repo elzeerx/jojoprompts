@@ -62,13 +62,13 @@ export function ImageWrapper({
           
           console.log(`Trying direct authenticated fetch for: ${path}`);
           
-          const { data, fetchError } = await supabase
+          const { data, error: supabaseError } = await supabase
             .storage
             .from('prompt-images')
             .createSignedUrl(path, 300);
             
-          if (fetchError || !data?.signedUrl) {
-            console.error('Error getting signed URL:', fetchError);
+          if (supabaseError || !data?.signedUrl) {
+            console.error('Error getting signed URL:', supabaseError);
             return;
           }
           
