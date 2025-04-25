@@ -69,7 +69,13 @@ export function TextPromptCard({
         onClick={() => setDetailsOpen(true)}
       >
         <div className="relative">
-          <ImageWrapper src={imageUrl} alt={title} aspect={4/3} isCard={true} />
+          <ImageWrapper 
+            src={imageUrl} 
+            alt={title} 
+            aspect={1} 
+            isCard={true} 
+            className="w-full object-cover aspect-square" 
+          />
           <CardActions favorited={favorited} onToggleFavorite={toggleFavorite} />
         </div>
         <CardHeader className="p-4 pb-2 flex items-start gap-3">
@@ -122,4 +128,3 @@ export function TextPromptCard({
     </>
   );
 }
-
