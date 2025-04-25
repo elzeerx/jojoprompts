@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -36,12 +37,15 @@ export function PromptDetailsDialog({
 
   useEffect(() => {
     if (open && imagePath) {
-      const imageUrl = getPromptImage(imagePath, 1200, 90);
-      setDialogImgUrl(imageUrl);
-      setImageLoading(true);
-      setImageError(false);
-      console.log("Details dialog image path:", imagePath);
-      console.log("Details dialog image URL:", imageUrl);
+      async function loadImage() {
+        const imgUrl = await getPromptImage(imagePath, 1200, 90);
+        setDialogImgUrl(imgUrl);
+        setImageLoading(true);
+        setImageError(false);
+        console.log("Details dialog image path:", imagePath);
+        console.log("Details dialog image URL:", imgUrl);
+      }
+      loadImage();
     } else {
       setDialogImgUrl(null);
     }
@@ -62,9 +66,21 @@ export function PromptDetailsDialog({
     if (imagePath) {
       setImageLoading(true);
       setImageError(false);
-      const refreshedUrl = getPromptImage(imagePath, 1200, 90) + `&t=${Date.now()}`;
-      console.log("Retrying with refreshed URL:", refreshedUrl);
-      setDialogImgUrl(refreshedUrl);
+      
+      async function refreshImage() {
+        const refreshedUrl = await getPromptImage(imagePath, 1200, 90) + `&t=${Date.now()}`;
+        console.log("Retrying with refreshed URL:", refreshedUrl);
+        setDialogImgUrl(refreshedUrl);
+      }
+      
+      refreshImage();
+    }
+  };
+
+  const handleImageClick = async () => {
+    if (imagePath && !imageError && !imageLoading) {
+      const fullImage = await getPromptImage(imagePath, 2000, 100);
+      if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -91,12 +107,7 @@ export function PromptDetailsDialog({
                   disableAspectRatio={true}
                   onLoad={handleImageLoad} 
                   onError={handleImageError} 
-                  onClick={() => {
-                    if (imagePath && !imageError && !imageLoading) {
-                      const fullImage = getPromptImage(imagePath, 2000, 100);
-                      if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
-                    }
-                  }}
+                  onClick={handleImageClick}
                 />
               </div>
             ) : (

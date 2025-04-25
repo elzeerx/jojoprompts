@@ -1,3 +1,4 @@
+
 // PromptCard main file — refactored with atoms
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
@@ -40,19 +41,29 @@ export function PromptCard({
   const { session } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
   const aspect = 4 / 3;
 
   // Determine the image path, with image_path having priority over image_url
   const imagePath = prompt.image_path || prompt.image_url || null;
   
-  // Use the universal helper with the appropriate path
-  const imgUrl = getPromptImage(imagePath, 400, 80);
+  // Fetch the image URL when the component mounts or the imagePath changes
+  useEffect(() => {
+    async function loadImage() {
+      const url = await getPromptImage(imagePath, 400, 80);
+      setImageUrl(url);
+    }
+    
+    if (imagePath) {
+      loadImage();
+    }
+  }, [imagePath]);
 
   // Debug log for image loading
   useEffect(() => {
     console.debug(`Card image path: ${imagePath}`);
-    console.debug(`Card image URL: ${imgUrl}`);
-  }, [imagePath, imgUrl]);
+    console.debug(`Card image URL: ${imageUrl}`);
+  }, [imagePath, imageUrl]);
 
   const handleSelectChange = (checked: boolean) => {
     onSelect?.(prompt.id);
@@ -105,7 +116,7 @@ export function PromptCard({
         onClick={() => setDetailsOpen(true)}
       >
         <div className="relative">
-          <ImageWrapper src={imgUrl} alt={title} aspect={aspect} />
+          <ImageWrapper src={imageUrl} alt={title} aspect={aspect} />
           <CardActions
             favorited={favorited}
             onToggleFavorite={toggleFavorite}

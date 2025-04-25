@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { CopyButton } from "./copy-button";
 import { Badge } from "./badge";
@@ -20,9 +21,18 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
   const model = metadata?.target_model || 'ChatGPT';
   const useCase = metadata?.use_case;
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
 
   const imagePath = prompt.default_image_path || 'text-prompt-default.png';
-  const imageUrl = getPromptImage(imagePath, 400, 80);
+
+  // Fetch the image URL when the component mounts or the imagePath changes
+  useEffect(() => {
+    async function loadImage() {
+      const url = await getPromptImage(imagePath, 400, 80);
+      setImageUrl(url);
+    }
+    loadImage();
+  }, [imagePath]);
 
   return (
     <>

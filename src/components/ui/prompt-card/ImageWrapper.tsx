@@ -1,3 +1,4 @@
+
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImgHTMLAttributes, useState, useEffect } from "react";
@@ -40,14 +41,16 @@ export function ImageWrapper({
   }, [src]);
 
   useEffect(() => {
-    if (imageSrc && imageSrc.includes('/api/get-image/') && retries === 0) {
+    // Check if imageSrc is a string before trying to use includes
+    if (imageSrc && typeof imageSrc === 'string' && imageSrc.includes('/api/get-image/') && retries === 0) {
       console.log(`Loading image via edge function: ${imageSrc}`);
     }
   }, [imageSrc, retries]);
 
   useEffect(() => {
     const fetchPrivateImage = async () => {
-      if (error && retries === 1 && imageSrc && imageSrc.includes('/api/get-image/')) {
+      // Add type check for imageSrc
+      if (error && retries === 1 && imageSrc && typeof imageSrc === 'string' && imageSrc.includes('/api/get-image/')) {
         try {
           const pathStart = imageSrc.indexOf('/api/get-image/') + '/api/get-image/'.length;
           const pathEnd = imageSrc.indexOf('?', pathStart);
@@ -59,7 +62,7 @@ export function ImageWrapper({
           
           console.log(`Trying direct authenticated fetch for: ${path}`);
           
-          const { data, error: fetchError } = await supabase
+          const { data, fetchError } = await supabase
             .storage
             .from('prompt-images')
             .createSignedUrl(path, 300);
@@ -126,10 +129,14 @@ export function ImageWrapper({
       setLoading(true);
       setError(false);
       const timestamp = Date.now();
-      if (src.includes('?')) {
-        setImageSrc(`${src}&t=${timestamp}`);
+      if (typeof src === 'string') {
+        if (src.includes('?')) {
+          setImageSrc(`${src}&t=${timestamp}`);
+        } else {
+          setImageSrc(`${src}?t=${timestamp}`);
+        }
       } else {
-        setImageSrc(`${src}?t=${timestamp}`);
+        setImageSrc('/img/placeholder.png');
       }
       setRetries(0);
     }
@@ -158,7 +165,7 @@ export function ImageWrapper({
           </div>
         ) : (
           <img
-            src={imageSrc}
+            src={imageSrc || '/img/placeholder.png'}
             alt={alt || "Prompt image"}
             loading="lazy"
             aria-busy={loading}
