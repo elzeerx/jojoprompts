@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -105,6 +104,7 @@ export function PromptDetailsDialog({
                   alt={prompt.title} 
                   className="w-full"
                   disableAspectRatio={true}
+                  isCard={false}
                   onLoad={handleImageLoad} 
                   onError={handleImageError} 
                   onClick={handleImageClick}

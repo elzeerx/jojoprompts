@@ -116,7 +116,7 @@ export function PromptCard({
         onClick={() => setDetailsOpen(true)}
       >
         <div className="relative">
-          <ImageWrapper src={imageUrl} alt={title} aspect={aspect} />
+          <ImageWrapper src={imageUrl} alt={title} aspect={aspect} isCard={true} />
           <CardActions
             favorited={favorited}
             onToggleFavorite={toggleFavorite}
@@ -162,7 +162,9 @@ export function PromptCard({
           )}
         </CardFooter>
       </Card>
+
       <PromptDetailsDialog open={detailsOpen} onOpenChange={setDetailsOpen} prompt={prompt as PromptRow} />
     </>
   );
 }
+

@@ -13,6 +13,7 @@ export function ImageWrapper({
   onLoad,
   onError,
   disableAspectRatio = false,
+  isCard = true, // New prop to distinguish between card and dialog usage
   ...props
 }: {
   src?: string | null;
@@ -22,6 +23,7 @@ export function ImageWrapper({
   onLoad?: () => void;
   onError?: () => void;
   disableAspectRatio?: boolean;
+  isCard?: boolean;
 } & Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt" | "onLoad" | "onError">) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -171,7 +173,9 @@ export function ImageWrapper({
             aria-busy={loading}
             onLoad={handleLoad}
             onError={handleError}
-            className={`w-full h-auto max-h-[70vh] object-contain transition duration-300 ${loading ? "opacity-0" : "opacity-100"}`}
+            className={`w-full h-full transition duration-300 ${loading ? "opacity-0" : "opacity-100"} ${
+              isCard ? "object-cover" : "object-contain max-h-[70vh]"
+            }`}
             {...props}
           />
         )}
@@ -179,3 +183,4 @@ export function ImageWrapper({
     </ImageContainer>
   );
 }
+
