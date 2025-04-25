@@ -66,6 +66,7 @@ export type Database = {
           image_path: string | null
           metadata: Json | null
           prompt_text: string
+          prompt_type: string
           title: string
           user_id: string
         }
@@ -75,6 +76,7 @@ export type Database = {
           image_path?: string | null
           metadata?: Json | null
           prompt_text: string
+          prompt_type?: string
           title: string
           user_id: string
         }
@@ -84,6 +86,7 @@ export type Database = {
           image_path?: string | null
           metadata?: Json | null
           prompt_text?: string
+          prompt_type?: string
           title?: string
           user_id?: string
         }

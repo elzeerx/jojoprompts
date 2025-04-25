@@ -13,11 +13,14 @@ export interface Prompt {
   title: string;
   prompt_text: string;
   image_path: string | null;
-  image_url?: string | null; // Add image_url property for backward compatibility
+  image_url?: string | null;
+  prompt_type: 'text' | 'image';
   metadata: {
     category?: string;
     style?: string;
     tags?: string[];
+    target_model?: string;
+    use_case?: string;
   };
   created_at: string;
 }

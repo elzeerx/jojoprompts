@@ -1,5 +1,6 @@
 
 import { PromptCard } from "@/components/ui/prompt-card";
+import { TextPromptCard } from "@/components/ui/text-prompt-card";
 import { Button } from "@/components/ui/button";
 import { type Prompt } from "@/types";
 
@@ -10,13 +11,14 @@ interface PromptsContentProps {
   error: string | null;
   searchQuery: string;
   category: string;
+  promptType: "image" | "text" | "all";
   onClearFilters: () => void;
-  selectedPrompts?: string[]; // now optional
-  onSelectPrompt?: (id: string) => void; // now optional
+  selectedPrompts?: string[];
+  onSelectPrompt?: (id: string) => void;
 }
 
 export function PromptsContent({
-  view, filteredPrompts, isLoading, error, searchQuery, category,
+  view, filteredPrompts, isLoading, error, searchQuery, category, promptType,
   onClearFilters
 }: PromptsContentProps) {
   const isGridView = view === "grid";
@@ -72,10 +74,11 @@ export function PromptsContent({
       : "flex flex-col gap-3"
     }>
       {filteredPrompts.map((prompt) => (
-        <PromptCard
-          key={prompt.id}
-          prompt={prompt}
-        />
+        prompt.prompt_type === 'text' ? (
+          <TextPromptCard key={prompt.id} prompt={prompt} />
+        ) : (
+          <PromptCard key={prompt.id} prompt={prompt} />
+        )
       ))}
     </div>
   );

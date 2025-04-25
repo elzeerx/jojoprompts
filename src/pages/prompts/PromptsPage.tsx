@@ -19,6 +19,7 @@ export default function PromptsPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
+  const [promptType, setPromptType] = useState<"image" | "text" | "all">("image");
 
   const [selectedPrompt, setSelectedPrompt] = useState<PromptRow | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -37,7 +38,8 @@ export default function PromptsPage() {
       prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
       prompt.metadata.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = category === "all" || prompt.metadata.category === category;
-    return matchesSearch && matchesCategory;
+    const matchesType = promptType === "all" || prompt.prompt_type === promptType;
+    return matchesSearch && matchesCategory && matchesType;
   });
 
   const handleDeletePrompt = async (promptId: string) => {
@@ -97,8 +99,10 @@ export default function PromptsPage() {
         <PromptsHeader
           view={view}
           setView={setView}
-          selectedPromptsLength={0} // No selection logic
-          onClearSelections={() => {}} // No-op
+          selectedPromptsLength={0}
+          onClearSelections={() => {}}
+          promptType={promptType}
+          setPromptType={setPromptType}
         />
 
         <PromptsFilters
@@ -118,12 +122,14 @@ export default function PromptsPage() {
           error={error}
           searchQuery={searchQuery}
           category={category}
+          promptType={promptType}
           onClearFilters={() => {
             setSearchQuery("");
             setCategory("all");
+            setPromptType("all");
           }}
-          selectedPrompts={[]} // Not used anymore, safe to pass empty
-          onSelectPrompt={() => {}} // Not used anymore, safe to noop
+          selectedPrompts={[]}
+          onSelectPrompt={() => {}}
         />
 
         {selectedPrompt && (
