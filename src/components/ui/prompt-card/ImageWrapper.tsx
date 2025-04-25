@@ -1,3 +1,4 @@
+
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImgHTMLAttributes, useState, useEffect } from "react";
@@ -12,7 +13,7 @@ export function ImageWrapper({
   onLoad,
   onError,
   disableAspectRatio = false,
-  isCard = true,
+  isCard = true, // New prop to distinguish between card and dialog usage
   ...props
 }: {
   src?: string | null;
@@ -42,6 +43,7 @@ export function ImageWrapper({
   }, [src]);
 
   useEffect(() => {
+    // Check if imageSrc is a string before trying to use includes
     if (imageSrc && typeof imageSrc === 'string' && imageSrc.includes('/api/get-image/') && retries === 0) {
       console.log(`Loading image via edge function: ${imageSrc}`);
     }
@@ -49,6 +51,7 @@ export function ImageWrapper({
 
   useEffect(() => {
     const fetchPrivateImage = async () => {
+      // Add type check for imageSrc
       if (error && retries === 1 && imageSrc && typeof imageSrc === 'string' && imageSrc.includes('/api/get-image/')) {
         try {
           const pathStart = imageSrc.indexOf('/api/get-image/') + '/api/get-image/'.length;
@@ -180,3 +183,4 @@ export function ImageWrapper({
     </ImageContainer>
   );
 }
+
