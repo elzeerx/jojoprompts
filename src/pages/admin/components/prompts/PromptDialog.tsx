@@ -1,4 +1,5 @@
-import { FC, useState, useEffect } from "react";
+
+import { FC, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,15 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { TextPromptFields } from "./components/TextPromptFields";
-import { ImageUploadField } from "./components/ImageUploadField";
-import { PromptFormField } from "./components/PromptFormField";
-import { Label } from "@/components/ui/label";
+import { DialogForm } from "./components/DialogForm";
+import { usePromptForm } from "./hooks/usePromptForm";
 
 export interface PromptDialogProps {
   open: boolean;
@@ -26,14 +24,6 @@ export interface PromptDialogProps {
   onSave: (prompt: Partial<PromptRow>) => Promise<void>;
 }
 
-const EMPTY: PromptRow["metadata"] = {
-  category: "",
-  style: "",
-  tags: [],
-  target_model: "",
-  use_case: "",
-};
-
 export const PromptDialog: FC<PromptDialogProps> = ({
   open,
   onOpenChange,
@@ -42,37 +32,11 @@ export const PromptDialog: FC<PromptDialogProps> = ({
   onSave,
 }) => {
   const [submitting, setSubmitting] = useState(false);
-  const [title, setTitle] = useState("");
-  const [promptText, setPromptText] = useState("");
-  const [metadata, setMetadata] = useState<PromptRow["metadata"]>(EMPTY);
-  const [imageURL, setImageURL] = useState("");
-  const [file, setFile] = useState<File | null>(null);
   const { session } = useAuth();
-
-  useEffect(() => {
-    if (!open) return;
-    if (initial) {
-      setTitle(initial.title);
-      setPromptText(initial.prompt_text);
-      setMetadata({
-        category: initial.metadata?.category ?? "",
-        style: initial.metadata?.style ?? "",
-        tags: initial.metadata?.tags ?? [],
-        target_model: initial.metadata?.target_model ?? "",
-        use_case: initial.metadata?.use_case ?? "",
-      });
-      setImageURL(initial.image_path ?? "");
-    } else {
-      setTitle("");
-      setPromptText("");
-      setMetadata(EMPTY);
-      setImageURL("");
-      setFile(null);
-    }
-  }, [open, initial]);
+  const form = usePromptForm(initial);
 
   const handleSubmit = async () => {
-    if (!title.trim() || !promptText.trim()) {
+    if (!form.title.trim() || !form.promptText.trim()) {
       toast({
         title: "Error",
         description: "Title and Prompt Text are required",
@@ -86,11 +50,11 @@ export const PromptDialog: FC<PromptDialogProps> = ({
     try {
       let imagePath = initial?.image_path ?? "";
 
-      if (promptType === "image" && file) {
-        const path = `${session?.user.id}/${crypto.randomUUID()}-${file.name}`;
+      if (promptType === "image" && form.file) {
+        const path = `${session?.user.id}/${crypto.randomUUID()}-${form.file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("prompt-images")
-          .upload(path, file, { upsert: false });
+          .upload(path, form.file, { upsert: false });
 
         if (uploadError) {
           throw new Error("Image upload failed");
@@ -99,12 +63,12 @@ export const PromptDialog: FC<PromptDialogProps> = ({
         imagePath = path;
       }
 
-      let meta = { ...metadata };
+      let meta = { ...form.metadata };
 
       try {
         const { data, error } = await supabase.functions.invoke(
           "generate-metadata",
-          { body: { prompt_text: promptText } }
+          { body: { prompt_text: form.promptText } }
         );
         if (!error && data) {
           meta = { ...meta, ...data };
@@ -115,8 +79,8 @@ export const PromptDialog: FC<PromptDialogProps> = ({
       }
 
       const promptData: Partial<PromptRow> = {
-        title,
-        prompt_text: promptText,
+        title: form.title,
+        prompt_text: form.promptText,
         prompt_type: promptType,
         metadata: meta,
         image_path: promptType === "image" ? imagePath : null,
@@ -149,68 +113,20 @@ export const PromptDialog: FC<PromptDialogProps> = ({
               : "Create a new prompt by entering the details below."}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <PromptFormField
-            id="title"
-            label="Title"
-            value={title}
-            onChange={setTitle}
-          />
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="prompt_text" className="text-right">
-              Prompt Text
-            </Label>
-            <Textarea
-              id="prompt_text"
-              value={promptText}
-              onChange={(e) => setPromptText(e.target.value)}
-              className="col-span-3"
-            />
-          </div>
+        
+        <DialogForm
+          title={form.title}
+          promptText={form.promptText}
+          metadata={form.metadata}
+          promptType={promptType}
+          imageURL={form.imageURL}
+          file={form.file}
+          onTitleChange={form.setTitle}
+          onPromptTextChange={form.setPromptText}
+          onMetadataChange={form.setMetadata}
+          onFileChange={form.setFile}
+        />
 
-          {promptType === "image" ? (
-            <ImageUploadField
-              imageURL={imageURL}
-              file={file}
-              onFileChange={setFile}
-            />
-          ) : (
-            <TextPromptFields
-              metadata={metadata}
-              onMetadataChange={setMetadata}
-            />
-          )}
-
-          <PromptFormField
-            id="category"
-            label="Category"
-            value={metadata.category || ""}
-            onChange={(value) => setMetadata({ ...metadata, category: value })}
-          />
-
-          {promptType === "image" && (
-            <PromptFormField
-              id="style"
-              label="Style"
-              value={metadata.style || ""}
-              onChange={(value) => setMetadata({ ...metadata, style: value })}
-            />
-          )}
-
-          <PromptFormField
-            id="tags"
-            label="Tags"
-            value={metadata.tags?.join(", ") || ""}
-            onChange={(value) => {
-              const tags = value
-                .split(",")
-                .map((tag) => tag.trim())
-                .filter(Boolean);
-              setMetadata({ ...metadata, tags });
-            }}
-            placeholder="tag1, tag2, tag3"
-          />
-        </div>
         <DialogFooter>
           <Button
             type="button"
