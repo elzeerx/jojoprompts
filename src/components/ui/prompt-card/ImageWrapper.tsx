@@ -1,4 +1,3 @@
-
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImgHTMLAttributes, useState, useEffect } from "react";
@@ -8,10 +7,11 @@ import { AlertCircle } from "lucide-react";
 export function ImageWrapper({
   src,
   alt,
-  aspect = 4 / 3,
+  aspect,
   className = "",
   onLoad,
   onError,
+  disableAspectRatio = false,
   ...props
 }: {
   src?: string | null;
@@ -20,6 +20,7 @@ export function ImageWrapper({
   className?: string;
   onLoad?: () => void;
   onError?: () => void;
+  disableAspectRatio?: boolean;
 } & Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt" | "onLoad" | "onError">) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -27,7 +28,6 @@ export function ImageWrapper({
   const [retries, setRetries] = useState(0);
   const MAX_RETRIES = 2;
 
-  // Reset state when src changes
   useEffect(() => {
     if (src) {
       setLoading(true);
@@ -39,20 +39,16 @@ export function ImageWrapper({
     }
   }, [src]);
 
-  // For edge function access logging
   useEffect(() => {
     if (imageSrc && imageSrc.includes('/api/get-image/') && retries === 0) {
       console.log(`Loading image via edge function: ${imageSrc}`);
     }
   }, [imageSrc, retries]);
 
-  // Fallback to direct authenticated fetch if edge function fails
   useEffect(() => {
     const fetchPrivateImage = async () => {
-      // Only try direct fetch if we had an error with the edge function
       if (error && retries === 1 && imageSrc && imageSrc.includes('/api/get-image/')) {
         try {
-          // Extract the path from the URL more reliably
           const pathStart = imageSrc.indexOf('/api/get-image/') + '/api/get-image/'.length;
           const pathEnd = imageSrc.indexOf('?', pathStart);
           const encodedPath = pathEnd > 0 
@@ -63,25 +59,23 @@ export function ImageWrapper({
           
           console.log(`Trying direct authenticated fetch for: ${path}`);
           
-          // Get signed URL for the image from private bucket
           const { data, error: fetchError } = await supabase
             .storage
             .from('prompt-images')
-            .createSignedUrl(path, 300); // 5 minutes expiry
+            .createSignedUrl(path, 300);
             
           if (fetchError || !data?.signedUrl) {
             console.error('Error getting signed URL:', fetchError);
             return;
           }
           
-          // Try with the signed URL
           setImageSrc(data.signedUrl);
           setError(false);
           setLoading(true);
-          setRetries(2); // Mark that we've tried the signed URL approach
+          setRetries(2);
         } catch (err) {
           console.error('Error in direct fetch fallback:', err);
-          setRetries(MAX_RETRIES); // Move to final error state
+          setRetries(MAX_RETRIES);
         }
       }
     };
@@ -90,7 +84,13 @@ export function ImageWrapper({
   }, [error, retries, imageSrc]);
 
   if (!imageSrc) {
-    // SVG placeholder for empty image
+    if (disableAspectRatio) {
+      return (
+        <div className="flex items-center justify-center bg-muted rounded-lg p-8">
+          <span role="img" aria-label="Prompt art" className="text-5xl">🎨</span>
+        </div>
+      );
+    }
     return (
       <AspectRatio ratio={aspect} className="bg-muted flex items-center justify-center rounded-lg">
         <span role="img" aria-label="Prompt art" className="text-5xl">🎨</span>
@@ -98,15 +98,16 @@ export function ImageWrapper({
     );
   }
 
+  const ImageContainer = disableAspectRatio ? 'div' : AspectRatio;
+  const containerProps = disableAspectRatio ? {} : { ratio: aspect };
+
   const handleError = () => {
     console.error(`Image failed to load: ${imageSrc}`);
     setError(true);
     setLoading(false);
     
-    // Call the external error handler if provided
     onError?.();
     
-    // Try fallback method if we haven't already reached max retries
     if (retries < MAX_RETRIES) {
       setRetries(prev => prev + 1);
     }
@@ -117,7 +118,6 @@ export function ImageWrapper({
     setLoading(false);
     setError(false);
     
-    // Call the external load handler if provided
     onLoad?.();
   };
 
@@ -125,7 +125,6 @@ export function ImageWrapper({
     if (src) {
       setLoading(true);
       setError(false);
-      // Add a timestamp to bust cache
       const timestamp = Date.now();
       if (src.includes('?')) {
         setImageSrc(`${src}&t=${timestamp}`);
@@ -137,7 +136,7 @@ export function ImageWrapper({
   };
 
   return (
-    <AspectRatio ratio={aspect} className={`rounded-lg overflow-hidden bg-muted ${className}`}>
+    <ImageContainer {...containerProps} className={`rounded-lg overflow-hidden bg-muted ${className}`}>
       <div className="w-full h-full flex items-center justify-center">
         {loading && (
           <Skeleton className="absolute inset-0 z-10 rounded-lg animate-pulse" />
@@ -165,11 +164,11 @@ export function ImageWrapper({
             aria-busy={loading}
             onLoad={handleLoad}
             onError={handleError}
-            className={`w-full h-full object-cover transition duration-300 ${loading ? "opacity-0" : "opacity-100"}`}
+            className={`w-full h-auto max-h-[70vh] object-contain transition duration-300 ${loading ? "opacity-0" : "opacity-100"}`}
             {...props}
           />
         )}
       </div>
-    </AspectRatio>
+    </ImageContainer>
   );
 }

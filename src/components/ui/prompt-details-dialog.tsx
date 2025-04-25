@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -33,13 +32,10 @@ export function PromptDetailsDialog({
     }
   }, [promptList, prompt.id, onOpenChange]);
 
-  // Use either image_path or image_url, with image_path having priority
   const imagePath = prompt.image_path || prompt.image_url || null;
 
-  // Set image URL when the dialog opens or prompt changes
   useEffect(() => {
     if (open && imagePath) {
-      // For detailed view, use higher quality
       const imageUrl = getPromptImage(imagePath, 1200, 90);
       setDialogImgUrl(imageUrl);
       setImageLoading(true);
@@ -66,7 +62,6 @@ export function PromptDetailsDialog({
     if (imagePath) {
       setImageLoading(true);
       setImageError(false);
-      // Add a timestamp to bust cache
       const refreshedUrl = getPromptImage(imagePath, 1200, 90) + `&t=${Date.now()}`;
       console.log("Retrying with refreshed URL:", refreshedUrl);
       setDialogImgUrl(refreshedUrl);
@@ -88,12 +83,12 @@ export function PromptDetailsDialog({
             </DialogHeader>
 
             {imagePath ? (
-              <div className="rounded-xl overflow-hidden max-w-full mx-auto relative">
+              <div className="rounded-xl overflow-hidden bg-muted/50 flex items-center justify-center">
                 <ImageWrapper 
                   src={dialogImgUrl} 
                   alt={prompt.title} 
-                  aspect={16 / 9} 
-                  className="w-full transition-all duration-300" 
+                  className="w-full"
+                  disableAspectRatio={true}
                   onLoad={handleImageLoad} 
                   onError={handleImageError} 
                   onClick={() => {
@@ -103,25 +98,9 @@ export function PromptDetailsDialog({
                     }
                   }}
                 />
-                {imageLoading && <Skeleton className="absolute inset-0 z-10" />}
-                {imageError && (
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-muted/50">
-                    <AlertCircle className="h-10 w-10 text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground mb-2">Failed to load image</p>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleImageRetry();
-                      }}
-                      className="px-3 py-1 text-xs bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-colors"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                )}
               </div>
             ) : (
-              <div className="rounded-xl overflow-hidden bg-muted/50 flex items-center justify-center aspect-video">
+              <div className="rounded-xl overflow-hidden bg-muted/50 flex items-center justify-center p-12">
                 <span className="text-muted-foreground text-lg">No image available</span>
               </div>
             )}
