@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { CopyButton } from "./copy-button";
@@ -101,25 +102,28 @@ export function PromptCard({
   };
 
   return <>
-      <Card className={cn("overflow-hidden transition-all duration-200 hover:shadow-2xl hover:scale-[1.025] group cursor-pointer border border-border/50 hover:border-border/100 bg-gradient-to-b from-card to-card/95", isSelected && "ring-2 ring-primary")} onClick={() => setDetailsOpen(true)}>
-        <div className="relative">
-          <ImageWrapper src={imageUrl} alt={title} aspect={aspect} isCard={true} className="w-full aspect-square object-none" />
+      <Card className={cn(
+        "overflow-hidden transition-all duration-200 hover:shadow-2xl hover:scale-[1.025] group cursor-pointer border border-border/50 hover:border-border/100 bg-gradient-to-b from-card to-card/95 h-[32rem] flex flex-col", 
+        isSelected && "ring-2 ring-primary"
+      )} onClick={() => setDetailsOpen(true)}>
+        <div className="relative h-48">
+          <ImageWrapper src={imageUrl} alt={title} aspect={aspect} isCard={true} className="w-full h-full object-cover" />
           <CardActions favorited={favorited} onToggleFavorite={toggleFavorite} />
         </div>
-        <CardHeader className="p-4 pb-2">
+        <CardHeader className="p-4 pb-2 flex-none">
           <CardTitle className="text-lg font-semibold leading-tight tracking-tight line-clamp-1">
             {title}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 pt-2 space-y-2">
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[4em]">
+        <CardContent className="p-4 pt-2 space-y-2 flex-grow">
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
             {prompt_text}
           </p>
           <TagList tags={tags} />
         </CardContent>
-        <CardFooter className="p-4 pt-0 flex flex-wrap items-center gap-2">
+        <CardFooter className="p-4 pt-0 flex flex-wrap items-center gap-2 flex-none">
           <CopyButton value={prompt_text} className="flex-shrink-0 w-full" />
-          {isAdmin && <div className="flex gap-2 ml-auto">
+          {isAdmin && <div className="flex gap-2 ml-auto w-full">
               <Button variant="ghost" size="sm" onClick={e => {
             e.stopPropagation();
             onEdit?.(prompt.id);
