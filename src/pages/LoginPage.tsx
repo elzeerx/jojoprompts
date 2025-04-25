@@ -116,10 +116,8 @@ export default function LoginPage() {
 
     try {
       const { error } = await supabase.auth.updateUser(
-        { password },
-        { 
-          recoveryToken: resetToken || undefined 
-        }
+        { password }, 
+        { recoveryToken: resetToken || undefined }
       );
 
       if (error) {
