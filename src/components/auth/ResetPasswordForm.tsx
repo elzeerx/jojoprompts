@@ -31,33 +31,6 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
 
-  // Check for password reset token on mount
-  useEffect(() => {
-    const token = searchParams.get('token');
-    const type = searchParams.get('type');
-    
-    if (token && type === 'recovery') {
-      setHasResetToken(true);
-      
-      // Verify the token is valid but don't auto-login the user
-      const verifyToken = async () => {
-        try {
-          const { error } = await supabase.auth.getUser();
-          if (error) {
-            console.log("Token verification: User not authenticated", error);
-          }
-        } catch (err) {
-          console.error("Error verifying token:", err);
-          setError("Invalid or expired password reset link. Please request a new one.");
-        }
-      };
-      
-      verifyToken();
-    } else {
-      setError("No password reset token found. Please request a password reset from the 'Forgot Password' tab.");
-    }
-  }, [searchParams]);
-
   const form = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
@@ -66,11 +39,24 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
     },
   });
 
+  // Check for password reset token on mount
+  useEffect(() => {
+    const token = searchParams.get('token');
+    const type = searchParams.get('type');
+    
+    if (token && type === 'recovery') {
+      setHasResetToken(true);
+    } else {
+      setError("No password reset token found. Please request a password reset from the 'Forgot Password' tab.");
+    }
+  }, [searchParams]);
+
   const onSubmit = async (values: ResetPasswordFormValues) => {
     setIsLoading(true);
     setError(null);
 
     try {
+      // Update the user's password
       const { error } = await supabase.auth.updateUser({
         password: values.password,
       });
@@ -83,10 +69,15 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
           description: error.message,
         });
       } else {
+        // Sign out the user after successful password reset
+        await supabase.auth.signOut();
+        
         toast({
           title: "Password Updated",
-          description: "Your password has been successfully updated. You can now log in.",
+          description: "Your password has been successfully updated. Please log in with your new password.",
         });
+        
+        // Redirect to login page
         onSuccess();
       }
     } catch (error: any) {
