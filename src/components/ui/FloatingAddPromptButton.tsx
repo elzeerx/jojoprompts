@@ -10,12 +10,13 @@ import { useNavigate } from "react-router-dom";
 import type { PromptRow } from "@/types";
 
 export function FloatingAddPromptButton() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [promptType, setPromptType] = useState<"text" | "image">("image");
   const navigate = useNavigate();
 
-  if (!user) return null;
+  // Only render for admin users
+  if (!user || !isAdmin) return null;
 
   const handleSave = async (prompt: Partial<PromptRow>) => {
     try {
