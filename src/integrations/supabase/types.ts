@@ -38,23 +38,23 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
-          first_name: string | null
+          first_name: string
           id: string
-          last_name: string | null
+          last_name: string
           role: string
         }
         Insert: {
           created_at?: string | null
-          first_name?: string | null
+          first_name: string
           id: string
-          last_name?: string | null
+          last_name: string
           role?: string
         }
         Update: {
           created_at?: string | null
-          first_name?: string | null
+          first_name?: string
           id?: string
-          last_name?: string | null
+          last_name?: string
           role?: string
         }
         Relationships: []
