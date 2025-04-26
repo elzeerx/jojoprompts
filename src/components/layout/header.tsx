@@ -4,7 +4,6 @@ import { LogOut, User, ShieldCheck, Heart } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-
 interface HeaderProps {
   userRole?: string | null;
   userEmail?: string | null;
@@ -34,8 +33,7 @@ export function Header({
           </a>
           
           <nav className="hidden md:flex gap-6">
-            {isLoggedIn && (
-              <>
+            {isLoggedIn && <>
                 <Link to="/prompts" className="text-sm font-medium hover:text-primary">
                   Browse Prompts
                 </Link>
@@ -47,8 +45,7 @@ export function Header({
                     <ShieldCheck className="mr-2 h-4 w-4 inline" />
                     Admin Dashboard
                   </Link>}
-              </>
-            )}
+              </>}
           </nav>
         </div>
         
@@ -95,7 +92,7 @@ export function Header({
                 <Link to="/login">Login</Link>
               </Button>
               <Button asChild>
-                <Link to="/signup">Sign Up</Link>
+                
               </Button>
             </div>}
         </div>
