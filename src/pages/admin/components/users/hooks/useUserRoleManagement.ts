@@ -28,7 +28,12 @@ export function useUserRoleManagement() {
         
         const { error: insertError } = await supabase
           .from('profiles')
-          .insert({ id: userId, role: newRole });
+          .insert({ 
+            id: userId, 
+            role: newRole,
+            first_name: 'User', // Default first name for new profile
+            last_name: '' // Default empty last name for new profile
+          });
           
         if (insertError) {
           console.error("Error creating profile:", insertError);
