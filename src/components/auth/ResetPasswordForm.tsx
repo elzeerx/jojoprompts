@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,8 +15,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { ResetPasswordFormValues, resetPasswordSchema } from "./validation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ResetPasswordFormProps {
   onSuccess: () => void;
@@ -24,8 +25,38 @@ interface ResetPasswordFormProps {
 
 export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [hasResetToken, setHasResetToken] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+
+  // Check for password reset token on mount
+  useEffect(() => {
+    const token = searchParams.get('token');
+    const type = searchParams.get('type');
+    
+    if (token && type === 'recovery') {
+      setHasResetToken(true);
+      
+      // Verify the token is valid but don't auto-login the user
+      const verifyToken = async () => {
+        try {
+          const { error } = await supabase.auth.getUser();
+          if (error) {
+            console.log("Token verification: User not authenticated", error);
+          }
+        } catch (err) {
+          console.error("Error verifying token:", err);
+          setError("Invalid or expired password reset link. Please request a new one.");
+        }
+      };
+      
+      verifyToken();
+    } else {
+      setError("No password reset token found. Please request a password reset from the 'Forgot Password' tab.");
+    }
+  }, [searchParams]);
 
   const form = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
@@ -37,6 +68,7 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
 
   const onSubmit = async (values: ResetPasswordFormValues) => {
     setIsLoading(true);
+    setError(null);
 
     try {
       const { error } = await supabase.auth.updateUser({
@@ -44,6 +76,7 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
       });
 
       if (error) {
+        setError(error.message);
         toast({
           variant: "destructive",
           title: "Error",
@@ -55,10 +88,10 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
           description: "Your password has been successfully updated. You can now log in.",
         });
         onSuccess();
-        navigate("/login");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Password update error:", error);
+      setError("An unexpected error occurred. Please try again.");
       toast({
         variant: "destructive",
         title: "Error",
@@ -70,47 +103,70 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>New Password</FormLabel>
-              <FormControl>
-                <Input type="password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+    <div className="space-y-4 pt-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-        <FormField
-          control={form.control}
-          name="confirmPassword"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
-              <FormControl>
-                <Input type="password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      {!hasResetToken && (
+        <div className="text-center py-2">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate("/login?tab=forgot")}
+            className="w-full"
+          >
+            Request Password Reset
+          </Button>
+        </div>
+      )}
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Updating...
-            </>
-          ) : (
-            "Update Password"
-          )}
-        </Button>
-      </form>
-    </Form>
+      {hasResetToken && (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                "Update Password"
+              )}
+            </Button>
+          </form>
+        </Form>
+      )}
+    </div>
   );
 }

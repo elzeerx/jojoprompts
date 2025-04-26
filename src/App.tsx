@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,7 +33,7 @@ const App = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               
-              {/* Update reset password route to point to login page with tab parameter */}
+              {/* Redirect reset-password to login page with reset tab */}
               <Route 
                 path="/reset-password" 
                 element={<Navigate to="/login?tab=reset" replace />} 

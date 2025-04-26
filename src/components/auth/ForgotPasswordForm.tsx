@@ -33,6 +33,7 @@ export function ForgotPasswordForm() {
     setIsLoading(true);
 
     try {
+      // Construct the reset URL to point to the reset password tab
       const origin = window.location.origin;
       const resetUrl = `${origin}/login?tab=reset`;
       

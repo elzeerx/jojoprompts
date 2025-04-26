@@ -19,11 +19,18 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    // Check for password reset token or tab parameter
     const token = searchParams.get('token');
     const type = searchParams.get('type');
+    const tab = searchParams.get('tab');
 
     if (token && type === 'recovery') {
       setActiveTab("reset");
+    } else if (tab) {
+      // Allow external navigation to specific tabs
+      if (['login', 'forgot', 'reset'].includes(tab)) {
+        setActiveTab(tab);
+      }
     }
   }, [searchParams]);
 
