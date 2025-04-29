@@ -12,7 +12,10 @@ interface CopyButtonProps {
 export function CopyButton({ value, className }: CopyButtonProps) {
   const [hasCopied, setHasCopied] = useState(false);
 
-  const copyToClipboard = async () => {
+  const copyToClipboard = async (e: React.MouseEvent) => {
+    // Prevent the event from bubbling up to parent elements
+    e.stopPropagation();
+    
     await navigator.clipboard.writeText(value);
     setHasCopied(true);
     
