@@ -33,6 +33,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
   onSave,
 }) => {
   const [submitting, setSubmitting] = useState(false);
+  const [generatingMetadata, setGeneratingMetadata] = useState(false);
   const { session } = useAuth();
   const form = usePromptForm(initial);
 
@@ -86,19 +87,42 @@ export const PromptDialog: FC<PromptDialogProps> = ({
         }
       }
 
+      // Initialize metadata with existing values or empty structure
       let meta = { ...form.metadata };
 
+      // Generate metadata for the prompt text
       try {
+        setGeneratingMetadata(true);
+        console.log("Calling generate-metadata edge function");
+        
         const { data, error } = await supabase.functions.invoke(
           "generate-metadata",
           { body: { prompt_text: form.promptText } }
         );
-        if (!error && data) {
-          meta = { ...meta, ...data };
+        
+        if (error) {
+          console.error("Metadata generation error:", error);
+          toast({
+            title: "Warning",
+            description: "Failed to generate metadata automatically. You can still save the prompt with manual metadata.",
+            variant: "destructive",
+          });
+        } else if (data) {
+          console.log("Metadata generated successfully:", data);
+          // Merge the generated metadata with any existing metadata
+          meta = { 
+            ...meta, 
+            category: data.category || meta.category || "",
+            style: data.style || meta.style || "",
+            tags: data.tags?.length ? data.tags : (meta.tags || [])
+          };
+          form.setMetadata(meta); // Update form state with new metadata
         }
-        console.log("Metadata generated:", meta);
       } catch (err) {
-        console.warn("Metadata generation failed:", err);
+        console.warn("Error during metadata generation:", err);
+        // Continue with the save process even if metadata generation fails
+      } finally {
+        setGeneratingMetadata(false);
       }
 
       const promptData: Partial<PromptRow> = {
@@ -159,8 +183,12 @@ export const PromptDialog: FC<PromptDialogProps> = ({
           >
             Cancel
           </Button>
-          <Button type="submit" onClick={handleSubmit} disabled={submitting}>
-            {submitting
+          <Button 
+            type="submit" 
+            onClick={handleSubmit} 
+            disabled={submitting || generatingMetadata}
+          >
+            {submitting || generatingMetadata
               ? initial
                 ? "Saving..."
                 : "Adding..."
