@@ -64,28 +64,22 @@ export const PromptDialog: FC<PromptDialogProps> = ({
         }
 
         imagePath = path;
+      } else if (promptType === "text" && form.file) {
+        // Use the uploadDefaultPromptImage function for the text prompt custom image
+        defaultImagePath = await uploadDefaultPromptImage(form.file);
+      } else if (!form.file && form.selectedImagePath) {
+        // Use the selected image path if no new file was uploaded but an existing image was selected
+        if (promptType === "text") {
+          defaultImagePath = form.selectedImagePath;
+        } else {
+          imagePath = form.selectedImagePath;
+        }
+      } else if (promptType === "text" && !defaultImagePath) {
+        // Use the default image if no file was uploaded and no existing image was selected
+        defaultImagePath = 'textpromptdefaultimg.jpg';
       }
 
-      if (promptType === "text" && !defaultImagePath) {
-        try {
-          if (form.file) {
-            // Use the uploadDefaultPromptImage function that will ensure the image goes to default-prompt-images bucket
-            defaultImagePath = await uploadDefaultPromptImage(form.file);
-          } else {
-            // Use the default image which should be in the default-prompt-images bucket
-            defaultImagePath = 'textpromptdefaultimg.jpg';
-          }
-          console.log(`Using default image path: ${defaultImagePath}`);
-        } catch (error) {
-          console.error('Error uploading default text prompt image:', error);
-          toast({
-            title: "Error",
-            description: "Failed to upload default text prompt image",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
+      console.log(`Using ${promptType} image path: ${promptType === "text" ? defaultImagePath : imagePath}`);
 
       // Initialize metadata with existing values or empty structure
       let meta = { ...form.metadata };

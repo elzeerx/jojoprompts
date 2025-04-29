@@ -1,53 +1,71 @@
-
 import { useState, useEffect } from "react";
 import { type PromptRow } from "@/types";
+import { getPromptImage } from "@/utils/image";
 
-const EMPTY_METADATA: PromptRow["metadata"] = {
-  category: "",
-  style: "",
-  tags: [],
-  target_model: "",
-  use_case: "",
-};
-
-export const usePromptForm = (initial: PromptRow | null) => {
-  const [title, setTitle] = useState("");
-  const [promptText, setPromptText] = useState("");
-  const [metadata, setMetadata] = useState<PromptRow["metadata"]>(EMPTY_METADATA);
-  const [imageURL, setImageURL] = useState("");
+export const usePromptForm = (initial: PromptRow | null | undefined) => {
+  const [title, setTitle] = useState<string>("");
+  const [promptText, setPromptText] = useState<string>("");
+  const [metadata, setMetadata] = useState<PromptRow["metadata"]>({});
   const [file, setFile] = useState<File | null>(null);
+  const [imageURL, setImageURL] = useState<string>("");
+  const [selectedImagePath, setSelectedImagePath] = useState<string | null>(null);
 
   useEffect(() => {
     if (initial) {
       setTitle(initial.title);
       setPromptText(initial.prompt_text);
-      setMetadata({
-        category: initial.metadata?.category ?? "",
-        style: initial.metadata?.style ?? "",
-        tags: initial.metadata?.tags ?? [],
-        target_model: initial.metadata?.target_model ?? "",
-        use_case: initial.metadata?.use_case ?? "",
-      });
-      setImageURL(initial.image_path ?? "");
-    } else {
-      setTitle("");
-      setPromptText("");
-      setMetadata(EMPTY_METADATA);
-      setImageURL("");
-      setFile(null);
+      setMetadata(initial.metadata || {});
+      
+      const imagePath = initial.prompt_type === "text" 
+        ? initial.default_image_path
+        : initial.image_path;
+        
+      if (imagePath) {
+        setSelectedImagePath(imagePath);
+        
+        // Load the image URL
+        const loadImage = async () => {
+          try {
+            const url = await getPromptImage(imagePath, 400, 80);
+            setImageURL(url);
+          } catch (error) {
+            console.error("Error loading form image:", error);
+          }
+        };
+        
+        loadImage();
+      }
     }
   }, [initial]);
 
+  const handleSetFile = (newFile: File | null) => {
+    setFile(newFile);
+    
+    // If a new file is uploaded, clear the selected image path
+    if (newFile) {
+      setSelectedImagePath(null);
+    } else if (!newFile && !selectedImagePath) {
+      // If we're clearing the file and don't have a selected image, keep the original
+      if (initial) {
+        const imagePath = initial.prompt_type === "text" 
+          ? initial.default_image_path
+          : initial.image_path;
+        setSelectedImagePath(imagePath || null);
+      }
+    }
+  };
+
   return {
     title,
-    setTitle,
     promptText,
-    setPromptText,
     metadata,
-    setMetadata,
-    imageURL,
-    setImageURL,
     file,
-    setFile,
+    imageURL,
+    selectedImagePath,
+    setTitle,
+    setPromptText,
+    setMetadata,
+    setFile: handleSetFile,
+    setSelectedImagePath,
   };
 };

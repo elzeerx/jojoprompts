@@ -56,12 +56,21 @@ export const DialogForm = ({
           imageURL={imageURL}
           file={file}
           onFileChange={onFileChange}
+          promptType={promptType}
         />
       ) : (
-        <TextPromptFields
-          metadata={metadata}
-          onMetadataChange={onMetadataChange}
-        />
+        <>
+          <TextPromptFields
+            metadata={metadata}
+            onMetadataChange={onMetadataChange}
+          />
+          <ImageUploadField
+            imageURL={imageURL}
+            file={file}
+            onFileChange={onFileChange}
+            promptType={promptType}
+          />
+        </>
       )}
 
       <PromptFormField
