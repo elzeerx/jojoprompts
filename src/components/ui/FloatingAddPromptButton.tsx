@@ -30,18 +30,18 @@ export function FloatingAddPromptButton() {
         return;
       }
 
-      const payload = {
-        title: prompt.title,
-        prompt_text: prompt.prompt_text,
-        user_id: user.id,
-        prompt_type: promptType,
-        metadata: prompt.metadata || {},
-        image_path: promptType === "image" ? prompt.image_path : null
-      };
-      
+      // Use all the data from the prompt object directly
       const { error } = await supabase
         .from("prompts")
-        .insert(payload);
+        .insert({
+          title: prompt.title,
+          prompt_text: prompt.prompt_text,
+          user_id: user.id,
+          prompt_type: promptType,
+          metadata: prompt.metadata || {}, // Use metadata from the PromptDialog
+          image_path: promptType === "image" ? prompt.image_path : null,
+          default_image_path: promptType === "text" ? prompt.default_image_path : null
+        });
 
       if (error) throw error;
 
