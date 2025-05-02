@@ -1,5 +1,5 @@
 
-import { FC, useState } from "react";
+import { FC, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,6 +36,13 @@ export const PromptDialog: FC<PromptDialogProps> = ({
   const [generatingMetadata, setGeneratingMetadata] = useState(false);
   const { session } = useAuth();
   const form = usePromptForm(initial);
+
+  // Reset form when dialog opens/closes or when initial data changes
+  useEffect(() => {
+    if (!open && !initial) {
+      form.resetForm();
+    }
+  }, [open, initial]);
 
   const handleSubmit = async () => {
     if (!form.title.trim() || !form.promptText.trim()) {
@@ -129,6 +136,10 @@ export const PromptDialog: FC<PromptDialogProps> = ({
       };
 
       await onSave(promptData);
+      // Reset the form after successful save
+      if (!initial) {
+        form.resetForm();
+      }
     } catch (error) {
       console.error("Error saving prompt:", error);
       toast({
@@ -142,7 +153,16 @@ export const PromptDialog: FC<PromptDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog 
+      open={open} 
+      onOpenChange={(newOpen) => {
+        // If dialog is closing and we're not editing, reset the form
+        if (!newOpen && !initial) {
+          form.resetForm();
+        }
+        onOpenChange(newOpen);
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
@@ -173,7 +193,12 @@ export const PromptDialog: FC<PromptDialogProps> = ({
           <Button
             type="button"
             variant="secondary"
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              if (!initial) {
+                form.resetForm();
+              }
+              onOpenChange(false);
+            }}
           >
             Cancel
           </Button>

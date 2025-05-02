@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { type PromptRow } from "@/types";
 import { getPromptImage } from "@/utils/image";
@@ -9,6 +10,16 @@ export const usePromptForm = (initial: PromptRow | null | undefined) => {
   const [file, setFile] = useState<File | null>(null);
   const [imageURL, setImageURL] = useState<string>("");
   const [selectedImagePath, setSelectedImagePath] = useState<string | null>(null);
+
+  // Reset form states to initial values or empty
+  const resetForm = () => {
+    setTitle("");
+    setPromptText("");
+    setMetadata({});
+    setFile(null);
+    setImageURL("");
+    setSelectedImagePath(null);
+  };
 
   useEffect(() => {
     if (initial) {
@@ -35,6 +46,9 @@ export const usePromptForm = (initial: PromptRow | null | undefined) => {
         
         loadImage();
       }
+    } else {
+      // Reset form if initial is null/undefined
+      resetForm();
     }
   }, [initial]);
 
@@ -67,5 +81,6 @@ export const usePromptForm = (initial: PromptRow | null | undefined) => {
     setMetadata,
     setFile: handleSetFile,
     setSelectedImagePath,
+    resetForm, // Export the reset function
   };
 };

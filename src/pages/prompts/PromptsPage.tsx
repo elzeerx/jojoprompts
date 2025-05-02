@@ -5,6 +5,7 @@ import { usePromptsData } from "./usePromptsData";
 import { PromptStateManager } from "./components/PromptStateManager";
 import { PromptsPageContent } from "./components/PromptsPageContent";
 import { usePromptDeletion } from "./hooks/usePromptDeletion";
+import { useEffect } from "react";
 
 export default function PromptsPage() {
   const { loading: authLoading, session } = useAuth();
@@ -13,6 +14,11 @@ export default function PromptsPage() {
   // Fetch prompts & categories
   const { prompts, setPrompts, categories, isLoading, error, reloadPrompts } = usePromptsData({ authLoading, session });
   const { handleDeletePrompt } = usePromptDeletion(setPrompts, reloadPrompts);
+
+  // Reload prompts when the page is visited
+  useEffect(() => {
+    reloadPrompts();
+  }, []);
 
   if (!authLoading && !session) {
     navigate("/login");
