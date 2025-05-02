@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -73,6 +74,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
   }, [authLoading, session]);
 
   const reloadPrompts = async () => {
+    console.log("Reloading prompts...");
     const data = await fetchPrompts();
     if (data) {
       setPrompts(data);

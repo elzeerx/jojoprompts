@@ -39,7 +39,9 @@ export const PromptDialog: FC<PromptDialogProps> = ({
 
   // Reset form when dialog opens/closes or when initial data changes
   useEffect(() => {
-    if (!open && !initial) {
+    // Reset the form when the dialog opens with no initial data
+    // or when the dialog closes and there was no initial data (we were adding, not editing)
+    if (!initial && (!open || form.title || form.promptText)) {
       form.resetForm();
     }
   }, [open, initial]);
@@ -136,10 +138,14 @@ export const PromptDialog: FC<PromptDialogProps> = ({
       };
 
       await onSave(promptData);
-      // Reset the form after successful save
+      
+      // Reset form after successful save if we're not editing
       if (!initial) {
         form.resetForm();
       }
+      
+      // Close dialog
+      onOpenChange(false);
     } catch (error) {
       console.error("Error saving prompt:", error);
       toast({
@@ -194,6 +200,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
             type="button"
             variant="secondary"
             onClick={() => {
+              // Explicitly reset the form when canceling
               if (!initial) {
                 form.resetForm();
               }

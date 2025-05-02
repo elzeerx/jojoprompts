@@ -8,19 +8,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import type { PromptRow } from "@/types";
-import { usePromptsData } from "@/pages/prompts/usePromptsData";
 
-export function FloatingAddPromptButton() {
+interface FloatingAddPromptButtonProps {
+  reloadPrompts: () => Promise<void>;
+}
+
+export function FloatingAddPromptButton({ reloadPrompts }: FloatingAddPromptButtonProps) {
   const { user, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [promptType, setPromptType] = useState<"text" | "image">("image");
   const navigate = useNavigate();
-  
-  // Get the reloadPrompts function from the usePromptsData hook
-  const { reloadPrompts } = usePromptsData({ 
-    authLoading: false, 
-    session: user ? { user } : null 
-  });
 
   // Only render for admin users
   if (!user || !isAdmin) return null;
@@ -62,11 +59,6 @@ export function FloatingAddPromptButton() {
       
       // Reload prompts to refresh the list
       await reloadPrompts();
-      
-      // If we're not already on the prompts page, navigate there
-      if (window.location.pathname !== "/prompts") {
-        navigate("/prompts");
-      }
     } catch (error) {
       console.error("Error saving prompt:", error);
       toast({

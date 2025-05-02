@@ -6,6 +6,7 @@ import { PromptStateManager } from "./components/PromptStateManager";
 import { PromptsPageContent } from "./components/PromptsPageContent";
 import { usePromptDeletion } from "./hooks/usePromptDeletion";
 import { useEffect } from "react";
+import { FloatingAddPromptButton } from "@/components/ui/FloatingAddPromptButton";
 
 export default function PromptsPage() {
   const { loading: authLoading, session } = useAuth();
@@ -28,13 +29,16 @@ export default function PromptsPage() {
     <div className="w-full bg-background">
       <PromptStateManager prompts={prompts}>
         {({ selectedPrompt, setSelectedPrompt, detailsDialogOpen, setDetailsDialogOpen }) => (
-          <PromptsPageContent
-            prompts={prompts}
-            categories={categories}
-            isLoading={isLoading}
-            error={error}
-            reloadPrompts={reloadPrompts}
-          />
+          <>
+            <PromptsPageContent
+              prompts={prompts}
+              categories={categories}
+              isLoading={isLoading}
+              error={error}
+              reloadPrompts={reloadPrompts}
+            />
+            <FloatingAddPromptButton reloadPrompts={reloadPrompts} />
+          </>
         )}
       </PromptStateManager>
     </div>
