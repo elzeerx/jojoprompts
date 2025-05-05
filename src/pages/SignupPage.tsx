@@ -38,7 +38,8 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      // Step 1: Sign up the user
+      const { error: signupError } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
@@ -49,18 +50,36 @@ export default function SignupPage() {
         },
       });
 
-      if (error) {
+      if (signupError) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: error.message,
+          description: signupError.message,
         });
-      } else {
+        setIsLoading(false);
+        return;
+      }
+
+      // Step 2: Automatically sign in the user
+      const { error: signinError } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
+
+      if (signinError) {
         toast({
-          title: "Success!",
-          description: "Please check your email to confirm your account.",
+          variant: "destructive",
+          title: "Account created but couldn't sign in automatically",
+          description: "Please proceed to login with your new credentials.",
         });
         navigate("/login");
+      } else {
+        // Successful signup and signin
+        toast({
+          title: "Welcome!",
+          description: "Your account has been created and you're now logged in.",
+        });
+        navigate("/prompts");
       }
     } catch (error) {
       console.error("Signup error:", error);
