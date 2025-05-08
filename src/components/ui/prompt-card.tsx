@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { CopyButton } from "./copy-button";
@@ -100,42 +101,73 @@ export function PromptCard({
     }
   };
 
-  return <>
-      <Card className={cn("overflow-hidden transition-all duration-200 hover:shadow-2xl hover:scale-[1.025] group cursor-pointer border border-border/50 hover:border-border/100 bg-gradient-to-b from-card to-card/95", isSelected && "ring-2 ring-primary")} onClick={() => setDetailsOpen(true)}>
+  return (
+    <>
+      <Card 
+        className={cn(
+          "overflow-hidden transition-all duration-200 hover:shadow-xl group cursor-pointer rounded-none",
+          "border border-border hover:border-primary/50",
+          isSelected && "ring-1 ring-primary"
+        )} 
+        onClick={() => setDetailsOpen(true)}
+      >
         <div className="relative">
-          <ImageWrapper src={imageUrl} alt={title} aspect={aspect} isCard={true} className="w-full aspect-square object-none" />
+          <ImageWrapper 
+            src={imageUrl} 
+            alt={title} 
+            aspect={aspect} 
+            isCard={true} 
+            className="w-full aspect-square object-cover" 
+          />
           <CardActions favorited={favorited} onToggleFavorite={toggleFavorite} />
         </div>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-lg font-semibold leading-tight tracking-tight line-clamp-1">
+        <CardHeader className="px-4 py-3 border-b border-border">
+          <CardTitle className="text-lg font-bold tracking-tight line-clamp-1">
             {title}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 pt-2 space-y-2">
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[4em]">
+        <CardContent className="px-4 py-3 space-y-2">
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[4em] font-mono">
             {prompt_text}
           </p>
-          <TagList tags={tags} />
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {tags.slice(0, 3).map((tag, i) => (
+              <span 
+                key={i}
+                className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs font-mono inline-block"
+              >
+                {tag}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="px-2 py-0.5 border border-border text-xs font-mono">
+                +{tags.length - 3}
+              </span>
+            )}
+          </div>
         </CardContent>
-        <CardFooter className="p-4 pt-0 flex flex-wrap items-center gap-2">
-          <CopyButton value={prompt_text} className="flex-shrink-0 w-full" />
-          {isAdmin && <div className="flex gap-2 ml-auto">
+        <CardFooter className="px-4 py-3 border-t border-border">
+          <CopyButton value={prompt_text} className="flex-shrink-0 w-full rounded-none" />
+          {isAdmin && 
+            <div className="flex gap-2 ml-auto">
               <Button variant="ghost" size="sm" onClick={e => {
-            e.stopPropagation();
-            onEdit?.(prompt.id);
-          }}>
+                e.stopPropagation();
+                onEdit?.(prompt.id);
+              }}>
                 Edit
               </Button>
               <Button variant="ghost" size="sm" className="text-destructive" onClick={e => {
-            e.stopPropagation();
-            onDelete?.(prompt.id);
-          }}>
+                e.stopPropagation();
+                onDelete?.(prompt.id);
+              }}>
                 Delete
               </Button>
-            </div>}
+            </div>
+          }
         </CardFooter>
       </Card>
 
       <PromptDetailsDialog open={detailsOpen} onOpenChange={setDetailsOpen} prompt={prompt as PromptRow} />
-    </>;
+    </>
+  );
 }

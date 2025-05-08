@@ -22,7 +22,7 @@ export function RootLayout() {
         <Outlet />
         {/* Only show the FloatingAddPromptButton on pages other than the home page and prompts page */}
         {location.pathname !== "/" && location.pathname !== "/prompts" && (
-          <FloatingAddPromptButton reloadPrompts={dummyReloadPrompts} />
+          <FloatingAddPromptButton reloadPrompts={dummyReloadPrompts} className="rounded-none" />
         )}
       </main>
       <Footer />
