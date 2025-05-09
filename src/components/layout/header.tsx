@@ -102,9 +102,6 @@ export function Header({
               <Button asChild variant="outline" className="rounded-none font-bold">
                 <Link to="/login">Login</Link>
               </Button>
-              <Button asChild className="rounded-none font-bold">
-                <Link to="/signup">Sign Up</Link>
-              </Button>
             </div>
           }
         </div>
