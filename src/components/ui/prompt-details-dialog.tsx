@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,6 +9,7 @@ import { Skeleton } from "./skeleton";
 import { AlertCircle, Copy } from "lucide-react";
 import { Button } from "./button";
 import { CopyButton } from "./copy-button";
+import { toast } from "@/hooks/use-toast"; // Import toast from the correct location
 
 interface PromptDetailsDialogProps {
   open: boolean;

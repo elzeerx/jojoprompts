@@ -8,12 +8,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import type { PromptRow } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface FloatingAddPromptButtonProps {
   reloadPrompts: () => Promise<void>;
+  className?: string; // Make className optional
 }
 
-export function FloatingAddPromptButton({ reloadPrompts }: FloatingAddPromptButtonProps) {
+export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAddPromptButtonProps) {
   const { user, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [promptType, setPromptType] = useState<"text" | "image">("image");
@@ -81,7 +83,10 @@ export function FloatingAddPromptButton({ reloadPrompts }: FloatingAddPromptButt
             type="button"
             aria-label="Add Prompt"
             title="Add Prompt"
-            className="fixed z-50 bottom-8 right-8 md:bottom-10 md:right-10 transition-transform animate-fade-in hover:scale-110 peer"
+            className={cn(
+              "fixed z-50 bottom-8 right-8 md:bottom-10 md:right-10 transition-transform animate-fade-in hover:scale-110 peer",
+              className
+            )}
             style={{
               background: "none",
               boxShadow: "0 6px 24px 0 #E5DEFF",
