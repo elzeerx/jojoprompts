@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -6,10 +7,9 @@ import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { useEffect, useState } from "react";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 import { Skeleton } from "./skeleton";
-import { AlertCircle, Copy } from "lucide-react";
+import { AlertCircle, Copy, Check } from "lucide-react";
 import { Button } from "./button";
 import { CopyButton } from "./copy-button";
-import { toast } from "@/hooks/use-toast"; // Import toast from the correct location
 
 interface PromptDetailsDialogProps {
   open: boolean;
@@ -28,6 +28,7 @@ export function PromptDetailsDialog({
   const [dialogImgUrl, setDialogImgUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   useEffect(() => {
     if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
@@ -127,6 +128,16 @@ export function PromptDetailsDialog({
     }
     return "N/A";
   };
+  
+  const handleCopyClick = () => {
+    navigator.clipboard.writeText(prompt.prompt_text);
+    setCopied(true);
+    
+    // Reset copied state after 2 seconds
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -162,12 +173,8 @@ export function PromptDetailsDialog({
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <h3 className="text-lg font-bold mb-3">Prompt Text</h3>
-                  <div className="bg-muted/50 p-4 font-mono text-sm relative group">
+                  <div className="bg-muted/50 p-4 font-mono text-sm relative">
                     <p className="whitespace-pre-wrap text-muted-foreground">{prompt.prompt_text}</p>
-                    <CopyButton
-                      value={prompt.prompt_text}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity rounded-none"
-                    />
                   </div>
                 </div>
                 
@@ -213,17 +220,20 @@ export function PromptDetailsDialog({
               
               <div className="mt-8 flex justify-center">
                 <Button 
-                  className="w-full max-w-sm rounded-none font-bold text-base py-6"
-                  onClick={() => {
-                    navigator.clipboard.writeText(prompt.prompt_text);
-                    toast({
-                      title: "Copied to clipboard",
-                      description: "Prompt text has been copied to your clipboard",
-                    });
-                  }}
+                  className="w-full max-w-sm rounded-none font-bold text-base py-6 transition-all"
+                  onClick={handleCopyClick}
                 >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy Prompt
+                  {copied ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Copied to Clipboard
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Prompt
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
