@@ -37,43 +37,41 @@ export function PromptsPageContent({
 
   return (
     <div className="container max-w-[1200px] mx-auto px-4 sm:px-6 py-10">
-      <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-xl p-6 md:p-8 shadow-xl">
-        <PromptsHeader
-          view={view}
-          setView={setView}
-          selectedPromptsLength={0}
-          onClearSelections={() => {}}
-          promptType={promptType}
-          setPromptType={setPromptType}
-        />
+      <PromptsHeader
+        view={view}
+        setView={setView}
+        selectedPromptsLength={0}
+        onClearSelections={() => {}}
+        promptType={promptType}
+        setPromptType={setPromptType}
+      />
 
-        <PromptsFilters
-          category={category}
-          setCategory={setCategory}
-          categories={categories}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          view={view}
-          setView={setView}
-        />
+      <PromptsFilters
+        category={category}
+        setCategory={setCategory}
+        categories={categories}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        view={view}
+        setView={setView}
+      />
 
-        <PromptsContent
-          view={view}
-          filteredPrompts={filteredPrompts}
-          isLoading={isLoading}
-          error={error}
-          searchQuery={searchQuery}
-          category={category}
-          promptType={promptType}
-          onClearFilters={() => {
-            setSearchQuery("");
-            setCategory("all");
-            setPromptType("all");
-          }}
-          selectedPrompts={[]}
-          onSelectPrompt={() => {}}
-        />
-      </div>
+      <PromptsContent
+        view={view}
+        filteredPrompts={filteredPrompts}
+        isLoading={isLoading}
+        error={error}
+        searchQuery={searchQuery}
+        category={category}
+        promptType={promptType}
+        onClearFilters={() => {
+          setSearchQuery("");
+          setCategory("all");
+          setPromptType("all");
+        }}
+        selectedPrompts={[]}
+        onSelectPrompt={() => {}}
+      />
     </div>
   );
 }

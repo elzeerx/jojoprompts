@@ -26,9 +26,9 @@ export function PromptsContent({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-muted-foreground mb-3">Loading prompts...</p>
-        <div className="h-1.5 w-64 bg-white/10 overflow-hidden rounded-full">
-          <div className="h-full bg-primary/70 animate-pulse"></div>
+        <p className="text-muted-foreground mb-3 font-mono">Loading prompts...</p>
+        <div className="h-1.5 w-64 bg-secondary overflow-hidden rounded-none">
+          <div className="h-full bg-primary animate-pulse"></div>
         </div>
       </div>
     );
@@ -37,10 +37,10 @@ export function PromptsContent({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-destructive mb-6 text-lg">{error}</p>
+        <p className="text-destructive mb-6 font-mono text-lg">{error}</p>
         <Button
           variant="outline"
-          className="rounded-full px-8 py-2 text-base font-bold backdrop-blur-sm bg-white/10 border-white/10"
+          className="rounded-none px-8 py-2 text-base font-bold"
           onClick={() => window.location.reload()}
         >
           Retry
@@ -51,8 +51,8 @@ export function PromptsContent({
 
   if (filteredPrompts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 backdrop-blur-md bg-white/5 rounded-xl border border-white/10 p-8">
-        <p className="text-muted-foreground mb-6 text-lg">
+      <div className="flex flex-col items-center justify-center py-16">
+        <p className="text-muted-foreground mb-6 font-mono text-lg">
           {searchQuery || category !== "all"
             ? "No prompts found matching your search."
             : "No prompts available."}
@@ -60,7 +60,7 @@ export function PromptsContent({
         {(searchQuery || category !== "all") && (
           <Button
             variant="outline"
-            className="rounded-full px-8 py-2 text-base font-bold backdrop-blur-sm bg-white/10 border-white/10"
+            className="rounded-none px-8 py-2 text-base font-bold"
             onClick={onClearFilters}
           >
             Clear Filters

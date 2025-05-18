@@ -20,7 +20,7 @@ export function CardActions({
   return (
     <div className={cn(
       "flex items-center justify-end w-full px-2",
-      "absolute top-3 right-3 z-10",
+      "absolute top-3 left-0 z-10",
       className
     )}>
       {/* Only show Heart for authenticated users */}
@@ -30,8 +30,8 @@ export function CardActions({
             variant="ghost"
             size="icon"
             className={cn(
-              "h-8 w-8 rounded-full backdrop-blur-lg bg-black/30",
-              favorited ? "text-red-500 hover:text-red-600" : "text-white hover:text-white/80",
+              "h-8 w-8 rounded-full backdrop-blur bg-black/30",
+              favorited && "text-red-500 hover:text-red-600",
               "hover:bg-black/40 transition-colors"
             )}
             tabIndex={0}
