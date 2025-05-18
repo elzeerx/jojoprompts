@@ -116,18 +116,5 @@ export default {
 	plugins: [require("tailwindcss-animate")],
 	corePlugins: {
 		preflight: true,
-	},
-	// Add utility classes for glassmorphism and text gradients
-	theme: {
-		extend: {
-			utilities: {
-				'.glass': {
-					'@apply': 'backdrop-blur-md bg-white/10 border border-white/20',
-				},
-				'.text-gradient': {
-					'@apply': 'bg-gradient-to-br from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent',
-				}
-			}
-		}
 	}
 } satisfies Config;
