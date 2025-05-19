@@ -36,7 +36,7 @@ export function PromptsPageContent({
   });
 
   return (
-    <div className="container max-w-[1200px] mx-auto px-4 sm:px-6 py-10">
+    <div className="container max-w-[1400px] mx-auto px-4 sm:px-6 py-10">
       <PromptsHeader
         view={view}
         setView={setView}

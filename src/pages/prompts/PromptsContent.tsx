@@ -3,6 +3,7 @@ import { PromptCard } from "@/components/ui/prompt-card";
 import { TextPromptCard } from "@/components/ui/text-prompt-card";
 import { Button } from "@/components/ui/button";
 import { type Prompt } from "@/types";
+import { PremiumPromptCard } from "@/components/ui/premium-prompt-card";
 
 interface PromptsContentProps {
   view: "grid" | "list";
@@ -26,9 +27,9 @@ export function PromptsContent({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-muted-foreground mb-3 font-mono">Loading prompts...</p>
-        <div className="h-1.5 w-64 bg-secondary overflow-hidden rounded-none">
-          <div className="h-full bg-primary animate-pulse"></div>
+        <p className="text-muted-foreground mb-3">Loading prompts...</p>
+        <div className="h-1.5 w-64 bg-secondary overflow-hidden">
+          <div className="h-full bg-warm-gold animate-pulse"></div>
         </div>
       </div>
     );
@@ -37,10 +38,10 @@ export function PromptsContent({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-destructive mb-6 font-mono text-lg">{error}</p>
+        <p className="text-destructive mb-6 text-lg">{error}</p>
         <Button
           variant="outline"
-          className="rounded-none px-8 py-2 text-base font-bold"
+          className="px-8 py-2 text-base font-bold border-warm-gold/20"
           onClick={() => window.location.reload()}
         >
           Retry
@@ -52,7 +53,7 @@ export function PromptsContent({
   if (filteredPrompts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-muted-foreground mb-6 font-mono text-lg">
+        <p className="text-muted-foreground mb-6 text-lg">
           {searchQuery || category !== "all"
             ? "No prompts found matching your search."
             : "No prompts available."}
@@ -60,7 +61,7 @@ export function PromptsContent({
         {(searchQuery || category !== "all") && (
           <Button
             variant="outline"
-            className="rounded-none px-8 py-2 text-base font-bold"
+            className="px-8 py-2 text-base font-bold border-warm-gold/20"
             onClick={onClearFilters}
           >
             Clear Filters
@@ -70,17 +71,23 @@ export function PromptsContent({
     );
   }
 
+  // Array of background colors from our palette to rotate through
+  const bgColors = [
+    'bg-soft-bg', 'bg-warm-gold/10', 'bg-muted-teal/10'
+  ];
+
   return (
     <div className={isGridView
       ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"
       : "flex flex-col gap-5"
     }>
-      {filteredPrompts.map((prompt) => (
-        prompt.prompt_type === 'text' ? (
-          <TextPromptCard key={prompt.id} prompt={prompt} />
-        ) : (
-          <PromptCard key={prompt.id} prompt={prompt} />
-        )
+      {filteredPrompts.map((prompt, index) => (
+        <PremiumPromptCard 
+          key={prompt.id} 
+          prompt={prompt} 
+          colorIndex={index % bgColors.length}
+          bgColors={bgColors}
+        />
       ))}
     </div>
   );

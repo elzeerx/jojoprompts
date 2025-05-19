@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { FloatingAddPromptButton } from "../ui/FloatingAddPromptButton";
 
 export function RootLayout() {
-  const { user, userRole, signOut } = useAuth();
   const location = useLocation();
 
   // Define a dummy reloadPrompts function for the FloatingAddPromptButton when used outside of the prompts page
@@ -17,7 +16,7 @@ export function RootLayout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header userEmail={user?.email} userRole={userRole} onLogout={signOut} />
+      <Header />
       <main className="flex-1 relative">
         <Outlet />
         {/* Only show the FloatingAddPromptButton on pages other than the home page and prompts page */}

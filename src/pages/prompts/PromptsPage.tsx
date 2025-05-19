@@ -26,7 +26,7 @@ export default function PromptsPage() {
   }
 
   return (
-    <div className="w-full bg-background min-h-screen">
+    <div className="w-full bg-soft-bg min-h-screen">
       <PromptStateManager prompts={prompts}>
         {({ selectedPrompt, setSelectedPrompt, detailsDialogOpen, setDetailsDialogOpen }) => (
           <>
@@ -37,7 +37,7 @@ export default function PromptsPage() {
               error={error}
               reloadPrompts={reloadPrompts}
             />
-            <FloatingAddPromptButton reloadPrompts={reloadPrompts} className="rounded-none" />
+            <FloatingAddPromptButton reloadPrompts={reloadPrompts} />
           </>
         )}
       </PromptStateManager>
