@@ -116,6 +116,30 @@ export function MagazinePromptCard({
       onClick={onCardClick}
     >
       <div className="flex flex-col h-full">
+        {/* Image Section - Now at the top */}
+        <div className="relative overflow-hidden h-[40%]">
+          <img
+            src={imageUrl}
+            alt={title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+          
+          {/* Favorite Button - Moved to overlay on the image */}
+          {session && (
+            <button
+              onClick={toggleFavorite}
+              className={cn(
+                "absolute top-2 right-2 p-2 rounded-full",
+                favorited 
+                  ? "bg-warm-gold text-white" 
+                  : "bg-white/80 text-warm-gold hover:bg-white"
+              )}
+            >
+              <Heart className={cn("h-4 w-4", favorited ? "fill-white" : "")} />
+            </button>
+          )}
+        </div>
+        
         <div className="relative p-4 flex flex-col flex-grow">
           {/* Category Tag */}
           <div className="mb-2">
@@ -134,21 +158,6 @@ export function MagazinePromptCard({
             {prompt_text}
           </p>
           
-          {/* Favorite Button */}
-          {session && (
-            <button
-              onClick={toggleFavorite}
-              className={cn(
-                "absolute top-4 right-4 p-2 rounded-full",
-                favorited 
-                  ? "bg-warm-gold text-white" 
-                  : "bg-white/80 text-warm-gold hover:bg-white"
-              )}
-            >
-              <Heart className={cn("h-4 w-4", favorited ? "fill-white" : "")} />
-            </button>
-          )}
-          
           {/* Action Button */}
           <div className="mt-auto">
             <Button 
@@ -158,15 +167,6 @@ export function MagazinePromptCard({
               View Details
             </Button>
           </div>
-        </div>
-        
-        {/* Image Section - Now shown for all cards */}
-        <div className="relative overflow-hidden mt-auto h-[40%]">
-          <img
-            src={imageUrl}
-            alt={title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
         </div>
       </div>
     </div>
