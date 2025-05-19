@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -35,6 +36,13 @@ export default {
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
+        
+        // New custom palette
+        'dark-base': '#262626',
+        'soft-bg': '#efeee9',
+        'warm-gold': '#c49d68',
+        'muted-teal': '#7a9e9f',
+        
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'
@@ -74,6 +82,10 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+      fontFamily: {
+        'sans': ['Inter', 'sans-serif'],
+        'arabic': ['Rubik', 'sans-serif'],
+      },
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',

@@ -1,86 +1,89 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 60 10% 94%; /* Based on soft-bg #efeee9 */
+    --foreground: 0 0% 15%; /* Based on dark-base #262626 */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 15%;
     
-    /* Purple theme for Jojoprompts */
-    --primary: 265 89% 60%; /* Vibrant purple */
+    /* Primary accent based on Warm Gold */
+    --primary: 39 45% 60%; /* Based on warm-gold #c49d68 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 250 20% 95%;
-    --secondary-foreground: 265 89% 40%;
+    /* Secondary accent based on Muted Teal */
+    --secondary: 182 12% 55%; /* Based on muted-teal #7a9e9f */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
+    --muted: 60 10% 94%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 265 80% 95%;
-    --accent-foreground: 265 89% 40%;
+    --accent: 39 45% 95%; /* Lighter warm gold */
+    --accent-foreground: 39 45% 40%; /* Darker warm gold */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 265 89% 60%;
+    --border: 39 15% 80%; /* Muted version of warm-gold */
+    --input: 39 15% 90%;
+    --ring: 39 45% 60%; /* Based on warm-gold */
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 265 30% 30%;
-    --sidebar-primary: 265 89% 60%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 39 45% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 265 80% 95%;
-    --sidebar-accent-foreground: 265 70% 40%;
-    --sidebar-border: 265 30% 90%;
-    --sidebar-ring: 265 89% 60%;
+    --sidebar-accent: 39 45% 95%;
+    --sidebar-accent-foreground: 39 45% 40%;
+    --sidebar-border: 39 15% 90%;
+    --sidebar-ring: 39 45% 60%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 15%; /* Based on dark-base #262626 */
+    --foreground: 60 10% 94%; /* Based on soft-bg #efeee9 */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 10%;
+    --card-foreground: 60 10% 94%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 60 10% 94%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 39 45% 60%; /* warm-gold */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 182 12% 55%; /* muted-teal */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 60 10% 80%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 39 45% 60%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 0 0% 25%;
+    --input: 0 0% 25%;
+    --ring: 39 45% 60%;
+    
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 60 10% 94%;
+    --sidebar-primary: 39 45% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 0 0% 20%;
+    --sidebar-accent-foreground: 39 45% 60%;
+    --sidebar-border: 0 0% 25%;
+    --sidebar-ring: 39 45% 60%;
   }
 }
 
@@ -132,10 +135,12 @@
 
 /* Remove any unnecessary hardcoded padding/margin in body */
 body {
-  @apply bg-background text-foreground;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  background-color: #efeee9; /* soft-bg */
+  color: #262626; /* dark-base */
+  font-family: 'Inter', sans-serif;
 }
 
 /* Add shimmer animation */
@@ -150,4 +155,39 @@ body {
 
 .animate-shimmer {
   animation: shimmer 2s infinite;
+}
+
+/* Add custom classes for our new premium design */
+@layer components {
+  .premium-card {
+    @apply border border-warm-gold/20 rounded-lg shadow-md bg-white overflow-hidden transition-all duration-300;
+  }
+  
+  .premium-card:hover {
+    @apply shadow-lg border-warm-gold/40 transform translate-y-[-4px];
+  }
+  
+  .premium-button {
+    @apply bg-warm-gold text-white font-medium py-3 px-6 rounded-md hover:bg-warm-gold/90 transition-all;
+  }
+  
+  .premium-button-outline {
+    @apply border-2 border-warm-gold text-warm-gold font-medium py-3 px-6 rounded-md hover:bg-warm-gold/10 transition-all;
+  }
+  
+  .pricing-card {
+    @apply border border-border rounded-lg overflow-hidden bg-white shadow-md hover:shadow-lg transition-all duration-300;
+  }
+  
+  .pricing-card-popular {
+    @apply border-2 border-warm-gold relative;
+  }
+  
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold mb-4 text-dark-base;
+  }
+  
+  .section-subtitle {
+    @apply text-lg text-muted-teal mb-8 max-w-2xl mx-auto;
+  }
 }

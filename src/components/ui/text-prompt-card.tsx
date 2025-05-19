@@ -9,6 +9,7 @@ import { BookText } from "lucide-react";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
+import { CardActions } from "./prompt-card/CardActions";
 
 interface TextPromptCardProps {
   prompt: Prompt;
@@ -22,6 +23,7 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
   const useCase = metadata?.use_case;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
+  const [favorited, setFavorited] = useState(false);
 
   // Use the default_image_path from the prompt, or if not available, use textpromptdefaultimg.jpg
   const imagePath = prompt.default_image_path || 'textpromptdefaultimg.jpg';
@@ -43,12 +45,16 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
     loadImage();
   }, [imagePath]);
 
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFavorited(!favorited);
+  };
+
   return (
     <>
       <Card 
         className={cn(
-          "overflow-hidden transition-all duration-200 hover:shadow-xl group cursor-pointer rounded-none",
-          "border border-border hover:border-primary/50",
+          "overflow-hidden transition-all duration-300 hover:shadow-lg group cursor-pointer border-warm-gold/10 hover:border-warm-gold/30 bg-white",
           className
         )}
         onClick={() => setDetailsOpen(true)}
@@ -60,16 +66,21 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
             aspect={4/3} 
             className="w-full object-cover" 
           />
+          <CardActions 
+            favorited={favorited} 
+            onToggleFavorite={handleToggleFavorite}
+            className="flex justify-end px-3"
+          />
         </div>
         <CardHeader className="px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
-            <BookText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-            <CardTitle className="text-lg font-bold leading-tight line-clamp-1">
+            <BookText className="h-5 w-5 text-warm-gold flex-shrink-0" />
+            <CardTitle className="text-lg font-bold leading-tight line-clamp-1 text-dark-base">
               {title}
             </CardTitle>
           </div>
           {useCase && (
-            <span className="bg-secondary text-secondary-foreground px-2 py-0.5 text-xs font-mono mt-2 inline-block">
+            <span className="bg-warm-gold/10 text-warm-gold px-2 py-0.5 text-xs font-medium mt-2 inline-block">
               {useCase}
             </span>
           )}
@@ -79,26 +90,26 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
             {prompt_text}
           </p>
           <div className="flex flex-wrap gap-1.5 mt-3">
-            <span className="border border-border px-2 py-0.5 text-xs font-mono">
+            <span className="border border-warm-gold/20 px-2 py-0.5 text-xs font-medium">
               {model}
             </span>
             {tags.slice(0, 2).map((tag, i) => (
               <span
                 key={i}
-                className="bg-secondary text-secondary-foreground px-2 py-0.5 text-xs font-mono"
+                className="bg-muted-teal/10 text-muted-teal px-2 py-0.5 text-xs font-medium"
               >
                 {tag}
               </span>
             ))}
             {tags.length > 2 && (
-              <span className="border border-border px-2 py-0.5 text-xs font-mono">
+              <span className="border border-border px-2 py-0.5 text-xs font-medium">
                 +{tags.length - 2}
               </span>
             )}
           </div>
         </CardContent>
         <CardFooter className="px-4 py-3 border-t border-border">
-          <CopyButton value={prompt_text} className="w-full rounded-none" />
+          <CopyButton value={prompt_text} className="w-full bg-dark-base hover:bg-dark-base/90" />
         </CardFooter>
       </Card>
 
