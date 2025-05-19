@@ -99,11 +99,11 @@ export function PromptsContent({
               <MagazinePromptCard
                 key={prompt.id}
                 prompt={prompt}
-                isLarge={index === 0 && group.length > 1}
+                showImage={index === 0} // Only show image for the first card in each row
                 colorIndex={(groupIndex * 3 + index) % bgColors.length}
                 bgColors={bgColors}
                 onCardClick={() => openPromptDetails(prompt)}
-                className={index === 0 && group.length > 1 ? "md:col-span-1 md:row-span-2" : ""}
+                className=""
               />
             ))}
           </div>
