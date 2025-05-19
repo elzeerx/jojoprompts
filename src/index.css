@@ -1,7 +1,4 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -86,18 +83,6 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-
-  /* Apply the fonts globally */
-  html {
-    font-family: 'Inter', sans-serif;
-  }
-  
-  body {
-    @apply bg-soft-background text-dark-base;
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden;
-  }
 }
 
 /* Ensure container always uses correct max-width and padding */
@@ -146,6 +131,26 @@
   }
 }
 
+/* Remove any unnecessary hardcoded padding/margin in body */
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Add glassmorphism utility classes */
+@layer utilities {
+  .glass {
+    @apply backdrop-blur-md bg-white/10 border border-white/20;
+  }
+  
+  .text-gradient {
+    @apply bg-gradient-to-br from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent;
+  }
+}
+
 /* Add shimmer animation */
 @keyframes shimmer {
   from {
@@ -158,14 +163,4 @@
 
 .animate-shimmer {
   animation: shimmer 2s infinite;
-}
-
-/* Glassmorphism utility class */
-.glassmorphism {
-  @apply backdrop-blur-md bg-white/20;
-}
-
-/* Text gradient for gold text */
-.text-gradient-gold {
-  @apply text-transparent bg-clip-text bg-gradient-to-r from-warm-gold to-warm-gold/80;
 }
