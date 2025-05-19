@@ -105,9 +105,8 @@ export function PromptCard({
     <>
       <Card 
         className={cn(
-          "overflow-hidden transition-all duration-300 hover:shadow-lg group cursor-pointer rounded-xl",
-          "backdrop-blur-md bg-white/10 border border-white/20 hover:border-white/40",
-          "hover:transform hover:scale-[1.02] hover:shadow-xl",
+          "overflow-hidden transition-all duration-200 hover:shadow-xl group cursor-pointer rounded-none",
+          "border border-border hover:border-primary/50",
           isSelected && "ring-1 ring-primary"
         )} 
         onClick={() => setDetailsOpen(true)}
@@ -122,7 +121,7 @@ export function PromptCard({
           />
           <CardActions favorited={favorited} onToggleFavorite={toggleFavorite} />
         </div>
-        <CardHeader className="px-4 py-3 border-b border-white/10">
+        <CardHeader className="px-4 py-3 border-b border-border">
           <CardTitle className="text-lg font-bold tracking-tight line-clamp-1">
             {title}
           </CardTitle>
@@ -135,20 +134,20 @@ export function PromptCard({
             {tags.slice(0, 3).map((tag, i) => (
               <span 
                 key={i}
-                className="px-2 py-0.5 bg-white/10 text-white/80 text-xs font-mono inline-block rounded-full"
+                className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs font-mono inline-block"
               >
                 {tag}
               </span>
             ))}
             {tags.length > 3 && (
-              <span className="px-2 py-0.5 border border-white/20 text-xs font-mono rounded-full">
+              <span className="px-2 py-0.5 border border-border text-xs font-mono">
                 +{tags.length - 3}
               </span>
             )}
           </div>
         </CardContent>
-        <CardFooter className="px-4 py-3 border-t border-white/10">
-          <CopyButton value={prompt_text} className="flex-shrink-0 w-full rounded-full" />
+        <CardFooter className="px-4 py-3 border-t border-border">
+          <CopyButton value={prompt_text} className="flex-shrink-0 w-full rounded-none" />
           {isAdmin && 
             <div className="flex gap-2 ml-auto">
               <Button variant="ghost" size="sm" onClick={e => {
