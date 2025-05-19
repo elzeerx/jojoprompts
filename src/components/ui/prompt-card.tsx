@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { CopyButton } from "./copy-button";
@@ -105,7 +104,7 @@ export function PromptCard({
     <>
       <Card 
         className={cn(
-          "overflow-hidden transition-all duration-200 hover:shadow-xl group cursor-pointer rounded-none",
+          "overflow-hidden transition-all duration-200 hover:shadow-xl group cursor-pointer rounded-xl",
           "border border-border hover:border-primary/50",
           isSelected && "ring-1 ring-primary"
         )} 
@@ -117,9 +116,9 @@ export function PromptCard({
             alt={title} 
             aspect={aspect} 
             isCard={true} 
-            className="w-full aspect-square object-cover" 
+            className="w-full aspect-square object-cover rounded-t-xl"
           />
-          <CardActions favorited={favorited} onToggleFavorite={toggleFavorite} />
+          <CardActions favorited={favorited} onToggleFavorite={toggleFavorite} className="bottom-2 right-2 top-auto" />
         </div>
         <CardHeader className="px-4 py-3 border-b border-border">
           <CardTitle className="text-lg font-bold tracking-tight line-clamp-1">

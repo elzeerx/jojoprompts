@@ -29,7 +29,7 @@ export function CopyButton({ value, className }: CopyButtonProps) {
       variant="outline"
       size="sm"
       onClick={copyToClipboard}
-      className={cn("transition-all", className)}
+      className={cn("transition-all rounded-lg", className)} // Added rounded-lg
     >
       {hasCopied ? (
         <>

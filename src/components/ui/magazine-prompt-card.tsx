@@ -111,25 +111,26 @@ export function MagazinePromptCard({
         bgColor,
         "h-full aspect-[3/4] sm:aspect-[3/4]",
         "transition-all duration-300 hover:shadow-lg",
+        "rounded-xl border border-border/40", // Added rounded corners and border
         className
       )}
       onClick={onCardClick}
     >
       <div className="flex flex-col h-full">
         {/* Image Section - Now at the top */}
-        <div className="relative overflow-hidden h-[40%]">
+        <div className="relative overflow-hidden h-[40%] rounded-t-xl"> {/* Added rounded top corners */}
           <img
             src={imageUrl}
             alt={title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           
-          {/* Favorite Button - Moved to overlay on the image */}
+          {/* Favorite Button - Moved to bottom right of the image */}
           {session && (
             <button
               onClick={toggleFavorite}
               className={cn(
-                "absolute top-2 right-2 p-2 rounded-full",
+                "absolute bottom-2 right-2 p-2 rounded-full", // Moved to bottom right
                 favorited 
                   ? "bg-warm-gold text-white" 
                   : "bg-white/80 text-warm-gold hover:bg-white"
@@ -143,7 +144,7 @@ export function MagazinePromptCard({
         <div className="relative p-4 flex flex-col flex-grow">
           {/* Category Tag */}
           <div className="mb-2">
-            <span className="inline-block bg-warm-gold/80 text-white px-2 py-1 text-xs font-medium tracking-wide">
+            <span className="inline-block bg-warm-gold/80 text-white px-2 py-1 text-xs font-medium tracking-wide rounded-md"> {/* Added rounded corners */}
               {category}
             </span>
           </div>
@@ -162,7 +163,7 @@ export function MagazinePromptCard({
           <div className="mt-auto">
             <Button 
               variant="outline" 
-              className="bg-white border-warm-gold/30 text-warm-gold hover:bg-warm-gold hover:text-white px-4 py-2 text-sm"
+              className="bg-white border-warm-gold/30 text-warm-gold hover:bg-warm-gold hover:text-white px-4 py-2 text-sm rounded-lg" // Added more rounded corners
             >
               View Details
             </Button>
