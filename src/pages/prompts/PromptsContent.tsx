@@ -1,9 +1,9 @@
 
-import { PromptCard } from "@/components/ui/prompt-card";
-import { TextPromptCard } from "@/components/ui/text-prompt-card";
 import { Button } from "@/components/ui/button";
 import { type Prompt } from "@/types";
-import { PremiumPromptCard } from "@/components/ui/premium-prompt-card";
+import { MagazinePromptCard } from "@/components/ui/magazine-prompt-card";
+import { useState } from "react";
+import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 
 interface PromptsContentProps {
   view: "grid" | "list";
@@ -23,6 +23,13 @@ export function PromptsContent({
   onClearFilters
 }: PromptsContentProps) {
   const isGridView = view === "grid";
+  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
+  // Array of background colors from our palette to rotate through
+  const bgColors = [
+    'bg-soft-bg', 'bg-warm-gold/10', 'bg-muted-teal/10'
+  ];
 
   if (isLoading) {
     return (
@@ -71,24 +78,45 @@ export function PromptsContent({
     );
   }
 
-  // Array of background colors from our palette to rotate through
-  const bgColors = [
-    'bg-soft-bg', 'bg-warm-gold/10', 'bg-muted-teal/10'
-  ];
+  // Group prompts into sets of 3 for the magazine layout
+  const groupedPrompts = [];
+  for (let i = 0; i < filteredPrompts.length; i += 3) {
+    const group = filteredPrompts.slice(i, Math.min(i + 3, filteredPrompts.length));
+    groupedPrompts.push(group);
+  }
+
+  const openPromptDetails = (prompt: Prompt) => {
+    setSelectedPrompt(prompt);
+    setDetailsDialogOpen(true);
+  };
 
   return (
-    <div className={isGridView
-      ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"
-      : "flex flex-col gap-5"
-    }>
-      {filteredPrompts.map((prompt, index) => (
-        <PremiumPromptCard 
-          key={prompt.id} 
-          prompt={prompt} 
-          colorIndex={index % bgColors.length}
-          bgColors={bgColors}
+    <>
+      <div className="mt-8 space-y-8">
+        {groupedPrompts.map((group, groupIndex) => (
+          <div key={groupIndex} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {group.map((prompt, index) => (
+              <MagazinePromptCard
+                key={prompt.id}
+                prompt={prompt}
+                isLarge={index === 0 && group.length > 1}
+                colorIndex={(groupIndex * 3 + index) % bgColors.length}
+                bgColors={bgColors}
+                onCardClick={() => openPromptDetails(prompt)}
+                className={index === 0 && group.length > 1 ? "md:col-span-1 md:row-span-2" : ""}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      
+      {selectedPrompt && (
+        <PromptDetailsDialog
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          prompt={selectedPrompt}
         />
-      ))}
-    </div>
+      )}
+    </>
   );
 }

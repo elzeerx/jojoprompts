@@ -3,9 +3,10 @@ import { useState } from "react";
 import { PromptsHeader } from "../PromptsHeader";
 import { PromptsFilters } from "../PromptsFilters";
 import { PromptsContent } from "../PromptsContent";
+import { type Prompt } from "@/types";
 
 interface PromptsPageContentProps {
-  prompts: any[];
+  prompts: Prompt[];
   categories: string[];
   isLoading: boolean;
   error: string | null;
@@ -30,7 +31,7 @@ export function PromptsPageContent({
       prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
       prompt.metadata.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = category === "all" || prompt.metadata.category === category;
+    const matchesCategory = category === "all" || prompt.metadata?.category === category;
     const matchesType = promptType === "all" || prompt.prompt_type === promptType;
     return matchesSearch && matchesCategory && matchesType;
   });
