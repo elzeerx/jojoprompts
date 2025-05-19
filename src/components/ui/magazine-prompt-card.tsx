@@ -41,21 +41,19 @@ export function MagazinePromptCard({
     : prompt.image_path || prompt.image_url || null;
 
   useEffect(() => {
-    if (showImage) {
-      async function loadImage() {
-        try {
-          const url = isTextPrompt && imagePath === 'textpromptdefaultimg.jpg'
-            ? await getTextPromptDefaultImage()
-            : await getPromptImage(imagePath, 400, 90);
-          
-          setImageUrl(url);
-        } catch (error) {
-          console.error('Error loading prompt image:', error);
-          setImageUrl('/img/placeholder.png');
-        }
+    async function loadImage() {
+      try {
+        const url = isTextPrompt && imagePath === 'textpromptdefaultimg.jpg'
+          ? await getTextPromptDefaultImage()
+          : await getPromptImage(imagePath, 400, 90);
+        
+        setImageUrl(url);
+      } catch (error) {
+        console.error('Error loading prompt image:', error);
+        setImageUrl('/img/placeholder.png');
       }
-      loadImage();
     }
+    loadImage();
     
     // Check if prompt is favorited by current user
     if (session) {
@@ -71,7 +69,7 @@ export function MagazinePromptCard({
       
       checkFavoriteStatus();
     }
-  }, [imagePath, isTextPrompt, prompt.id, session, showImage]);
+  }, [imagePath, isTextPrompt, prompt.id, session]);
   
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -111,9 +109,7 @@ export function MagazinePromptCard({
       className={cn(
         "group cursor-pointer overflow-hidden",
         bgColor,
-        showImage 
-          ? "h-full aspect-[3/4] sm:aspect-[3/4]" 
-          : "h-full aspect-auto",
+        "h-full aspect-[3/4] sm:aspect-[3/4]",
         "transition-all duration-300 hover:shadow-lg",
         className
       )}
@@ -129,10 +125,7 @@ export function MagazinePromptCard({
           </div>
           
           {/* Title */}
-          <h3 className={cn(
-            "text-dark-base font-bold font-sans leading-tight mb-2",
-            showImage ? "text-2xl md:text-3xl" : "text-xl md:text-2xl"
-          )}>
+          <h3 className="text-dark-base font-bold font-sans leading-tight mb-2 text-2xl md:text-3xl">
             {title}
           </h3>
           
@@ -167,16 +160,14 @@ export function MagazinePromptCard({
           </div>
         </div>
         
-        {/* Image Section - Only show for first card in row */}
-        {showImage && (
-          <div className="relative overflow-hidden mt-auto h-[40%]">
-            <img
-              src={imageUrl}
-              alt={title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            />
-          </div>
-        )}
+        {/* Image Section - Now shown for all cards */}
+        <div className="relative overflow-hidden mt-auto h-[40%]">
+          <img
+            src={imageUrl}
+            alt={title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        </div>
       </div>
     </div>
   );

@@ -99,7 +99,7 @@ export function PromptsContent({
               <MagazinePromptCard
                 key={prompt.id}
                 prompt={prompt}
-                showImage={index === 0} // Only show image for the first card in each row
+                showImage={true} // Show images for all prompt cards
                 colorIndex={(groupIndex * 3 + index) % bgColors.length}
                 bgColors={bgColors}
                 onCardClick={() => openPromptDetails(prompt)}
