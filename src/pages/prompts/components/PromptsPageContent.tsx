@@ -3,9 +3,10 @@ import { useState } from "react";
 import { PromptsHeader } from "../PromptsHeader";
 import { PromptsFilters } from "../PromptsFilters";
 import { PromptsContent } from "../PromptsContent";
+import { type Prompt } from "@/types";
 
 interface PromptsPageContentProps {
-  prompts: any[];
+  prompts: Prompt[];
   categories: string[];
   isLoading: boolean;
   error: string | null;
@@ -13,39 +14,45 @@ interface PromptsPageContentProps {
 }
 
 export function PromptsPageContent({
-  prompts,
-  categories,
-  isLoading,
-  error,
-  reloadPrompts,
+  prompts, categories, isLoading, error, reloadPrompts
 }: PromptsPageContentProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [promptType, setPromptType] = useState<"all" | "text" | "image">("all");
+  const [category, setCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [category, setCategory] = useState<string>("all");
-  const [promptType, setPromptType] = useState<"image" | "text" | "all">("all");
+  const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
 
-  // Filtering logic
   const filteredPrompts = prompts.filter(prompt => {
-    const matchesSearch = searchQuery === "" ||
-      prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prompt.metadata.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = category === "all" || prompt.metadata.category === category;
-    const matchesType = promptType === "all" || prompt.prompt_type === promptType;
-    return matchesSearch && matchesCategory && matchesType;
+    // Filter by type
+    if (promptType !== "all" && prompt.prompt_type !== promptType) {
+      return false;
+    }
+    
+    // Filter by category
+    if (category !== "all" && !prompt.categories?.includes(category)) {
+      return false;
+    }
+    
+    // Filter by search query
+    if (searchQuery && !prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    return true;
   });
 
   return (
-    <div className="container max-w-[1400px] mx-auto px-4 sm:px-6 py-10">
+    <div className="container py-8 lg:py-12">
       <PromptsHeader
         view={view}
         setView={setView}
-        selectedPromptsLength={0}
-        onClearSelections={() => {}}
+        selectedPromptsLength={selectedPrompts.length}
+        onClearSelections={() => setSelectedPrompts([])}
         promptType={promptType}
         setPromptType={setPromptType}
       />
-
+      
       <PromptsFilters
         category={category}
         setCategory={setCategory}
@@ -55,7 +62,7 @@ export function PromptsPageContent({
         view={view}
         setView={setView}
       />
-
+      
       <PromptsContent
         view={view}
         filteredPrompts={filteredPrompts}
@@ -69,8 +76,14 @@ export function PromptsPageContent({
           setCategory("all");
           setPromptType("all");
         }}
-        selectedPrompts={[]}
-        onSelectPrompt={() => {}}
+        selectedPrompts={selectedPrompts}
+        onSelectPrompt={(id) => {
+          if (selectedPrompts.includes(id)) {
+            setSelectedPrompts(selectedPrompts.filter(p => p !== id));
+          } else {
+            setSelectedPrompts([...selectedPrompts, id]);
+          }
+        }}
       />
     </div>
   );
