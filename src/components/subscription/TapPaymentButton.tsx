@@ -66,7 +66,8 @@ export function TapPaymentButton({
     if (window.Tapjsli) {
       try {
         // Create a Tap instance (Replace with your actual publishable API key)
-        const tap = window.Tapjsli("pk_test_xxxxxxxxxxxxxxxxxxxxxxxx");
+        const tap = window.Tapjsli("pk_test_b5JZWEaPCRy61rhY4dqMnUiw
+");
         
         tap.setup({
           containerID: "tap-payment-container",
