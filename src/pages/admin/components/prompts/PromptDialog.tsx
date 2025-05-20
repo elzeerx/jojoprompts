@@ -21,7 +21,8 @@ export interface PromptDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial?: PromptRow | null;
-  promptType: "text" | "image";
+  promptType: "text" | "image" | "button" | "image-selection" | "workflow";
+  category?: string;
   onSave: (prompt: Partial<PromptRow>) => Promise<void>;
 }
 
@@ -30,6 +31,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
   onOpenChange,
   initial,
   promptType,
+  category = "ChatGPT",
   onSave,
 }) => {
   const [submitting, setSubmitting] = useState(false);
@@ -37,12 +39,12 @@ export const PromptDialog: FC<PromptDialogProps> = ({
   const { session } = useAuth();
   const form = usePromptForm(initial);
 
-  // Set default category to ChatGPT for new prompts
+  // Set default category to the selected one
   useEffect(() => {
     if (!initial && open && (!form.metadata?.category || form.metadata.category === '')) {
-      form.setMetadata({ ...form.metadata, category: "ChatGPT" });
+      form.setMetadata({ ...form.metadata, category });
     }
-  }, [open, initial]);
+  }, [open, initial, category]);
 
   // Reset form when dialog opens/closes or when initial data changes
   useEffect(() => {
@@ -69,7 +71,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
       let imagePath = initial?.image_path ?? "";
       let defaultImagePath = initial?.default_image_path;
 
-      if (promptType === "image" && form.file) {
+      if ((promptType === "image" || promptType === "image-selection") && form.file) {
         const path = `${session?.user.id}/${crypto.randomUUID()}-${form.file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("prompt-images")
@@ -87,7 +89,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
         // Use the selected image path if no new file was uploaded but an existing image was selected
         if (promptType === "text") {
           defaultImagePath = form.selectedImagePath;
-        } else {
+        } else if (promptType === "image" || promptType === "image-selection") {
           imagePath = form.selectedImagePath;
         }
       } else if (promptType === "text" && !defaultImagePath) {
@@ -100,7 +102,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
       // Initialize metadata with existing values or empty structure
       let meta = { 
         ...form.metadata, 
-        category: form.metadata?.category || "ChatGPT" // Ensure category is set
+        category: form.metadata?.category || category // Ensure category is set
       };
 
       // Generate metadata for the prompt text
@@ -124,13 +126,13 @@ export const PromptDialog: FC<PromptDialogProps> = ({
           console.log("Metadata generated successfully:", data);
           // Merge the generated metadata with any existing metadata,
           // but make sure we use one of the main categories
-          const category = ["ChatGPT", "Midjourney", "n8n"].includes(data.category) 
+          const generatedCategory = ["ChatGPT", "Midjourney", "n8n"].includes(data.category) 
             ? data.category 
-            : (meta.category || "ChatGPT");
+            : (meta.category || category);
           
           meta = { 
             ...meta, 
-            category: category,
+            category: generatedCategory,
             style: data.style || meta.style || "",
             tags: data.tags?.length ? data.tags : (meta.tags || [])
           };
@@ -148,7 +150,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
         prompt_text: form.promptText,
         prompt_type: promptType,
         metadata: meta,
-        image_path: promptType === "image" ? imagePath : null,
+        image_path: (promptType === "image" || promptType === "image-selection") ? imagePath : null,
         default_image_path: promptType === "text" ? defaultImagePath : null
       };
 
@@ -173,6 +175,18 @@ export const PromptDialog: FC<PromptDialogProps> = ({
     }
   };
 
+  const getDialogTitle = () => {
+    const action = initial ? "Edit" : "Add";
+    switch (promptType) {
+      case "text": return `${action} Text Prompt`;
+      case "image": return `${action} Image Prompt`;
+      case "button": return `${action} Button Prompt`;
+      case "image-selection": return `${action} Image Selection`;
+      case "workflow": return `${action} Workflow`;
+      default: return `${action} Prompt`;
+    }
+  };
+
   return (
     <Dialog 
       open={open} 
@@ -187,8 +201,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {initial ? "Edit" : "Add"} {promptType === "image" ? "Image" : "Text"}{" "}
-            Prompt
+            {getDialogTitle()}
           </DialogTitle>
           <DialogDescription>
             {initial

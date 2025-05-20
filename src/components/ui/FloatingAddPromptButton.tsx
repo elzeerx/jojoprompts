@@ -18,11 +18,18 @@ interface FloatingAddPromptButtonProps {
 export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAddPromptButtonProps) {
   const { user, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
-  const [promptType, setPromptType] = useState<"text" | "image">("image");
+  const [promptType, setPromptType] = useState<"text" | "image" | "button" | "image-selection" | "workflow">("image");
+  const [category, setCategory] = useState<string>("ChatGPT");
   const navigate = useNavigate();
 
   // Only render for admin users
   if (!user || !isAdmin) return null;
+
+  const handleSelectPromptType = (type: "text" | "image" | "button" | "image-selection" | "workflow", selectedCategory: string) => {
+    setPromptType(type);
+    setCategory(selectedCategory);
+    setOpen(true);
+  };
 
   const handleSave = async (prompt: Partial<PromptRow>) => {
     try {
@@ -36,10 +43,10 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
         return;
       }
 
-      // Ensure the category is always set to one of the main categories
+      // Ensure the category is always set
       const metadata = {
         ...(prompt.metadata || {}),
-        category: prompt.metadata?.category || "ChatGPT" // Default to ChatGPT if not specified
+        category: prompt.metadata?.category || category // Use selected category as default
       };
 
       // Use all the data from the prompt object directly
@@ -50,8 +57,8 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
           prompt_text: prompt.prompt_text,
           user_id: user.id,
           prompt_type: promptType,
-          metadata: metadata, // Use updated metadata with category
-          image_path: promptType === "image" ? prompt.image_path : null,
+          metadata: metadata,
+          image_path: (promptType === "image" || promptType === "image-selection") ? prompt.image_path : null,
           default_image_path: promptType === "text" ? prompt.default_image_path : null
         });
 
@@ -80,10 +87,7 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
   return (
     <>
       <PromptTypeMenu
-        onSelect={(type) => {
-          setPromptType(type);
-          setOpen(true);
-        }}
+        onSelect={handleSelectPromptType}
         trigger={
           <button
             type="button"
@@ -125,8 +129,9 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
         onOpenChange={setOpen}
         initial={null}
         promptType={promptType}
+        category={category}
         onSave={handleSave}
       />
     </>
   );
-}
+};

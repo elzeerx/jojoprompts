@@ -15,13 +15,20 @@ export interface Prompt {
   image_path: string | null;
   image_url?: string | null;
   default_image_path?: string | null;
-  prompt_type: 'text' | 'image';
+  prompt_type: 'text' | 'image' | 'button' | 'image-selection' | 'workflow';
   metadata: {
     category?: string;
     style?: string;
     tags?: string[];
     target_model?: string;
     use_case?: string;
+    button_text?: string;
+    button_action?: string;
+    image_options?: string[];
+    workflow_steps?: {
+      name: string;
+      description: string;
+    }[];
   };
   created_at: string;
 }
@@ -32,7 +39,7 @@ export interface PromptRow {
   title: string;
   prompt_text: string;
   image_path: string | null;
-  image_url?: string | null; // Add image_url property for backward compatibility
+  image_url?: string | null;
   default_image_path?: string | null;
   created_at: string | null;
   metadata: {
@@ -41,8 +48,15 @@ export interface PromptRow {
     tags?: string[];
     target_model?: string;
     use_case?: string;
+    button_text?: string;
+    button_action?: string;
+    image_options?: string[];
+    workflow_steps?: {
+      name: string;
+      description: string;
+    }[];
   };
-  prompt_type: 'text' | 'image';
+  prompt_type: 'text' | 'image' | 'button' | 'image-selection' | 'workflow';
 }
 
 export interface UserProfile {

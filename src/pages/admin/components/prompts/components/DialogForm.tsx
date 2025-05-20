@@ -2,6 +2,9 @@
 import { PromptFormField } from "./PromptFormField";
 import { TextPromptFields } from "./TextPromptFields";
 import { ImageUploadField } from "./ImageUploadField";
+import { ButtonPromptFields } from "./ButtonPromptFields";
+import { ImageSelectionFields } from "./ImageSelectionFields";
+import { WorkflowFields } from "./WorkflowFields";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { type PromptRow } from "@/types";
@@ -11,7 +14,7 @@ interface DialogFormProps {
   title: string;
   promptText: string;
   metadata: PromptRow["metadata"];
-  promptType: "text" | "image";
+  promptType: "text" | "image" | "button" | "image-selection" | "workflow";
   imageURL: string;
   file: File | null;
   onTitleChange: (value: string) => void;
@@ -35,6 +38,20 @@ export const DialogForm = ({
   // Define the main categories available for selection
   const mainCategories = ["ChatGPT", "Midjourney", "n8n"];
 
+  // Determine which category this prompt type belongs to
+  const getCategoryForPromptType = (type: string) => {
+    if (["text", "image", "button"].includes(type)) return "ChatGPT";
+    if (type === "image-selection") return "Midjourney";
+    if (type === "workflow") return "n8n";
+    return "ChatGPT"; // Default
+  };
+
+  // If category is not set, use the appropriate one for the prompt type
+  if (!metadata.category) {
+    const category = getCategoryForPromptType(promptType);
+    onMetadataChange({ ...metadata, category });
+  }
+
   return (
     <div className="grid gap-4 py-4">
       <PromptFormField
@@ -55,26 +72,44 @@ export const DialogForm = ({
         />
       </div>
 
-      {promptType === "image" ? (
+      {/* Render specific fields based on promptType */}
+      {promptType === "button" && (
+        <ButtonPromptFields
+          metadata={metadata}
+          onMetadataChange={onMetadataChange}
+        />
+      )}
+
+      {promptType === "image-selection" && (
+        <ImageSelectionFields
+          metadata={metadata}
+          onMetadataChange={onMetadataChange}
+        />
+      )}
+
+      {promptType === "workflow" && (
+        <WorkflowFields
+          metadata={metadata}
+          onMetadataChange={onMetadataChange}
+        />
+      )}
+
+      {/* Text prompt has additional fields */}
+      {promptType === "text" && (
+        <TextPromptFields
+          metadata={metadata}
+          onMetadataChange={onMetadataChange}
+        />
+      )}
+
+      {/* Always show image upload for image type prompts */}
+      {(promptType === "image" || promptType === "image-selection" || promptType === "text") && (
         <ImageUploadField
           imageURL={imageURL}
           file={file}
           onFileChange={onFileChange}
           promptType={promptType}
         />
-      ) : (
-        <>
-          <TextPromptFields
-            metadata={metadata}
-            onMetadataChange={onMetadataChange}
-          />
-          <ImageUploadField
-            imageURL={imageURL}
-            file={file}
-            onFileChange={onFileChange}
-            promptType={promptType}
-          />
-        </>
       )}
 
       <div className="grid grid-cols-4 items-center gap-4">
@@ -82,7 +117,7 @@ export const DialogForm = ({
           Category
         </Label>
         <Select 
-          value={metadata.category || "ChatGPT"} 
+          value={metadata.category || getCategoryForPromptType(promptType)} 
           onValueChange={(value) => onMetadataChange({ ...metadata, category: value })}
         >
           <SelectTrigger className="col-span-3 rounded-lg">
@@ -98,7 +133,8 @@ export const DialogForm = ({
         </Select>
       </div>
 
-      {promptType === "image" && (
+      {/* Style field for image prompts */}
+      {(promptType === "image" || promptType === "image-selection") && (
         <PromptFormField
           id="style"
           label="Style"
@@ -107,6 +143,7 @@ export const DialogForm = ({
         />
       )}
 
+      {/* Tags for all prompt types */}
       <PromptFormField
         id="tags"
         label="Tags"
