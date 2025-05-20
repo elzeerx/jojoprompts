@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
 import { CopyButton } from "./copy-button";
@@ -39,6 +40,7 @@ export function PromptCard({
     prompt_text,
     metadata
   } = prompt;
+  const category = metadata?.category || "ChatGPT"; // Default to ChatGPT if no category
   const tags = metadata?.tags || [];
   const {
     session
@@ -124,6 +126,11 @@ export function PromptCard({
           <CardTitle className="text-lg font-bold tracking-tight line-clamp-1">
             {title}
           </CardTitle>
+          <div className="mt-2">
+            <span className="bg-warm-gold/10 text-warm-gold px-2 py-0.5 text-xs font-medium inline-block rounded-md">
+              {category}
+            </span>
+          </div>
         </CardHeader>
         <CardContent className="px-4 py-3 space-y-2">
           <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 min-h-[4em] font-mono">
@@ -133,20 +140,20 @@ export function PromptCard({
             {tags.slice(0, 3).map((tag, i) => (
               <span 
                 key={i}
-                className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs font-mono inline-block"
+                className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs font-mono inline-block rounded-md"
               >
                 {tag}
               </span>
             ))}
             {tags.length > 3 && (
-              <span className="px-2 py-0.5 border border-border text-xs font-mono">
+              <span className="px-2 py-0.5 border border-border text-xs font-mono rounded-md">
                 +{tags.length - 3}
               </span>
             )}
           </div>
         </CardContent>
         <CardFooter className="px-4 py-3 border-t border-border">
-          <CopyButton value={prompt_text} className="flex-shrink-0 w-full rounded-none" />
+          <CopyButton value={prompt_text} className="flex-shrink-0 w-full rounded-lg" />
           {isAdmin && 
             <div className="flex gap-2 ml-auto">
               <Button variant="ghost" size="sm" onClick={e => {

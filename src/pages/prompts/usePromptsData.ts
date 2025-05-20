@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -20,22 +19,32 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      const transformedData = (data ?? []).map((item) => ({
-        id: item.id,
-        user_id: item.user_id,
-        title: item.title,
-        prompt_text: item.prompt_text,
-        image_path: item.image_path,
-        prompt_type: item.prompt_type as 'text' | 'image',
-        created_at: item.created_at || "",
-        metadata: {
-          category: (item.metadata as any)?.category ?? undefined,
-          style: (item.metadata as any)?.style ?? undefined,
-          tags: Array.isArray((item.metadata as any)?.tags)
-            ? (item.metadata as any).tags
-            : [],
-        },
-      }));
+      const transformedData = (data ?? []).map((item) => {
+        // Ensure all prompts have a valid category from main categories
+        const metadata = item.metadata || {};
+        const category = metadata.category || "";
+        const validCategory = ["ChatGPT", "Midjourney", "n8n"].includes(category) 
+          ? category 
+          : "ChatGPT"; // Default to ChatGPT
+
+        return {
+          id: item.id,
+          user_id: item.user_id,
+          title: item.title,
+          prompt_text: item.prompt_text,
+          image_path: item.image_path,
+          default_image_path: item.default_image_path,
+          prompt_type: item.prompt_type as 'text' | 'image',
+          created_at: item.created_at || "",
+          metadata: {
+            category: validCategory,
+            style: (item.metadata as any)?.style ?? undefined,
+            tags: Array.isArray((item.metadata as any)?.tags)
+              ? (item.metadata as any).tags
+              : [],
+          },
+        };
+      });
       return transformedData;
     } catch (error: any) {
       console.error("Error fetching prompts:", error);
@@ -51,22 +60,65 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
     }
   };
 
+  // Update all existing prompts to use ChatGPT as their category
+  const updateExistingPrompts = async () => {
+    if (!session) return;
+    
+    try {
+      // This function will update all prompts without valid categories to use ChatGPT
+      const { data, error } = await supabase
+        .from("prompts")
+        .select("id, metadata");
+      
+      if (error) throw error;
+      
+      // For each prompt that doesn't have a proper category, update it
+      for (const prompt of (data || [])) {
+        const metadata = prompt.metadata || {};
+        const category = metadata.category || "";
+        
+        // Check if the prompt needs updating
+        if (!["ChatGPT", "Midjourney", "n8n"].includes(category)) {
+          const updatedMetadata = {
+            ...metadata,
+            category: "ChatGPT" // Set to default category
+          };
+          
+          await supabase
+            .from("prompts")
+            .update({ metadata: updatedMetadata })
+            .eq("id", prompt.id);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating prompt categories:", error);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     if (!authLoading) {
-      fetchPrompts().then((data) => {
-        if (mounted && data) {
-          setPrompts(data);
-          const uniqueCategories = [
-            ...new Set(
-              data
-                .map((p) => p.metadata?.category)
-                .filter(Boolean) as string[]
-            ),
-          ];
-          setCategories(["all", ...uniqueCategories]);
-        }
-      });
+      if (session) {
+        // First update existing prompts
+        updateExistingPrompts().then(() => {
+          // Then fetch prompts to show the updated data
+          fetchPrompts().then((data) => {
+            if (mounted && data) {
+              setPrompts(data);
+              // Keep only the main categories
+              setCategories(["all", "ChatGPT", "Midjourney", "n8n"]);
+            }
+          });
+        });
+      } else {
+        fetchPrompts().then((data) => {
+          if (mounted && data) {
+            setPrompts(data);
+            // Keep only the main categories
+            setCategories(["all", "ChatGPT", "Midjourney", "n8n"]);
+          }
+        });
+      }
     }
     return () => {
       mounted = false;
@@ -78,14 +130,8 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
     const data = await fetchPrompts();
     if (data) {
       setPrompts(data);
-      const uniqueCategories = [
-        ...new Set(
-          data
-            .map((p) => p.metadata?.category)
-            .filter(Boolean) as string[]
-        ),
-      ];
-      setCategories(["all", ...uniqueCategories]);
+      // Keep only the main categories
+      setCategories(["all", "ChatGPT", "Midjourney", "n8n"]);
     }
   };
 

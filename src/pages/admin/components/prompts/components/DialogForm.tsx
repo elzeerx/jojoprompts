@@ -5,6 +5,7 @@ import { ImageUploadField } from "./ImageUploadField";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { type PromptRow } from "@/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DialogFormProps {
   title: string;
@@ -31,6 +32,9 @@ export const DialogForm = ({
   onMetadataChange,
   onFileChange,
 }: DialogFormProps) => {
+  // Define the main categories available for selection
+  const mainCategories = ["ChatGPT", "Midjourney", "n8n"];
+
   return (
     <div className="grid gap-4 py-4">
       <PromptFormField
@@ -73,12 +77,26 @@ export const DialogForm = ({
         </>
       )}
 
-      <PromptFormField
-        id="category"
-        label="Category"
-        value={metadata.category || ""}
-        onChange={(value) => onMetadataChange({ ...metadata, category: value })}
-      />
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="category" className="text-right">
+          Category
+        </Label>
+        <Select 
+          value={metadata.category || "ChatGPT"} 
+          onValueChange={(value) => onMetadataChange({ ...metadata, category: value })}
+        >
+          <SelectTrigger className="col-span-3 rounded-lg">
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            {mainCategories.map(category => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {promptType === "image" && (
         <PromptFormField

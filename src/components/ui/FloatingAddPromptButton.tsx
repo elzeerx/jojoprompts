@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 interface FloatingAddPromptButtonProps {
   reloadPrompts: () => Promise<void>;
-  className?: string; // Make className optional
+  className?: string;
 }
 
 export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAddPromptButtonProps) {
@@ -36,6 +36,12 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
         return;
       }
 
+      // Ensure the category is always set to one of the main categories
+      const metadata = {
+        ...(prompt.metadata || {}),
+        category: prompt.metadata?.category || "ChatGPT" // Default to ChatGPT if not specified
+      };
+
       // Use all the data from the prompt object directly
       const { error } = await supabase
         .from("prompts")
@@ -44,7 +50,7 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
           prompt_text: prompt.prompt_text,
           user_id: user.id,
           prompt_type: promptType,
-          metadata: prompt.metadata || {}, // Use metadata from the PromptDialog
+          metadata: metadata, // Use updated metadata with category
           image_path: promptType === "image" ? prompt.image_path : null,
           default_image_path: promptType === "text" ? prompt.default_image_path : null
         });

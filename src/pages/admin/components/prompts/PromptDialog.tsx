@@ -37,6 +37,13 @@ export const PromptDialog: FC<PromptDialogProps> = ({
   const { session } = useAuth();
   const form = usePromptForm(initial);
 
+  // Set default category to ChatGPT for new prompts
+  useEffect(() => {
+    if (!initial && open && (!form.metadata?.category || form.metadata.category === '')) {
+      form.setMetadata({ ...form.metadata, category: "ChatGPT" });
+    }
+  }, [open, initial]);
+
   // Reset form when dialog opens/closes or when initial data changes
   useEffect(() => {
     // Reset the form when the dialog opens with no initial data
@@ -91,7 +98,10 @@ export const PromptDialog: FC<PromptDialogProps> = ({
       console.log(`Using ${promptType} image path: ${promptType === "text" ? defaultImagePath : imagePath}`);
 
       // Initialize metadata with existing values or empty structure
-      let meta = { ...form.metadata };
+      let meta = { 
+        ...form.metadata, 
+        category: form.metadata?.category || "ChatGPT" // Ensure category is set
+      };
 
       // Generate metadata for the prompt text
       try {
@@ -112,10 +122,15 @@ export const PromptDialog: FC<PromptDialogProps> = ({
           });
         } else if (data) {
           console.log("Metadata generated successfully:", data);
-          // Merge the generated metadata with any existing metadata
+          // Merge the generated metadata with any existing metadata,
+          // but make sure we use one of the main categories
+          const category = ["ChatGPT", "Midjourney", "n8n"].includes(data.category) 
+            ? data.category 
+            : (meta.category || "ChatGPT");
+          
           meta = { 
             ...meta, 
-            category: data.category || meta.category || "",
+            category: category,
             style: data.style || meta.style || "",
             tags: data.tags?.length ? data.tags : (meta.tags || [])
           };

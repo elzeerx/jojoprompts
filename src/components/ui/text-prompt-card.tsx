@@ -19,6 +19,7 @@ interface TextPromptCardProps {
 export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
   const { title, prompt_text, metadata } = prompt;
   const tags = metadata?.tags || [];
+  const category = metadata?.category || "ChatGPT";
   const model = metadata?.target_model || 'ChatGPT';
   const useCase = metadata?.use_case;
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -79,37 +80,42 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
               {title}
             </CardTitle>
           </div>
-          {useCase && (
-            <span className="bg-warm-gold/10 text-warm-gold px-2 py-0.5 text-xs font-medium mt-2 inline-block">
-              {useCase}
+          <div className="mt-2 flex items-center">
+            <span className="bg-warm-gold/10 text-warm-gold px-2 py-0.5 text-xs font-medium inline-block rounded-md">
+              {category}
             </span>
-          )}
+            {useCase && (
+              <span className="bg-muted-teal/10 text-muted-teal px-2 py-0.5 text-xs font-medium ml-2 inline-block rounded-md">
+                {useCase}
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="px-4 py-3">
           <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 font-mono">
             {prompt_text}
           </p>
           <div className="flex flex-wrap gap-1.5 mt-3">
-            <span className="border border-warm-gold/20 px-2 py-0.5 text-xs font-medium">
+            <span className="border border-warm-gold/20 px-2 py-0.5 text-xs font-medium rounded-md">
               {model}
             </span>
             {tags.slice(0, 2).map((tag, i) => (
               <span
                 key={i}
-                className="bg-muted-teal/10 text-muted-teal px-2 py-0.5 text-xs font-medium"
+                className="bg-muted-teal/10 text-muted-teal px-2 py-0.5 text-xs font-medium rounded-md"
               >
                 {tag}
               </span>
             ))}
             {tags.length > 2 && (
-              <span className="border border-border px-2 py-0.5 text-xs font-medium">
+              <span className="border border-border px-2 py-0.5 text-xs font-medium rounded-md">
                 +{tags.length - 2}
               </span>
             )}
           </div>
         </CardContent>
         <CardFooter className="px-4 py-3 border-t border-border">
-          <CopyButton value={prompt_text} className="w-full bg-dark-base hover:bg-dark-base/90" />
+          <CopyButton value={prompt_text} className="w-full bg-dark-base hover:bg-dark-base/90 rounded-lg" />
         </CardFooter>
       </Card>
 
