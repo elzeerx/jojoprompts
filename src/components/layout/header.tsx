@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
@@ -37,8 +36,7 @@ export function Header() {
       <div className="container flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-2">
-            <img alt="JojoPrompts logo" className="h-6 w-auto" src="/lovable-uploads/ff979f5e-633f-404f-8799-bd078ad6c678.png" />
-            <span className="font-bold text-xl text-dark-base">JojoPrompts</span>
+            <img alt="JojoPrompts logo" className="h-8 w-auto" src="/lovable-uploads/501cb37c-003d-41ce-a8c4-4ad410a18846.png" />
           </Link>
           
           {/* Desktop navigation */}
@@ -97,7 +95,7 @@ export function Header() {
                 <div className="px-4 py-6 border-b border-warm-gold/10">
                   <div className="flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-2">
-                      <img alt="JojoPrompts logo" className="h-6 w-auto" src="/lovable-uploads/ff979f5e-633f-404f-8799-bd078ad6c678.png" />
+                      <img alt="JojoPrompts logo" className="h-6 w-auto" src="/lovable-uploads/501cb37c-003d-41ce-a8c4-4ad410a18846.png" />
                       <span className="font-bold text-xl text-dark-base">JojoPrompts</span>
                     </Link>
                   </div>

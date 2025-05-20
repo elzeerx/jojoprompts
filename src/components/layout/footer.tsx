@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -11,8 +10,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <img src="/lovable-uploads/ff979f5e-633f-404f-8799-bd078ad6c678.png" alt="JojoPrompts" className="h-8 w-auto" />
-              <span className="font-bold text-xl">JojoPrompts</span>
+              <img src="/lovable-uploads/501cb37c-003d-41ce-a8c4-4ad410a18846.png" alt="JojoPrompts" className="h-10 w-auto" />
             </div>
             <p className="mb-6 text-soft-bg/80 max-w-md">
               Discover a curated collection of high-quality, ready-to-use AI prompts for ChatGPT, Midjourney, and more.
