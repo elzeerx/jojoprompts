@@ -21,10 +21,19 @@ export function PromptsFilters({
   category, setCategory, categories, searchQuery, setSearchQuery, view, setView
 }: PromptsFiltersProps) {
   const isGridView = view === "grid";
-  const categoryOptions = ["all", "ChatGPT", "Midjourney", "n8n", "Arabic", "English", ...categories.filter(cat => 
+  const mainCategories = ["all", "ChatGPT", "Midjourney", "n8n"];
+  
+  // Filter out main categories from the full categories list to get subcategories
+  const subCategories = categories.filter(cat => 
     cat !== "all" && 
-    !["ChatGPT", "Midjourney", "n8n", "Arabic", "English"].includes(cat)
-  )];
+    !mainCategories.includes(cat)
+  );
+  
+  // Combine categories for the dropdown
+  const categoryOptions = [
+    ...mainCategories,
+    ...subCategories
+  ];
 
   return (
     <div className="mb-10">
@@ -32,11 +41,11 @@ export function PromptsFilters({
       <div className="overflow-x-auto pb-3 mb-4 border-b border-warm-gold/10">
         <Tabs value={category} onValueChange={setCategory} className="w-full">
           <TabsList className="bg-transparent h-auto p-0 flex w-full justify-start space-x-4">
-            {categoryOptions.map((cat) => (
+            {mainCategories.map((cat) => (
               <TabsTrigger 
                 key={cat} 
                 value={cat}
-                className="data-[state=active]:bg-warm-gold/10 data-[state=active]:text-warm-gold px-4 py-2 text-dark-base"
+                className="data-[state=active]:bg-warm-gold/10 data-[state=active]:text-warm-gold px-4 py-2 text-dark-base rounded-lg"
               >
                 {cat === "all" ? "All Categories" : cat}
               </TabsTrigger>
@@ -52,14 +61,14 @@ export function PromptsFilters({
           <Input
             type="search"
             placeholder="Search prompts..."
-            className="pl-8 border-warm-gold/20"
+            className="pl-8 border-warm-gold/20 rounded-lg"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
         <div className="flex gap-3 items-center">
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-[170px] border-warm-gold/20">
+            <SelectTrigger className="w-[170px] border-warm-gold/20 rounded-lg">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -73,7 +82,7 @@ export function PromptsFilters({
           <Button
             variant="outline"
             size="icon"
-            className="border-warm-gold/20"
+            className="border-warm-gold/20 rounded-lg"
             onClick={() => setView(isGridView ? "list" : "grid")}
           >
             {isGridView ? (

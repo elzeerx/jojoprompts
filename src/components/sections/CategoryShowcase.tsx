@@ -10,14 +10,14 @@ export function CategoryShowcase() {
       description: "Enhance your text generation with our premium ChatGPT prompts",
       image: "/lovable-uploads/eea1bdcd-7738-4e5f-810a-15c96fe07b94.png",
       bgColor: "bg-warm-gold/10",
-      link: "/prompts?category=chatgpt"
+      link: "/prompts?category=ChatGPT"
     },
     {
       title: "Midjourney Prompts",
       description: "Create stunning AI art with our carefully crafted Midjourney prompts",
       image: "/lovable-uploads/ff979f5e-633f-404f-8799-bd078ad6c678.png",
       bgColor: "bg-muted-teal/10",
-      link: "/prompts?category=midjourney"
+      link: "/prompts?category=Midjourney"
     },
     {
       title: "N8N Workflows",
