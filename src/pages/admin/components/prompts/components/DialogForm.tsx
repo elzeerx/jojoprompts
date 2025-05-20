@@ -108,7 +108,7 @@ export const DialogForm = ({
           imageURL={imageURL}
           file={file}
           onFileChange={onFileChange}
-          promptType={promptType}
+          promptType={promptType as "text" | "image" | "image-selection"}
         />
       )}
 

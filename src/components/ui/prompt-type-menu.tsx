@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { FileImage, MessageSquare, MousePointer, Gallery, Workflow } from "lucide-react";
+import { FileImage, MessageSquare, MousePointer, ImagePlus, GalleryVertical } from "lucide-react";
 
 interface PromptTypeMenuProps {
   onSelect: (type: "text" | "image" | "button" | "image-selection" | "workflow", category: string) => void;
@@ -58,7 +58,7 @@ export function PromptTypeMenu({ onSelect, trigger }: PromptTypeMenuProps) {
                 className="flex items-center justify-start gap-2"
                 onClick={() => onSelect("image-selection", "Midjourney")}
               >
-                <Gallery className="h-5 w-5" />
+                <GalleryVertical className="h-5 w-5" />
                 Add Image Selection
               </Button>
             </div>
@@ -72,7 +72,7 @@ export function PromptTypeMenu({ onSelect, trigger }: PromptTypeMenuProps) {
                 className="flex items-center justify-start gap-2"
                 onClick={() => onSelect("workflow", "n8n")}
               >
-                <Workflow className="h-5 w-5" />
+                <ImagePlus className="h-5 w-5" />
                 Add Workflow
               </Button>
             </div>
