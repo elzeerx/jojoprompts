@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -20,9 +21,14 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
 
       if (error) throw error;
       const transformedData = (data ?? []).map((item) => {
-        // Ensure all prompts have a valid category from main categories
-        const metadata = item.metadata || {};
-        const category = metadata.category || "";
+        // Ensure metadata is always an object
+        const metadata = typeof item.metadata === 'object' && item.metadata !== null 
+          ? item.metadata 
+          : {};
+          
+        // Get category from metadata if it exists, otherwise use default
+        const metadataObj = metadata as Record<string, any>;
+        const category = metadataObj.category || "";
         const validCategory = ["ChatGPT", "Midjourney", "n8n"].includes(category) 
           ? category 
           : "ChatGPT"; // Default to ChatGPT
@@ -38,9 +44,9 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
           created_at: item.created_at || "",
           metadata: {
             category: validCategory,
-            style: (item.metadata as any)?.style ?? undefined,
-            tags: Array.isArray((item.metadata as any)?.tags)
-              ? (item.metadata as any).tags
+            style: metadataObj.style ?? undefined,
+            tags: Array.isArray(metadataObj.tags)
+              ? metadataObj.tags
               : [],
           },
         };
@@ -74,7 +80,11 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
       
       // For each prompt that doesn't have a proper category, update it
       for (const prompt of (data || [])) {
-        const metadata = prompt.metadata || {};
+        // Ensure metadata is always an object
+        const metadata = typeof prompt.metadata === 'object' && prompt.metadata !== null 
+          ? prompt.metadata as Record<string, any>
+          : {};
+          
         const category = metadata.category || "";
         
         // Check if the prompt needs updating

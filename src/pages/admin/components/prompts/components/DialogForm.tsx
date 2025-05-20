@@ -51,7 +51,7 @@ export const DialogForm = ({
           id="prompt_text"
           value={promptText}
           onChange={(e) => onPromptTextChange(e.target.value)}
-          className="col-span-3"
+          className="col-span-3 rounded-lg"
         />
       </div>
 
@@ -88,9 +88,9 @@ export const DialogForm = ({
           <SelectTrigger className="col-span-3 rounded-lg">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-lg">
             {mainCategories.map(category => (
-              <SelectItem key={category} value={category}>
+              <SelectItem key={category} value={category} className="rounded-lg">
                 {category}
               </SelectItem>
             ))}
