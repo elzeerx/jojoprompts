@@ -2,8 +2,11 @@
 import React from 'react';
 import { Check, X } from 'lucide-react';
 import { PricingCard } from './PricingCard';
+import { useAuth } from "@/contexts/AuthContext";
 
 export function PricingSection() {
+  const { user } = useAuth();
+  
   const pricingPlans = [
     {
       id: "tier1",
@@ -102,7 +105,11 @@ export function PricingSection() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mt-12">
           {pricingPlans.map((plan) => (
-            <PricingCard key={plan.id} plan={plan} />
+            <PricingCard 
+              key={plan.id} 
+              plan={plan} 
+              isLoggedIn={!!user}
+            />
           ))}
         </div>
         

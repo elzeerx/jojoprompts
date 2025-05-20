@@ -17,6 +17,9 @@ import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import FavoritesPage from "./pages/FavoritesPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
 
 const queryClient = new QueryClient();
 
@@ -54,7 +57,30 @@ const App = () => {
               />
 
               <Route
+                path="/checkout"
+                element={<CheckoutPage />}
+              />
+
+              <Route
+                path="/payment-success"
+                element={
+                  <ProtectedRoute>
+                    <PaymentSuccessPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
                 path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <SubscriptionDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/favorites"
                 element={
                   <ProtectedRoute>
                     <FavoritesPage />

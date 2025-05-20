@@ -35,6 +35,50 @@ export type Database = {
           },
         ]
       }
+      payment_history: {
+        Row: {
+          amount_kwd: number
+          amount_usd: number
+          created_at: string | null
+          id: string
+          payment_id: string | null
+          payment_method: string
+          status: string
+          subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_kwd: number
+          amount_usd: number
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_method: string
+          status: string
+          subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_kwd?: number
+          amount_usd?: number
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_method?: string
+          status?: string
+          subscription_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_history_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "user_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -94,6 +138,92 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          duration_days: number | null
+          excluded_features: Json
+          features: Json
+          id: string
+          is_lifetime: boolean
+          name: string
+          price_kwd: number
+          price_usd: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          duration_days?: number | null
+          excluded_features?: Json
+          features?: Json
+          id?: string
+          is_lifetime?: boolean
+          name: string
+          price_kwd: number
+          price_usd: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          duration_days?: number | null
+          excluded_features?: Json
+          features?: Json
+          id?: string
+          is_lifetime?: boolean
+          name?: string
+          price_kwd?: number
+          price_usd?: number
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string | null
+          end_date: string | null
+          id: string
+          payment_id: string | null
+          payment_method: string
+          plan_id: string
+          start_date: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_method: string
+          plan_id: string
+          start_date?: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          payment_id?: string | null
+          payment_method?: string
+          plan_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

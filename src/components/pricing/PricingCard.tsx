@@ -2,6 +2,7 @@
 import React from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 interface PricingPlan {
   id: string;
@@ -17,9 +18,10 @@ interface PricingPlan {
 
 interface PricingCardProps {
   plan: PricingPlan;
+  isLoggedIn?: boolean;
 }
 
-export function PricingCard({ plan }: PricingCardProps) {
+export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
   return (
     <div className={`pricing-card flex flex-col h-full ${
       plan.isPopular ? 'pricing-card-popular transform md:scale-105 md:-translate-y-2' : ''
@@ -58,12 +60,17 @@ export function PricingCard({ plan }: PricingCardProps) {
       </div>
       
       <div className="p-6 mt-auto">
-        <Button className={`w-full ${
-          plan.isPopular 
-            ? 'bg-warm-gold hover:bg-warm-gold/90' 
-            : 'bg-dark-base hover:bg-dark-base/90'
-        }`}>
-          {plan.ctaText}
+        <Button 
+          asChild
+          className={`w-full ${
+            plan.isPopular 
+              ? 'bg-warm-gold hover:bg-warm-gold/90' 
+              : 'bg-dark-base hover:bg-dark-base/90'
+          }`}
+        >
+          <Link to={isLoggedIn ? "/checkout" : "/login?redirect=checkout"}>
+            {plan.ctaText}
+          </Link>
         </Button>
       </div>
     </div>
