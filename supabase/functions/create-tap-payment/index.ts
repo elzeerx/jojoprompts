@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
 
 // Define your Tap API key (in production, this should be in secrets)
-const TAP_API_KEY = "sk_test_XKokBfNWv6FIYuTMg5sLPjhJ"; // Replace with your actual test secret key
+const TAP_API_KEY = "sk_test_7DBRaSlNIenp3yhKYcGbqV2r"; // Replace with your actual test secret key
 
 // Construct Supabase client
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
