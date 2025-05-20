@@ -24,8 +24,7 @@ export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalBut
   // Load PayPal script
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "script.src = `https://www.paypal.com/sdk/js?client-id=ASWIAiw0-UM6BaTa1QRptIh0cIip9C2L-r4URQb7CZZy8GZ-t8h-d6naylfIlAPnnfyoYeRBgMSxLj9F&currency=USD`;
-";
+    script.src = `https://www.paypal.com/sdk/js?client-id=ASWIAiw0-UM6BaTa1QRptIh0cIip9C2L-r4URQb7CZZy8GZ-t8h-d6naylfIlAPnnfyoYeRBgMSxLj9F&currency=USD`;
     script.async = true;
     script.onload = () => {
       setIsScriptLoaded(true);

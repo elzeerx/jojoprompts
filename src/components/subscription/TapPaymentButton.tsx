@@ -65,9 +65,8 @@ export function TapPaymentButton({
   const initializeTapPayment = () => {
     if (window.Tapjsli) {
       try {
-        // Create a Tap instance (Replace with your actual publishable API key)
-        const tap = window.Tapjsli("pk_test_b5JZWEaPCRy61rhY4dqMnUiw
-");
+        // Create a Tap instance with the publishable key
+        const tap = window.Tapjsli("pk_test_b5JZWEaPCRy61rhY4dqMnUiw");
         
         tap.setup({
           containerID: "tap-payment-container",
@@ -112,7 +111,7 @@ export function TapPaymentButton({
   return (
     <>
       <Button className="w-full" onClick={openTapPayment}>
-        Pay with Tap Payment (${amount} KWD)
+        Pay with Tap Payment (${amount.toFixed(2)} KWD)
       </Button>
       
       <Dialog open={isDialogOpen} onOpenChange={closeDialog}>

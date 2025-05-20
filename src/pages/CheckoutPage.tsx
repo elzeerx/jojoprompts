@@ -51,7 +51,22 @@ export default function CheckoutPage() {
         
         if (error) throw error;
         
-        setPlans(data || []);
+        // Convert JSON strings to arrays before setting state
+        const parsedPlans = data?.map(plan => ({
+          ...plan,
+          features: Array.isArray(plan.features) 
+            ? plan.features 
+            : (typeof plan.features === 'string' 
+                ? JSON.parse(plan.features) 
+                : []),
+          excluded_features: Array.isArray(plan.excluded_features) 
+            ? plan.excluded_features 
+            : (typeof plan.excluded_features === 'string' 
+                ? JSON.parse(plan.excluded_features) 
+                : [])
+        })) || [];
+        
+        setPlans(parsedPlans as SubscriptionPlan[]);
       } catch (error) {
         console.error('Error fetching plans:', error);
         toast({
