@@ -18,14 +18,14 @@ interface FloatingAddPromptButtonProps {
 export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAddPromptButtonProps) {
   const { user, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
-  const [promptType, setPromptType] = useState<"text" | "image" | "button" | "image-selection" | "workflow">("image");
+  const [promptType, setPromptType] = useState<"text" | "image" | "image-selection" | "workflow">("image");
   const [category, setCategory] = useState<string>("ChatGPT");
   const navigate = useNavigate();
 
   // Only render for admin users
   if (!user || !isAdmin) return null;
 
-  const handleSelectPromptType = (type: "text" | "image" | "button" | "image-selection" | "workflow", selectedCategory: string) => {
+  const handleSelectPromptType = (type: "text" | "image" | "image-selection" | "workflow", selectedCategory: string) => {
     setPromptType(type);
     setCategory(selectedCategory);
     setOpen(true);
@@ -134,3 +134,4 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
     </>
   );
 };
+

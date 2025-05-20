@@ -5,10 +5,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { FileImage, MessageSquare, MousePointer, ImagePlus, GalleryVertical } from "lucide-react";
+import { FileImage, MessageSquare, GalleryVertical, ImagePlus } from "lucide-react";
 
 interface PromptTypeMenuProps {
-  onSelect: (type: "text" | "image" | "button" | "image-selection" | "workflow", category: string) => void;
+  onSelect: (type: "text" | "image" | "image-selection" | "workflow", category: string) => void;
   trigger: React.ReactNode;
 }
 
@@ -38,14 +38,6 @@ export function PromptTypeMenu({ onSelect, trigger }: PromptTypeMenuProps) {
               >
                 <FileImage className="h-5 w-5 text-warm-gold" />
                 <span>Add Image Prompt</span>
-              </Button>
-              <Button
-                variant="ghost"
-                className="flex items-center justify-start gap-2 hover:bg-warm-gold/10 transition-all"
-                onClick={() => onSelect("button", "ChatGPT")}
-              >
-                <MousePointer className="h-5 w-5 text-warm-gold" />
-                <span>Add Button Prompt</span>
               </Button>
             </div>
           </div>
@@ -82,3 +74,4 @@ export function PromptTypeMenu({ onSelect, trigger }: PromptTypeMenuProps) {
     </Popover>
   );
 }
+
