@@ -18,62 +18,62 @@ export function PromptTypeMenu({ onSelect, trigger }: PromptTypeMenuProps) {
       <PopoverTrigger asChild>
         {trigger}
       </PopoverTrigger>
-      <PopoverContent className="w-72" align="end">
+      <PopoverContent className="w-72 rounded-xl border-border shadow-lg" align="end">
         <div className="grid gap-4">
           <div>
-            <h3 className="font-medium text-sm mb-2 text-muted-foreground">ChatGPT</h3>
+            <h3 className="font-medium text-sm mb-2 text-warm-gold">ChatGPT</h3>
             <div className="grid gap-1">
               <Button
                 variant="ghost"
-                className="flex items-center justify-start gap-2"
+                className="flex items-center justify-start gap-2 hover:bg-warm-gold/10 transition-all"
                 onClick={() => onSelect("text", "ChatGPT")}
               >
-                <MessageSquare className="h-5 w-5" />
-                Add Text Prompt
+                <MessageSquare className="h-5 w-5 text-warm-gold" />
+                <span>Add Text Prompt</span>
               </Button>
               <Button
                 variant="ghost"
-                className="flex items-center justify-start gap-2"
+                className="flex items-center justify-start gap-2 hover:bg-warm-gold/10 transition-all"
                 onClick={() => onSelect("image", "ChatGPT")}
               >
-                <FileImage className="h-5 w-5" />
-                Add Image Prompt
+                <FileImage className="h-5 w-5 text-warm-gold" />
+                <span>Add Image Prompt</span>
               </Button>
               <Button
                 variant="ghost"
-                className="flex items-center justify-start gap-2"
+                className="flex items-center justify-start gap-2 hover:bg-warm-gold/10 transition-all"
                 onClick={() => onSelect("button", "ChatGPT")}
               >
-                <MousePointer className="h-5 w-5" />
-                Add Button Prompt
+                <MousePointer className="h-5 w-5 text-warm-gold" />
+                <span>Add Button Prompt</span>
               </Button>
             </div>
           </div>
           
           <div>
-            <h3 className="font-medium text-sm mb-2 text-muted-foreground">Midjourney</h3>
+            <h3 className="font-medium text-sm mb-2 text-muted-teal">Midjourney</h3>
             <div className="grid gap-1">
               <Button
                 variant="ghost"
-                className="flex items-center justify-start gap-2"
+                className="flex items-center justify-start gap-2 hover:bg-muted-teal/10 transition-all"
                 onClick={() => onSelect("image-selection", "Midjourney")}
               >
-                <GalleryVertical className="h-5 w-5" />
-                Add Image Selection
+                <GalleryVertical className="h-5 w-5 text-muted-teal" />
+                <span>Add Image Selection</span>
               </Button>
             </div>
           </div>
           
           <div>
-            <h3 className="font-medium text-sm mb-2 text-muted-foreground">n8n</h3>
+            <h3 className="font-medium text-sm mb-2 text-secondary">n8n</h3>
             <div className="grid gap-1">
               <Button
                 variant="ghost"
-                className="flex items-center justify-start gap-2"
+                className="flex items-center justify-start gap-2 hover:bg-secondary/10 transition-all"
                 onClick={() => onSelect("workflow", "n8n")}
               >
-                <ImagePlus className="h-5 w-5" />
-                Add Workflow
+                <ImagePlus className="h-5 w-5 text-secondary" />
+                <span>Add Workflow</span>
               </Button>
             </div>
           </div>

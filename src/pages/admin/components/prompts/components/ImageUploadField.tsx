@@ -70,7 +70,7 @@ export const ImageUploadField = ({ imageURL, file, onFileChange, promptType }: I
       <div className="col-span-3">
         {file || imageURL ? (
           <div className="relative">
-            <div className="relative aspect-video overflow-hidden rounded-md border border-border">
+            <div className="relative aspect-video overflow-hidden rounded-xl border border-border bg-muted/20">
               {file ? (
                 <img
                   src={URL.createObjectURL(file)}
@@ -89,7 +89,7 @@ export const ImageUploadField = ({ imageURL, file, onFileChange, promptType }: I
               type="button"
               variant="outline"
               size="icon"
-              className="absolute -right-2 -top-2 h-6 w-6 rounded-full"
+              className="absolute -right-2 -top-2 h-6 w-6 rounded-full bg-background border border-border"
               onClick={removeFile}
             >
               <X className="h-3 w-3" />
@@ -97,17 +97,17 @@ export const ImageUploadField = ({ imageURL, file, onFileChange, promptType }: I
           </div>
         ) : (
           <div
-            className={`relative flex aspect-video cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-6 py-8 text-center ${
-              dragOver ? "border-primary" : ""
-            }`}
+            className={`relative flex aspect-video cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed ${
+              dragOver ? "border-warm-gold bg-warm-gold/5" : "border-border bg-muted/10"
+            } px-6 py-8 text-center transition-colors duration-200`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => document.getElementById("image")?.click()}
           >
             <div className="flex flex-col items-center justify-center space-y-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                <ImagePlus className="h-5 w-5" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warm-gold/10">
+                <ImagePlus className="h-6 w-6 text-warm-gold" />
               </div>
               <div className="flex flex-col space-y-1">
                 <span className="text-sm font-medium">

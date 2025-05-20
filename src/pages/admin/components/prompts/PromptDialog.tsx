@@ -55,6 +55,38 @@ export const PromptDialog: FC<PromptDialogProps> = ({
     }
   }, [open, initial]);
 
+  // Get the appropriate accent colors based on category
+  const getCategoryColors = () => {
+    switch (category) {
+      case "ChatGPT": 
+        return {
+          primary: "bg-warm-gold text-white hover:bg-warm-gold/90",
+          secondary: "bg-warm-gold/10 text-warm-gold hover:bg-warm-gold/20",
+          accent: "text-warm-gold"
+        };
+      case "Midjourney": 
+        return {
+          primary: "bg-muted-teal text-white hover:bg-muted-teal/90",
+          secondary: "bg-muted-teal/10 text-muted-teal hover:bg-muted-teal/20",
+          accent: "text-muted-teal"
+        };
+      case "n8n": 
+        return {
+          primary: "bg-secondary text-white hover:bg-secondary/90",
+          secondary: "bg-secondary/10 text-secondary hover:bg-secondary/20",
+          accent: "text-secondary"
+        };
+      default: 
+        return {
+          primary: "bg-warm-gold text-white hover:bg-warm-gold/90",
+          secondary: "bg-warm-gold/10 text-warm-gold hover:bg-warm-gold/20",
+          accent: "text-warm-gold"
+        };
+    }
+  };
+
+  const colors = getCategoryColors();
+
   const handleSubmit = async () => {
     if (!form.title.trim() || !form.promptText.trim()) {
       toast({
@@ -198,35 +230,37 @@ export const PromptDialog: FC<PromptDialogProps> = ({
         onOpenChange(newOpen);
       }}
     >
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="sm:max-w-[500px] rounded-xl p-0 bg-background border border-border overflow-hidden">
+        <DialogHeader className={`px-6 pt-6 pb-2 border-b border-border`}>
+          <DialogTitle className={`text-xl ${colors.accent}`}>
             {getDialogTitle()}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-muted-foreground">
             {initial
               ? "Update the prompt details below."
               : "Create a new prompt by entering the details below."}
           </DialogDescription>
         </DialogHeader>
         
-        <DialogForm
-          title={form.title}
-          promptText={form.promptText}
-          metadata={form.metadata}
-          promptType={promptType}
-          imageURL={form.imageURL}
-          file={form.file}
-          onTitleChange={form.setTitle}
-          onPromptTextChange={form.setPromptText}
-          onMetadataChange={form.setMetadata}
-          onFileChange={form.setFile}
-        />
+        <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+          <DialogForm
+            title={form.title}
+            promptText={form.promptText}
+            metadata={form.metadata}
+            promptType={promptType}
+            imageURL={form.imageURL}
+            file={form.file}
+            onTitleChange={form.setTitle}
+            onPromptTextChange={form.setPromptText}
+            onMetadataChange={form.setMetadata}
+            onFileChange={form.setFile}
+          />
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t border-border bg-muted/10 flex flex-row justify-end gap-2">
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             onClick={() => {
               // Explicitly reset the form when canceling
               if (!initial) {
@@ -234,6 +268,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
               }
               onOpenChange(false);
             }}
+            className="rounded-lg border-border"
           >
             Cancel
           </Button>
@@ -241,6 +276,7 @@ export const PromptDialog: FC<PromptDialogProps> = ({
             type="submit" 
             onClick={handleSubmit} 
             disabled={submitting || generatingMetadata}
+            className={`rounded-lg ${colors.primary}`}
           >
             {submitting || generatingMetadata
               ? initial

@@ -51,24 +51,42 @@ export const DialogForm = ({
     const category = getCategoryForPromptType(promptType);
     onMetadataChange({ ...metadata, category });
   }
+  
+  // Get the appropriate accent color based on category
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case "ChatGPT": return "text-warm-gold";
+      case "Midjourney": return "text-muted-teal";
+      case "n8n": return "text-secondary";
+      default: return "text-warm-gold";
+    }
+  };
 
   return (
-    <div className="grid gap-4 py-4">
-      <PromptFormField
-        id="title"
-        label="Title"
-        value={title}
-        onChange={onTitleChange}
-      />
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="prompt_text" className="text-right">
+    <div className="grid gap-5 py-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="title" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
+          Title
+        </Label>
+        <input
+          id="title"
+          value={title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          placeholder="Enter a title for your prompt"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="prompt_text" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
           Prompt Text
         </Label>
         <Textarea
           id="prompt_text"
           value={promptText}
           onChange={(e) => onPromptTextChange(e.target.value)}
-          className="col-span-3 rounded-lg"
+          className="min-h-[120px] rounded-md resize-y"
+          placeholder="Write your prompt text here..."
         />
       </div>
 
@@ -104,28 +122,34 @@ export const DialogForm = ({
 
       {/* Always show image upload for image type prompts */}
       {(promptType === "image" || promptType === "image-selection" || promptType === "text") && (
-        <ImageUploadField
-          imageURL={imageURL}
-          file={file}
-          onFileChange={onFileChange}
-          promptType={promptType as "text" | "image" | "image-selection"}
-        />
+        <div className="space-y-1.5">
+          <Label htmlFor="image" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
+            {promptType === "image" ? "Prompt Image" : 
+             promptType === "image-selection" ? "Selection Preview" : "Custom Default Image"}
+          </Label>
+          <ImageUploadField
+            imageURL={imageURL}
+            file={file}
+            onFileChange={onFileChange}
+            promptType={promptType as "text" | "image" | "image-selection"}
+          />
+        </div>
       )}
 
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="category" className="text-right">
+      <div className="space-y-1.5">
+        <Label htmlFor="category" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
           Category
         </Label>
         <Select 
           value={metadata.category || getCategoryForPromptType(promptType)} 
           onValueChange={(value) => onMetadataChange({ ...metadata, category: value })}
         >
-          <SelectTrigger className="col-span-3 rounded-lg">
+          <SelectTrigger className="rounded-md">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
-          <SelectContent className="rounded-lg">
+          <SelectContent className="rounded-md">
             {mainCategories.map(category => (
-              <SelectItem key={category} value={category} className="rounded-lg">
+              <SelectItem key={category} value={category} className="rounded-md">
                 {category}
               </SelectItem>
             ))}
@@ -135,28 +159,39 @@ export const DialogForm = ({
 
       {/* Style field for image prompts */}
       {(promptType === "image" || promptType === "image-selection") && (
-        <PromptFormField
-          id="style"
-          label="Style"
-          value={metadata.style || ""}
-          onChange={(value) => onMetadataChange({ ...metadata, style: value })}
-        />
+        <div className="space-y-1.5">
+          <Label htmlFor="style" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
+            Style
+          </Label>
+          <input
+            id="style"
+            value={metadata.style || ""}
+            onChange={(e) => onMetadataChange({ ...metadata, style: e.target.value })}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="e.g., Realistic, Cartoon, Abstract"
+          />
+        </div>
       )}
 
       {/* Tags for all prompt types */}
-      <PromptFormField
-        id="tags"
-        label="Tags"
-        value={metadata.tags?.join(", ") || ""}
-        onChange={(value) => {
-          const tags = value
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean);
-          onMetadataChange({ ...metadata, tags });
-        }}
-        placeholder="tag1, tag2, tag3"
-      />
+      <div className="space-y-1.5">
+        <Label htmlFor="tags" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
+          Tags
+        </Label>
+        <input
+          id="tags"
+          value={metadata.tags?.join(", ") || ""}
+          onChange={(e) => {
+            const tags = e.target.value
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean);
+            onMetadataChange({ ...metadata, tags });
+          }}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          placeholder="tag1, tag2, tag3"
+        />
+      </div>
     </div>
   );
 };
