@@ -13,6 +13,8 @@ import SignupPage from "./pages/SignupPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFoundPage from "./pages/NotFoundPage";
 import AboutPage from "./pages/AboutPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsOfServicePage from "./pages/TermsOfServicePage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import FavoritesPage from "./pages/FavoritesPage";
 
@@ -32,6 +34,8 @@ const App = () => {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
               
               {/* Redirect reset-password to login page with reset tab */}
               <Route 

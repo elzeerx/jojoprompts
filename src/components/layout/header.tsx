@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
@@ -25,10 +26,12 @@ export function Header() {
     return email.charAt(0).toUpperCase();
   };
 
+  // Define navigation items based on login status
   const navigation = [
     { name: "Home", href: "/" },
     { name: "Prompts", href: "/prompts" },
-    { name: "Pricing", href: "/#pricing" },
+    // Only show pricing for non-logged in users
+    ...(isLoggedIn ? [] : [{ name: "Pricing", href: "/#pricing" }]),
   ];
   
   return (
