@@ -32,6 +32,18 @@ export function TapPaymentButton({
   const [isLoading, setIsLoading] = useState(false);
   const [tapInstance, setTapInstance] = useState<any>(null);
   const [scriptError, setScriptError] = useState<string | null>(null);
+  const [isPreviewEnvironment, setIsPreviewEnvironment] = useState(false);
+  
+  // Check if we're in a preview/iframe environment
+  useEffect(() => {
+    const isInIframe = window !== window.parent;
+    const isLocalhost = window.location.hostname === 'localhost';
+    const isLovablePreview = window.location.hostname.includes('lovable.app');
+    
+    const isPreview = isInIframe || isLocalhost || isLovablePreview;
+    console.log("Tap payment - Environment detection:", { isInIframe, isLocalhost, isLovablePreview, isPreview });
+    setIsPreviewEnvironment(isPreview);
+  }, []);
   
   // Handle test mode simulation
   const handleTestPayment = () => {
@@ -55,7 +67,7 @@ export function TapPaymentButton({
   };
   
   const openTapPayment = async () => {
-    if (testMode) {
+    if (testMode || isPreviewEnvironment) {
       handleTestPayment();
       return;
     }
@@ -81,13 +93,13 @@ export function TapPaymentButton({
           setIsLoading(false);
         } catch (initError) {
           console.error("Error during Tap Payment initialization", initError);
-          setScriptError("Failed to initialize payment form. Please try again later.");
+          setScriptError("Failed to initialize payment form. Please enable Test Mode to continue.");
           setIsLoading(false);
         }
       }, 1000);
     } catch (error) {
       console.error("Error loading Tap Payment:", error);
-      setScriptError("Failed to load payment service. Please try again later.");
+      setScriptError("Failed to load payment service. Please enable Test Mode to continue.");
       setIsLoading(false);
       onError(error);
     }
@@ -170,12 +182,12 @@ export function TapPaymentButton({
         setTapInstance(tap);
       } catch (error) {
         console.error("Error initializing Tap Payment:", error);
-        setScriptError("Failed to initialize Tap Payment.");
+        setScriptError("Failed to initialize Tap Payment in this environment.");
         onError(error);
       }
     } else {
       console.error("Tap Payment SDK not available");
-      setScriptError("Payment service not available. Please try again later.");
+      setScriptError("Payment service not available in this environment. Please enable Test Mode.");
     }
   };
   
@@ -196,9 +208,14 @@ export function TapPaymentButton({
     }
   };
 
-  if (testMode) {
+  // Show test mode button when in test mode or preview environment
+  if (testMode || isPreviewEnvironment) {
     return (
-      <Button className="w-full bg-teal-500 hover:bg-teal-600" onClick={handleTestPayment} disabled={isLoading}>
+      <Button 
+        className="w-full bg-amber-500 hover:bg-amber-600 text-white" 
+        onClick={handleTestPayment} 
+        disabled={isLoading}
+      >
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

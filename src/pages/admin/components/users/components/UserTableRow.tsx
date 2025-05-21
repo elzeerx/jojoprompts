@@ -24,26 +24,24 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { EditUserDialog } from './EditUserDialog';
 import { AssignPlanDialog } from './AssignPlanDialog';
-
-interface User {
-  id: string;
-  email: string;
-  created_at: string;
-  role: string | null;
-}
+import { UserProfile } from "@/types";
 
 interface UserTableRowProps {
-  user: User;
-  onDelete: (userId: string) => Promise<void>;
-  onEdit: (userId: string, data: { email?: string; role?: string | null }) => Promise<void>;
+  user: UserProfile & { subscription?: { plan_name: string } | null };
+  isUpdating: boolean;
+  onUpdateUser: (userId: string, data: Partial<UserProfile>) => void;
   onAssignPlan: (userId: string, planId: string) => void;
+  onSendResetEmail: (email: string) => void;
+  onDeleteUser: (userId: string, email: string) => void;
 }
 
 export function UserTableRow({ 
   user, 
-  onDelete, 
-  onEdit, 
-  onAssignPlan 
+  isUpdating,
+  onUpdateUser, 
+  onAssignPlan,
+  onSendResetEmail,
+  onDeleteUser
 }: UserTableRowProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -51,7 +49,7 @@ export function UserTableRow({
 
   const handleDelete = async () => {
     try {
-      await onDelete(user.id);
+      onDeleteUser(user.id, user.email);
       setDeleteDialogOpen(false);
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -60,14 +58,18 @@ export function UserTableRow({
 
   return (
     <tr className="border-b hover:bg-muted/50">
-      <td className="p-4">{user.id}</td>
+      <td className="p-4">{user.first_name} {user.last_name}</td>
       <td className="p-4">{user.email}</td>
       <td className="p-4">{user.role || 'N/A'}</td>
       <td className="p-4">{new Date(user.created_at).toLocaleDateString()}</td>
       <td className="p-4">
+        {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}
+      </td>
+      <td className="p-4">{user.subscription?.plan_name || 'None'}</td>
+      <td className="p-4 text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
+            <Button variant="ghost" className="h-8 w-8 p-0" disabled={isUpdating}>
               <span className="sr-only">Open menu</span>
               <MoreVertical className="h-4 w-4" />
             </Button>
@@ -81,8 +83,14 @@ export function UserTableRow({
               <UserPlus className="mr-2 h-4 w-4" /> Assign Plan
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={() => onSendResetEmail(user.email)}
+              disabled={isUpdating}
+            >
+              Send Password Reset
+            </DropdownMenuItem>
             <DropdownMenuItem>
-              <AlertDialog>
+              <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button variant="ghost" className="text-destructive hover:bg-destructive/5 focus-visible:bg-destructive/5 data-[state=open]:bg-destructive/5">
                     <Trash2 className="mr-2 h-4 w-4" /> Delete
@@ -111,7 +119,7 @@ export function UserTableRow({
         onOpenChange={setEditDialogOpen}
         user={user}
         onSave={(data: { email?: string; role?: string | null }) => {
-          onEdit(user.id, data);
+          onUpdateUser(user.id, data);
           setEditDialogOpen(false);
         }}
       />

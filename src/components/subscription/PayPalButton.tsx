@@ -23,10 +23,24 @@ export function PayPalButton({ amount, planName, onSuccess, onError, testMode = 
   const [isLoading, setIsLoading] = useState(true);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [scriptError, setScriptError] = useState<string | null>(null);
+  const [isPreviewEnvironment, setIsPreviewEnvironment] = useState(false);
+
+  // Check if we're in a preview/iframe environment
+  useEffect(() => {
+    const isInIframe = window !== window.parent;
+    const isLocalhost = window.location.hostname === 'localhost';
+    const isLovablePreview = window.location.hostname.includes('lovable.app');
+    
+    const isPreview = isInIframe || isLocalhost || isLovablePreview;
+    console.log("Environment detection:", { isInIframe, isLocalhost, isLovablePreview, isPreview });
+    setIsPreviewEnvironment(isPreview);
+  }, []);
 
   // Handle test mode simulation
   const handleTestPayment = () => {
     console.log("Test payment initiated", { amount, planName });
+    setIsLoading(true);
+    
     const mockPaymentId = `TEST-${Date.now()}`;
     const mockDetails = {
       id: mockPaymentId,
@@ -38,13 +52,15 @@ export function PayPalButton({ amount, planName, onSuccess, onError, testMode = 
     
     setTimeout(() => {
       console.log("Test payment completed", mockDetails);
+      setIsLoading(false);
       onSuccess(mockPaymentId, mockDetails);
     }, 1500);
   };
 
   // Load PayPal script
   useEffect(() => {
-    if (testMode) {
+    if (testMode || isPreviewEnvironment) {
+      console.log("Skipping PayPal script load in test mode or preview environment");
       setIsLoading(false);
       return;
     }
@@ -84,11 +100,11 @@ export function PayPalButton({ amount, planName, onSuccess, onError, testMode = 
         document.body.removeChild(script);
       }
     };
-  }, [testMode]);
+  }, [testMode, isPreviewEnvironment]);
   
   // Initialize PayPal button once script is loaded
   useEffect(() => {
-    if (testMode) return;
+    if (testMode || isPreviewEnvironment) return;
     
     if (isScriptLoaded && paypalRef.current) {
       setIsLoading(true);
@@ -96,7 +112,10 @@ export function PayPalButton({ amount, planName, onSuccess, onError, testMode = 
       console.log("Initializing PayPal buttons");
       try {
         if (!window.paypal || !window.paypal.Buttons) {
-          throw new Error("PayPal SDK loaded but Buttons API not available");
+          console.error("PayPal SDK loaded but Buttons API not available");
+          setScriptError("PayPal payment is not available in this environment. Please use Test Mode instead.");
+          setIsLoading(false);
+          return;
         }
         
         window.paypal
@@ -159,30 +178,39 @@ export function PayPalButton({ amount, planName, onSuccess, onError, testMode = 
           })
           .catch((renderError: any) => {
             console.error("Failed to render PayPal buttons", renderError);
-            setScriptError("Failed to initialize PayPal. Please try again later.");
+            setScriptError("Failed to initialize PayPal. Please use Test Mode instead.");
             setIsLoading(false);
             onError(renderError);
           });
       } catch (error) {
         console.error("Error initializing PayPal", error);
-        setScriptError("Failed to initialize PayPal. Please try again or use another payment method.");
+        setScriptError("Failed to initialize PayPal. Please enable Test Mode to continue.");
         setIsLoading(false);
         onError(error);
       }
     }
-  }, [isScriptLoaded, amount, onSuccess, onError, planName, testMode]);
+  }, [isScriptLoaded, amount, onSuccess, onError, planName, testMode, isPreviewEnvironment]);
 
-  if (testMode) {
+  // Show test mode button or error when in preview environment
+  if (testMode || isPreviewEnvironment) {
     return (
       <div className="w-full">
         <Button 
-          className="w-full bg-yellow-500 hover:bg-yellow-600" 
+          className="w-full bg-amber-500 hover:bg-amber-600 text-white" 
           onClick={handleTestPayment}
+          disabled={isLoading}
         >
-          Test PayPal Payment (Simulation)
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing Test Payment...
+            </>
+          ) : (
+            `Test PayPal Payment ($${amount.toFixed(2)})`
+          )}
         </Button>
         <div className="text-center text-sm text-gray-500 mt-2">
-          <p>Test mode enabled. No actual payment will be processed.</p>
+          <p>{testMode ? "Test mode enabled." : "Preview environment detected."} No actual payment will be processed.</p>
         </div>
       </div>
     );
@@ -205,9 +233,11 @@ export function PayPalButton({ amount, planName, onSuccess, onError, testMode = 
       
       <div ref={paypalRef} className={isLoading ? "hidden" : ""}></div>
       
-      <div className="text-center text-sm text-gray-500 mt-2">
-        <p>For testing, use email: sb-47g8u34123282@personal.example.com and password: 12345678</p>
-      </div>
+      {!scriptError && (
+        <div className="text-center text-sm text-gray-500 mt-2">
+          <p>For testing, use email: sb-47g8u34123282@personal.example.com and password: 12345678</p>
+        </div>
+      )}
     </div>
   );
 }

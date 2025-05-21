@@ -41,7 +41,27 @@ export default function CheckoutPage() {
     planId: string;
     paymentMethod: string;
   } | null>(null);
+  
+  // Check if we're in a preview/development environment
+  const [isPreviewEnvironment, setIsPreviewEnvironment] = useState(false);
   const [testMode, setTestMode] = useState(false);
+  
+  useEffect(() => {
+    // Detect if we're in preview environment
+    const isInIframe = window !== window.parent;
+    const isLocalhost = window.location.hostname === 'localhost';
+    const isLovablePreview = window.location.hostname.includes('lovable.app');
+    
+    const isPreview = isInIframe || isLocalhost || isLovablePreview;
+    console.log("Checkout - Environment detection:", { isInIframe, isLocalhost, isLovablePreview, isPreview });
+    setIsPreviewEnvironment(isPreview);
+    
+    // Auto-enable test mode in preview environments
+    if (isPreview) {
+      console.log("Preview environment detected - Auto-enabling test mode");
+      setTestMode(true);
+    }
+  }, []);
   
   useEffect(() => {
     // Check for pending purchase info in session storage (for users who need to register)
@@ -197,7 +217,7 @@ export default function CheckoutPage() {
   };
   
   const handlePaymentSuccess = async (paymentId: string, details: any) => {
-    console.log("Payment success callback", { paymentId, details });
+    console.log("Payment success callback", { paymentId, details, testMode });
     setProcessingPayment(true);
     
     try {
@@ -329,14 +349,18 @@ export default function CheckoutPage() {
     <div className="container max-w-6xl mx-auto py-12 px-4">
       <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">Choose Your Plan</h1>
       
-      {/* Developer Tools */}
+      {/* Test Mode Banner - More prominent in preview environments */}
       <div className="mb-8">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Developer Options</CardTitle>
+            <CardTitle className="text-lg">Payment Testing Mode</CardTitle>
           </CardHeader>
           <CardContent>
-            <TestModeToggle enabled={testMode} onToggle={toggleTestMode} />
+            <TestModeToggle 
+              enabled={testMode} 
+              onToggle={toggleTestMode} 
+              prominent={isPreviewEnvironment}
+            />
           </CardContent>
         </Card>
       </div>
@@ -402,7 +426,7 @@ export default function CheckoutPage() {
             <CardHeader>
               <CardTitle>Order Summary</CardTitle>
               {testMode && (
-                <p className="text-sm text-yellow-600 mt-1">
+                <p className="text-sm text-amber-600 mt-1 font-medium">
                   Test Mode Active - No actual payment will be processed
                 </p>
               )}
