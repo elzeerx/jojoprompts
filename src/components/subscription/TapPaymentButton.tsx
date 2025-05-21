@@ -12,18 +12,20 @@ declare global {
 
 interface TapPaymentButtonProps {
   amount: number;
-  currency: string;
   planName: string;
-  onSuccess: (paymentId: string, details: any) => void;
-  onError: (error: any) => void;
+  onSuccess: (paymentId: string) => void;
+  onError?: (error: any) => void;
+  currency?: string;
+  userId?: string;
 }
 
 export function TapPaymentButton({
   amount,
-  currency,
   planName,
   onSuccess,
-  onError
+  onError,
+  currency = "KWD",
+  userId
 }: TapPaymentButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,8 +47,8 @@ export function TapPaymentButton({
       }, 1000);
     } catch (error) {
       console.error("Error loading Tap Payment:", error);
+      if (onError) onError(error);
       setIsLoading(false);
-      onError(error);
       setIsDialogOpen(false);
     }
   };
@@ -80,12 +82,12 @@ export function TapPaymentButton({
           onSuccess: (response: any) => {
             console.log("Payment successful:", response);
             setIsDialogOpen(false);
-            onSuccess(response.transaction.id, response);
+            onSuccess(response.transaction.id);
           },
           onError: (error: any) => {
             console.error("Payment error:", error);
             setIsDialogOpen(false);
-            onError(error);
+            if (onError) onError(error);
           },
           onClose: () => {
             console.log("Payment closed");
@@ -96,7 +98,7 @@ export function TapPaymentButton({
         setTapInstance(tap);
       } catch (error) {
         console.error("Error initializing Tap Payment:", error);
-        onError(error);
+        if (onError) onError(error);
       }
     }
   };
@@ -111,7 +113,7 @@ export function TapPaymentButton({
   return (
     <>
       <Button className="w-full" onClick={openTapPayment}>
-        Pay with Tap Payment (${amount.toFixed(2)} KWD)
+        Pay with Tap Payment ({amount.toFixed(2)} {currency})
       </Button>
       
       <Dialog open={isDialogOpen} onOpenChange={closeDialog}>

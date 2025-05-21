@@ -20,6 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Json } from "@/integrations/supabase/types";
 
 interface Plan {
   id: string;
@@ -67,20 +68,29 @@ export default function CheckoutPage() {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          setPlans(data);
+          // Transform the data to ensure features and excluded_features are string arrays
+          const transformedPlans = data.map(plan => ({
+            ...plan,
+            features: Array.isArray(plan.features) ? plan.features : 
+              (typeof plan.features === 'string' ? JSON.parse(plan.features) : []),
+            excluded_features: Array.isArray(plan.excluded_features) ? plan.excluded_features : 
+              (typeof plan.excluded_features === 'string' ? JSON.parse(plan.excluded_features) : [])
+          })) as Plan[];
+          
+          setPlans(transformedPlans);
           
           // If plan ID is in URL, select that plan
           if (planIdFromUrl) {
-            const matchingPlan = data.find(p => p.id === planIdFromUrl);
+            const matchingPlan = transformedPlans.find(p => p.id === planIdFromUrl);
             if (matchingPlan) {
               setSelectedPlan(matchingPlan);
             } else {
               // If no matching plan, select the first one
-              setSelectedPlan(data[0]);
+              setSelectedPlan(transformedPlans[0]);
             }
           } else {
             // Default to the first plan if no plan ID in URL
-            setSelectedPlan(data[0]);
+            setSelectedPlan(transformedPlans[0]);
           }
         }
       } catch (err) {
@@ -130,7 +140,10 @@ export default function CheckoutPage() {
         .select()
         .single();
 
-      if (subscriptionError) throw subscriptionError;
+      if (subscriptionError) {
+        console.error("Error creating subscription:", subscriptionError);
+        throw subscriptionError;
+      }
 
       // Record the payment in history
       await supabase
@@ -411,8 +424,9 @@ export default function CheckoutPage() {
                         <TapPaymentButton
                           amount={selectedPlan.price_kwd}
                           planName={selectedPlan.name}
+                          currency="KWD"
                           onSuccess={handleTapSuccess}
-                          userId={user?.id || ""}
+                          userId={user?.id}
                         />
                       )}
                     </TabsContent>

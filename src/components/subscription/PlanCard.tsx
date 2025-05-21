@@ -40,14 +40,14 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
       
       <CardContent className="flex-grow">
         <ul className="space-y-2">
-          {features.map((feature, index) => (
+          {features && features.map((feature, index) => (
             <li key={`feature-${index}`} className="flex items-start">
               <Check className="h-5 w-5 text-warm-gold mr-2 flex-shrink-0 mt-0.5" />
               <span className="text-sm">{feature}</span>
             </li>
           ))}
           
-          {excluded_features.map((feature, index) => (
+          {excluded_features && excluded_features.map((feature, index) => (
             <li key={`excluded-${index}`} className="flex items-start text-muted-foreground">
               <X className="h-5 w-5 text-muted-foreground/50 mr-2 flex-shrink-0 mt-0.5" />
               <span className="text-sm">{feature}</span>
