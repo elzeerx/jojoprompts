@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,12 +16,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FileText } from "lucide-react";
+import { FileText, ShoppingBag } from "lucide-react";
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const fromCheckout = new URLSearchParams(location.search).get('fromCheckout') === 'true';
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -77,9 +78,19 @@ export default function SignupPage() {
         // Successful signup and signin
         toast({
           title: "Welcome!",
-          description: "Your account has been created and you're now logged in.",
+          description: fromCheckout 
+            ? "Your account has been created and linked to your purchase." 
+            : "Your account has been created and you're now logged in.",
         });
-        navigate("/prompts");
+        
+        // If coming from checkout, we'll be redirected to payment-success
+        // Otherwise, go to prompts page
+        if (fromCheckout) {
+          // The automatic redirect will happen via the checkout page's pending purchase logic
+          navigate("/checkout");
+        } else {
+          navigate("/prompts");
+        }
       }
     } catch (error) {
       console.error("Signup error:", error);
@@ -99,13 +110,23 @@ export default function SignupPage() {
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-2">
             <div className="rounded-full bg-primary/10 p-2 text-primary">
-              <FileText className="h-6 w-6" />
+              {fromCheckout ? <ShoppingBag className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-center">Sign Up</CardTitle>
           <CardDescription className="text-center">
-            Create an account to browse and save prompts
+            {fromCheckout 
+              ? "Create an account to complete your purchase" 
+              : "Create an account to browse and save prompts"}
           </CardDescription>
+          
+          {fromCheckout && (
+            <div className="bg-green-50 border border-green-100 rounded-md p-3 mt-2">
+              <p className="text-sm text-green-800 text-center">
+                Your payment was successful! Create an account to activate your subscription.
+              </p>
+            </div>
+          )}
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>

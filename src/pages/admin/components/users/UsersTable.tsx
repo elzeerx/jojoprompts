@@ -19,12 +19,13 @@ import {
 } from "@/components/ui/pagination";
 
 interface UsersTableProps {
-  users: UserProfile[];
+  users: (UserProfile & { subscription?: { plan_name: string } | null })[];
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   updatingUserId: string | null;
   onUpdateUser: (userId: string, data: Partial<UserProfile>) => void;
+  onAssignPlan: (userId: string, planId: string) => void;
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string) => void;
 }
@@ -36,6 +37,7 @@ export function UsersTable({
   onPageChange,
   updatingUserId,
   onUpdateUser,
+  onAssignPlan,
   onSendResetEmail,
   onDeleteUser,
 }: UsersTableProps) {
@@ -53,6 +55,7 @@ export function UsersTable({
             <TableHead>Role</TableHead>
             <TableHead>Joined</TableHead>
             <TableHead>Last Login</TableHead>
+            <TableHead>Subscription</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -63,6 +66,7 @@ export function UsersTable({
               user={user}
               isUpdating={updatingUserId === user.id}
               onUpdateUser={onUpdateUser}
+              onAssignPlan={onAssignPlan}
               onSendResetEmail={onSendResetEmail}
               onDeleteUser={onDeleteUser}
             />

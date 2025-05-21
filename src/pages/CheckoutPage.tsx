@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -29,16 +29,31 @@ interface SubscriptionPlan {
 export default function CheckoutPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'tap'>('paypal');
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [pendingPurchaseInfo, setPendingPurchaseInfo] = useState<{
+    paymentId: string;
+    planId: string;
+    paymentMethod: string;
+  } | null>(null);
   
   React.useEffect(() => {
-    // Redirect to login if not authenticated
-    if (!authLoading && !user) {
-      navigate('/login?redirect=checkout');
+    // Check for pending purchase info in session storage (for users who need to register)
+    const storedPurchaseInfo = sessionStorage.getItem('pendingPurchase');
+    if (storedPurchaseInfo) {
+      const purchaseInfo = JSON.parse(storedPurchaseInfo);
+      setPendingPurchaseInfo(purchaseInfo);
+      
+      // If user is now logged in and we have pending purchase info, complete the purchase
+      if (user && purchaseInfo) {
+        completePendingPurchase(purchaseInfo);
+        // Remove the pending purchase info from session storage
+        sessionStorage.removeItem('pendingPurchase');
+      }
     }
     
     // Fetch subscription plans
@@ -67,6 +82,12 @@ export default function CheckoutPage() {
         })) || [];
         
         setPlans(parsedPlans as SubscriptionPlan[]);
+        
+        // Select first plan by default
+        if (parsedPlans.length > 0 && !selectedPlan) {
+          const mostPopularPlan = parsedPlans.find(p => p.name === "Premium") || parsedPlans[0];
+          setSelectedPlan(mostPopularPlan as SubscriptionPlan);
+        }
       } catch (error) {
         console.error('Error fetching plans:', error);
         toast({
@@ -82,6 +103,83 @@ export default function CheckoutPage() {
     fetchPlans();
   }, [authLoading, user, navigate]);
   
+  const completePendingPurchase = async (purchaseInfo: any) => {
+    setProcessingPayment(true);
+    
+    try {
+      if (!user) {
+        throw new Error("User not logged in");
+      }
+      
+      const { paymentId, planId, paymentMethod } = purchaseInfo;
+      
+      // Get plan details
+      const { data: planData, error: planError } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
+      
+      if (planError) throw planError;
+      const plan = planData as SubscriptionPlan;
+      
+      // Calculate end date for non-lifetime plans
+      let endDate = null;
+      if (!plan.is_lifetime && plan.duration_days) {
+        const date = new Date();
+        date.setDate(date.getDate() + plan.duration_days);
+        endDate = date.toISOString();
+      }
+      
+      // Create subscription record
+      const { data: subscription, error: subscriptionError } = await supabase
+        .from('user_subscriptions')
+        .insert({
+          user_id: user.id,
+          plan_id: planId,
+          payment_method: paymentMethod,
+          payment_id: paymentId,
+          end_date: endDate,
+        })
+        .select()
+        .single();
+      
+      if (subscriptionError) throw subscriptionError;
+      
+      // Create payment history record
+      const { error: paymentError } = await supabase
+        .from('payment_history')
+        .insert({
+          user_id: user.id,
+          subscription_id: subscription.id,
+          amount_usd: plan.price_usd,
+          amount_kwd: plan.price_kwd,
+          payment_method: paymentMethod,
+          payment_id: paymentId,
+          status: 'completed',
+        });
+      
+      if (paymentError) throw paymentError;
+      
+      toast({
+        title: "Purchase Completed!",
+        description: `Your previous payment has been successfully linked to your account.`,
+      });
+      
+      // Redirect to success page
+      navigate('/payment-success');
+    } catch (error) {
+      console.error('Error processing subscription:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process your subscription. Please contact support.",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+  
   const handleSelectPlan = (plan: SubscriptionPlan) => {
     setSelectedPlan(plan);
   };
@@ -90,9 +188,34 @@ export default function CheckoutPage() {
     setProcessingPayment(true);
     
     try {
-      if (!user || !selectedPlan) {
-        throw new Error("Missing user or plan selection");
+      if (!selectedPlan) {
+        throw new Error("No plan selected");
       }
+      
+      // If the user is not logged in, store purchase info and redirect to signup
+      if (!user) {
+        // Store the purchase information
+        const purchaseInfo = {
+          paymentId,
+          planId: selectedPlan.id,
+          paymentMethod,
+          // Do not store sensitive payment details!
+        };
+        
+        // Store in session storage (will be cleared on tab close)
+        sessionStorage.setItem('pendingPurchase', JSON.stringify(purchaseInfo));
+        
+        // Redirect to signup page with a success message
+        toast({
+          title: "Payment Successful!",
+          description: "Please sign up to complete your purchase.",
+        });
+        
+        navigate('/signup?fromCheckout=true');
+        return;
+      }
+      
+      // If user is logged in, proceed with subscription creation
       
       // Calculate end date for non-lifetime plans
       let endDate = null;
@@ -160,7 +283,7 @@ export default function CheckoutPage() {
     });
   };
   
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[70vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -169,13 +292,13 @@ export default function CheckoutPage() {
   }
   
   return (
-    <div className="container max-w-6xl mx-auto py-12">
+    <div className="container max-w-6xl mx-auto py-12 px-4">
       <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">Choose Your Plan</h1>
       
       {/* Step 1: Select Subscription Plan */}
       <div className="mb-12">
         <h2 className="text-xl font-semibold mb-6">Step 1: Select Subscription Plan</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {plans.map((plan) => (
             <PlanCard
               key={plan.id}

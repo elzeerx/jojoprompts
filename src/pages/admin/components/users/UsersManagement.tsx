@@ -21,6 +21,7 @@ export default function UsersManagement() {
     updatingUserId,
     fetchUsers,
     updateUser,
+    assignPlanToUser,
     sendPasswordResetEmail,
     deleteUser
   } = useUserManagement();
@@ -31,7 +32,8 @@ export default function UsersManagement() {
       user.email.toLowerCase().includes(searchLower) ||
       user.role.toLowerCase().includes(searchLower) ||
       (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
-      (user.last_name && user.last_name.toLowerCase().includes(searchLower))
+      (user.last_name && user.last_name.toLowerCase().includes(searchLower)) ||
+      (user.subscription?.plan_name && user.subscription.plan_name.toLowerCase().includes(searchLower))
     );
   });
 
@@ -75,6 +77,7 @@ export default function UsersManagement() {
             onPageChange={onPageChange}
             updatingUserId={updatingUserId}
             onUpdateUser={updateUser}
+            onAssignPlan={assignPlanToUser}
             onSendResetEmail={sendPasswordResetEmail}
             onDeleteUser={deleteUser}
           />

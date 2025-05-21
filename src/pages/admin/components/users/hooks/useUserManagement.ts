@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -60,6 +61,99 @@ export function useUserManagement() {
         description: error.message || "Failed to update user",
         variant: "destructive",
       });
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const assignPlanToUser = async (userId: string, planId: string) => {
+    try {
+      setProcessingUserId(userId);
+
+      // First, check if user already has an active subscription
+      const { data: existingSubscription, error: fetchError } = await supabase
+        .from("user_subscriptions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .single();
+
+      // Get the plan details
+      const { data: plan, error: planError } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("id", planId)
+        .single();
+
+      if (planError) throw planError;
+      if (!plan) throw new Error("Plan not found");
+
+      // Calculate end date for non-lifetime plans
+      let endDate = null;
+      if (!plan.is_lifetime && plan.duration_days) {
+        const date = new Date();
+        date.setDate(date.getDate() + plan.duration_days);
+        endDate = date.toISOString();
+      }
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // Not found error is expected
+        throw fetchError;
+      }
+
+      if (existingSubscription) {
+        // Update existing subscription
+        const { error: updateError } = await supabase
+          .from("user_subscriptions")
+          .update({
+            plan_id: planId,
+            end_date: endDate,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", existingSubscription.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new subscription
+        const { error: insertError } = await supabase
+          .from("user_subscriptions")
+          .insert({
+            user_id: userId,
+            plan_id: planId,
+            payment_method: "admin_assigned",
+            status: "active",
+            end_date: endDate
+          });
+
+        if (insertError) throw insertError;
+
+        // Create payment history record
+        await supabase
+          .from("payment_history")
+          .insert({
+            user_id: userId,
+            amount_usd: plan.price_usd,
+            amount_kwd: plan.price_kwd,
+            payment_method: "admin_assigned",
+            status: "completed",
+            payment_id: `admin-${Date.now()}`
+          });
+      }
+
+      toast({
+        title: "Plan Assigned",
+        description: `Successfully assigned ${plan.name} plan to the user`,
+      });
+
+      await fetchUsers();
+      return true;
+    } catch (error: any) {
+      console.error("Error assigning plan:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to assign plan to user",
+        variant: "destructive",
+      });
+      return false;
     } finally {
       setProcessingUserId(null);
     }
@@ -143,6 +237,7 @@ export function useUserManagement() {
     updatingUserId: updatingUserId || processingUserId,
     fetchUsers,
     updateUser: handleUpdateUser,
+    assignPlanToUser,
     sendPasswordResetEmail,
     deleteUser
   };

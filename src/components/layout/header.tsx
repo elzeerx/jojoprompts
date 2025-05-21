@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
-import { LogOut, User, ShieldCheck, Heart, Menu, X } from "lucide-react";
+import { LogOut, User, ShieldCheck, Heart, Menu, X, CreditCard, Settings } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,8 +30,7 @@ export function Header() {
   const navigation = [
     { name: "Home", href: "/" },
     { name: "Prompts", href: "/prompts" },
-    // Only show pricing for non-logged in users
-    ...(isLoggedIn ? [] : [{ name: "Pricing", href: "/#pricing" }]),
+    { name: "Pricing", href: "/pricing" },
   ];
   
   return (
@@ -59,13 +58,23 @@ export function Header() {
             {isLoggedIn && (
               <>
                 <Link 
+                  to="/favorites" 
+                  className={`text-base font-medium hover:text-warm-gold transition-colors flex items-center gap-1.5 ${
+                    location.pathname === "/favorites" ? "text-warm-gold" : "text-dark-base"
+                  }`}
+                >
+                  <Heart className="h-4 w-4" />
+                  Favorites
+                </Link>
+                
+                <Link 
                   to="/dashboard" 
                   className={`text-base font-medium hover:text-warm-gold transition-colors flex items-center gap-1.5 ${
                     location.pathname === "/dashboard" ? "text-warm-gold" : "text-dark-base"
                   }`}
                 >
-                  <Heart className="h-4 w-4" />
-                  Favorites
+                  <Settings className="h-4 w-4" />
+                  Dashboard
                 </Link>
                 
                 {isAdmin && (
@@ -120,13 +129,23 @@ export function Header() {
                     {isLoggedIn && (
                       <>
                         <Link
+                          to="/favorites"
+                          className={`text-lg font-medium hover:text-warm-gold transition-colors flex items-center gap-2 ${
+                            location.pathname === "/favorites" ? "text-warm-gold" : "text-dark-base"
+                          }`}
+                        >
+                          <Heart className="h-5 w-5" />
+                          Favorites
+                        </Link>
+                        
+                        <Link
                           to="/dashboard"
                           className={`text-lg font-medium hover:text-warm-gold transition-colors flex items-center gap-2 ${
                             location.pathname === "/dashboard" ? "text-warm-gold" : "text-dark-base"
                           }`}
                         >
-                          <Heart className="h-5 w-5" />
-                          Favorites
+                          <Settings className="h-5 w-5" />
+                          Dashboard
                         </Link>
                         
                         {isAdmin && (
@@ -196,6 +215,12 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/dashboard" className="cursor-pointer flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/favorites" className="cursor-pointer flex items-center gap-2">
                     <Heart className="h-4 w-4" />
                     Favorites
                   </Link>

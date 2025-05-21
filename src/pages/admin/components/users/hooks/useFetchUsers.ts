@@ -1,78 +1,57 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
 import { UserProfile } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 export function useFetchUsers() {
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [users, setUsers] = useState<(UserProfile & { subscription?: { plan_name: string } | null })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { session } = useAuth();
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      if (!session || !session.access_token) {
-        console.error("No valid session found for admin operation");
-        toast({
-          title: "Authentication error",
-          description: "Please log in again to access admin functions",
-          variant: "destructive",
-        });
-        setLoading(false);
-        setError("Authentication required - Please log in again");
-        return;
-      }
-      
-      console.log("Fetching users with session token");
-      
-      const { data: users, error: functionError } = await supabase.functions.invoke(
+      // Fetch users through the edge function
+      const { data: usersFunctionData, error: usersError } = await supabase.functions.invoke(
         "get-all-users",
         {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: { action: "list" },
+          body: { action: "getAll" }
         }
       );
-      
-      if (functionError) {
-        console.error("Error fetching users:", functionError);
-        throw new Error(functionError.message || "Failed to fetch users");
-      }
-      
-      if (!Array.isArray(users)) {
-        if (users && users.error) {
-          throw new Error(users.error + (users.details ? `: ${users.details}` : ''));
-        }
-        throw new Error("Invalid response format from server");
-      }
-      
-      console.log("Received users data:", users);
-      setUsers(users);
-    } catch (error: any) {
-      console.error("Error in fetchUsers:", error);
-      const errorMessage = error.message || "An unknown error occurred";
-      setError(errorMessage);
-      toast({
-        title: "Error fetching users",
-        description: errorMessage,
-        variant: "destructive",
+
+      if (usersError) throw usersError;
+
+      // Enhancement: Get user subscriptions
+      const { data: subscriptions, error: subscriptionsError } = await supabase
+        .from('user_subscriptions')
+        .select('user_id, plan_id(id, name)')
+        .eq('status', 'active');
+
+      if (subscriptionsError) throw subscriptionsError;
+
+      // Map subscriptions to users
+      const usersWithSubscriptions = usersFunctionData.users.map((user: UserProfile) => {
+        const subscription = subscriptions?.find((sub: any) => sub.user_id === user.id);
+        return {
+          ...user,
+          subscription: subscription ? { plan_name: subscription.plan_id?.name } : null
+        };
       });
+
+      setUsers(usersWithSubscriptions || []);
+    } catch (error: any) {
+      console.error("Error fetching users:", error);
+      setError(error.message || "Failed to fetch users");
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, []);
 
   useEffect(() => {
-    if (session) {
-      fetchUsers();
-    }
-  }, [fetchUsers, session]);
+    fetchUsers();
+  }, [fetchUsers]);
 
   return { users, loading, error, fetchUsers };
 }

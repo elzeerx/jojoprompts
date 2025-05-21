@@ -20,6 +20,8 @@ import FavoritesPage from "./pages/FavoritesPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
+import PricingPage from "./pages/PricingPage";
+import UserDashboardPage from "./pages/UserDashboardPage";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +37,7 @@ const App = () => {
               {/* Public routes */}
               <Route path="/" element={<HomePage />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
@@ -74,7 +77,7 @@ const App = () => {
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <SubscriptionDashboard />
+                    <UserDashboardPage />
                   </ProtectedRoute>
                 }
               />
