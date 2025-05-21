@@ -9,7 +9,7 @@ export function HeroSection() {
     <section 
       className="pt-20 pb-16 md:pt-24 md:pb-20 relative overflow-hidden bg-cover bg-center"
       style={{
-        backgroundImage: "url('/lovable-uploads/eea1bdcd-7738-4e5f-810a-15c96fe07b94.png')",
+        backgroundImage: "url('/lovable-uploads/aa68f984-e890-4e40-938e-913cd0114679.png')",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
