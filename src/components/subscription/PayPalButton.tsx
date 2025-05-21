@@ -1,8 +1,7 @@
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 
 declare global {
   interface Window {
@@ -15,79 +14,23 @@ interface PayPalButtonProps {
   planName: string;
   onSuccess: (paymentId: string, details: any) => void;
   onError: (error: any) => void;
-  testMode?: boolean;
 }
 
-export function PayPalButton({ amount, planName, onSuccess, onError, testMode = false }: PayPalButtonProps) {
+export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalButtonProps) {
   const paypalRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
-  const [scriptError, setScriptError] = useState<string | null>(null);
-  const [isPreviewEnvironment, setIsPreviewEnvironment] = useState(false);
-
-  // Check if we're in a preview/iframe environment
-  useEffect(() => {
-    const isInIframe = window !== window.parent;
-    const isLocalhost = window.location.hostname === 'localhost';
-    const isLovablePreview = window.location.hostname.includes('lovable.app');
-    
-    const isPreview = isInIframe || isLocalhost || isLovablePreview;
-    console.log("Environment detection:", { isInIframe, isLocalhost, isLovablePreview, isPreview });
-    setIsPreviewEnvironment(isPreview);
-  }, []);
-
-  // Handle test mode simulation
-  const handleTestPayment = () => {
-    console.log("Test payment initiated", { amount, planName });
-    setIsLoading(true);
-    
-    const mockPaymentId = `TEST-${Date.now()}`;
-    const mockDetails = {
-      id: mockPaymentId,
-      status: "COMPLETED",
-      purchase_units: [{ amount: { value: amount } }],
-      payer: { email_address: "test@example.com" },
-      create_time: new Date().toISOString(),
-    };
-    
-    setTimeout(() => {
-      console.log("Test payment completed", mockDetails);
-      setIsLoading(false);
-      onSuccess(mockPaymentId, mockDetails);
-    }, 1500);
-  };
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isScriptLoaded, setIsScriptLoaded] = React.useState(false);
 
   // Load PayPal script
   useEffect(() => {
-    if (testMode || isPreviewEnvironment) {
-      console.log("Skipping PayPal script load in test mode or preview environment");
-      setIsLoading(false);
-      return;
-    }
-
-    const scriptId = "paypal-sdk-js";
-    let existingScript = document.getElementById(scriptId) as HTMLScriptElement;
-    
-    if (existingScript) {
-      console.log("PayPal script already loaded");
-      setIsScriptLoaded(true);
-      return;
-    }
-
-    console.log("Loading PayPal SDK script");
     const script = document.createElement("script");
-    script.id = scriptId;
-    script.src = `https://www.paypal.com/sdk/js?client-id=ASWIAiw0-UM6BaTa1QRptIh0cIip9C2L-r4URQb7CZZy8GZ-t8h-d6naylfIlAPnnfyoYeRBgMSxLj9F&currency=USD&intent=capture`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=ASWIAiw0-UM6BaTa1QRptIh0cIip9C2L-r4URQb7CZZy8GZ-t8h-d6naylfIlAPnnfyoYeRBgMSxLj9F&currency=USD`;
     script.async = true;
-    
     script.onload = () => {
-      console.log("PayPal SDK script loaded successfully");
       setIsScriptLoaded(true);
     };
-    
-    script.onerror = (error) => {
-      console.error("PayPal script failed to load", error);
-      setScriptError("Failed to load PayPal script. Please try again or use another payment method.");
+    script.onerror = () => {
+      console.error("PayPal script failed to load");
       setIsLoading(false);
       onError(new Error("Failed to load PayPal script"));
     };
@@ -95,41 +38,19 @@ export function PayPalButton({ amount, planName, onSuccess, onError, testMode = 
     document.body.appendChild(script);
     
     return () => {
-      // Only remove script if we added it
-      if (document.getElementById(scriptId) === script) {
-        document.body.removeChild(script);
-      }
+      document.body.removeChild(script);
     };
-  }, [testMode, isPreviewEnvironment]);
+  }, []);
   
   // Initialize PayPal button once script is loaded
   useEffect(() => {
-    if (testMode || isPreviewEnvironment) return;
-    
     if (isScriptLoaded && paypalRef.current) {
-      setIsLoading(true);
+      setIsLoading(false);
       
-      console.log("Initializing PayPal buttons");
       try {
-        if (!window.paypal || !window.paypal.Buttons) {
-          console.error("PayPal SDK loaded but Buttons API not available");
-          setScriptError("PayPal payment is not available in this environment. Please use Test Mode instead.");
-          setIsLoading(false);
-          return;
-        }
-        
         window.paypal
           .Buttons({
-            fundingSource: window.paypal.FUNDING.PAYPAL,
-            style: {
-              layout: 'horizontal',
-              color: 'gold',
-              shape: 'rect',
-              label: 'pay',
-              height: 40
-            },
             createOrder: (data: any, actions: any) => {
-              console.log("Creating PayPal order", { amount, planName });
               return actions.order.create({
                 purchase_units: [
                   {
@@ -143,78 +64,28 @@ export function PayPalButton({ amount, planName, onSuccess, onError, testMode = 
               });
             },
             onApprove: async (data: any, actions: any) => {
-              console.log("PayPal order approved", data);
-              try {
-                const order = await actions.order.capture();
-                console.log("PayPal order captured", order);
-                onSuccess(order.id, order);
-              } catch (captureError) {
-                console.error("Error capturing PayPal order", captureError);
-                onError(captureError);
-              }
+              const order = await actions.order.capture();
+              onSuccess(order.id, order);
             },
             onError: (err: any) => {
-              console.error("PayPal error", err);
+              console.error(err);
               onError(err);
-              toast({
-                title: "Payment Error",
-                description: "There was an error processing your PayPal payment. Please try again.",
-                variant: "destructive"
-              });
             },
-            onCancel: () => {
-              console.log("PayPal payment cancelled by user");
-              toast({
-                title: "Payment Cancelled",
-                description: "You've cancelled the PayPal payment process.",
-                variant: "default"
-              });
+            style: {
+              layout: 'horizontal',
+              color: 'gold',
+              shape: 'rect',
+              label: 'pay',
+              height: 40
             }
           })
-          .render(paypalRef.current)
-          .then(() => {
-            console.log("PayPal buttons rendered successfully");
-            setIsLoading(false);
-          })
-          .catch((renderError: any) => {
-            console.error("Failed to render PayPal buttons", renderError);
-            setScriptError("Failed to initialize PayPal. Please use Test Mode instead.");
-            setIsLoading(false);
-            onError(renderError);
-          });
+          .render(paypalRef.current);
       } catch (error) {
-        console.error("Error initializing PayPal", error);
-        setScriptError("Failed to initialize PayPal. Please enable Test Mode to continue.");
-        setIsLoading(false);
+        console.error("Failed to render PayPal button", error);
         onError(error);
       }
     }
-  }, [isScriptLoaded, amount, onSuccess, onError, planName, testMode, isPreviewEnvironment]);
-
-  // Show test mode button or error when in preview environment
-  if (testMode || isPreviewEnvironment) {
-    return (
-      <div className="w-full">
-        <Button 
-          className="w-full bg-amber-500 hover:bg-amber-600 text-white" 
-          onClick={handleTestPayment}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processing Test Payment...
-            </>
-          ) : (
-            `Test PayPal Payment ($${amount.toFixed(2)})`
-          )}
-        </Button>
-        <div className="text-center text-sm text-gray-500 mt-2">
-          <p>{testMode ? "Test mode enabled." : "Preview environment detected."} No actual payment will be processed.</p>
-        </div>
-      </div>
-    );
-  }
+  }, [isScriptLoaded, amount, onSuccess, onError, planName]);
 
   return (
     <div className="w-full">
@@ -224,20 +95,10 @@ export function PayPalButton({ amount, planName, onSuccess, onError, testMode = 
           Loading PayPal...
         </Button>
       )}
-      
-      {scriptError && (
-        <div className="text-center text-sm text-red-500 mb-2">
-          {scriptError}
-        </div>
-      )}
-      
-      <div ref={paypalRef} className={isLoading ? "hidden" : ""}></div>
-      
-      {!scriptError && (
-        <div className="text-center text-sm text-gray-500 mt-2">
-          <p>For testing, use email: sb-47g8u34123282@personal.example.com and password: 12345678</p>
-        </div>
-      )}
+      <div ref={paypalRef}></div>
+      <div className="text-center text-sm text-gray-500 mt-2">
+        <p>For testing, use email: sb-47g8u34123282@personal.example.com and password: 12345678</p>
+      </div>
     </div>
   );
 }

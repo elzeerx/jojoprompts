@@ -451,7 +451,7 @@ export default function UserDashboardPage() {
                     />
                   </div>
                   
-                  <Alert variant="default" className="mb-6 bg-slate-50">
+                  <Alert variant="outline" className="bg-blue-50 border-blue-200">
                     <AlertTitle>Verification Required</AlertTitle>
                     <AlertDescription>
                       You'll need to verify your new email address by clicking on the link sent to it.
