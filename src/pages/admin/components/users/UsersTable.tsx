@@ -25,7 +25,7 @@ interface UsersTableProps {
   onPageChange: (page: number) => void;
   updatingUserId: string | null;
   onUpdateUser: (userId: string, data: Partial<UserProfile>) => void;
-  onAssignPlan: (userId: string, planId: string) => void;
+  onAssignPlan: (userId: string, planId: string) => void; // Updated to accept planId parameter
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string) => void;
 }
@@ -66,7 +66,7 @@ export function UsersTable({
               user={user}
               isUpdating={updatingUserId === user.id}
               onUpdateUser={onUpdateUser}
-              onAssignPlan={onAssignPlan}
+              onAssignPlan={onAssignPlan} // This will pass the function that expects two parameters
               onSendResetEmail={onSendResetEmail}
               onDeleteUser={onDeleteUser}
             />

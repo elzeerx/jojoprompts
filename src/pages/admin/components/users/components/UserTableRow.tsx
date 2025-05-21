@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { MoreVertical, Edit, Trash2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,7 @@ interface UserTableRowProps {
   user: User;
   onDelete: (userId: string) => Promise<void>;
   onEdit: (userId: string, data: { email?: string; role?: string | null }) => Promise<void>;
-  onAssignPlan: (userId: string) => void;
+  onAssignPlan: (userId: string, planId: string) => void;
 }
 
 export function UserTableRow({ 
@@ -76,7 +77,7 @@ export function UserTableRow({
             <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
               <Edit className="mr-2 h-4 w-4" /> Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onAssignPlan(user.id)}>
+            <DropdownMenuItem onClick={() => setAssignPlanDialogOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" /> Assign Plan
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -119,6 +120,10 @@ export function UserTableRow({
         open={assignPlanDialogOpen}
         onOpenChange={setAssignPlanDialogOpen}
         userId={user.id}
+        onAssign={(planId: string) => {
+          onAssignPlan(user.id, planId);
+          setAssignPlanDialogOpen(false);
+        }}
       />
     </tr>
   );

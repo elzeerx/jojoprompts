@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PlanCard } from "@/components/subscription/PlanCard";
 import { PayPalButton } from "@/components/subscription/PayPalButton";
 import { TapPaymentButton } from "@/components/subscription/TapPaymentButton";
+import { TestModeToggle } from "@/components/subscription/TestModeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
@@ -40,8 +41,9 @@ export default function CheckoutPage() {
     planId: string;
     paymentMethod: string;
   } | null>(null);
+  const [testMode, setTestMode] = useState(false);
   
-  React.useEffect(() => {
+  useEffect(() => {
     // Check for pending purchase info in session storage (for users who need to register)
     const storedPurchaseInfo = sessionStorage.getItem('pendingPurchase');
     if (storedPurchaseInfo) {
@@ -59,12 +61,18 @@ export default function CheckoutPage() {
     // Fetch subscription plans
     const fetchPlans = async () => {
       try {
+        console.log("Fetching subscription plans...");
         const { data, error } = await supabase
           .from('subscription_plans')
           .select('*')
           .order('price_usd', { ascending: true });
         
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching plans:", error);
+          throw error;
+        }
+        
+        console.log("Received plans data:", data);
         
         // Convert JSON strings to arrays before setting state
         const parsedPlans = data?.map(plan => ({
@@ -81,11 +89,13 @@ export default function CheckoutPage() {
                 : [])
         })) || [];
         
+        console.log("Parsed plans:", parsedPlans);
         setPlans(parsedPlans as SubscriptionPlan[]);
         
         // Select first plan by default
         if (parsedPlans.length > 0 && !selectedPlan) {
           const mostPopularPlan = parsedPlans.find(p => p.name === "Premium") || parsedPlans[0];
+          console.log("Selected default plan:", mostPopularPlan);
           setSelectedPlan(mostPopularPlan as SubscriptionPlan);
         }
       } catch (error) {
@@ -101,7 +111,7 @@ export default function CheckoutPage() {
     };
     
     fetchPlans();
-  }, [authLoading, user, navigate]);
+  }, [authLoading, user, navigate, selectedPlan]);
   
   const completePendingPurchase = async (purchaseInfo: any) => {
     setProcessingPayment(true);
@@ -112,6 +122,7 @@ export default function CheckoutPage() {
       }
       
       const { paymentId, planId, paymentMethod } = purchaseInfo;
+      console.log("Completing pending purchase:", { paymentId, planId, paymentMethod });
       
       // Get plan details
       const { data: planData, error: planError } = await supabase
@@ -181,15 +192,30 @@ export default function CheckoutPage() {
   };
   
   const handleSelectPlan = (plan: SubscriptionPlan) => {
+    console.log("Selected plan:", plan);
     setSelectedPlan(plan);
   };
   
   const handlePaymentSuccess = async (paymentId: string, details: any) => {
+    console.log("Payment success callback", { paymentId, details });
     setProcessingPayment(true);
     
     try {
       if (!selectedPlan) {
         throw new Error("No plan selected");
+      }
+      
+      // For test mode, skip database operations if needed
+      if (testMode) {
+        console.log("Test mode active - simulating database operations");
+        toast({
+          title: "Test Payment Successful!",
+          description: "This was a test payment. No subscription was actually created.",
+        });
+        
+        // Redirect to success page
+        setTimeout(() => navigate('/payment-success'), 1000);
+        return;
       }
       
       // If the user is not logged in, store purchase info and redirect to signup
@@ -201,6 +227,8 @@ export default function CheckoutPage() {
           paymentMethod,
           // Do not store sensitive payment details!
         };
+        
+        console.log("User not logged in, storing purchase info for later", purchaseInfo);
         
         // Store in session storage (will be cleared on tab close)
         sessionStorage.setItem('pendingPurchase', JSON.stringify(purchaseInfo));
@@ -216,6 +244,7 @@ export default function CheckoutPage() {
       }
       
       // If user is logged in, proceed with subscription creation
+      console.log("Creating subscription for logged-in user", user.id);
       
       // Calculate end date for non-lifetime plans
       let endDate = null;
@@ -282,6 +311,11 @@ export default function CheckoutPage() {
       variant: "destructive",
     });
   };
+
+  const toggleTestMode = (enabled: boolean) => {
+    console.log("Test mode toggled:", enabled);
+    setTestMode(enabled);
+  };
   
   if (loading) {
     return (
@@ -294,6 +328,18 @@ export default function CheckoutPage() {
   return (
     <div className="container max-w-6xl mx-auto py-12 px-4">
       <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">Choose Your Plan</h1>
+      
+      {/* Developer Tools */}
+      <div className="mb-8">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Developer Options</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TestModeToggle enabled={testMode} onToggle={toggleTestMode} />
+          </CardContent>
+        </Card>
+      </div>
       
       {/* Step 1: Select Subscription Plan */}
       <div className="mb-12">
@@ -316,7 +362,10 @@ export default function CheckoutPage() {
           <h2 className="text-xl font-semibold mb-6">Step 2: Select Payment Method</h2>
           <Card>
             <CardContent className="pt-6">
-              <RadioGroup defaultValue="paypal" onValueChange={(value) => setPaymentMethod(value as 'paypal' | 'tap')}>
+              <RadioGroup 
+                value={paymentMethod} 
+                onValueChange={(value) => setPaymentMethod(value as 'paypal' | 'tap')}
+              >
                 <div className="flex flex-col space-y-4">
                   <div className="flex items-center space-x-2 border p-4 rounded-md">
                     <RadioGroupItem value="paypal" id="paypal" />
@@ -352,6 +401,11 @@ export default function CheckoutPage() {
           <Card>
             <CardHeader>
               <CardTitle>Order Summary</CardTitle>
+              {testMode && (
+                <p className="text-sm text-yellow-600 mt-1">
+                  Test Mode Active - No actual payment will be processed
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -392,6 +446,7 @@ export default function CheckoutPage() {
                       onSuccess={handlePaymentSuccess}
                       onError={handlePaymentError}
                       planName={selectedPlan.name}
+                      testMode={testMode}
                     />
                   ) : (
                     <TapPaymentButton
@@ -400,6 +455,7 @@ export default function CheckoutPage() {
                       onSuccess={handlePaymentSuccess}
                       onError={handlePaymentError}
                       planName={selectedPlan.name}
+                      testMode={testMode}
                     />
                   )
                 )}
