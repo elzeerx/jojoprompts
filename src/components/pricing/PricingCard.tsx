@@ -68,7 +68,8 @@ export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
               : 'bg-dark-base hover:bg-dark-base/90'
           }`}
         >
-          <Link to={isLoggedIn ? "/checkout" : "/login?redirect=checkout"}>
+          {/* Direct to checkout page regardless of login status */}
+          <Link to="/checkout">
             {plan.ctaText}
           </Link>
         </Button>

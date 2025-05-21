@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Check, X } from 'lucide-react';
 
 export default function UserDashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -292,10 +292,11 @@ export default function UserDashboardPage() {
                     </div>
                     
                     <div className="pt-6">
-                      <Button
-                        onClick={() => navigate('/pricing')}
-                        className="flex items-center gap-2"
-                        variant="outline"
+                      <Button 
+                        variant="default" // Changed from "outline" to "default"
+                        onClick={() => {
+                          navigate('/pricing');
+                        }}
                       >
                         Upgrade Plan <ArrowUpRight className="h-4 w-4" />
                       </Button>
