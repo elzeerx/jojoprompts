@@ -1,261 +1,358 @@
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "react-router-dom";
-import { LogOut, User, ShieldCheck, Heart, Menu, X, CreditCard, Settings } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "../ui/avatar";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { ChevronDown, LogOut, Menu, User, Settings, Star, Lock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-export function Header() {
-  const {
-    userRole,
-    user,
-    signOut
-  } = useAuth();
-  
+export const Header = () => {
+  const navigate = useNavigate();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const isLoggedIn = !!user?.email;
-  const isAdmin = userRole === "admin";
+  const { user, isAdmin, loading, signOut } = useAuth();
+  const { toast } = useToast();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userSubscription, setUserSubscription] = useState<any>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
-  // Get initials from email for avatar
-  const getInitials = (email: string) => {
-    if (!email) return "U";
-    return email.charAt(0).toUpperCase();
+  // Fetch user subscription data
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (!user) {
+        setUserSubscription(null);
+        setSubscriptionLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("user_subscriptions")
+          .select("*, subscription_plans:plan_id(name)")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .single();
+
+        if (error && error.code !== "PGRST116") {
+          console.error("Error fetching subscription:", error);
+        }
+
+        setUserSubscription(data);
+      } catch (err) {
+        console.error("Error in subscription fetch:", err);
+      } finally {
+        setSubscriptionLoading(false);
+      }
+    };
+
+    fetchSubscription();
+  }, [user]);
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user) return "";
+    
+    const firstName = user.user_metadata?.first_name || "";
+    const lastName = user.user_metadata?.last_name || "";
+    
+    const firstInitial = firstName ? firstName[0] : "";
+    const lastInitial = lastName ? lastName[0] : "";
+    
+    return (firstInitial + lastInitial).toUpperCase();
+  };
+  
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+    } catch (error) {
+      console.error("Error logging out:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+      });
+    }
   };
 
-  // Define navigation items based on login status
-  const navigation = [
-    { name: "Home", href: "/" },
-    { name: "Prompts", href: "/prompts" },
-    { name: "Pricing", href: "/pricing" },
-  ];
-  
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
+
   return (
-    <header className="bg-white border-b border-warm-gold/10 w-full py-4">
-      <div className="container flex items-center justify-between">
-        <div className="flex items-center gap-8">
+    <header className="border-b bg-white">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            <img alt="JojoPrompts logo" className="h-8 w-auto" src="/lovable-uploads/501cb37c-003d-41ce-a8c4-4ad410a18846.png" />
+            <span className="text-xl font-bold">JojoPrompts</span>
           </Link>
-          
-          {/* Desktop navigation */}
-          <nav className="hidden lg:flex gap-8">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`text-base font-medium hover:text-warm-gold transition-colors ${
-                  location.pathname === item.href ? "text-warm-gold" : "text-dark-base"
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-6">
+            <Link
+              to="/prompts"
+              className={`text-sm font-medium transition-colors ${
+                isActive("/prompts")
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              All Prompts
+            </Link>
             
-            {isLoggedIn && (
-              <>
-                <Link 
-                  to="/favorites" 
-                  className={`text-base font-medium hover:text-warm-gold transition-colors flex items-center gap-1.5 ${
-                    location.pathname === "/favorites" ? "text-warm-gold" : "text-dark-base"
-                  }`}
-                >
-                  <Heart className="h-4 w-4" />
-                  Favorites
-                </Link>
-                
-                <Link 
-                  to="/dashboard" 
-                  className={`text-base font-medium hover:text-warm-gold transition-colors flex items-center gap-1.5 ${
-                    location.pathname === "/dashboard" ? "text-warm-gold" : "text-dark-base"
-                  }`}
-                >
-                  <Settings className="h-4 w-4" />
-                  Dashboard
-                </Link>
-                
-                {isAdmin && (
-                  <Link 
-                    to="/admin" 
-                    className={`text-base font-medium hover:text-warm-gold transition-colors flex items-center gap-1.5 ${
-                      location.pathname.startsWith("/admin") ? "text-warm-gold" : "text-dark-base"
-                    }`}
-                  >
-                    <ShieldCheck className="h-4 w-4" />
-                    Admin
-                  </Link>
-                )}
-              </>
-            )}
+            {/* Categorized prompt pages */}
+            <Link
+              to="/prompts/chatgpt"
+              className={`text-sm font-medium transition-colors ${
+                isActive("/prompts/chatgpt")
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              ChatGPT
+            </Link>
+            
+            <Link
+              to="/prompts/midjourney"
+              className={`text-sm font-medium transition-colors ${
+                isActive("/prompts/midjourney")
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              Midjourney
+            </Link>
+            
+            <Link
+              to="/prompts/workflows"
+              className={`text-sm font-medium transition-colors ${
+                isActive("/prompts/workflows")
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              n8n Workflows
+            </Link>
+            
+            <Link
+              to="/pricing"
+              className={`text-sm font-medium transition-colors ${
+                isActive("/pricing")
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              Pricing
+            </Link>
+            
+            <Link
+              to="/about"
+              className={`text-sm font-medium transition-colors ${
+                isActive("/about")
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              About
+            </Link>
           </nav>
         </div>
-        
-        {/* Mobile menu button */}
-        <div className="flex lg:hidden">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Open menu</span>
+
+        {/* Right side */}
+        <div className="flex items-center gap-4">
+          {/* Mobile Menu Trigger */}
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="outline" size="icon">
+                <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[80%] sm:w-[350px] border-l border-warm-gold/10">
-              <div className="flex flex-col h-full">
-                <div className="px-4 py-6 border-b border-warm-gold/10">
-                  <div className="flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-2">
-                      <img alt="JojoPrompts logo" className="h-6 w-auto" src="/lovable-uploads/501cb37c-003d-41ce-a8c4-4ad410a18846.png" />
-                      <span className="font-bold text-xl text-dark-base">JojoPrompts</span>
+            <SheetContent side="left">
+              <SheetHeader>
+                <SheetTitle>JojoPrompts</SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col gap-4 mt-6">
+                <Link
+                  to="/prompts"
+                  className="text-base"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  All Prompts
+                </Link>
+                <Link
+                  to="/prompts/chatgpt"
+                  className="text-base"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  ChatGPT
+                </Link>
+                <Link
+                  to="/prompts/midjourney"
+                  className="text-base"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Midjourney
+                </Link>
+                <Link
+                  to="/prompts/workflows"
+                  className="text-base"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  n8n Workflows
+                </Link>
+                <Link
+                  to="/pricing"
+                  className="text-base"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Pricing
+                </Link>
+                <Link
+                  to="/about"
+                  className="text-base"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  About
+                </Link>
+
+                <div className="h-px bg-border my-2" />
+                
+                {!loading && !user ? (
+                  <>
+                    <Link
+                      to="/login"
+                      className="text-base"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Login
                     </Link>
-                  </div>
-                </div>
-                <nav className="flex-1 px-4 py-8">
-                  <div className="flex flex-col space-y-6">
-                    {navigation.map((item) => (
+                    <Link
+                      to="/signup"
+                      className="text-base"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Sign Up
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/favorites"
+                      className="text-base"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Favorites
+                    </Link>
+                    <Link
+                      to="/dashboard"
+                      className="text-base"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    {isAdmin && (
                       <Link
-                        key={item.name}
-                        to={item.href}
-                        className={`text-lg font-medium hover:text-warm-gold transition-colors ${
-                          location.pathname === item.href ? "text-warm-gold" : "text-dark-base"
-                        }`}
+                        to="/admin"
+                        className="text-base"
+                        onClick={() => setIsMobileMenuOpen(false)}
                       >
-                        {item.name}
+                        Admin Dashboard
                       </Link>
-                    ))}
-                    
-                    {isLoggedIn && (
-                      <>
-                        <Link
-                          to="/favorites"
-                          className={`text-lg font-medium hover:text-warm-gold transition-colors flex items-center gap-2 ${
-                            location.pathname === "/favorites" ? "text-warm-gold" : "text-dark-base"
-                          }`}
-                        >
-                          <Heart className="h-5 w-5" />
-                          Favorites
-                        </Link>
-                        
-                        <Link
-                          to="/dashboard"
-                          className={`text-lg font-medium hover:text-warm-gold transition-colors flex items-center gap-2 ${
-                            location.pathname === "/dashboard" ? "text-warm-gold" : "text-dark-base"
-                          }`}
-                        >
-                          <Settings className="h-5 w-5" />
-                          Dashboard
-                        </Link>
-                        
-                        {isAdmin && (
-                          <Link
-                            to="/admin"
-                            className={`text-lg font-medium hover:text-warm-gold transition-colors flex items-center gap-2 ${
-                              location.pathname.startsWith("/admin") ? "text-warm-gold" : "text-dark-base"
-                            }`}
-                          >
-                            <ShieldCheck className="h-5 w-5" />
-                            Admin
-                          </Link>
-                        )}
-                        
-                        <Button 
-                          onClick={signOut} 
-                          variant="destructive" 
-                          className="justify-start mt-4"
-                        >
-                          <LogOut className="mr-2 h-4 w-4" />
-                          Log out
-                        </Button>
-                      </>
                     )}
-                    
-                    {!isLoggedIn && (
-                      <div className="pt-4">
-                        <Link to="/login">
-                          <Button className="w-full bg-warm-gold hover:bg-warm-gold/90">
-                            Sign In
-                          </Button>
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                </nav>
-              </div>
+                    <button
+                      className="text-base text-left text-red-500"
+                      onClick={() => {
+                        handleLogout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </>
+                )}
+              </nav>
             </SheetContent>
           </Sheet>
-        </div>
-        
-        {/* Desktop auth buttons */}
-        <div className="hidden lg:flex items-center gap-4">
-          {isLoggedIn ? (
+
+          {/* User auth state */}
+          {!loading && !user && (
+            <div className="hidden md:flex items-center gap-4">
+              <Button variant="ghost" onClick={() => navigate("/login")}>
+                Login
+              </Button>
+              <Button onClick={() => navigate("/pricing")}>
+                Get Started
+              </Button>
+            </div>
+          )}
+
+          {/* User dropdown menu */}
+          {!loading && user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="border-warm-gold/20 hover:border-warm-gold/40 hover:bg-warm-gold/5">
-                  <Avatar className="h-8 w-8 mr-2">
-                    <AvatarFallback className="bg-warm-gold text-white">
-                      {getInitials(user.email || "")}
-                    </AvatarFallback>
+                <Button variant="ghost" className="gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
                   </Avatar>
-                  <span className="font-medium">{user.email}</span>
+                  <span className="hidden md:inline-block">
+                    {user.user_metadata?.first_name || user.email}
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <div className="p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    {user.email && <p className="font-medium">{user.email}</p>}
-                    {userRole && (
-                      <p className="text-sm text-muted-foreground">
-                        {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-                      </p>
-                    )}
-                  </div>
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium">{user.email}</p>
+                  {!subscriptionLoading && userSubscription && (
+                    <p className="text-xs text-muted-foreground">
+                      {userSubscription.subscription_plans.name} Plan
+                    </p>
+                  )}
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard" className="cursor-pointer flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    Dashboard
-                  </Link>
+                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Dashboard</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/favorites" className="cursor-pointer flex items-center gap-2">
-                    <Heart className="h-4 w-4" />
-                    Favorites
-                  </Link>
+                <DropdownMenuItem onClick={() => navigate("/favorites")}>
+                  <Star className="mr-2 h-4 w-4" />
+                  <span>Favorites</span>
                 </DropdownMenuItem>
                 {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin" className="cursor-pointer flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4" />
-                      Admin Panel
-                    </Link>
+                  <DropdownMenuItem onClick={() => navigate("/admin")}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Admin Dashboard</span>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="cursor-pointer text-destructive"
-                  onClick={signOut}
-                >
+                <DropdownMenuItem onClick={handleLogout} className="text-red-500">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <Button asChild variant="outline" className="font-medium border-warm-gold/20 hover:bg-warm-gold/5 hover:border-warm-gold/40 text-dark-base">
-              <Link to="/login">Sign In</Link>
-            </Button>
-          )}
-          
-          {!isLoggedIn && (
-            <Button asChild className="bg-warm-gold hover:bg-warm-gold/90 text-white font-medium">
-              <Link to="/signup">Sign Up</Link>
-            </Button>
           )}
         </div>
       </div>
     </header>
   );
-}
+};

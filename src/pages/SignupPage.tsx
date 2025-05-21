@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,8 +23,12 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const fromCheckout = new URLSearchParams(location.search).get('fromCheckout') === 'true';
+  
+  // Check for plan parameter or fromCheckout
+  const selectedPlan = searchParams.get('plan');
+  const fromCheckout = searchParams.get('fromCheckout') === 'true';
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -40,7 +45,7 @@ export default function SignupPage() {
 
     try {
       // Step 1: Sign up the user
-      const { error: signupError } = await supabase.auth.signUp({
+      const { data: signupData, error: signupError } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
@@ -78,15 +83,15 @@ export default function SignupPage() {
         // Successful signup and signin
         toast({
           title: "Welcome!",
-          description: fromCheckout 
-            ? "Your account has been created and linked to your purchase." 
+          description: (fromCheckout || selectedPlan) 
+            ? "Your account has been created. Please complete your subscription." 
             : "Your account has been created and you're now logged in.",
         });
         
-        // If coming from checkout, we'll be redirected to payment-success
-        // Otherwise, go to prompts page
-        if (fromCheckout) {
-          // The automatic redirect will happen via the checkout page's pending purchase logic
+        // If coming from plan selection or checkout, redirect to checkout
+        if (selectedPlan) {
+          navigate(`/checkout?plan=${selectedPlan}`);
+        } else if (fromCheckout) {
           navigate("/checkout");
         } else {
           navigate("/prompts");
@@ -110,15 +115,23 @@ export default function SignupPage() {
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-2">
             <div className="rounded-full bg-primary/10 p-2 text-primary">
-              {fromCheckout ? <ShoppingBag className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+              {(fromCheckout || selectedPlan) ? <ShoppingBag className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-center">Sign Up</CardTitle>
           <CardDescription className="text-center">
-            {fromCheckout 
-              ? "Create an account to complete your purchase" 
+            {(fromCheckout || selectedPlan)
+              ? "Create an account to complete your subscription" 
               : "Create an account to browse and save prompts"}
           </CardDescription>
+          
+          {selectedPlan && (
+            <div className="bg-green-50 border border-green-100 rounded-md p-3 mt-2">
+              <p className="text-sm text-green-800 text-center">
+                You're one step away from accessing premium prompts! Create your account to continue.
+              </p>
+            </div>
+          )}
           
           {fromCheckout && (
             <div className="bg-green-50 border border-green-100 rounded-md p-3 mt-2">
@@ -195,7 +208,14 @@ export default function SignupPage() {
               </Button>
               <p className="text-sm text-muted-foreground text-center">
                 Already have an account?{" "}
-                <Button variant="link" className="p-0" onClick={() => navigate("/login")}>
+                <Button 
+                  variant="link" 
+                  className="p-0" 
+                  onClick={() => {
+                    const params = selectedPlan ? `?plan=${selectedPlan}` : "";
+                    navigate(`/login${params}`);
+                  }}
+                >
                   Sign in
                 </Button>
               </p>

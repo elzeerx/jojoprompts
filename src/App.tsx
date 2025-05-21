@@ -7,7 +7,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { RootLayout } from "./components/layout/root-layout";
 import { AuthProvider } from "./contexts/AuthContext";
 import HomePage from "./pages/HomePage";
-import PromptsPage from "./pages/PromptsPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -22,6 +21,12 @@ import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
 import PricingPage from "./pages/PricingPage";
 import UserDashboardPage from "./pages/UserDashboardPage";
+
+// Import prompt pages
+import PromptsPage from "./pages/prompts/PromptsPage";
+import ChatGPTPromptsPage from "./pages/prompts/ChatGPTPromptsPage";
+import MidjourneyPromptsPage from "./pages/prompts/MidjourneyPromptsPage";
+import WorkflowPromptsPage from "./pages/prompts/WorkflowPromptsPage";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +54,9 @@ const App = () => {
                 element={<Navigate to="/login?tab=reset" replace />} 
               />
 
+              {/* Checkout page - public but manages authentication flow */}
+              <Route path="/checkout" element={<CheckoutPage />} />
+
               {/* Protected routes */}
               <Route
                 path="/prompts"
@@ -58,10 +66,33 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-
+              
+              {/* Category-specific prompt pages */}
               <Route
-                path="/checkout"
-                element={<CheckoutPage />}
+                path="/prompts/chatgpt"
+                element={
+                  <ProtectedRoute>
+                    <ChatGPTPromptsPage />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/prompts/midjourney"
+                element={
+                  <ProtectedRoute>
+                    <MidjourneyPromptsPage />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/prompts/workflows"
+                element={
+                  <ProtectedRoute>
+                    <WorkflowPromptsPage />
+                  </ProtectedRoute>
+                }
               />
 
               <Route

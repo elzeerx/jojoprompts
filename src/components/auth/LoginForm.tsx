@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +22,12 @@ import { LoginFormValues, loginSchema } from "./validation";
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  
+  // Check for redirect and plan parameters
+  const redirectTo = searchParams.get('redirect');
+  const selectedPlan = searchParams.get('plan');
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -52,7 +57,15 @@ export function LoginForm() {
           title: "Success!",
           description: "You have been logged in.",
         });
-        navigate("/prompts");
+        
+        // Handle redirection based on parameters
+        if (selectedPlan) {
+          navigate(`/checkout?plan=${selectedPlan}`);
+        } else if (redirectTo) {
+          navigate(`/${redirectTo}`);
+        } else {
+          navigate("/prompts");
+        }
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -111,6 +124,17 @@ export function LoginForm() {
             "Sign In"
           )}
         </Button>
+        
+        {selectedPlan && (
+          <div className="pt-2 text-center">
+            <p className="text-sm text-muted-foreground">
+              Don't have an account yet?{" "}
+              <Button variant="link" className="p-0" onClick={() => navigate(`/signup?plan=${selectedPlan}`)}>
+                Sign up
+              </Button>
+            </p>
+          </div>
+        )}
       </form>
     </Form>
   );

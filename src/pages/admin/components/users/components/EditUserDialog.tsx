@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { UserProfile } from "@/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface EditUserDialogProps {
-  user: UserProfile;
+  user: UserProfile & { subscription?: { plan_name: string } | null };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: (data: Partial<UserProfile>) => void;
@@ -29,6 +30,7 @@ export function EditUserDialog({
     first_name: user.first_name || "",
     last_name: user.last_name || "",
     email: user.email,
+    role: user.role || "user",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -81,6 +83,21 @@ export function EditUserDialog({
                 setFormData({ ...formData, email: e.target.value })
               }
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <Select 
+              value={formData.role} 
+              onValueChange={(value) => setFormData({ ...formData, role: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex justify-end space-x-2">
             <Button

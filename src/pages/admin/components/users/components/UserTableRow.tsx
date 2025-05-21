@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { MoreVertical, Edit, Trash2, UserPlus } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, UserPlus, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,50 +24,49 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { EditUserDialog } from './EditUserDialog';
 import { AssignPlanDialog } from './AssignPlanDialog';
-
-interface User {
-  id: string;
-  email: string;
-  created_at: string;
-  role: string | null;
-}
+import { UserProfile } from "@/types";
+import { TableCell } from "@/components/ui/table";
 
 interface UserTableRowProps {
-  user: User;
-  onDelete: (userId: string) => Promise<void>;
-  onEdit: (userId: string, data: { email?: string; role?: string | null }) => Promise<void>;
-  onAssignPlan: (userId: string) => void;
+  user: UserProfile & { subscription?: { plan_name: string } | null };
+  isUpdating: boolean;
+  onUpdateUser: (userId: string, data: Partial<UserProfile>) => void;
+  onAssignPlan: (userId: string, planId: string) => void;
+  onSendResetEmail: (email: string) => void;
+  onDeleteUser: (userId: string, email: string) => void;
 }
 
 export function UserTableRow({ 
   user, 
-  onDelete, 
-  onEdit, 
-  onAssignPlan 
+  isUpdating,
+  onUpdateUser,
+  onAssignPlan,
+  onSendResetEmail,
+  onDeleteUser
 }: UserTableRowProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [assignPlanDialogOpen, setAssignPlanDialogOpen] = useState(false);
-
-  const handleDelete = async () => {
-    try {
-      await onDelete(user.id);
-      setDeleteDialogOpen(false);
-    } catch (error) {
-      console.error("Error deleting user:", error);
-    }
+  
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString();
   };
 
   return (
     <tr className="border-b hover:bg-muted/50">
-      <td className="p-4">{user.id}</td>
-      <td className="p-4">{user.email}</td>
-      <td className="p-4">{user.role || 'N/A'}</td>
-      <td className="p-4">{new Date(user.created_at).toLocaleDateString()}</td>
-      <td className="p-4">
+      <TableCell className="font-medium">
+        {user.first_name || ''} {user.last_name || ''}
+      </TableCell>
+      <TableCell>{user.email}</TableCell>
+      <TableCell>{user.role || 'user'}</TableCell>
+      <TableCell>{formatDate(user.created_at)}</TableCell>
+      <TableCell>{formatDate(user.last_sign_in_at)}</TableCell>
+      <TableCell>{user.subscription?.plan_name || 'None'}</TableCell>
+      <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" disabled={isUpdating}>
               <span className="sr-only">Open menu</span>
               <MoreVertical className="h-4 w-4" />
             </Button>
@@ -76,49 +76,59 @@ export function UserTableRow({
             <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
               <Edit className="mr-2 h-4 w-4" /> Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onAssignPlan(user.id)}>
+            <DropdownMenuItem onClick={() => setAssignPlanDialogOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" /> Assign Plan
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendResetEmail(user.email)}>
+              <Send className="mr-2 h-4 w-4" /> Send Reset Email
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" className="text-destructive hover:bg-destructive/5 focus-visible:bg-destructive/5 data-[state=open]:bg-destructive/5">
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete user {user.email} from our servers.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>Continue</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+            <DropdownMenuItem onClick={() => setDeleteDialogOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+              <span className="text-destructive">Delete</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </td>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the user {user.email}. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  onDeleteUser(user.id, user.email);
+                  setDeleteDialogOpen(false);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </TableCell>
       
       <EditUserDialog 
+        user={user} 
         open={editDialogOpen} 
-        onOpenChange={setEditDialogOpen}
-        user={user}
-        onSave={(data: { email?: string; role?: string | null }) => {
-          onEdit(user.id, data);
-          setEditDialogOpen(false);
-        }}
+        onOpenChange={setEditDialogOpen} 
+        onUpdate={(data) => onUpdateUser(user.id, data)}
       />
 
       <AssignPlanDialog
+        userId={user.id}
         open={assignPlanDialogOpen}
         onOpenChange={setAssignPlanDialogOpen}
-        userId={user.id}
+        onAssignPlan={(planId) => {
+          onAssignPlan(user.id, planId);
+          setAssignPlanDialogOpen(false);
+        }}
       />
     </tr>
   );

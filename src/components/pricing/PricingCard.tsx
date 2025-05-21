@@ -3,6 +3,7 @@ import React from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PricingPlan {
   id: string;
@@ -22,6 +23,8 @@ interface PricingCardProps {
 }
 
 export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
+  const { user } = useAuth();
+
   return (
     <div className={`pricing-card flex flex-col h-full ${
       plan.isPopular ? 'pricing-card-popular transform md:scale-105 md:-translate-y-2' : ''
@@ -68,10 +71,17 @@ export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
               : 'bg-dark-base hover:bg-dark-base/90'
           }`}
         >
-          {/* Direct to checkout page regardless of login status */}
-          <Link to="/checkout">
-            {plan.ctaText}
-          </Link>
+          {user ? (
+            // If logged in, go straight to checkout
+            <Link to={`/checkout?plan=${plan.id}`}>
+              {plan.ctaText}
+            </Link>
+          ) : (
+            // If not logged in, go to signup with plan parameter
+            <Link to={`/signup?plan=${plan.id}`}>
+              Sign Up & Get Started
+            </Link>
+          )}
         </Button>
       </div>
     </div>
