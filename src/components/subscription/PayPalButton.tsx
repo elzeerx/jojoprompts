@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
@@ -18,15 +18,34 @@ interface PayPalButtonProps {
 
 export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalButtonProps) {
   const paypalRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isScriptLoaded, setIsScriptLoaded] = React.useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+  const [buttonRendered, setButtonRendered] = useState(false);
+
+  // Clean up function to remove PayPal buttons
+  const cleanupPayPalButtons = () => {
+    if (paypalRef.current) {
+      // Clear the container
+      while (paypalRef.current.firstChild) {
+        paypalRef.current.removeChild(paypalRef.current.firstChild);
+      }
+      setButtonRendered(false);
+    }
+  };
 
   // Load PayPal script
   useEffect(() => {
+    // Remove any existing PayPal script to avoid duplicates
+    const existingScript = document.querySelector('script[src*="paypal.com/sdk/js"]');
+    if (existingScript) {
+      document.body.removeChild(existingScript);
+    }
+
     const script = document.createElement("script");
     script.src = `https://www.paypal.com/sdk/js?client-id=ASWIAiw0-UM6BaTa1QRptIh0cIip9C2L-r4URQb7CZZy8GZ-t8h-d6naylfIlAPnnfyoYeRBgMSxLj9F&currency=USD`;
     script.async = true;
     script.onload = () => {
+      console.log("PayPal script loaded successfully");
       setIsScriptLoaded(true);
     };
     script.onerror = () => {
@@ -38,16 +57,21 @@ export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalBut
     document.body.appendChild(script);
     
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+      cleanupPayPalButtons();
     };
   }, []);
   
   // Initialize PayPal button once script is loaded
   useEffect(() => {
-    if (isScriptLoaded && paypalRef.current) {
+    if (isScriptLoaded && paypalRef.current && !buttonRendered) {
       setIsLoading(false);
       
       try {
+        cleanupPayPalButtons(); // Clean up any existing buttons
+        
         window.paypal
           .Buttons({
             createOrder: (data: any, actions: any) => {
@@ -64,11 +88,20 @@ export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalBut
               });
             },
             onApprove: async (data: any, actions: any) => {
-              const order = await actions.order.capture();
-              onSuccess(order.id, order);
+              try {
+                const order = await actions.order.capture();
+                console.log("Payment successful:", order);
+                onSuccess(order.id, order);
+              } catch (error) {
+                console.error("Error capturing order:", error);
+                onError(error);
+              }
+            },
+            onCancel: () => {
+              console.log("Payment canceled by user");
             },
             onError: (err: any) => {
-              console.error(err);
+              console.error("PayPal error:", err);
               onError(err);
             },
             style: {
@@ -79,13 +112,21 @@ export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalBut
               height: 40
             }
           })
-          .render(paypalRef.current);
+          .render(paypalRef.current)
+          .then(() => {
+            setButtonRendered(true);
+            console.log("PayPal button rendered successfully");
+          })
+          .catch((error: any) => {
+            console.error("Failed to render PayPal button:", error);
+            onError(error);
+          });
       } catch (error) {
-        console.error("Failed to render PayPal button", error);
+        console.error("Failed to initialize PayPal button:", error);
         onError(error);
       }
     }
-  }, [isScriptLoaded, amount, onSuccess, onError, planName]);
+  }, [isScriptLoaded, amount, onSuccess, onError, planName, buttonRendered]);
 
   return (
     <div className="w-full">
@@ -95,10 +136,7 @@ export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalBut
           Loading PayPal...
         </Button>
       )}
-      <div ref={paypalRef}></div>
-      <div className="text-center text-sm text-gray-500 mt-2">
-        <p>For testing, use email: sb-47g8u34123282@personal.example.com and password: 12345678</p>
-      </div>
+      <div ref={paypalRef} className="paypal-button-container"></div>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { getPromptImage } from "@/utils/image";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 import { CardActions } from "./prompt-card/CardActions";
 import { TagList } from "./prompt-card/TagList";
+import { Lock } from "lucide-react";
 
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
@@ -23,6 +24,8 @@ interface PromptCardProps {
   onEdit?: (promptId: string) => void;
   onDelete?: (promptId: string) => void;
   initiallyFavorited?: boolean;
+  isLocked?: boolean;
+  onUpgradeClick?: () => void;
 }
 
 export function PromptCard({
@@ -33,12 +36,15 @@ export function PromptCard({
   isAdmin = false,
   onEdit,
   onDelete,
-  initiallyFavorited = false
+  initiallyFavorited = false,
+  isLocked = false,
+  onUpgradeClick
 }: PromptCardProps) {
   const {
     title,
     prompt_text,
-    metadata
+    metadata,
+    prompt_type
   } = prompt;
   const category = metadata?.category || "ChatGPT"; // Default to ChatGPT if no category
   const tags = metadata?.tags || [];
@@ -69,6 +75,14 @@ export function PromptCard({
 
   const handleSelectChange = (checked: boolean) => {
     onSelect?.(prompt.id);
+  };
+
+  const handleCardClick = () => {
+    if (isLocked && onUpgradeClick) {
+      onUpgradeClick();
+    } else {
+      setDetailsOpen(true);
+    }
   };
 
   const toggleFavorite = async (e: React.MouseEvent) => {
@@ -102,16 +116,47 @@ export function PromptCard({
     }
   };
 
+  // Map prompt_type to human-readable format for the badge
+  const getPromptTypeLabel = (type: string) => {
+    switch(type) {
+      case "text": return "ChatGPT";
+      case "image": return "Midjourney";
+      case "workflow": return "n8n Workflow";
+      default: return category;
+    }
+  };
+
   return (
     <>
       <Card 
         className={cn(
-          "overflow-hidden transition-all duration-200 hover:shadow-xl group cursor-pointer rounded-xl",
+          "overflow-hidden transition-all duration-200 hover:shadow-xl group cursor-pointer rounded-xl relative",
           "border border-border hover:border-primary/50",
-          isSelected && "ring-1 ring-primary"
+          isSelected && "ring-1 ring-primary",
+          isLocked && "opacity-90"
         )} 
-        onClick={() => setDetailsOpen(true)}
+        onClick={handleCardClick}
       >
+        {isLocked && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10 rounded-xl">
+            <div className="bg-black/70 p-4 rounded-xl flex flex-col items-center">
+              <Lock className="h-8 w-8 text-warm-gold mb-2" />
+              <p className="text-white font-medium text-center">Upgrade to unlock</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 bg-warm-gold text-white hover:bg-warm-gold/90 border-none"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onUpgradeClick) onUpgradeClick();
+                }}
+              >
+                Upgrade Plan
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="relative">
           <ImageWrapper 
             src={imageUrl} 
@@ -128,7 +173,7 @@ export function PromptCard({
           </CardTitle>
           <div className="mt-2">
             <span className="bg-warm-gold/10 text-warm-gold px-2 py-0.5 text-xs font-medium inline-block rounded-md">
-              {category}
+              {getPromptTypeLabel(prompt_type)}
             </span>
           </div>
         </CardHeader>
@@ -153,7 +198,9 @@ export function PromptCard({
           </div>
         </CardContent>
         <CardFooter className="px-4 py-3 border-t border-border">
-          <CopyButton value={prompt_text} className="flex-shrink-0 w-full rounded-lg" />
+          {!isLocked && (
+            <CopyButton value={prompt_text} className="flex-shrink-0 w-full rounded-lg" />
+          )}
           {isAdmin && 
             <div className="flex gap-2 ml-auto">
               <Button variant="ghost" size="sm" onClick={e => {
@@ -173,7 +220,9 @@ export function PromptCard({
         </CardFooter>
       </Card>
 
-      <PromptDetailsDialog open={detailsOpen} onOpenChange={setDetailsOpen} prompt={prompt as PromptRow} />
+      {!isLocked && (
+        <PromptDetailsDialog open={detailsOpen} onOpenChange={setDetailsOpen} prompt={prompt as PromptRow} />
+      )}
     </>
   );
 }

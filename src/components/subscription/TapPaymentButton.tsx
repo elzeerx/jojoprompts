@@ -134,10 +134,6 @@ export function TapPaymentButton({
           ) : (
             <div id="tap-payment-container" className="min-h-[300px]"></div>
           )}
-          
-          <div className="text-center text-sm text-gray-500 mt-4">
-            <p>For testing purposes only. No actual payment will be processed.</p>
-          </div>
         </DialogContent>
       </Dialog>
     </>

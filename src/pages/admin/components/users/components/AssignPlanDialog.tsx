@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -64,7 +65,9 @@ export function AssignPlanDialog({
         .eq("status", "active")
         .maybeSingle();
 
-      if (userError) throw userError;
+      if (userError && userError.code !== "PGRST116") {
+        console.error("Error checking subscription:", userError);
+      }
 
       setPlans(plansData || []);
       setCurrentPlan(userSub?.plan_id || null);

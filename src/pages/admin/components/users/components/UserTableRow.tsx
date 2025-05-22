@@ -125,7 +125,7 @@ export function UserTableRow({
         userId={user.id}
         open={assignPlanDialogOpen}
         onOpenChange={setAssignPlanDialogOpen}
-        onAssignPlan={(planId) => {
+        onAssign={(planId) => {
           onAssignPlan(user.id, planId);
           setAssignPlanDialogOpen(false);
         }}

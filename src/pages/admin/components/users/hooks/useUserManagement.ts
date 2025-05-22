@@ -21,224 +21,246 @@ export function useUserManagement() {
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
 
   const handleUpdateUser = async (userId: string, data: UserUpdateData) => {
+    setProcessingUserId(userId);
+    
     try {
-      setProcessingUserId(userId);
+      let updated = false;
       
-      if (data.role && !data.first_name && !data.last_name && !data.email) {
+      // Update roles if changed
+      if (data.role && data.role !== "admin" && data.role !== "user") {
+        throw new Error("Invalid role specified");
+      }
+      
+      if (data.role) {
         await updateUserRole(userId, data.role);
-        await fetchUsers();
-        return;
+        updated = true;
       }
 
-      console.log("Updating user with data:", data);
-      
-      const { data: updateResult, error: updateError } = await supabase.functions.invoke(
-        "get-all-users",
-        {
-          body: { 
-            userId,
-            action: "update",
-            userData: data
+      // Update user profile data
+      if (data.first_name !== undefined || data.last_name !== undefined) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            first_name: data.first_name,
+            last_name: data.last_name,
+          })
+          .eq('id', userId);
+
+        if (error) throw error;
+        updated = true;
+      }
+
+      // Update user email if provided
+      if (data.email) {
+        const { error } = await supabase.functions.invoke(
+          "get-all-users",
+          {
+            body: {
+              action: 'update',
+              userId,
+              userData: { email: data.email }
+            }
           }
-        }
-      );
+        );
 
-      if (updateError) throw updateError;
-      if (updateResult?.error) throw new Error(updateResult.error);
+        if (error) throw error;
+        updated = true;
+      }
       
-      console.log("Update result:", updateResult);
-
-      toast({
-        title: "Success",
-        description: "User updated successfully",
-      });
-
-      await fetchUsers();
+      if (updated) {
+        toast({
+          title: "User updated",
+          description: "User information has been updated successfully."
+        });
+        
+        // Refresh users list
+        fetchUsers();
+      }
     } catch (error: any) {
       console.error("Error updating user:", error);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to update user",
-        variant: "destructive",
+        title: "Update failed",
+        description: error.message || "Failed to update user information.",
+        variant: "destructive"
       });
     } finally {
       setProcessingUserId(null);
     }
   };
-
-  const assignPlanToUser = async (userId: string, planId: string) => {
+  
+  const handleAssignPlanToUser = async (userId: string, planId: string) => {
+    setProcessingUserId(userId);
+    
     try {
-      setProcessingUserId(userId);
-
-      // First, check if user already has an active subscription
-      const { data: existingSubscription, error: fetchError } = await supabase
-        .from("user_subscriptions")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("status", "active")
+      // Get plan details
+      const { data: planData, error: planError } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('id', planId)
         .single();
-
-      // Get the plan details
-      const { data: plan, error: planError } = await supabase
-        .from("subscription_plans")
-        .select("*")
-        .eq("id", planId)
-        .single();
-
+      
       if (planError) throw planError;
-      if (!plan) throw new Error("Plan not found");
-
+      
       // Calculate end date for non-lifetime plans
       let endDate = null;
-      if (!plan.is_lifetime && plan.duration_days) {
-        const date = new Date();
-        date.setDate(date.getDate() + plan.duration_days);
-        endDate = date.toISOString();
+      if (!planData.is_lifetime && planData.duration_days) {
+        const startDate = new Date();
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + planData.duration_days);
       }
-
-      if (fetchError && fetchError.code !== 'PGRST116') { // Not found error is expected
-        throw fetchError;
-      }
-
-      if (existingSubscription) {
+      
+      // Check for existing subscription and update it
+      const { data: existingSub, error: checkError } = await supabase
+        .from('user_subscriptions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .maybeSingle();
+      
+      if (checkError && checkError.code !== 'PGRST116') throw checkError;
+      
+      let operation;
+      if (existingSub) {
         // Update existing subscription
-        const { error: updateError } = await supabase
-          .from("user_subscriptions")
+        operation = supabase
+          .from('user_subscriptions')
           .update({
             plan_id: planId,
             end_date: endDate,
+            payment_method: 'admin_assigned', 
             updated_at: new Date().toISOString()
           })
-          .eq("id", existingSubscription.id);
-
-        if (updateError) throw updateError;
+          .eq('id', existingSub.id)
+          .select();
       } else {
         // Create new subscription
-        const { error: insertError } = await supabase
-          .from("user_subscriptions")
+        operation = supabase
+          .from('user_subscriptions')
           .insert({
             user_id: userId,
             plan_id: planId,
-            payment_method: "admin_assigned",
-            status: "active",
-            end_date: endDate
-          });
-
-        if (insertError) throw insertError;
-
-        // Create payment history record
-        await supabase
-          .from("payment_history")
-          .insert({
-            user_id: userId,
-            amount_usd: plan.price_usd,
-            amount_kwd: plan.price_kwd,
-            payment_method: "admin_assigned",
-            status: "completed",
-            payment_id: `admin-${Date.now()}`
-          });
+            start_date: new Date().toISOString(),
+            end_date: endDate,
+            status: 'active',
+            payment_method: 'admin_assigned'
+          })
+          .select();
       }
-
+      
+      const { error: opError } = await operation;
+      if (opError) throw opError;
+      
+      // Add to payment history
+      await supabase
+        .from('payment_history')
+        .insert({
+          user_id: userId,
+          payment_method: 'admin_assigned',
+          status: 'completed',
+          amount_usd: planData.price_usd,
+          amount_kwd: planData.price_kwd
+        });
+      
       toast({
-        title: "Plan Assigned",
-        description: `Successfully assigned ${plan.name} plan to the user`,
+        title: "Plan assigned",
+        description: `Successfully assigned ${planData.name} plan to the user.`
       });
-
-      await fetchUsers();
-      return true;
+      
+      // Refresh users list
+      fetchUsers();
     } catch (error: any) {
       console.error("Error assigning plan:", error);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to assign plan to user",
-        variant: "destructive",
+        title: "Assignment failed",
+        description: error.message || "Failed to assign plan to user.",
+        variant: "destructive"
       });
-      return false;
     } finally {
       setProcessingUserId(null);
     }
   };
-
-  const sendPasswordResetEmail = async (email: string) => {
+  
+  const handleSendPasswordResetEmail = async (email: string) => {
     try {
-      const origin = window.location.origin;
-      const resetUrl = `${origin}/login?tab=reset`;
-      
-      console.log(`Sending password reset email to ${email} with redirect URL: ${resetUrl}`);
-      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: resetUrl,
+        redirectTo: `${window.location.origin}/login?tab=reset`,
       });
       
       if (error) throw error;
       
       toast({
-        title: "Reset email sent",
-        description: `Password reset email has been sent to ${email}`,
+        title: "Email sent",
+        description: "Password reset email has been sent successfully."
       });
     } catch (error: any) {
       console.error("Error sending reset email:", error);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to send reset email",
-        variant: "destructive",
+        title: "Email not sent",
+        description: error.message || "Failed to send password reset email.",
+        variant: "destructive"
       });
     }
   };
-
-  const deleteUser = async (userId: string, email: string) => {
+  
+  const handleDeleteUser = async (userId: string, email: string) => {
+    setProcessingUserId(userId);
+    
     try {
-      setProcessingUserId(userId);
-      
-      if (!window.confirm(`Are you sure you want to delete user: ${email}?`)) {
-        return false;
-      }
-
-      const { data, error } = await supabase.functions.invoke(
+      const { error } = await supabase.functions.invoke(
         "get-all-users",
         {
-          body: { 
-            userId,
-            action: "delete"
+          body: {
+            action: 'delete',
+            userId
           }
         }
       );
-
+      
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
       
       toast({
         title: "User deleted",
-        description: `User ${email} has been permanently deleted.`,
+        description: `User ${email} has been deleted successfully.`
       });
-
-      await fetchUsers();
-      return true;
+      
+      // Remove user from local state
+      fetchUsers();
     } catch (error: any) {
       console.error("Error deleting user:", error);
+      
       toast({
-        title: "Delete failed",
-        description: error.message || "Failed to delete user",
-        variant: "destructive",
+        title: "Deletion failed",
+        description: error.message || "Failed to delete user.",
+        variant: "destructive"
       });
-      return false;
     } finally {
       setProcessingUserId(null);
     }
   };
 
+  // Calculate pagination values
+  const totalPages = Math.ceil(users.length / pageSize);
+  const paginatedUsers = users.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   return {
-    users,
+    users: paginatedUsers,
+    allUsers: users,
     loading,
     error,
     currentPage,
-    totalPages: Math.ceil(users.length / pageSize),
+    totalPages,
     onPageChange: setCurrentPage,
-    updatingUserId: updatingUserId || processingUserId,
+    updatingUserId: processingUserId || updatingUserId,
     fetchUsers,
     updateUser: handleUpdateUser,
-    assignPlanToUser,
-    sendPasswordResetEmail,
-    deleteUser
+    assignPlanToUser: handleAssignPlanToUser,
+    sendPasswordResetEmail: handleSendPasswordResetEmail,
+    deleteUser: handleDeleteUser
   };
 }

@@ -15,6 +15,7 @@ export default function WorkflowPromptsPage() {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userPlan, setUserPlan] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     const checkAccess = async () => {
@@ -24,42 +25,56 @@ export default function WorkflowPromptsPage() {
       }
       
       try {
-        // Check if user has access to n8n workflow prompts (Premium plan only)
-        const { data: subscriptions, error } = await supabase
-          .from("user_subscriptions")
-          .select("plan_id, subscription_plans:plan_id(name, features)")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .single();
-        
-        if (error && error.code !== "PGRST116") {
-          console.error("Error checking subscription:", error);
-        }
-        
-        let canAccess = false;
-        if (subscriptions?.subscription_plans) {
-          const planName = subscriptions.subscription_plans.name.toLowerCase();
-          setUserPlan(planName);
+        // Check if user is admin
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
           
-          // Only Premium plans have access to n8n workflow prompts
-          canAccess = ["premium", "ultimate"].includes(planName);
-        }
+        if (profileError) throw profileError;
         
-        setHasAccess(canAccess);
+        const isUserAdmin = profileData?.role === "admin";
+        setIsAdmin(isUserAdmin);
         
-        if (canAccess) {
-          // Fetch workflow prompts
-          const { data, error: promptsError } = await supabase
-            .from("prompts")
-            .select("*")
-            .eq("prompt_type", "workflow")
-            .order("created_at", { ascending: false });
+        if (isUserAdmin) {
+          setHasAccess(true);
+        } else {
+          // Check if user has access to n8n workflow prompts (Premium plan only)
+          const { data: subscriptions, error } = await supabase
+            .from("user_subscriptions")
+            .select("plan_id, subscription_plans:plan_id(name, features)")
+            .eq("user_id", user.id)
+            .eq("status", "active")
+            .maybeSingle();
           
-          if (promptsError) {
-            console.error("Error fetching prompts:", promptsError);
-          } else {
-            setPrompts(data || []);
+          if (error && error.code !== "PGRST116") {
+            console.error("Error checking subscription:", error);
           }
+          
+          let canAccess = false;
+          if (subscriptions?.subscription_plans) {
+            const planName = subscriptions.subscription_plans.name.toLowerCase();
+            setUserPlan(planName);
+            
+            // Only Premium plans have access to n8n workflow prompts
+            canAccess = ["premium", "ultimate"].includes(planName);
+          }
+          
+          setHasAccess(canAccess);
+        }
+        
+        // Fetch workflow prompts regardless of access
+        const { data, error: promptsError } = await supabase
+          .from("prompts")
+          .select("*")
+          .eq("prompt_type", "workflow")
+          .order("created_at", { ascending: false });
+        
+        if (promptsError) {
+          console.error("Error fetching prompts:", promptsError);
+        } else {
+          setPrompts(data || []);
         }
       } catch (err) {
         console.error("Error checking access:", err);
@@ -109,6 +124,7 @@ export default function WorkflowPromptsPage() {
         <h1 className="text-3xl font-bold">n8n Workflow Prompts</h1>
         <p className="text-muted-foreground">
           Explore our collection of premium n8n workflow templates
+          {isAdmin && " (Admin Access)"}
         </p>
       </div>
       

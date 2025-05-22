@@ -1,127 +1,73 @@
 
-import React from 'react';
-import { Check, X } from 'lucide-react';
-import { PricingCard } from './PricingCard';
-import { useAuth } from "@/contexts/AuthContext";
+import React, { useState, useEffect } from "react";
+import { PlanCard } from "@/components/subscription/PlanCard";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 export function PricingSection() {
-  const { user } = useAuth();
-  
-  const pricingPlans = [
-    {
-      id: "tier1",
-      name: "Basic",
-      price: "$55",
-      localPrice: "15 KWD",
-      description: "1-year access, non-renewal",
-      features: [
-        "ChatGPT prompts only",
-        "Access to all future ChatGPT prompts",
-        "Basic email support",
-        "1-year access"
-      ],
-      excludedFeatures: [
-        "Midjourney prompts",
-        "n8n workflows",
-        "Future categories",
-        "Special prompt requests",
-        "Lifetime access"
-      ],
-      isPopular: false,
-      ctaText: "Get Started"
-    },
-    {
-      id: "tier2",
-      name: "Standard",
-      price: "$65",
-      localPrice: "20 KWD",
-      description: "1-year access, non-renewal",
-      features: [
-        "ChatGPT prompts",
-        "Midjourney prompts",
-        "Access to all future prompts in these categories",
-        "Standard email support",
-        "1-year access"
-      ],
-      excludedFeatures: [
-        "n8n workflows",
-        "Future categories",
-        "Special prompt requests",
-        "Lifetime access"
-      ],
-      isPopular: false,
-      ctaText: "Get Started"
-    },
-    {
-      id: "tier3",
-      name: "Premium",
-      price: "$80",
-      localPrice: "25 KWD",
-      description: "Lifetime access",
-      features: [
-        "ChatGPT prompts",
-        "Midjourney prompts",
-        "n8n workflows",
-        "All future categories",
-        "Priority email support",
-        "Lifetime access",
-        "All future updates"
-      ],
-      excludedFeatures: [
-        "Special prompt requests"
-      ],
-      isPopular: true,
-      ctaText: "Best Value"
-    },
-    {
-      id: "tier4",
-      name: "Ultimate",
-      price: "$100",
-      localPrice: "30 KWD",
-      description: "Lifetime access + Custom Requests",
-      features: [
-        "ChatGPT prompts",
-        "Midjourney prompts",
-        "n8n workflows",
-        "All future categories",
-        "Priority email support",
-        "Lifetime access",
-        "All future updates",
-        "Up to 20 special prompt requests"
-      ],
-      excludedFeatures: [],
-      isPopular: false,
-      ctaText: "Get Everything"
-    }
-  ];
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  // Fetch available plans
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("subscription_plans")
+          .select("*")
+          .order("price_usd", { ascending: true });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          setPlans(data);
+          // Select the first plan by default
+          setSelectedPlanId(data[0].id);
+        }
+      } catch (error) {
+        console.error("Error fetching plans:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlans();
+  }, []);
+
+  // Handle selecting a plan
+  const handleSelectPlan = (planId: string) => {
+    setSelectedPlanId(planId);
+    
+    // Navigate to checkout with the selected plan
+    navigate(`/checkout?plan_id=${planId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <section id="pricing" className="py-16 bg-white">
-      <div className="container">
-        <h2 className="section-title text-center">Choose Your Plan</h2>
-        <p className="section-subtitle text-center">
-          Select the perfect package that suits your needs. Pay once, no recurring fees.
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mt-12">
-          {pricingPlans.map((plan) => (
-            <PricingCard 
-              key={plan.id} 
-              plan={plan} 
-              isLoggedIn={!!user}
+    <div className="w-full max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {plans.map((plan) => (
+          <div key={plan.id} className="flex flex-col h-full">
+            <PlanCard
+              plan={plan}
+              isSelected={selectedPlanId === plan.id}
+              onSelect={() => handleSelectPlan(plan.id)}
             />
-          ))}
-        </div>
-        
-        <div className="mt-12 max-w-2xl mx-auto text-center">
-          <p className="text-muted-foreground">
-            All plans include a 7-day money-back guarantee. Have questions?{" "}
-            <a href="mailto:support@jojoprompts.com" className="text-warm-gold font-medium hover:underline">
-              Contact our support team
-            </a>.
-          </p>
-        </div>
+          </div>
+        ))}
       </div>
-    </section>
+    </div>
   );
 }

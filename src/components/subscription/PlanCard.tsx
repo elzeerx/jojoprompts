@@ -38,7 +38,7 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
         </div>
       </CardHeader>
       
-      <CardContent className="flex-grow">
+      <CardContent className="flex-grow px-4 py-3">
         <ul className="space-y-2">
           {features && features.map((feature, index) => (
             <li key={`feature-${index}`} className="flex items-start">
@@ -56,7 +56,7 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
         </ul>
       </CardContent>
       
-      <CardFooter className="pt-4">
+      <CardFooter className="pt-4 px-4 py-4">
         <Button
           onClick={onSelect}
           className="w-full"

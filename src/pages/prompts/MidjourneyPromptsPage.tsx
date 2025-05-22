@@ -15,6 +15,7 @@ export default function MidjourneyPromptsPage() {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userPlan, setUserPlan] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     const checkAccess = async () => {
@@ -24,42 +25,56 @@ export default function MidjourneyPromptsPage() {
       }
       
       try {
-        // Check if user has access to Midjourney prompts (Standard or Premium plans)
-        const { data: subscriptions, error } = await supabase
-          .from("user_subscriptions")
-          .select("plan_id, subscription_plans:plan_id(name, features)")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .single();
-        
-        if (error && error.code !== "PGRST116") {
-          console.error("Error checking subscription:", error);
-        }
-        
-        let canAccess = false;
-        if (subscriptions?.subscription_plans) {
-          const planName = subscriptions.subscription_plans.name.toLowerCase();
-          setUserPlan(planName);
+        // Check if user is admin
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
           
-          // Standard and Premium plans have access to Midjourney prompts
-          canAccess = ["standard", "premium", "ultimate"].includes(planName);
-        }
+        if (profileError) throw profileError;
         
-        setHasAccess(canAccess);
+        const isUserAdmin = profileData?.role === "admin";
+        setIsAdmin(isUserAdmin);
         
-        if (canAccess) {
-          // Fetch Midjourney prompts
-          const { data, error: promptsError } = await supabase
-            .from("prompts")
-            .select("*")
-            .eq("prompt_type", "image")
-            .order("created_at", { ascending: false });
+        if (isUserAdmin) {
+          setHasAccess(true);
+        } else {
+          // Check if user has access to Midjourney prompts (Standard or Premium plans)
+          const { data: subscriptions, error } = await supabase
+            .from("user_subscriptions")
+            .select("plan_id, subscription_plans:plan_id(name, features)")
+            .eq("user_id", user.id)
+            .eq("status", "active")
+            .maybeSingle();
           
-          if (promptsError) {
-            console.error("Error fetching prompts:", promptsError);
-          } else {
-            setPrompts(data || []);
+          if (error && error.code !== "PGRST116") {
+            console.error("Error checking subscription:", error);
           }
+          
+          let canAccess = false;
+          if (subscriptions?.subscription_plans) {
+            const planName = subscriptions.subscription_plans.name.toLowerCase();
+            setUserPlan(planName);
+            
+            // Standard and Premium plans have access to Midjourney prompts
+            canAccess = ["standard", "premium", "ultimate"].includes(planName);
+          }
+          
+          setHasAccess(canAccess);
+        }
+        
+        // Fetch Midjourney prompts regardless of access
+        const { data, error: promptsError } = await supabase
+          .from("prompts")
+          .select("*")
+          .eq("prompt_type", "image")
+          .order("created_at", { ascending: false });
+        
+        if (promptsError) {
+          console.error("Error fetching prompts:", promptsError);
+        } else {
+          setPrompts(data || []);
         }
       } catch (err) {
         console.error("Error checking access:", err);
@@ -109,6 +124,7 @@ export default function MidjourneyPromptsPage() {
         <h1 className="text-3xl font-bold">Midjourney Prompts</h1>
         <p className="text-muted-foreground">
           Explore our collection of premium Midjourney prompts
+          {isAdmin && " (Admin Access)"}
         </p>
       </div>
       
