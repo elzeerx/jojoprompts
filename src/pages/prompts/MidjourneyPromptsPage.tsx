@@ -73,8 +73,21 @@ export default function MidjourneyPromptsPage() {
         
         if (promptsError) {
           console.error("Error fetching prompts:", promptsError);
-        } else {
-          setPrompts(data || []);
+        } else if (data) {
+          // Transform data to ensure it matches the Prompt type
+          const transformedData: Prompt[] = data.map(item => ({
+            id: item.id,
+            user_id: item.user_id,
+            title: item.title,
+            prompt_text: item.prompt_text,
+            image_path: item.image_path,
+            default_image_path: item.default_image_path || null,
+            prompt_type: item.prompt_type as 'text' | 'image' | 'button' | 'image-selection' | 'workflow',
+            created_at: item.created_at || "",
+            metadata: item.metadata as any || {}
+          }));
+          
+          setPrompts(transformedData);
         }
       } catch (err) {
         console.error("Error checking access:", err);

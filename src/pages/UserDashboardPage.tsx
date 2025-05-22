@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -293,7 +294,7 @@ export default function UserDashboardPage() {
                     
                     <div className="pt-6">
                       <Button 
-                        variant="default" // Changed from "outline" to "default"
+                        variant="default"
                         onClick={() => {
                           navigate('/pricing');
                         }}
