@@ -40,7 +40,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
           prompt_text: item.prompt_text,
           image_path: item.image_path,
           default_image_path: item.default_image_path,
-          image_url: item.image_url,
+          image_url: null, // Set to null since this field doesn't exist in the database
           prompt_type: item.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection',
           created_at: item.created_at || "",
           metadata: {
