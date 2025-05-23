@@ -1,366 +1,331 @@
 
-import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Container } from "@/components/ui/container";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
-import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { PayPalButton } from "@/components/subscription/PayPalButton";
 import { TapPaymentButton } from "@/components/subscription/TapPaymentButton";
-import { PlanCard } from "@/components/subscription/PlanCard";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, CheckCircle, User } from "lucide-react";
+import { Container } from "@/components/ui/container";
 
 export default function CheckoutPage() {
-  const { user, session, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const planId = searchParams.get("plan_id");
+
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
   
+  // Account creation form for new users
+  const [createAccount, setCreateAccount] = useState(!user);
+  const [accountData, setAccountData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: ""
+  });
+
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const planId = params.get("plan_id");
-    if (planId) {
-      setSelectedPlanId(planId);
-    }
-  }, [location]);
-  
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      
+    const fetchPlan = async () => {
+      if (!planId) {
+        navigate("/pricing");
+        return;
+      }
+
       try {
-        // If we have a plan ID from the URL, fetch that specific plan
-        if (selectedPlanId) {
-          const { data: planData, error: planError } = await supabase
-            .from("subscription_plans")
-            .select("*")
-            .eq("id", selectedPlanId)
-            .single();
-          
-          if (planError) {
-            throw planError;
-          }
-          
-          // Ensure features and excluded_features are arrays, not strings
-          if (planData) {
-            setPlan({
-              ...planData,
-              features: Array.isArray(planData.features) 
-                ? planData.features 
-                : (typeof planData.features === 'string' ? JSON.parse(planData.features) : []),
-              excluded_features: Array.isArray(planData.excluded_features)
-                ? planData.excluded_features
-                : (typeof planData.excluded_features === 'string' ? JSON.parse(planData.excluded_features) : [])
-            });
-          }
-        } else {
-          // Otherwise, load the cheapest plan
-          const { data: plansData, error: plansError } = await supabase
-            .from("subscription_plans")
-            .select("*")
-            .order("price_usd", { ascending: true })
-            .limit(1);
-          
-          if (plansError) {
-            throw plansError;
-          }
-          
-          if (plansData && plansData.length > 0) {
-            const planData = plansData[0];
-            
-            // Ensure features and excluded_features are arrays, not strings
-            setPlan({
-              ...planData,
-              features: Array.isArray(planData.features) 
-                ? planData.features 
-                : (typeof planData.features === 'string' ? JSON.parse(planData.features) : []),
-              excluded_features: Array.isArray(planData.excluded_features)
-                ? planData.excluded_features
-                : (typeof planData.excluded_features === 'string' ? JSON.parse(planData.excluded_features) : [])
-            });
-            
-            setSelectedPlanId(planData.id);
-          }
-        }
+        const { data, error } = await supabase
+          .from("subscription_plans")
+          .select("*")
+          .eq("id", planId)
+          .single();
+
+        if (error) throw error;
+        setPlan(data);
       } catch (error) {
-        console.error("Error loading checkout data:", error);
+        console.error("Error fetching plan:", error);
         toast({
           title: "Error",
-          description: "Failed to load plan information.",
-          variant: "destructive",
+          description: "Failed to load plan details",
+          variant: "destructive"
         });
+        navigate("/pricing");
       } finally {
         setLoading(false);
       }
-    }
-    
-    if (selectedPlanId || !plan) {
-      loadData();
-    }
-  }, [selectedPlanId]);
-  
-  const handlePaymentSuccess = async (paymentId: string, paymentDetails: any = {}, paymentMethod: string = "paypal") => {
-    if (!user || !plan) return;
-    
+    };
+
+    fetchPlan();
+  }, [planId, navigate]);
+
+  const handlePaymentSuccess = async (paymentData: any) => {
     setProcessingPayment(true);
-    console.log(`Payment successful with ${paymentMethod}:`, { paymentId, paymentDetails });
     
     try {
-      // Calculate end date for non-lifetime plans
-      let endDate = null;
-      if (!plan.is_lifetime && plan.duration_days) {
-        const startDate = new Date();
-        endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + plan.duration_days);
-      }
+      let userId = user?.id;
       
-      // Check for existing subscription
-      const { data: existingSub, error: checkError } = await supabase
-        .from('user_subscriptions')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .maybeSingle();
-      
-      if (checkError && checkError.code !== 'PGRST116') throw checkError;
-      
-      let subscriptionId;
-      
-      if (existingSub) {
-        // Update existing subscription
-        const { data: updatedSub, error: updateError } = await supabase
-          .from('user_subscriptions')
-          .update({
-            plan_id: plan.id,
-            end_date: endDate,
-            payment_method: paymentMethod,
-            payment_id: paymentId,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingSub.id)
-          .select()
-          .single();
-        
-        if (updateError) throw updateError;
-        subscriptionId = updatedSub.id;
-      } else {
-        // Create new subscription
-        const { data: newSub, error: insertError } = await supabase
-          .from('user_subscriptions')
-          .insert({
-            user_id: user.id,
-            plan_id: plan.id,
-            start_date: new Date().toISOString(),
-            end_date: endDate,
-            status: 'active',
-            payment_method: paymentMethod,
-            payment_id: paymentId
-          })
-          .select()
-          .single();
-        
-        if (insertError) throw insertError;
-        subscriptionId = newSub.id;
-      }
-      
-      // Add payment history entry
-      await supabase
-        .from('payment_history')
-        .insert({
-          user_id: user.id,
-          payment_id: paymentId,
-          payment_method: paymentMethod,
-          status: 'completed',
-          subscription_id: subscriptionId,
-          amount_usd: plan.price_usd,
-          amount_kwd: plan.price_kwd
+      // If user is not logged in, create account first
+      if (!user && createAccount) {
+        if (accountData.password !== accountData.confirmPassword) {
+          toast({
+            title: "Error",
+            description: "Passwords do not match",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: accountData.email,
+          password: accountData.password,
+          options: {
+            data: {
+              first_name: accountData.firstName,
+              last_name: accountData.lastName
+            }
+          }
         });
-      
-      // Show success message
+
+        if (signUpError) throw signUpError;
+        
+        if (!authData.user) {
+          throw new Error("Failed to create user account");
+        }
+        
+        userId = authData.user.id;
+      }
+
+      if (!userId) {
+        throw new Error("User ID not available");
+      }
+
+      // Create subscription
+      const { data: subscriptionData, error: subscriptionError } = await supabase.functions.invoke(
+        "create-subscription",
+        {
+          body: {
+            planId: plan.id,
+            userId: userId,
+            paymentData: paymentData
+          }
+        }
+      );
+
+      if (subscriptionError) throw subscriptionError;
+
       toast({
-        title: "Payment Successful",
-        description: `You now have access to the ${plan.name} plan!`,
+        title: "Payment Successful!",
+        description: `Welcome to ${plan.name}! ${!user ? 'Your account has been created and ' : ''}Your subscription is now active.`
       });
-      
-      // Navigate to success page
+
+      // Redirect to success page or dashboard
       navigate("/payment-success");
+      
     } catch (error) {
-      console.error("Error processing subscription after payment:", error);
+      console.error("Payment processing error:", error);
       toast({
-        title: "Error",
-        description: "There was an issue activating your subscription. Please contact support.",
-        variant: "destructive",
+        title: "Payment Processing Error",
+        description: error.message || "Failed to process payment. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setProcessingPayment(false);
     }
   };
-  
-  const handlePaymentError = (error: any) => {
-    console.error("Payment error:", error);
-    toast({
-      title: "Payment Failed",
-      description: "We couldn't process your payment. Please try again or use a different payment method.",
-      variant: "destructive",
-    });
+
+  const validateAccountForm = () => {
+    if (!accountData.email || !accountData.password || !accountData.firstName) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    if (accountData.password.length < 6) {
+      toast({
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    return true;
   };
-  
-  // Show loading while checking authentication or loading plan data
+
   if (loading) {
     return (
-      <Container>
-        <div className="min-h-screen flex flex-col items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg text-muted-foreground">Loading checkout...</p>
-        </div>
+      <Container className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </Container>
     );
   }
-  
-  // If no plan is selected or available, show an error
+
   if (!plan) {
     return (
-      <Container>
-        <div className="min-h-screen flex flex-col items-center justify-center">
-          <div className="text-center space-y-4">
-            <h1 className="text-2xl font-bold text-destructive">Plan not found</h1>
-            <p className="text-muted-foreground">The selected plan is not available.</p>
-            <Button onClick={() => navigate("/pricing")}>View Available Plans</Button>
-          </div>
+      <Container className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Plan Not Found</h1>
+          <Button onClick={() => navigate("/pricing")}>
+            Back to Pricing
+          </Button>
         </div>
       </Container>
     );
   }
-  
-  // If not authenticated, show sign-in prompt
-  if (!authLoading && !user) {
-    return (
-      <Container>
-        <div className="max-w-4xl mx-auto py-12">
-          <Alert variant="default" className="mb-8 border-warm-gold/50 bg-warm-gold/10">
-            <AlertTitle>Account Required</AlertTitle>
-            <AlertDescription>
-              You need to create an account or log in to complete your purchase.
-            </AlertDescription>
-          </Alert>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Selected Plan</h2>
-              <div className="max-w-sm mx-auto">
-                <PlanCard 
-                  plan={plan}
-                  isSelected={true}
-                  onSelect={() => {}}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create an Account or Log In</CardTitle>
-                  <CardDescription>
-                    You're just one step away from accessing premium content
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Please create an account or log in to complete your purchase. Your plan selection will be saved.
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Button
-                      onClick={() => navigate(`/signup?plan_id=${selectedPlanId}`)}
-                      className="bg-warm-gold hover:bg-warm-gold/90 text-white"
-                    >
-                      Sign Up
-                    </Button>
-                    <Button
-                      onClick={() => navigate(`/login?redirect=checkout?plan_id=${selectedPlanId}`)}
-                      variant="outline"
-                    >
-                      Log In
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </Container>
-    );
-  }
-  
-  // Normal checkout flow for authenticated users
   return (
-    <Container>
-      <div className="max-w-4xl mx-auto py-12">
-        <h1 className="text-3xl font-bold text-center mb-8">Complete Your Purchase</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Plan details */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Selected Plan</h2>
-            <div className="max-w-sm mx-auto">
-              <PlanCard 
-                plan={plan}
-                isSelected={true}
-                onSelect={() => {}}
-              />
-            </div>
-          </div>
-          
-          {/* Payment methods */}
-          <div>
-            <Card>
+    <Container className="min-h-screen py-12">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">Complete Your Purchase</h1>
+          <p className="text-muted-foreground">
+            {user ? "You're almost there!" : "Create your account and get instant access"}
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Account Information */}
+          {!user && (
+            <Card className="border-warm-gold/20">
               <CardHeader>
-                <CardTitle>Payment Methods</CardTitle>
-                <CardDescription>Choose how you want to pay</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-warm-gold" />
+                  Create Your Account
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* PayPal Button */}
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input
+                      id="firstName"
+                      value={accountData.firstName}
+                      onChange={(e) => setAccountData(prev => ({...prev, firstName: e.target.value}))}
+                      placeholder="Enter your first name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      value={accountData.lastName}
+                      onChange={(e) => setAccountData(prev => ({...prev, lastName: e.target.value}))}
+                      placeholder="Enter your last name"
+                    />
+                  </div>
+                </div>
+                
                 <div>
-                  <h3 className="text-md font-medium mb-3">Pay with PayPal (USD)</h3>
-                  <PayPalButton 
-                    amount={plan.price_usd} 
-                    planName={plan.name}
-                    onSuccess={(paymentId, details) => handlePaymentSuccess(paymentId, details, "paypal")}
-                    onError={handlePaymentError}
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={accountData.email}
+                    onChange={(e) => setAccountData(prev => ({...prev, email: e.target.value}))}
+                    placeholder="Enter your email"
                   />
                 </div>
                 
-                {/* Divider */}
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-muted"></div>
-                  </div>
-                  <div className="relative flex justify-center">
-                    <span className="bg-card px-3 text-sm text-muted-foreground">Or</span>
-                  </div>
+                <div>
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={accountData.password}
+                    onChange={(e) => setAccountData(prev => ({...prev, password: e.target.value}))}
+                    placeholder="Create a password (min. 6 characters)"
+                  />
                 </div>
                 
-                {/* Tap Payment Button */}
                 <div>
-                  <h3 className="text-md font-medium mb-3">Pay with Tap Payment (KWD)</h3>
-                  <TapPaymentButton 
-                    amount={plan.price_kwd}
-                    planName={plan.name}
-                    onSuccess={(paymentId) => handlePaymentSuccess(paymentId, {}, "tap")}
-                    onError={handlePaymentError}
-                    currency="KWD"
-                    userId={user?.id}
+                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={accountData.confirmPassword}
+                    onChange={(e) => setAccountData(prev => ({...prev, confirmPassword: e.target.value}))}
+                    placeholder="Confirm your password"
                   />
                 </div>
               </CardContent>
             </Card>
-          </div>
+          )}
+
+          {/* Plan Summary & Payment */}
+          <Card className="border-warm-gold/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-warm-gold" />
+                Order Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Plan Details */}
+              <div className="bg-warm-gold/5 p-4 rounded-lg border border-warm-gold/10">
+                <h3 className="font-semibold text-lg text-warm-gold mb-2">{plan.name}</h3>
+                <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
+                
+                <div className="flex justify-between items-center text-lg font-semibold">
+                  <span>Total:</span>
+                  <span className="text-warm-gold">${plan.price_usd}</span>
+                </div>
+                
+                {plan.is_lifetime && (
+                  <p className="text-xs text-muted-foreground mt-1">One-time payment • Lifetime access</p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Payment Methods */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Choose Payment Method</h4>
+                
+                <div className="space-y-3">
+                  <PayPalButton
+                    planId={plan.id}
+                    amount={plan.price_usd}
+                    onSuccess={handlePaymentSuccess}
+                    disabled={processingPayment || (!user && !validateAccountForm())}
+                    className="w-full"
+                  />
+                  
+                  <TapPaymentButton
+                    planId={plan.id}
+                    amount={plan.price_kwd}
+                    currency="KWD"
+                    onSuccess={handlePaymentSuccess}
+                    disabled={processingPayment || (!user && !validateAccountForm())}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              {processingPayment && (
+                <div className="text-center text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                  Processing your payment...
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Security Notice */}
+        <div className="mt-8 text-center text-sm text-muted-foreground">
+          <p>🔒 Your payment information is encrypted and secure</p>
+          <p className="mt-1">By completing this purchase, you agree to our Terms of Service and Privacy Policy</p>
         </div>
       </div>
     </Container>

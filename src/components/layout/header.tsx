@@ -1,8 +1,7 @@
 
-import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,349 +9,222 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, LogOut, Menu, User, Settings, Star, Lock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { User, Settings, LogOut, Shield, CreditCard, Heart, Menu, X } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-export const Header = () => {
+export function Header() {
+  const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { user, isAdmin, loading, signOut } = useAuth();
-  const { toast } = useToast();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userSubscription, setUserSubscription] = useState<any>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Fetch user subscription data
-  useEffect(() => {
-    const fetchSubscription = async () => {
-      if (!user) {
-        setUserSubscription(null);
-        setSubscriptionLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("user_subscriptions")
-          .select("*, subscription_plans:plan_id(name)")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .single();
-
-        if (error && error.code !== "PGRST116") {
-          console.error("Error fetching subscription:", error);
-        }
-
-        setUserSubscription(data);
-      } catch (err) {
-        console.error("Error in subscription fetch:", err);
-      } finally {
-        setSubscriptionLoading(false);
-      }
-    };
-
-    fetchSubscription();
-  }, [user]);
-
-  // Get user initials for avatar
-  const getUserInitials = () => {
-    if (!user) return "";
-    
-    const firstName = user.user_metadata?.first_name || "";
-    const lastName = user.user_metadata?.last_name || "";
-    
-    const firstInitial = firstName ? firstName[0] : "";
-    const lastInitial = lastName ? lastName[0] : "";
-    
-    return (firstInitial + lastInitial).toUpperCase();
-  };
-  
-  // Handle logout
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     try {
       await signOut();
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      });
+      navigate("/");
     } catch (error) {
-      console.error("Error logging out:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to log out. Please try again.",
-      });
+      console.error("Sign out error:", error);
     }
   };
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
+  const navigation = [
+    { name: "Home", href: "/" },
+    { name: "Pricing", href: "/pricing" },
+    ...(user ? [{ name: "Prompts", href: "/prompts" }] : []),
+  ];
+
+  const userInitials = user 
+    ? `${user.email?.charAt(0).toUpperCase() || 'U'}`
+    : '';
 
   return (
-    <header className="border-b bg-white">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold">JojoPrompts</span>
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <img 
+              src="/lovable-uploads/eea1bdcd-7738-4e5f-810a-15c96fe07b94.png" 
+              alt="JojoPrompts" 
+              className="h-8 w-auto" 
+            />
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
-            <Link
-              to="/prompts"
-              className={`text-sm font-medium transition-colors ${
-                isActive("/prompts")
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              All Prompts
-            </Link>
-            
-            {/* Categorized prompt pages */}
-            <Link
-              to="/prompts/chatgpt"
-              className={`text-sm font-medium transition-colors ${
-                isActive("/prompts/chatgpt")
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              ChatGPT
-            </Link>
-            
-            <Link
-              to="/prompts/midjourney"
-              className={`text-sm font-medium transition-colors ${
-                isActive("/prompts/midjourney")
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              Midjourney
-            </Link>
-            
-            <Link
-              to="/prompts/workflows"
-              className={`text-sm font-medium transition-colors ${
-                isActive("/prompts/workflows")
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              n8n Workflows
-            </Link>
-            
-            <Link
-              to="/pricing"
-              className={`text-sm font-medium transition-colors ${
-                isActive("/pricing")
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              Pricing
-            </Link>
-            
-            <Link
-              to="/about"
-              className={`text-sm font-medium transition-colors ${
-                isActive("/about")
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              About
-            </Link>
+          <nav className="hidden md:flex items-center space-x-8">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {item.name}
+              </Link>
+            ))}
           </nav>
+
+          {/* Desktop User Menu */}
+          <div className="hidden md:flex items-center space-x-4">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-warm-gold text-white text-sm font-medium">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="text-sm font-medium text-foreground">
+                        {user.email}
+                      </p>
+                      {isAdmin && (
+                        <p className="text-xs text-warm-gold font-medium">Administrator</p>
+                      )}
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <User className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/favorites")}>
+                    <Heart className="mr-2 h-4 w-4" />
+                    Favorites
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Subscription
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/admin")}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        Admin Panel
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" asChild>
+                  <Link to="/login">Sign in</Link>
+                </Button>
+                <Button asChild className="bg-warm-gold hover:bg-warm-gold/90">
+                  <Link to="/pricing">Get Started</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center gap-4">
-          {/* Mobile Menu Trigger */}
-          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="outline" size="icon">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <SheetHeader>
-                <SheetTitle>JojoPrompts</SheetTitle>
-              </SheetHeader>
-              <nav className="flex flex-col gap-4 mt-6">
+        {/* Mobile Navigation */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border/40 bg-white/95 backdrop-blur">
+            <div className="px-2 py-3 space-y-1">
+              {navigation.map((item) => (
                 <Link
-                  to="/prompts"
-                  className="text-base"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  key={item.name}
+                  to={item.href}
+                  className="block px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
-                  All Prompts
+                  {item.name}
                 </Link>
-                <Link
-                  to="/prompts/chatgpt"
-                  className="text-base"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  ChatGPT
-                </Link>
-                <Link
-                  to="/prompts/midjourney"
-                  className="text-base"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Midjourney
-                </Link>
-                <Link
-                  to="/prompts/workflows"
-                  className="text-base"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  n8n Workflows
-                </Link>
-                <Link
-                  to="/pricing"
-                  className="text-base"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Pricing
-                </Link>
-                <Link
-                  to="/about"
-                  className="text-base"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  About
-                </Link>
-
-                <div className="h-px bg-border my-2" />
-                
-                {!loading && !user ? (
-                  <>
-                    <Link
-                      to="/login"
-                      className="text-base"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Login
-                    </Link>
-                    <Link
-                      to="/signup"
-                      className="text-base"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Sign Up
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      to="/favorites"
-                      className="text-base"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Favorites
-                    </Link>
+              ))}
+              
+              <div className="border-t border-border/40 pt-3 mt-3">
+                {user ? (
+                  <div className="space-y-1">
+                    <div className="px-3 py-2">
+                      <p className="text-sm font-medium">{user.email}</p>
+                      {isAdmin && (
+                        <p className="text-xs text-warm-gold">Administrator</p>
+                      )}
+                    </div>
                     <Link
                       to="/dashboard"
-                      className="text-base"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                      onClick={() => setMobileMenuOpen(false)}
                     >
                       Dashboard
+                    </Link>
+                    <Link
+                      to="/favorites"
+                      className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Favorites
                     </Link>
                     {isAdmin && (
                       <Link
                         to="/admin"
-                        className="text-base"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                        onClick={() => setMobileMenuOpen(false)}
                       >
-                        Admin Dashboard
+                        Admin Panel
                       </Link>
                     )}
                     <button
-                      className="text-base text-left text-red-500"
                       onClick={() => {
-                        handleLogout();
-                        setIsMobileMenuOpen(false);
+                        handleSignOut();
+                        setMobileMenuOpen(false);
                       }}
+                      className="block w-full text-left px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
                     >
-                      Logout
+                      Sign out
                     </button>
-                  </>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Link
+                      to="/login"
+                      className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      to="/pricing"
+                      className="block px-3 py-2 text-sm font-medium text-warm-gold hover:text-warm-gold/80"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Get Started
+                    </Link>
+                  </div>
                 )}
-              </nav>
-            </SheetContent>
-          </Sheet>
-
-          {/* User auth state */}
-          {!loading && !user && (
-            <div className="hidden md:flex items-center gap-4">
-              <Button variant="ghost" onClick={() => navigate("/login")}>
-                Login
-              </Button>
-              <Button onClick={() => navigate("/pricing")}>
-                Get Started
-              </Button>
+              </div>
             </div>
-          )}
-
-          {/* User dropdown menu */}
-          {!loading && user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
-                  </Avatar>
-                  <span className="hidden md:inline-block">
-                    {user.user_metadata?.first_name || user.email}
-                  </span>
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium">{user.email}</p>
-                  {!subscriptionLoading && userSubscription && (
-                    <p className="text-xs text-muted-foreground">
-                      {userSubscription.subscription_plans.name} Plan
-                    </p>
-                  )}
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Dashboard</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/favorites")}>
-                  <Star className="mr-2 h-4 w-4" />
-                  <span>Favorites</span>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem onClick={() => navigate("/admin")}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Admin Dashboard</span>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-500">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </header>
   );
-};
+}

@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Crown, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -53,7 +53,8 @@ export function AssignPlanDialog({
       // Fetch available plans
       const { data: plansData, error: plansError } = await supabase
         .from("subscription_plans")
-        .select("id, name, price_usd, is_lifetime, duration_days");
+        .select("id, name, price_usd, is_lifetime, duration_days")
+        .order("price_usd", { ascending: true });
 
       if (plansError) throw plansError;
 
@@ -115,42 +116,58 @@ export function AssignPlanDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Assign Subscription Plan</DialogTitle>
-          <DialogDescription>
-            Assign or change the subscription plan for this user.
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="text-xl font-semibold">Assign Subscription Plan</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Assign or change the subscription plan for this user. This will grant them access to the features included in their plan.
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-4 py-4">
+          <div className="space-y-6 py-4">
             {currentPlan && (
-              <div className="bg-muted p-3 rounded-md">
-                <p className="text-sm font-medium">Current Plan</p>
-                <p className="text-muted-foreground">
-                  {currentPlan.name} (${currentPlan.price_usd})
-                </p>
+              <div className="bg-muted/50 p-4 rounded-lg border border-muted">
+                <div className="flex items-center gap-2 mb-2">
+                  <Crown className="h-4 w-4 text-warm-gold" />
+                  <p className="text-sm font-medium">Current Plan</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-base">{currentPlan.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    ${currentPlan.price_usd} • {currentPlan.is_lifetime ? "Lifetime Access" : `${currentPlan.duration_days} days`}
+                  </p>
+                </div>
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="plan">Select Plan</Label>
+            <div className="space-y-3">
+              <Label htmlFor="plan" className="text-sm font-medium">Select New Plan</Label>
               <Select
                 value={selectedPlanId}
                 onValueChange={setSelectedPlanId}
               >
-                <SelectTrigger id="plan">
-                  <SelectValue placeholder="Select a plan" />
+                <SelectTrigger id="plan" className="h-12">
+                  <SelectValue placeholder="Choose a subscription plan" />
                 </SelectTrigger>
                 <SelectContent>
                   {plans.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name} - ${plan.price_usd} ({plan.is_lifetime ? "Lifetime" : `${plan.duration_days} days`})
+                    <SelectItem key={plan.id} value={plan.id} className="py-3">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">{plan.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ${plan.price_usd} • {plan.is_lifetime ? "Lifetime" : `${plan.duration_days} days`}
+                          </span>
+                        </div>
+                        {plan.is_lifetime && (
+                          <Clock className="h-4 w-4 text-warm-gold ml-2" />
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -159,13 +176,19 @@ export function AssignPlanDialog({
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="space-x-2 pt-4 border-t">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={submitting}
+            className="min-w-[80px]"
+          >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading || submitting || !selectedPlanId}
+            className="min-w-[120px] bg-warm-gold hover:bg-warm-gold/90"
           >
             {submitting ? (
               <>

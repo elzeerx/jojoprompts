@@ -1,114 +1,193 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2, User, Shield } from "lucide-react";
 import { UserProfile } from "@/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface EditUserDialogProps {
-  user: UserProfile & { subscription?: { plan_name: string } | null };
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdate: (data: Partial<UserProfile>) => void;
+  user: UserProfile | null;
+  onSave: (userId: string, data: Partial<UserProfile>) => void;
+  isLoading?: boolean;
 }
 
 export function EditUserDialog({
-  user,
   open,
   onOpenChange,
-  onUpdate,
+  user,
+  onSave,
+  isLoading = false,
 }: EditUserDialogProps) {
   const [formData, setFormData] = useState({
-    first_name: user.first_name || "",
-    last_name: user.last_name || "",
-    email: user.email,
-    role: user.role || "user",
+    first_name: "",
+    last_name: "",
+    email: "",
+    role: "user" as "user" | "admin",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    try {
-      await onUpdate(formData);
-      onOpenChange(false);
-    } finally {
-      setIsSubmitting(false);
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        email: user.email || "",
+        role: user.role as "user" | "admin",
+      });
     }
+  }, [user]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    const changes: Partial<UserProfile> = {};
+    
+    if (formData.first_name !== (user.first_name || "")) {
+      changes.first_name = formData.first_name;
+    }
+    if (formData.last_name !== (user.last_name || "")) {
+      changes.last_name = formData.last_name;
+    }
+    if (formData.email !== (user.email || "")) {
+      changes.email = formData.email;
+    }
+    if (formData.role !== user.role) {
+      changes.role = formData.role;
+    }
+
+    if (Object.keys(changes).length > 0) {
+      onSave(user.id, changes);
+    }
+    
+    onOpenChange(false);
+  };
+
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit User</DialogTitle>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+            <User className="h-5 w-5 text-warm-gold" />
+            Edit User Details
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Update the user's information and permissions. Changes will be saved immediately.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="first_name">First Name</Label>
-            <Input
-              id="first_name"
-              value={formData.first_name}
-              onChange={(e) =>
-                setFormData({ ...formData, first_name: e.target.value })
-              }
-            />
+
+        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName" className="text-sm font-medium">
+                First Name
+              </Label>
+              <Input
+                id="firstName"
+                value={formData.first_name}
+                onChange={(e) => handleChange("first_name", e.target.value)}
+                placeholder="Enter first name"
+                className="h-10"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="lastName" className="text-sm font-medium">
+                Last Name
+              </Label>
+              <Input
+                id="lastName"
+                value={formData.last_name}
+                onChange={(e) => handleChange("last_name", e.target.value)}
+                placeholder="Enter last name"
+                className="h-10"
+              />
+            </div>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="last_name">Last Name</Label>
-            <Input
-              id="last_name"
-              value={formData.last_name}
-              onChange={(e) =>
-                setFormData({ ...formData, last_name: e.target.value })
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium">
+              Email Address
+            </Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              onChange={(e) => handleChange("email", e.target.value)}
+              placeholder="Enter email address"
+              className="h-10"
             />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Select 
-              value={formData.role} 
-              onValueChange={(value) => setFormData({ ...formData, role: value })}
+            <Label htmlFor="role" className="text-sm font-medium flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              User Role
+            </Label>
+            <Select
+              value={formData.role}
+              onValueChange={(value) => handleChange("role", value)}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select role" />
+              <SelectTrigger id="role" className="h-10">
+                <SelectValue placeholder="Select user role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">User</span>
+                    <span className="text-xs text-muted-foreground">Standard access</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="admin">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium text-warm-gold">Administrator</span>
+                    <span className="text-xs text-muted-foreground">Full system access</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button
+
+          <DialogFooter className="space-x-2 pt-4 border-t">
+            <Button 
               type="button"
-              variant="outline"
+              variant="outline" 
               onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+              className="min-w-[80px]"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="min-w-[100px] bg-warm-gold hover:bg-warm-gold/90"
+            >
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
@@ -117,7 +196,7 @@ export function EditUserDialog({
                 "Save Changes"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
