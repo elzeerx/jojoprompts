@@ -29,6 +29,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const tags = metadata?.tags || [];
   const model = metadata?.target_model || category;
   const useCase = metadata?.use_case;
+  const style = metadata?.style;
   const mediaFiles = metadata?.media_files || [];
 
   // Get primary image for main display
@@ -240,6 +241,11 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                   {useCase && (
                     <Badge variant="secondary" className="bg-white/60 text-gray-700 border-gray-200">
                       {useCase}
+                    </Badge>
+                  )}
+                  {style && (
+                    <Badge variant="secondary" className="bg-white/60 text-gray-700 border-gray-200">
+                      {style}
                     </Badge>
                   )}
                   {tags.slice(0, 4).map((tag, i) => (
