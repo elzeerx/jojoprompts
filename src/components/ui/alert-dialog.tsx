@@ -103,7 +103,7 @@ const AlertDialogAction = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Action
     ref={ref}
-    className={cn("px-6 py-3 text-base font-semibold rounded-xl bg-[#c49d68] hover:bg-[#c49d68]/90 text-white", buttonVariants(), className)}
+    className={cn("px-6 py-3 text-base font-semibold rounded-xl", buttonVariants(), className)}
     {...props}
   />
 ))
