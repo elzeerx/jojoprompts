@@ -85,11 +85,13 @@ export function AdminPromptCard({
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     onEdit(prompt.id);
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     setConfirmOpen(true);
   };
@@ -99,9 +101,13 @@ export function AdminPromptCard({
     onDelete(prompt.id);
   };
 
+  const handleCardClick = () => {
+    setDetailsOpen(true);
+  };
+
   return (
     <>
-      <Card onClick={() => setDetailsOpen(true)} className="cursor-pointer hover:shadow-md transition-shadow">
+      <Card onClick={handleCardClick} className="cursor-pointer hover:shadow-md transition-shadow">
         <CardHeader className="relative">
           <CardTitle>{prompt.title}</CardTitle>
           <CardDescription>
