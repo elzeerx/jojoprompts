@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { type PromptRow } from "@/types";
@@ -204,58 +204,60 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="prompt-dialog">
-        <div className="p-4 sm:p-8">
-          {/* Header */}
-          <div className="mb-6">
-            {formData.metadata?.category && (
-              <span 
-                className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium mb-3"
-                style={{ backgroundColor: getCategoryColor(formData.metadata.category) }}
-              >
-                {formData.metadata.category}
-              </span>
-            )}
-            <DialogHeader className="text-left p-0">
-              <DialogTitle className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-                {editingPrompt ? "Edit Prompt" : "Create New Prompt"}
-              </DialogTitle>
-            </DialogHeader>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200">
-              <DialogForm
-                formData={formData}
-                onChange={setFormData}
-                onFileChange={setCurrentFile}
-                onMultipleFilesChange={setCurrentFiles}
-              />
+      <DialogContent className="prompt-dialog max-h-[90vh] flex flex-col p-0">
+        <ScrollArea className="max-h-[90vh]">
+          <div className="p-4 sm:p-8">
+            {/* Header */}
+            <div className="mb-6">
+              {formData.metadata?.category && (
+                <span 
+                  className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium mb-3"
+                  style={{ backgroundColor: getCategoryColor(formData.metadata.category) }}
+                >
+                  {formData.metadata.category}
+                </span>
+              )}
+              <DialogHeader className="text-left p-0">
+                <DialogTitle className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
+                  {editingPrompt ? "Edit Prompt" : "Create New Prompt"}
+                </DialogTitle>
+              </DialogHeader>
             </div>
             
-            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-                className="px-6 py-3 text-base font-semibold rounded-xl order-2 sm:order-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-[#c49d68] hover:bg-[#c49d68]/90 text-white px-6 py-3 text-base font-semibold rounded-xl shadow-md order-1 sm:order-2"
-              >
-                {isSubmitting 
-                  ? (editingPrompt ? "Updating..." : "Creating...") 
-                  : (editingPrompt ? "Update Prompt" : "Create Prompt")
-                }
-              </Button>
-            </div>
-          </form>
-        </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200">
+                <DialogForm
+                  formData={formData}
+                  onChange={setFormData}
+                  onFileChange={setCurrentFile}
+                  onMultipleFilesChange={setCurrentFiles}
+                />
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSubmitting}
+                  className="px-6 py-3 text-base font-semibold rounded-xl order-2 sm:order-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-[#c49d68] hover:bg-[#c49d68]/90 text-white px-6 py-3 text-base font-semibold rounded-xl shadow-md order-1 sm:order-2"
+                >
+                  {isSubmitting 
+                    ? (editingPrompt ? "Updating..." : "Creating...") 
+                    : (editingPrompt ? "Update Prompt" : "Create Prompt")
+                  }
+                </Button>
+              </div>
+            </form>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
