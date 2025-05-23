@@ -117,7 +117,7 @@ export function PromptCard({
     <>
       <div 
         className={cn(
-          "group cursor-pointer overflow-hidden bg-[#efeee9] rounded-2xl shadow-md border-0",
+          "group cursor-pointer overflow-hidden bg-soft-bg rounded-2xl shadow-md border-0",
           "transition-all duration-300 hover:shadow-xl hover:scale-[1.02]",
           "p-6 space-y-4 min-h-[400px] flex flex-col relative",
           isSelected && "ring-2 ring-[#c49d68] shadow-lg",
