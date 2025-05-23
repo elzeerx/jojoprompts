@@ -119,11 +119,17 @@ export function AdminPromptCard({
       <Card onClick={handleCardClick} className="cursor-pointer hover:shadow-md transition-shadow">
         <CardHeader className="relative">
           <CardTitle>{prompt.title}</CardTitle>
-          <CardDescription className="space-y-2">
-            <div>Category: {category}</div>
-            {style && (
-              <div>Style: {style}</div>
-            )}
+          <CardDescription>
+            <div className="flex flex-wrap gap-1">
+              <Badge variant="secondary" className="text-xs">
+                {category}
+              </Badge>
+              {style && (
+                <Badge variant="secondary" className="text-xs">
+                  Style: {style}
+                </Badge>
+              )}
+            </div>
           </CardDescription>
           {session && (
             <div className="absolute top-4 right-4">
