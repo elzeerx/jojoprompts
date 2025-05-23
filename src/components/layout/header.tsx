@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -87,8 +88,8 @@ export function Header() {
                 <Button variant="ghost" onClick={() => navigate("/login")} className="text-dark-base hover:text-warm-gold">
                   Login
                 </Button>
-                <Button onClick={() => navigate("/signup")} className="bg-warm-gold hover:bg-warm-gold/90 text-white">
-                  Sign Up
+                <Button onClick={() => navigate("/pricing")} className="bg-warm-gold hover:bg-warm-gold/90 text-white">
+                  Get Started
                 </Button>
               </div>
             )}
@@ -143,10 +144,10 @@ export function Header() {
                     Login
                   </Button>
                   <Button onClick={() => {
-                    navigate("/signup");
+                    navigate("/pricing");
                     setIsMobileMenuOpen(false);
                   }} className="w-full bg-warm-gold hover:bg-warm-gold/90 text-white">
-                    Sign Up
+                    Get Started
                   </Button>
                 </div>
               )}
