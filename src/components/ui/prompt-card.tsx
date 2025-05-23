@@ -10,6 +10,7 @@ import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { Lock, Crown, Heart, Play, FileAudio, Workflow } from "lucide-react";
 import { Button } from "./button";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
+import { WorkflowDownloadSection } from "./workflow-download-section";
 
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
@@ -46,6 +47,7 @@ export function PromptCard({
   const tags = metadata?.tags || [];
   const mediaFiles = metadata?.media_files || [];
   const workflowSteps = metadata?.workflow_steps || [];
+  const workflowFiles = metadata?.workflow_files || [];
   const {
     session
   } = useAuth();
@@ -261,29 +263,42 @@ export function PromptCard({
           )}
         </div>
 
-        {/* Description or Workflow Steps */}
-        {isN8nWorkflow && workflowSteps.length > 0 ? (
-          <div className="flex-grow space-y-2">
-            <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-              <Workflow className="h-4 w-4 text-blue-600" />
-              Workflow Steps
-            </h4>
-            <div className="space-y-1">
-              {workflowSteps.slice(0, 3).map((step, index) => (
-                <div key={index} className="flex items-start gap-2 text-xs">
-                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-medium">
-                    {index + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-700 truncate">{step.name}</p>
-                    <p className="text-gray-500 line-clamp-1">{step.description}</p>
-                  </div>
+        {/* Description, Workflow Steps, or Workflow Files */}
+        {isN8nWorkflow && (workflowSteps.length > 0 || workflowFiles.length > 0) ? (
+          <div className="flex-grow space-y-3">
+            {/* Workflow Steps */}
+            {workflowSteps.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                  <Workflow className="h-4 w-4 text-blue-600" />
+                  Workflow Steps
+                </h4>
+                <div className="space-y-1">
+                  {workflowSteps.slice(0, 2).map((step, index) => (
+                    <div key={index} className="flex items-start gap-2 text-xs">
+                      <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-medium">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-700 truncate">{step.name}</p>
+                        <p className="text-gray-500 line-clamp-1">{step.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {workflowSteps.length > 2 && (
+                    <p className="text-xs text-gray-500 pl-7">+{workflowSteps.length - 2} more steps</p>
+                  )}
                 </div>
-              ))}
-              {workflowSteps.length > 3 && (
-                <p className="text-xs text-gray-500 pl-7">+{workflowSteps.length - 3} more steps</p>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Workflow Files */}
+            {workflowFiles.length > 0 && (
+              <WorkflowDownloadSection 
+                workflowFiles={workflowFiles} 
+                className="text-xs" 
+              />
+            )}
           </div>
         ) : (
           <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed flex-grow">

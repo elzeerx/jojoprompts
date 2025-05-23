@@ -29,6 +29,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 import { CopyButton } from "@/components/ui/copy-button";
+import { WorkflowDownloadSection } from "@/components/ui/workflow-download-section";
 
 interface AdminPromptCardProps {
   prompt: PromptRow;
@@ -139,8 +140,9 @@ export function AdminPromptCard({
   const style = prompt.metadata?.style;
   const tags = prompt.metadata?.tags || [];
   const workflowSteps = prompt.metadata?.workflow_steps || [];
+  const workflowFiles = prompt.metadata?.workflow_files || [];
 
-  console.log("AdminPromptCard - Extracted metadata:", { category, style, tags, workflowSteps });
+  console.log("AdminPromptCard - Extracted metadata:", { category, style, tags, workflowSteps, workflowFiles });
 
   // Check if this is an n8n workflow prompt
   const isN8nWorkflow = prompt.prompt_type === 'workflow' || category.toLowerCase().includes('n8n');
@@ -227,6 +229,11 @@ export function AdminPromptCard({
             <p className="text-sm text-muted-foreground">
               {prompt.prompt_text.substring(0, 100)}...
             </p>
+          )}
+
+          {/* Display workflow files for n8n prompts */}
+          {isN8nWorkflow && workflowFiles.length > 0 && (
+            <WorkflowDownloadSection workflowFiles={workflowFiles} />
           )}
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
