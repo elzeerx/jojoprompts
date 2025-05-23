@@ -14,9 +14,12 @@ interface PromptDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   editingPrompt?: PromptRow | null;
+  // Remove 'initial' and add appropriate props
+  promptType?: 'text' | 'image' | 'button' | 'image-selection' | 'workflow';
+  category?: string;
 }
 
-export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt }: PromptDialogProps) {
+export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, promptType, category }: PromptDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const { user } = useAuth();
@@ -27,6 +30,20 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt }: P
     resetForm,
     validateForm
   } = usePromptForm(editingPrompt);
+
+  // Initialize promptType and category if provided
+  useEffect(() => {
+    if (promptType && !editingPrompt) {
+      setFormData(prev => ({
+        ...prev,
+        promptType,
+        metadata: {
+          ...prev.metadata,
+          category: category || prev.metadata?.category
+        }
+      }));
+    }
+  }, [promptType, category, setFormData, editingPrompt]);
 
   useEffect(() => {
     if (!open) {

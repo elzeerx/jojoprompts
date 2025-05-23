@@ -8,21 +8,24 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 export function Header() {
   const {
     user,
-    logout
+    signOut // Changed from 'logout' to 'signOut' to match AuthContext
   } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
   const handleLogout = async () => {
     try {
-      await logout();
+      await signOut(); // Changed from logout to signOut
       navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
     }
   };
+  
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
+  
   return <header className="bg-white border-b border-warm-gold/20 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">

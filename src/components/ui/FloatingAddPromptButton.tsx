@@ -31,57 +31,17 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
     setOpen(true);
   };
 
-  const handleSave = async (prompt: Partial<PromptRow>) => {
-    try {
-      // Check if required fields are present
-      if (!prompt.title || !prompt.prompt_text) {
-        toast({
-          title: "Error",
-          description: "Title and prompt text are required fields",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Ensure the category is always set
-      const metadata = {
-        ...(prompt.metadata || {}),
-        category: prompt.metadata?.category || category // Use selected category as default
-      };
-
-      // Use all the data from the prompt object directly
-      const { error } = await supabase
-        .from("prompts")
-        .insert({
-          title: prompt.title,
-          prompt_text: prompt.prompt_text,
-          user_id: user.id,
-          prompt_type: promptType,
-          metadata: metadata,
-          image_path: (promptType === "image" || promptType === "image-selection") ? prompt.image_path : null,
-          default_image_path: promptType === "text" ? prompt.default_image_path : null
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Prompt created successfully",
-      });
-
-      // Close the dialog
-      setOpen(false);
-      
-      // Reload prompts to refresh the list
-      await reloadPrompts();
-    } catch (error) {
-      console.error("Error saving prompt:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save prompt. Please try again.",
-        variant: "destructive",
-      });
-    }
+  const handleSuccess = async () => {
+    // Close the dialog
+    setOpen(false);
+    
+    // Reload prompts to refresh the list
+    await reloadPrompts();
+    
+    toast({
+      title: "Success",
+      description: "Prompt created successfully",
+    });
   };
 
   return (
@@ -126,12 +86,10 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
       <PromptDialog
         open={open}
         onOpenChange={setOpen}
-        initial={null}
+        onSuccess={handleSuccess}
         promptType={promptType}
         category={category}
-        onSave={handleSave}
       />
     </>
   );
 };
-

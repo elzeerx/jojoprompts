@@ -12,11 +12,18 @@ declare global {
 interface PayPalButtonProps {
   amount: number;
   planName: string;
+  className?: string; // Added to match usage in CheckoutPage
   onSuccess: (paymentId: string, details: any) => void;
-  onError: (error: any) => void;
+  onError?: (error: any) => void; // Made optional to match usage
 }
 
-export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalButtonProps) {
+export function PayPalButton({ 
+  amount, 
+  planName, 
+  className = "", 
+  onSuccess, 
+  onError = (error) => console.error("PayPal error:", error) 
+}: PayPalButtonProps) {
   const paypalRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
@@ -129,7 +136,7 @@ export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalBut
   }, [isScriptLoaded, amount, onSuccess, onError, planName, buttonRendered]);
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${className}`}>
       {isLoading && (
         <Button className="w-full" disabled>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

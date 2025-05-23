@@ -102,6 +102,7 @@ export default function CheckoutPage() {
 
   const price = selectedPlan.price_usd;
   const features = Array.isArray(selectedPlan.features) ? selectedPlan.features : [];
+  const planName = selectedPlan.name || "Subscription";
 
   return (
     <div className="min-h-screen bg-soft-bg py-16">
@@ -165,6 +166,7 @@ export default function CheckoutPage() {
                   <h4 className="font-medium mb-3">PayPal</h4>
                   <PayPalButton
                     amount={price}
+                    planName={planName}
                     onSuccess={handlePaymentSuccess}
                     className="w-full"
                   />
@@ -185,6 +187,7 @@ export default function CheckoutPage() {
                   <h4 className="font-medium mb-3">Credit Card (Tap Payments)</h4>
                   <TapPaymentButton
                     amount={price}
+                    planName={planName}
                     onSuccess={handlePaymentSuccess}
                   />
                 </div>

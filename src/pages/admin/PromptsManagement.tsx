@@ -194,9 +194,12 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       <PromptDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        initial={editing}
-        promptType={editing?.prompt_type || "image"}
-        onSave={handleSave}
+        onSuccess={() => {
+          fetchPrompts().then(updatePromptsState);
+          setDialogOpen(false);
+        }}
+        editingPrompt={editing}
+        promptType={editing?.prompt_type || "text"}
       />
     </div>
   );

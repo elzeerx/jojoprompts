@@ -21,7 +21,7 @@ interface TapPaymentButtonProps {
 
 export function TapPaymentButton({
   amount,
-  planName,
+  planName = "Subscription", // Default value added for situations where planName might be missing
   onSuccess,
   onError,
   currency = "KWD",
