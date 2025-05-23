@@ -1,3 +1,4 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { Loader2, Zap } from "lucide-react";
@@ -42,7 +43,7 @@ export default function AdminDashboard() {
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-dark-base">Admin Dashboard</h1>
           <p className="text-muted-foreground">
             Manage prompts, users, and run AI helpers
           </p>
@@ -55,11 +56,11 @@ export default function AdminDashboard() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="mb-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="prompts">Prompts</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="ai">AI Helpers</TabsTrigger>
+        <TabsList className="mb-6 bg-soft-bg/50 border border-warm-gold/20 p-1 rounded-xl">
+          <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">Overview</TabsTrigger>
+          <TabsTrigger value="prompts" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">Prompts</TabsTrigger>
+          <TabsTrigger value="users" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">Users</TabsTrigger>
+          <TabsTrigger value="ai" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">AI Helpers</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview">
@@ -77,16 +78,16 @@ export default function AdminDashboard() {
         <TabsContent value="ai">
           <div className="grid gap-6 md:grid-cols-2">
             {/* Generate Metadata */}
-            <Card>
-              <CardHeader>
+            <Card className="border-warm-gold/20 bg-white/95 shadow-sm hover:shadow-md transition-all">
+              <CardHeader className="bg-gradient-to-r from-warm-gold/10 via-transparent to-muted-teal/10">
                 <CardTitle>Generate Metadata</CardTitle>
                 <CardDescription>
                   Analyze prompt text to generate category, style, and tags
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-4">
                 <Button
-                  className="w-full"
+                  className="w-full bg-warm-gold hover:bg-warm-gold/90"
                   disabled={loadingMeta}
                   onClick={async () => {
                     setLoadingMeta(true);
@@ -105,16 +106,16 @@ export default function AdminDashboard() {
             </Card>
 
             {/* Suggest Prompt */}
-            <Card>
-              <CardHeader>
+            <Card className="border-warm-gold/20 bg-white/95 shadow-sm hover:shadow-md transition-all">
+              <CardHeader className="bg-gradient-to-r from-warm-gold/10 via-transparent to-muted-teal/10">
                 <CardTitle>Suggest New Prompt</CardTitle>
                 <CardDescription>
                   Generate a fresh prompt based on existing ones
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-4">
                 <Button
-                  className="w-full"
+                  className="w-full bg-warm-gold hover:bg-warm-gold/90"
                   disabled={loadingSuggest}
                   onClick={async () => {
                     setLoadingSuggest(true);

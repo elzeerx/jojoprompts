@@ -46,7 +46,7 @@ export default function UsersManagement() {
       />
 
       {error && (
-        <Alert variant="destructive" className="mb-6">
+        <Alert variant="destructive" className="mb-6 border-red-400/30 bg-red-50">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription className="flex flex-col gap-2">
@@ -55,7 +55,7 @@ export default function UsersManagement() {
               variant="outline" 
               size="sm" 
               onClick={fetchUsers}
-              className="w-fit flex items-center gap-2"
+              className="w-fit flex items-center gap-2 border-warm-gold/30 text-warm-gold hover:bg-warm-gold/10"
             >
               <RefreshCw className="h-4 w-4" />
               Retry
@@ -66,10 +66,10 @@ export default function UsersManagement() {
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2 className="h-8 w-8 animate-spin text-warm-gold" />
         </div>
       ) : (
-        <div className="rounded-md border overflow-visible">
+        <div className="rounded-md border border-warm-gold/20 overflow-visible bg-white/80 shadow-sm">
           <UsersTable 
             users={filteredUsers}
             currentPage={currentPage}

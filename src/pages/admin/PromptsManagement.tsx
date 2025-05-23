@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -163,19 +164,23 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Prompts Management</h2>
-        <Button onClick={handleAddPrompt}>
+        <h2 className="text-2xl font-bold text-dark-base">Prompts Management</h2>
+        <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">
           <Plus className="mr-2 h-4 w-4" />
           Add Prompt
         </Button>
       </div>
       
       {isLoading ? (
-        <div className="text-center py-8">Loading prompts...</div>
-      ) : prompts.length === 0 ? (
         <div className="text-center py-8">
+          <div className="inline-block">
+            <Loader2 className="h-8 w-8 animate-spin text-warm-gold" />
+          </div>
+        </div>
+      ) : prompts.length === 0 ? (
+        <div className="text-center py-8 bg-soft-bg/30 rounded-xl border border-warm-gold/20 p-8">
           <p className="text-muted-foreground mb-4">No prompts found</p>
-          <Button onClick={handleAddPrompt}>Add Your First Prompt</Button>
+          <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">Add Your First Prompt</Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
