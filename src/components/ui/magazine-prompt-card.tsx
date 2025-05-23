@@ -32,7 +32,6 @@ export function MagazinePromptCard({
   const { session } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(false);
   const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
-  const bgColor = bgColors[colorIndex];
   const isTextPrompt = prompt_type === 'text';
   
   // Choose image path based on prompt type
@@ -104,58 +103,72 @@ export function MagazinePromptCard({
     }
   };
 
+  // Get category badge color
+  const getCategoryColor = (type: string) => {
+    switch(type.toLowerCase()) {
+      case 'midjourney':
+        return 'bg-warm-gold text-white';
+      case 'chatgpt':
+        return 'bg-warm-gold text-white';
+      default:
+        return 'bg-warm-gold text-white';
+    }
+  };
+
   return (
     <div 
       className={cn(
-        "group cursor-pointer overflow-hidden",
-        bgColor,
-        "h-full aspect-[3/4] sm:aspect-[3/4]",
-        "transition-all duration-300 hover:shadow-lg",
-        "rounded-xl border border-border/40", // Added rounded corners and border
+        "group cursor-pointer overflow-hidden bg-white",
+        "h-full transition-all duration-300 hover:shadow-xl",
+        "rounded-xl border border-gray-200 hover:border-warm-gold/30",
         className
       )}
       onClick={onCardClick}
     >
       <div className="flex flex-col h-full">
-        {/* Image Section - Now at the top */}
-        <div className="relative overflow-hidden h-[40%] rounded-t-xl"> {/* Added rounded top corners */}
+        {/* Image Section */}
+        <div className="relative overflow-hidden h-48 rounded-t-xl">
           <img
             src={imageUrl}
             alt={title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           
-          {/* Favorite Button - Moved to bottom right of the image */}
+          {/* Favorite Button */}
           {session && (
             <button
               onClick={toggleFavorite}
               className={cn(
-                "absolute bottom-2 right-2 p-2 rounded-full", // Moved to bottom right
+                "absolute top-3 right-3 p-2 rounded-full transition-all duration-200",
+                "backdrop-blur-sm bg-white/20 hover:bg-white/40",
                 favorited 
-                  ? "bg-warm-gold text-white" 
-                  : "bg-white/80 text-warm-gold hover:bg-white"
+                  ? "text-red-500" 
+                  : "text-white hover:text-red-500"
               )}
             >
-              <Heart className={cn("h-4 w-4", favorited ? "fill-white" : "")} />
+              <Heart className={cn("h-4 w-4", favorited && "fill-current")} />
             </button>
           )}
         </div>
         
-        <div className="relative p-4 flex flex-col flex-grow">
+        <div className="relative p-6 flex flex-col flex-grow bg-white">
           {/* Category Tag */}
-          <div className="mb-2">
-            <span className="inline-block bg-warm-gold/80 text-white px-2 py-1 text-xs font-medium tracking-wide rounded-md"> {/* Added rounded corners */}
+          <div className="mb-3">
+            <span className={cn(
+              "inline-block px-3 py-1 text-xs font-semibold tracking-wide rounded-md",
+              getCategoryColor(category)
+            )}>
               {category}
             </span>
           </div>
           
           {/* Title */}
-          <h3 className="text-dark-base font-bold font-sans leading-tight mb-2 text-2xl md:text-3xl">
+          <h3 className="text-gray-900 font-bold font-sans leading-tight mb-3 text-xl line-clamp-2">
             {title}
           </h3>
           
           {/* Description */}
-          <p className="text-dark-base/70 text-sm line-clamp-2 mb-4">
+          <p className="text-gray-600 text-sm line-clamp-3 mb-4 leading-relaxed flex-grow">
             {prompt_text}
           </p>
           
@@ -163,7 +176,7 @@ export function MagazinePromptCard({
           <div className="mt-auto">
             <Button 
               variant="outline" 
-              className="bg-white border-warm-gold/30 text-warm-gold hover:bg-warm-gold hover:text-white px-4 py-2 text-sm rounded-lg" // Added more rounded corners
+              className="w-full border-warm-gold/30 text-warm-gold hover:bg-warm-gold hover:text-white transition-all duration-200 rounded-lg font-medium"
             >
               View Details
             </Button>

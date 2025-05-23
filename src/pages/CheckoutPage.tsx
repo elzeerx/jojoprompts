@@ -1,336 +1,282 @@
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Container } from "@/components/ui/container";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Check, Star, Zap, Crown } from "lucide-react";
 import { PayPalButton } from "@/components/subscription/PayPalButton";
 import { TapPaymentButton } from "@/components/subscription/TapPaymentButton";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, User } from "lucide-react";
-import { Container } from "@/components/ui/container";
+
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  features: string[];
+  popular?: boolean;
+  description?: string;
+}
 
 export default function CheckoutPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const planId = searchParams.get("plan_id");
-
-  const [plan, setPlan] = useState<any>(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
-  const [processingPayment, setProcessingPayment] = useState(false);
-  
-  // Account creation form for new users
-  const [createAccount, setCreateAccount] = useState(!user);
-  const [accountData, setAccountData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    firstName: "",
-    lastName: ""
-  });
+
+  const planId = searchParams.get("plan");
 
   useEffect(() => {
-    const fetchPlan = async () => {
-      if (!planId) {
-        navigate("/pricing");
-        return;
-      }
+    if (!user) {
+      navigate("/login");
+      return;
+    }
 
-      try {
-        const { data, error } = await supabase
-          .from("subscription_plans")
-          .select("*")
-          .eq("id", planId)
-          .single();
-
-        if (error) throw error;
-        setPlan(data);
-      } catch (error) {
-        console.error("Error fetching plan:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load plan details",
-          variant: "destructive"
-        });
-        navigate("/pricing");
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!planId) {
+      navigate("/pricing");
+      return;
+    }
 
     fetchPlan();
-  }, [planId, navigate]);
+  }, [user, planId, navigate]);
 
-  const handlePaymentSuccess = async (paymentData: any) => {
-    setProcessingPayment(true);
-    
+  const fetchPlan = async () => {
     try {
-      let userId = user?.id;
-      
-      // If user is not logged in, create account first
-      if (!user && createAccount) {
-        if (accountData.password !== accountData.confirmPassword) {
-          toast({
-            title: "Error",
-            description: "Passwords do not match",
-            variant: "destructive"
-          });
-          return;
-        }
+      const { data, error } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("id", planId)
+        .single();
 
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email: accountData.email,
-          password: accountData.password,
-          options: {
-            data: {
-              first_name: accountData.firstName,
-              last_name: accountData.lastName
-            }
-          }
-        });
+      if (error) throw error;
 
-        if (signUpError) throw signUpError;
-        
-        if (!authData.user) {
-          throw new Error("Failed to create user account");
-        }
-        
-        userId = authData.user.id;
-      }
+      const transformedPlan: Plan = {
+        id: data.id,
+        name: data.name,
+        price: data.price,
+        features: data.features || [],
+        description: data.description,
+      };
 
-      if (!userId) {
-        throw new Error("User ID not available");
-      }
-
-      // Create subscription
-      const { data: subscriptionData, error: subscriptionError } = await supabase.functions.invoke(
-        "create-subscription",
-        {
-          body: {
-            planId: plan.id,
-            userId: userId,
-            paymentData: paymentData
-          }
-        }
-      );
-
-      if (subscriptionError) throw subscriptionError;
-
-      toast({
-        title: "Payment Successful!",
-        description: `Welcome to ${plan.name}! ${!user ? 'Your account has been created and ' : ''}Your subscription is now active.`
-      });
-
-      // Redirect to success page or dashboard
-      navigate("/payment-success");
-      
+      setPlan(transformedPlan);
     } catch (error) {
-      console.error("Payment processing error:", error);
+      console.error("Error fetching plan:", error);
       toast({
-        title: "Payment Processing Error",
-        description: error.message || "Failed to process payment. Please try again.",
-        variant: "destructive"
+        title: "Error",
+        description: "Failed to load plan details",
+        variant: "destructive",
       });
+      navigate("/pricing");
     } finally {
-      setProcessingPayment(false);
+      setLoading(false);
     }
   };
 
-  const validateAccountForm = () => {
-    if (!accountData.email || !accountData.password || !accountData.firstName) {
+  const handlePaymentSuccess = async (paymentData: any) => {
+    try {
+      console.log("Payment successful:", paymentData);
+      
+      // Create user subscription
+      const { error } = await supabase
+        .from("user_subscriptions")
+        .insert({
+          user_id: user!.id,
+          plan_id: plan!.id,
+          status: "active",
+          payment_method: paymentData.payment_method || "paypal",
+        });
+
+      if (error) throw error;
+
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive"
+        title: "Payment Successful!",
+        description: "Your subscription has been activated.",
       });
-      return false;
-    }
-    
-    if (accountData.password.length < 6) {
+
+      navigate("/payment-success");
+    } catch (error) {
+      console.error("Error creating subscription:", error);
       toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long",
-        variant: "destructive"
+        title: "Error",
+        description: "Payment was successful but there was an error activating your subscription. Please contact support.",
+        variant: "destructive",
       });
-      return false;
     }
-    
-    return true;
+  };
+
+  const getPlanIcon = (planName: string) => {
+    switch (planName.toLowerCase()) {
+      case "basic":
+        return <Star className="h-8 w-8 text-blue-500" />;
+      case "standard":
+        return <Zap className="h-8 w-8 text-green-500" />;
+      case "premium":
+        return <Crown className="h-8 w-8 text-purple-500" />;
+      case "ultimate":
+        return <Crown className="h-8 w-8 text-warm-gold" />;
+      default:
+        return <Star className="h-8 w-8 text-gray-500" />;
+    }
+  };
+
+  const getPlanColor = (planName: string) => {
+    switch (planName.toLowerCase()) {
+      case "basic":
+        return "border-blue-200 bg-blue-50";
+      case "standard":
+        return "border-green-200 bg-green-50";
+      case "premium":
+        return "border-purple-200 bg-purple-50";
+      case "ultimate":
+        return "border-warm-gold/30 bg-warm-gold/10";
+      default:
+        return "border-gray-200 bg-gray-50";
+    }
   };
 
   if (loading) {
     return (
-      <Container className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <Container>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-warm-gold mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading checkout...</p>
+          </div>
+        </div>
       </Container>
     );
   }
 
   if (!plan) {
     return (
-      <Container className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
+      <Container>
+        <div className="text-center py-12">
           <h1 className="text-2xl font-bold mb-4">Plan Not Found</h1>
-          <Button onClick={() => navigate("/pricing")}>
-            Back to Pricing
-          </Button>
+          <p className="text-muted-foreground mb-6">
+            The requested plan could not be found.
+          </p>
+          <button
+            onClick={() => navigate("/pricing")}
+            className="bg-warm-gold hover:bg-warm-gold/90 text-white px-6 py-2 rounded-lg font-medium"
+          >
+            View All Plans
+          </button>
         </div>
       </Container>
     );
   }
 
   return (
-    <Container className="min-h-screen py-12">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Complete Your Purchase</h1>
-          <p className="text-muted-foreground">
-            {user ? "You're almost there!" : "Create your account and get instant access"}
+    <Container>
+      <div className="max-w-4xl mx-auto py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4">Complete Your Purchase</h1>
+          <p className="text-xl text-muted-foreground">
+            You're just one step away from accessing premium prompts
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Account Information */}
-          {!user && (
-            <Card className="border-warm-gold/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-warm-gold" />
-                  Create Your Account
+        <div className="grid lg:grid-cols-2 gap-12 items-start">
+          {/* Plan Summary */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
+            <Card className={`${getPlanColor(plan.name)} border-2`}>
+              <CardHeader className="text-center pb-4">
+                <div className="flex justify-center mb-4">
+                  {getPlanIcon(plan.name)}
+                </div>
+                <CardTitle className="text-2xl">
+                  {plan.name} Plan
+                  {plan.popular && (
+                    <Badge className="ml-2 bg-warm-gold text-white">
+                      Most Popular
+                    </Badge>
+                  )}
                 </CardTitle>
+                <div className="text-4xl font-bold text-warm-gold">
+                  ${plan.price}
+                  {plan.name.toLowerCase() !== "ultimate" && (
+                    <span className="text-lg text-muted-foreground">/month</span>
+                  )}
+                  {plan.name.toLowerCase() === "ultimate" && (
+                    <span className="text-lg text-muted-foreground"> one-time</span>
+                  )}
+                </div>
+                {plan.description && (
+                  <p className="text-muted-foreground mt-2">{plan.description}</p>
+                )}
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      value={accountData.firstName}
-                      onChange={(e) => setAccountData(prev => ({...prev, firstName: e.target.value}))}
-                      placeholder="Enter your first name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={accountData.lastName}
-                      onChange={(e) => setAccountData(prev => ({...prev, lastName: e.target.value}))}
-                      placeholder="Enter your last name"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={accountData.email}
-                    onChange={(e) => setAccountData(prev => ({...prev, email: e.target.value}))}
-                    placeholder="Enter your email"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="password">Password *</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={accountData.password}
-                    onChange={(e) => setAccountData(prev => ({...prev, password: e.target.value}))}
-                    placeholder="Create a password (min. 6 characters)"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={accountData.confirmPassword}
-                    onChange={(e) => setAccountData(prev => ({...prev, confirmPassword: e.target.value}))}
-                    placeholder="Confirm your password"
-                  />
-                </div>
+              <CardContent>
+                <ul className="space-y-3">
+                  {plan.features.map((feature, index) => (
+                    <li key={index} className="flex items-center gap-3">
+                      <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
-          )}
+          </div>
 
-          {/* Plan Summary & Payment */}
-          <Card className="border-warm-gold/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-warm-gold" />
-                Order Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Plan Details */}
-              <div className="bg-warm-gold/5 p-4 rounded-lg border border-warm-gold/10">
-                <h3 className="font-semibold text-lg text-warm-gold mb-2">{plan.name}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
-                
-                <div className="flex justify-between items-center text-lg font-semibold">
-                  <span>Total:</span>
-                  <span className="text-warm-gold">${plan.price_usd}</span>
-                </div>
-                
-                {plan.is_lifetime && (
-                  <p className="text-xs text-muted-foreground mt-1">One-time payment • Lifetime access</p>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Payment Methods */}
-              <div className="space-y-4">
-                <h4 className="font-medium">Choose Payment Method</h4>
-                
-                <div className="space-y-3">
-                  <PayPalButton
-                    amount={plan.price_usd}
-                    planName={plan.name}
-                    onSuccess={handlePaymentSuccess}
-                    onError={(error) => {
-                      console.error("PayPal error:", error);
-                      toast({
-                        title: "Payment Error",
-                        description: "There was an issue with PayPal. Please try again.",
-                        variant: "destructive"
-                      });
-                    }}
+          {/* Payment Options */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Payment Method</h2>
+            <div className="space-y-4">
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <img
+                    src="https://www.paypalobjects.com/webstatic/mktg/Logo/pp-logo-100px.png"
+                    alt="PayPal"
+                    className="h-6"
                   />
-                  
-                  <TapPaymentButton
-                    amount={plan.price_kwd}
-                    currency="KWD"
-                    onSuccess={handlePaymentSuccess}
-                    disabled={processingPayment || (!user && !validateAccountForm())}
-                    className="w-full"
-                  />
+                  Pay with PayPal
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Secure payment processing through PayPal. You can use your PayPal account or pay with a credit/debit card.
+                </p>
+                <PayPalButton
+                  amount={plan.price}
+                  currency="USD"
+                  onSuccess={handlePaymentSuccess}
+                  className="w-full"
+                />
+              </Card>
+
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <div className="w-8 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">T</span>
+                  </div>
+                  Pay with Tap
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Fast and secure payment processing for the Middle East region.
+                </p>
+                <TapPaymentButton
+                  amount={plan.price}
+                  currency="USD"
+                  onSuccess={handlePaymentSuccess}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                />
+              </Card>
+            </div>
+
+            <div className="mt-8 p-4 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                  <Check className="h-3 w-3 text-white" />
                 </div>
+                <span className="text-sm font-medium">Secure Payment</span>
               </div>
-
-              {processingPayment && (
-                <div className="text-center text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
-                  Processing your payment...
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Security Notice */}
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>🔒 Your payment information is encrypted and secure</p>
-          <p className="mt-1">By completing this purchase, you agree to our Terms of Service and Privacy Policy</p>
+              <p className="text-xs text-muted-foreground">
+                Your payment information is encrypted and secure. We never store your payment details.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </Container>
