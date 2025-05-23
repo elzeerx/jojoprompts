@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function Header() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -70,6 +70,12 @@ export function Header() {
                     <Heart className="mr-2 h-4 w-4" />
                     <span>Favorites</span>
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/admin")}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Admin</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -117,6 +123,11 @@ export function Header() {
                   <Link to="/favorites" className="px-4 py-2 text-dark-base hover:text-warm-gold transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>
                     Favorites
                   </Link>
+                  {isAdmin && (
+                    <Link to="/admin" className="px-4 py-2 text-dark-base hover:text-warm-gold transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>
+                      Admin
+                    </Link>
+                  )}
                   <button onClick={() => {
                     handleLogout();
                     setIsMobileMenuOpen(false);
