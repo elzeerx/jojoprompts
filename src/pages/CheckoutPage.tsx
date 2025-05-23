@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Container } from "@/components/ui/container";
@@ -10,6 +11,7 @@ import { TapPaymentButton } from "@/components/subscription/TapPaymentButton";
 import { PlanCard } from "@/components/subscription/PlanCard";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function CheckoutPage() {
   const { user, session, loading: authLoading } = useAuth();
@@ -103,13 +105,6 @@ export default function CheckoutPage() {
       loadData();
     }
   }, [selectedPlanId]);
-  
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate(`/login?redirect=checkout${selectedPlanId ? `?plan_id=${selectedPlanId}` : ''}`);
-    }
-  }, [authLoading, user, navigate, selectedPlanId]);
   
   const handlePaymentSuccess = async (paymentId: string, paymentDetails: any = {}, paymentMethod: string = "paypal") => {
     if (!user || !plan) return;
@@ -218,7 +213,7 @@ export default function CheckoutPage() {
   };
   
   // Show loading while checking authentication or loading plan data
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <Container>
         <div className="min-h-screen flex flex-col items-center justify-center">
@@ -244,6 +239,66 @@ export default function CheckoutPage() {
     );
   }
   
+  // If not authenticated, show sign-in prompt
+  if (!authLoading && !user) {
+    return (
+      <Container>
+        <div className="max-w-4xl mx-auto py-12">
+          <Alert variant="default" className="mb-8 border-warm-gold/50 bg-warm-gold/10">
+            <AlertTitle>Account Required</AlertTitle>
+            <AlertDescription>
+              You need to create an account or log in to complete your purchase.
+            </AlertDescription>
+          </Alert>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Selected Plan</h2>
+              <div className="max-w-sm mx-auto">
+                <PlanCard 
+                  plan={plan}
+                  isSelected={true}
+                  onSelect={() => {}}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create an Account or Log In</CardTitle>
+                  <CardDescription>
+                    You're just one step away from accessing premium content
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Please create an account or log in to complete your purchase. Your plan selection will be saved.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Button
+                      onClick={() => navigate(`/signup?plan_id=${selectedPlanId}`)}
+                      className="bg-warm-gold hover:bg-warm-gold/90 text-white"
+                    >
+                      Sign Up
+                    </Button>
+                    <Button
+                      onClick={() => navigate(`/login?redirect=checkout?plan_id=${selectedPlanId}`)}
+                      variant="outline"
+                    >
+                      Log In
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+  
+  // Normal checkout flow for authenticated users
   return (
     <Container>
       <div className="max-w-4xl mx-auto py-12">

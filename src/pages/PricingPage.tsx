@@ -4,13 +4,22 @@ import { PricingComparison } from '@/components/pricing/PricingComparison';
 import { PricingSection } from '@/components/pricing/PricingSection';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { Container } from '@/components/ui/container';
+import { Check } from 'lucide-react';
 
 export default function PricingPage() {
   const { user } = useAuth();
   
+  const keyFeatures = [
+    "Access to premium AI prompts collection",
+    "One-time payment, lifetime access",
+    "Regular content updates",
+    "Access to exclusive templates",
+  ];
+  
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      <div className="container max-w-6xl mx-auto py-12 px-4">
+      <Container className="py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight text-dark-base mb-4">
             Choose Your Perfect Plan
@@ -19,6 +28,16 @@ export default function PricingPage() {
             Access our premium collection of AI prompts with a one-time payment.
             No subscriptions, no recurring fees.
           </p>
+          
+          {/* Key Features */}
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 mt-6">
+            {keyFeatures.map((feature, index) => (
+              <div key={index} className="flex items-center">
+                <Check className="h-5 w-5 text-warm-gold mr-2 flex-shrink-0" />
+                <span className="text-sm text-muted-foreground">{feature}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Pricing cards */}
@@ -41,7 +60,7 @@ export default function PricingPage() {
             className="bg-warm-gold hover:bg-warm-gold/90 text-white"
             asChild
           >
-            <a href={user ? "/checkout" : "/login?redirect=checkout"}>
+            <a href="/checkout">
               Get Started Today
             </a>
           </Button>
@@ -77,7 +96,7 @@ export default function PricingPage() {
             </div>
           </div>
         </div>
-      </div>
+      </Container>
     </div>
   );
 }

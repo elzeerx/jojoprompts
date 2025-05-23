@@ -4,11 +4,13 @@ import { PlanCard } from "@/components/subscription/PlanCard";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function PricingSection() {
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   // Fetch available plans
@@ -43,7 +45,7 @@ export function PricingSection() {
   const handleSelectPlan = (planId: string) => {
     setSelectedPlanId(planId);
     
-    // Navigate to checkout with the selected plan
+    // Navigate directly to checkout with the selected plan
     navigate(`/checkout?plan_id=${planId}`);
   };
 

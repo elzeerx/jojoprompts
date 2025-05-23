@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -452,7 +451,7 @@ export default function UserDashboardPage() {
                     />
                   </div>
                   
-                  <Alert variant="outline" className="bg-blue-50 border-blue-200">
+                  <Alert variant="default" className="mb-4">
                     <AlertTitle>Verification Required</AlertTitle>
                     <AlertDescription>
                       You'll need to verify your new email address by clicking on the link sent to it.

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Prompt } from "@/types";
+import { Container } from "@/components/ui/container";
 
 export default function WorkflowPromptsPage() {
   const { user, session } = useAuth();
@@ -109,7 +110,7 @@ export default function WorkflowPromptsPage() {
   
   if (!hasAccess) {
     return (
-      <div className="container max-w-6xl mx-auto p-6">
+      <Container>
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
           <div className="bg-muted/20 p-6 rounded-full mb-6">
             <Lock className="h-12 w-12 text-muted-foreground" />
@@ -127,12 +128,12 @@ export default function WorkflowPromptsPage() {
             View Pricing Plans
           </Button>
         </div>
-      </div>
+      </Container>
     );
   }
   
   return (
-    <div className="container max-w-6xl mx-auto p-6">
+    <Container>
       <div className="mb-8">
         <h1 className="text-3xl font-bold">n8n Workflow Prompts</h1>
         <p className="text-muted-foreground">
@@ -152,6 +153,6 @@ export default function WorkflowPromptsPage() {
           ))}
         </div>
       )}
-    </div>
+    </Container>
   );
 }
