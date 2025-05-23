@@ -11,6 +11,12 @@ interface MediaFile {
   preview?: string;
 }
 
+interface WorkflowFile {
+  type: 'json' | 'zip';
+  path: string;
+  name: string;
+}
+
 interface FormData {
   title: string;
   promptText: string;
@@ -25,6 +31,7 @@ interface FormData {
     use_case?: string;
     buttons?: Array<{ id: string; name: string; description: string; type: string }>;
     media_files?: MediaFile[];
+    workflow_files?: WorkflowFile[];
     workflow_steps?: Array<{ name: string; description: string; type?: string }>;
   };
 }
@@ -44,12 +51,14 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
       use_case: editingPrompt?.metadata?.use_case || "",
       buttons: editingPrompt?.metadata?.buttons || [],
       media_files: editingPrompt?.metadata?.media_files || [],
+      workflow_files: editingPrompt?.metadata?.workflow_files || [],
       workflow_steps: editingPrompt?.metadata?.workflow_steps || []
     }
   }));
 
   const resetForm = useCallback(() => {
     if (editingPrompt) {
+      console.log("usePromptForm - Resetting form with editing prompt metadata:", editingPrompt.metadata);
       setFormData({
         title: editingPrompt.title,
         promptText: editingPrompt.prompt_text,
@@ -64,6 +73,7 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
           use_case: editingPrompt.metadata?.use_case || "",
           buttons: editingPrompt.metadata?.buttons || [],
           media_files: editingPrompt.metadata?.media_files || [],
+          workflow_files: editingPrompt.metadata?.workflow_files || [],
           workflow_steps: editingPrompt.metadata?.workflow_steps || []
         }
       });
@@ -82,6 +92,7 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
           use_case: "",
           buttons: [],
           media_files: [],
+          workflow_files: [],
           workflow_steps: []
         }
       });

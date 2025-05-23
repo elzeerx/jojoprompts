@@ -1,3 +1,4 @@
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PromptFormField } from "./PromptFormField";
 import { TextPromptFields } from "./TextPromptFields";
@@ -23,9 +24,16 @@ interface DialogFormProps {
   onChange: (formData: any) => void;
   onFileChange: (file: File) => void;
   onMultipleFilesChange?: (files: File[]) => void;
+  onWorkflowFilesChange?: (files: File[]) => void;
 }
 
-export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesChange }: DialogFormProps) {
+export function DialogForm({ 
+  formData, 
+  onChange, 
+  onFileChange, 
+  onMultipleFilesChange,
+  onWorkflowFilesChange 
+}: DialogFormProps) {
   const [generatedMetadata, setGeneratedMetadata] = useState<boolean>(false);
   const [workflowFiles, setWorkflowFiles] = useState<any[]>([]);
 
@@ -64,6 +72,7 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
   };
 
   const handleWorkflowFilesChange = (workflowFiles: any[]) => {
+    console.log("DialogForm - Workflow files changed:", workflowFiles);
     setWorkflowFiles(workflowFiles);
     updateMetadata({
       ...formData.metadata,
@@ -82,8 +91,11 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
   };
 
   const handleWorkflowFileUpload = (files: File[]) => {
-    // Add workflow files to the main files array for upload
-    handleMultipleFilesChange(files);
+    console.log("DialogForm - Workflow files for upload:", files);
+    // Pass workflow files to parent for upload
+    if (onWorkflowFilesChange) {
+      onWorkflowFilesChange(files);
+    }
   };
 
   const handleMetadataGenerated = (generatedMetadata: { style: string; tags: string[] }) => {
@@ -91,6 +103,7 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
     
     // Preserve existing metadata fields that should not be overwritten
     const existingMediaFiles = formData.metadata?.media_files || [];
+    const existingWorkflowFiles = formData.metadata?.workflow_files || [];
     const existingTargetModel = formData.metadata?.target_model || '';
     const existingUseCase = formData.metadata?.use_case || '';
     const existingCategory = formData.metadata?.category || 'ChatGPT'; // Keep the manually selected category
@@ -103,6 +116,7 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
       // Preserve these fields
       category: existingCategory, // Keep manual category selection
       media_files: existingMediaFiles,
+      workflow_files: existingWorkflowFiles,
       target_model: existingTargetModel,
       use_case: existingUseCase
     };
