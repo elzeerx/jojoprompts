@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { type Prompt, type PromptRow } from "@/types";
@@ -197,7 +196,7 @@ export function PromptCard({
           <ImageWrapper 
             src={imageUrl}
             alt={title}
-            aspect={16/9}
+            aspect={1}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           
