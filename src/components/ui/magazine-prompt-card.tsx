@@ -103,85 +103,101 @@ export function MagazinePromptCard({
     }
   };
 
-  // Get category badge color
-  const getCategoryColor = (type: string) => {
-    switch(type.toLowerCase()) {
-      case 'midjourney':
-        return 'bg-warm-gold text-white';
-      case 'chatgpt':
-        return 'bg-warm-gold text-white';
-      default:
-        return 'bg-warm-gold text-white';
+  // Get category badge color based on type
+  const getCategoryBadgeStyle = (type: string, cat: string) => {
+    if (type === 'text' || cat.toLowerCase() === 'chatgpt') {
+      return 'bg-[#c49d68] text-white';
+    } else if (type === 'image' || cat.toLowerCase() === 'midjourney') {
+      return 'bg-[#7a9e9f] text-white';
+    } else if (type === 'workflow' || cat.toLowerCase() === 'n8n') {
+      return 'bg-blue-600 text-white';
     }
+    return 'bg-[#c49d68] text-white';
   };
 
   return (
     <div 
       className={cn(
-        "group cursor-pointer overflow-hidden bg-white",
-        "h-full transition-all duration-300 hover:shadow-xl",
-        "rounded-xl border border-gray-200 hover:border-warm-gold/30",
+        "group cursor-pointer overflow-hidden bg-[#efeee9] rounded-2xl shadow-md border-0",
+        "transition-all duration-300 hover:shadow-xl hover:scale-[1.02]",
+        "p-6 space-y-4 min-h-[400px] flex flex-col",
         className
       )}
       onClick={onCardClick}
     >
-      <div className="flex flex-col h-full">
-        {/* Image Section */}
-        <div className="relative overflow-hidden h-48 rounded-t-xl">
+      {/* Category Tag */}
+      <div className="flex items-start justify-between">
+        <span className={cn(
+          "inline-block px-3 py-1 text-xs font-medium rounded-lg",
+          getCategoryBadgeStyle(prompt_type, category)
+        )}>
+          {category}
+        </span>
+        
+        {/* Favorite Button */}
+        {session && (
+          <button
+            onClick={toggleFavorite}
+            className={cn(
+              "p-2 rounded-full transition-all duration-200",
+              "hover:bg-white/30",
+              favorited 
+                ? "text-[#c49d68]" 
+                : "text-gray-400 hover:text-[#c49d68]"
+            )}
+          >
+            <Heart className={cn("h-5 w-5", favorited && "fill-current")} />
+          </button>
+        )}
+      </div>
+      
+      {/* Title */}
+      <h3 className="text-gray-900 font-bold text-xl leading-tight line-clamp-2 min-h-[3rem]">
+        {title}
+      </h3>
+      
+      {/* Image */}
+      {showImage && (
+        <div className="relative overflow-hidden rounded-xl h-48 bg-white/50">
           <img
             src={imageUrl}
             alt={title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
-          
-          {/* Favorite Button */}
-          {session && (
-            <button
-              onClick={toggleFavorite}
-              className={cn(
-                "absolute top-3 right-3 p-2 rounded-full transition-all duration-200",
-                "backdrop-blur-sm bg-white/20 hover:bg-white/40",
-                favorited 
-                  ? "text-red-500" 
-                  : "text-white hover:text-red-500"
-              )}
+        </div>
+      )}
+      
+      {/* Description */}
+      <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed flex-grow">
+        {prompt_text}
+      </p>
+      
+      {/* Tags */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {tags.slice(0, 3).map((tag, i) => (
+            <span 
+              key={i}
+              className="px-2 py-1 bg-white/60 text-gray-700 text-xs rounded-md border border-gray-200"
             >
-              <Heart className={cn("h-4 w-4", favorited && "fill-current")} />
-            </button>
+              {tag}
+            </span>
+          ))}
+          {tags.length > 3 && (
+            <span className="px-2 py-1 bg-white/60 text-gray-500 text-xs rounded-md border border-gray-200">
+              +{tags.length - 3} more
+            </span>
           )}
         </div>
-        
-        <div className="relative p-6 flex flex-col flex-grow bg-white">
-          {/* Category Tag */}
-          <div className="mb-3">
-            <span className={cn(
-              "inline-block px-3 py-1 text-xs font-semibold tracking-wide rounded-md",
-              getCategoryColor(category)
-            )}>
-              {category}
-            </span>
-          </div>
-          
-          {/* Title */}
-          <h3 className="text-gray-900 font-bold font-sans leading-tight mb-3 text-xl line-clamp-2">
-            {title}
-          </h3>
-          
-          {/* Description */}
-          <p className="text-gray-600 text-sm line-clamp-3 mb-4 leading-relaxed flex-grow">
-            {prompt_text}
-          </p>
-          
-          {/* Action Button */}
-          <div className="mt-auto">
-            <Button 
-              variant="outline" 
-              className="w-full border-warm-gold/30 text-warm-gold hover:bg-warm-gold hover:text-white transition-all duration-200 rounded-lg font-medium"
-            >
-              View Details
-            </Button>
-          </div>
-        </div>
+      )}
+      
+      {/* Action Button */}
+      <div className="mt-auto pt-2">
+        <Button 
+          className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200"
+        >
+          View Details
+        </Button>
       </div>
     </div>
   );

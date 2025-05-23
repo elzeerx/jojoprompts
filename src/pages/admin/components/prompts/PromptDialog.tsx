@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { type PromptRow } from "@/types";
 import { DialogForm } from "./components/DialogForm";
 import { usePromptForm } from "./hooks/usePromptForm";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PromptDialogProps {
   open: boolean;
@@ -18,6 +19,7 @@ interface PromptDialogProps {
 export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt }: PromptDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const { user } = useAuth();
   
   const {
     formData,
@@ -62,7 +64,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt }: P
         prompt_type: formData.promptType,
         image_path: imagePath,
         default_image_path: formData.defaultImagePath,
-        metadata: formData.metadata
+        metadata: formData.metadata,
+        user_id: user?.id || ""
       };
 
       if (editingPrompt) {

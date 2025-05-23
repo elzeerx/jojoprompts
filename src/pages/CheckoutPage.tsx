@@ -1,284 +1,208 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { Container } from "@/components/ui/container";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Check, Star, Zap, Crown } from "lucide-react";
+import { Loader2, Check, Crown } from "lucide-react";
 import { PayPalButton } from "@/components/subscription/PayPalButton";
 import { TapPaymentButton } from "@/components/subscription/TapPaymentButton";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
-interface Plan {
-  id: string;
-  name: string;
-  price: number;
-  features: string[];
-  popular?: boolean;
-  description?: string;
-}
-
 export default function CheckoutPage() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [plan, setPlan] = useState<Plan | null>(null);
-  const [loading, setLoading] = useState(true);
-
+  const [searchParams] = useSearchParams();
   const planId = searchParams.get("plan");
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (!user) {
-      navigate("/login");
-      return;
-    }
+    const fetchPlan = async () => {
+      if (!planId) {
+        navigate("/pricing");
+        return;
+      }
 
-    if (!planId) {
-      navigate("/pricing");
-      return;
-    }
+      try {
+        const { data, error } = await supabase
+          .from("subscription_plans")
+          .select("*")
+          .eq("id", planId)
+          .single();
+
+        if (error) throw error;
+
+        setSelectedPlan(data);
+      } catch (error) {
+        console.error("Error fetching plan:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load plan details",
+          variant: "destructive",
+        });
+        navigate("/pricing");
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchPlan();
-  }, [user, planId, navigate]);
-
-  const fetchPlan = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("subscription_plans")
-        .select("*")
-        .eq("id", planId)
-        .single();
-
-      if (error) throw error;
-
-      const transformedPlan: Plan = {
-        id: data.id,
-        name: data.name,
-        price: data.price,
-        features: data.features || [],
-        description: data.description,
-      };
-
-      setPlan(transformedPlan);
-    } catch (error) {
-      console.error("Error fetching plan:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load plan details",
-        variant: "destructive",
-      });
-      navigate("/pricing");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [planId, navigate]);
 
   const handlePaymentSuccess = async (paymentData: any) => {
     try {
-      console.log("Payment successful:", paymentData);
-      
-      // Create user subscription
-      const { error } = await supabase
-        .from("user_subscriptions")
-        .insert({
-          user_id: user!.id,
-          plan_id: plan!.id,
-          status: "active",
-          payment_method: paymentData.payment_method || "paypal",
-        });
+      const { data, error } = await supabase.functions.invoke("create-subscription", {
+        body: {
+          planId: selectedPlan.id,
+          userId: user?.id,
+          paymentData
+        }
+      });
 
       if (error) throw error;
 
       toast({
-        title: "Payment Successful!",
-        description: "Your subscription has been activated.",
+        title: "Success!",
+        description: "Your subscription has been activated",
       });
 
-      navigate("/payment-success");
+      navigate("/dashboard");
     } catch (error) {
       console.error("Error creating subscription:", error);
       toast({
         title: "Error",
-        description: "Payment was successful but there was an error activating your subscription. Please contact support.",
+        description: "Failed to activate subscription",
         variant: "destructive",
       });
-    }
-  };
-
-  const getPlanIcon = (planName: string) => {
-    switch (planName.toLowerCase()) {
-      case "basic":
-        return <Star className="h-8 w-8 text-blue-500" />;
-      case "standard":
-        return <Zap className="h-8 w-8 text-green-500" />;
-      case "premium":
-        return <Crown className="h-8 w-8 text-purple-500" />;
-      case "ultimate":
-        return <Crown className="h-8 w-8 text-warm-gold" />;
-      default:
-        return <Star className="h-8 w-8 text-gray-500" />;
-    }
-  };
-
-  const getPlanColor = (planName: string) => {
-    switch (planName.toLowerCase()) {
-      case "basic":
-        return "border-blue-200 bg-blue-50";
-      case "standard":
-        return "border-green-200 bg-green-50";
-      case "premium":
-        return "border-purple-200 bg-purple-50";
-      case "ultimate":
-        return "border-warm-gold/30 bg-warm-gold/10";
-      default:
-        return "border-gray-200 bg-gray-50";
     }
   };
 
   if (loading) {
     return (
-      <Container>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-warm-gold mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading checkout...</p>
-          </div>
-        </div>
-      </Container>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     );
   }
 
-  if (!plan) {
+  if (!selectedPlan) {
     return (
-      <Container>
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold mb-4">Plan Not Found</h1>
-          <p className="text-muted-foreground mb-6">
-            The requested plan could not be found.
-          </p>
-          <button
-            onClick={() => navigate("/pricing")}
-            className="bg-warm-gold hover:bg-warm-gold/90 text-white px-6 py-2 rounded-lg font-medium"
-          >
-            View All Plans
-          </button>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Plan not found</h1>
+          <Button onClick={() => navigate("/pricing")}>
+            Back to Pricing
+          </Button>
         </div>
-      </Container>
+      </div>
     );
   }
+
+  const price = selectedPlan.price_usd;
+  const features = Array.isArray(selectedPlan.features) ? selectedPlan.features : [];
 
   return (
-    <Container>
-      <div className="max-w-4xl mx-auto py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Complete Your Purchase</h1>
-          <p className="text-xl text-muted-foreground">
-            You're just one step away from accessing premium prompts
+    <div className="min-h-screen bg-soft-bg py-16">
+      <div className="container mx-auto max-w-4xl">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">Complete Your Purchase</h1>
+          <p className="text-muted-foreground">
+            You're about to subscribe to the {selectedPlan.name} plan
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-12 items-start">
+        <div className="grid lg:grid-cols-2 gap-8">
           {/* Plan Summary */}
-          <div>
-            <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
-            <Card className={`${getPlanColor(plan.name)} border-2`}>
-              <CardHeader className="text-center pb-4">
-                <div className="flex justify-center mb-4">
-                  {getPlanIcon(plan.name)}
-                </div>
-                <CardTitle className="text-2xl">
-                  {plan.name} Plan
-                  {plan.popular && (
-                    <Badge className="ml-2 bg-warm-gold text-white">
-                      Most Popular
-                    </Badge>
+          <Card className="h-fit">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="h-5 w-5 text-warm-gold" />
+                {selectedPlan.name} Plan
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-warm-gold">
+                  ${price}
+                  {!selectedPlan.is_lifetime && (
+                    <span className="text-lg text-muted-foreground">
+                      /{selectedPlan.duration_days === 30 ? "month" : "year"}
+                    </span>
                   )}
-                </CardTitle>
-                <div className="text-4xl font-bold text-warm-gold">
-                  ${plan.price}
-                  {plan.name.toLowerCase() !== "ultimate" && (
-                    <span className="text-lg text-muted-foreground">/month</span>
-                  )}
-                  {plan.name.toLowerCase() === "ultimate" && (
+                  {selectedPlan.is_lifetime && (
                     <span className="text-lg text-muted-foreground"> one-time</span>
                   )}
                 </div>
-                {plan.description && (
-                  <p className="text-muted-foreground mt-2">{plan.description}</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-3">
-                      <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
-                      <span className="text-sm">{feature}</span>
+                <p className="text-muted-foreground mt-2">
+                  {selectedPlan.description}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Included Features:</h4>
+                <ul className="space-y-1">
+                  {features.map((feature: string, index: number) => (
+                    <li key={index} className="flex items-center gap-2 text-sm">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Payment Options */}
-          <div>
-            <h2 className="text-2xl font-bold mb-6">Payment Method</h2>
-            <div className="space-y-4">
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <img
-                    src="https://www.paypalobjects.com/webstatic/mktg/Logo/pp-logo-100px.png"
-                    alt="PayPal"
-                    className="h-6"
-                  />
-                  Pay with PayPal
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Secure payment processing through PayPal. You can use your PayPal account or pay with a credit/debit card.
-                </p>
-                <PayPalButton
-                  amount={plan.price}
-                  currency="USD"
-                  onSuccess={handlePaymentSuccess}
-                  className="w-full"
-                />
-              </Card>
-
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <div className="w-8 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">T</span>
-                  </div>
-                  Pay with Tap
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Fast and secure payment processing for the Middle East region.
-                </p>
-                <TapPaymentButton
-                  amount={plan.price}
-                  currency="USD"
-                  onSuccess={handlePaymentSuccess}
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-                />
-              </Card>
-            </div>
-
-            <div className="mt-8 p-4 bg-muted/30 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                  <Check className="h-3 w-3 text-white" />
-                </div>
-                <span className="text-sm font-medium">Secure Payment</span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Your payment information is encrypted and secure. We never store your payment details.
-              </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Methods */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Choose Payment Method</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-3">PayPal</h4>
+                  <PayPalButton
+                    amount={price}
+                    onSuccess={handlePaymentSuccess}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-3">Credit Card (Tap Payments)</h4>
+                  <TapPaymentButton
+                    amount={price}
+                    onSuccess={handlePaymentSuccess}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="text-center mt-8">
+          <Button
+            variant="outline"
+            onClick={() => navigate("/pricing")}
+            className="mr-4"
+          >
+            Back to Pricing
+          </Button>
         </div>
       </div>
-    </Container>
+    </div>
   );
 }

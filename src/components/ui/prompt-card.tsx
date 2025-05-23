@@ -1,8 +1,5 @@
 
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./card";
-import { CopyButton } from "./copy-button";
-import { Button } from "./button";
 import { cn } from "@/lib/utils";
 import { type Prompt, type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,9 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 import { getPromptImage } from "@/utils/image";
-import { ImageWrapper } from "./prompt-card/ImageWrapper";
-import { CardActions } from "./prompt-card/CardActions";
 import { Lock, Crown, Heart } from "lucide-react";
+import { Button } from "./button";
 
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
@@ -66,10 +62,6 @@ export function PromptCard({
     }
   }, [imagePath]);
 
-  const handleSelectChange = (checked: boolean) => {
-    onSelect?.(prompt.id);
-  };
-
   const handleCardClick = () => {
     if (isLocked && onUpgradeClick) {
       onUpgradeClick();
@@ -109,48 +101,40 @@ export function PromptCard({
     }
   };
 
-  // Map prompt_type to human-readable format for the badge
-  const getPromptTypeLabel = (type: string) => {
-    switch(type) {
-      case "text": return "ChatGPT";
-      case "image": return "Midjourney";
-      case "workflow": return "n8n Workflow";
-      default: return category;
+  // Get category badge color based on type
+  const getCategoryBadgeStyle = (type: string, cat: string) => {
+    if (type === 'text' || cat.toLowerCase() === 'chatgpt') {
+      return 'bg-[#c49d68] text-white';
+    } else if (type === 'image' || cat.toLowerCase() === 'midjourney') {
+      return 'bg-[#7a9e9f] text-white';
+    } else if (type === 'workflow' || cat.toLowerCase() === 'n8n') {
+      return 'bg-blue-600 text-white';
     }
-  };
-
-  const getPromptTypeColor = (type: string) => {
-    switch(type) {
-      case "text": return "bg-emerald-100 text-emerald-700 border-emerald-200";
-      case "image": return "bg-purple-100 text-purple-700 border-purple-200";
-      case "workflow": return "bg-blue-100 text-blue-700 border-blue-200";
-      default: return "bg-warm-gold/10 text-warm-gold border-warm-gold/20";
-    }
+    return 'bg-[#c49d68] text-white';
   };
 
   return (
     <>
-      <Card 
+      <div 
         className={cn(
-          "group relative overflow-hidden transition-all duration-300 cursor-pointer",
-          "border border-border/40 hover:border-warm-gold/40 hover:shadow-xl",
-          "bg-white hover:bg-gradient-to-br hover:from-white hover:to-warm-gold/5",
-          "rounded-xl shadow-sm hover:shadow-lg",
-          isSelected && "ring-2 ring-warm-gold shadow-md",
+          "group cursor-pointer overflow-hidden bg-[#efeee9] rounded-2xl shadow-md border-0",
+          "transition-all duration-300 hover:shadow-xl hover:scale-[1.02]",
+          "p-6 space-y-4 min-h-[400px] flex flex-col relative",
+          isSelected && "ring-2 ring-[#c49d68] shadow-lg",
           isLocked && "opacity-95"
         )} 
         onClick={handleCardClick}
       >
         {isLocked && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-center justify-center z-20 rounded-xl">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-center justify-center z-20 rounded-2xl">
             <div className="bg-black/80 backdrop-blur-sm p-6 rounded-xl flex flex-col items-center text-center">
-              <Lock className="h-8 w-8 text-warm-gold mb-3" />
+              <Lock className="h-8 w-8 text-[#c49d68] mb-3" />
               <p className="text-white font-semibold text-sm mb-1">Premium Content</p>
               <p className="text-white/80 text-xs mb-4 max-w-[200px]">Upgrade your plan to access this content</p>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="bg-warm-gold/90 text-white hover:bg-warm-gold border-warm-gold"
+                className="bg-[#c49d68]/90 text-white hover:bg-[#c49d68] border-[#c49d68]"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onUpgradeClick) onUpgradeClick();
@@ -163,83 +147,77 @@ export function PromptCard({
           </div>
         )}
 
-        <div className="relative">
-          <ImageWrapper 
-            src={imageUrl} 
-            alt={title} 
-            aspect={1.3} 
-            isCard={true} 
-            className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+        {/* Category Tag and Favorite */}
+        <div className="flex items-start justify-between">
+          <span className={cn(
+            "inline-block px-3 py-1 text-xs font-medium rounded-lg",
+            getCategoryBadgeStyle(prompt_type, category)
+          )}>
+            {category}
+          </span>
+          
           {session && (
-            <div className="absolute top-3 right-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "h-8 w-8 rounded-full backdrop-blur-sm bg-white/10 hover:bg-white/20",
-                  "transition-all duration-200",
-                  favorited && "text-red-500 hover:text-red-600"
-                )}
-                onClick={toggleFavorite}
-              >
-                <Heart className={cn("h-4 w-4", favorited && "fill-current")} />
-              </Button>
-            </div>
+            <button
+              onClick={toggleFavorite}
+              className={cn(
+                "p-2 rounded-full transition-all duration-200",
+                "hover:bg-white/30",
+                favorited 
+                  ? "text-[#c49d68]" 
+                  : "text-gray-400 hover:text-[#c49d68]"
+              )}
+            >
+              <Heart className={cn("h-5 w-5", favorited && "fill-current")} />
+            </button>
           )}
         </div>
 
-        <CardHeader className="px-5 py-4 border-b border-border/30">
-          <div className="flex items-start justify-between gap-3">
-            <CardTitle className="text-lg font-bold tracking-tight line-clamp-2 text-gray-900 group-hover:text-warm-gold transition-colors duration-200">
-              {title}
-            </CardTitle>
-          </div>
-          <div className="flex items-center gap-2 mt-3">
-            <span className={cn(
-              "px-3 py-1 text-xs font-semibold rounded-full border",
-              getPromptTypeColor(prompt_type)
-            )}>
-              {getPromptTypeLabel(prompt_type)}
-            </span>
-            {category !== getPromptTypeLabel(prompt_type) && (
-              <span className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full border border-gray-200">
-                {category}
+        {/* Title */}
+        <h3 className="text-gray-900 font-bold text-xl leading-tight line-clamp-2 min-h-[3rem]">
+          {title}
+        </h3>
+
+        {/* Image */}
+        <div className="relative overflow-hidden rounded-xl h-48 bg-white/50">
+          <img
+            src={imageUrl}
+            alt={title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        </div>
+
+        {/* Description */}
+        <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed flex-grow">
+          {prompt_text}
+        </p>
+        
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {tags.slice(0, 3).map((tag, i) => (
+              <span 
+                key={i}
+                className="px-2 py-1 bg-white/60 text-gray-700 text-xs rounded-md border border-gray-200"
+              >
+                {tag}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="px-2 py-1 bg-white/60 text-gray-500 text-xs rounded-md border border-gray-200">
+                +{tags.length - 3} more
               </span>
             )}
           </div>
-        </CardHeader>
+        )}
 
-        <CardContent className="px-5 py-4 space-y-4">
-          <p className="text-sm text-gray-600 leading-relaxed line-clamp-3 font-mono bg-gray-50 p-3 rounded-lg border border-gray-100">
-            {prompt_text}
-          </p>
-          
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {tags.slice(0, 3).map((tag, i) => (
-                <span 
-                  key={i}
-                  className="px-2 py-1 bg-warm-gold/10 text-warm-gold text-xs font-medium rounded-md border border-warm-gold/20"
-                >
-                  {tag}
-                </span>
-              ))}
-              {tags.length > 3 && (
-                <span className="px-2 py-1 border border-gray-200 text-xs font-medium rounded-md text-gray-500">
-                  +{tags.length - 3} more
-                </span>
-              )}
-            </div>
-          )}
-        </CardContent>
-
-        <CardFooter className="px-5 py-4 border-t border-border/30 space-y-3 bg-gray-50/50">
+        {/* Action Buttons */}
+        <div className="mt-auto pt-2 space-y-3">
           {!isLocked && (
-            <CopyButton 
-              value={prompt_text} 
-              className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg h-10 font-medium transition-colors duration-200"
-            />
+            <Button 
+              className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200"
+            >
+              View Details
+            </Button>
           )}
           
           {isAdmin && (
@@ -247,7 +225,7 @@ export function PromptCard({
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex-1 border-gray-200 hover:bg-gray-50"
+                className="flex-1 border-gray-300 hover:bg-gray-50"
                 onClick={e => {
                   e.stopPropagation();
                   onEdit?.(prompt.id);
@@ -268,8 +246,8 @@ export function PromptCard({
               </Button>
             </div>
           )}
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
 
       {!isLocked && (
         <PromptDetailsDialog open={detailsOpen} onOpenChange={setDetailsOpen} prompt={prompt as PromptRow} />

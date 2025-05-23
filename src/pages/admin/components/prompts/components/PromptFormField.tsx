@@ -1,38 +1,42 @@
 
-import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface PromptFormFieldProps {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  className?: string;
-  placeholder?: string;
+  isTextarea?: boolean;
 }
 
-export const PromptFormField: React.FC<PromptFormFieldProps> = ({
-  id,
-  label,
-  value,
-  onChange,
-  className = "col-span-3",
-  placeholder,
-}) => {
+export function PromptFormField({ 
+  id, 
+  label, 
+  value, 
+  onChange, 
+  isTextarea = false 
+}: PromptFormFieldProps) {
   return (
-    <div className="grid grid-cols-4 items-center gap-4">
-      <Label htmlFor={id} className="text-right">
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-sm font-medium">
         {label}
       </Label>
-      <Input
-        type="text"
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={className}
-        placeholder={placeholder}
-      />
+      {isTextarea ? (
+        <Textarea
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-h-[100px]"
+        />
+      ) : (
+        <Input
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
     </div>
   );
-};
+}

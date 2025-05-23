@@ -1,86 +1,99 @@
 
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { type PromptRow } from "@/types";
-import { getPromptImage } from "@/utils/image";
+import { toast } from "@/hooks/use-toast";
 
-export const usePromptForm = (initial: PromptRow | null | undefined) => {
-  const [title, setTitle] = useState<string>("");
-  const [promptText, setPromptText] = useState<string>("");
-  const [metadata, setMetadata] = useState<PromptRow["metadata"]>({});
-  const [file, setFile] = useState<File | null>(null);
-  const [imageURL, setImageURL] = useState<string>("");
-  const [selectedImagePath, setSelectedImagePath] = useState<string | null>(null);
-
-  // Reset form states to initial values or empty
-  const resetForm = () => {
-    setTitle("");
-    setPromptText("");
-    setMetadata({});
-    setFile(null);
-    setImageURL("");
-    setSelectedImagePath(null);
+interface FormData {
+  title: string;
+  promptText: string;
+  promptType: string;
+  imagePath?: string;
+  defaultImagePath?: string;
+  metadata: {
+    category?: string;
+    style?: string;
+    tags?: string[];
+    target_model?: string;
+    use_case?: string;
+    button_text?: string;
+    button_action?: string;
+    image_options?: string[];
+    workflow_steps?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      type: string;
+    }>;
   };
+}
 
-  useEffect(() => {
-    if (initial) {
-      setTitle(initial.title);
-      setPromptText(initial.prompt_text);
-      setMetadata(initial.metadata || {});
-      
-      const imagePath = initial.prompt_type === "text" 
-        ? initial.default_image_path
-        : initial.image_path;
-        
-      if (imagePath) {
-        setSelectedImagePath(imagePath);
-        
-        // Load the image URL
-        const loadImage = async () => {
-          try {
-            const url = await getPromptImage(imagePath, 400, 80);
-            setImageURL(url);
-          } catch (error) {
-            console.error("Error loading form image:", error);
-          }
-        };
-        
-        loadImage();
-      }
-    } else {
-      // Reset form if initial is null/undefined
-      resetForm();
+export function usePromptForm(editingPrompt?: PromptRow | null) {
+  const [formData, setFormData] = useState<FormData>({
+    title: editingPrompt?.title || "",
+    promptText: editingPrompt?.prompt_text || "",
+    promptType: editingPrompt?.prompt_type || "text",
+    imagePath: editingPrompt?.image_path || "",
+    defaultImagePath: editingPrompt?.default_image_path || "",
+    metadata: {
+      category: editingPrompt?.metadata?.category || "ChatGPT",
+      style: editingPrompt?.metadata?.style || "",
+      tags: editingPrompt?.metadata?.tags || [],
+      target_model: editingPrompt?.metadata?.target_model || "ChatGPT",
+      use_case: editingPrompt?.metadata?.use_case || "",
+      button_text: editingPrompt?.metadata?.button_text || "",
+      button_action: editingPrompt?.metadata?.button_action || "",
+      image_options: editingPrompt?.metadata?.image_options || [],
+      workflow_steps: editingPrompt?.metadata?.workflow_steps || []
     }
-  }, [initial]);
+  });
 
-  const handleSetFile = (newFile: File | null) => {
-    setFile(newFile);
-    
-    // If a new file is uploaded, clear the selected image path
-    if (newFile) {
-      setSelectedImagePath(null);
-    } else if (!newFile && !selectedImagePath) {
-      // If we're clearing the file and don't have a selected image, keep the original
-      if (initial) {
-        const imagePath = initial.prompt_type === "text" 
-          ? initial.default_image_path
-          : initial.image_path;
-        setSelectedImagePath(imagePath || null);
+  const resetForm = useCallback(() => {
+    setFormData({
+      title: "",
+      promptText: "",
+      promptType: "text",
+      imagePath: "",
+      defaultImagePath: "",
+      metadata: {
+        category: "ChatGPT",
+        style: "",
+        tags: [],
+        target_model: "ChatGPT",
+        use_case: "",
+        button_text: "",
+        button_action: "",
+        image_options: [],
+        workflow_steps: []
       }
+    });
+  }, []);
+
+  const validateForm = useCallback(() => {
+    if (!formData.title.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Title is required",
+        variant: "destructive"
+      });
+      return false;
     }
-  };
+
+    if (!formData.promptText.trim()) {
+      toast({
+        title: "Validation Error", 
+        description: "Prompt text is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    return true;
+  }, [formData]);
 
   return {
-    title,
-    promptText,
-    metadata,
-    file,
-    imageURL,
-    selectedImagePath,
-    setTitle,
-    setPromptText,
-    setMetadata,
-    setFile: handleSetFile,
-    setSelectedImagePath,
-    resetForm, // Export the reset function
+    formData,
+    setFormData,
+    resetForm,
+    validateForm
   };
-};
+}

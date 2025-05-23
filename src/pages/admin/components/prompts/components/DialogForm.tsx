@@ -63,12 +63,30 @@ export function DialogForm({ formData, onChange, onFileChange }: DialogFormProps
         </Select>
       </div>
 
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Category</label>
+        <Select 
+          value={formData.metadata?.category || "ChatGPT"} 
+          onValueChange={(value) => updateMetadata({ ...formData.metadata, category: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ChatGPT">ChatGPT</SelectItem>
+            <SelectItem value="Midjourney">Midjourney</SelectItem>
+            <SelectItem value="n8n">n8n</SelectItem>
+            <SelectItem value="General">General</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <PromptFormField
         id="promptText"
         label="Prompt Text"
         value={formData.promptText}
         onChange={(value) => updateFormData('promptText', value)}
-        multiline
+        isTextarea
       />
 
       {formData.promptType === 'text' && (
@@ -80,7 +98,7 @@ export function DialogForm({ formData, onChange, onFileChange }: DialogFormProps
 
       {(formData.promptType === 'image' || formData.promptType === 'text') && (
         <ImageUploadField
-          imagePath={formData.imagePath}
+          imageUrl={formData.imagePath}
           onImageChange={(path) => updateFormData('imagePath', path)}
           onFileChange={onFileChange}
           label={formData.promptType === 'text' ? "Custom Image (Optional)" : "Image"}
