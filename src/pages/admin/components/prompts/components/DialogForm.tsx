@@ -6,6 +6,7 @@ import { MultiMediaUploadField } from "./MultiMediaUploadField";
 import { ButtonPromptFields } from "./ButtonPromptFields";
 import { ImageSelectionFields } from "./ImageSelectionFields";
 import { WorkflowFields } from "./WorkflowFields";
+import { AutoGenerateButton } from "./AutoGenerateButton";
 
 interface DialogFormProps {
   formData: {
@@ -49,6 +50,15 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
     }
   };
 
+  const handleMetadataGenerated = (generatedMetadata: { category: string; style: string; tags: string[] }) => {
+    updateMetadata({
+      ...formData.metadata,
+      category: generatedMetadata.category,
+      style: generatedMetadata.style,
+      tags: generatedMetadata.tags
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PromptFormField
@@ -77,6 +87,28 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
         </Select>
       </div>
 
+      <PromptFormField
+        id="promptText"
+        label="Prompt Text"
+        value={formData.promptText}
+        onChange={(value) => updateFormData('promptText', value)}
+        type="textarea"
+      />
+
+      {/* Auto-generate metadata section */}
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-blue-900">Auto-generate Metadata</h3>
+          <AutoGenerateButton
+            promptText={formData.promptText}
+            onMetadataGenerated={handleMetadataGenerated}
+          />
+        </div>
+        <p className="text-xs text-blue-700">
+          Let AI analyze your prompt text and automatically suggest category, style, and tags.
+        </p>
+      </div>
+
       <div className="space-y-2">
         <label className="text-sm font-medium">Category</label>
         <Select 
@@ -94,14 +126,6 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
           </SelectContent>
         </Select>
       </div>
-
-      <PromptFormField
-        id="promptText"
-        label="Prompt Text"
-        value={formData.promptText}
-        onChange={(value) => updateFormData('promptText', value)}
-        type="textarea"
-      />
 
       {/* Multi-media upload for all prompt types */}
       <MultiMediaUploadField
