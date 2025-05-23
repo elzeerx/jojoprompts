@@ -55,6 +55,9 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
             target_model: metadataObj.target_model ?? undefined,
             use_case: metadataObj.use_case ?? undefined,
             workflow_steps: metadataObj.workflow_steps ?? undefined,
+            workflow_files: Array.isArray(metadataObj.workflow_files)
+              ? metadataObj.workflow_files
+              : [],
             buttons: metadataObj.buttons ?? undefined,
             image_options: metadataObj.image_options ?? undefined,
             button_text: metadataObj.button_text ?? undefined,
