@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -31,12 +30,19 @@ export function TapPaymentButton({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Convert USD to KWD (approximate rate: 1 USD = 0.3 KWD)
+  // Fixed USD to KWD conversion rates
   const getKWDAmount = (usdAmount: number) => {
-    return (usdAmount * 0.3).toFixed(2);
+    const conversionRates: { [key: number]: number } = {
+      55: 15,
+      65: 20,
+      80: 25,
+      100: 30
+    };
+    
+    return conversionRates[usdAmount] || (usdAmount * 0.3);
   };
   
-  const displayAmount = currency === "KWD" ? getKWDAmount(amount) : amount.toFixed(2);
+  const displayAmount = currency === "KWD" ? getKWDAmount(amount).toFixed(2) : amount.toFixed(2);
   
   const handleSuccess = useCallback((paymentId: string) => {
     console.log("Tap payment successful:", paymentId);
@@ -110,7 +116,7 @@ export function TapPaymentButton({
       const tap = window.Tapjsli("pk_test_b5JZWEaPCRy61rhY4dqMnUiw");
       
       // Use KWD amount for Tap payment
-      const tapAmount = currency === "KWD" ? parseFloat(getKWDAmount(amount)) : amount;
+      const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
       
       tap.setup({
         containerID: "tap-payment-container",
