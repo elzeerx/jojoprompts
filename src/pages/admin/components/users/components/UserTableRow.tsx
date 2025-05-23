@@ -118,7 +118,7 @@ export function UserTableRow({
         user={user} 
         open={editDialogOpen} 
         onOpenChange={setEditDialogOpen} 
-        onUpdate={(data) => onUpdateUser(user.id, data)}
+        onSave={(userId, data) => onUpdateUser(userId, data)}
       />
 
       <AssignPlanDialog

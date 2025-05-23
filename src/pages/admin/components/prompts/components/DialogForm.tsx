@@ -1,197 +1,173 @@
 
-import { PromptFormField } from "./PromptFormField";
+import React from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { TextPromptFields } from "./TextPromptFields";
 import { ImageUploadField } from "./ImageUploadField";
 import { ButtonPromptFields } from "./ButtonPromptFields";
 import { ImageSelectionFields } from "./ImageSelectionFields";
 import { WorkflowFields } from "./WorkflowFields";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { type PromptRow } from "@/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PromptFormField } from "./PromptFormField";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface DialogFormProps {
-  title: string;
-  promptText: string;
-  metadata: PromptRow["metadata"];
-  promptType: "text" | "image" | "button" | "image-selection" | "workflow";
-  imageURL: string;
-  file: File | null;
-  onTitleChange: (value: string) => void;
-  onPromptTextChange: (value: string) => void;
-  onMetadataChange: (metadata: PromptRow["metadata"]) => void;
-  onFileChange: (file: File | null) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  isEditing: boolean;
+  formData: any;
+  onFormDataChange: (field: string, value: any) => void;
+  isSubmitting: boolean;
+  onSubmit: (e: React.FormEvent) => void;
 }
 
-export const DialogForm = ({
-  title,
-  promptText,
-  metadata,
-  promptType,
-  imageURL,
-  file,
-  onTitleChange,
-  onPromptTextChange,
-  onMetadataChange,
-  onFileChange,
-}: DialogFormProps) => {
-  // Define the main categories available for selection
-  const mainCategories = ["ChatGPT", "Midjourney", "n8n"];
-
-  // Determine which category this prompt type belongs to
-  const getCategoryForPromptType = (type: string) => {
-    if (["text", "image", "button"].includes(type)) return "ChatGPT";
-    if (type === "image-selection") return "Midjourney";
-    if (type === "workflow") return "n8n";
-    return "ChatGPT"; // Default
-  };
-
-  // If category is not set, use the appropriate one for the prompt type
-  if (!metadata.category) {
-    const category = getCategoryForPromptType(promptType);
-    onMetadataChange({ ...metadata, category });
-  }
-  
-  // Get the appropriate accent color based on category
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "ChatGPT": return "text-warm-gold";
-      case "Midjourney": return "text-muted-teal";
-      case "n8n": return "text-secondary";
-      default: return "text-warm-gold";
-    }
-  };
-
+export function DialogForm({
+  open,
+  onOpenChange,
+  isEditing,
+  formData,
+  onFormDataChange,
+  isSubmitting,
+  onSubmit
+}: DialogFormProps) {
   return (
-    <div className="grid gap-5 py-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="title" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
-          Title
-        </Label>
-        <input
-          id="title"
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder="Enter a title for your prompt"
-        />
-      </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Edit Prompt" : "Create New Prompt"}</DialogTitle>
+          <DialogDescription>
+            {isEditing ? "Update the prompt details below." : "Fill in the details to create a new prompt."}
+          </DialogDescription>
+        </DialogHeader>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="prompt_text" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
-          Prompt Text
-        </Label>
-        <Textarea
-          id="prompt_text"
-          value={promptText}
-          onChange={(e) => onPromptTextChange(e.target.value)}
-          className="min-h-[120px] rounded-md resize-y"
-          placeholder="Write your prompt text here..."
-        />
-      </div>
+        <form onSubmit={onSubmit} className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => onFormDataChange("title", e.target.value)}
+                placeholder="Enter prompt title"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="promptType">Prompt Type</Label>
+              <Select
+                value={formData.prompt_type}
+                onValueChange={(value) => onFormDataChange("prompt_type", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select prompt type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Text (ChatGPT)</SelectItem>
+                  <SelectItem value="image">Image (Midjourney)</SelectItem>
+                  <SelectItem value="workflow">Workflow (n8n)</SelectItem>
+                  <SelectItem value="button">Button</SelectItem>
+                  <SelectItem value="image-selection">Image Selection</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-      {/* Render specific fields based on promptType */}
-      {promptType === "button" && (
-        <ButtonPromptFields
-          metadata={metadata}
-          onMetadataChange={onMetadataChange}
-        />
-      )}
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select
+              value={formData.metadata?.category || ""}
+              onValueChange={(value) => onFormDataChange("metadata", { ...formData.metadata, category: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ChatGPT">ChatGPT</SelectItem>
+                <SelectItem value="Midjourney">Midjourney</SelectItem>
+                <SelectItem value="n8n">n8n Workflow</SelectItem>
+                <SelectItem value="General">General</SelectItem>
+                <SelectItem value="Business">Business</SelectItem>
+                <SelectItem value="Creative">Creative</SelectItem>
+                <SelectItem value="Technical">Technical</SelectItem>
+                <SelectItem value="Marketing">Marketing</SelectItem>
+                <SelectItem value="Education">Education</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-      {promptType === "image-selection" && (
-        <ImageSelectionFields
-          metadata={metadata}
-          onMetadataChange={onMetadataChange}
-        />
-      )}
-
-      {promptType === "workflow" && (
-        <WorkflowFields
-          metadata={metadata}
-          onMetadataChange={onMetadataChange}
-        />
-      )}
-
-      {/* Text prompt has additional fields */}
-      {promptType === "text" && (
-        <TextPromptFields
-          metadata={metadata}
-          onMetadataChange={onMetadataChange}
-        />
-      )}
-
-      {/* Always show image upload for image type prompts */}
-      {(promptType === "image" || promptType === "image-selection" || promptType === "text") && (
-        <div className="space-y-1.5">
-          <Label htmlFor="image" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
-            {promptType === "image" ? "Prompt Image" : 
-             promptType === "image-selection" ? "Selection Preview" : "Custom Default Image"}
-          </Label>
-          <ImageUploadField
-            imageURL={imageURL}
-            file={file}
-            onFileChange={onFileChange}
-            promptType={promptType as "text" | "image" | "image-selection"}
+          <PromptFormField
+            value={formData.prompt_text}
+            onChange={(value) => onFormDataChange("prompt_text", value)}
           />
-        </div>
-      )}
 
-      <div className="space-y-1.5">
-        <Label htmlFor="category" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
-          Category
-        </Label>
-        <Select 
-          value={metadata.category || getCategoryForPromptType(promptType)} 
-          onValueChange={(value) => onMetadataChange({ ...metadata, category: value })}
-        >
-          <SelectTrigger className="rounded-md">
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent className="rounded-md">
-            {mainCategories.map(category => (
-              <SelectItem key={category} value={category} className="rounded-md">
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          {formData.prompt_type === "text" && (
+            <TextPromptFields
+              metadata={formData.metadata}
+              onChange={(metadata) => onFormDataChange("metadata", metadata)}
+            />
+          )}
 
-      {/* Style field for image prompts */}
-      {(promptType === "image" || promptType === "image-selection") && (
-        <div className="space-y-1.5">
-          <Label htmlFor="style" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
-            Style
-          </Label>
-          <input
-            id="style"
-            value={metadata.style || ""}
-            onChange={(e) => onMetadataChange({ ...metadata, style: e.target.value })}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="e.g., Realistic, Cartoon, Abstract"
-          />
-        </div>
-      )}
+          {(formData.prompt_type === "image" || formData.prompt_type === "workflow") && (
+            <ImageUploadField
+              currentImage={formData.image_path}
+              onImageChange={(imagePath) => onFormDataChange("image_path", imagePath)}
+            />
+          )}
 
-      {/* Tags for all prompt types */}
-      <div className="space-y-1.5">
-        <Label htmlFor="tags" className={`${getCategoryColor(metadata.category || "")} font-medium`}>
-          Tags
-        </Label>
-        <input
-          id="tags"
-          value={metadata.tags?.join(", ") || ""}
-          onChange={(e) => {
-            const tags = e.target.value
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter(Boolean);
-            onMetadataChange({ ...metadata, tags });
-          }}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder="tag1, tag2, tag3"
-        />
-      </div>
-    </div>
+          {formData.prompt_type === "button" && (
+            <ButtonPromptFields
+              metadata={formData.metadata}
+              onChange={(metadata) => onFormDataChange("metadata", metadata)}
+            />
+          )}
+
+          {formData.prompt_type === "image-selection" && (
+            <ImageSelectionFields
+              metadata={formData.metadata}
+              onChange={(metadata) => onFormDataChange("metadata", metadata)}
+            />
+          )}
+
+          {formData.prompt_type === "workflow" && (
+            <WorkflowFields
+              metadata={formData.metadata}
+              onChange={(metadata) => onFormDataChange("metadata", metadata)}
+            />
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting} className="bg-warm-gold hover:bg-warm-gold/90">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isEditing ? "Updating..." : "Creating..."}
+                </>
+              ) : (
+                isEditing ? "Update Prompt" : "Create Prompt"
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
-};
+}

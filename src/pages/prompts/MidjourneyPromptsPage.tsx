@@ -8,6 +8,7 @@ import { Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Prompt } from "@/types";
 import { Container } from "@/components/ui/container";
+import { getSubscriptionTier, isPromptLocked } from "@/utils/subscription";
 
 export default function MidjourneyPromptsPage() {
   const { user, session } = useAuth();
@@ -15,7 +16,7 @@ export default function MidjourneyPromptsPage() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
-  const [userPlan, setUserPlan] = useState<string | null>(null);
+  const [userTier, setUserTier] = useState<string>('none');
   const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
@@ -40,8 +41,9 @@ export default function MidjourneyPromptsPage() {
         
         if (isUserAdmin) {
           setHasAccess(true);
+          setUserTier('lifetime');
         } else {
-          // Check if user has access to Midjourney prompts (Standard or Premium plans)
+          // Check user's subscription
           const { data: subscriptions, error } = await supabase
             .from("user_subscriptions")
             .select("plan_id, subscription_plans:plan_id(name, features)")
@@ -53,16 +55,17 @@ export default function MidjourneyPromptsPage() {
             console.error("Error checking subscription:", error);
           }
           
-          let canAccess = false;
+          let tier = 'none';
           if (subscriptions?.subscription_plans) {
-            const planName = subscriptions.subscription_plans.name.toLowerCase();
-            setUserPlan(planName);
-            
-            // Standard and Premium plans have access to Midjourney prompts
-            canAccess = ["standard", "premium", "ultimate"].includes(planName);
+            const planName = subscriptions.subscription_plans.name;
+            tier = getSubscriptionTier(planName);
           }
           
-          setHasAccess(canAccess);
+          setUserTier(tier);
+          
+          // Check if user has access to Midjourney prompts
+          const hasAccess = !isPromptLocked('image', tier, isUserAdmin);
+          setHasAccess(hasAccess);
         }
         
         // Fetch Midjourney prompts regardless of access
@@ -118,7 +121,7 @@ export default function MidjourneyPromptsPage() {
           <h1 className="text-3xl font-bold mb-2">Premium Content</h1>
           <p className="text-muted-foreground mb-6 max-w-md">
             You need a Standard or Premium subscription to access Midjourney prompts. 
-            {userPlan === "basic" ? " Please upgrade your Basic plan." : " Subscribe now to unlock this content."}
+            {userTier === "basic" ? " Please upgrade your Basic plan." : " Subscribe now to unlock this content."}
           </p>
           <Button 
             onClick={() => navigate("/pricing")} 
@@ -149,7 +152,11 @@ export default function MidjourneyPromptsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {prompts.map((prompt) => (
-            <PromptCard key={prompt.id} prompt={prompt} />
+            <PromptCard 
+              key={prompt.id} 
+              prompt={prompt}
+              isLocked={false}
+            />
           ))}
         </div>
       )}

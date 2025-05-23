@@ -294,15 +294,20 @@ export default function CheckoutPage() {
                 
                 <div className="space-y-3">
                   <PayPalButton
-                    planId={plan.id}
                     amount={plan.price_usd}
+                    planName={plan.name}
                     onSuccess={handlePaymentSuccess}
-                    disabled={processingPayment || (!user && !validateAccountForm())}
-                    className="w-full"
+                    onError={(error) => {
+                      console.error("PayPal error:", error);
+                      toast({
+                        title: "Payment Error",
+                        description: "There was an issue with PayPal. Please try again.",
+                        variant: "destructive"
+                      });
+                    }}
                   />
                   
                   <TapPaymentButton
-                    planId={plan.id}
                     amount={plan.price_kwd}
                     currency="KWD"
                     onSuccess={handlePaymentSuccess}

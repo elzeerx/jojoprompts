@@ -45,7 +45,7 @@ export function Header() {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <img 
-              src="/lovable-uploads/eea1bdcd-7738-4e5f-810a-15c96fe07b94.png" 
+              src="/lovable-uploads/89c1a06e-93b8-49ca-bf69-2dff75d0a970.png" 
               alt="JojoPrompts" 
               className="h-8 w-auto" 
             />
