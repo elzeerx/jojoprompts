@@ -31,6 +31,13 @@ export function TapPaymentButton({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Convert USD to KWD (approximate rate: 1 USD = 0.3 KWD)
+  const getKWDAmount = (usdAmount: number) => {
+    return (usdAmount * 0.3).toFixed(2);
+  };
+  
+  const displayAmount = currency === "KWD" ? getKWDAmount(amount) : amount.toFixed(2);
+  
   const handleSuccess = useCallback((paymentId: string) => {
     console.log("Tap payment successful:", paymentId);
     setIsDialogOpen(false);
@@ -102,10 +109,13 @@ export function TapPaymentButton({
       // Create a Tap instance with the publishable key
       const tap = window.Tapjsli("pk_test_b5JZWEaPCRy61rhY4dqMnUiw");
       
+      // Use KWD amount for Tap payment
+      const tapAmount = currency === "KWD" ? parseFloat(getKWDAmount(amount)) : amount;
+      
       tap.setup({
         containerID: "tap-payment-container",
         currencies: [currency],
-        amount: amount,
+        amount: tapAmount,
         defaultCurrency: currency,
         uiLanguage: "en",
         onReady: () => {
@@ -149,7 +159,7 @@ export function TapPaymentButton({
             Loading...
           </>
         ) : (
-          `Pay with Tap Payment (${amount.toFixed(2)} ${currency})`
+          `Pay with Tap Payment (${displayAmount} ${currency})`
         )}
       </Button>
       
@@ -163,7 +173,7 @@ export function TapPaymentButton({
         <DialogContent className="prompt-dialog sm:max-w-md">
           <div className="text-center mb-4">
             <h3 className="text-lg font-medium">
-              {planName} Plan - {amount.toFixed(2)} {currency}
+              {planName} Plan - {displayAmount} {currency}
             </h3>
             <p className="text-sm text-gray-500">
               Secure payment via Tap Payment
