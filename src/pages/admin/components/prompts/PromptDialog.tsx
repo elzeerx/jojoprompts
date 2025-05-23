@@ -8,7 +8,6 @@ import { type PromptRow } from "@/types";
 import { DialogForm } from "./components/DialogForm";
 import { usePromptForm } from "./hooks/usePromptForm";
 import { useAuth } from "@/contexts/AuthContext";
-import { X } from "lucide-react";
 
 interface PromptDialogProps {
   open: boolean;
@@ -124,14 +123,6 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt }: P
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl p-0 border-none bg-[#efeee9] rounded-2xl shadow-xl overflow-hidden">
-        {/* Close Button */}
-        <button
-          onClick={() => onOpenChange(false)}
-          className="absolute top-6 right-6 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors"
-        >
-          <X className="h-5 w-5 text-gray-600" />
-        </button>
-
         <div className="p-8">
           {/* Header */}
           <div className="mb-6">

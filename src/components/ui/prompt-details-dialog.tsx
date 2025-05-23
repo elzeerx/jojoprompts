@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { type PromptRow, type Prompt } from "@/types";
 import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { useEffect, useState } from "react";
-import { Copy, Check, Heart, X } from "lucide-react";
+import { Copy, Check, Heart } from "lucide-react";
 import { Button } from "./button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -156,14 +156,6 @@ export function PromptDetailsDialog({
         <DialogDescription id="prompt-details-description" className="sr-only">
           Details for prompt: {prompt.title}
         </DialogDescription>
-        
-        {/* Close Button */}
-        <button
-          onClick={() => onOpenChange(false)}
-          className="absolute top-6 right-6 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors"
-        >
-          <X className="h-5 w-5 text-gray-600" />
-        </button>
 
         <ScrollArea className="max-h-[85vh]">
           <div className="p-8 space-y-6">
@@ -280,28 +272,6 @@ export function PromptDetailsDialog({
                 )}
               </Button>
             </div>
-            
-            {/* Additional Details */}
-            {(prompt.metadata?.style || prompt.metadata?.target_model) && (
-              <div className="bg-white/40 p-6 rounded-xl border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Additional Details</h3>
-                <dl className="space-y-3">
-                  {prompt.metadata?.style && (
-                    <div>
-                      <dt className="text-gray-600 text-sm font-medium mb-1">Style</dt>
-                      <dd className="text-gray-900 font-medium">{prompt.metadata.style}</dd>
-                    </div>
-                  )}
-                  
-                  {prompt.metadata?.target_model && (
-                    <div>
-                      <dt className="text-gray-600 text-sm font-medium mb-1">Target Model</dt>
-                      <dd className="text-gray-900 font-medium">{prompt.metadata.target_model}</dd>
-                    </div>
-                  )}
-                </dl>
-              </div>
-            )}
           </div>
         </ScrollArea>
       </DialogContent>

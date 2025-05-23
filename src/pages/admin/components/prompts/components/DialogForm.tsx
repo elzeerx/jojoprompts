@@ -86,7 +86,7 @@ export function DialogForm({ formData, onChange, onFileChange }: DialogFormProps
         label="Prompt Text"
         value={formData.promptText}
         onChange={(value) => updateFormData('promptText', value)}
-        isTextarea
+        type="textarea"
       />
 
       {formData.promptType === 'text' && (

@@ -29,6 +29,7 @@ export interface Prompt {
       name: string;
       description: string;
     }[];
+    buttons?: Array<{ id: string; name: string; description: string; type: string }>;
   };
   created_at: string;
 }
@@ -55,6 +56,7 @@ export interface PromptRow {
       name: string;
       description: string;
     }[];
+    buttons?: Array<{ id: string; name: string; description: string; type: string }>;
   };
   prompt_type: 'text' | 'image' | 'button' | 'image-selection' | 'workflow';
 }
