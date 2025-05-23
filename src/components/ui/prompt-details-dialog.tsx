@@ -152,7 +152,7 @@ export function PromptDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-0 border-none bg-[#efeee9] rounded-2xl shadow-xl overflow-hidden">
+      <DialogContent className="prompt-dialog">
         <DialogDescription id="prompt-details-description" className="sr-only">
           Details for prompt: {prompt.title}
         </DialogDescription>

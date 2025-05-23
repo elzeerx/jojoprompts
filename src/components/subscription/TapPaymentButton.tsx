@@ -117,7 +117,7 @@ export function TapPaymentButton({
       </Button>
       
       <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="prompt-dialog sm:max-w-md">
           <div className="text-center mb-4">
             <h3 className="text-lg font-medium">
               {planName} Plan - {amount.toFixed(2)} {currency}

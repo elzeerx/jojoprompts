@@ -89,7 +89,7 @@ export function EditUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="prompt-dialog sm:max-w-lg">
         <DialogHeader className="space-y-3">
           <DialogTitle className="text-xl font-semibold flex items-center gap-2">
             <User className="h-5 w-5 text-warm-gold" />
