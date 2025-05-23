@@ -15,7 +15,7 @@ export interface Prompt {
   image_path: string | null;
   image_url?: string | null;
   default_image_path?: string | null;
-  prompt_type: 'text' | 'image' | 'button' | 'image-selection' | 'workflow';
+  prompt_type: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';
   metadata: {
     category?: string;
     style?: string;
@@ -58,7 +58,7 @@ export interface PromptRow {
     }[];
     buttons?: Array<{ id: string; name: string; description: string; type: string }>;
   };
-  prompt_type: 'text' | 'image' | 'button' | 'image-selection' | 'workflow';
+  prompt_type: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';
 }
 
 export interface UserProfile {

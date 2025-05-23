@@ -1,4 +1,3 @@
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PromptFormField } from "./PromptFormField";
 import { TextPromptFields } from "./TextPromptFields";
@@ -54,11 +53,11 @@ export function DialogForm({ formData, onChange, onFileChange }: DialogFormProps
             <SelectValue placeholder="Select prompt type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="text">Text (ChatGPT)</SelectItem>
-            <SelectItem value="image">Image (Midjourney)</SelectItem>
-            <SelectItem value="button">Button</SelectItem>
-            <SelectItem value="image-selection">Image Selection</SelectItem>
-            <SelectItem value="workflow">Workflow (n8n)</SelectItem>
+            <SelectItem value="text">Text</SelectItem>
+            <SelectItem value="image">Image</SelectItem>
+            <SelectItem value="workflow">Workflow</SelectItem>
+            <SelectItem value="video">Video</SelectItem>
+            <SelectItem value="sound">Sound / Music</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 interface FormData {
   title: string;
   promptText: string;
-  promptType: "image" | "text" | "image-selection" | "workflow" | "button";
+  promptType: "text" | "image" | "workflow" | "video" | "sound" | "button" | "image-selection";
   imagePath: string;
   defaultImagePath: string;
   metadata: {

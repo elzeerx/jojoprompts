@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,7 @@ interface PromptDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   editingPrompt?: PromptRow | null;
-  // Remove 'initial' and add appropriate props
-  promptType?: 'text' | 'image' | 'button' | 'image-selection' | 'workflow';
+  promptType?: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';
   category?: string;
 }
 
@@ -35,7 +35,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     if (promptType && !editingPrompt) {
       setFormData(prev => ({
         ...prev,
-        promptType: promptType as 'text' | 'image' | 'button' | 'image-selection' | 'workflow',
+        promptType: promptType as 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection',
         metadata: {
           ...prev.metadata,
           category: category || prev.metadata?.category
