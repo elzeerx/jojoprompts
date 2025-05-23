@@ -31,7 +31,7 @@ export function MagazinePromptCard({
   const category = metadata?.category || "General";
   const { session } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(false);
-  const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
+  const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
   const isTextPrompt = prompt_type === 'text';
   
   // Choose image path based on prompt type
@@ -49,7 +49,7 @@ export function MagazinePromptCard({
         setImageUrl(url);
       } catch (error) {
         console.error('Error loading prompt image:', error);
-        setImageUrl('/img/placeholder.png');
+        setImageUrl('/placeholder.svg');
       }
     }
     loadImage();

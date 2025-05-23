@@ -49,7 +49,7 @@ export function PromptCard({
   } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
+  const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
 
   // Get the primary image to display - prioritize the first image from media_files, then fallback to image_path
   const primaryImagePath = mediaFiles.find(file => file.type === 'image')?.path || prompt.image_path || prompt.image_url || null;

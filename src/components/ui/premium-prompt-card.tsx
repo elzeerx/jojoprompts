@@ -30,7 +30,7 @@ export function PremiumPromptCard({
   const { session } = useAuth();
   const [favorited, setFavorited] = useState<boolean>(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
+  const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
   const bgColor = bgColors[colorIndex];
   const isTextPrompt = prompt_type === 'text';
   
@@ -49,7 +49,7 @@ export function PremiumPromptCard({
         setImageUrl(url);
       } catch (error) {
         console.error('Error loading prompt image:', error);
-        setImageUrl('/img/placeholder.png');
+        setImageUrl('/placeholder.svg');
       }
     }
     loadImage();

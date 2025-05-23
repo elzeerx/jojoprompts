@@ -20,7 +20,7 @@ interface PromptDetailsDialogProps {
 export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetailsDialogProps) {
   const { session } = useAuth();
   const [favorited, setFavorited] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
+  const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
   const [copied, setCopied] = useState(false);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [mediaPreviewOpen, setMediaPreviewOpen] = useState(false);
@@ -48,7 +48,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
         setImageUrl(url);
       } catch (error) {
         console.error('Error loading prompt image:', error);
-        setImageUrl('/img/placeholder.png');
+        setImageUrl('/placeholder.svg');
       }
     }
     loadImage();
@@ -129,7 +129,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
       return await getPromptImage(mediaPath, 800, 90);
     } catch (error) {
       console.error('Error loading media:', error);
-      return '/img/placeholder.png';
+      return '/placeholder.svg';
     }
   };
 
@@ -322,7 +322,7 @@ function MediaThumbnail({ media, index, onClick }: {
   index: number, 
   onClick: () => void 
 }) {
-  const [thumbnailUrl, setThumbnailUrl] = useState('/img/placeholder.png');
+  const [thumbnailUrl, setThumbnailUrl] = useState('/placeholder.svg');
 
   useEffect(() => {
     const loadThumbnail = async () => {
@@ -398,7 +398,7 @@ function MediaPreviewDialog({
           setMediaUrl(url);
         } catch (error) {
           console.error('Error loading media:', error);
-          setMediaUrl('/img/placeholder.png');
+          setMediaUrl('/placeholder.svg');
         }
       };
       loadMedia();

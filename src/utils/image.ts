@@ -8,7 +8,7 @@ const DEFAULT_BUCKET = 'default-prompt-images';
 const DEFAULT_TEXT_PROMPT_IMAGE = 'textpromptdefaultimg.jpg';
 
 export async function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80): Promise<string> {
-  if (!pathOrUrl) return '/img/placeholder.png';
+  if (!pathOrUrl) return '/placeholder.svg';
   if (pathOrUrl.startsWith('http')) return pathOrUrl;
   
   // Clean the path to ensure no double encoding happens
@@ -34,13 +34,13 @@ export async function getPromptImage(pathOrUrl: string | null | undefined, w = 4
       
     if (error || !data?.signedUrl) {
       console.error('Error getting signed URL:', error);
-      return '/img/placeholder.png';
+      return '/placeholder.svg';
     }
     
     return data.signedUrl;
   } catch (err) {
     console.error('Error in getPromptImage:', err);
-    return '/img/placeholder.png';
+    return '/placeholder.svg';
   }
 }
 
