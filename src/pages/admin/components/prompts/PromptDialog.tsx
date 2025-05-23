@@ -204,28 +204,27 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="prompt-dialog max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex-shrink-0">
-          {/* Header */}
-          <div className="p-4 sm:p-8 pb-0">
-            {formData.metadata?.category && (
-              <span 
-                className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium mb-3"
-                style={{ backgroundColor: getCategoryColor(formData.metadata.category) }}
-              >
-                {formData.metadata.category}
-              </span>
-            )}
-            <DialogHeader className="text-left p-0">
-              <DialogTitle className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-                {editingPrompt ? "Edit Prompt" : "Create New Prompt"}
-              </DialogTitle>
-            </DialogHeader>
-          </div>
+      <DialogContent className="prompt-dialog w-full max-w-4xl h-[90vh] flex flex-col p-0">
+        {/* Fixed Header */}
+        <div className="flex-shrink-0 p-6 border-b border-gray-200">
+          {formData.metadata?.category && (
+            <span 
+              className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium mb-3"
+              style={{ backgroundColor: getCategoryColor(formData.metadata.category) }}
+            >
+              {formData.metadata.category}
+            </span>
+          )}
+          <DialogHeader className="text-left p-0">
+            <DialogTitle className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
+              {editingPrompt ? "Edit Prompt" : "Create New Prompt"}
+            </DialogTitle>
+          </DialogHeader>
         </div>
         
-        <ScrollArea className="flex-1">
-          <div className="p-4 sm:p-8 pt-6">
+        {/* Scrollable Content */}
+        <ScrollArea className="flex-1 px-6">
+          <div className="py-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200">
                 <DialogForm
@@ -236,7 +235,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                 />
               </div>
               
-              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6">
+              {/* Fixed Footer Buttons */}
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 pb-2">
                 <Button
                   type="button"
                   variant="outline"
