@@ -430,7 +430,18 @@ function MediaPreviewDialog({
             <video
               src={mediaUrl}
               controls
+              preload="metadata"
+              muted
+              playsInline
               className="w-full h-auto max-h-[80vh] rounded-lg"
+              onError={(e) => {
+                console.error('Video playback error:', e);
+                toast({
+                  title: "Video Error",
+                  description: "There was an error loading the video",
+                  variant: "destructive"
+                });
+              }}
             >
               Your browser does not support the video tag.
             </video>
@@ -439,7 +450,16 @@ function MediaPreviewDialog({
               <audio
                 src={mediaUrl}
                 controls
+                preload="metadata"
                 className="w-full max-w-md"
+                onError={(e) => {
+                  console.error('Audio playback error:', e);
+                  toast({
+                    title: "Audio Error", 
+                    description: "There was an error loading the audio",
+                    variant: "destructive"
+                  });
+                }}
               >
                 Your browser does not support the audio tag.
               </audio>
