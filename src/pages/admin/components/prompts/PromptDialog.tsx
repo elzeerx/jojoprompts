@@ -204,8 +204,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="prompt-dialog max-h-[90vh] flex flex-col p-0">
-        <ScrollArea className="max-h-[90vh]">
+      <DialogContent className="prompt-dialog max-h-[90vh] flex flex-col overflow-hidden p-0">
+        <ScrollArea className="flex-1">
           <div className="p-4 sm:p-8">
             {/* Header */}
             <div className="mb-6">
