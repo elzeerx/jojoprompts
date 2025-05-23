@@ -192,7 +192,7 @@ export function PromptCard({
         </h3>
 
         {/* Image */}
-        <div className="relative overflow-hidden rounded-xl h-48 bg-white/50">
+        <div className="relative overflow-hidden rounded-xl aspect-square bg-white/50">
           <ImageWrapper 
             src={imageUrl}
             alt={title}
