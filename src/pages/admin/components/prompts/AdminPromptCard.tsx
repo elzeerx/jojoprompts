@@ -150,34 +150,36 @@ export function AdminPromptCard({
                   Delete
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="prompt-dialog">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-3">
-                    <AlertTriangle className="h-8 w-8 text-red-500" />
-                    Delete Prompt
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete the prompt <strong>"{prompt.title}"</strong>. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="bg-white/40 p-6 rounded-xl border border-gray-200">
-                  <div className="flex items-center gap-3 text-red-600">
-                    <AlertTriangle className="h-5 w-5" />
-                    <p className="font-medium">This action is irreversible</p>
+              <AlertDialogContent>
+                <div className="p-8">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-3">
+                      <AlertTriangle className="h-8 w-8 text-red-500" />
+                      Delete Prompt
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete the prompt <strong>"{prompt.title}"</strong>. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="bg-white/40 p-6 rounded-xl border border-gray-200 mt-6">
+                    <div className="flex items-center gap-3 text-red-600">
+                      <AlertTriangle className="h-5 w-5" />
+                      <p className="font-medium">This action is irreversible</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      The prompt and all associated data will be permanently deleted from the system.
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    The prompt and all associated data will be permanently deleted from the system.
-                  </p>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleConfirmDelete}
+                      className="bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      Delete Prompt
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
                 </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={handleConfirmDelete}
-                    className="bg-red-500 hover:bg-red-600 text-white"
-                  >
-                    Delete Prompt
-                  </AlertDialogAction>
-                </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           </div>
