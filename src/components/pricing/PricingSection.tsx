@@ -45,7 +45,7 @@ export function PricingSection() {
   const handleSelectPlan = (planId: string) => {
     setSelectedPlanId(planId);
     
-    // Navigate directly to checkout with the selected plan
+    // Navigate to checkout with the correct parameter name
     navigate(`/checkout?plan_id=${planId}`);
   };
 

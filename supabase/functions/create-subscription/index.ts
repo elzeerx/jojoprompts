@@ -30,15 +30,21 @@ serve(async (req: Request) => {
 
   try {
     // Parse the request body
-    const { userId, planId, paymentMethod, paymentId } = await req.json();
+    const { userId, planId, paymentData } = await req.json();
+
+    console.log("Creating subscription with data:", { userId, planId, paymentData });
 
     // Basic validation
-    if (!userId || !planId || !paymentMethod) {
+    if (!userId || !planId || !paymentData) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { headers: { "Content-Type": "application/json" }, status: 400 }
       );
     }
+
+    // Extract payment information from standardized data
+    const paymentMethod = paymentData.paymentMethod || 'unknown';
+    const paymentId = paymentData.paymentId || paymentData.payment_id || null;
 
     // Get plan details
     const { data: plan, error: planError } = await supabase
@@ -48,6 +54,7 @@ serve(async (req: Request) => {
       .single();
 
     if (planError || !plan) {
+      console.error("Plan error:", planError);
       return new Response(
         JSON.stringify({ error: "Invalid plan ID" }),
         { headers: { "Content-Type": "application/json" }, status: 400 }
@@ -77,6 +84,7 @@ serve(async (req: Request) => {
       .single();
 
     if (subscriptionError) {
+      console.error("Subscription error:", subscriptionError);
       return new Response(
         JSON.stringify({ error: subscriptionError.message }),
         { headers: { "Content-Type": "application/json" }, status: 500 }
@@ -101,6 +109,8 @@ serve(async (req: Request) => {
       // We don't fail the whole transaction for this, just log it
     }
 
+    console.log("Subscription created successfully:", subscription.id);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -115,6 +125,7 @@ serve(async (req: Request) => {
       }
     );
   } catch (error) {
+    console.error("Error in create-subscription:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Internal server error" }),
       { 

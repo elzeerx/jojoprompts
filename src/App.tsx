@@ -104,11 +104,21 @@ const App = () => {
                 }
               />
 
+              {/* Dashboard routes - both should work */}
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
                     <UserDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/subscription-dashboard"
+                element={
+                  <ProtectedRoute>
+                    <SubscriptionDashboard />
                   </ProtectedRoute>
                 }
               />

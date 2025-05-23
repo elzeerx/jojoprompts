@@ -13,14 +13,20 @@ import { toast } from "@/hooks/use-toast";
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const planId = searchParams.get("plan");
+  const planId = searchParams.get("plan_id");
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
     const fetchPlan = async () => {
       if (!planId) {
+        toast({
+          title: "Error",
+          description: "No plan selected. Redirecting to pricing page.",
+          variant: "destructive",
+        });
         navigate("/pricing");
         return;
       }
@@ -52,12 +58,25 @@ export default function CheckoutPage() {
   }, [planId, navigate]);
 
   const handlePaymentSuccess = async (paymentData: any) => {
+    if (processing) return;
+    
+    setProcessing(true);
+    
     try {
+      console.log("Processing payment success:", paymentData);
+      
+      // Standardize payment data structure
+      const standardizedPaymentData = {
+        paymentId: paymentData.paymentId || paymentData.payment_id || paymentData.id,
+        paymentMethod: paymentData.paymentMethod || (paymentData.source ? 'tap' : 'paypal'),
+        details: paymentData
+      };
+
       const { data, error } = await supabase.functions.invoke("create-subscription", {
         body: {
           planId: selectedPlan.id,
           userId: user?.id,
-          paymentData
+          paymentData: standardizedPaymentData
         }
       });
 
@@ -68,15 +87,26 @@ export default function CheckoutPage() {
         description: "Your subscription has been activated",
       });
 
-      navigate("/dashboard");
+      navigate("/payment-success");
     } catch (error) {
       console.error("Error creating subscription:", error);
       toast({
         title: "Error",
-        description: "Failed to activate subscription",
+        description: "Failed to activate subscription. Please contact support.",
         variant: "destructive",
       });
+    } finally {
+      setProcessing(false);
     }
+  };
+
+  const handlePaymentError = (error: any) => {
+    console.error("Payment error:", error);
+    toast({
+      title: "Payment Failed",
+      description: "There was an issue processing your payment. Please try again.",
+      variant: "destructive",
+    });
   };
 
   if (loading) {
@@ -161,13 +191,29 @@ export default function CheckoutPage() {
               <CardTitle>Choose Payment Method</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {processing && (
+                <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Processing payment...</span>
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-4">
                 <div>
                   <h4 className="font-medium mb-3">PayPal</h4>
                   <PayPalButton
                     amount={price}
                     planName={planName}
-                    onSuccess={handlePaymentSuccess}
+                    onSuccess={(paymentId, details) => {
+                      handlePaymentSuccess({
+                        paymentId,
+                        paymentMethod: 'paypal',
+                        details
+                      });
+                    }}
+                    onError={handlePaymentError}
                     className="w-full"
                   />
                 </div>
@@ -188,7 +234,14 @@ export default function CheckoutPage() {
                   <TapPaymentButton
                     amount={price}
                     planName={planName}
-                    onSuccess={handlePaymentSuccess}
+                    onSuccess={(paymentId) => {
+                      handlePaymentSuccess({
+                        paymentId,
+                        paymentMethod: 'tap',
+                        payment_id: paymentId
+                      });
+                    }}
+                    onError={handlePaymentError}
                   />
                 </div>
               </div>
@@ -201,6 +254,7 @@ export default function CheckoutPage() {
             variant="outline"
             onClick={() => navigate("/pricing")}
             className="mr-4"
+            disabled={processing}
           >
             Back to Pricing
           </Button>

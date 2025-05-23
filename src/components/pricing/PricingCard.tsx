@@ -72,13 +72,13 @@ export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
           }`}
         >
           {user ? (
-            // If logged in, go straight to checkout
-            <Link to={`/checkout?plan=${plan.id}`}>
+            // If logged in, go straight to checkout with correct parameter
+            <Link to={`/checkout?plan_id=${plan.id}`}>
               {plan.ctaText}
             </Link>
           ) : (
             // If not logged in, go to signup with plan parameter
-            <Link to={`/signup?plan=${plan.id}`}>
+            <Link to={`/signup?plan_id=${plan.id}`}>
               Sign Up & Get Started
             </Link>
           )}
