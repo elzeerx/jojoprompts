@@ -34,6 +34,11 @@ export interface Prompt {
       name: string;
       description: string;
     }[];
+    workflow_files?: Array<{
+      type: 'json' | 'zip';
+      path: string;
+      name: string;
+    }>;
     buttons?: Array<{ id: string; name: string; description: string; type: string }>;
   };
   created_at: string;
@@ -66,6 +71,11 @@ export interface PromptRow {
       name: string;
       description: string;
     }[];
+    workflow_files?: Array<{
+      type: 'json' | 'zip';
+      path: string;
+      name: string;
+    }>;
     buttons?: Array<{ id: string; name: string; description: string; type: string }>;
   };
   prompt_type: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';

@@ -1,4 +1,3 @@
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PromptFormField } from "./PromptFormField";
 import { TextPromptFields } from "./TextPromptFields";
@@ -6,6 +5,7 @@ import { MultiMediaUploadField } from "./MultiMediaUploadField";
 import { ButtonPromptFields } from "./ButtonPromptFields";
 import { ImageSelectionFields } from "./ImageSelectionFields";
 import { WorkflowFields } from "./WorkflowFields";
+import { WorkflowFileUpload } from "./WorkflowFileUpload";
 import { AutoGenerateButton } from "./AutoGenerateButton";
 import { ImageSelectionField } from "./ImageSelectionField";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,11 @@ interface DialogFormProps {
 
 export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesChange }: DialogFormProps) {
   const [generatedMetadata, setGeneratedMetadata] = useState<boolean>(false);
+  const [workflowFiles, setWorkflowFiles] = useState<any[]>([]);
+
+  // Check if this is an n8n workflow prompt
+  const isN8nWorkflow = formData.promptType === 'workflow' || 
+                       (formData.metadata?.category && formData.metadata.category.toLowerCase().includes('n8n'));
 
   useEffect(() => {
     // Reset generated state when form data changes from external sources
@@ -58,13 +63,29 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
     });
   };
 
+  const handleWorkflowFilesChange = (workflowFiles: any[]) => {
+    setWorkflowFiles(workflowFiles);
+    updateMetadata({
+      ...formData.metadata,
+      workflow_files: workflowFiles.map(wf => ({
+        type: wf.type,
+        name: wf.name,
+        path: wf.path || '' // Will be updated after upload
+      }))
+    });
+  };
+
   const handleMultipleFilesChange = (files: File[]) => {
     if (onMultipleFilesChange) {
       onMultipleFilesChange(files);
     }
   };
 
-  // Updated to handle auto-generated metadata without category
+  const handleWorkflowFileUpload = (files: File[]) => {
+    // Add workflow files to the main files array for upload
+    handleMultipleFilesChange(files);
+  };
+
   const handleMetadataGenerated = (generatedMetadata: { style: string; tags: string[] }) => {
     console.log("DialogForm - Metadata generated (style and tags only):", generatedMetadata);
     
@@ -202,6 +223,15 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
         onMediaFilesChange={handleMediaFilesChange}
         onFilesChange={handleMultipleFilesChange}
       />
+
+      {/* n8n Workflow File Upload - Only show for workflow prompts */}
+      {isN8nWorkflow && (
+        <WorkflowFileUpload
+          workflowFiles={workflowFiles}
+          onWorkflowFilesChange={handleWorkflowFilesChange}
+          onFilesChange={handleWorkflowFileUpload}
+        />
+      )}
 
       {formData.promptType === 'text' && (
         <TextPromptFields

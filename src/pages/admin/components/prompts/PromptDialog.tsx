@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -140,13 +139,12 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         style: formData.metadata?.style || '',
         target_model: formData.metadata?.target_model || '',
         use_case: formData.metadata?.use_case || '',
-        media_files: mediaFiles
+        media_files: mediaFiles,
+        workflow_steps: formData.metadata?.workflow_steps || []
       }));
 
       console.log("PromptDialog - Clean metadata prepared for saving:", cleanMetadata);
-      console.log("PromptDialog - Metadata category:", cleanMetadata.category);
-      console.log("PromptDialog - Metadata style:", cleanMetadata.style);
-      console.log("PromptDialog - Metadata tags:", cleanMetadata.tags);
+      console.log("PromptDialog - Workflow steps:", cleanMetadata.workflow_steps);
 
       const promptData = {
         title: formData.title,

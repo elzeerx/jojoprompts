@@ -25,6 +25,7 @@ interface FormData {
     use_case?: string;
     buttons?: Array<{ id: string; name: string; description: string; type: string }>;
     media_files?: MediaFile[];
+    workflow_steps?: Array<{ name: string; description: string; type?: string }>;
   };
 }
 
@@ -42,7 +43,8 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
       target_model: editingPrompt?.metadata?.target_model || "",
       use_case: editingPrompt?.metadata?.use_case || "",
       buttons: editingPrompt?.metadata?.buttons || [],
-      media_files: editingPrompt?.metadata?.media_files || []
+      media_files: editingPrompt?.metadata?.media_files || [],
+      workflow_steps: editingPrompt?.metadata?.workflow_steps || []
     }
   }));
 
@@ -61,7 +63,8 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
           target_model: editingPrompt.metadata?.target_model || "",
           use_case: editingPrompt.metadata?.use_case || "",
           buttons: editingPrompt.metadata?.buttons || [],
-          media_files: editingPrompt.metadata?.media_files || []
+          media_files: editingPrompt.metadata?.media_files || [],
+          workflow_steps: editingPrompt.metadata?.workflow_steps || []
         }
       });
     } else {
@@ -78,7 +81,8 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
           target_model: "",
           use_case: "",
           buttons: [],
-          media_files: []
+          media_files: [],
+          workflow_steps: []
         }
       });
     }
