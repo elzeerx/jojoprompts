@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -53,33 +52,33 @@ export function Header() {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-warm-gold/10 transition-colors">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-warm-gold text-white">
+                      <AvatarFallback className="bg-warm-gold text-white font-medium">
                         {user.email?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Dashboard</span>
+                <DropdownMenuContent className="w-64 bg-white border border-warm-gold/20 shadow-lg rounded-lg p-2" align="end" forceMount>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3">
+                    <User className="mr-3 h-4 w-4 text-warm-gold" />
+                    <span className="text-dark-base font-medium">Dashboard</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/favorites")}>
-                    <Heart className="mr-2 h-4 w-4" />
-                    <span>Favorites</span>
+                  <DropdownMenuItem onClick={() => navigate("/favorites")} className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3">
+                    <Heart className="mr-3 h-4 w-4 text-warm-gold" />
+                    <span className="text-dark-base font-medium">Favorites</span>
                   </DropdownMenuItem>
                   {isAdmin && (
-                    <DropdownMenuItem onClick={() => navigate("/admin")}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Admin</span>
+                    <DropdownMenuItem onClick={() => navigate("/admin")} className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3">
+                      <Settings className="mr-3 h-4 w-4 text-warm-gold" />
+                      <span className="text-dark-base font-medium">Admin</span>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                  <DropdownMenuSeparator className="my-2 bg-warm-gold/20" />
+                  <DropdownMenuItem onClick={handleLogout} className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3">
+                    <LogOut className="mr-3 h-4 w-4 text-warm-gold" />
+                    <span className="text-dark-base font-medium">Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
