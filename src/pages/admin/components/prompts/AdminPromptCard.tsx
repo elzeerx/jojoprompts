@@ -50,6 +50,8 @@ export function AdminPromptCard({
 
   // Debug log to track metadata
   console.log("AdminPromptCard - Prompt metadata:", prompt.metadata);
+  console.log("AdminPromptCard - Prompt ID:", prompt.id);
+  console.log("AdminPromptCard - Prompt Title:", prompt.title);
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -114,22 +116,39 @@ export function AdminPromptCard({
   const style = prompt.metadata?.style;
   const tags = prompt.metadata?.tags || [];
 
+  console.log("AdminPromptCard - Extracted metadata:", { category, style, tags });
+
   return (
     <>
       <Card onClick={handleCardClick} className="cursor-pointer hover:shadow-md transition-shadow">
         <CardHeader className="relative">
           <CardTitle>{prompt.title}</CardTitle>
           <CardDescription>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 mb-2">
               <Badge variant="secondary" className="text-xs">
                 {category}
               </Badge>
               {style && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
                   Style: {style}
                 </Badge>
               )}
             </div>
+            {/* Display tags if they exist */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {tags.slice(0, 3).map((tag: string, index: number) => (
+                  <Badge key={index} variant="outline" className="text-xs bg-green-100 text-green-800">
+                    {tag}
+                  </Badge>
+                ))}
+                {tags.length > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{tags.length - 3} more
+                  </Badge>
+                )}
+              </div>
+            )}
           </CardDescription>
           {session && (
             <div className="absolute top-4 right-4">
@@ -151,22 +170,6 @@ export function AdminPromptCard({
           <p className="text-sm text-muted-foreground">
             {prompt.prompt_text.substring(0, 100)}...
           </p>
-          
-          {/* Display tags if they exist */}
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {tags.slice(0, 4).map((tag: string, index: number) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-              {tags.length > 4 && (
-                <Badge variant="outline" className="text-xs">
-                  +{tags.length - 4} more
-                </Badge>
-              )}
-            </div>
-          )}
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
           <CopyButton value={prompt.prompt_text} className="w-full" />

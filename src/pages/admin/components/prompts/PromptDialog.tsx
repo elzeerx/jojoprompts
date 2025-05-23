@@ -144,6 +144,9 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       }));
 
       console.log("PromptDialog - Clean metadata prepared for saving:", cleanMetadata);
+      console.log("PromptDialog - Metadata category:", cleanMetadata.category);
+      console.log("PromptDialog - Metadata style:", cleanMetadata.style);
+      console.log("PromptDialog - Metadata tags:", cleanMetadata.tags);
 
       const promptData = {
         title: formData.title,
@@ -167,6 +170,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         if (error) throw error;
         
         console.log("PromptDialog - Updated prompt data returned:", data);
+        console.log("PromptDialog - Updated prompt metadata:", data?.[0]?.metadata);
         
         toast({
           title: "Success",
@@ -181,6 +185,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         if (error) throw error;
         
         console.log("PromptDialog - Inserted prompt data returned:", data);
+        console.log("PromptDialog - Inserted prompt metadata:", data?.[0]?.metadata);
         
         toast({
           title: "Success", 

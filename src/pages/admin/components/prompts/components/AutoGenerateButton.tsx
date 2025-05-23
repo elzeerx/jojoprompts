@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 
 interface AutoGenerateButtonProps {
   promptText: string;
-  onMetadataGenerated: (metadata: { category: string; style: string; tags: string[] }) => void;
+  onMetadataGenerated: (metadata: { style: string; tags: string[] }) => void;
   disabled?: boolean;
 }
 
@@ -40,20 +40,20 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
 
       console.log("AutoGenerateButton - Generated metadata from edge function:", data);
 
+      // Updated to only handle style and tags (no category)
       const metadata = {
-        category: data.category || "ChatGPT",
         style: data.style || "",
         tags: data.tags || []
       };
 
-      console.log("AutoGenerateButton - Processed metadata:", metadata);
+      console.log("AutoGenerateButton - Processed metadata (without category):", metadata);
 
       // Call the callback with the generated metadata
       onMetadataGenerated(metadata);
 
       toast({
         title: "Metadata generated!",
-        description: `Category: ${metadata.category}, Style: ${metadata.style || "None"}, Tags: ${metadata.tags.length}`,
+        description: `Style: ${metadata.style || "None"}, Tags: ${metadata.tags.length}`,
       });
 
     } catch (error) {

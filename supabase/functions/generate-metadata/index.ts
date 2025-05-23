@@ -82,7 +82,7 @@ serve(async (req) => {
 
     console.log("Admin check passed, calling OpenAI...");
 
-    // Call OpenAI API
+    // Call OpenAI API - Updated prompt to exclude category
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -94,11 +94,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful AI that analyzes image generation prompts and extracts metadata. Return ONLY valid JSON with "category", "style", and "tags" (array) properties. Do not include markdown formatting or code blocks in your response, just the raw JSON object.'
+            content: 'You are a helpful AI that analyzes image generation prompts and extracts metadata. Return ONLY valid JSON with "style" and "tags" (array) properties. DO NOT include "category" - that will be set separately. Do not include markdown formatting or code blocks in your response, just the raw JSON object.'
           },
           {
             role: 'user',
-            content: `Analyze this image generation prompt and provide metadata: ${prompt_text}`
+            content: `Analyze this image generation prompt and provide metadata (style and tags only): ${prompt_text}`
           }
         ],
       }),
@@ -124,12 +124,13 @@ serve(async (req) => {
       const metadata = JSON.parse(cleanedMetadataStr);
       console.log("Successfully parsed metadata:", metadata);
       
-      // Ensure the metadata has the expected structure
+      // Ensure the metadata has the expected structure (no category)
       const validatedMetadata = {
-        category: metadata.category || "",
         style: metadata.style || "",
         tags: Array.isArray(metadata.tags) ? metadata.tags : []
       };
+      
+      console.log("Validated metadata (without category):", validatedMetadata);
       
       return new Response(
         JSON.stringify(validatedMetadata),
@@ -144,7 +145,6 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        category: "",
         style: "",
         tags: []
       }),

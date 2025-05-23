@@ -36,6 +36,7 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
   }, [formData]);
 
   const updateFormData = (field: string, value: any) => {
+    console.log("DialogForm - Updating form field:", field, "with value:", value);
     onChange({
       ...formData,
       [field]: value
@@ -43,7 +44,7 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
   };
 
   const updateMetadata = (metadata: any) => {
-    console.log("Updating metadata:", metadata);
+    console.log("DialogForm - Updating metadata:", metadata);
     onChange({
       ...formData,
       metadata
@@ -63,25 +64,30 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
     }
   };
 
-  const handleMetadataGenerated = (generatedMetadata: { category: string; style: string; tags: string[] }) => {
-    console.log("Metadata generated in DialogForm:", generatedMetadata);
+  // Updated to handle auto-generated metadata without category
+  const handleMetadataGenerated = (generatedMetadata: { style: string; tags: string[] }) => {
+    console.log("DialogForm - Metadata generated (style and tags only):", generatedMetadata);
     
-    // Save existing metadata fields that should be preserved
+    // Preserve existing metadata fields that should not be overwritten
     const existingMediaFiles = formData.metadata?.media_files || [];
     const existingTargetModel = formData.metadata?.target_model || '';
     const existingUseCase = formData.metadata?.use_case || '';
+    const existingCategory = formData.metadata?.category || 'ChatGPT'; // Keep the manually selected category
     
-    updateMetadata({
+    const updatedMetadata = {
       ...formData.metadata,
-      category: generatedMetadata.category,
+      // Only update style and tags from auto-generation
       style: generatedMetadata.style,
       tags: generatedMetadata.tags,
       // Preserve these fields
+      category: existingCategory, // Keep manual category selection
       media_files: existingMediaFiles,
       target_model: existingTargetModel,
       use_case: existingUseCase
-    });
+    };
     
+    console.log("DialogForm - Final merged metadata:", updatedMetadata);
+    updateMetadata(updatedMetadata);
     setGeneratedMetadata(true);
   };
 
@@ -125,28 +131,23 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
         type="textarea"
       />
 
-      {/* Auto-generate metadata section */}
+      {/* Auto-generate metadata section - updated description */}
       <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-blue-900">Auto-generate Metadata</h3>
+          <h3 className="text-sm font-medium text-blue-900">Auto-generate Style & Tags</h3>
           <AutoGenerateButton
             promptText={formData.promptText}
             onMetadataGenerated={handleMetadataGenerated}
           />
         </div>
         <p className="text-xs text-blue-700">
-          Let AI analyze your prompt text and automatically suggest category, style, and tags.
+          Let AI analyze your prompt text and automatically suggest style and tags. Category will be set manually below.
         </p>
         
         {generatedMetadata && (
           <div className="mt-3 pt-3 border-t border-blue-200">
             <p className="text-xs font-medium text-blue-800 mb-2">Generated metadata:</p>
             <div className="flex flex-wrap gap-2">
-              {formData.metadata?.category && (
-                <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
-                  {formData.metadata.category}
-                </Badge>
-              )}
               {formData.metadata?.style && (
                 <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-200">
                   Style: {formData.metadata.style}
@@ -166,7 +167,10 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
         <label className="text-sm font-medium">Category</label>
         <Select 
           value={formData.metadata?.category || "ChatGPT"} 
-          onValueChange={(value) => updateMetadata({ ...formData.metadata, category: value })}
+          onValueChange={(value) => {
+            console.log("DialogForm - Manual category selection:", value);
+            updateMetadata({ ...formData.metadata, category: value });
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select category" />
