@@ -8,8 +8,15 @@ const DEFAULT_BUCKET = 'default-prompt-images';
 const DEFAULT_TEXT_PROMPT_IMAGE = 'textpromptdefaultimg.jpg';
 
 export async function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80): Promise<string> {
-  if (!pathOrUrl) return '/placeholder.svg';
-  if (pathOrUrl.startsWith('http')) return pathOrUrl;
+  if (!pathOrUrl) {
+    console.log('No image path provided, returning placeholder');
+    return '/placeholder.svg';
+  }
+  
+  if (pathOrUrl.startsWith('http')) {
+    console.log(`Using external URL: ${pathOrUrl}`);
+    return pathOrUrl;
+  }
   
   // Clean the path to ensure no double encoding happens
   const cleanPath = pathOrUrl.startsWith('/') ? pathOrUrl.substring(1) : pathOrUrl;
@@ -20,6 +27,9 @@ export async function getPromptImage(pathOrUrl: string | null | undefined, w = 4
   try {
     // Get a signed URL for private bucket access
     const bucket = typeof pathOrUrl === 'string' && pathOrUrl === DEFAULT_TEXT_PROMPT_IMAGE ? DEFAULT_BUCKET : BUCKET;
+    
+    console.log(`Using bucket: ${bucket} for path: ${cleanPath}`);
+    
     const { data, error } = await supabase
       .storage
       .from(bucket)
@@ -33,13 +43,16 @@ export async function getPromptImage(pathOrUrl: string | null | undefined, w = 4
       });
       
     if (error || !data?.signedUrl) {
-      console.error('Error getting signed URL:', error);
+      console.error(`Error getting signed URL for ${cleanPath} in bucket ${bucket}:`, error);
+      console.log('Falling back to placeholder image');
       return '/placeholder.svg';
     }
     
+    console.log(`Successfully got signed URL for ${cleanPath}: ${data.signedUrl}`);
     return data.signedUrl;
   } catch (err) {
     console.error('Error in getPromptImage:', err);
+    console.log('Falling back to placeholder image');
     return '/placeholder.svg';
   }
 }
@@ -65,5 +78,8 @@ export async function uploadDefaultPromptImage(file: File): Promise<string> {
 }
 
 export async function getTextPromptDefaultImage(): Promise<string> {
-  return getPromptImage(DEFAULT_TEXT_PROMPT_IMAGE);
+  console.log('Getting default text prompt image');
+  const result = await getPromptImage(DEFAULT_TEXT_PROMPT_IMAGE);
+  console.log(`Default text prompt image URL: ${result}`);
+  return result;
 }

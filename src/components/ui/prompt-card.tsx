@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { type Prompt, type PromptRow } from "@/types";
@@ -5,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
-import { getPromptImage } from "@/utils/image";
+import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { Lock, Crown, Heart, Play, FileAudio } from "lucide-react";
 import { Button } from "./button";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
@@ -51,20 +52,45 @@ export function PromptCard({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
 
-  // Get the primary image to display - prioritize the first image from media_files, then fallback to image_path
-  const primaryImagePath = mediaFiles.find(file => file.type === 'image')?.path || prompt.image_path || prompt.image_url || null;
-
   useEffect(() => {
     async function loadImage() {
-      if (primaryImagePath) {
-        const url = await getPromptImage(primaryImagePath, 400, 85);
-        setImageUrl(url);
+      try {
+        let finalImageUrl = '/placeholder.svg';
+
+        // Enhanced image path resolution logic
+        if (prompt_type === 'text') {
+          // For text prompts, prioritize default_image_path, then use default text prompt image
+          if (prompt.default_image_path) {
+            console.log(`Loading text prompt with default_image_path: ${prompt.default_image_path}`);
+            finalImageUrl = await getPromptImage(prompt.default_image_path, 400, 85);
+          } else {
+            console.log(`Loading text prompt with default image for prompt: ${title}`);
+            finalImageUrl = await getTextPromptDefaultImage();
+          }
+        } else {
+          // For non-text prompts, check multiple possible image sources
+          const primaryImagePath = mediaFiles.find(file => file.type === 'image')?.path || 
+                                   prompt.image_path || 
+                                   prompt.image_url;
+          
+          if (primaryImagePath) {
+            console.log(`Loading ${prompt_type} prompt image from: ${primaryImagePath}`);
+            finalImageUrl = await getPromptImage(primaryImagePath, 400, 85);
+          } else {
+            console.log(`No image path found for ${prompt_type} prompt: ${title}, using placeholder`);
+          }
+        }
+
+        console.log(`Final image URL for "${title}": ${finalImageUrl}`);
+        setImageUrl(finalImageUrl);
+      } catch (error) {
+        console.error(`Error loading image for prompt "${title}":`, error);
+        setImageUrl('/placeholder.svg');
       }
     }
-    if (primaryImagePath) {
-      loadImage();
-    }
-  }, [primaryImagePath]);
+
+    loadImage();
+  }, [prompt.image_path, prompt.default_image_path, prompt.image_url, mediaFiles, prompt_type, title]);
 
   const handleCardClick = () => {
     if (isLocked && onUpgradeClick) {
@@ -191,7 +217,7 @@ export function PromptCard({
           {title}
         </h3>
 
-        {/* Image */}
+        {/* Image with 1:1 aspect ratio */}
         <div className="relative overflow-hidden rounded-xl aspect-square bg-white/50">
           <ImageWrapper 
             src={imageUrl}
