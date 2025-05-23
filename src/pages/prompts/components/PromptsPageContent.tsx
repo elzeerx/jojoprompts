@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+
 interface PromptsPageContentProps {
   prompts: any[];
   categories: string[];
@@ -14,6 +15,7 @@ interface PromptsPageContentProps {
   error: string | null;
   reloadPrompts: () => void;
 }
+
 export function PromptsPageContent({
   prompts,
   categories,
@@ -24,9 +26,7 @@ export function PromptsPageContent({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [userSubscription, setUserSubscription] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -92,42 +92,71 @@ export function PromptsPageContent({
   const handleUpgradeClick = () => {
     navigate("/pricing");
   };
-  return <div className="container mx-auto px-4 py-8">
+
+  return (
+    <div className="container mx-auto px-4 py-8">
       {/* Search and filter section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="relative w-full md:w-auto md:flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search prompts..." className="pl-10" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-        </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          
-          
-          
+          <Input 
+            placeholder="Search prompts..." 
+            className="pl-10 border-warm-gold/20 rounded-lg" 
+            value={searchQuery} 
+            onChange={e => setSearchQuery(e.target.value)} 
+          />
         </div>
       </div>
 
-      {/* Category tabs */}
+      {/* Category tabs - removed duplicate "All" tab and updated styling */}
       <Tabs defaultValue="all" value={selectedCategory} onValueChange={setSelectedCategory} className="mb-8">
-        <TabsList className="w-full h-auto flex-wrap justify-start bg-transparent p-0 gap-2">
-          <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            All
-          </TabsTrigger>
-          {categories.map(category => <TabsTrigger key={category} value={category.toLowerCase()} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              {category}
-            </TabsTrigger>)}
-        </TabsList>
+        <div className="overflow-x-auto pb-3 mb-4 border-b border-warm-gold/10">
+          <TabsList className="bg-transparent h-auto p-0 flex w-full justify-start space-x-4">
+            <TabsTrigger 
+              value="all" 
+              className="data-[state=active]:bg-warm-gold/10 data-[state=active]:text-warm-gold px-4 py-2 text-dark-base rounded-lg border-b-2 border-transparent data-[state=active]:border-warm-gold"
+            >
+              All Categories
+            </TabsTrigger>
+            {categories.filter(category => category !== "all").map(category => (
+              <TabsTrigger 
+                key={category} 
+                value={category.toLowerCase()} 
+                className="data-[state=active]:bg-warm-gold/10 data-[state=active]:text-warm-gold px-4 py-2 text-dark-base rounded-lg border-b-2 border-transparent data-[state=active]:border-warm-gold"
+              >
+                {category}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
       </Tabs>
 
       {/* Prompts display */}
-      {isLoading || loading ? <div className="flex items-center justify-center py-12">
+      {isLoading || loading ? (
+        <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div> : error ? <div className="text-center py-12">
+        </div>
+      ) : error ? (
+        <div className="text-center py-12">
           <p className="text-red-500 mb-4">Error loading prompts: {error}</p>
           <Button onClick={reloadPrompts}>Try Again</Button>
-        </div> : filteredPrompts.length === 0 ? <div className="text-center py-12">
+        </div>
+      ) : filteredPrompts.length === 0 ? (
+        <div className="text-center py-12">
           <p className="text-muted-foreground mb-4">No prompts found.</p>
-        </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPrompts.map(prompt => <PromptCard key={prompt.id} prompt={prompt} isLocked={isPromptLocked(prompt.prompt_type)} onUpgradeClick={handleUpgradeClick} />)}
-        </div>}
-    </div>;
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredPrompts.map(prompt => (
+            <PromptCard 
+              key={prompt.id} 
+              prompt={prompt} 
+              isLocked={isPromptLocked(prompt.prompt_type)} 
+              onUpgradeClick={handleUpgradeClick} 
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
