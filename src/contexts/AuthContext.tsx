@@ -27,15 +27,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   // Helper function to fetch user profile safely
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (currentUser: User) => {
     try {
-      debug("Fetching profile for user", { userId });
+      debug("Fetching profile for user", { userId: currentUser.id, email: currentUser.email });
+      
+      // Special case for nawaf@elzeer.com - always admin
+      if (currentUser.email === 'nawaf@elzeer.com') {
+        debug("Special admin case: nawaf@elzeer.com detected - setting admin role");
+        setUserRole("admin");
+        return;
+      }
       
       // Using maybeSingle instead of single to avoid errors when profile doesn't exist
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', userId)
+        .eq('id', currentUser.id)
         .maybeSingle();
       
       if (error) {
@@ -45,15 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Set role with a fallback to "user" if the profile doesn't exist or role is null
       const role = profile?.role || "user";
-      debug("Profile fetched", { profile, role });
-      
-      // Extra check for specific admin email
-      if (user?.email === 'nawaf@elzeer.com') {
-        debug("Special case: nawaf@elzeer.com detected - forcing admin role");
-        setUserRole("admin");
-      } else {
-        setUserRole(role);
-      }
+      debug("Profile fetched", { profile, role, userEmail: currentUser.email });
+      setUserRole(role);
     } catch (error) {
       console.error("[AUTH] Error fetching profile:", error);
       setUserRole("user"); // Default to user role on error
@@ -68,20 +68,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     
+    debug("Setting up auth state listener");
+    
     // Setup auth state change listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
+      async (event, currentSession) => {
         if (!mounted) return;
         
-        debug("Auth state changed", { event, currentSession });
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+        debug("Auth state changed", { event, sessionExists: !!currentSession, userEmail: currentSession?.user?.email });
         
-        // For profile fetching, use setTimeout to avoid potential deadlocks with Supabase auth
-        if (currentSession?.user) {
+        setSession(currentSession);
+        const currentUser = currentSession?.user ?? null;
+        setUser(currentUser);
+        
+        if (currentUser) {
+          // Use setTimeout to avoid potential deadlocks with Supabase auth
           setTimeout(() => {
             if (mounted) {
-              fetchUserProfile(currentSession.user.id).finally(() => {
+              fetchUserProfile(currentUser).finally(() => {
                 if (mounted) setLoading(false);
               });
             }
@@ -98,16 +102,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
       
       if (error) {
-        console.error("[AUTH] Error getting session:", error);
+        console.error("[AUTH] Error getting initial session:", error);
         setLoading(false);
         return;
       }
       
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
+      debug("Initial session check", { sessionExists: !!initialSession, userEmail: initialSession?.user?.email });
       
-      if (initialSession?.user) {
-        fetchUserProfile(initialSession.user.id).finally(() => {
+      setSession(initialSession);
+      const initialUser = initialSession?.user ?? null;
+      setUser(initialUser);
+      
+      if (initialUser) {
+        fetchUserProfile(initialUser).finally(() => {
           if (mounted) setLoading(false);
         });
       } else {
@@ -118,19 +125,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      debug("Auth context cleanup");
     };
   }, []);
 
   const signOut = async () => {
     try {
+      debug("Starting logout process");
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
       
+      // Clear local state first
       setSession(null);
       setUser(null);
       setUserRole(null);
+      
+      // Then sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("[AUTH] Sign out error:", error);
+        throw error;
+      }
+      
+      debug("Logout successful, navigating to login");
       navigate('/login');
+      
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
     } catch (error) {
       console.error("[AUTH] Sign out error:", error);
       toast({
@@ -143,15 +165,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const contextValue = {
+    session,
+    user,
+    userRole,
+    isAdmin: userRole === 'admin',
+    loading,
+    signOut
+  };
+
+  debug("Auth context render", { 
+    userEmail: user?.email, 
+    userRole, 
+    isAdmin: userRole === 'admin', 
+    loading 
+  });
+
   return (
-    <AuthContext.Provider value={{
-      session,
-      user,
-      userRole,
-      isAdmin: userRole === 'admin',
-      loading,
-      signOut
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
