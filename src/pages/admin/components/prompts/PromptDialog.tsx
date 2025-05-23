@@ -14,7 +14,7 @@ interface PromptDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   editingPrompt?: PromptRow | null;
-  promptType?: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';
+  promptType?: 'text' | 'image' | 'workflow' | 'video' | 'sound';
   category?: string;
 }
 
@@ -36,7 +36,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     if (promptType && !editingPrompt) {
       setFormData(prev => ({
         ...prev,
-        promptType: promptType as 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection',
+        promptType: promptType as 'text' | 'image' | 'workflow' | 'video' | 'sound',
         metadata: {
           ...prev.metadata,
           category: category || prev.metadata?.category
@@ -107,15 +107,33 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         const updatedMediaFiles = mediaFiles.map((media: any, index: number) => {
           if (media.file && uploadedPaths[index]) {
             return {
-              ...media,
-              path: uploadedPaths[index]
+              type: media.type,
+              path: uploadedPaths[index],
+              name: media.name
             };
           }
-          return media;
+          return {
+            type: media.type,
+            path: media.path,
+            name: media.name
+          };
         });
         
         mediaFiles = updatedMediaFiles;
+      } else {
+        // Clean existing media files to remove non-serializable properties
+        mediaFiles = mediaFiles.map((media: any) => ({
+          type: media.type,
+          path: media.path,
+          name: media.name
+        }));
       }
+
+      // Prepare metadata as JSON-compatible object
+      const jsonCompatibleMetadata = {
+        ...formData.metadata,
+        media_files: mediaFiles
+      };
 
       const promptData = {
         title: formData.title,
@@ -123,10 +141,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         prompt_type: formData.promptType,
         image_path: imagePath,
         default_image_path: formData.defaultImagePath,
-        metadata: {
-          ...formData.metadata,
-          media_files: mediaFiles
-        },
+        metadata: jsonCompatibleMetadata,
         user_id: user?.id || ""
       };
 
