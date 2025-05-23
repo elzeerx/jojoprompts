@@ -42,6 +42,7 @@ export default {
         'soft-bg': '#efeee9',
         'warm-gold': '#c49d68',
         'muted-teal': '#7a9e9f',
+        'workflow-purple': '#8b7fb8',
         
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',

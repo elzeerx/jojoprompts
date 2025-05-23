@@ -136,17 +136,17 @@ export function PromptDetailsDialog({
     return "N/A";
   };
 
-  // Get category color
-  const getCategoryColor = (category: string) => {
+  // Get category color class
+  const getCategoryClass = (category: string) => {
     switch (category.toLowerCase()) {
       case 'chatgpt':
-        return '#c49d68';
+        return 'bg-warm-gold';
       case 'midjourney':
-        return '#7a9e9f';
+        return 'bg-muted-teal';
       case 'workflow':
-        return '#8b7fb8';
+        return 'bg-workflow-purple';
       default:
-        return '#c49d68';
+        return 'bg-warm-gold';
     }
   };
 
@@ -181,9 +181,11 @@ export function PromptDetailsDialog({
                 <div className="flex items-start justify-between">
                   <div className="space-y-3">
                     {/* Category Tag */}
-                    <span 
-                      className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium"
-                      style={{ backgroundColor: getCategoryColor(category) }}
+                    <span
+                      className={cn(
+                        "inline-block rounded-lg text-white px-3 py-1 text-xs font-medium",
+                        getCategoryClass(category)
+                      )}
                     >
                       {category}
                     </span>

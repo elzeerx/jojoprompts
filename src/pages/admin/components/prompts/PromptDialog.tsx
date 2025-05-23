@@ -8,6 +8,7 @@ import { type PromptRow } from "@/types";
 import { DialogForm } from "./components/DialogForm";
 import { usePromptForm } from "./hooks/usePromptForm";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 interface PromptDialogProps {
   open: boolean;
@@ -123,17 +124,17 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     }
   };
 
-  // Get category color
-  const getCategoryColor = (category: string) => {
+  // Get category color class
+  const getCategoryClass = (category: string) => {
     switch (category?.toLowerCase()) {
       case 'chatgpt':
-        return '#c49d68';
+        return 'bg-warm-gold';
       case 'midjourney':
-        return '#7a9e9f';
+        return 'bg-muted-teal';
       case 'workflow':
-        return '#8b7fb8';
+        return 'bg-workflow-purple';
       default:
-        return '#c49d68';
+        return 'bg-warm-gold';
     }
   };
 
@@ -144,9 +145,11 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
           {/* Header */}
           <div className="mb-6">
             {formData.metadata?.category && (
-              <span 
-                className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium mb-3"
-                style={{ backgroundColor: getCategoryColor(formData.metadata.category) }}
+              <span
+                className={cn(
+                  "inline-block rounded-lg text-white px-3 py-1 text-xs font-medium mb-3",
+                  getCategoryClass(formData.metadata.category)
+                )}
               >
                 {formData.metadata.category}
               </span>
