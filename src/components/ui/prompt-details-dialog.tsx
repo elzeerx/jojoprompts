@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { getPromptImage, getTextPromptDefaultImage, getMediaUrl } from "@/utils/image";
 import { cn } from "@/lib/utils";
+import { WorkflowDownloadSection } from "@/components/ui/workflow-download-section";
 
 interface PromptDetailsDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const style = metadata?.style;
   const mediaFiles = metadata?.media_files || [];
   const workflowSteps = metadata?.workflow_steps || [];
+  const workflowFiles = metadata?.workflow_files || [];
 
   // Check if this is an n8n workflow prompt
   const isN8nWorkflow = prompt_type === 'workflow' || category.toLowerCase().includes('n8n');
@@ -277,6 +279,11 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                       </p>
                     </div>
                   </div>
+                )}
+
+                {/* Workflow Files Download Section for n8n prompts */}
+                {isN8nWorkflow && workflowFiles.length > 0 && (
+                  <WorkflowDownloadSection workflowFiles={workflowFiles} />
                 )}
 
                 {/* Tags */}
