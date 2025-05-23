@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { type Prompt, type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
+import { getPromptImage, getTextPromptDefaultImage, getMediaUrl } from "@/utils/image";
 import { cn } from "@/lib/utils";
 
 interface PromptDetailsDialogProps {
@@ -121,15 +120,6 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
         description: "Failed to copy prompt to clipboard",
         variant: "destructive"
       });
-    }
-  };
-
-  const getMediaUrl = async (mediaPath: string) => {
-    try {
-      return await getPromptImage(mediaPath, 800, 90);
-    } catch (error) {
-      console.error('Error loading media:', error);
-      return '/placeholder.svg';
     }
   };
 
@@ -373,7 +363,7 @@ function MediaThumbnail({ media, index, onClick }: {
   );
 }
 
-// Media Preview Dialog Component
+// Media Preview Dialog Component - Updated to use getMediaUrl
 function MediaPreviewDialog({ 
   open, 
   onOpenChange, 
@@ -394,11 +384,24 @@ function MediaPreviewDialog({
     if (selectedMedia) {
       const loadMedia = async () => {
         try {
-          const url = await getPromptImage(selectedMedia.path, 1200, 95);
+          // Use the appropriate function based on media type
+          let url;
+          if (selectedMedia.type === 'video' || selectedMedia.type === 'audio') {
+            url = await getMediaUrl(selectedMedia.path, selectedMedia.type as 'video' | 'audio');
+          } else {
+            // For images, use the original function with high quality
+            url = await getPromptImage(selectedMedia.path, 1200, 95);
+          }
           setMediaUrl(url);
+          console.log(`Loaded ${selectedMedia.type} URL: ${url}`);
         } catch (error) {
-          console.error('Error loading media:', error);
+          console.error(`Error loading ${selectedMedia.type}:`, error);
           setMediaUrl('/placeholder.svg');
+          toast({
+            title: `${selectedMedia.type.charAt(0).toUpperCase() + selectedMedia.type.slice(1)} Error`,
+            description: `There was an error loading the ${selectedMedia.type}`,
+            variant: "destructive"
+          });
         }
       };
       loadMedia();

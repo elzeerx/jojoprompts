@@ -57,6 +57,56 @@ export async function getPromptImage(pathOrUrl: string | null | undefined, w = 4
   }
 }
 
+// New function to get a direct media URL without image transformations
+export async function getMediaUrl(pathOrUrl: string | null | undefined, mediaType: 'image' | 'video' | 'audio'): Promise<string> {
+  if (!pathOrUrl) {
+    console.log('No media path provided, returning placeholder');
+    return '/placeholder.svg';
+  }
+  
+  if (pathOrUrl.startsWith('http')) {
+    console.log(`Using external media URL: ${pathOrUrl}`);
+    return pathOrUrl;
+  }
+  
+  // Clean the path to ensure no double encoding happens
+  const cleanPath = pathOrUrl.startsWith('/') ? pathOrUrl.substring(1) : pathOrUrl;
+  
+  // Log path for debugging
+  console.log(`Getting ${mediaType} URL for path: ${cleanPath}`);
+  
+  try {
+    // For media files like video and audio, we want a direct URL without transformations
+    const bucket = BUCKET; // Always use the main bucket for media files
+    
+    console.log(`Using bucket: ${bucket} for ${mediaType} path: ${cleanPath}`);
+    
+    // For images, we use the transformation API. For videos and audio, we get a direct URL
+    if (mediaType === 'image') {
+      return getPromptImage(pathOrUrl);
+    } else {
+      // For video and audio, get a direct signed URL without transformations
+      const { data, error } = await supabase
+        .storage
+        .from(bucket)
+        .createSignedUrl(cleanPath, 600); // 10 minutes expiry
+      
+      if (error || !data?.signedUrl) {
+        console.error(`Error getting signed URL for ${mediaType} ${cleanPath}:`, error);
+        console.log('Falling back to placeholder');
+        return '/placeholder.svg';
+      }
+      
+      console.log(`Successfully got ${mediaType} signed URL for ${cleanPath}: ${data.signedUrl}`);
+      return data.signedUrl;
+    }
+  } catch (err) {
+    console.error(`Error in getMediaUrl for ${mediaType}:`, err);
+    console.log('Falling back to placeholder');
+    return '/placeholder.svg';
+  }
+}
+
 export const getCdnUrl = getPromptImage;
 
 export async function uploadDefaultPromptImage(file: File): Promise<string> {
