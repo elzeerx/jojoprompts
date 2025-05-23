@@ -29,6 +29,29 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
   // Use the default_image_path from the prompt, or if not available, use textpromptdefaultimg.jpg
   const imagePath = prompt.default_image_path || 'textpromptdefaultimg.jpg';
 
+  // Get category badge color based on category
+  const getCategoryBadgeStyle = (cat: string) => {
+    const lowerCategory = cat.toLowerCase();
+    
+    if (lowerCategory.includes('chatgpt') || lowerCategory.includes('text')) {
+      return 'bg-[#c49d68] text-white'; // Warm gold
+    } else if (lowerCategory.includes('midjourney') || lowerCategory.includes('image')) {
+      return 'bg-[#7a9e9f] text-white'; // Muted teal
+    } else if (lowerCategory.includes('n8n') || lowerCategory.includes('workflow')) {
+      return 'bg-blue-600 text-white'; // Blue
+    } else if (lowerCategory.includes('claude')) {
+      return 'bg-orange-500 text-white'; // Orange
+    } else if (lowerCategory.includes('gemini')) {
+      return 'bg-purple-600 text-white'; // Purple
+    } else if (lowerCategory.includes('video')) {
+      return 'bg-red-500 text-white'; // Red
+    } else if (lowerCategory.includes('audio')) {
+      return 'bg-green-600 text-white'; // Green
+    } else {
+      return 'bg-gray-600 text-white'; // Default gray
+    }
+  };
+
   useEffect(() => {
     async function loadImage() {
       try {
@@ -106,7 +129,10 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
       >
         {/* Category Tag and Favorite */}
         <div className="flex items-start justify-between">
-          <span className="inline-block px-3 py-1 text-xs font-medium rounded-lg bg-[#c49d68] text-white">
+          <span className={cn(
+            "inline-block px-3 py-1 text-xs font-medium rounded-lg",
+            getCategoryBadgeStyle(category)
+          )}>
             {category}
           </span>
           

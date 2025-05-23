@@ -53,6 +53,29 @@ export function AdminPromptCard({
   console.log("AdminPromptCard - Prompt ID:", prompt.id);
   console.log("AdminPromptCard - Prompt Title:", prompt.title);
 
+  // Get category badge color based on category
+  const getCategoryBadgeStyle = (category: string) => {
+    const lowerCategory = category.toLowerCase();
+    
+    if (lowerCategory.includes('chatgpt') || lowerCategory.includes('text')) {
+      return 'bg-[#c49d68] text-white'; // Warm gold
+    } else if (lowerCategory.includes('midjourney') || lowerCategory.includes('image')) {
+      return 'bg-[#7a9e9f] text-white'; // Muted teal
+    } else if (lowerCategory.includes('n8n') || lowerCategory.includes('workflow')) {
+      return 'bg-blue-600 text-white'; // Blue
+    } else if (lowerCategory.includes('claude')) {
+      return 'bg-orange-500 text-white'; // Orange
+    } else if (lowerCategory.includes('gemini')) {
+      return 'bg-purple-600 text-white'; // Purple
+    } else if (lowerCategory.includes('video')) {
+      return 'bg-red-500 text-white'; // Red
+    } else if (lowerCategory.includes('audio')) {
+      return 'bg-green-600 text-white'; // Green
+    } else {
+      return 'bg-gray-600 text-white'; // Default gray
+    }
+  };
+
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -125,7 +148,7 @@ export function AdminPromptCard({
           <CardTitle>{prompt.title}</CardTitle>
           <CardDescription>
             <div className="flex flex-wrap gap-1 mb-2">
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className={cn("text-xs", getCategoryBadgeStyle(category))}>
                 {category}
               </Badge>
               {style && (
