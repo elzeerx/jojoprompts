@@ -91,24 +91,31 @@ export default function DashboardOverview() {
       
       if (session?.access_token) {
         try {
+          console.log('Fetching users from edge function...');
           const { data: allUsers, error: usersError } = await supabase.functions.invoke(
             "get-all-users",
             {
               headers: {
                 Authorization: `Bearer ${session.access_token}`,
               },
+              body: { action: "list" }
             }
           );
           
           if (usersError) {
             console.error("Error fetching users from edge function:", usersError);
           } else {
-            usersCount = Array.isArray(allUsers) ? allUsers.length : 0;
+            console.log("Users response from edge function:", allUsers);
+            usersCount = Array.isArray(allUsers?.users) ? allUsers.users.length : 0;
           }
         } catch (err) {
           console.error("Failed to call get-all-users edge function:", err);
         }
+      } else {
+        console.log('No session access token available');
       }
+      
+      console.log('Final users count:', usersCount);
       
       setStats({
         prompts: prompts?.length ?? 0,
@@ -205,7 +212,9 @@ export default function DashboardOverview() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-dark-base">
-                {loading ? "Loading..." : card.value === 0 ? "No data yet" : card.value}
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-warm-gold" />
+                ) : card.value === 0 ? "0" : card.value}
               </div>
             </CardContent>
           </Card>
