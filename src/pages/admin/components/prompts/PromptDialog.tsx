@@ -79,7 +79,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log("Submitting form with data:", formData);
+    console.log("PromptDialog - Starting form submission with data:", formData);
+    console.log("PromptDialog - Form metadata before processing:", formData.metadata);
     
     if (!validateForm()) return;
     
@@ -142,7 +143,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         media_files: mediaFiles
       }));
 
-      console.log("Clean metadata prepared for saving:", cleanMetadata);
+      console.log("PromptDialog - Clean metadata prepared for saving:", cleanMetadata);
 
       const promptData = {
         title: formData.title,
@@ -154,7 +155,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         user_id: user?.id || ""
       };
 
-      console.log("Final prompt data being saved:", promptData);
+      console.log("PromptDialog - Final prompt data being saved:", promptData);
 
       if (editingPrompt) {
         const { data, error } = await supabase
@@ -165,7 +166,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
           
         if (error) throw error;
         
-        console.log("Updated prompt data:", data);
+        console.log("PromptDialog - Updated prompt data returned:", data);
         
         toast({
           title: "Success",
@@ -179,7 +180,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
           
         if (error) throw error;
         
-        console.log("Inserted prompt data:", data);
+        console.log("PromptDialog - Inserted prompt data returned:", data);
         
         toast({
           title: "Success", 
@@ -187,10 +188,11 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         });
       }
       
+      console.log("PromptDialog - Calling onSuccess to refresh data");
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error saving prompt:", error);
+      console.error("PromptDialog - Error saving prompt:", error);
       toast({
         title: "Error",
         description: "Failed to save prompt",

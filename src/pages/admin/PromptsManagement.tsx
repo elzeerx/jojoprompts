@@ -23,7 +23,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   const fetchPrompts = async () => {
     setIsLoading(true);
     try {
-      console.log("Fetching prompts...");
+      console.log("PromptsManagement - Fetching prompts...");
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
@@ -32,10 +32,11 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       
       if (error) throw error;
       
-      console.log("Fetched prompts:", data);
+      console.log("PromptsManagement - Fetched prompts:", data);
+      console.log("PromptsManagement - Sample prompt metadata:", data?.[0]?.metadata);
       return data || [];
     } catch (error) {
-      console.error("Error fetching prompts:", error);
+      console.error("PromptsManagement - Error fetching prompts:", error);
       toast({
         title: "Error",
         description: "Failed to load prompts",
@@ -49,7 +50,8 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   
   const updatePromptsState = (data: PromptRow[] | null) => {
     if (data) {
-      console.log("Updating prompts state with:", data);
+      console.log("PromptsManagement - Updating prompts state with:", data);
+      console.log("PromptsManagement - First prompt metadata in update:", data[0]?.metadata);
       setPrompts(data);
     }
   };
@@ -73,6 +75,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   const handleEditPrompt = (promptId: string) => {
     const prompt = prompts.find(p => p.id === promptId);
     if (prompt) {
+      console.log("PromptsManagement - Editing prompt with metadata:", prompt.metadata);
       setEditing(prompt);
       setDialogOpen(true);
     }
@@ -94,7 +97,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         description: "Prompt deleted successfully",
       });
     } catch (error) {
-      console.error("Error deleting prompt:", error);
+      console.error("PromptsManagement - Error deleting prompt:", error);
       
       // Reload the prompts to restore the state
       fetchPrompts().then(updatePromptsState);
@@ -108,8 +111,9 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   };
   
   const handleSuccess = async () => {
-    console.log("Prompt saved successfully, refreshing prompts...");
+    console.log("PromptsManagement - Prompt saved successfully, refreshing prompts...");
     const freshPrompts = await fetchPrompts();
+    console.log("PromptsManagement - Fresh prompts after save:", freshPrompts);
     updatePromptsState(freshPrompts);
     setDialogOpen(false);
   };

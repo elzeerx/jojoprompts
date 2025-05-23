@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Edit, Heart, Trash, AlertTriangle } from "lucide-react";
 import { type PromptRow } from "@/types";
 import { useState } from "react";
@@ -46,6 +47,9 @@ export function AdminPromptCard({
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // Debug log to track metadata
+  console.log("AdminPromptCard - Prompt metadata:", prompt.metadata);
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -105,13 +109,21 @@ export function AdminPromptCard({
     setDetailsOpen(true);
   };
 
+  // Extract metadata for display
+  const category = prompt.metadata?.category || "N/A";
+  const style = prompt.metadata?.style;
+  const tags = prompt.metadata?.tags || [];
+
   return (
     <>
       <Card onClick={handleCardClick} className="cursor-pointer hover:shadow-md transition-shadow">
         <CardHeader className="relative">
           <CardTitle>{prompt.title}</CardTitle>
-          <CardDescription>
-            Category: {prompt.metadata?.category || "N/A"}
+          <CardDescription className="space-y-2">
+            <div>Category: {category}</div>
+            {style && (
+              <div>Style: {style}</div>
+            )}
           </CardDescription>
           {session && (
             <div className="absolute top-4 right-4">
@@ -129,10 +141,26 @@ export function AdminPromptCard({
             </div>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             {prompt.prompt_text.substring(0, 100)}...
           </p>
+          
+          {/* Display tags if they exist */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {tags.slice(0, 4).map((tag: string, index: number) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+              {tags.length > 4 && (
+                <Badge variant="outline" className="text-xs">
+                  +{tags.length - 4} more
+                </Badge>
+              )}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
           <CopyButton value={prompt.prompt_text} className="w-full" />

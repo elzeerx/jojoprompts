@@ -27,33 +27,37 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
     setIsGenerating(true);
     
     try {
-      console.log("Calling generate-metadata function with prompt:", promptText);
+      console.log("AutoGenerateButton - Calling generate-metadata function with prompt:", promptText);
       
       const { data, error } = await supabase.functions.invoke('generate-metadata', {
         body: { prompt_text: promptText }
       });
 
       if (error) {
-        console.error("Error calling generate-metadata function:", error);
+        console.error("AutoGenerateButton - Error calling generate-metadata function:", error);
         throw error;
       }
 
-      console.log("Generated metadata from edge function:", data);
+      console.log("AutoGenerateButton - Generated metadata from edge function:", data);
 
-      // Call the callback with the generated metadata
-      onMetadataGenerated({
+      const metadata = {
         category: data.category || "ChatGPT",
         style: data.style || "",
         tags: data.tags || []
-      });
+      };
+
+      console.log("AutoGenerateButton - Processed metadata:", metadata);
+
+      // Call the callback with the generated metadata
+      onMetadataGenerated(metadata);
 
       toast({
         title: "Metadata generated!",
-        description: `Category: ${data.category || "ChatGPT"}, Style: ${data.style || "None"}, Tags: ${data.tags?.length || 0}`,
+        description: `Category: ${metadata.category}, Style: ${metadata.style || "None"}, Tags: ${metadata.tags.length}`,
       });
 
     } catch (error) {
-      console.error("Error generating metadata:", error);
+      console.error("AutoGenerateButton - Error generating metadata:", error);
       toast({
         title: "Generation failed",
         description: "Could not auto-generate metadata. You can still fill it manually.",
