@@ -1,73 +1,55 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { type PromptRow, type Prompt } from "@/types";
-import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
-import { useEffect, useState } from "react";
-import { Copy, Check, Heart } from "lucide-react";
-import { Button } from "./button";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Heart, Copy, CheckCircle } from "lucide-react";
+import { type Prompt, type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { cn } from "@/lib/utils";
 
 interface PromptDetailsDialogProps {
   open: boolean;
-  onOpenChange: (v: boolean) => void;
-  prompt: PromptRow | Prompt | null;
-  promptList?: PromptRow[];
+  onOpenChange: (open: boolean) => void;
+  prompt: Prompt | PromptRow;
 }
 
-export function PromptDetailsDialog({
-  open,
-  onOpenChange,
-  prompt,
-  promptList = []
-}: PromptDetailsDialogProps) {
-  if (!prompt) return null;
-  
+export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetailsDialogProps) {
   const { session } = useAuth();
-  const [dialogImgUrl, setDialogImgUrl] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [favorited, setFavorited] = useState(false);
-  const category = prompt.metadata?.category || "General";
-  const tags = prompt.metadata?.tags || [];
-  
-  useEffect(() => {
-    if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
-      onOpenChange(false);
-    }
-  }, [promptList, prompt.id, onOpenChange]);
+  const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
+  const [copied, setCopied] = useState(false);
 
-  const imagePath = prompt.prompt_type === "text" 
-    ? prompt.default_image_path || 'textpromptdefaultimg.jpg'
-    : prompt.image_path || prompt.image_url || null;
+  const { title, prompt_text, metadata, prompt_type } = prompt;
+  const category = metadata?.category || "ChatGPT";
+  const tags = metadata?.tags || [];
+  const model = metadata?.target_model || category;
+  const useCase = metadata?.use_case;
 
   useEffect(() => {
-    if (open && imagePath) {
-      async function loadImage() {
-        try {
-          const imgUrl = imagePath === 'textpromptdefaultimg.jpg'
-            ? await getTextPromptDefaultImage()
-            : await getPromptImage(imagePath, 1200, 90);
-            
-          setDialogImgUrl(imgUrl);
-          setImageLoading(true);
-          setImageError(false);
-        } catch (error) {
-          console.error("Error loading dialog image:", error);
-          setImageError(true);
-          setImageLoading(false);
+    async function loadImage() {
+      try {
+        let url;
+        if (prompt_type === 'text' && (!prompt.image_path && !prompt.image_url)) {
+          // For text prompts without custom images, use the default text prompt image
+          url = await getTextPromptDefaultImage();
+        } else {
+          const imagePath = prompt.image_path || prompt.image_url;
+          url = await getPromptImage(imagePath, 600, 85);
         }
+        setImageUrl(url);
+      } catch (error) {
+        console.error('Error loading prompt image:', error);
+        setImageUrl('/img/placeholder.png');
       }
-      loadImage();
-    } else {
-      setDialogImgUrl(null);
     }
-    
-    if (session && open) {
+    loadImage();
+
+    // Check if prompt is favorited by current user
+    if (session) {
       const checkFavoriteStatus = async () => {
         const { data } = await supabase
           .from("favorites")
@@ -80,21 +62,9 @@ export function PromptDetailsDialog({
       
       checkFavoriteStatus();
     }
-  }, [open, imagePath, prompt.id, session]);
-  
-  const handleCopyClick = () => {
-    navigator.clipboard.writeText(prompt.prompt_text);
-    setCopied(true);
-    
-    setTimeout(() => {
-      setCopied(false);
-    }, 2000);
-  };
-  
-  const toggleFavorite = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
+  }, [prompt.id, prompt.image_path, prompt.image_url, prompt_type, session]);
+
+  const handleToggleFavorite = async () => {
     if (!session) {
       toast({
         title: "Authentication required",
@@ -114,6 +84,11 @@ export function PromptDetailsDialog({
         });
       }
       setFavorited(!favorited);
+      
+      toast({
+        title: favorited ? "Removed from favorites" : "Added to favorites",
+        description: favorited ? "Prompt removed from your favorites" : "Prompt added to your favorites"
+      });
     } catch (error) {
       console.error("Error toggling favorite:", error);
       toast({
@@ -124,21 +99,29 @@ export function PromptDetailsDialog({
     }
   };
 
-  const formatDate = () => {
-    if (prompt.created_at) {
-      const date = new Date(prompt.created_at);
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit'
+  const handleCopyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt_text);
+      setCopied(true);
+      toast({
+        title: "Copied to clipboard",
+        description: "Prompt text has been copied to your clipboard"
+      });
+      
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Error copying to clipboard:", error);
+      toast({
+        title: "Error",
+        description: "Failed to copy prompt to clipboard",
+        variant: "destructive"
       });
     }
-    return "N/A";
   };
 
   // Get category color
   const getCategoryColor = (category: string) => {
-    switch (category.toLowerCase()) {
+    switch (category?.toLowerCase()) {
       case 'chatgpt':
         return '#c49d68';
       case 'midjourney':
@@ -152,131 +135,115 @@ export function PromptDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="prompt-dialog">
-        <DialogDescription id="prompt-details-description" className="sr-only">
-          Details for prompt: {prompt.title}
-        </DialogDescription>
-
-        <ScrollArea className="max-h-[85vh]">
-          <div className="p-8 space-y-6">
-            {/* Header Section */}
-            <div className="flex flex-col lg:flex-row gap-6">
-              {/* Image */}
-              <div className="lg:w-80 flex-shrink-0">
-                {dialogImgUrl && (
-                  <div className="relative overflow-hidden rounded-xl bg-white/50 aspect-square">
-                    <img
-                      src={dialogImgUrl}
-                      alt={prompt.title}
-                      className="w-full h-full object-cover"
-                      onLoad={() => setImageLoading(false)}
-                      onError={() => setImageError(true)}
-                    />
-                  </div>
-                )}
-              </div>
-              
-              {/* Header Content */}
-              <div className="flex-1 space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-3">
-                    {/* Category Tag */}
-                    <span 
-                      className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium"
-                      style={{ backgroundColor: getCategoryColor(category) }}
-                    >
-                      {category}
-                    </span>
-                    
-                    {/* Title */}
-                    <DialogHeader className="text-left p-0">
-                      <DialogTitle className="text-3xl font-bold text-gray-900 leading-tight">
-                        {prompt.title}
-                      </DialogTitle>
-                      <p className="text-gray-600 text-sm mt-2">{formatDate()}</p>
-                    </DialogHeader>
-                  </div>
-                  
-                  {/* Favorite Button */}
-                  {session && (
-                    <button
-                      onClick={toggleFavorite}
-                      className={cn(
-                        "p-3 rounded-full transition-all duration-200",
-                        "hover:bg-white/30",
-                        favorited 
-                          ? "text-[#c49d68]" 
-                          : "text-gray-400 hover:text-[#c49d68]"
-                      )}
-                    >
-                      <Heart className={cn("h-6 w-6", favorited && "fill-current")} />
-                    </button>
-                  )}
-                </div>
-                
-                {/* Tags */}
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {prompt.metadata?.target_model && (
-                      <span className="px-3 py-1 bg-white/60 text-gray-700 text-sm rounded-lg border border-gray-200">
-                        {prompt.metadata.target_model}
-                      </span>
-                    )}
-                    {prompt.metadata?.use_case && (
-                      <span className="px-3 py-1 bg-white/60 text-gray-700 text-sm rounded-lg border border-gray-200">
-                        {prompt.metadata.use_case}
-                      </span>
-                    )}
-                    {tags.slice(0, 3).map((tag, i) => (
-                      <span
-                        key={i}
-                        className="px-3 py-1 bg-white/60 text-gray-700 text-sm rounded-lg border border-gray-200"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                    {tags.length > 3 && (
-                      <span className="px-3 py-1 bg-white/60 text-gray-500 text-sm rounded-lg border border-gray-200">
-                        +{tags.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Prompt Text Section */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-bold text-gray-900">Prompt Text</h3>
-              <div className="bg-white/60 p-6 rounded-xl border border-gray-200">
-                <p className="whitespace-pre-wrap text-gray-800 font-mono text-sm leading-relaxed">
-                  {prompt.prompt_text}
-                </p>
-              </div>
-              
-              {/* Copy Button */}
-              <Button 
-                className="w-full py-4 bg-[#c49d68] hover:bg-[#c49d68]/90 text-white text-base font-semibold rounded-xl shadow-md transition-all duration-200"
-                onClick={handleCopyClick}
+      <DialogContent className="prompt-dialog max-w-2xl">
+        <div className="p-4 sm:p-8">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <span 
+                className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium mb-3"
+                style={{ backgroundColor: getCategoryColor(category) }}
               >
-                {copied ? (
-                  <>
-                    <Check className="mr-2 h-5 w-5" />
-                    Copied to Clipboard
-                  </>
-                ) : (
-                  <>
-                    <Copy className="mr-2 h-5 w-5" />
-                    Copy Prompt
-                  </>
+                {category}
+              </span>
+              <div className="flex items-center gap-3">
+                <DialogHeader className="text-left p-0 flex-1">
+                  <DialogTitle className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
+                    {title}
+                  </DialogTitle>
+                </DialogHeader>
+                {session && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleToggleFavorite}
+                    className={cn(
+                      "h-10 w-10 rounded-full hover:bg-white/30",
+                      favorited 
+                        ? "text-[#c49d68]" 
+                        : "text-gray-400 hover:text-[#c49d68]"
+                    )}
+                  >
+                    <Heart className={cn("h-5 w-5", favorited && "fill-current")} />
+                  </Button>
                 )}
-              </Button>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                May 05, 2025
+              </p>
             </div>
           </div>
-        </ScrollArea>
+
+          {/* Content */}
+          <div className="bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200 space-y-6">
+            {/* Image */}
+            <div className="relative overflow-hidden rounded-xl h-48 sm:h-64 bg-white/50">
+              <img
+                src={imageUrl}
+                alt={title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            {/* Tags */}
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary" className="bg-white/60 text-gray-700 border-gray-200">
+                {model}
+              </Badge>
+              {useCase && (
+                <Badge variant="secondary" className="bg-white/60 text-gray-700 border-gray-200">
+                  {useCase}
+                </Badge>
+              )}
+              {tags.slice(0, 4).map((tag, i) => (
+                <Badge
+                  key={i}
+                  variant="secondary"
+                  className="bg-white/60 text-gray-700 border-gray-200"
+                >
+                  {tag}
+                </Badge>
+              ))}
+              {tags.length > 4 && (
+                <Badge variant="secondary" className="bg-white/60 text-gray-500 border-gray-200">
+                  +{tags.length - 4} more
+                </Badge>
+              )}
+            </div>
+
+            {/* Prompt Text Section */}
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Prompt Text</h3>
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+                  {prompt_text}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <div className="pt-6">
+            <Button
+              onClick={handleCopyPrompt}
+              className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 text-base rounded-xl shadow-md transition-all duration-200"
+              disabled={copied}
+            >
+              {copied ? (
+                <>
+                  <CheckCircle className="mr-2 h-5 w-5" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-2 h-5 w-5" />
+                  Copy Prompt
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
-
-export default PromptDetailsDialog;
