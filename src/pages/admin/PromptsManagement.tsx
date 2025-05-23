@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { AdminPromptCard } from "./components/prompts/AdminPromptCard";
 import { PromptDialog } from "./components/prompts/PromptDialog";
 import { type PromptRow } from "@/types";

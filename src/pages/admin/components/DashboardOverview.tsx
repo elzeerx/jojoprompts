@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { FileText, Users, Activity } from "lucide-react";
+import { FileText, Users, Activity, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Card,
