@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Check, Crown } from "lucide-react";
+import { Loader2, Check, Crown, AlertCircle } from "lucide-react";
 import { PayPalButton } from "@/components/subscription/PayPalButton";
 import { TapPaymentButton } from "@/components/subscription/TapPaymentButton";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,21 +17,24 @@ export default function CheckoutPage() {
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
     const fetchPlan = async () => {
       if (!planId) {
+        setError("No plan selected");
         toast({
           title: "Error",
           description: "No plan selected. Redirecting to pricing page.",
           variant: "destructive",
         });
-        navigate("/pricing");
+        setTimeout(() => navigate("/pricing"), 2000);
         return;
       }
 
       try {
+        setLoading(true);
         const { data, error } = await supabase
           .from("subscription_plans")
           .select("*")
@@ -41,14 +44,16 @@ export default function CheckoutPage() {
         if (error) throw error;
 
         setSelectedPlan(data);
+        setError(null);
       } catch (error) {
         console.error("Error fetching plan:", error);
+        setError("Failed to load plan details");
         toast({
           title: "Error",
           description: "Failed to load plan details",
           variant: "destructive",
         });
-        navigate("/pricing");
+        setTimeout(() => navigate("/pricing"), 2000);
       } finally {
         setLoading(false);
       }
@@ -57,8 +62,11 @@ export default function CheckoutPage() {
     fetchPlan();
   }, [planId, navigate]);
 
-  const handlePaymentSuccess = async (paymentData: any) => {
-    if (processing) return;
+  const handlePaymentSuccess = useCallback(async (paymentData: any) => {
+    if (processing) {
+      console.log("Payment already processing, ignoring duplicate call");
+      return;
+    }
     
     setProcessing(true);
     
@@ -72,6 +80,8 @@ export default function CheckoutPage() {
         details: paymentData
       };
 
+      console.log("Sending standardized payment data:", standardizedPaymentData);
+
       const { data, error } = await supabase.functions.invoke("create-subscription", {
         body: {
           planId: selectedPlan.id,
@@ -80,13 +90,19 @@ export default function CheckoutPage() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase function error:", error);
+        throw error;
+      }
+
+      console.log("Subscription created successfully:", data);
 
       toast({
         title: "Success!",
         description: "Your subscription has been activated",
       });
 
+      // Navigate to success page
       navigate("/payment-success");
     } catch (error) {
       console.error("Error creating subscription:", error);
@@ -98,30 +114,37 @@ export default function CheckoutPage() {
     } finally {
       setProcessing(false);
     }
-  };
+  }, [processing, selectedPlan, user, navigate]);
 
-  const handlePaymentError = (error: any) => {
+  const handlePaymentError = useCallback((error: any) => {
     console.error("Payment error:", error);
+    setProcessing(false);
     toast({
       title: "Payment Failed",
       description: "There was an issue processing your payment. Please try again.",
       variant: "destructive",
     });
-  };
+  }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading plan details...</p>
+        </div>
       </div>
     );
   }
 
-  if (!selectedPlan) {
+  if (error || !selectedPlan) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Plan not found</h1>
+      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+        <div className="text-center max-w-md">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-4">
+            {error || "Plan not found"}
+          </h1>
           <Button onClick={() => navigate("/pricing")}>
             Back to Pricing
           </Button>
@@ -136,7 +159,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-soft-bg py-16">
-      <div className="container mx-auto max-w-4xl">
+      <div className="container mx-auto max-w-4xl px-4">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">Complete Your Purchase</h1>
           <p className="text-muted-foreground">
@@ -176,7 +199,7 @@ export default function CheckoutPage() {
                 <ul className="space-y-1">
                   {features.map((feature: string, index: number) => (
                     <li key={index} className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -186,23 +209,27 @@ export default function CheckoutPage() {
           </Card>
 
           {/* Payment Methods */}
-          <Card>
+          <Card className="relative">
             <CardHeader>
               <CardTitle>Choose Payment Method</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {processing && (
-                <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Processing payment...</span>
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                    <p className="font-medium">Processing payment...</p>
+                    <p className="text-sm text-muted-foreground">Please don't close this page</p>
                   </div>
                 </div>
               )}
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <h4 className="font-medium mb-3">PayPal</h4>
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <span>PayPal</span>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Recommended</span>
+                  </h4>
                   <PayPalButton
                     amount={price}
                     planName={planName}
@@ -224,7 +251,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
                     <span className="bg-background px-2 text-muted-foreground">
-                      Or
+                      Or pay with card
                     </span>
                   </div>
                 </div>
