@@ -22,7 +22,7 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
   const model = metadata?.target_model || 'ChatGPT';
   const useCase = metadata?.use_case;
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
+  const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
   const [favorited, setFavorited] = useState(false);
   const { session } = useAuth();
 
@@ -40,7 +40,7 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
         setImageUrl(url);
       } catch (error) {
         console.error('Error loading text prompt image:', error);
-        setImageUrl('/img/placeholder.png');
+        setImageUrl('/placeholder.svg');
       }
     }
     loadImage();

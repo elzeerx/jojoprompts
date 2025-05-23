@@ -132,7 +132,7 @@ export function ImageWrapper({
           setImageSrc(`${src}?t=${timestamp}`);
         }
       } else {
-        setImageSrc('/img/placeholder.png');
+        setImageSrc('/placeholder.svg');
       }
       setRetries(0);
     }
@@ -165,7 +165,7 @@ export function ImageWrapper({
           </div>
         ) : (
           <img
-            src={imageSrc || '/img/placeholder.png'}
+            src={imageSrc || '/placeholder.svg'}
             alt={alt || "Prompt image"}
             loading="lazy"
             aria-busy={loading}
