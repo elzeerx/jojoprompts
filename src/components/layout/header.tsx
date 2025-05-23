@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,17 +6,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Menu, X, User, LogOut, Settings, Heart } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
 export function Header() {
   const {
     user,
-    signOut // Changed from 'logout' to 'signOut' to match AuthContext
+    signOut
   } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const handleLogout = async () => {
     try {
-      await signOut(); // Changed from logout to signOut
+      await signOut();
       navigate("/");
     } catch (error) {
       console.error("Logout error:", error);

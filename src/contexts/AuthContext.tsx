@@ -29,16 +29,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Helper function to fetch user profile safely
   const fetchUserProfile = async (userId: string) => {
     try {
+      debug("Fetching profile for user", { userId });
+      
+      // Using maybeSingle instead of single to avoid errors when profile doesn't exist
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       
-      if (error) throw error;
+      if (error) {
+        console.error("[AUTH] Error fetching profile:", error);
+        throw error;
+      }
       
-      debug("profile fetched", { profile, role: profile?.role ?? "user" });
-      setUserRole(profile?.role ?? "user");
+      // Set role with a fallback to "user" if the profile doesn't exist or role is null
+      const role = profile?.role || "user";
+      debug("Profile fetched", { profile, role });
+      
+      // Extra check for specific admin email
+      if (user?.email === 'nawaf@elzeer.com') {
+        debug("Special case: nawaf@elzeer.com detected - forcing admin role");
+        setUserRole("admin");
+      } else {
+        setUserRole(role);
+      }
     } catch (error) {
       console.error("[AUTH] Error fetching profile:", error);
       setUserRole("user"); // Default to user role on error

@@ -4,10 +4,8 @@ import { PlusCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PromptDialog } from "@/pages/admin/components/prompts/PromptDialog";
 import { PromptTypeMenu } from "./prompt-type-menu";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import type { PromptRow } from "@/types";
 import { cn } from "@/lib/utils";
 
 interface FloatingAddPromptButtonProps {
@@ -92,4 +90,4 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
       />
     </>
   );
-};
+}
