@@ -40,7 +40,8 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
           prompt_text: item.prompt_text,
           image_path: item.image_path,
           default_image_path: item.default_image_path,
-          prompt_type: item.prompt_type as 'text' | 'image',
+          image_url: item.image_url,
+          prompt_type: item.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection',
           created_at: item.created_at || "",
           metadata: {
             category: validCategory,
@@ -48,6 +49,16 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
             tags: Array.isArray(metadataObj.tags)
               ? metadataObj.tags
               : [],
+            media_files: Array.isArray(metadataObj.media_files)
+              ? metadataObj.media_files
+              : [],
+            target_model: metadataObj.target_model ?? undefined,
+            use_case: metadataObj.use_case ?? undefined,
+            workflow_steps: metadataObj.workflow_steps ?? undefined,
+            buttons: metadataObj.buttons ?? undefined,
+            image_options: metadataObj.image_options ?? undefined,
+            button_text: metadataObj.button_text ?? undefined,
+            button_action: metadataObj.button_action ?? undefined,
           },
         };
       });

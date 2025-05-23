@@ -7,8 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 import { getPromptImage } from "@/utils/image";
-import { Lock, Crown, Heart } from "lucide-react";
+import { Lock, Crown, Heart, Play, FileAudio } from "lucide-react";
 import { Button } from "./button";
+import { ImageWrapper } from "./prompt-card/ImageWrapper";
 
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
@@ -56,8 +57,10 @@ export function PromptCard({
 
   useEffect(() => {
     async function loadImage() {
-      const url = await getPromptImage(primaryImagePath, 400, 85);
-      setImageUrl(url);
+      if (primaryImagePath) {
+        const url = await getPromptImage(primaryImagePath, 400, 85);
+        setImageUrl(url);
+      }
     }
     if (primaryImagePath) {
       loadImage();
@@ -113,6 +116,16 @@ export function PromptCard({
       return 'bg-blue-600 text-white';
     }
     return 'bg-[#c49d68] text-white';
+  };
+
+  // Function to get media type icon
+  const getMediaTypeIcon = (file: any) => {
+    if (file.type === 'video') {
+      return <Play className="h-4 w-4 text-white" />;
+    } else if (file.type === 'audio') {
+      return <FileAudio className="h-4 w-4 text-white" />;
+    } 
+    return null;
   };
 
   return (
@@ -181,15 +194,24 @@ export function PromptCard({
 
         {/* Image */}
         <div className="relative overflow-hidden rounded-xl h-48 bg-white/50">
-          <img
+          <ImageWrapper 
             src={imageUrl}
             alt={title}
+            aspect={16/9}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
+          
           {/* Media count indicator if multiple files */}
           {mediaFiles.length > 1 && (
             <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
               +{mediaFiles.length - 1} files
+            </div>
+          )}
+          
+          {/* Add a special icon for video or audio content */}
+          {mediaFiles.length > 0 && mediaFiles[0].type !== 'image' && (
+            <div className="absolute bottom-2 left-2 bg-black/70 p-2 rounded-full">
+              {getMediaTypeIcon(mediaFiles[0])}
             </div>
           )}
         </div>
