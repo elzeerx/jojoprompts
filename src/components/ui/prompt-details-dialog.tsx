@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { type PromptRow, type Prompt } from "@/types";
 import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { useEffect, useState } from "react";
-import { Copy, Check, Heart } from "lucide-react";
+import { Copy, Check, Heart, X } from "lucide-react";
 import { Button } from "./button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,7 +41,6 @@ export function PromptDetailsDialog({
     }
   }, [promptList, prompt.id, onOpenChange]);
 
-  // For text prompts, use the default image path or fallback to the textpromptdefaultimg.jpg
   const imagePath = prompt.prompt_type === "text" 
     ? prompt.default_image_path || 'textpromptdefaultimg.jpg'
     : prompt.image_path || prompt.image_url || null;
@@ -50,7 +49,6 @@ export function PromptDetailsDialog({
     if (open && imagePath) {
       async function loadImage() {
         try {
-          // Use specific function for default image
           const imgUrl = imagePath === 'textpromptdefaultimg.jpg'
             ? await getTextPromptDefaultImage()
             : await getPromptImage(imagePath, 1200, 90);
@@ -69,7 +67,6 @@ export function PromptDetailsDialog({
       setDialogImgUrl(null);
     }
     
-    // Check if prompt is favorited by current user
     if (session && open) {
       const checkFavoriteStatus = async () => {
         const { data } = await supabase
@@ -127,7 +124,6 @@ export function PromptDetailsDialog({
     }
   };
 
-  // Format date to readable style
   const formatDate = () => {
     if (prompt.created_at) {
       const date = new Date(prompt.created_at);
@@ -140,133 +136,172 @@ export function PromptDetailsDialog({
     return "N/A";
   };
 
+  // Get category color
+  const getCategoryColor = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'chatgpt':
+        return '#c49d68';
+      case 'midjourney':
+        return '#7a9e9f';
+      case 'workflow':
+        return '#8b7fb8';
+      default:
+        return '#c49d68';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl p-0 border-none rounded-none overflow-hidden">
+      <DialogContent className="max-w-4xl p-0 border-none bg-[#efeee9] rounded-2xl shadow-xl overflow-hidden">
         <DialogDescription id="prompt-details-description" className="sr-only">
           Details for prompt: {prompt.title}
         </DialogDescription>
-        <ScrollArea className="max-h-[80vh]">
-          <div className="flex flex-col bg-soft-bg">
-            {/* Hero Section */}
-            <div className="relative h-[300px]">
-              {dialogImgUrl && (
-                <img
-                  src={dialogImgUrl}
-                  alt={prompt.title}
-                  className="w-full h-full object-cover"
-                  onLoad={() => setImageLoading(false)}
-                  onError={() => setImageError(true)}
-                />
-              )}
-              <div className="absolute inset-0 bg-black/30" />
+        
+        {/* Close Button */}
+        <button
+          onClick={() => onOpenChange(false)}
+          className="absolute top-6 right-6 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors"
+        >
+          <X className="h-5 w-5 text-gray-600" />
+        </button>
+
+        <ScrollArea className="max-h-[85vh]">
+          <div className="p-8 space-y-6">
+            {/* Header Section */}
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Image */}
+              <div className="lg:w-80 flex-shrink-0">
+                {dialogImgUrl && (
+                  <div className="relative overflow-hidden rounded-xl bg-white/50 aspect-square">
+                    <img
+                      src={dialogImgUrl}
+                      alt={prompt.title}
+                      className="w-full h-full object-cover"
+                      onLoad={() => setImageLoading(false)}
+                      onError={() => setImageError(true)}
+                    />
+                  </div>
+                )}
+              </div>
               
-              <div className="absolute top-0 left-0 right-0 p-6">
-                <div className="flex justify-between items-start">
-                  <span className="inline-block bg-warm-gold text-white px-3 py-1 text-xs font-medium tracking-wide">
-                    {category}
-                  </span>
+              {/* Header Content */}
+              <div className="flex-1 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-3">
+                    {/* Category Tag */}
+                    <span 
+                      className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium"
+                      style={{ backgroundColor: getCategoryColor(category) }}
+                    >
+                      {category}
+                    </span>
+                    
+                    {/* Title */}
+                    <DialogHeader className="text-left p-0">
+                      <DialogTitle className="text-3xl font-bold text-gray-900 leading-tight">
+                        {prompt.title}
+                      </DialogTitle>
+                      <p className="text-gray-600 text-sm mt-2">{formatDate()}</p>
+                    </DialogHeader>
+                  </div>
                   
+                  {/* Favorite Button */}
                   {session && (
                     <button
                       onClick={toggleFavorite}
                       className={cn(
-                        "p-2 rounded-full",
+                        "p-3 rounded-full transition-all duration-200",
+                        "hover:bg-white/30",
                         favorited 
-                          ? "bg-warm-gold text-white" 
-                          : "bg-white/80 text-warm-gold hover:bg-white"
+                          ? "text-[#c49d68]" 
+                          : "text-gray-400 hover:text-[#c49d68]"
                       )}
                     >
-                      <Heart className={cn("h-4 w-4", favorited ? "fill-white" : "")} />
+                      <Heart className={cn("h-6 w-6", favorited && "fill-current")} />
                     </button>
                   )}
                 </div>
-              </div>
-              
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <DialogHeader className="text-left">
-                  <DialogTitle className="text-3xl md:text-4xl font-bold text-white leading-tight tracking-tight">
-                    {prompt.title}
-                  </DialogTitle>
-                  <p className="text-white/80 text-sm mt-2">{formatDate()}</p>
-                </DialogHeader>
+                
+                {/* Tags */}
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {prompt.metadata?.target_model && (
+                      <span className="px-3 py-1 bg-white/60 text-gray-700 text-sm rounded-lg border border-gray-200">
+                        {prompt.metadata.target_model}
+                      </span>
+                    )}
+                    {prompt.metadata?.use_case && (
+                      <span className="px-3 py-1 bg-white/60 text-gray-700 text-sm rounded-lg border border-gray-200">
+                        {prompt.metadata.use_case}
+                      </span>
+                    )}
+                    {tags.slice(0, 3).map((tag, i) => (
+                      <span
+                        key={i}
+                        className="px-3 py-1 bg-white/60 text-gray-700 text-sm rounded-lg border border-gray-200"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {tags.length > 3 && (
+                      <span className="px-3 py-1 bg-white/60 text-gray-500 text-sm rounded-lg border border-gray-200">
+                        +{tags.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             
-            {/* Content Section */}
-            <div className="p-6 md:p-8">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2">
-                  <h3 className="text-xl font-bold mb-4 text-dark-base">Prompt Text</h3>
-                  <div className="bg-white p-6 shadow-sm">
-                    <p className="whitespace-pre-wrap text-dark-base/80 font-mono text-sm">
-                      {prompt.prompt_text}
-                    </p>
-                  </div>
-                  
-                  <div className="mt-6">
-                    <Button 
-                      className="w-full py-6 bg-warm-gold hover:bg-warm-gold/90 text-white text-base rounded-none"
-                      onClick={handleCopyClick}
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="mr-2 h-5 w-5" />
-                          Copied to Clipboard
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="mr-2 h-5 w-5" />
-                          Copy Prompt
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="lg:border-l lg:border-warm-gold/20 lg:pl-8">
-                  <h3 className="text-lg font-bold text-dark-base mb-4">Details</h3>
-                  <dl className="space-y-4">
-                    {prompt.metadata?.category && (
-                      <div>
-                        <dt className="text-dark-base/60 text-sm font-medium uppercase tracking-wide mb-1">Category</dt>
-                        <dd className="text-dark-base font-medium">{prompt.metadata.category}</dd>
-                      </div>
-                    )}
-                    
-                    {prompt.metadata?.style && (
-                      <div>
-                        <dt className="text-dark-base/60 text-sm font-medium uppercase tracking-wide mb-1">Style</dt>
-                        <dd className="text-dark-base font-medium">{prompt.metadata.style}</dd>
-                      </div>
-                    )}
-                    
-                    {prompt.metadata?.target_model && (
-                      <div>
-                        <dt className="text-dark-base/60 text-sm font-medium uppercase tracking-wide mb-1">Model</dt>
-                        <dd className="text-dark-base font-medium">{prompt.metadata.target_model}</dd>
-                      </div>
-                    )}
-                    
-                    {tags.length > 0 && (
-                      <div>
-                        <dt className="text-dark-base/60 text-sm font-medium uppercase tracking-wide mb-1">Tags</dt>
-                        <dd className="flex flex-wrap gap-2 mt-1">
-                          {tags.map(tag => (
-                            <span 
-                              key={tag} 
-                              className="bg-warm-gold/10 text-warm-gold px-2 py-1 text-xs"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </dd>
-                      </div>
-                    )}
-                  </dl>
-                </div>
+            {/* Prompt Text Section */}
+            <div className="space-y-4">
+              <h3 className="text-xl font-bold text-gray-900">Prompt Text</h3>
+              <div className="bg-white/60 p-6 rounded-xl border border-gray-200">
+                <p className="whitespace-pre-wrap text-gray-800 font-mono text-sm leading-relaxed">
+                  {prompt.prompt_text}
+                </p>
               </div>
+              
+              {/* Copy Button */}
+              <Button 
+                className="w-full py-4 bg-[#c49d68] hover:bg-[#c49d68]/90 text-white text-base font-semibold rounded-xl shadow-md transition-all duration-200"
+                onClick={handleCopyClick}
+              >
+                {copied ? (
+                  <>
+                    <Check className="mr-2 h-5 w-5" />
+                    Copied to Clipboard
+                  </>
+                ) : (
+                  <>
+                    <Copy className="mr-2 h-5 w-5" />
+                    Copy Prompt
+                  </>
+                )}
+              </Button>
             </div>
+            
+            {/* Additional Details */}
+            {(prompt.metadata?.style || prompt.metadata?.target_model) && (
+              <div className="bg-white/40 p-6 rounded-xl border border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Additional Details</h3>
+                <dl className="space-y-3">
+                  {prompt.metadata?.style && (
+                    <div>
+                      <dt className="text-gray-600 text-sm font-medium mb-1">Style</dt>
+                      <dd className="text-gray-900 font-medium">{prompt.metadata.style}</dd>
+                    </div>
+                  )}
+                  
+                  {prompt.metadata?.target_model && (
+                    <div>
+                      <dt className="text-gray-600 text-sm font-medium mb-1">Target Model</dt>
+                      <dd className="text-gray-900 font-medium">{prompt.metadata.target_model}</dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            )}
           </div>
         </ScrollArea>
       </DialogContent>

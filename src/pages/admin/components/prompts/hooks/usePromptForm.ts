@@ -6,29 +6,21 @@ import { toast } from "@/hooks/use-toast";
 interface FormData {
   title: string;
   promptText: string;
-  promptType: string;
-  imagePath?: string;
-  defaultImagePath?: string;
+  promptType: "image" | "text" | "image-selection" | "workflow" | "button";
+  imagePath: string;
+  defaultImagePath: string;
   metadata: {
-    category?: string;
+    category: string;
+    tags: string[];
     style?: string;
-    tags?: string[];
     target_model?: string;
     use_case?: string;
-    button_text?: string;
-    button_action?: string;
-    image_options?: string[];
-    workflow_steps?: Array<{
-      id: string;
-      name: string;
-      description: string;
-      type: string;
-    }>;
+    buttons?: Array<{ id: string; name: string; description: string; type: string }>;
   };
 }
 
 export function usePromptForm(editingPrompt?: PromptRow | null) {
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<FormData>(() => ({
     title: editingPrompt?.title || "",
     promptText: editingPrompt?.prompt_text || "",
     promptType: editingPrompt?.prompt_type || "text",
@@ -36,37 +28,49 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
     defaultImagePath: editingPrompt?.default_image_path || "",
     metadata: {
       category: editingPrompt?.metadata?.category || "ChatGPT",
-      style: editingPrompt?.metadata?.style || "",
       tags: editingPrompt?.metadata?.tags || [],
-      target_model: editingPrompt?.metadata?.target_model || "ChatGPT",
+      style: editingPrompt?.metadata?.style || "",
+      target_model: editingPrompt?.metadata?.target_model || "",
       use_case: editingPrompt?.metadata?.use_case || "",
-      button_text: editingPrompt?.metadata?.button_text || "",
-      button_action: editingPrompt?.metadata?.button_action || "",
-      image_options: editingPrompt?.metadata?.image_options || [],
-      workflow_steps: editingPrompt?.metadata?.workflow_steps || []
+      buttons: editingPrompt?.metadata?.buttons || []
     }
-  });
+  }));
 
   const resetForm = useCallback(() => {
-    setFormData({
-      title: "",
-      promptText: "",
-      promptType: "text",
-      imagePath: "",
-      defaultImagePath: "",
-      metadata: {
-        category: "ChatGPT",
-        style: "",
-        tags: [],
-        target_model: "ChatGPT",
-        use_case: "",
-        button_text: "",
-        button_action: "",
-        image_options: [],
-        workflow_steps: []
-      }
-    });
-  }, []);
+    if (editingPrompt) {
+      setFormData({
+        title: editingPrompt.title,
+        promptText: editingPrompt.prompt_text,
+        promptType: editingPrompt.prompt_type,
+        imagePath: editingPrompt.image_path || "",
+        defaultImagePath: editingPrompt.default_image_path || "",
+        metadata: {
+          category: editingPrompt.metadata?.category || "ChatGPT",
+          tags: editingPrompt.metadata?.tags || [],
+          style: editingPrompt.metadata?.style || "",
+          target_model: editingPrompt.metadata?.target_model || "",
+          use_case: editingPrompt.metadata?.use_case || "",
+          buttons: editingPrompt.metadata?.buttons || []
+        }
+      });
+    } else {
+      setFormData({
+        title: "",
+        promptText: "",
+        promptType: "text",
+        imagePath: "",
+        defaultImagePath: "",
+        metadata: {
+          category: "ChatGPT",
+          tags: [],
+          style: "",
+          target_model: "",
+          use_case: "",
+          buttons: []
+        }
+      });
+    }
+  }, [editingPrompt]);
 
   const validateForm = useCallback(() => {
     if (!formData.title.trim()) {
@@ -80,7 +84,7 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
 
     if (!formData.promptText.trim()) {
       toast({
-        title: "Validation Error", 
+        title: "Validation Error",
         description: "Prompt text is required",
         variant: "destructive"
       });
