@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MoreVertical, Edit, Trash2, UserPlus, Send } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -91,13 +91,25 @@ export function UserTableRow({
         </DropdownMenu>
 
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="prompt-dialog">
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogTitle className="flex items-center gap-3">
+                <AlertTriangle className="h-8 w-8 text-red-500" />
+                Delete User Account
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete the user {user.email}. This action cannot be undone.
+                This will permanently delete the user account for <strong>{user.email}</strong>. This action cannot be undone and will remove all associated data.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="bg-white/40 p-6 rounded-xl border border-gray-200">
+              <div className="flex items-center gap-3 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                <p className="font-medium">This action is irreversible</p>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                All user data, preferences, and subscription information will be permanently deleted.
+              </p>
+            </div>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction 
@@ -105,9 +117,9 @@ export function UserTableRow({
                   onDeleteUser(user.id, user.email);
                   setDeleteDialogOpen(false);
                 }}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="bg-red-500 hover:bg-red-600 text-white"
               >
-                Delete
+                Delete User
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
