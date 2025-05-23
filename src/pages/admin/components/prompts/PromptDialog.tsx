@@ -129,11 +129,15 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         }));
       }
 
-      // Prepare metadata as JSON-compatible object
-      const jsonCompatibleMetadata = {
-        ...formData.metadata,
+      // Prepare metadata as JSON-compatible object - serialize everything properly
+      const cleanMetadata = JSON.parse(JSON.stringify({
+        category: formData.metadata?.category || 'ChatGPT',
+        tags: formData.metadata?.tags || [],
+        style: formData.metadata?.style || '',
+        target_model: formData.metadata?.target_model || '',
+        use_case: formData.metadata?.use_case || '',
         media_files: mediaFiles
-      };
+      }));
 
       const promptData = {
         title: formData.title,
@@ -141,7 +145,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         prompt_type: formData.promptType,
         image_path: imagePath,
         default_image_path: formData.defaultImagePath,
-        metadata: jsonCompatibleMetadata,
+        metadata: cleanMetadata,
         user_id: user?.id || ""
       };
 

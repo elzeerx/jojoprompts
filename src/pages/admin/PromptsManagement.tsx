@@ -204,7 +204,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
           setDialogOpen(false);
         }}
         editingPrompt={editing}
-        promptType={editing?.prompt_type || "text"}
+        promptType={editing?.prompt_type === 'button' || editing?.prompt_type === 'image-selection' ? 'text' : editing?.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound'}
       />
     </div>
   );
