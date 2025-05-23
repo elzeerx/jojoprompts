@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Copy, CheckCircle, X, Play, Volume2 } from "lucide-react";
+import { Heart, Copy, CheckCircle, X, Play, Volume2, Workflow } from "lucide-react";
 import { type Prompt, type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,10 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const useCase = metadata?.use_case;
   const style = metadata?.style;
   const mediaFiles = metadata?.media_files || [];
+  const workflowSteps = metadata?.workflow_steps || [];
+
+  // Check if this is an n8n workflow prompt
+  const isN8nWorkflow = prompt_type === 'workflow' || category.toLowerCase().includes('n8n');
 
   // Get primary image for main display
   const primaryImage = mediaFiles.find(file => file.type === 'image') || null;
@@ -110,7 +114,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
       setCopied(true);
       toast({
         title: "Copied to clipboard",
-        description: "Prompt text has been copied to your clipboard"
+        description: isN8nWorkflow ? "Workflow details have been copied to your clipboard" : "Prompt text has been copied to your clipboard"
       });
       
       setTimeout(() => setCopied(false), 2000);
@@ -118,7 +122,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
       console.error("Error copying to clipboard:", error);
       toast({
         title: "Error",
-        description: "Failed to copy prompt to clipboard",
+        description: "Failed to copy to clipboard",
         variant: "destructive"
       });
     }
@@ -148,6 +152,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
       case 'midjourney':
         return '#7a9e9f';
       case 'workflow':
+      case 'n8n':
         return '#8b7fb8';
       default:
         return '#c49d68';
@@ -171,8 +176,11 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                   </span>
                   <div className="flex items-center gap-3">
                     <DialogHeader className="text-left p-0 flex-1">
-                      <DialogTitle className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
+                      <DialogTitle className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight flex items-center gap-2">
                         {title}
+                        {isN8nWorkflow && (
+                          <Workflow className="h-6 w-6 text-blue-600" />
+                        )}
                       </DialogTitle>
                     </DialogHeader>
                     {session && (
@@ -233,6 +241,44 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                   </div>
                 )}
 
+                {/* Workflow Steps Section for n8n prompts */}
+                {isN8nWorkflow && workflowSteps.length > 0 ? (
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Workflow className="h-5 w-5 text-blue-600" />
+                      Workflow Steps ({workflowSteps.length})
+                    </h3>
+                    <div className="space-y-4 max-h-80 overflow-y-auto">
+                      {workflowSteps.map((step: any, index: number) => (
+                        <div key={index} className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border">
+                          <span className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold text-sm">
+                            {index + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-gray-900 mb-1">{step.name}</h4>
+                            <p className="text-gray-700 text-sm leading-relaxed">{step.description}</p>
+                            {step.type && (
+                              <Badge variant="outline" className="mt-2 bg-blue-100 text-blue-800 border-blue-200">
+                                {step.type}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* Show prompt text for non-workflow prompts */
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">Prompt Text</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg border max-h-60 overflow-y-auto">
+                      <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+                        {prompt_text}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="secondary" className="bg-white/60 text-gray-700 border-gray-200">
@@ -263,16 +309,6 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                     </Badge>
                   )}
                 </div>
-
-                {/* Prompt Text Section with constrained height and scrolling */}
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Prompt Text</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg border max-h-60 overflow-y-auto">
-                    <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
-                      {prompt_text}
-                    </p>
-                  </div>
-                </div>
               </div>
 
               {/* Action Button */}
@@ -289,8 +325,17 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                     </>
                   ) : (
                     <>
-                      <Copy className="mr-2 h-5 w-5" />
-                      Copy Prompt
+                      {isN8nWorkflow ? (
+                        <>
+                          <Workflow className="mr-2 h-5 w-5" />
+                          Copy Workflow
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-2 h-5 w-5" />
+                          Copy Prompt
+                        </>
+                      )}
                     </>
                   )}
                 </Button>
