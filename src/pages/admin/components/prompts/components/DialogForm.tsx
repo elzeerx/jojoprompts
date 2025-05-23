@@ -7,6 +7,7 @@ import { ButtonPromptFields } from "./ButtonPromptFields";
 import { ImageSelectionFields } from "./ImageSelectionFields";
 import { WorkflowFields } from "./WorkflowFields";
 import { AutoGenerateButton } from "./AutoGenerateButton";
+import { ImageSelectionField } from "./ImageSelectionField";
 
 interface DialogFormProps {
   formData: {
@@ -57,6 +58,10 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
       style: generatedMetadata.style,
       tags: generatedMetadata.tags
     });
+  };
+
+  const handleImagePathChange = (path: string) => {
+    updateFormData('imagePath', path);
   };
 
   return (
@@ -127,7 +132,15 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
         </Select>
       </div>
 
-      {/* Multi-media upload for all prompt types */}
+      {/* Main prompt image selection */}
+      <ImageSelectionField
+        currentImagePath={formData.imagePath}
+        onImagePathChange={handleImagePathChange}
+        onFileChange={onFileChange}
+        label="Main Prompt Image"
+      />
+
+      {/* Multi-media upload for additional files */}
       <MultiMediaUploadField
         mediaFiles={formData.metadata?.media_files || []}
         onMediaFilesChange={handleMediaFilesChange}
