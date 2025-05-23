@@ -23,6 +23,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   const fetchPrompts = async () => {
     setIsLoading(true);
     try {
+      console.log("Fetching prompts...");
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
@@ -30,6 +31,8 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         .order("created_at", { ascending: false });
       
       if (error) throw error;
+      
+      console.log("Fetched prompts:", data);
       return data || [];
     } catch (error) {
       console.error("Error fetching prompts:", error);
@@ -46,6 +49,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   
   const updatePromptsState = (data: PromptRow[] | null) => {
     if (data) {
+      console.log("Updating prompts state with:", data);
       setPrompts(data);
     }
   };
@@ -85,13 +89,6 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       
       if (error) throw error;
       
-      supabase
-        .from("prompts")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .returns<PromptRow[]>()
-        .then(({ data }) => updatePromptsState(data));
-      
       toast({
         title: "Success",
         description: "Prompt deleted successfully",
@@ -99,6 +96,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     } catch (error) {
       console.error("Error deleting prompt:", error);
       
+      // Reload the prompts to restore the state
       fetchPrompts().then(updatePromptsState);
       
       toast({
@@ -109,56 +107,11 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     }
   };
   
-  const handleSave = async (prompt: Partial<PromptRow>) => {
+  const handleSuccess = async () => {
+    console.log("Prompt saved successfully, refreshing prompts...");
+    const freshPrompts = await fetchPrompts();
+    updatePromptsState(freshPrompts);
     setDialogOpen(false);
-    
-    try {
-      if (editing) {
-        const { error } = await supabase
-          .from("prompts")
-          .update(prompt)
-          .eq("id", editing.id);
-        
-        if (error) throw error;
-        
-        setPrompts(prompts.map(p => 
-          p.id === editing.id ? { ...p, ...prompt } : p
-        ));
-        
-        toast({
-          title: "Success",
-          description: "Prompt updated successfully",
-        });
-      } else {
-        const payload = {
-          ...prompt,
-          user_id: user?.id
-        };
-        
-        const { data, error } = await supabase
-          .from("prompts")
-          .insert(payload as any)
-          .select()
-          .returns<PromptRow[]>()
-          .single();
-        
-        if (error) throw error;
-        
-        setPrompts([data, ...prompts]);
-        
-        toast({
-          title: "Success",
-          description: "Prompt created successfully",
-        });
-      }
-    } catch (error) {
-      console.error("Error saving prompt:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save prompt",
-        variant: "destructive"
-      });
-    }
   };
   
   return (
@@ -199,10 +152,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       <PromptDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSuccess={() => {
-          fetchPrompts().then(updatePromptsState);
-          setDialogOpen(false);
-        }}
+        onSuccess={handleSuccess}
         editingPrompt={editing}
         promptType={editing?.prompt_type === 'button' || editing?.prompt_type === 'image-selection' ? 'text' : editing?.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound'}
       />

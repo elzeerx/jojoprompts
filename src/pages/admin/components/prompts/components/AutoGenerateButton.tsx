@@ -38,7 +38,7 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
         throw error;
       }
 
-      console.log("Generated metadata:", data);
+      console.log("Generated metadata from edge function:", data);
 
       // Call the callback with the generated metadata
       onMetadataGenerated({
@@ -49,7 +49,7 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
 
       toast({
         title: "Metadata generated!",
-        description: "Auto-generated category, style, and tags from your prompt text"
+        description: `Category: ${data.category || "ChatGPT"}, Style: ${data.style || "None"}, Tags: ${data.tags?.length || 0}`,
       });
 
     } catch (error) {

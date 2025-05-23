@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("Submitting form with data:", formData);
+    
     if (!validateForm()) return;
     
     setIsSubmitting(true);
@@ -139,6 +142,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         media_files: mediaFiles
       }));
 
+      console.log("Clean metadata prepared for saving:", cleanMetadata);
+
       const promptData = {
         title: formData.title,
         prompt_text: formData.promptText,
@@ -149,24 +154,32 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         user_id: user?.id || ""
       };
 
+      console.log("Final prompt data being saved:", promptData);
+
       if (editingPrompt) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("prompts")
           .update(promptData)
-          .eq("id", editingPrompt.id);
+          .eq("id", editingPrompt.id)
+          .select();
           
         if (error) throw error;
+        
+        console.log("Updated prompt data:", data);
         
         toast({
           title: "Success",
           description: "Prompt updated successfully"
         });
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("prompts")
-          .insert(promptData);
+          .insert(promptData)
+          .select();
           
         if (error) throw error;
+        
+        console.log("Inserted prompt data:", data);
         
         toast({
           title: "Success", 

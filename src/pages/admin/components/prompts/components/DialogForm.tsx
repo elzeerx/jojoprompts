@@ -8,6 +8,8 @@ import { ImageSelectionFields } from "./ImageSelectionFields";
 import { WorkflowFields } from "./WorkflowFields";
 import { AutoGenerateButton } from "./AutoGenerateButton";
 import { ImageSelectionField } from "./ImageSelectionField";
+import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
 
 interface DialogFormProps {
   formData: {
@@ -24,6 +26,15 @@ interface DialogFormProps {
 }
 
 export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesChange }: DialogFormProps) {
+  const [generatedMetadata, setGeneratedMetadata] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Reset generated state when form data changes from external sources
+    if (formData && (!formData.metadata || Object.keys(formData.metadata).length === 0)) {
+      setGeneratedMetadata(false);
+    }
+  }, [formData]);
+
   const updateFormData = (field: string, value: any) => {
     onChange({
       ...formData,
@@ -32,6 +43,7 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
   };
 
   const updateMetadata = (metadata: any) => {
+    console.log("Updating metadata:", metadata);
     onChange({
       ...formData,
       metadata
@@ -52,12 +64,25 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
   };
 
   const handleMetadataGenerated = (generatedMetadata: { category: string; style: string; tags: string[] }) => {
+    console.log("Metadata generated in DialogForm:", generatedMetadata);
+    
+    // Save existing metadata fields that should be preserved
+    const existingMediaFiles = formData.metadata?.media_files || [];
+    const existingTargetModel = formData.metadata?.target_model || '';
+    const existingUseCase = formData.metadata?.use_case || '';
+    
     updateMetadata({
       ...formData.metadata,
       category: generatedMetadata.category,
       style: generatedMetadata.style,
-      tags: generatedMetadata.tags
+      tags: generatedMetadata.tags,
+      // Preserve these fields
+      media_files: existingMediaFiles,
+      target_model: existingTargetModel,
+      use_case: existingUseCase
     });
+    
+    setGeneratedMetadata(true);
   };
 
   const handleImagePathChange = (path: string) => {
@@ -112,6 +137,29 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
         <p className="text-xs text-blue-700">
           Let AI analyze your prompt text and automatically suggest category, style, and tags.
         </p>
+        
+        {generatedMetadata && (
+          <div className="mt-3 pt-3 border-t border-blue-200">
+            <p className="text-xs font-medium text-blue-800 mb-2">Generated metadata:</p>
+            <div className="flex flex-wrap gap-2">
+              {formData.metadata?.category && (
+                <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                  {formData.metadata.category}
+                </Badge>
+              )}
+              {formData.metadata?.style && (
+                <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-200">
+                  Style: {formData.metadata.style}
+                </Badge>
+              )}
+              {formData.metadata?.tags && formData.metadata.tags.map((tag: string, i: number) => (
+                <Badge key={i} variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -128,6 +176,10 @@ export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesCh
             <SelectItem value="Midjourney">Midjourney</SelectItem>
             <SelectItem value="n8n">n8n</SelectItem>
             <SelectItem value="General">General</SelectItem>
+            {formData.metadata?.category && 
+             !["ChatGPT", "Midjourney", "n8n", "General"].includes(formData.metadata.category) && (
+              <SelectItem value={formData.metadata.category}>{formData.metadata.category}</SelectItem>
+            )}
           </SelectContent>
         </Select>
       </div>
