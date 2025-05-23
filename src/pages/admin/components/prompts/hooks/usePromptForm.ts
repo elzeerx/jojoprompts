@@ -3,6 +3,14 @@ import { useState, useCallback } from "react";
 import { type PromptRow } from "@/types";
 import { toast } from "@/hooks/use-toast";
 
+interface MediaFile {
+  type: 'image' | 'video' | 'audio';
+  path: string;
+  name: string;
+  file?: File;
+  preview?: string;
+}
+
 interface FormData {
   title: string;
   promptText: string;
@@ -16,6 +24,7 @@ interface FormData {
     target_model?: string;
     use_case?: string;
     buttons?: Array<{ id: string; name: string; description: string; type: string }>;
+    media_files?: MediaFile[];
   };
 }
 
@@ -32,7 +41,8 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
       style: editingPrompt?.metadata?.style || "",
       target_model: editingPrompt?.metadata?.target_model || "",
       use_case: editingPrompt?.metadata?.use_case || "",
-      buttons: editingPrompt?.metadata?.buttons || []
+      buttons: editingPrompt?.metadata?.buttons || [],
+      media_files: editingPrompt?.metadata?.media_files || []
     }
   }));
 
@@ -50,7 +60,8 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
           style: editingPrompt.metadata?.style || "",
           target_model: editingPrompt.metadata?.target_model || "",
           use_case: editingPrompt.metadata?.use_case || "",
-          buttons: editingPrompt.metadata?.buttons || []
+          buttons: editingPrompt.metadata?.buttons || [],
+          media_files: editingPrompt.metadata?.media_files || []
         }
       });
     } else {
@@ -66,7 +77,8 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
           style: "",
           target_model: "",
           use_case: "",
-          buttons: []
+          buttons: [],
+          media_files: []
         }
       });
     }

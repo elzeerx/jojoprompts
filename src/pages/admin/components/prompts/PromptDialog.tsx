@@ -21,6 +21,7 @@ interface PromptDialogProps {
 export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, promptType, category }: PromptDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const [currentFiles, setCurrentFiles] = useState<File[]>([]);
   const { user } = useAuth();
   
   const {
@@ -48,8 +49,31 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     if (!open) {
       resetForm();
       setCurrentFile(null);
+      setCurrentFiles([]);
     }
   }, [open, resetForm]);
+
+  const uploadFiles = async (files: File[]): Promise<string[]> => {
+    const uploadedPaths: string[] = [];
+    
+    for (const file of files) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('prompt-images')
+        .upload(fileName, file);
+        
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+      
+      uploadedPaths.push(fileName);
+    }
+    
+    return uploadedPaths;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +84,9 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     
     try {
       let imagePath = formData.imagePath;
+      let mediaFiles = formData.metadata?.media_files || [];
       
+      // Upload legacy single file if exists
       if (currentFile) {
         const fileExt = currentFile.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -73,13 +99,34 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         imagePath = fileName;
       }
 
+      // Upload multiple media files
+      if (currentFiles.length > 0) {
+        const uploadedPaths = await uploadFiles(currentFiles);
+        
+        // Update media files with uploaded paths
+        const updatedMediaFiles = mediaFiles.map((media: any, index: number) => {
+          if (media.file && uploadedPaths[index]) {
+            return {
+              ...media,
+              path: uploadedPaths[index]
+            };
+          }
+          return media;
+        });
+        
+        mediaFiles = updatedMediaFiles;
+      }
+
       const promptData = {
         title: formData.title,
         prompt_text: formData.promptText,
         prompt_type: formData.promptType,
         image_path: imagePath,
         default_image_path: formData.defaultImagePath,
-        metadata: formData.metadata,
+        metadata: {
+          ...formData.metadata,
+          media_files: mediaFiles
+        },
         user_id: user?.id || ""
       };
 
@@ -163,6 +210,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                 formData={formData}
                 onChange={setFormData}
                 onFileChange={setCurrentFile}
+                onMultipleFilesChange={setCurrentFiles}
               />
             </div>
             

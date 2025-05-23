@@ -1,7 +1,8 @@
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PromptFormField } from "./PromptFormField";
 import { TextPromptFields } from "./TextPromptFields";
-import { ImageUploadField } from "./ImageUploadField";
+import { MultiMediaUploadField } from "./MultiMediaUploadField";
 import { ButtonPromptFields } from "./ButtonPromptFields";
 import { ImageSelectionFields } from "./ImageSelectionFields";
 import { WorkflowFields } from "./WorkflowFields";
@@ -17,9 +18,10 @@ interface DialogFormProps {
   };
   onChange: (formData: any) => void;
   onFileChange: (file: File) => void;
+  onMultipleFilesChange?: (files: File[]) => void;
 }
 
-export function DialogForm({ formData, onChange, onFileChange }: DialogFormProps) {
+export function DialogForm({ formData, onChange, onFileChange, onMultipleFilesChange }: DialogFormProps) {
   const updateFormData = (field: string, value: any) => {
     onChange({
       ...formData,
@@ -32,6 +34,19 @@ export function DialogForm({ formData, onChange, onFileChange }: DialogFormProps
       ...formData,
       metadata
     });
+  };
+
+  const handleMediaFilesChange = (mediaFiles: any[]) => {
+    updateMetadata({
+      ...formData.metadata,
+      media_files: mediaFiles
+    });
+  };
+
+  const handleMultipleFilesChange = (files: File[]) => {
+    if (onMultipleFilesChange) {
+      onMultipleFilesChange(files);
+    }
   };
 
   return (
@@ -88,19 +103,17 @@ export function DialogForm({ formData, onChange, onFileChange }: DialogFormProps
         type="textarea"
       />
 
+      {/* Multi-media upload for all prompt types */}
+      <MultiMediaUploadField
+        mediaFiles={formData.metadata?.media_files || []}
+        onMediaFilesChange={handleMediaFilesChange}
+        onFilesChange={handleMultipleFilesChange}
+      />
+
       {formData.promptType === 'text' && (
         <TextPromptFields
           metadata={formData.metadata}
           onMetadataChange={updateMetadata}
-        />
-      )}
-
-      {(formData.promptType === 'image' || formData.promptType === 'text') && (
-        <ImageUploadField
-          imageUrl={formData.imagePath}
-          onImageChange={(path) => updateFormData('imagePath', path)}
-          onFileChange={onFileChange}
-          label={formData.promptType === 'text' ? "Custom Image (Optional)" : "Image"}
         />
       )}
 

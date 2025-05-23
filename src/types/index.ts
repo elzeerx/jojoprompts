@@ -25,6 +25,11 @@ export interface Prompt {
     button_text?: string;
     button_action?: string;
     image_options?: string[];
+    media_files?: Array<{
+      type: 'image' | 'video' | 'audio';
+      path: string;
+      name: string;
+    }>;
     workflow_steps?: {
       name: string;
       description: string;
@@ -52,6 +57,11 @@ export interface PromptRow {
     button_text?: string;
     button_action?: string;
     image_options?: string[];
+    media_files?: Array<{
+      type: 'image' | 'video' | 'audio';
+      path: string;
+      name: string;
+    }>;
     workflow_steps?: {
       name: string;
       description: string;
