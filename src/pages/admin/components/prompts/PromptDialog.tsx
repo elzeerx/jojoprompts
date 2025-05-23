@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,19 @@ interface PromptDialogProps {
   editingPrompt?: PromptRow | null;
   promptType?: 'text' | 'image' | 'workflow' | 'video' | 'sound';
   category?: string;
+}
+
+// Type for metadata to properly handle the Json type from Supabase
+interface PromptMetadata {
+  category?: string;
+  tags?: string[];
+  style?: string;
+  target_model?: string;
+  use_case?: string;
+  buttons?: Array<{ id: string; name: string; description: string; type: string }>;
+  media_files?: Array<{ type: 'image' | 'video' | 'audio'; path: string; name: string }>;
+  workflow_files?: Array<{ type: 'json' | 'zip'; path: string; name: string }>;
+  workflow_steps?: Array<{ name: string; description: string; type?: string }>;
 }
 
 export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, promptType, category }: PromptDialogProps) {
@@ -90,8 +104,9 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     
     try {
       let imagePath = formData.imagePath;
-      let mediaFiles = formData.metadata?.media_files || [];
-      let workflowFilesData = formData.metadata?.workflow_files || [];
+      const metadata = formData.metadata as PromptMetadata;
+      let mediaFiles = metadata?.media_files || [];
+      let workflowFilesData = metadata?.workflow_files || [];
       
       // Upload legacy single file if exists
       if (currentFile) {
@@ -165,14 +180,14 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
 
       // Prepare metadata as JSON-compatible object - serialize everything properly
       const cleanMetadata = JSON.parse(JSON.stringify({
-        category: formData.metadata?.category || 'ChatGPT',
-        tags: formData.metadata?.tags || [],
-        style: formData.metadata?.style || '',
-        target_model: formData.metadata?.target_model || '',
-        use_case: formData.metadata?.use_case || '',
+        category: metadata?.category || 'ChatGPT',
+        tags: metadata?.tags || [],
+        style: metadata?.style || '',
+        target_model: metadata?.target_model || '',
+        use_case: metadata?.use_case || '',
         media_files: mediaFiles,
         workflow_files: workflowFilesData,
-        workflow_steps: formData.metadata?.workflow_steps || []
+        workflow_steps: metadata?.workflow_steps || []
       }));
 
       console.log("PromptDialog - Clean metadata prepared for saving:", cleanMetadata);
@@ -260,7 +275,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
           {formData.metadata?.category && (
             <span 
               className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium mb-3"
-              style={{ backgroundColor: getCategoryColor(formData.metadata.category) }}
+              style={{ backgroundColor: getCategoryColor(formData.metadata.category as string) }}
             >
               {formData.metadata.category}
             </span>
