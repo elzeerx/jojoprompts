@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Copy, CheckCircle, X } from "lucide-react";
+import { Heart, Copy, CheckCircle, X, Play, Volume2 } from "lucide-react";
 import { type Prompt, type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,24 +22,28 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const [favorited, setFavorited] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
   const [copied, setCopied] = useState(false);
-  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
+  const [mediaPreviewOpen, setMediaPreviewOpen] = useState(false);
 
   const { title, prompt_text, metadata, prompt_type } = prompt;
   const category = metadata?.category || "ChatGPT";
   const tags = metadata?.tags || [];
   const model = metadata?.target_model || category;
   const useCase = metadata?.use_case;
+  const mediaFiles = metadata?.media_files || [];
+
+  // Get primary image for main display
+  const primaryImage = mediaFiles.find(file => file.type === 'image') || null;
+  const primaryImagePath = primaryImage?.path || prompt.image_path || prompt.image_url;
 
   useEffect(() => {
     async function loadImage() {
       try {
         let url;
-        if (prompt_type === 'text' && (!prompt.image_path && !prompt.image_url)) {
-          // For text prompts without custom images, use the default text prompt image
+        if (prompt_type === 'text' && (!primaryImagePath)) {
           url = await getTextPromptDefaultImage();
         } else {
-          const imagePath = prompt.image_path || prompt.image_url;
-          url = await getPromptImage(imagePath, 600, 85);
+          url = await getPromptImage(primaryImagePath, 600, 85);
         }
         setImageUrl(url);
       } catch (error) {
@@ -63,7 +67,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
       
       checkFavoriteStatus();
     }
-  }, [prompt.id, prompt.image_path, prompt.image_url, prompt_type, session]);
+  }, [prompt.id, primaryImagePath, prompt_type, session]);
 
   const handleToggleFavorite = async () => {
     if (!session) {
@@ -117,6 +121,31 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
         description: "Failed to copy prompt to clipboard",
         variant: "destructive"
       });
+    }
+  };
+
+  const getMediaUrl = async (mediaPath: string) => {
+    try {
+      return await getPromptImage(mediaPath, 800, 90);
+    } catch (error) {
+      console.error('Error loading media:', error);
+      return '/img/placeholder.png';
+    }
+  };
+
+  const handleMediaClick = (index: number) => {
+    setSelectedMediaIndex(index);
+    setMediaPreviewOpen(true);
+  };
+
+  const getMediaIcon = (type: string) => {
+    switch (type) {
+      case 'video':
+        return <Play className="h-4 w-4" />;
+      case 'audio':
+        return <Volume2 className="h-4 w-4" />;
+      default:
+        return null;
     }
   };
 
@@ -179,10 +208,10 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
 
               {/* Content */}
               <div className="bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200 space-y-6">
-                {/* Image - Now 1:1 ratio and clickable */}
+                {/* Main Image */}
                 <div 
                   className="relative overflow-hidden rounded-xl aspect-square bg-white/50 cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => setImagePreviewOpen(true)}
+                  onClick={() => handleMediaClick(0)}
                 >
                   <img
                     src={imageUrl}
@@ -195,6 +224,23 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                     </span>
                   </div>
                 </div>
+
+                {/* Media Files Grid */}
+                {mediaFiles.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Media Files ({mediaFiles.length})</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {mediaFiles.map((media, index) => (
+                        <MediaThumbnail
+                          key={index}
+                          media={media}
+                          index={index}
+                          onClick={() => handleMediaClick(index)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2">
@@ -258,26 +304,154 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
         </DialogContent>
       </Dialog>
 
-      {/* Image Preview Dialog */}
-      <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
-        <DialogContent className="max-w-4xl bg-black/95 border-none p-4">
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setImagePreviewOpen(false)}
-              className="absolute -top-2 -right-2 z-10 text-white hover:bg-white/20 rounded-full"
-            >
-              <X className="h-6 w-6" />
-            </Button>
+      {/* Media Preview Dialog */}
+      <MediaPreviewDialog
+        open={mediaPreviewOpen}
+        onOpenChange={setMediaPreviewOpen}
+        mediaFiles={mediaFiles}
+        selectedIndex={selectedMediaIndex}
+        title={title}
+      />
+    </>
+  );
+}
+
+// Media Thumbnail Component
+function MediaThumbnail({ media, index, onClick }: { 
+  media: { type: string; path: string; name: string }, 
+  index: number, 
+  onClick: () => void 
+}) {
+  const [thumbnailUrl, setThumbnailUrl] = useState('/img/placeholder.png');
+
+  useEffect(() => {
+    const loadThumbnail = async () => {
+      try {
+        const url = await getPromptImage(media.path, 200, 80);
+        setThumbnailUrl(url);
+      } catch (error) {
+        console.error('Error loading thumbnail:', error);
+      }
+    };
+    loadThumbnail();
+  }, [media.path]);
+
+  const getMediaIcon = (type: string) => {
+    switch (type) {
+      case 'video':
+        return <Play className="h-4 w-4" />;
+      case 'audio':
+        return <Volume2 className="h-4 w-4" />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity group"
+    >
+      {media.type === 'image' ? (
+        <img
+          src={thumbnailUrl}
+          alt={media.name}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gray-200">
+          {getMediaIcon(media.type)}
+          <span className="ml-2 text-xs text-gray-600 capitalize">{media.type}</span>
+        </div>
+      )}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+        <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+          {media.type}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Media Preview Dialog Component
+function MediaPreviewDialog({ 
+  open, 
+  onOpenChange, 
+  mediaFiles, 
+  selectedIndex, 
+  title 
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mediaFiles: Array<{ type: string; path: string; name: string }>;
+  selectedIndex: number;
+  title: string;
+}) {
+  const [mediaUrl, setMediaUrl] = useState('');
+  const selectedMedia = mediaFiles[selectedIndex];
+
+  useEffect(() => {
+    if (selectedMedia) {
+      const loadMedia = async () => {
+        try {
+          const url = await getPromptImage(selectedMedia.path, 1200, 95);
+          setMediaUrl(url);
+        } catch (error) {
+          console.error('Error loading media:', error);
+          setMediaUrl('/img/placeholder.png');
+        }
+      };
+      loadMedia();
+    }
+  }, [selectedMedia]);
+
+  if (!selectedMedia) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl bg-black/95 border-none p-4">
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onOpenChange(false)}
+            className="absolute -top-2 -right-2 z-10 text-white hover:bg-white/20 rounded-full"
+          >
+            <X className="h-6 w-6" />
+          </Button>
+          
+          {selectedMedia.type === 'image' ? (
             <img
-              src={imageUrl}
-              alt={title}
+              src={mediaUrl}
+              alt={selectedMedia.name}
               className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
             />
+          ) : selectedMedia.type === 'video' ? (
+            <video
+              src={mediaUrl}
+              controls
+              className="w-full h-auto max-h-[80vh] rounded-lg"
+            >
+              Your browser does not support the video tag.
+            </video>
+          ) : selectedMedia.type === 'audio' ? (
+            <div className="flex items-center justify-center min-h-[200px] bg-gray-800 rounded-lg">
+              <audio
+                src={mediaUrl}
+                controls
+                className="w-full max-w-md"
+              >
+                Your browser does not support the audio tag.
+              </audio>
+            </div>
+          ) : null}
+          
+          <div className="mt-4 text-center">
+            <p className="text-white text-sm">{selectedMedia.name}</p>
+            <p className="text-gray-400 text-xs capitalize">{selectedMedia.type} file</p>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -43,6 +43,7 @@ export function PromptCard({
   } = prompt;
   const category = metadata?.category || "ChatGPT";
   const tags = metadata?.tags || [];
+  const mediaFiles = metadata?.media_files || [];
   const {
     session
   } = useAuth();
@@ -50,17 +51,18 @@ export function PromptCard({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/img/placeholder.png');
 
-  const imagePath = prompt.image_path || prompt.image_url || null;
+  // Get the primary image to display - prioritize the first image from media_files, then fallback to image_path
+  const primaryImagePath = mediaFiles.find(file => file.type === 'image')?.path || prompt.image_path || prompt.image_url || null;
 
   useEffect(() => {
     async function loadImage() {
-      const url = await getPromptImage(imagePath, 400, 85);
+      const url = await getPromptImage(primaryImagePath, 400, 85);
       setImageUrl(url);
     }
-    if (imagePath) {
+    if (primaryImagePath) {
       loadImage();
     }
-  }, [imagePath]);
+  }, [primaryImagePath]);
 
   const handleCardClick = () => {
     if (isLocked && onUpgradeClick) {
@@ -184,6 +186,12 @@ export function PromptCard({
             alt={title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
+          {/* Media count indicator if multiple files */}
+          {mediaFiles.length > 1 && (
+            <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+              +{mediaFiles.length - 1} files
+            </div>
+          )}
         </div>
 
         {/* Description */}
