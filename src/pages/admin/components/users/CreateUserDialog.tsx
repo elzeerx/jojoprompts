@@ -116,7 +116,7 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
           Add User
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="prompt-dialog">
         <DialogHeader>
           <DialogTitle>Create New User</DialogTitle>
         </DialogHeader>

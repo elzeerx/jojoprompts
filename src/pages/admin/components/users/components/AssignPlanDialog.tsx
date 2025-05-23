@@ -116,7 +116,7 @@ export function AssignPlanDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="prompt-dialog sm:max-w-lg">
         <DialogHeader className="space-y-3">
           <DialogTitle className="text-xl font-semibold">Assign Subscription Plan</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
