@@ -20,7 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Heart, Trash, AlertTriangle } from "lucide-react";
+import { Edit, Heart, Trash, AlertTriangle, Workflow } from "lucide-react";
 import { type PromptRow } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -138,14 +138,23 @@ export function AdminPromptCard({
   const category = prompt.metadata?.category || "N/A";
   const style = prompt.metadata?.style;
   const tags = prompt.metadata?.tags || [];
+  const workflowSteps = prompt.metadata?.workflow_steps || [];
 
-  console.log("AdminPromptCard - Extracted metadata:", { category, style, tags });
+  console.log("AdminPromptCard - Extracted metadata:", { category, style, tags, workflowSteps });
+
+  // Check if this is an n8n workflow prompt
+  const isN8nWorkflow = prompt.prompt_type === 'workflow' || category.toLowerCase().includes('n8n');
 
   return (
     <>
       <Card onClick={handleCardClick} className="cursor-pointer hover:shadow-md transition-shadow">
         <CardHeader className="relative">
-          <CardTitle>{prompt.title}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {prompt.title}
+            {isN8nWorkflow && (
+              <Workflow className="h-4 w-4 text-blue-600" />
+            )}
+          </CardTitle>
           <CardDescription>
             <div className="flex flex-wrap gap-1 mb-2">
               <Badge variant="secondary" className={cn("text-xs", getCategoryBadgeStyle(category))}>
@@ -190,9 +199,35 @@ export function AdminPromptCard({
           )}
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {prompt.prompt_text.substring(0, 100)}...
-          </p>
+          {/* Display workflow steps for n8n prompts */}
+          {isN8nWorkflow && workflowSteps.length > 0 ? (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <Workflow className="h-4 w-4 text-blue-600" />
+                Workflow Steps ({workflowSteps.length})
+              </h4>
+              <div className="space-y-1">
+                {workflowSteps.slice(0, 2).map((step: any, index: number) => (
+                  <div key={index} className="flex items-start gap-2 text-xs">
+                    <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-medium">
+                      {index + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-700">{step.name}</p>
+                      <p className="text-gray-500 line-clamp-1">{step.description}</p>
+                    </div>
+                  </div>
+                ))}
+                {workflowSteps.length > 2 && (
+                  <p className="text-xs text-gray-500 pl-7">+{workflowSteps.length - 2} more steps</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {prompt.prompt_text.substring(0, 100)}...
+            </p>
+          )}
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
           <CopyButton value={prompt.prompt_text} className="w-full" />

@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
-import { Lock, Crown, Heart, Play, FileAudio } from "lucide-react";
+import { Lock, Crown, Heart, Play, FileAudio, Workflow } from "lucide-react";
 import { Button } from "./button";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
 
@@ -45,6 +45,7 @@ export function PromptCard({
   const category = metadata?.category || "ChatGPT";
   const tags = metadata?.tags || [];
   const mediaFiles = metadata?.media_files || [];
+  const workflowSteps = metadata?.workflow_steps || [];
   const {
     session
   } = useAuth();
@@ -164,6 +165,9 @@ export function PromptCard({
     return null;
   };
 
+  // Check if this is an n8n workflow prompt
+  const isN8nWorkflow = prompt_type === 'workflow' || category.toLowerCase().includes('n8n');
+
   return (
     <>
       <div 
@@ -200,12 +204,17 @@ export function PromptCard({
 
         {/* Category Tag and Favorite */}
         <div className="flex items-start justify-between">
-          <span className={cn(
-            "inline-block px-3 py-1 text-xs font-medium rounded-lg",
-            getCategoryBadgeStyle(category)
-          )}>
-            {category}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "inline-block px-3 py-1 text-xs font-medium rounded-lg",
+              getCategoryBadgeStyle(category)
+            )}>
+              {category}
+            </span>
+            {isN8nWorkflow && (
+              <Workflow className="h-4 w-4 text-blue-600" />
+            )}
+          </div>
           
           {session && (
             <button
@@ -252,10 +261,35 @@ export function PromptCard({
           )}
         </div>
 
-        {/* Description */}
-        <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed flex-grow">
-          {prompt_text}
-        </p>
+        {/* Description or Workflow Steps */}
+        {isN8nWorkflow && workflowSteps.length > 0 ? (
+          <div className="flex-grow space-y-2">
+            <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <Workflow className="h-4 w-4 text-blue-600" />
+              Workflow Steps
+            </h4>
+            <div className="space-y-1">
+              {workflowSteps.slice(0, 3).map((step, index) => (
+                <div key={index} className="flex items-start gap-2 text-xs">
+                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-medium">
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-700 truncate">{step.name}</p>
+                    <p className="text-gray-500 line-clamp-1">{step.description}</p>
+                  </div>
+                </div>
+              ))}
+              {workflowSteps.length > 3 && (
+                <p className="text-xs text-gray-500 pl-7">+{workflowSteps.length - 3} more steps</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed flex-grow">
+            {prompt_text}
+          </p>
+        )}
         
         {/* Tags */}
         {tags.length > 0 && (
@@ -282,7 +316,7 @@ export function PromptCard({
             <Button 
               className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200"
             >
-              View Details
+              {isN8nWorkflow ? "View Workflow" : "View Details"}
             </Button>
           )}
           
