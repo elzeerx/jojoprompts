@@ -231,8 +231,8 @@ export function AdminPromptCard({
             </p>
           )}
 
-          {/* Display workflow files for n8n prompts */}
-          {isN8nWorkflow && workflowFiles.length > 0 && (
+          {/* Only display workflow files when dialog is closed to prevent duplication */}
+          {isN8nWorkflow && workflowFiles.length > 0 && !detailsOpen && (
             <WorkflowDownloadSection workflowFiles={workflowFiles} />
           )}
         </CardContent>
