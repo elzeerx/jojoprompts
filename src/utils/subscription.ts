@@ -1,5 +1,5 @@
 
-// Utility functions for subscription and access management
+// Utility functions for plan access management
 export function getSubscriptionTier(planName: string | null | undefined): string {
   if (!planName) return 'none';
   
@@ -27,7 +27,7 @@ export function isPromptLocked(
     basic: ['text'], // Only ChatGPT prompts
     standard: ['text', 'image'], // ChatGPT + Midjourney
     premium: ['text', 'image', 'workflow'], // All prompt types
-    lifetime: ['text', 'image', 'workflow'] // All prompt types (lifetime $80 plan)
+    lifetime: ['text', 'image', 'workflow'] // All prompt types (lifetime access)
   };
   
   const userAccess = accessLevels[userTier as keyof typeof accessLevels] || [];
@@ -56,4 +56,41 @@ export function hasFeatureAccess(
   const userFeatures = featureAccess[userTier as keyof typeof featureAccess] || [];
   
   return userFeatures.includes(feature);
+}
+
+export function isAccessExpired(endDate: string | null | undefined): boolean {
+  if (!endDate) return false; // Assume lifetime or active access if no end date
+  
+  const now = new Date();
+  const expiration = new Date(endDate);
+  
+  return now > expiration;
+}
+
+export function getAccessStatus(endDate: string | null | undefined, isLifetime: boolean = false): string {
+  if (isLifetime || !endDate) return 'lifetime';
+  
+  const now = new Date();
+  const expiration = new Date(endDate);
+  const daysLeft = Math.ceil((expiration.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysLeft < 0) return 'expired';
+  if (daysLeft <= 30) return 'expiring_soon';
+  
+  return 'active';
+}
+
+export function formatAccessDuration(endDate: string | null | undefined, isLifetime: boolean = false): string {
+  if (isLifetime || !endDate) return 'Lifetime Access';
+  
+  const now = new Date();
+  const expiration = new Date(endDate);
+  const daysLeft = Math.ceil((expiration.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysLeft < 0) return 'Access Expired';
+  if (daysLeft === 0) return 'Expires Today';
+  if (daysLeft === 1) return 'Expires Tomorrow';
+  if (daysLeft <= 30) return `${daysLeft} days left`;
+  
+  return `Access until ${expiration.toLocaleDateString()}`;
 }

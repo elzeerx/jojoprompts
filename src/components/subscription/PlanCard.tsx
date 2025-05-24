@@ -19,7 +19,7 @@ interface PlanCardProps {
 }
 
 export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
-  const { name, description, price_usd, price_kwd, features, excluded_features } = plan;
+  const { name, description, price_usd, price_kwd, features, excluded_features, is_lifetime } = plan;
   
   return (
     <Card className={`flex flex-col h-full transition-all ${
@@ -33,6 +33,13 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           <div className="mt-2 flex items-baseline justify-center">
             <span className="text-3xl font-bold text-warm-gold">${price_usd}</span>
             <span className="ml-1 text-sm text-gray-500">({price_kwd} KWD)</span>
+          </div>
+          <div className="mt-1">
+            {is_lifetime ? (
+              <span className="text-sm text-green-600 font-medium">Lifetime Access</span>
+            ) : (
+              <span className="text-sm text-amber-600 font-medium">1 Year Access</span>
+            )}
           </div>
           <p className="mt-1 text-sm text-gray-500">{description}</p>
         </div>
@@ -62,7 +69,7 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           className="w-full"
           variant={isSelected ? "default" : "outline"}
         >
-          {isSelected ? "Selected" : "Select"}
+          {isSelected ? "Selected" : `Get ${is_lifetime ? "Lifetime" : "1-Year"} Access`}
         </Button>
       </CardFooter>
     </Card>

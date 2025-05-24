@@ -26,7 +26,7 @@ export default function PaymentSuccessPage() {
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p className="text-lg">
-            Thank you for your purchase. Your subscription is now active.
+            Thank you for your purchase. Your plan access is now active.
           </p>
           
           <div className="bg-green-50 p-4 rounded-md">
@@ -36,7 +36,7 @@ export default function PaymentSuccessPage() {
           
           <div className="border-t pt-4">
             <p>
-              We've sent you a confirmation email with your receipt and subscription details.
+              We've sent you a confirmation email with your receipt and access details.
             </p>
           </div>
         </CardContent>

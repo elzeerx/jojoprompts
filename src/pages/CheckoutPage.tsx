@@ -95,20 +95,20 @@ export default function CheckoutPage() {
         throw error;
       }
 
-      console.log("Subscription created successfully:", data);
+      console.log("Plan access created successfully:", data);
 
       toast({
         title: "Success!",
-        description: "Your subscription has been activated",
+        description: "Your plan access has been activated",
       });
 
       // Navigate to success page
       navigate("/payment-success");
     } catch (error) {
-      console.error("Error creating subscription:", error);
+      console.error("Error creating plan access:", error);
       toast({
         title: "Error",
-        description: "Failed to activate subscription. Please contact support.",
+        description: "Failed to activate plan access. Please contact support.",
         variant: "destructive",
       });
     } finally {
@@ -155,7 +155,8 @@ export default function CheckoutPage() {
 
   const price = selectedPlan.price_usd;
   const features = Array.isArray(selectedPlan.features) ? selectedPlan.features : [];
-  const planName = selectedPlan.name || "Subscription";
+  const planName = selectedPlan.name || "Access Plan";
+  const isLifetime = selectedPlan.is_lifetime;
 
   return (
     <div className="min-h-screen bg-soft-bg py-16">
@@ -163,7 +164,7 @@ export default function CheckoutPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">Complete Your Purchase</h1>
           <p className="text-muted-foreground">
-            You're about to subscribe to the {selectedPlan.name} plan
+            You're about to purchase {isLifetime ? "lifetime" : "1-year"} access to the {selectedPlan.name} plan
           </p>
         </div>
 
@@ -180,18 +181,20 @@ export default function CheckoutPage() {
               <div className="text-center">
                 <div className="text-3xl font-bold text-warm-gold">
                   ${price}
-                  {!selectedPlan.is_lifetime && (
-                    <span className="text-lg text-muted-foreground">
-                      /{selectedPlan.duration_days === 30 ? "month" : "year"}
-                    </span>
-                  )}
-                  {selectedPlan.is_lifetime && (
+                  {isLifetime ? (
                     <span className="text-lg text-muted-foreground"> one-time</span>
+                  ) : (
+                    <span className="text-lg text-muted-foreground"> for 1 year</span>
                   )}
                 </div>
                 <p className="text-muted-foreground mt-2">
                   {selectedPlan.description}
                 </p>
+                {!isLifetime && (
+                  <p className="text-sm text-amber-600 mt-2 font-medium">
+                    One-time payment • Access expires after 1 year
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

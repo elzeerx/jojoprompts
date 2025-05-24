@@ -12,8 +12,8 @@ export default function PricingPage() {
   
   const keyFeatures = [
     "Access to premium AI prompts collection",
-    "One-time payment, lifetime access",
-    "Regular content updates",
+    "One-time payment, no recurring fees",
+    "Regular content updates during access period",
     "Access to exclusive templates",
   ];
   
@@ -22,10 +22,10 @@ export default function PricingPage() {
       <Container className="py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight text-dark-base mb-4">
-            Choose Your Perfect Plan
+            Choose Your Access Plan
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Access our premium collection of AI prompts with a one-time payment.
+            Get access to our premium collection of AI prompts with a simple one-time payment.
             No subscriptions, no recurring fees.
           </p>
           
@@ -61,7 +61,7 @@ export default function PricingPage() {
             asChild
           >
             <a href="/checkout">
-              Get Started Today
+              Get Access Today
             </a>
           </Button>
         </div>
@@ -71,9 +71,9 @@ export default function PricingPage() {
           <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-xl font-medium mb-2">Is this a subscription?</h3>
+              <h3 className="text-xl font-medium mb-2">Is this a recurring subscription?</h3>
               <p className="text-muted-foreground">
-                No. All our plans are one-time payments. You pay once and get lifetime access to the prompts included in your plan.
+                No. All our plans are one-time payments. You pay once and get access for the specified duration (1 year for Basic/Standard, lifetime for Premium).
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-sm border">
@@ -83,9 +83,9 @@ export default function PricingPage() {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-xl font-medium mb-2">Do I get access to future prompts?</h3>
+              <h3 className="text-xl font-medium mb-2">What happens when my access expires?</h3>
               <p className="text-muted-foreground">
-                Yes, depending on your plan, you'll get access to future prompts in the categories included in your plan.
+                For Basic and Standard plans, your access will expire after 1 year. You can purchase a new plan to regain access. Premium plans offer lifetime access.
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-sm border">
