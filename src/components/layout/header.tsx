@@ -40,9 +40,11 @@ export function Header() {
             <Link to="/prompts" className="text-dark-base hover:text-warm-gold transition-colors font-medium">
               Prompts
             </Link>
-            <Link to="/pricing" className="text-dark-base hover:text-warm-gold transition-colors font-medium">
-              Pricing
-            </Link>
+            {!user && (
+              <Link to="/pricing" className="text-dark-base hover:text-warm-gold transition-colors font-medium">
+                Pricing
+              </Link>
+            )}
             <Link to="/about" className="text-dark-base hover:text-warm-gold transition-colors font-medium">
               About
             </Link>
@@ -108,9 +110,11 @@ export function Header() {
               <Link to="/prompts" className="px-4 py-2 text-dark-base hover:text-warm-gold transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>
                 Prompts
               </Link>
-              <Link to="/pricing" className="px-4 py-2 text-dark-base hover:text-warm-gold transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>
-                Pricing
-              </Link>
+              {!user && (
+                <Link to="/pricing" className="px-4 py-2 text-dark-base hover:text-warm-gold transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>
+                  Pricing
+                </Link>
+              )}
               <Link to="/about" className="px-4 py-2 text-dark-base hover:text-warm-gold transition-colors font-medium" onClick={() => setIsMobileMenuOpen(false)}>
                 About
               </Link>
