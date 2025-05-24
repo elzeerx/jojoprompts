@@ -62,9 +62,11 @@ export function DiscountCodeDetailsDialog({ code, open, onClose, onRefresh }: Di
       const { data: userData } = await supabase.auth.admin.listUsers();
       
       const userEmailMap = new Map();
-      userData.users?.forEach(user => {
-        userEmailMap.set(user.id, user.email);
-      });
+      if (userData && Array.isArray(userData)) {
+        userData.forEach((user: any) => {
+          userEmailMap.set(user.id, user.email);
+        });
+      }
 
       const enrichedUsage = data?.map(usage => ({
         ...usage,
