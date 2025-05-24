@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { IMAGE_BUCKET, VIDEO_BUCKET, AUDIO_BUCKET, FILE_BUCKET } from "@/utils/buckets";
 import { toast } from "@/hooks/use-toast";
 import { type PromptRow } from "@/types";
 import { DialogForm } from "./components/DialogForm";
@@ -69,15 +70,22 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     }
   }, [open, resetForm]);
 
-  const uploadFiles = async (files: File[]): Promise<string[]> => {
+  const uploadFiles = async (files: File[], bucket?: string): Promise<string[]> => {
     const uploadedPaths: string[] = [];
     
     for (const file of files) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       
+      let targetBucket = bucket;
+      if (!targetBucket) {
+        if (file.type.startsWith('video/')) targetBucket = VIDEO_BUCKET;
+        else if (file.type.startsWith('audio/')) targetBucket = AUDIO_BUCKET;
+        else targetBucket = IMAGE_BUCKET;
+      }
+
       const { error: uploadError } = await supabase.storage
-        .from('prompt-images')
+        .from(targetBucket)
         .upload(fileName, file);
         
       if (uploadError) {
@@ -114,7 +122,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
-          .from('prompt-images')
+          .from(IMAGE_BUCKET)
           .upload(fileName, currentFile);
           
         if (uploadError) throw uploadError;
@@ -154,7 +162,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       // Upload workflow files
       if (workflowFiles.length > 0) {
         console.log("PromptDialog - Uploading workflow files:", workflowFiles);
-        const uploadedWorkflowPaths = await uploadFiles(workflowFiles);
+        const uploadedWorkflowPaths = await uploadFiles(workflowFiles, FILE_BUCKET);
 
         // Create workflow files data with uploaded paths
         const newWorkflowFiles = workflowFiles.map((file, index) => {

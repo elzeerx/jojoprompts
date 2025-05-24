@@ -1,10 +1,11 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { IMAGE_BUCKET, VIDEO_BUCKET, AUDIO_BUCKET, DEFAULT_IMAGE_BUCKET } from "@/utils/buckets";
 
 // The correct Supabase URL for this project
 const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
-const BUCKET = 'prompt-images';
-const DEFAULT_BUCKET = 'default-prompt-images';
+const BUCKET = IMAGE_BUCKET;
+const DEFAULT_BUCKET = DEFAULT_IMAGE_BUCKET;
 const DEFAULT_TEXT_PROMPT_IMAGE = 'textpromptdefaultimg.jpg';
 
 export async function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80): Promise<string> {
@@ -76,11 +77,13 @@ export async function getMediaUrl(pathOrUrl: string | null | undefined, mediaTyp
   console.log(`Getting ${mediaType} URL for path: ${cleanPath}`);
   
   try {
-    // For media files like video and audio, we want a direct URL without transformations
-    const bucket = BUCKET; // Always use the main bucket for media files
-    
+    // Choose the correct bucket based on the media type
+    let bucket = IMAGE_BUCKET;
+    if (mediaType === 'video') bucket = VIDEO_BUCKET;
+    if (mediaType === 'audio') bucket = AUDIO_BUCKET;
+
     console.log(`Using bucket: ${bucket} for ${mediaType} path: ${cleanPath}`);
-    
+
     // For images, we use the transformation API. For videos and audio, we get a direct URL
     if (mediaType === 'image') {
       return getPromptImage(pathOrUrl);

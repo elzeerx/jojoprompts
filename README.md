@@ -44,9 +44,14 @@ A web application for browsing, managing, and exporting high-quality image gener
    > **Important Note**: This project requires connecting to Supabase via the Lovable integration. 
    > Click the green Supabase button in the top-right of the Lovable interface to connect your project.
 
-4. Store your OpenAI API key in Supabase Edge Function Secrets
+4. Ensure the required storage buckets exist in your Supabase project. The
+   bucket `prompt-images` should already be present and remain private. Create
+   additional private buckets named `prompt-videos`, `prompt-audio` and
+   `prompt-files` for videos, audio clips and workflow files respectively. Also
+   ensure the `default-prompt-images` bucket exists for default images.
 
-5. Run the development server:
+5. Store your OpenAI API key in Supabase Edge Function Secrets
+6. Run the development server:
    ```
    npm run dev
    ```
