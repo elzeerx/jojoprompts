@@ -155,7 +155,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       if (workflowFiles.length > 0) {
         console.log("PromptDialog - Uploading workflow files:", workflowFiles);
         const uploadedWorkflowPaths = await uploadFiles(workflowFiles);
-        
+
         // Create workflow files data with uploaded paths
         const newWorkflowFiles = workflowFiles.map((file, index) => {
           const fileExt = file.name.split('.').pop()?.toLowerCase() as 'json' | 'zip';
@@ -165,9 +165,12 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
             name: file.name
           };
         });
-        
+
+        // Filter out any existing entries without a valid path before merging
+        const existingFiles = workflowFilesData.filter((wf: any) => wf.path);
+
         // Merge with existing workflow files (keep existing ones, add new ones)
-        workflowFilesData = [...workflowFilesData, ...newWorkflowFiles];
+        workflowFilesData = [...existingFiles, ...newWorkflowFiles];
         console.log("PromptDialog - Final workflow files data:", workflowFilesData);
       } else {
         // Clean existing workflow files to remove non-serializable properties
