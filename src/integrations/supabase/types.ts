@@ -333,6 +333,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_prompts: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      cancel_user_subscription: {
+        Args: { _user_id: string; _admin_id: string }
+        Returns: Json
+      }
+      has_role: {
+        Args: { _user_id: string; _role: string }
+        Returns: boolean
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

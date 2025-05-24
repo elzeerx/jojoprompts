@@ -10,6 +10,11 @@ interface AuthContextType {
   user: User | null;
   userRole: string | null;
   isAdmin: boolean;
+  isJadmin: boolean;
+  isPrompter: boolean;
+  canDeleteUsers: boolean;
+  canCancelSubscriptions: boolean;
+  canManagePrompts: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -165,11 +170,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Computed properties for role-based access
+  const isAdmin = userRole === 'admin';
+  const isJadmin = userRole === 'jadmin';
+  const isPrompter = userRole === 'prompter';
+  const canDeleteUsers = isAdmin; // Only full admins can delete users
+  const canCancelSubscriptions = isAdmin; // Only full admins can cancel subscriptions
+  const canManagePrompts = isAdmin || isJadmin || isPrompter;
+
   const contextValue = {
     session,
     user,
     userRole,
-    isAdmin: userRole === 'admin',
+    isAdmin,
+    isJadmin,
+    isPrompter,
+    canDeleteUsers,
+    canCancelSubscriptions,
+    canManagePrompts,
     loading,
     signOut
   };
@@ -177,7 +195,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   debug("Auth context render", { 
     userEmail: user?.email, 
     userRole, 
-    isAdmin: userRole === 'admin', 
+    isAdmin, 
+    isJadmin, 
+    isPrompter,
+    canDeleteUsers,
+    canCancelSubscriptions,
+    canManagePrompts,
     loading 
   });
 

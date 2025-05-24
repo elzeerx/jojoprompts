@@ -21,6 +21,7 @@ interface UsersTableProps {
   onAssignPlan: (userId: string, planId: string) => void;
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string) => void;
+  onRefresh: () => void;
 }
 
 export function UsersTable({
@@ -33,6 +34,7 @@ export function UsersTable({
   onAssignPlan,
   onSendResetEmail,
   onDeleteUser,
+  onRefresh,
 }: UsersTableProps) {
   if (users.length === 0) {
     return (
@@ -66,6 +68,7 @@ export function UsersTable({
               onAssignPlan={onAssignPlan}
               onSendResetEmail={onSendResetEmail}
               onDeleteUser={onDeleteUser}
+              onRefresh={onRefresh}
             />
           ))}
         </TableBody>

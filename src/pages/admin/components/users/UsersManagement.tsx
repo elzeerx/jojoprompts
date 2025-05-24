@@ -80,6 +80,7 @@ export default function UsersManagement() {
             onAssignPlan={assignPlanToUser}
             onSendResetEmail={sendPasswordResetEmail}
             onDeleteUser={deleteUser}
+            onRefresh={fetchUsers}
           />
         </div>
       )}

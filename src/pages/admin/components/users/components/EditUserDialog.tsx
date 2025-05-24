@@ -40,7 +40,7 @@ export function EditUserDialog({
     first_name: "",
     last_name: "",
     email: "",
-    role: "user" as "user" | "admin",
+    role: "user" as "user" | "admin" | "prompter" | "jadmin",
   });
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function EditUserDialog({
         first_name: user.first_name || "",
         last_name: user.last_name || "",
         email: user.email || "",
-        role: user.role as "user" | "admin",
+        role: user.role as "user" | "admin" | "prompter" | "jadmin",
       });
     }
   }, [user]);
@@ -162,6 +162,18 @@ export function EditUserDialog({
                       <div className="flex flex-col items-start">
                         <span className="font-medium">User</span>
                         <span className="text-xs text-muted-foreground">Standard access</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="prompter">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium text-blue-600">Prompter</span>
+                        <span className="text-xs text-muted-foreground">Can create and manage own prompts</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="jadmin">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium text-orange-600">Junior Admin</span>
+                        <span className="text-xs text-muted-foreground">Admin access without user/subscription management</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="admin">
