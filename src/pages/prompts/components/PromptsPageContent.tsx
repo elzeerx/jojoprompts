@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { isCategoryLocked, getSubscriptionTier } from "@/utils/subscription";
 
 interface PromptsPageContentProps {
   prompts: any[];
@@ -69,26 +71,27 @@ export function PromptsPageContent({
     return matchesSearch && matchesCategory;
   });
 
-  // Check if a prompt is locked based on user subscription
-  const isPromptLocked = (promptType: string) => {
+  // Check if a prompt is locked based on user subscription and category
+  const isPromptLockedByCategory = (prompt: any) => {
     if (isAdmin) return false; // Admins have access to all prompts
-    if (!userSubscription) return true; // No subscription means everything is locked
-
-    const planName = userSubscription.subscription_plans?.name.toLowerCase();
-    switch (promptType) {
-      case "text":
-        // ChatGPT prompts - any subscription gives access
-        return false;
-      case "image":
-        // Midjourney prompts - Standard or Premium plans give access
-        return !["standard", "premium", "ultimate"].includes(planName);
-      case "workflow":
-        // n8n workflows - only Premium plans give access
-        return !["premium", "ultimate"].includes(planName);
-      default:
-        return true;
-    }
+    
+    // Get the user's subscription tier
+    const planName = userSubscription?.subscription_plans?.name;
+    const userTier = getSubscriptionTier(planName);
+    
+    // Use category-based locking instead of prompt type
+    const category = prompt.metadata?.category;
+    
+    console.log(`Checking access for prompt "${prompt.title}":`, {
+      category,
+      userTier,
+      planName,
+      hasSubscription: !!userSubscription
+    });
+    
+    return isCategoryLocked(category, userTier, isAdmin);
   };
+
   const handleUpgradeClick = () => {
     navigate("/pricing");
   };
@@ -151,7 +154,7 @@ export function PromptsPageContent({
             <PromptCard 
               key={prompt.id} 
               prompt={prompt} 
-              isLocked={isPromptLocked(prompt.prompt_type)} 
+              isLocked={isPromptLockedByCategory(prompt)} 
               onUpgradeClick={handleUpgradeClick} 
             />
           ))}

@@ -36,6 +36,36 @@ export function isPromptLocked(
   return !userAccess.includes(promptType);
 }
 
+export function isCategoryLocked(
+  category: string | null | undefined,
+  userTier: string,
+  isAdmin: boolean = false
+): boolean {
+  // Admins have access to everything
+  if (isAdmin) return false;
+  
+  if (!category) return true; // Lock if no category is defined
+  
+  const categoryLower = category.toLowerCase();
+  
+  // Define category access for each tier
+  const categoryAccess = {
+    none: [],
+    basic: ['chatgpt'], // Only ChatGPT prompts
+    standard: ['chatgpt', 'midjourney'], // ChatGPT + Midjourney
+    premium: ['chatgpt', 'midjourney', 'n8n', 'workflow'], // All categories
+    lifetime: ['chatgpt', 'midjourney', 'n8n', 'workflow'] // All categories
+  };
+  
+  const userAccess = categoryAccess[userTier as keyof typeof categoryAccess] || [];
+  
+  // Check if any of the user's accessible categories match the prompt's category
+  return !userAccess.some(accessibleCategory => 
+    categoryLower.includes(accessibleCategory) || 
+    accessibleCategory.includes(categoryLower)
+  );
+}
+
 export function hasFeatureAccess(
   feature: string,
   userTier: string,
