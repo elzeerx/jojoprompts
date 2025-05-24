@@ -3,9 +3,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Check, Crown, AlertCircle } from "lucide-react";
+import { Loader2, Check, Crown, AlertCircle, ArrowRight } from "lucide-react";
 import { PayPalButton } from "@/components/subscription/PayPalButton";
 import { TapPaymentButton } from "@/components/subscription/TapPaymentButton";
+import { CheckoutSignupForm } from "@/components/checkout/CheckoutSignupForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -18,7 +19,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const [showAuthForm, setShowAuthForm] = useState(false);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const fetchPlan = async () => {
@@ -62,9 +64,38 @@ export default function CheckoutPage() {
     fetchPlan();
   }, [planId, navigate]);
 
+  // Check authentication status once auth loading is complete
+  useEffect(() => {
+    if (!authLoading && !loading && selectedPlan) {
+      if (!user) {
+        setShowAuthForm(true);
+      }
+    }
+  }, [user, authLoading, loading, selectedPlan]);
+
+  const handleAuthSuccess = useCallback(() => {
+    console.log("User authenticated successfully, proceeding to payment");
+    setShowAuthForm(false);
+    toast({
+      title: "Success!",
+      description: "Account ready. You can now complete your purchase.",
+    });
+  }, []);
+
   const handlePaymentSuccess = useCallback(async (paymentData: any) => {
     if (processing) {
       console.log("Payment already processing, ignoring duplicate call");
+      return;
+    }
+    
+    // Additional validation to ensure user is authenticated
+    if (!user?.id) {
+      console.error("User not authenticated during payment success");
+      toast({
+        title: "Authentication Error",
+        description: "Please refresh the page and try again.",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -72,6 +103,8 @@ export default function CheckoutPage() {
     
     try {
       console.log("Processing payment success:", paymentData);
+      console.log("User ID:", user.id);
+      console.log("Plan ID:", selectedPlan.id);
       
       // Standardize payment data structure
       const standardizedPaymentData = {
@@ -80,19 +113,23 @@ export default function CheckoutPage() {
         details: paymentData
       };
 
-      console.log("Sending standardized payment data:", standardizedPaymentData);
+      console.log("Sending request to create-subscription with:", {
+        planId: selectedPlan.id,
+        userId: user.id,
+        paymentData: standardizedPaymentData
+      });
 
       const { data, error } = await supabase.functions.invoke("create-subscription", {
         body: {
           planId: selectedPlan.id,
-          userId: user?.id,
+          userId: user.id,
           paymentData: standardizedPaymentData
         }
       });
 
       if (error) {
         console.error("Supabase function error:", error);
-        throw error;
+        throw new Error(error.message || "Failed to activate plan access");
       }
 
       console.log("Plan access created successfully:", data);
@@ -106,9 +143,10 @@ export default function CheckoutPage() {
       navigate("/payment-success");
     } catch (error) {
       console.error("Error creating plan access:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       toast({
         title: "Error",
-        description: "Failed to activate plan access. Please contact support.",
+        description: `Failed to activate plan access: ${errorMessage}. Please contact support.`,
         variant: "destructive",
       });
     } finally {
@@ -126,12 +164,12 @@ export default function CheckoutPage() {
     });
   }, []);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading plan details...</p>
+          <p>Loading checkout...</p>
         </div>
       </div>
     );
@@ -161,10 +199,34 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-soft-bg py-16">
       <div className="container mx-auto max-w-4xl px-4">
+        {/* Progress indicator */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center space-x-4 text-sm">
+            <div className={`flex items-center ${showAuthForm ? 'text-warm-gold' : 'text-green-600'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs mr-2 ${showAuthForm ? 'bg-warm-gold' : 'bg-green-600'}`}>
+                {showAuthForm ? '1' : <Check className="h-3 w-3" />}
+              </div>
+              <span>Create Account</span>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            <div className={`flex items-center ${!showAuthForm ? 'text-warm-gold' : 'text-muted-foreground'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs mr-2 ${!showAuthForm ? 'bg-warm-gold' : 'bg-gray-300'}`}>
+                2
+              </div>
+              <span>Complete Payment</span>
+            </div>
+          </div>
+        </div>
+
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Complete Your Purchase</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {showAuthForm ? "Create Your Account" : "Complete Your Purchase"}
+          </h1>
           <p className="text-muted-foreground">
-            You're about to purchase {isLifetime ? "lifetime" : "1-year"} access to the {selectedPlan.name} plan
+            {showAuthForm 
+              ? `Create an account to purchase ${isLifetime ? "lifetime" : "1-year"} access to the ${selectedPlan.name} plan`
+              : `You're about to purchase ${isLifetime ? "lifetime" : "1-year"} access to the ${selectedPlan.name} plan`
+            }
           </p>
         </div>
 
@@ -211,72 +273,80 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
 
-          {/* Payment Methods */}
-          <Card className="relative">
-            <CardHeader>
-              <CardTitle>Choose Payment Method</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {processing && (
-                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-                  <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                    <p className="font-medium">Processing payment...</p>
-                    <p className="text-sm text-muted-foreground">Please don't close this page</p>
+          {/* Authentication Form or Payment Methods */}
+          {showAuthForm ? (
+            <CheckoutSignupForm
+              onSuccess={handleAuthSuccess}
+              planName={planName}
+              planPrice={price}
+            />
+          ) : (
+            <Card className="relative">
+              <CardHeader>
+                <CardTitle>Choose Payment Method</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {processing && (
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                      <p className="font-medium">Processing payment...</p>
+                      <p className="text-sm text-muted-foreground">Please don't close this page</p>
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <span>PayPal</span>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Recommended</span>
-                  </h4>
-                  <PayPalButton
-                    amount={price}
-                    planName={planName}
-                    onSuccess={(paymentId, details) => {
-                      handlePaymentSuccess({
-                        paymentId,
-                        paymentMethod: 'paypal',
-                        details
-                      });
-                    }}
-                    onError={handlePaymentError}
-                    className="w-full"
-                  />
-                </div>
+                )}
+                
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <span>PayPal</span>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Recommended</span>
+                    </h4>
+                    <PayPalButton
+                      amount={price}
+                      planName={planName}
+                      onSuccess={(paymentId, details) => {
+                        handlePaymentSuccess({
+                          paymentId,
+                          paymentMethod: 'paypal',
+                          details
+                        });
+                      }}
+                      onError={handlePaymentError}
+                      className="w-full"
+                    />
+                  </div>
 
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or pay with card
+                      </span>
+                    </div>
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or pay with card
-                    </span>
-                  </div>
-                </div>
 
-                <div>
-                  <h4 className="font-medium mb-3">Credit Card (Tap Payments)</h4>
-                  <TapPaymentButton
-                    amount={price}
-                    planName={planName}
-                    onSuccess={(paymentId) => {
-                      handlePaymentSuccess({
-                        paymentId,
-                        paymentMethod: 'tap',
-                        payment_id: paymentId
-                      });
-                    }}
-                    onError={handlePaymentError}
-                  />
+                  <div>
+                    <h4 className="font-medium mb-3">Credit Card (Tap Payments)</h4>
+                    <TapPaymentButton
+                      amount={price}
+                      planName={planName}
+                      onSuccess={(paymentId) => {
+                        handlePaymentSuccess({
+                          paymentId,
+                          paymentMethod: 'tap',
+                          payment_id: paymentId
+                        });
+                      }}
+                      onError={handlePaymentError}
+                    />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="text-center mt-8">
