@@ -1,11 +1,12 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { FILE_BUCKET } from "@/utils/buckets";
 
 export async function downloadWorkflowFile(filePath: string, fileName: string) {
   try {
     const { data, error } = await supabase.storage
-      .from('prompt-images')
+      .from(FILE_BUCKET)
       .download(filePath);
 
     if (error) {
