@@ -73,20 +73,7 @@ export async function deleteUser(supabase: ReturnType<typeof createClient>, user
   console.log(`Admin ${adminId} is attempting to delete user ${userId}`);
   
   try {
-    // Step 1: Delete user subscriptions
-    console.log(`Deleting user subscriptions for user ${userId}`);
-    const { error: subscriptionsError } = await supabase
-      .from('user_subscriptions')
-      .delete()
-      .eq('user_id', userId);
-
-    if (subscriptionsError) {
-      console.error(`Error deleting user subscriptions for ${userId}:`, subscriptionsError);
-      throw new Error(`Error deleting user subscriptions: ${subscriptionsError.message}`);
-    }
-    console.log(`Successfully deleted user subscriptions for ${userId}`);
-
-    // Step 2: Delete payment history
+    // Step 1: Delete payment history first (has FK to user_subscriptions)
     console.log(`Deleting payment history for user ${userId}`);
     const { error: paymentError } = await supabase
       .from('payment_history')
@@ -98,6 +85,19 @@ export async function deleteUser(supabase: ReturnType<typeof createClient>, user
       throw new Error(`Error deleting payment history: ${paymentError.message}`);
     }
     console.log(`Successfully deleted payment history for ${userId}`);
+
+    // Step 2: Delete user subscriptions (now safe after payment history is gone)
+    console.log(`Deleting user subscriptions for user ${userId}`);
+    const { error: subscriptionsError } = await supabase
+      .from('user_subscriptions')
+      .delete()
+      .eq('user_id', userId);
+
+    if (subscriptionsError) {
+      console.error(`Error deleting user subscriptions for ${userId}:`, subscriptionsError);
+      throw new Error(`Error deleting user subscriptions: ${subscriptionsError.message}`);
+    }
+    console.log(`Successfully deleted user subscriptions for ${userId}`);
 
     // Step 3: Delete favorites
     console.log(`Deleting favorites for user ${userId}`);
