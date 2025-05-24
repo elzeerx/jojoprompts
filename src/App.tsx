@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -34,111 +34,109 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<RootLayout />}>
-              <Route index element={<Index />} />
-              <Route path="home" element={<HomePage />} />
-              <Route path="login" element={<LoginPage />} />
-              <Route path="signup" element={<SignupPage />} />
-              <Route path="pricing" element={<PricingPage />} />
-              <Route path="about" element={<AboutPage />} />
-              <Route path="terms" element={<TermsOfServicePage />} />
-              <Route path="privacy" element={<PrivacyPolicyPage />} />
-              
-              {/* Protected Routes */}
-              <Route 
-                path="dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <UserDashboardPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="prompts" 
-                element={
-                  <ProtectedRoute>
-                    <PromptsPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="prompts/chatgpt" 
-                element={
-                  <ProtectedRoute>
-                    <ChatGPTPromptsPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="prompts/midjourney" 
-                element={
-                  <ProtectedRoute>
-                    <MidjourneyPromptsPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="prompts/workflows" 
-                element={
-                  <ProtectedRoute>
-                    <WorkflowPromptsPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="favorites" 
-                element={
-                  <ProtectedRoute>
-                    <FavoritesPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="checkout" 
-                element={
-                  <ProtectedRoute>
-                    <CheckoutPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="payment-success" 
-                element={
-                  <ProtectedRoute>
-                    <PaymentSuccessPage />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Admin Routes */}
-              <Route 
-                path="admin/*" 
-                element={
-                  <ProtectedRoute requireAdmin={true}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Prompter Routes */}
-              <Route 
-                path="prompter" 
-                element={
-                  <ProtectedRoute>
-                    <PrompterDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Routes>
-          <Toaster />
-        </AuthProvider>
-      </Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<RootLayout />}>
+            <Route index element={<Index />} />
+            <Route path="home" element={<HomePage />} />
+            <Route path="login" element={<LoginPage />} />
+            <Route path="signup" element={<SignupPage />} />
+            <Route path="pricing" element={<PricingPage />} />
+            <Route path="about" element={<AboutPage />} />
+            <Route path="terms" element={<TermsOfServicePage />} />
+            <Route path="privacy" element={<PrivacyPolicyPage />} />
+            
+            {/* Protected Routes */}
+            <Route 
+              path="dashboard" 
+              element={
+                <ProtectedRoute>
+                  <UserDashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="prompts" 
+              element={
+                <ProtectedRoute>
+                  <PromptsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="prompts/chatgpt" 
+              element={
+                <ProtectedRoute>
+                  <ChatGPTPromptsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="prompts/midjourney" 
+              element={
+                <ProtectedRoute>
+                  <MidjourneyPromptsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="prompts/workflows" 
+              element={
+                <ProtectedRoute>
+                  <WorkflowPromptsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="favorites" 
+              element={
+                <ProtectedRoute>
+                  <FavoritesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="checkout" 
+              element={
+                <ProtectedRoute>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="payment-success" 
+              element={
+                <ProtectedRoute>
+                  <PaymentSuccessPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Admin Routes */}
+            <Route 
+              path="admin/*" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Prompter Routes */}
+            <Route 
+              path="prompter" 
+              element={
+                <ProtectedRoute>
+                  <PrompterDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
