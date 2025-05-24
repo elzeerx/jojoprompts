@@ -36,20 +36,20 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <AuthProvider>
-          <RootLayout>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/home" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/terms" element={<TermsOfServicePage />} />
-              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Routes>
+            <Route path="/" element={<RootLayout />}>
+              <Route index element={<Index />} />
+              <Route path="home" element={<HomePage />} />
+              <Route path="login" element={<LoginPage />} />
+              <Route path="signup" element={<SignupPage />} />
+              <Route path="pricing" element={<PricingPage />} />
+              <Route path="about" element={<AboutPage />} />
+              <Route path="terms" element={<TermsOfServicePage />} />
+              <Route path="privacy" element={<PrivacyPolicyPage />} />
               
               {/* Protected Routes */}
               <Route 
-                path="/dashboard" 
+                path="dashboard" 
                 element={
                   <ProtectedRoute>
                     <UserDashboardPage />
@@ -57,7 +57,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/prompts" 
+                path="prompts" 
                 element={
                   <ProtectedRoute>
                     <PromptsPage />
@@ -65,7 +65,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/prompts/chatgpt" 
+                path="prompts/chatgpt" 
                 element={
                   <ProtectedRoute>
                     <ChatGPTPromptsPage />
@@ -73,7 +73,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/prompts/midjourney" 
+                path="prompts/midjourney" 
                 element={
                   <ProtectedRoute>
                     <MidjourneyPromptsPage />
@@ -81,7 +81,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/prompts/workflows" 
+                path="prompts/workflows" 
                 element={
                   <ProtectedRoute>
                     <WorkflowPromptsPage />
@@ -89,7 +89,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/favorites" 
+                path="favorites" 
                 element={
                   <ProtectedRoute>
                     <FavoritesPage />
@@ -97,7 +97,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/checkout" 
+                path="checkout" 
                 element={
                   <ProtectedRoute>
                     <CheckoutPage />
@@ -105,7 +105,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/payment-success" 
+                path="payment-success" 
                 element={
                   <ProtectedRoute>
                     <PaymentSuccessPage />
@@ -115,7 +115,7 @@ function App() {
               
               {/* Admin Routes */}
               <Route 
-                path="/admin/*" 
+                path="admin/*" 
                 element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminDashboard />
@@ -125,7 +125,7 @@ function App() {
               
               {/* Prompter Routes */}
               <Route 
-                path="/prompter" 
+                path="prompter" 
                 element={
                   <ProtectedRoute>
                     <PrompterDashboard />
@@ -134,8 +134,8 @@ function App() {
               />
               
               <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </RootLayout>
+            </Route>
+          </Routes>
           <Toaster />
         </AuthProvider>
       </Router>
