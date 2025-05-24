@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -175,18 +174,18 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         });
 
         // Filter out any existing entries without a valid path before merging
-        const existingFiles = workflowFilesData.filter((wf: any) => wf.path);
+        const existingFiles = Array.isArray(workflowFilesData) ? workflowFilesData.filter((wf: any) => wf.path) : [];
 
         // Merge with existing workflow files (keep existing ones, add new ones)
         workflowFilesData = [...existingFiles, ...newWorkflowFiles];
         console.log("PromptDialog - Final workflow files data:", workflowFilesData);
       } else {
         // Clean existing workflow files to remove non-serializable properties
-        workflowFilesData = workflowFilesData.map((wf: any) => ({
+        workflowFilesData = Array.isArray(workflowFilesData) ? workflowFilesData.map((wf: any) => ({
           type: wf.type,
           path: wf.path,
           name: wf.name
-        }));
+        })) : [];
       }
 
       // Prepare metadata as JSON-compatible object - serialize everything properly

@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 declare global {
   interface Window {
@@ -17,6 +18,12 @@ interface PayPalButtonProps {
   onError?: (error: any) => void;
 }
 
+interface PayPalConfig {
+  clientId: string;
+  environment: string;
+  currency: string;
+}
+
 export function PayPalButton({ 
   amount, 
   planName, 
@@ -29,6 +36,7 @@ export function PayPalButton({
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [buttonRendered, setButtonRendered] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paypalConfig, setPaypalConfig] = useState<PayPalConfig | null>(null);
 
   // Memoize the payment amount to prevent unnecessary re-renders
   const memoizedAmount = React.useMemo(() => amount.toFixed(2), [amount]);
@@ -44,8 +52,43 @@ export function PayPalButton({
     onError(error);
   }, [onError]);
 
+  // Fetch PayPal configuration
+  useEffect(() => {
+    const fetchPayPalConfig = async () => {
+      try {
+        console.log("Fetching PayPal configuration...");
+        const { data, error } = await supabase.functions.invoke("get-paypal-config");
+        
+        if (error) {
+          console.error("Error fetching PayPal config:", error);
+          setError("Failed to load PayPal configuration. Please contact support.");
+          setIsLoading(false);
+          return;
+        }
+
+        if (!data?.clientId) {
+          console.error("No PayPal client ID in response:", data);
+          setError("PayPal is not properly configured. Please contact support.");
+          setIsLoading(false);
+          return;
+        }
+
+        console.log("PayPal config loaded:", { environment: data.environment, currency: data.currency });
+        setPaypalConfig(data);
+      } catch (error) {
+        console.error("Failed to fetch PayPal config:", error);
+        setError("Failed to initialize PayPal. Please refresh and try again.");
+        setIsLoading(false);
+      }
+    };
+
+    fetchPayPalConfig();
+  }, []);
+
   // Load PayPal script
   useEffect(() => {
+    if (!paypalConfig) return;
+
     if (window.paypal) {
       setIsScriptLoaded(true);
       setIsLoading(false);
@@ -53,8 +96,8 @@ export function PayPalButton({
     }
 
     const script = document.createElement("script");
-    // Updated to use proper sandbox client ID with better configuration
-    script.src = `https://www.paypal.com/sdk/js?client-id=ASWIAiw0-UM6BaTa1QRptIh0cIip9C2L-r4URQb7CZZy8GZ-t8h-d6naylfIlAPnnfyoYeRBgMSxLj9F&currency=USD&intent=capture&enable-funding=venmo,card&disable-funding=credit`;
+    const environment = paypalConfig.environment === "production" ? "" : ".sandbox";
+    script.src = `https://www${environment}.paypal.com/sdk/js?client-id=${paypalConfig.clientId}&currency=${paypalConfig.currency}&intent=capture&enable-funding=venmo,card&disable-funding=credit`;
     script.async = true;
     
     script.onload = () => {
@@ -77,11 +120,11 @@ export function PayPalButton({
         document.head.removeChild(script);
       }
     };
-  }, [handleError]);
+  }, [paypalConfig, handleError]);
   
   // Initialize PayPal button once script is loaded
   useEffect(() => {
-    if (!isScriptLoaded || !paypalRef.current || buttonRendered || !window.paypal) {
+    if (!isScriptLoaded || !paypalRef.current || buttonRendered || !window.paypal || !paypalConfig) {
       return;
     }
 
@@ -95,7 +138,7 @@ export function PayPalButton({
                 {
                   description: `JojoPrompts - ${planName} Plan`,
                   amount: {
-                    currency_code: "USD",
+                    currency_code: paypalConfig.currency,
                     value: memoizedAmount,
                   },
                 },
@@ -148,7 +191,7 @@ export function PayPalButton({
       setError("Failed to initialize PayPal. Please refresh and try again.");
       handleError(error);
     }
-  }, [isScriptLoaded, memoizedAmount, planName, buttonRendered, handleSuccess, handleError]);
+  }, [isScriptLoaded, memoizedAmount, planName, buttonRendered, handleSuccess, handleError, paypalConfig]);
 
   if (error) {
     return (
