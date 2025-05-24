@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -110,45 +109,84 @@ export default function CheckoutPage() {
       const standardizedPaymentData = {
         paymentId: paymentData.paymentId || paymentData.payment_id || paymentData.id,
         paymentMethod: paymentData.paymentMethod || (paymentData.source ? 'tap' : 'paypal'),
-        details: paymentData
+        details: {
+          // Only include essential details to avoid request size issues
+          id: paymentData.id || paymentData.paymentId,
+          status: paymentData.status,
+          amount: paymentData.amount
+        }
       };
 
-      console.log("Sending request to create-subscription with:", {
+      const requestPayload = {
         planId: selectedPlan.id,
         userId: user.id,
         paymentData: standardizedPaymentData
-      });
+      };
 
-      const { data, error } = await supabase.functions.invoke("create-subscription", {
-        body: {
-          planId: selectedPlan.id,
-          userId: user.id,
-          paymentData: standardizedPaymentData
+      console.log("Sending request to create-subscription with payload:", requestPayload);
+
+      // Add timeout and better error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      try {
+        const { data, error } = await supabase.functions.invoke("create-subscription", {
+          body: requestPayload,
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        console.log("Supabase function response:", { data, error });
+
+        if (error) {
+          console.error("Supabase function error:", error);
+          throw new Error(`Function error: ${error.message || JSON.stringify(error)}`);
         }
-      });
 
-      if (error) {
-        console.error("Supabase function error:", error);
-        throw new Error(error.message || "Failed to activate plan access");
+        if (!data || !data.success) {
+          console.error("Function returned unsuccessful response:", data);
+          throw new Error(data?.error || "Function returned unsuccessful response");
+        }
+
+        console.log("Plan access created successfully:", data);
+
+        toast({
+          title: "Success!",
+          description: "Your plan access has been activated",
+        });
+
+        // Navigate to success page
+        navigate("/payment-success");
+
+      } catch (functionError) {
+        clearTimeout(timeoutId);
+        
+        if (functionError.name === 'AbortError') {
+          throw new Error("Request timed out. Please try again.");
+        }
+        
+        console.error("Function invocation error:", functionError);
+        throw functionError;
       }
 
-      console.log("Plan access created successfully:", data);
-
-      toast({
-        title: "Success!",
-        description: "Your plan access has been activated",
-      });
-
-      // Navigate to success page
-      navigate("/payment-success");
     } catch (error) {
       console.error("Error creating plan access:", error);
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      
       toast({
-        title: "Error",
-        description: `Failed to activate plan access: ${errorMessage}. Please contact support.`,
+        title: "Payment Processing Error",
+        description: `Failed to activate plan access: ${errorMessage}. Please contact support if this persists.`,
         variant: "destructive",
       });
+      
+      // Don't navigate away, let user try again
     } finally {
       setProcessing(false);
     }
