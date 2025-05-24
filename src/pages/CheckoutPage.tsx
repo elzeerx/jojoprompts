@@ -63,7 +63,6 @@ export default function CheckoutPage() {
     fetchPlan();
   }, [planId, navigate]);
 
-  // Check authentication status once auth loading is complete
   useEffect(() => {
     if (!authLoading && !loading && selectedPlan) {
       if (!user) {
@@ -87,7 +86,6 @@ export default function CheckoutPage() {
       return;
     }
     
-    // Additional validation to ensure user is authenticated
     if (!user?.id) {
       console.error("User not authenticated during payment success");
       toast({
@@ -110,7 +108,6 @@ export default function CheckoutPage() {
         paymentId: paymentData.paymentId || paymentData.payment_id || paymentData.id,
         paymentMethod: paymentData.paymentMethod || (paymentData.source ? 'tap' : 'paypal'),
         details: {
-          // Only include essential details to avoid request size issues
           id: paymentData.id || paymentData.paymentId,
           status: paymentData.status,
           amount: paymentData.amount
@@ -125,50 +122,38 @@ export default function CheckoutPage() {
 
       console.log("Sending request to create-subscription with payload:", requestPayload);
 
-      // Add timeout and better error handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      // Create a timeout promise for manual timeout handling
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Request timed out after 30 seconds")), 30000);
+      });
 
-      try {
-        const { data, error } = await supabase.functions.invoke("create-subscription", {
-          body: requestPayload,
-          signal: controller.signal
-        });
+      // Race between the function call and timeout
+      const functionPromise = supabase.functions.invoke("create-subscription", {
+        body: requestPayload
+      });
 
-        clearTimeout(timeoutId);
+      const { data, error } = await Promise.race([functionPromise, timeoutPromise]) as any;
 
-        console.log("Supabase function response:", { data, error });
+      console.log("Supabase function response:", { data, error });
 
-        if (error) {
-          console.error("Supabase function error:", error);
-          throw new Error(`Function error: ${error.message || JSON.stringify(error)}`);
-        }
-
-        if (!data || !data.success) {
-          console.error("Function returned unsuccessful response:", data);
-          throw new Error(data?.error || "Function returned unsuccessful response");
-        }
-
-        console.log("Plan access created successfully:", data);
-
-        toast({
-          title: "Success!",
-          description: "Your plan access has been activated",
-        });
-
-        // Navigate to success page
-        navigate("/payment-success");
-
-      } catch (functionError) {
-        clearTimeout(timeoutId);
-        
-        if (functionError.name === 'AbortError') {
-          throw new Error("Request timed out. Please try again.");
-        }
-        
-        console.error("Function invocation error:", functionError);
-        throw functionError;
+      if (error) {
+        console.error("Supabase function error:", error);
+        throw new Error(`Function error: ${error.message || JSON.stringify(error)}`);
       }
+
+      if (!data || !data.success) {
+        console.error("Function returned unsuccessful response:", data);
+        throw new Error(data?.error || "Function returned unsuccessful response");
+      }
+
+      console.log("Plan access created successfully:", data);
+
+      toast({
+        title: "Success!",
+        description: "Your plan access has been activated",
+      });
+
+      navigate("/payment-success");
 
     } catch (error) {
       console.error("Error creating plan access:", error);
@@ -186,7 +171,6 @@ export default function CheckoutPage() {
         variant: "destructive",
       });
       
-      // Don't navigate away, let user try again
     } finally {
       setProcessing(false);
     }
