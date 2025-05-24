@@ -225,7 +225,10 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         if (error) throw error;
         
         console.log("PromptDialog - Updated prompt data returned:", data);
-        console.log("PromptDialog - Updated prompt workflow files:", data?.[0]?.metadata?.workflow_files);
+        
+        // Type cast the returned metadata for safe access
+        const returnedMetadata = data?.[0]?.metadata as PromptMetadata;
+        console.log("PromptDialog - Updated prompt workflow files:", returnedMetadata?.workflow_files);
         
         toast({
           title: "Success",
@@ -240,7 +243,10 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         if (error) throw error;
         
         console.log("PromptDialog - Inserted prompt data returned:", data);
-        console.log("PromptDialog - Inserted prompt workflow files:", data?.[0]?.metadata?.workflow_files);
+        
+        // Type cast the returned metadata for safe access
+        const returnedMetadata = data?.[0]?.metadata as PromptMetadata;
+        console.log("PromptDialog - Inserted prompt workflow files:", returnedMetadata?.workflow_files);
         
         toast({
           title: "Success", 
