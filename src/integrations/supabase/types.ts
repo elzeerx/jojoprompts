@@ -9,6 +9,87 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      discount_code_usage: {
+        Row: {
+          discount_code_id: string
+          id: string
+          payment_history_id: string | null
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          discount_code_id: string
+          id?: string
+          payment_history_id?: string | null
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          discount_code_id?: string
+          id?: string
+          payment_history_id?: string | null
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_code_usage_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_code_usage_payment_history_id_fkey"
+            columns: ["payment_history_id"]
+            isOneToOne: false
+            referencedRelation: "payment_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          discount_type: string
+          discount_value: number
+          expiration_date: string | null
+          id: string
+          is_active: boolean
+          times_used: number
+          updated_at: string
+          usage_limit: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          discount_type: string
+          discount_value: number
+          expiration_date?: string | null
+          id?: string
+          is_active?: boolean
+          times_used?: number
+          updated_at?: string
+          usage_limit?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          discount_type?: string
+          discount_value?: number
+          expiration_date?: string | null
+          id?: string
+          is_active?: boolean
+          times_used?: number
+          updated_at?: string
+          usage_limit?: number | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string | null
@@ -40,7 +121,12 @@ export type Database = {
           amount_kwd: number
           amount_usd: number
           created_at: string | null
+          discount_amount_kwd: number | null
+          discount_amount_usd: number | null
+          discount_code_id: string | null
           id: string
+          original_amount_kwd: number | null
+          original_amount_usd: number | null
           payment_id: string | null
           payment_method: string
           status: string
@@ -51,7 +137,12 @@ export type Database = {
           amount_kwd: number
           amount_usd: number
           created_at?: string | null
+          discount_amount_kwd?: number | null
+          discount_amount_usd?: number | null
+          discount_code_id?: string | null
           id?: string
+          original_amount_kwd?: number | null
+          original_amount_usd?: number | null
           payment_id?: string | null
           payment_method: string
           status: string
@@ -62,7 +153,12 @@ export type Database = {
           amount_kwd?: number
           amount_usd?: number
           created_at?: string | null
+          discount_amount_kwd?: number | null
+          discount_amount_usd?: number | null
+          discount_code_id?: string | null
           id?: string
+          original_amount_kwd?: number | null
+          original_amount_usd?: number | null
           payment_id?: string | null
           payment_method?: string
           status?: string
@@ -70,6 +166,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_history_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_history_subscription_id_fkey"
             columns: ["subscription_id"]
@@ -233,6 +336,16 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      validate_discount_code: {
+        Args: { code_text: string }
+        Returns: {
+          id: string
+          discount_type: string
+          discount_value: number
+          is_valid: boolean
+          error_message: string
+        }[]
       }
     }
     Enums: {

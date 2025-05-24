@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import PromptsManagement from "./PromptsManagement";
 import DashboardOverview from "./components/DashboardOverview";
 import UsersManagement from "./components/users/UsersManagement";
+import PurchaseHistoryManagement from "./components/purchases/PurchaseHistoryManagement";
+import DiscountCodesManagement from "./components/discount-codes/DiscountCodesManagement";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function AdminDashboard() {
@@ -16,8 +18,6 @@ export default function AdminDashboard() {
   const [favoritedPromptIds, setFavoritedPromptIds] = useState<string[]>([]);
   const [loadingMeta, setLoadingMeta] = useState(false);
   const [loadingSuggest, setLoadingSuggest] = useState(false);
-  const [promptDialogOpen, setPromptDialogOpen] = useState(false);
-  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const { user, session } = useAuth();
   
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-dark-base">Admin Dashboard</h1>
           <p className="text-muted-foreground">
-            Manage prompts, users, and run AI helpers
+            Manage prompts, users, purchases, discount codes, and run AI helpers
           </p>
         </div>
       </div>
@@ -60,6 +60,8 @@ export default function AdminDashboard() {
           <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">Overview</TabsTrigger>
           <TabsTrigger value="prompts" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">Prompts</TabsTrigger>
           <TabsTrigger value="users" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">Users</TabsTrigger>
+          <TabsTrigger value="purchases" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">Purchases</TabsTrigger>
+          <TabsTrigger value="discounts" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">Discount Codes</TabsTrigger>
           <TabsTrigger value="ai" className="rounded-lg data-[state=active]:bg-warm-gold data-[state=active]:text-white">AI Helpers</TabsTrigger>
         </TabsList>
         
@@ -73,6 +75,14 @@ export default function AdminDashboard() {
         
         <TabsContent value="users">
           <UsersManagement />
+        </TabsContent>
+        
+        <TabsContent value="purchases">
+          <PurchaseHistoryManagement />
+        </TabsContent>
+        
+        <TabsContent value="discounts">
+          <DiscountCodesManagement />
         </TabsContent>
         
         <TabsContent value="ai">
