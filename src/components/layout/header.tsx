@@ -31,7 +31,7 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
+          <Link to="/home" className="flex items-center space-x-2">
             <img alt="JojoPrompts" className="h-8 w-auto" src="/lovable-uploads/2207fac5-9e06-4da3-a1b4-da690a123a56.png" />
           </Link>
 
