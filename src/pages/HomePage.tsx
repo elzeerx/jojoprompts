@@ -12,7 +12,7 @@ export default function HomePage() {
   const { user } = useAuth();
 
   return (
-    <main className="min-h-screen bg-soft-bg">
+    <main className="min-h-screen bg-gradient-to-br from-soft-bg via-warm-gold/10 to-muted-teal/20">
       {/* Hero Section */}
       <HeroSection />
 
@@ -24,7 +24,7 @@ export default function HomePage() {
       
       {/* Pricing Preview (only shown if user is not logged in) */}
       {!user && (
-        <section className="py-16 bg-white">
+        <section className="py-16 bg-white/80 backdrop-blur-sm">
           <Container>
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold mb-4">Get Started with a Plan That Fits Your Needs</h2>
@@ -40,7 +40,7 @@ export default function HomePage() {
       {/* Testimonials Section - Future enhancement */}
       
       {/* Final Call To Action */}
-      <section className="py-16 bg-dark-base text-soft-bg">
+      <section className="py-16 bg-dark-base/90 text-soft-bg backdrop-blur-sm">
         <Container className="text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Enhance Your AI Experience?</h2>
           <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
