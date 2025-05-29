@@ -27,14 +27,14 @@ export function FeatureHighlights() {
   ];
 
   return (
-    <section className="py-16 bg-white">
+    <section className="py-16">
       <div className="container">
         <h2 className="section-title text-center">Why Choose JojoPrompts?</h2>
         <p className="section-subtitle text-center">Unlock the potential of AI with our premium prompt collection</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mt-12">
           {features.map((feature, index) => (
-            <div key={index} className="p-6 border border-warm-gold/10 rounded-lg bg-soft-bg/50 hover:shadow-md transition-all">
+            <div key={index} className="p-6 border border-warm-gold/20 rounded-lg bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:shadow-md transition-all">
               <div className="mb-4">
                 {feature.icon}
               </div>

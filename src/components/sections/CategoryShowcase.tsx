@@ -42,7 +42,7 @@ export function CategoryShowcase() {
   ];
 
   return (
-    <section className="py-20 bg-gradient-to-br from-soft-bg via-white to-soft-bg overflow-hidden">
+    <section className="py-20 overflow-hidden">
       <div className="container relative">
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
