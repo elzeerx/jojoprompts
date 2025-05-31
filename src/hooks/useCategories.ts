@@ -115,6 +115,28 @@ export function useCategories() {
 
   useEffect(() => {
     fetchCategories();
+
+    // Set up real-time subscription for categories
+    const channel = supabase
+      .channel('categories-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'categories'
+        },
+        (payload) => {
+          console.log('Categories real-time update:', payload);
+          // Refetch categories when any change occurs
+          fetchCategories();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return {
