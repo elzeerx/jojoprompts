@@ -20,7 +20,7 @@ export function useCategories() {
 
       const transformedData = (data || []).map(item => ({
         ...item,
-        features: Array.isArray(item.features) ? item.features : []
+        features: Array.isArray(item.features) ? item.features.filter((f): f is string => typeof f === 'string') : []
       }));
 
       setCategories(transformedData);

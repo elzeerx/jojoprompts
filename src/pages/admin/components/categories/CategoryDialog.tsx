@@ -26,7 +26,7 @@ interface CategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   category: Category | null;
-  onSave: (id: string, data: Partial<Category>) => Promise<void> | ((data: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => Promise<any>);
+  onSave: (data: Omit<Category, 'id' | 'created_at' | 'updated_at'> | { id: string, data: Partial<Category> }) => Promise<void>;
   onClose: () => void;
 }
 
@@ -101,10 +101,10 @@ export function CategoryDialog({
 
     try {
       if (category) {
-        await onSave(category.id, formData);
+        await onSave({ id: category.id, data: formData });
       } else {
         const maxDisplayOrder = 10; // We'll calculate this properly later
-        await (onSave as any)({
+        await onSave({
           ...formData,
           display_order: maxDisplayOrder + 1,
         });

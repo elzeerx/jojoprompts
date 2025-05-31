@@ -1,11 +1,11 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DashboardOverview } from "./components/DashboardOverview";
-import { PromptsManagement } from "./PromptsManagement";
-import { UsersManagement } from "./components/users/UsersManagement";
-import { PurchaseHistoryManagement } from "./components/purchases/PurchaseHistoryManagement";
-import { DiscountCodesManagement } from "./components/discount-codes/DiscountCodesManagement";
+import DashboardOverview from "./components/DashboardOverview";
+import PromptsManagement from "./PromptsManagement";
+import UsersManagement from "./components/users/UsersManagement";
+import PurchaseHistoryManagement from "./components/purchases/PurchaseHistoryManagement";
+import DiscountCodesManagement from "./components/discount-codes/DiscountCodesManagement";
 import { CategoriesManagement } from "./components/categories/CategoriesManagement";
 
 export default function AdminDashboard() {

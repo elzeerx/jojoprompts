@@ -27,6 +27,16 @@ export function CategoriesManagement() {
     setEditingCategory(null);
   };
 
+  const handleSave = async (data: any) => {
+    if ('id' in data && 'data' in data) {
+      // This is an update
+      await updateCategory(data.id, data.data);
+    } else {
+      // This is a create
+      await createCategory(data);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -54,7 +64,7 @@ export function CategoriesManagement() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         category={editingCategory}
-        onSave={editingCategory ? updateCategory : createCategory}
+        onSave={handleSave}
         onClose={handleCloseDialog}
       />
     </div>
