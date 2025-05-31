@@ -6,6 +6,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { List, Grid, Search } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCategories } from "@/hooks/useCategories";
 
 interface PromptsFiltersProps {
   category: string;
@@ -20,8 +21,12 @@ interface PromptsFiltersProps {
 export function PromptsFilters({
   category, setCategory, categories, searchQuery, setSearchQuery, view, setView
 }: PromptsFiltersProps) {
+  const { categories: dbCategories } = useCategories();
   const isGridView = view === "grid";
-  const mainCategories = ["all", "ChatGPT", "Midjourney", "n8n"];
+  
+  // Get active categories from database, fallback to passed categories
+  const activeCategories = dbCategories.filter(cat => cat.is_active);
+  const mainCategories = ["all", ...activeCategories.map(cat => cat.name)];
   
   // Filter out main categories from the full categories list to get subcategories
   const subCategories = categories.filter(cat => 

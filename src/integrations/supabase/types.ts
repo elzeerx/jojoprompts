@@ -9,6 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      categories: {
+        Row: {
+          bg_gradient: string
+          created_at: string
+          description: string | null
+          display_order: number
+          features: Json
+          icon_name: string
+          id: string
+          image_path: string | null
+          is_active: boolean
+          link_path: string
+          name: string
+          required_plan: string
+          updated_at: string
+        }
+        Insert: {
+          bg_gradient?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          features?: Json
+          icon_name?: string
+          id?: string
+          image_path?: string | null
+          is_active?: boolean
+          link_path: string
+          name: string
+          required_plan?: string
+          updated_at?: string
+        }
+        Update: {
+          bg_gradient?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          features?: Json
+          icon_name?: string
+          id?: string
+          image_path?: string | null
+          is_active?: boolean
+          link_path?: string
+          name?: string
+          required_plan?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       discount_code_usage: {
         Row: {
           discount_code_id: string

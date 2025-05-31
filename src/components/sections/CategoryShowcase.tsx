@@ -1,45 +1,56 @@
 
 import React from 'react';
-import { ArrowRight, Lock, Sparkles, Zap, Workflow } from 'lucide-react';
+import { ArrowRight, Lock, Sparkles, Zap, Workflow, Image, Video, Music, Code, Palette, Bot, Brain, Cpu, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from '@/components/ui/button';
+import { useCategories } from "@/hooks/useCategories";
+
+const iconMap = {
+  Sparkles,
+  Zap,
+  Workflow,
+  Image,
+  Video,
+  Music,
+  Code,
+  Palette,
+  Bot,
+  Brain,
+  Cpu,
+  Database,
+};
 
 export function CategoryShowcase() {
   const { user } = useAuth();
+  const { categories, loading } = useCategories();
   
-  const categories = [
-    {
-      title: "ChatGPT Prompts",
-      description: "Professional prompts for content creation, copywriting, coding assistance, and business communication. Perfect for writers, marketers, and professionals.",
-      image: "/lovable-uploads/498050108023-c5249f4df085.jpg",
-      bgGradient: "from-warm-gold/20 via-warm-gold/10 to-transparent",
-      link: "/prompts/chatgpt",
-      requiredPlan: "basic",
-      icon: Sparkles,
-      features: ["Content Creation", "Code Generation", "Business Writing", "Creative Stories"]
-    },
-    {
-      title: "Midjourney Prompts",
-      description: "Expertly crafted prompts for stunning AI art generation. Create professional artwork, illustrations, and visual content with precise style control.",
-      image: "/lovable-uploads/ff979f5e-633f-404f-8799-bd078ad6c678.png",
-      bgGradient: "from-muted-teal/20 via-muted-teal/10 to-transparent",
-      link: "/prompts/midjourney",
-      requiredPlan: "standard",
-      icon: Zap,
-      features: ["Art Generation", "Style Control", "Commercial Use", "High Resolution"]
-    },
-    {
-      title: "N8N Workflows",
-      description: "Ready-to-use automation workflows for streamlining business processes. Connect apps, automate tasks, and boost productivity effortlessly.",
-      image: "/lovable-uploads/eea1bdcd-7738-4e5f-810a-15c96fe07b94.png",
-      bgGradient: "from-warm-gold/20 via-warm-gold/10 to-transparent",
-      link: "/prompts/workflows",
-      requiredPlan: "premium",
-      icon: Workflow,
-      features: ["Process Automation", "App Integration", "Task Scheduling", "Data Processing"]
-    }
-  ];
+  // Filter only active categories for public display
+  const activeCategories = categories.filter(category => category.is_active);
+
+  if (loading) {
+    return (
+      <section className="py-20 overflow-hidden">
+        <div className="container">
+          <div className="text-center">
+            <div className="animate-pulse">Loading categories...</div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (activeCategories.length === 0) {
+    return (
+      <section className="py-20 overflow-hidden">
+        <div className="container">
+          <div className="text-center">
+            <p className="text-muted-foreground">No categories available at the moment.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 overflow-hidden">
@@ -65,24 +76,30 @@ export function CategoryShowcase() {
         
         {/* Dynamic Categories Layout */}
         <div className="space-y-24 relative z-10">
-          {categories.map((category, index) => {
-            const IconComponent = category.icon;
+          {activeCategories.map((category, index) => {
+            const IconComponent = iconMap[category.icon_name as keyof typeof iconMap] || Sparkles;
             const isReversed = index % 2 === 1;
             
             return (
               <div 
-                key={index} 
+                key={category.id} 
                 className={`flex flex-col ${isReversed ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 lg:gap-16 group`}
               >
                 {/* Image Section */}
                 <div className="flex-1 relative">
-                  <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${category.bgGradient} p-8 transform transition-all duration-700 group-hover:scale-105 group-hover:rotate-1`}>
+                  <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${category.bg_gradient} p-8 transform transition-all duration-700 group-hover:scale-105 group-hover:rotate-1`}>
                     <div className="relative">
-                      <img 
-                        src={category.image} 
-                        alt={category.title} 
-                        className={`w-full h-80 object-cover rounded-2xl shadow-2xl transition-all duration-500 ${!user ? "blur-sm" : ""} group-hover:shadow-3xl`} 
-                      />
+                      {category.image_path ? (
+                        <img 
+                          src={category.image_path} 
+                          alt={category.name} 
+                          className={`w-full h-80 object-cover rounded-2xl shadow-2xl transition-all duration-500 ${!user ? "blur-sm" : ""} group-hover:shadow-3xl`} 
+                        />
+                      ) : (
+                        <div className="w-full h-80 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl shadow-2xl flex items-center justify-center">
+                          <IconComponent className="h-24 w-24 text-gray-400" />
+                        </div>
+                      )}
                       {!user && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl backdrop-blur-sm">
                           <div className="text-center text-white animate-pulse">
@@ -94,7 +111,7 @@ export function CategoryShowcase() {
                       {/* Plan Badge */}
                       <div className="absolute top-4 right-4">
                         <span className="bg-white/90 backdrop-blur-sm text-dark-base text-sm font-bold px-4 py-2 rounded-full shadow-lg capitalize animate-bounce">
-                          {category.requiredPlan} Plan
+                          {category.required_plan} Plan
                         </span>
                       </div>
                     </div>
@@ -110,7 +127,7 @@ export function CategoryShowcase() {
                 <div className="flex-1 space-y-6">
                   <div className="space-y-4">
                     <h3 className="text-3xl md:text-4xl font-bold text-dark-base group-hover:text-warm-gold transition-colors duration-300">
-                      {category.title}
+                      {category.name}
                     </h3>
                     <p className="text-lg text-muted-foreground leading-relaxed">
                       {category.description}
@@ -118,23 +135,25 @@ export function CategoryShowcase() {
                   </div>
                   
                   {/* Feature Grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {category.features.map((feature, featureIndex) => (
-                      <div 
-                        key={featureIndex}
-                        className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm px-4 py-3 rounded-xl border border-warm-gold/10 transform hover:scale-105 transition-transform duration-200"
-                      >
-                        <div className="w-2 h-2 bg-warm-gold rounded-full animate-pulse"></div>
-                        <span className="text-sm font-medium text-dark-base">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {category.features && category.features.length > 0 && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {category.features.map((feature, featureIndex) => (
+                        <div 
+                          key={featureIndex}
+                          className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm px-4 py-3 rounded-xl border border-warm-gold/10 transform hover:scale-105 transition-transform duration-200"
+                        >
+                          <div className="w-2 h-2 bg-warm-gold rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium text-dark-base">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* CTA Section */}
                   <div className="pt-4">
                     {user ? (
                       <Link 
-                        to={category.link}
+                        to={category.link_path}
                         className="inline-flex items-center space-x-3 text-warm-gold font-bold text-lg hover:text-warm-gold/80 transition-all duration-300 group/link"
                       >
                         <span>Explore Collection</span>
@@ -145,7 +164,7 @@ export function CategoryShowcase() {
                         <div className="flex items-center space-x-2 text-muted-foreground">
                           <Lock className="h-4 w-4" />
                           <span className="text-sm">
-                            <span className="font-bold capitalize text-warm-gold">{category.requiredPlan} plan</span> or higher required
+                            <span className="font-bold capitalize text-warm-gold">{category.required_plan} plan</span> or higher required
                           </span>
                         </div>
                         <Button 
