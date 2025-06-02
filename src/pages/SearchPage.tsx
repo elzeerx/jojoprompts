@@ -144,15 +144,7 @@ export default function SearchPage() {
               {searchResults.map((prompt) => (
                 <PromptCard
                   key={prompt.id}
-                  id={prompt.id}
-                  title={prompt.title}
-                  promptText={prompt.prompt_text}
-                  promptType={prompt.prompt_type as any}
-                  imagePath={prompt.image_path}
-                  defaultImagePath={prompt.default_image_path}
-                  metadata={prompt.metadata}
-                  createdBy={prompt.user_id}
-                  createdAt={prompt.created_at}
+                  prompt={prompt}
                   onDelete={() => {
                     // Refresh search results after deletion
                     handleSearch(currentQuery, currentFilters);
