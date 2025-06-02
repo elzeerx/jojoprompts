@@ -83,7 +83,7 @@ export default {
 				}
 			},
       fontFamily: {
-        'sans': ['Inter', 'sans-serif'],
+        'sans': ['FormaDJRArabicBanner', 'sans-serif'],
         'arabic': ['Rubik', 'sans-serif'],
       },
 			borderRadius: {
