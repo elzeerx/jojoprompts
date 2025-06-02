@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,7 +58,14 @@ export default function SearchPage() {
 
       if (error) throw error;
 
-      setSearchResults(data || []);
+      // Cast the data to PromptRow type to handle the metadata Json type
+      const promptRows: PromptRow[] = (data || []).map(item => ({
+        ...item,
+        metadata: item.metadata || {},
+        created_at: item.created_at || null
+      } as PromptRow));
+
+      setSearchResults(promptRows);
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
