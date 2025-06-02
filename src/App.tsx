@@ -13,6 +13,9 @@ import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import PricingPage from "@/pages/PricingPage";
 import AboutPage from "@/pages/AboutPage";
+import ContactPage from "@/pages/ContactPage";
+import FAQPage from "@/pages/FAQPage";
+import SearchPage from "@/pages/SearchPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import UserDashboardPage from "@/pages/UserDashboardPage";
 import PromptsPage from "@/pages/PromptsPage";
@@ -43,6 +46,9 @@ function App() {
             <Route path="signup" element={<SignupPage />} />
             <Route path="pricing" element={<PricingPage />} />
             <Route path="about" element={<AboutPage />} />
+            <Route path="contact" element={<ContactPage />} />
+            <Route path="faq" element={<FAQPage />} />
+            <Route path="search" element={<SearchPage />} />
             <Route path="terms" element={<TermsOfServicePage />} />
             <Route path="privacy" element={<PrivacyPolicyPage />} />
             
