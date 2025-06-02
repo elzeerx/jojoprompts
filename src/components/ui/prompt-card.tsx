@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { type Prompt, type PromptRow } from "@/types";
@@ -10,6 +9,9 @@ import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { Lock, Crown, Heart, Play, FileAudio, Workflow } from "lucide-react";
 import { Button } from "./button";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
+import { ShareButtons } from "@/components/sharing/ShareButtons";
+import { AddToCollectionDialog } from "@/components/collections/AddToCollectionDialog";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
 
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
@@ -52,6 +54,7 @@ export function PromptCard({
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
+  const { trackUsage } = useUsageTracking();
 
   useEffect(() => {
     async function loadImage() {
@@ -98,6 +101,9 @@ export function PromptCard({
       onUpgradeClick();
     } else {
       setDetailsOpen(true);
+      if (session) {
+        trackUsage(prompt.id, 'view');
+      }
     }
   };
 
@@ -120,6 +126,7 @@ export function PromptCard({
           user_id: session.user.id,
           prompt_id: prompt.id
         });
+        trackUsage(prompt.id, 'favorite');
       }
       setFavorited(!favorited);
     } catch (error) {
@@ -316,11 +323,39 @@ export function PromptCard({
         {/* Action Buttons */}
         <div className="mt-auto pt-2 space-y-3">
           {!isLocked && (
-            <Button 
-              className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200"
-            >
-              {isN8nWorkflow ? "View Workflow" : "View Details"}
-            </Button>
+            <>
+              <Button 
+                className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200"
+              >
+                {isN8nWorkflow ? "View Workflow" : "View Details"}
+              </Button>
+              
+              {/* New sharing and collection buttons */}
+              {session && (
+                <div className="flex gap-2">
+                  <AddToCollectionDialog 
+                    promptId={prompt.id}
+                    trigger={
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 border-gray-300 hover:bg-gray-50"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Add to Collection
+                      </Button>
+                    }
+                  />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <ShareButtons 
+                      promptId={prompt.id} 
+                      promptTitle={title}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           )}
           
           {isAdmin && (
