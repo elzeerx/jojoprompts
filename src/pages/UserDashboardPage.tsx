@@ -1,402 +1,521 @@
-import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, Heart, BarChart3, User, CreditCard, Settings, Plus } from "lucide-react";
-import { useCollections } from "@/hooks/useCollections";
-import { CollectionCard } from "@/components/collections/CollectionCard";
-import { CreateCollectionDialog } from "@/components/collections/CreateCollectionDialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2, CreditCard, User, History, ArrowUpRight } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Check, X } from 'lucide-react';
 
 export default function UserDashboardPage() {
-  const { loading: authLoading, session } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [activeSubscription, setActiveSubscription] = useState<any>(null);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<any>(null);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [profileLoading, setProfileLoading] = useState(true);
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<any>(null);
-  const [subscription, setSubscription] = useState<any>(null);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [stats, setStats] = useState({ favorites: 0, collections: 0, views: 0 });
-  const { collections, loading: collectionsLoading } = useCollections();
 
   useEffect(() => {
-    if (!authLoading && !session) {
-      navigate("/login");
+    if (!authLoading && !user) {
+      navigate('/login');
+      return;
     }
-  }, [authLoading, session, navigate]);
 
-  useEffect(() => {
-    if (session) {
-      fetchUserData();
-      fetchStats();
-      fetchRecentActivity();
+    if (user) {
+      fetchSubscriptionData();
+      fetchUserProfile();
     }
-  }, [session]);
+  }, [user, authLoading, navigate]);
 
-  const fetchUserData = async () => {
+  const fetchSubscriptionData = async () => {
     try {
-      // Fetch profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session?.user.id)
-        .single();
-      setProfile(profileData);
-
-      // Fetch subscription
-      const { data: subscriptionData } = await supabase
+      setLoading(true);
+      
+      // Get active subscription
+      const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('user_subscriptions')
-        .select('*, subscription_plans(*)')
-        .eq('user_id', session?.user.id)
+        .select('*, plan_id(*)')
+        .eq('user_id', user.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      setSubscription(subscriptionData);
+      
+      if (subscriptionError && subscriptionError.code !== 'PGRST116') { // Not found error
+        throw subscriptionError;
+      }
+      
+      if (subscriptionData) {
+        setActiveSubscription(subscriptionData);
+        setSubscriptionPlan(subscriptionData.plan_id);
+      }
+
+      // Get payment history
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payment_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (paymentsError) throw paymentsError;
+      
+      setPaymentHistory(paymentsData || []);
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Error fetching subscription data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load subscription data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchStats = async () => {
-    if (!session) return;
-
+  const fetchUserProfile = async () => {
     try {
-      // Get favorites count
-      const { count: favoritesCount } = await supabase
-        .from('favorites')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id);
+      setProfileLoading(true);
+      
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (profile) {
+        setFirstName(profile.first_name || '');
+        setLastName(profile.last_name || '');
+      }
+      
+      setEmail(user.email);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
-      // Get collections count
-      const { count: collectionsCount } = await supabase
-        .from('collections')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id);
-
-      // Get views count
-      const { count: viewsCount } = await supabase
-        .from('prompt_usage_history')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id)
-        .eq('action_type', 'view');
-
-      setStats({
-        favorites: favoritesCount || 0,
-        collections: collectionsCount || 0,
-        views: viewsCount || 0
+  const handleUpdateProfile = async () => {
+    try {
+      setUpdateLoading(true);
+      
+      // Update profile in the profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+        })
+        .eq('id', user.id);
+      
+      if (profileError) throw profileError;
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been updated successfully.",
       });
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update profile information. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdateLoading(false);
     }
   };
-
-  const fetchRecentActivity = async () => {
-    if (!session) return;
-
+  
+  const handleUpdateEmail = async () => {
     try {
-      const { data } = await supabase
-        .from('prompt_usage_history')
-        .select(`
-          *,
-          prompts(title, prompt_type)
-        `)
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      setRecentActivity(data || []);
+      setUpdateLoading(true);
+      
+      // Update email through auth API
+      const { error } = await supabase.auth.updateUser({ email });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Verification Email Sent",
+        description: "Check your email to confirm the update.",
+      });
     } catch (error) {
-      console.error('Error fetching recent activity:', error);
+      console.error('Error updating email:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+  
+  const handleUpdatePassword = async () => {
+    try {
+      setUpdateLoading(true);
+      
+      if (password !== confirmPassword) {
+        throw new Error("Passwords don't match");
+      }
+      
+      // Update password through auth API
+      const { error } = await supabase.auth.updateUser({ password });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password Updated",
+        description: "Your password has been updated successfully.",
+      });
+      
+      setPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdateLoading(false);
     }
   };
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="flex items-center justify-center min-h-[70vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!session) {
-    return null;
-  }
-
   return (
-    <div className="container max-w-6xl mx-auto py-8 px-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back, {profile?.first_name || 'User'}!
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="border border-warm-gold/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Favorites</CardTitle>
-            <Heart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.favorites}</div>
-            <p className="text-xs text-muted-foreground">Prompts you've liked</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-warm-gold/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Collections</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.collections}</div>
-            <p className="text-xs text-muted-foreground">Organized collections</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-warm-gold/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Views</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.views}</div>
-            <p className="text-xs text-muted-foreground">Prompts you've viewed</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="collections">Collections</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
+    <div className="container max-w-6xl mx-auto py-12 px-4">
+      <h1 className="text-3xl md:text-4xl font-bold mb-8">Account Dashboard</h1>
+      
+      <Tabs defaultValue="subscription">
+        <TabsList className="mb-8">
+          <TabsTrigger value="subscription">My Subscription</TabsTrigger>
+          <TabsTrigger value="payments">Payment History</TabsTrigger>
+          <TabsTrigger value="profile">Account Settings</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Collections */}
-            <Card className="border border-warm-gold/20">
+        
+        <TabsContent value="subscription">
+          <div className="space-y-8">
+            {/* Current Subscription Card */}
+            <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Recent Collections</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/collections')}>
-                    View All
-                  </Button>
-                </div>
+                <CardTitle className="text-2xl">Current Plan</CardTitle>
+                <CardDescription>
+                  Your current subscription details
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                {collections.length === 0 ? (
-                  <div className="text-center py-6">
-                    <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground mb-4">No collections yet</p>
-                    <CreateCollectionDialog 
-                      trigger={
-                        <Button size="sm" className="bg-warm-gold hover:bg-warm-gold/90 text-white">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Collection
-                        </Button>
-                      }
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {collections.slice(0, 3).map((collection) => (
-                      <div key={collection.id} className="flex items-center justify-between p-3 border border-warm-gold/20 rounded-lg">
-                        <div>
-                          <h4 className="font-medium">{collection.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {collection.prompt_count || 0} prompts
-                          </p>
-                        </div>
-                        <Badge variant={collection.is_public ? "default" : "secondary"}>
-                          {collection.is_public ? "Public" : "Private"}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity */}
-            <Card className="border border-warm-gold/20">
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {recentActivity.length === 0 ? (
-                  <div className="text-center py-6">
-                    <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No recent activity</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {recentActivity.slice(0, 5).map((activity) => (
-                      <div key={activity.id} className="flex items-center justify-between p-3 border border-warm-gold/20 rounded-lg">
-                        <div>
-                          <h4 className="font-medium text-sm">
-                            {activity.prompts?.title || 'Unknown Prompt'}
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            {activity.action_type} • {new Date(activity.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {activity.action_type}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="collections" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Your Collections</h2>
-            <CreateCollectionDialog />
-          </div>
-          
-          {collectionsLoading ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Loading collections...</p>
-            </div>
-          ) : collections.length === 0 ? (
-            <Card className="border border-warm-gold/20">
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <BookOpen className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Collections Yet</h3>
-                <p className="text-muted-foreground text-center max-w-md mb-6">
-                  Start organizing your prompts by creating your first collection.
-                </p>
-                <CreateCollectionDialog 
-                  trigger={
-                    <Button className="bg-warm-gold hover:bg-warm-gold/90 text-white">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Your First Collection
+                {!activeSubscription ? (
+                  <div className="text-center py-8">
+                    <h3 className="text-lg font-medium mb-2">No active subscription</h3>
+                    <p className="text-muted-foreground mb-6">
+                      You don't have an active subscription yet.
+                    </p>
+                    <Button
+                      onClick={() => navigate('/pricing')}
+                      className="bg-warm-gold hover:bg-warm-gold/90"
+                    >
+                      View Plans
                     </Button>
-                  }
-                />
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {collections.map((collection) => (
-                <CollectionCard
-                  key={collection.id}
-                  collection={collection}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-6">
-          <Card className="border border-warm-gold/20">
-            <CardHeader>
-              <CardTitle>Activity History</CardTitle>
-              <CardDescription>Your recent interactions with prompts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {recentActivity.length === 0 ? (
-                <div className="text-center py-8">
-                  <BarChart3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">No Activity Yet</h3>
-                  <p className="text-muted-foreground">Start browsing prompts to see your activity here.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between p-4 border border-warm-gold/20 rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium">
-                          {activity.prompts?.title || 'Unknown Prompt'}
-                        </h4>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center p-4 bg-warm-gold/5 rounded-lg border border-warm-gold/20">
+                      <div>
+                        <h3 className="text-xl font-medium text-warm-gold">
+                          {subscriptionPlan?.name} Plan
+                        </h3>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(activity.created_at).toLocaleString()}
+                          {subscriptionPlan?.is_lifetime 
+                            ? 'Lifetime Access' 
+                            : `Valid until ${new Date(activeSubscription.end_date).toLocaleDateString()}`}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">
-                          {activity.action_type}
-                        </Badge>
-                        <Badge variant="secondary">
-                          {activity.prompts?.prompt_type || 'unknown'}
-                        </Badge>
+                      <div className="text-right">
+                        <p className="text-2xl font-semibold">
+                          ${subscriptionPlan?.price_usd}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          One-time payment
+                        </p>
                       </div>
                     </div>
-                  ))}
+                    
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                      <div className="p-4 border rounded-lg">
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                          Purchased On
+                        </h4>
+                        <p>{new Date(activeSubscription.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                          Payment Method
+                        </h4>
+                        <p className="capitalize">{activeSubscription.payment_method}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-4 mt-4 border-t">
+                      <h4 className="font-medium mb-4">Included Features:</h4>
+                      <ul className="space-y-2">
+                        {Array.isArray(subscriptionPlan?.features) && subscriptionPlan.features.map((feature: string, idx: number) => (
+                          <li key={idx} className="flex items-start">
+                            <Check className="h-5 w-5 text-warm-gold mr-2 flex-shrink-0 mt-0.5" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div className="pt-6">
+                      <Button 
+                        variant="default"
+                        onClick={() => {
+                          navigate('/pricing');
+                        }}
+                      >
+                        Upgrade Plan <ArrowUpRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="payments">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">Payment History</CardTitle>
+              <CardDescription>
+                Your record of payments and transactions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {paymentHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <h3 className="text-lg font-medium mb-2">No payment records found</h3>
+                  <p className="text-muted-foreground">
+                    You haven't made any payments yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-muted text-muted-foreground text-left">
+                        <th className="p-3">Date</th>
+                        <th className="p-3">Amount</th>
+                        <th className="p-3">Payment Method</th>
+                        <th className="p-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentHistory.map((payment) => (
+                        <tr key={payment.id} className="border-b">
+                          <td className="p-3">
+                            {new Date(payment.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="p-3">
+                            ${payment.amount_usd} ({payment.amount_kwd} KWD)
+                          </td>
+                          <td className="p-3 capitalize">{payment.payment_method}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              payment.status === 'completed' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {payment.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
-
-        <TabsContent value="profile" className="space-y-6">
-          <Card className="border border-warm-gold/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Profile Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">First Name</label>
-                  <p className="text-sm text-muted-foreground">{profile?.first_name || 'Not set'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Last Name</label>
-                  <p className="text-sm text-muted-foreground">{profile?.last_name || 'Not set'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Email</label>
-                  <p className="text-sm text-muted-foreground">{session.user.email}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Role</label>
-                  <Badge variant="outline">{profile?.role || 'user'}</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {subscription && (
-            <Card className="border border-warm-gold/20">
+        
+        <TabsContent value="profile">
+          <div className="space-y-8">
+            {/* Profile Information Card */}
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Subscription
-                </CardTitle>
+                <CardTitle className="text-2xl">Profile Information</CardTitle>
+                <CardDescription>
+                  Update your account information
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">{subscription.subscription_plans?.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Status: <Badge variant="outline">{subscription.status}</Badge>
-                    </p>
+                {profileLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">${subscription.subscription_plans?.price_usd}/month</p>
-                    {subscription.end_date && (
-                      <p className="text-sm text-muted-foreground">
-                        Expires: {new Date(subscription.end_date).toLocaleDateString()}
-                      </p>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center space-x-4">
+                      <Avatar className="h-16 w-16">
+                        <AvatarFallback className="bg-warm-gold text-white text-xl">
+                          {firstName.charAt(0)}{lastName.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-lg">{`${firstName} ${lastName}`}</p>
+                        <p className="text-muted-foreground">{email}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4 pt-4">
+                      <h3 className="text-lg font-medium">Update Personal Information</h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName">First Name</Label>
+                          <Input
+                            id="firstName"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName">Last Name</Label>
+                          <Input
+                            id="lastName"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        onClick={handleUpdateProfile}
+                        disabled={updateLoading}
+                      >
+                        {updateLoading ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...</>
+                        ) : (
+                          'Update Profile'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Email Settings Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Email Address</CardTitle>
+                <CardDescription>
+                  Update your email address
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                  
+                  <Alert variant="default" className="mb-4">
+                    <AlertTitle>Verification Required</AlertTitle>
+                    <AlertDescription>
+                      You'll need to verify your new email address by clicking on the link sent to it.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <Button 
+                    onClick={handleUpdateEmail}
+                    disabled={updateLoading || email === user.email}
+                  >
+                    {updateLoading ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...</>
+                    ) : (
+                      'Update Email'
                     )}
-                  </div>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-          )}
+            
+            {/* Password Settings Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Password</CardTitle>
+                <CardDescription>
+                  Update your password
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="password">New Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  
+                  <Button 
+                    onClick={handleUpdatePassword}
+                    disabled={updateLoading || !password || !confirmPassword || password !== confirmPassword}
+                  >
+                    {updateLoading ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...</>
+                    ) : (
+                      'Update Password'
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
