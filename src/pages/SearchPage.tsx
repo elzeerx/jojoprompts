@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { PromptCard } from '@/components/ui/prompt-card';
 import { Loader2 } from 'lucide-react';
+import { type PromptRow } from '@/types';
 
 interface SearchFilters {
   promptTypes: string[];
@@ -13,20 +14,8 @@ interface SearchFilters {
   isPremium: boolean | null;
 }
 
-interface Prompt {
-  id: string;
-  title: string;
-  prompt_text: string;
-  prompt_type: string;
-  image_path: string | null;
-  default_image_path: string | null;
-  metadata: any;
-  user_id: string;
-  created_at: string;
-}
-
 export default function SearchPage() {
-  const [searchResults, setSearchResults] = useState<Prompt[]>([]);
+  const [searchResults, setSearchResults] = useState<PromptRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   const [currentFilters, setCurrentFilters] = useState<SearchFilters>({
