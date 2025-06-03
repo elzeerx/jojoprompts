@@ -8,7 +8,7 @@ import { Search, Filter, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 
 interface SearchFilters {
   promptTypes: string[];
@@ -46,6 +46,7 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
   });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const isMobile = useIsMobile();
+  const isSmallMobile = useIsSmallMobile();
 
   const activeFiltersCount = filters.promptTypes.length + filters.categories.length + (filters.isPremium !== null ? 1 : 0);
 
@@ -80,10 +81,14 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
           placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-10 mobile-input border-warm-gold/20 rounded-lg"
+          className={`pl-10 border-warm-gold/20 rounded-lg mobile-optimize-rendering transition-shadow focus:shadow-md ${
+            isSmallMobile ? 'text-base' : ''
+          }`}
           // Mobile keyboard optimization
           inputMode="search"
           autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
         />
       </div>
 
@@ -91,10 +96,12 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
         <PopoverTrigger asChild>
           <Button 
             variant="outline" 
-            className="relative touch-manipulation min-h-[44px] border-warm-gold/20"
+            className={`relative touch-manipulation border-warm-gold/20 mobile-optimize-rendering transition-all hover:shadow-md ${
+              isSmallMobile ? 'min-h-[44px] px-3' : 'min-h-[44px]'
+            }`}
           >
             <Filter className="h-4 w-4 mr-2" />
-            {isMobile ? '' : 'Filters'}
+            {!isSmallMobile && 'Filters'}
             {activeFiltersCount > 0 && (
               <Badge 
                 variant="secondary" 
@@ -106,8 +113,11 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
           </Button>
         </PopoverTrigger>
         <PopoverContent 
-          className={`${isMobile ? 'w-[95vw] max-w-sm' : 'w-80'} bg-white border border-warm-gold/20 shadow-lg`} 
+          className={`bg-white border border-warm-gold/20 shadow-lg mobile-optimize-rendering ${
+            isMobile ? 'w-[95vw] max-w-sm' : 'w-80'
+          }`}
           align="end"
+          sideOffset={8}
         >
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -117,7 +127,7 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
                   variant="ghost" 
                   size="sm" 
                   onClick={clearFilters}
-                  className="touch-manipulation text-warm-gold hover:text-warm-gold/80"
+                  className="touch-manipulation text-warm-gold hover:text-warm-gold/80 min-h-[36px]"
                 >
                   <X className="h-4 w-4 mr-1" />
                   Clear
@@ -125,99 +135,122 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
               )}
             </div>
 
-            {/* Prompt Types */}
-            <div>
-              <Label className="text-sm font-medium mb-3 block text-dark-base">Prompt Types</Label>
-              <div className="space-y-3">
-                {promptTypes.map((type) => (
-                  <div key={type.id} className="flex items-center space-x-3 touch-manipulation">
-                    <Checkbox
-                      id={type.id}
-                      checked={filters.promptTypes.includes(type.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          handleFilterChange('promptTypes', [...filters.promptTypes, type.id]);
-                        } else {
-                          handleFilterChange('promptTypes', filters.promptTypes.filter(t => t !== type.id));
-                        }
-                      }}
-                      className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold"
-                    />
-                    <Label 
-                      htmlFor={type.id} 
-                      className="text-sm text-dark-base cursor-pointer flex-1 py-1 touch-manipulation"
-                    >
-                      {type.label}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Categories */}
-            <div>
-              <Label className="text-sm font-medium mb-3 block text-dark-base">Categories</Label>
-              <div className="space-y-3">
-                {categories.map((category) => (
-                  <div key={category.id} className="flex items-center space-x-3 touch-manipulation">
-                    <Checkbox
-                      id={category.id}
-                      checked={filters.categories.includes(category.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          handleFilterChange('categories', [...filters.categories, category.id]);
-                        } else {
-                          handleFilterChange('categories', filters.categories.filter(c => c !== category.id));
-                        }
-                      }}
-                      className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold"
-                    />
-                    <Label 
-                      htmlFor={category.id} 
-                      className="text-sm text-dark-base cursor-pointer flex-1 py-1 touch-manipulation"
-                    >
-                      {category.label}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Premium Filter */}
-            <div>
-              <Label className="text-sm font-medium mb-3 block text-dark-base">Access Level</Label>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 touch-manipulation">
-                  <Checkbox
-                    id="free"
-                    checked={filters.isPremium === false}
-                    onCheckedChange={(checked) => {
-                      handleFilterChange('isPremium', checked ? false : null);
-                    }}
-                    className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold"
-                  />
-                  <Label 
-                    htmlFor="free" 
-                    className="text-sm text-dark-base cursor-pointer flex-1 py-1 touch-manipulation"
-                  >
-                    Free
-                  </Label>
+            {/* Mobile-optimized sections */}
+            <div className="space-y-4">
+              {/* Prompt Types */}
+              <div>
+                <Label className={`font-medium mb-3 block text-dark-base ${
+                  isSmallMobile ? 'text-sm' : 'text-sm'
+                }`}>
+                  Prompt Types
+                </Label>
+                <div className="space-y-3">
+                  {promptTypes.map((type) => (
+                    <div key={type.id} className="flex items-center space-x-3 touch-manipulation">
+                      <Checkbox
+                        id={type.id}
+                        checked={filters.promptTypes.includes(type.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            handleFilterChange('promptTypes', [...filters.promptTypes, type.id]);
+                          } else {
+                            handleFilterChange('promptTypes', filters.promptTypes.filter(t => t !== type.id));
+                          }
+                        }}
+                        className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold min-h-[20px] min-w-[20px]"
+                      />
+                      <Label 
+                        htmlFor={type.id} 
+                        className={`text-dark-base cursor-pointer flex-1 touch-manipulation min-h-[36px] flex items-center ${
+                          isSmallMobile ? 'text-sm' : 'text-sm'
+                        }`}
+                      >
+                        {type.label}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center space-x-3 touch-manipulation">
-                  <Checkbox
-                    id="premium"
-                    checked={filters.isPremium === true}
-                    onCheckedChange={(checked) => {
-                      handleFilterChange('isPremium', checked ? true : null);
-                    }}
-                    className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold"
-                  />
-                  <Label 
-                    htmlFor="premium" 
-                    className="text-sm text-dark-base cursor-pointer flex-1 py-1 touch-manipulation"
-                  >
-                    Premium
-                  </Label>
+              </div>
+
+              {/* Categories */}
+              <div>
+                <Label className={`font-medium mb-3 block text-dark-base ${
+                  isSmallMobile ? 'text-sm' : 'text-sm'
+                }`}>
+                  Categories
+                </Label>
+                <div className="space-y-3">
+                  {categories.map((category) => (
+                    <div key={category.id} className="flex items-center space-x-3 touch-manipulation">
+                      <Checkbox
+                        id={category.id}
+                        checked={filters.categories.includes(category.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            handleFilterChange('categories', [...filters.categories, category.id]);
+                          } else {
+                            handleFilterChange('categories', filters.categories.filter(c => c !== category.id));
+                          }
+                        }}
+                        className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold min-h-[20px] min-w-[20px]"
+                      />
+                      <Label 
+                        htmlFor={category.id} 
+                        className={`text-dark-base cursor-pointer flex-1 touch-manipulation min-h-[36px] flex items-center ${
+                          isSmallMobile ? 'text-sm' : 'text-sm'
+                        }`}
+                      >
+                        {category.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Premium Filter */}
+              <div>
+                <Label className={`font-medium mb-3 block text-dark-base ${
+                  isSmallMobile ? 'text-sm' : 'text-sm'
+                }`}>
+                  Access Level
+                </Label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3 touch-manipulation">
+                    <Checkbox
+                      id="free"
+                      checked={filters.isPremium === false}
+                      onCheckedChange={(checked) => {
+                        handleFilterChange('isPremium', checked ? false : null);
+                      }}
+                      className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold min-h-[20px] min-w-[20px]"
+                    />
+                    <Label 
+                      htmlFor="free" 
+                      className={`text-dark-base cursor-pointer flex-1 touch-manipulation min-h-[36px] flex items-center ${
+                        isSmallMobile ? 'text-sm' : 'text-sm'
+                      }`}
+                    >
+                      Free
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-3 touch-manipulation">
+                    <Checkbox
+                      id="premium"
+                      checked={filters.isPremium === true}
+                      onCheckedChange={(checked) => {
+                        handleFilterChange('isPremium', checked ? true : null);
+                      }}
+                      className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold min-h-[20px] min-w-[20px]"
+                    />
+                    <Label 
+                      htmlFor="premium" 
+                      className={`text-dark-base cursor-pointer flex-1 touch-manipulation min-h-[36px] flex items-center ${
+                        isSmallMobile ? 'text-sm' : 'text-sm'
+                      }`}
+                    >
+                      Premium
+                    </Label>
+                  </div>
                 </div>
               </div>
             </div>

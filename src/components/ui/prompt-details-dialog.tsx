@@ -10,6 +10,7 @@ import { PromptDetailsHeader } from "./prompt-details/PromptDetailsHeader";
 import { PromptDetailsContent } from "./prompt-details/PromptDetailsContent";
 import { PromptDetailsActions } from "./prompt-details/PromptDetailsActions";
 import { MediaPreviewDialog } from "./prompt-details/MediaPreviewDialog";
+import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 
 interface PromptDetailsDialogProps {
   open: boolean;
@@ -24,6 +25,8 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const [copied, setCopied] = useState(false);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [mediaPreviewOpen, setMediaPreviewOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const isSmallMobile = useIsSmallMobile();
 
   const { title, prompt_text, metadata, prompt_type } = prompt;
   const category = metadata?.category || "ChatGPT";
@@ -153,9 +156,16 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="prompt-dialog max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-4 sm:p-8">
+        <DialogContent className={`
+          prompt-dialog overflow-hidden flex flex-col mobile-optimize-rendering
+          ${isMobile 
+            ? 'max-w-[95vw] max-h-[95vh] w-full mx-2 my-2' 
+            : 'max-w-2xl max-h-[90vh]'
+          }
+          ${isSmallMobile ? 'p-0' : ''}
+        `}>
+          <div className="flex-1 overflow-y-auto mobile-scroll-optimized">
+            <div className={`${isSmallMobile ? 'p-3 sm:p-4' : 'p-4 sm:p-8'}`}>
               <PromptDetailsHeader
                 title={title}
                 category={category}
