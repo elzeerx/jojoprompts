@@ -1,17 +1,18 @@
 
 import * as React from "react"
-
 import { cn } from "@/lib/utils"
 
 interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   noPadding?: boolean;
+  mobileOptimized?: boolean;
 }
 
 export function Container({ 
   className, 
   size = 'xl', 
-  noPadding = false, 
+  noPadding = false,
+  mobileOptimized = true,
   ...props 
 }: ContainerProps) {
   const sizeClasses = {
@@ -27,7 +28,8 @@ export function Container({
       className={cn(
         "mx-auto w-full",
         sizeClasses[size],
-        !noPadding && "px-4 sm:px-6 lg:px-8",
+        !noPadding && (mobileOptimized ? "mobile-container-padding" : "px-4 sm:px-6 lg:px-8"),
+        mobileOptimized && "mobile-optimize-rendering",
         className
       )}
       {...props}
