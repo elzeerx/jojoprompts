@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -141,16 +140,16 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-9rem)] p-4 md:p-8">
-      <Card className="mx-auto max-w-sm w-full">
-        <CardHeader className="space-y-1">
+    <div className="flex items-center justify-center min-h-[calc(100vh-9rem)] mobile-container-padding mobile-section-padding">
+      <Card className="mx-auto max-w-sm w-full border-2 border-warm-gold/20 rounded-2xl shadow-xl bg-white/95 backdrop-blur-sm">
+        <CardHeader className="space-y-2 px-4 sm:px-6 pt-6 pb-4">
           <div className="flex justify-center mb-2">
-            <div className="rounded-full bg-primary/10 p-2 text-primary">
-              {(fromCheckout || selectedPlan) ? <ShoppingBag className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+            <div className="rounded-full bg-primary/10 p-3 text-primary">
+              {(fromCheckout || selectedPlan) ? <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6" /> : <FileText className="h-5 w-5 sm:h-6 sm:w-6" />}
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Sign Up</CardTitle>
-          <CardDescription className="text-center">
+          <CardTitle className="text-xl sm:text-2xl font-bold text-center text-dark-base">Sign Up</CardTitle>
+          <CardDescription className="text-center text-sm sm:text-base">
             {(fromCheckout || selectedPlan)
               ? "Create an account to complete your subscription" 
               : "Create an account to browse and save prompts"}
@@ -158,7 +157,7 @@ export default function SignupPage() {
           
           {selectedPlan && (
             <div className="bg-green-50 border border-green-100 rounded-md p-3 mt-2">
-              <p className="text-sm text-green-800 text-center">
+              <p className="text-xs sm:text-sm text-green-800 text-center">
                 You're one step away from accessing premium prompts! Create your account to continue.
               </p>
             </div>
@@ -166,19 +165,19 @@ export default function SignupPage() {
           
           {fromCheckout && (
             <div className="bg-green-50 border border-green-100 rounded-md p-3 mt-2">
-              <p className="text-sm text-green-800 text-center">
+              <p className="text-xs sm:text-sm text-green-800 text-center">
                 Your payment was successful! Create an account to activate your subscription.
               </p>
             </div>
           )}
         </CardHeader>
         
-        <CardContent className="space-y-4">
-          {/* Google Sign Up Button */}
+        <CardContent className="space-y-4 px-4 sm:px-6">
+          {/* Mobile-optimized Google Sign Up Button */}
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="w-full mobile-button-secondary touch-target"
             onClick={handleGoogleSignUp}
             disabled={isGoogleLoading || isLoading}
           >
@@ -204,7 +203,7 @@ export default function SignupPage() {
                 />
               </svg>
             )}
-            Continue with Google
+            <span className="text-sm sm:text-base">Continue with Google</span>
           </Button>
 
           <div className="relative">
@@ -220,15 +219,15 @@ export default function SignupPage() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <FormField
                   control={form.control}
                   name="firstName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>First Name</FormLabel>
+                      <FormLabel className="text-sm font-medium">First Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John" {...field} />
+                        <Input placeholder="John" {...field} className="mobile-input" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -239,9 +238,9 @@ export default function SignupPage() {
                   name="lastName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Last Name</FormLabel>
+                      <FormLabel className="text-sm font-medium">Last Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Doe" {...field} />
+                        <Input placeholder="Doe" {...field} className="mobile-input" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -253,9 +252,9 @@ export default function SignupPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-sm font-medium">Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="name@example.com" {...field} />
+                      <Input type="email" placeholder="name@example.com" {...field} className="mobile-input" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -266,9 +265,9 @@ export default function SignupPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="text-sm font-medium">Password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" {...field} className="mobile-input" />
                     </FormControl>
                     <FormMessage />
                     <p className="text-xs text-muted-foreground">
@@ -277,19 +276,19 @@ export default function SignupPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+              <Button type="submit" className="w-full mobile-button-primary" disabled={isLoading || isGoogleLoading}>
                 {isLoading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
           </Form>
         </CardContent>
         
-        <CardFooter className="flex flex-col space-y-4">
-          <p className="text-sm text-muted-foreground text-center">
+        <CardFooter className="flex flex-col space-y-4 px-4 sm:px-6 pb-6">
+          <p className="text-xs sm:text-sm text-muted-foreground text-center">
             Already have an account?{" "}
             <Button 
               variant="link" 
-              className="p-0" 
+              className="p-0 text-xs sm:text-sm text-warm-gold hover:text-warm-gold/80" 
               onClick={() => {
                 const params = selectedPlan ? `?plan=${selectedPlan}` : "";
                 navigate(`/login${params}`);
