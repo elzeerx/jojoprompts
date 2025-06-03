@@ -1,0 +1,84 @@
+
+@layer base {
+  :root {
+    --background: 60 10% 94%; /* Based on soft-bg #efeee9 */
+    --foreground: 0 0% 15%; /* Based on dark-base #262626 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+    
+    /* Primary accent based on Warm Gold */
+    --primary: 39 45% 60%; /* Based on warm-gold #c49d68 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary accent based on Muted Teal */
+    --secondary: 182 12% 55%; /* Based on muted-teal #7a9e9f */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 60 10% 94%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 39 45% 95%; /* Lighter warm gold */
+    --accent-foreground: 39 45% 40%; /* Darker warm gold */
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 39 15% 80%; /* Muted version of warm-gold */
+    --input: 39 15% 90%;
+    --ring: 39 45% 60%; /* Based on warm-gold */
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 39 45% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 39 45% 95%;
+    --sidebar-accent-foreground: 39 45% 40%;
+    --sidebar-border: 39 15% 90%;
+    --sidebar-ring: 39 45% 60%;
+  }
+
+  .dark {
+    --background: 0 0% 15%; /* Based on dark-base #262626 */
+    --foreground: 60 10% 94%; /* Based on soft-bg #efeee9 */
+
+    --card: 0 0% 10%;
+    --card-foreground: 60 10% 94%;
+
+    --popover: 0 0% 10%;
+    --popover-foreground: 60 10% 94%;
+
+    --primary: 39 45% 60%; /* warm-gold */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 182 12% 55%; /* muted-teal */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 20%;
+    --muted-foreground: 60 10% 80%;
+
+    --accent: 0 0% 20%;
+    --accent-foreground: 39 45% 60%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 0 0% 25%;
+    --input: 0 0% 25%;
+    --ring: 39 45% 60%;
+    
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 60 10% 94%;
+    --sidebar-primary: 39 45% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 20%;
+    --sidebar-accent-foreground: 39 45% 60%;
+    --sidebar-border: 0 0% 25%;
+    --sidebar-ring: 39 45% 60%;
+  }
+}

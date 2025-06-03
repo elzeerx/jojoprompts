@@ -1,0 +1,54 @@
+
+/* Custom component classes */
+@layer components {
+  .premium-card {
+    @apply border border-warm-gold/20 rounded-lg shadow-md bg-white overflow-hidden transition-all duration-300;
+  }
+  
+  .premium-card:hover {
+    @apply shadow-lg border-warm-gold/40 transform translate-y-[-4px];
+  }
+  
+  .premium-button {
+    @apply bg-warm-gold text-white font-medium py-3 px-6 rounded-md hover:bg-warm-gold/90 transition-all;
+  }
+  
+  .premium-button-outline {
+    @apply border-2 border-warm-gold text-warm-gold font-medium py-3 px-6 rounded-md hover:bg-warm-gold/10 transition-all;
+  }
+  
+  .pricing-card {
+    @apply border border-border rounded-lg overflow-hidden bg-white shadow-md hover:shadow-lg transition-all duration-300;
+  }
+  
+  .pricing-card-popular {
+    @apply border-2 border-warm-gold relative;
+  }
+  
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold mb-4 text-dark-base;
+    letter-spacing: 0.02em; /* Slightly tighter for headers */
+  }
+  
+  .section-subtitle {
+    @apply text-lg text-muted-teal mb-8 max-w-2xl mx-auto;
+    letter-spacing: 0.015em; /* Balanced spacing for subtitles */
+  }
+
+  .prompt-dialog {
+    @apply max-w-4xl p-0 border-none bg-soft-bg rounded-2xl shadow-xl overflow-hidden;
+  }
+
+  /* Typography letter spacing utilities */
+  .letter-spacing-tight {
+    letter-spacing: 0.01em;
+  }
+  
+  .letter-spacing-normal {
+    letter-spacing: 0.025em;
+  }
+  
+  .letter-spacing-wide {
+    letter-spacing: 0.05em;
+  }
+}
