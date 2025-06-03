@@ -8,6 +8,7 @@ import { Search, Filter, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SearchFilters {
   promptTypes: string[];
@@ -44,6 +45,7 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
     isPremium: null
   });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const activeFiltersCount = filters.promptTypes.length + filters.categories.length + (filters.isPremium !== null ? 1 : 0);
 
@@ -73,33 +75,50 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
   return (
     <div className={`flex gap-2 ${className}`}>
       <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 z-10" />
         <Input
           placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-10"
+          className="pl-10 mobile-input border-warm-gold/20 rounded-lg"
+          // Mobile keyboard optimization
+          inputMode="search"
+          autoComplete="off"
         />
       </div>
 
       <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="relative">
+          <Button 
+            variant="outline" 
+            className="relative touch-manipulation min-h-[44px] border-warm-gold/20"
+          >
             <Filter className="h-4 w-4 mr-2" />
-            Filters
+            {isMobile ? '' : 'Filters'}
             {activeFiltersCount > 0 && (
-              <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+              <Badge 
+                variant="secondary" 
+                className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-warm-gold text-white"
+              >
                 {activeFiltersCount}
               </Badge>
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80" align="end">
+        <PopoverContent 
+          className={`${isMobile ? 'w-[95vw] max-w-sm' : 'w-80'} bg-white border border-warm-gold/20 shadow-lg`} 
+          align="end"
+        >
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium">Filters</h4>
+              <h4 className="font-medium text-dark-base">Filters</h4>
               {activeFiltersCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearFilters}
+                  className="touch-manipulation text-warm-gold hover:text-warm-gold/80"
+                >
                   <X className="h-4 w-4 mr-1" />
                   Clear
                 </Button>
@@ -108,10 +127,10 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
 
             {/* Prompt Types */}
             <div>
-              <Label className="text-sm font-medium mb-2 block">Prompt Types</Label>
-              <div className="space-y-2">
+              <Label className="text-sm font-medium mb-3 block text-dark-base">Prompt Types</Label>
+              <div className="space-y-3">
                 {promptTypes.map((type) => (
-                  <div key={type.id} className="flex items-center space-x-2">
+                  <div key={type.id} className="flex items-center space-x-3 touch-manipulation">
                     <Checkbox
                       id={type.id}
                       checked={filters.promptTypes.includes(type.id)}
@@ -122,8 +141,14 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
                           handleFilterChange('promptTypes', filters.promptTypes.filter(t => t !== type.id));
                         }
                       }}
+                      className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold"
                     />
-                    <Label htmlFor={type.id} className="text-sm">{type.label}</Label>
+                    <Label 
+                      htmlFor={type.id} 
+                      className="text-sm text-dark-base cursor-pointer flex-1 py-1 touch-manipulation"
+                    >
+                      {type.label}
+                    </Label>
                   </div>
                 ))}
               </div>
@@ -131,10 +156,10 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
 
             {/* Categories */}
             <div>
-              <Label className="text-sm font-medium mb-2 block">Categories</Label>
-              <div className="space-y-2">
+              <Label className="text-sm font-medium mb-3 block text-dark-base">Categories</Label>
+              <div className="space-y-3">
                 {categories.map((category) => (
-                  <div key={category.id} className="flex items-center space-x-2">
+                  <div key={category.id} className="flex items-center space-x-3 touch-manipulation">
                     <Checkbox
                       id={category.id}
                       checked={filters.categories.includes(category.id)}
@@ -145,8 +170,14 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
                           handleFilterChange('categories', filters.categories.filter(c => c !== category.id));
                         }
                       }}
+                      className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold"
                     />
-                    <Label htmlFor={category.id} className="text-sm">{category.label}</Label>
+                    <Label 
+                      htmlFor={category.id} 
+                      className="text-sm text-dark-base cursor-pointer flex-1 py-1 touch-manipulation"
+                    >
+                      {category.label}
+                    </Label>
                   </div>
                 ))}
               </div>
@@ -154,27 +185,39 @@ export function GlobalSearch({ onSearch, placeholder = "Search prompts...", clas
 
             {/* Premium Filter */}
             <div>
-              <Label className="text-sm font-medium mb-2 block">Access Level</Label>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
+              <Label className="text-sm font-medium mb-3 block text-dark-base">Access Level</Label>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 touch-manipulation">
                   <Checkbox
                     id="free"
                     checked={filters.isPremium === false}
                     onCheckedChange={(checked) => {
                       handleFilterChange('isPremium', checked ? false : null);
                     }}
+                    className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold"
                   />
-                  <Label htmlFor="free" className="text-sm">Free</Label>
+                  <Label 
+                    htmlFor="free" 
+                    className="text-sm text-dark-base cursor-pointer flex-1 py-1 touch-manipulation"
+                  >
+                    Free
+                  </Label>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3 touch-manipulation">
                   <Checkbox
                     id="premium"
                     checked={filters.isPremium === true}
                     onCheckedChange={(checked) => {
                       handleFilterChange('isPremium', checked ? true : null);
                     }}
+                    className="border-warm-gold/30 data-[state=checked]:bg-warm-gold data-[state=checked]:border-warm-gold"
                   />
-                  <Label htmlFor="premium" className="text-sm">Premium</Label>
+                  <Label 
+                    htmlFor="premium" 
+                    className="text-sm text-dark-base cursor-pointer flex-1 py-1 touch-manipulation"
+                  >
+                    Premium
+                  </Label>
                 </div>
               </div>
             </div>
