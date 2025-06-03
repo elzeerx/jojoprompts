@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { getPromptImage, getMediaUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
-import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 
 interface MediaPreviewDialogProps {
   open: boolean;
@@ -24,8 +23,6 @@ export function MediaPreviewDialog({
 }: MediaPreviewDialogProps) {
   const [mediaUrl, setMediaUrl] = useState('');
   const selectedMedia = mediaFiles[selectedIndex];
-  const isMobile = useIsMobile();
-  const isSmallMobile = useIsSmallMobile();
 
   useEffect(() => {
     if (selectedMedia) {
@@ -59,34 +56,22 @@ export function MediaPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`
-        bg-black/95 border-none mobile-optimize-rendering
-        ${isMobile 
-          ? 'max-w-[98vw] max-h-[98vh] w-full mx-1 my-1 p-2 sm:p-4' 
-          : 'max-w-4xl p-4'
-        }
-      `}>
+      <DialogContent className="max-w-4xl bg-black/95 border-none p-4">
         <div className="relative">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onOpenChange(false)}
-            className={`
-              absolute z-10 text-white hover:bg-white/20 rounded-full touch-manipulation
-              ${isSmallMobile ? '-top-1 -right-1 h-10 w-10' : '-top-2 -right-2 h-12 w-12'}
-            `}
+            className="absolute -top-2 -right-2 z-10 text-white hover:bg-white/20 rounded-full"
           >
-            <X className={isSmallMobile ? 'h-5 w-5' : 'h-6 w-6'} />
+            <X className="h-6 w-6" />
           </Button>
           
           {selectedMedia.type === 'image' ? (
             <img
               src={mediaUrl}
               alt={selectedMedia.name}
-              className={`
-                w-full h-auto object-contain rounded-lg
-                ${isMobile ? 'max-h-[85vh]' : 'max-h-[80vh]'}
-              `}
+              className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
             />
           ) : selectedMedia.type === 'video' ? (
             <video
@@ -95,10 +80,7 @@ export function MediaPreviewDialog({
               preload="metadata"
               muted
               playsInline
-              className={`
-                w-full h-auto rounded-lg
-                ${isMobile ? 'max-h-[85vh]' : 'max-h-[80vh]'}
-              `}
+              className="w-full h-auto max-h-[80vh] rounded-lg"
               onError={(e) => {
                 console.error('Video playback error:', e);
                 toast({
@@ -111,17 +93,12 @@ export function MediaPreviewDialog({
               Your browser does not support the video tag.
             </video>
           ) : selectedMedia.type === 'audio' ? (
-            <div className={`
-              flex items-center justify-center bg-gray-800 rounded-lg
-              ${isMobile ? 'min-h-[200px] p-4' : 'min-h-[200px]'}
-            `}>
+            <div className="flex items-center justify-center min-h-[200px] bg-gray-800 rounded-lg">
               <audio
                 src={mediaUrl}
                 controls
                 preload="metadata"
-                className={`
-                  ${isMobile ? 'w-full max-w-full' : 'w-full max-w-md'}
-                `}
+                className="w-full max-w-md"
                 onError={(e) => {
                   console.error('Audio playback error:', e);
                   toast({
@@ -136,13 +113,9 @@ export function MediaPreviewDialog({
             </div>
           ) : null}
           
-          <div className={`mt-3 sm:mt-4 text-center ${isSmallMobile ? 'px-2' : ''}`}>
-            <p className={`text-white font-medium ${isSmallMobile ? 'text-sm' : 'text-sm'}`}>
-              {selectedMedia.name}
-            </p>
-            <p className={`text-gray-400 capitalize ${isSmallMobile ? 'text-xs' : 'text-xs'}`}>
-              {selectedMedia.type} file
-            </p>
+          <div className="mt-4 text-center">
+            <p className="text-white text-sm">{selectedMedia.name}</p>
+            <p className="text-gray-400 text-xs capitalize">{selectedMedia.type} file</p>
           </div>
         </div>
       </DialogContent>

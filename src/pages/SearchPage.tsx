@@ -1,14 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Container } from "@/components/ui/container";
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { PromptCard } from '@/components/ui/prompt-card';
 import { Loader2 } from 'lucide-react';
 import { type PromptRow } from '@/types';
-import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 
 interface SearchFilters {
   promptTypes: string[];
@@ -25,8 +22,6 @@ export default function SearchPage() {
     categories: [],
     isPremium: null
   });
-  const isMobile = useIsMobile();
-  const isSmallMobile = useIsSmallMobile();
 
   const handleSearch = async (query: string, filters: SearchFilters) => {
     setCurrentQuery(query);
@@ -92,102 +87,81 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-soft-bg/30">
-      <Container className="py-4 sm:py-6 lg:py-8">
-        {/* Mobile-optimized header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8">
-          <h1 className={`font-bold mb-2 sm:mb-4 ${
-            isSmallMobile ? 'text-xl' : 'text-2xl sm:text-3xl'
-          }`}>
-            Search Prompts
-          </h1>
-          <p className={`text-muted-foreground mb-4 sm:mb-6 ${
-            isSmallMobile ? 'text-sm' : 'text-base'
-          }`}>
-            Find the perfect prompt from our extensive collection
-          </p>
-          
-          {/* Mobile-optimized search component */}
-          <GlobalSearch 
-            onSearch={handleSearch} 
-            className={isMobile ? "w-full" : "max-w-2xl"} 
-          />
-        </div>
+    <div className="container max-w-6xl mx-auto py-8 px-4">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-4">Search Prompts</h1>
+        <p className="text-muted-foreground mb-6">
+          Find the perfect prompt from our extensive collection
+        </p>
+        
+        <GlobalSearch onSearch={handleSearch} className="max-w-2xl" />
+      </div>
 
-        {/* Mobile-optimized active filters display */}
-        {(currentFilters.promptTypes.length > 0 || currentFilters.categories.length > 0 || currentFilters.isPremium !== null) && (
-          <div className="mb-4 sm:mb-6">
-            <div className="flex flex-wrap gap-1 sm:gap-2">
-              <span className={`text-muted-foreground ${
-                isSmallMobile ? 'text-xs' : 'text-sm'
-              }`}>
-                Active filters:
-              </span>
-              {currentFilters.promptTypes.map(type => (
-                <Badge key={type} variant="secondary" className={isSmallMobile ? 'text-xs px-2 py-0.5' : ''}>
-                  Type: {type}
-                </Badge>
-              ))}
-              {currentFilters.categories.map(category => (
-                <Badge key={category} variant="secondary" className={isSmallMobile ? 'text-xs px-2 py-0.5' : ''}>
-                  Category: {category}
-                </Badge>
-              ))}
-              {currentFilters.isPremium !== null && (
-                <Badge variant="secondary" className={isSmallMobile ? 'text-xs px-2 py-0.5' : ''}>
-                  {currentFilters.isPremium ? 'Premium' : 'Free'}
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Mobile-optimized results card */}
-        <Card className="mobile-optimize-rendering">
-          <CardHeader className={isSmallMobile ? 'p-3 sm:p-4' : ''}>
-            <CardTitle className={isSmallMobile ? 'text-lg' : ''}>Search Results</CardTitle>
-            <CardDescription className={isSmallMobile ? 'text-sm' : ''}>
-              {getResultsText()}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className={isSmallMobile ? 'p-3 sm:p-4' : ''}>
-            {loading ? (
-              <div className="flex items-center justify-center py-8 sm:py-12">
-                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : searchResults.length > 0 ? (
-              <div className={`grid gap-3 sm:gap-4 lg:gap-6 ${
-                isSmallMobile 
-                  ? 'grid-cols-1' 
-                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-              }`}>
-                {searchResults.map((prompt) => (
-                  <PromptCard
-                    key={prompt.id}
-                    prompt={prompt}
-                    onDelete={() => {
-                      // Refresh search results after deletion
-                      handleSearch(currentQuery, currentFilters);
-                    }}
-                  />
-                ))}
-              </div>
-            ) : currentQuery || currentFilters.promptTypes.length > 0 || currentFilters.categories.length > 0 ? (
-              <div className="text-center py-8 sm:py-12">
-                <p className={`text-muted-foreground ${isSmallMobile ? 'text-sm' : ''}`}>
-                  No prompts found matching your search criteria.
-                </p>
-              </div>
-            ) : (
-              <div className="text-center py-8 sm:py-12">
-                <p className={`text-muted-foreground ${isSmallMobile ? 'text-sm' : ''}`}>
-                  Enter a search query or apply filters to find prompts.
-                </p>
-              </div>
+      {/* Active Filters Display */}
+      {(currentFilters.promptTypes.length > 0 || currentFilters.categories.length > 0 || currentFilters.isPremium !== null) && (
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm text-muted-foreground">Active filters:</span>
+            {currentFilters.promptTypes.map(type => (
+              <Badge key={type} variant="secondary">
+                Type: {type}
+              </Badge>
+            ))}
+            {currentFilters.categories.map(category => (
+              <Badge key={category} variant="secondary">
+                Category: {category}
+              </Badge>
+            ))}
+            {currentFilters.isPremium !== null && (
+              <Badge variant="secondary">
+                {currentFilters.isPremium ? 'Premium' : 'Free'}
+              </Badge>
             )}
-          </CardContent>
-        </Card>
-      </Container>
+          </div>
+        </div>
+      )}
+
+      {/* Results */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Search Results</CardTitle>
+          <CardDescription>
+            {getResultsText()}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : searchResults.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {searchResults.map((prompt) => (
+                <PromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  onDelete={() => {
+                    // Refresh search results after deletion
+                    handleSearch(currentQuery, currentFilters);
+                  }}
+                />
+              ))}
+            </div>
+          ) : currentQuery || currentFilters.promptTypes.length > 0 || currentFilters.categories.length > 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                No prompts found matching your search criteria.
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                Enter a search query or apply filters to find prompts.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
