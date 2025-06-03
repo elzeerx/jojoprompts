@@ -3,12 +3,17 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { type Prompt } from "@/types";
+import { useCategories } from "@/hooks/useCategories";
 
 export function usePromptsData({ authLoading, session }: { authLoading: boolean; session: any }) {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [categories, setCategories] = useState<string[]>(["all"]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch active categories from database
+  const { categories: dbCategories, loading: categoriesLoading } = useCategories();
+  const activeCategories = dbCategories.filter(cat => cat.is_active);
 
   const fetchPrompts = async () => {
     setIsLoading(true);
@@ -29,9 +34,10 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         // Get category from metadata if it exists, otherwise use default
         const metadataObj = metadata as Record<string, any>;
         const category = metadataObj.category || "";
-        const validCategory = ["ChatGPT", "Midjourney", "n8n"].includes(category) 
-          ? category 
-          : "ChatGPT"; // Default to ChatGPT
+        
+        // Check if category exists in active categories list
+        const categoryExists = activeCategories.some(cat => cat.name === category);
+        const validCategory = categoryExists ? category : "ChatGPT"; // Default to ChatGPT
 
         return {
           id: item.id,
@@ -80,6 +86,14 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
     }
   };
 
+  // Update categories list when active categories change
+  useEffect(() => {
+    if (!categoriesLoading && activeCategories.length > 0) {
+      const categoryNames = ["all", ...activeCategories.map(cat => cat.name)];
+      setCategories(categoryNames);
+    }
+  }, [activeCategories, categoriesLoading]);
+
   // Update all existing prompts to use ChatGPT as their category
   const updateExistingPrompts = async () => {
     if (!session) return;
@@ -101,8 +115,10 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
           
         const category = metadata.category || "";
         
-        // Check if the prompt needs updating
-        if (!["ChatGPT", "Midjourney", "n8n"].includes(category)) {
+        // Check if the prompt category exists in active categories
+        const categoryExists = activeCategories.some(cat => cat.name === category);
+        
+        if (!categoryExists) {
           const updatedMetadata = {
             ...metadata,
             category: "ChatGPT" // Set to default category
@@ -121,7 +137,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
 
   useEffect(() => {
     let mounted = true;
-    if (!authLoading) {
+    if (!authLoading && !categoriesLoading) {
       if (session) {
         // First update existing prompts
         updateExistingPrompts().then(() => {
@@ -129,8 +145,6 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
           fetchPrompts().then((data) => {
             if (mounted && data) {
               setPrompts(data);
-              // Keep only the main categories
-              setCategories(["all", "ChatGPT", "Midjourney", "n8n"]);
             }
           });
         });
@@ -138,8 +152,6 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         fetchPrompts().then((data) => {
           if (mounted && data) {
             setPrompts(data);
-            // Keep only the main categories
-            setCategories(["all", "ChatGPT", "Midjourney", "n8n"]);
           }
         });
       }
@@ -147,15 +159,13 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
     return () => {
       mounted = false;
     };
-  }, [authLoading, session]);
+  }, [authLoading, session, categoriesLoading, activeCategories]);
 
   const reloadPrompts = async () => {
     console.log("Reloading prompts...");
     const data = await fetchPrompts();
     if (data) {
       setPrompts(data);
-      // Keep only the main categories
-      setCategories(["all", "ChatGPT", "Midjourney", "n8n"]);
     }
   };
 

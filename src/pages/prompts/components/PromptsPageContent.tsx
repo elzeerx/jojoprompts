@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isCategoryLocked, getSubscriptionTier } from "@/utils/subscription";
+import { useCategories } from "@/hooks/useCategories";
 
 interface PromptsPageContentProps {
   prompts: any[];
@@ -32,6 +33,10 @@ export function PromptsPageContent({
   const [userSubscription, setUserSubscription] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Get active categories from database
+  const { categories: dbCategories, loading: categoriesLoading } = useCategories();
+  const activeCategories = dbCategories.filter(cat => cat.is_active);
 
   // Fetch user subscription and admin status
   useEffect(() => {
@@ -64,10 +69,26 @@ export function PromptsPageContent({
     checkUserSubscriptionAndRole();
   }, [user]);
 
-  // Filter prompts based on search query and category
+  // Filter prompts based on search query, category, and active categories
   const filteredPrompts = prompts.filter(prompt => {
-    const matchesSearch = searchQuery === "" || prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) || prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) || prompt.metadata?.tags && prompt.metadata.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = selectedCategory === "all" || prompt.metadata?.category?.toLowerCase() === selectedCategory.toLowerCase() || selectedCategory === "uncategorized" && !prompt.metadata?.category;
+    // First check if the prompt's category is active
+    const promptCategory = prompt.metadata?.category;
+    const isCategoryActive = promptCategory && activeCategories.some(cat => cat.name === promptCategory);
+    
+    // If prompt's category is not active, don't show it (unless it's a default category)
+    if (!isCategoryActive && promptCategory !== "ChatGPT" && promptCategory !== "Midjourney" && promptCategory !== "n8n") {
+      return false;
+    }
+
+    const matchesSearch = searchQuery === "" || 
+      prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (prompt.metadata?.tags && prompt.metadata.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase())));
+    
+    const matchesCategory = selectedCategory === "all" || 
+      prompt.metadata?.category?.toLowerCase() === selectedCategory.toLowerCase() || 
+      (selectedCategory === "uncategorized" && !prompt.metadata?.category);
+    
     return matchesSearch && matchesCategory;
   });
 
@@ -111,7 +132,7 @@ export function PromptsPageContent({
         </div>
       </div>
 
-      {/* Category tabs - removed duplicate "All" tab and updated styling */}
+      {/* Category tabs - using active categories from database */}
       <Tabs defaultValue="all" value={selectedCategory} onValueChange={setSelectedCategory} className="mb-8">
         <div className="overflow-x-auto pb-3 mb-4 border-b border-warm-gold/10">
           <TabsList className="bg-transparent h-auto p-0 flex w-full justify-start space-x-4">
@@ -135,7 +156,7 @@ export function PromptsPageContent({
       </Tabs>
 
       {/* Prompts display */}
-      {isLoading || loading ? (
+      {isLoading || loading || categoriesLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
