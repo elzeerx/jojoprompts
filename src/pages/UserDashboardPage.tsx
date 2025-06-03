@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, X } from 'lucide-react';
+import { Container } from "@/components/ui/container";
+import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 
 export default function UserDashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -27,6 +29,8 @@ export default function UserDashboardPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [profileLoading, setProfileLoading] = useState(true);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const isSmallMobile = useIsSmallMobile();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -207,210 +211,278 @@ export default function UserDashboardPage() {
   }
 
   return (
-    <div className="container max-w-6xl mx-auto py-12 px-4">
-      <h1 className="text-3xl md:text-4xl font-bold mb-8">Account Dashboard</h1>
-      
-      <Tabs defaultValue="subscription">
-        <TabsList className="mb-8">
-          <TabsTrigger value="subscription">My Subscription</TabsTrigger>
-          <TabsTrigger value="payments">Payment History</TabsTrigger>
-          <TabsTrigger value="profile">Account Settings</TabsTrigger>
-        </TabsList>
+    <div className="min-h-screen bg-soft-bg/30">
+      <Container className="py-6 sm:py-12">
+        {/* Mobile-optimized header */}
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Account Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage your account and subscription</p>
+        </div>
         
-        <TabsContent value="subscription">
-          <div className="space-y-8">
-            {/* Current Subscription Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Current Plan</CardTitle>
-                <CardDescription>
+        <Tabs defaultValue="subscription" className="space-y-6">
+          {/* Mobile-optimized tab navigation */}
+          <div className="mobile-container-padding">
+            <TabsList className={`
+              mobile-tabs w-full justify-start bg-white/80 backdrop-blur-sm border border-gray-200 h-auto
+              ${isMobile ? 'grid grid-cols-3 gap-1' : 'flex'}
+            `}>
+              <TabsTrigger 
+                value="subscription" 
+                className="mobile-tab data-[state=active]:mobile-tab-active data-[state=inactive]:mobile-tab-inactive text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 flex items-center gap-1 sm:gap-2"
+              >
+                <CreditCard className="h-3 w-3 sm:h-4 sm:w-4" />
+                {isSmallMobile ? "Plan" : "My Subscription"}
+              </TabsTrigger>
+              <TabsTrigger 
+                value="payments" 
+                className="mobile-tab data-[state=active]:mobile-tab-active data-[state=inactive]:mobile-tab-inactive text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 flex items-center gap-1 sm:gap-2"
+              >
+                <History className="h-3 w-3 sm:h-4 sm:w-4" />
+                {isSmallMobile ? "History" : "Payment History"}
+              </TabsTrigger>
+              <TabsTrigger 
+                value="profile" 
+                className="mobile-tab data-[state=active]:mobile-tab-active data-[state=inactive]:mobile-tab-inactive text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 flex items-center gap-1 sm:gap-2"
+              >
+                <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                {isSmallMobile ? "Settings" : "Account Settings"}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          
+          <TabsContent value="subscription" className="space-y-6">
+            {/* Current Subscription Card - Mobile Optimized */}
+            <Card className="mobile-optimize-rendering">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-xl sm:text-2xl">Current Plan</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Your current subscription details
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 {!activeSubscription ? (
-                  <div className="text-center py-8">
+                  <div className="text-center py-6 sm:py-8">
                     <h3 className="text-lg font-medium mb-2">No active subscription</h3>
-                    <p className="text-muted-foreground mb-6">
+                    <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">
                       You don't have an active subscription yet.
                     </p>
                     <Button
                       onClick={() => navigate('/pricing')}
-                      className="bg-warm-gold hover:bg-warm-gold/90"
+                      className="bg-warm-gold hover:bg-warm-gold/90 w-full sm:w-auto"
+                      size={isMobile ? "default" : "lg"}
                     >
                       View Plans
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center p-4 bg-warm-gold/5 rounded-lg border border-warm-gold/20">
-                      <div>
-                        <h3 className="text-xl font-medium text-warm-gold">
-                          {subscriptionPlan?.name} Plan
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {subscriptionPlan?.is_lifetime 
-                            ? 'Lifetime Access' 
-                            : `Valid until ${new Date(activeSubscription.end_date).toLocaleDateString()}`}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-semibold">
-                          ${subscriptionPlan?.price_usd}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          One-time payment
-                        </p>
+                  <div className="space-y-4 sm:space-y-6">
+                    {/* Mobile-optimized subscription info */}
+                    <div className="p-4 sm:p-6 bg-warm-gold/5 rounded-xl border border-warm-gold/20">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+                        <div className="text-center sm:text-left">
+                          <h3 className="text-lg sm:text-xl font-medium text-warm-gold">
+                            {subscriptionPlan?.name} Plan
+                          </h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
+                            {subscriptionPlan?.is_lifetime 
+                              ? 'Lifetime Access' 
+                              : `Valid until ${new Date(activeSubscription.end_date).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                        <div className="text-center sm:text-right">
+                          <p className="text-xl sm:text-2xl font-semibold">
+                            ${subscriptionPlan?.price_usd}
+                          </p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
+                            One-time payment
+                          </p>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                      <div className="p-4 border rounded-lg">
-                        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                    {/* Mobile-optimized grid layout */}
+                    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+                      <div className="p-3 sm:p-4 border rounded-lg">
+                        <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 sm:mb-2">
                           Purchased On
                         </h4>
-                        <p>{new Date(activeSubscription.created_at).toLocaleDateString()}</p>
+                        <p className="text-sm sm:text-base">{new Date(activeSubscription.created_at).toLocaleDateString()}</p>
                       </div>
-                      <div className="p-4 border rounded-lg">
-                        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                      <div className="p-3 sm:p-4 border rounded-lg">
+                        <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 sm:mb-2">
                           Payment Method
                         </h4>
-                        <p className="capitalize">{activeSubscription.payment_method}</p>
+                        <p className="text-sm sm:text-base capitalize">{activeSubscription.payment_method}</p>
                       </div>
                     </div>
                     
                     <div className="pt-4 mt-4 border-t">
-                      <h4 className="font-medium mb-4">Included Features:</h4>
+                      <h4 className="font-medium mb-3 sm:mb-4 text-sm sm:text-base">Included Features:</h4>
                       <ul className="space-y-2">
                         {Array.isArray(subscriptionPlan?.features) && subscriptionPlan.features.map((feature: string, idx: number) => (
                           <li key={idx} className="flex items-start">
-                            <Check className="h-5 w-5 text-warm-gold mr-2 flex-shrink-0 mt-0.5" />
-                            <span>{feature}</span>
+                            <Check className="h-4 w-4 sm:h-5 sm:w-5 text-warm-gold mr-2 flex-shrink-0 mt-0.5" />
+                            <span className="text-sm sm:text-base">{feature}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                     
-                    <div className="pt-6">
+                    <div className="pt-4 sm:pt-6">
                       <Button 
                         variant="default"
-                        onClick={() => {
-                          navigate('/pricing');
-                        }}
+                        onClick={() => navigate('/pricing')}
+                        className="w-full sm:w-auto"
+                        size={isMobile ? "default" : "lg"}
                       >
-                        Upgrade Plan <ArrowUpRight className="h-4 w-4" />
+                        Upgrade Plan <ArrowUpRight className="h-4 w-4 ml-1" />
                       </Button>
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="payments">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">Payment History</CardTitle>
-              <CardDescription>
-                Your record of payments and transactions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {paymentHistory.length === 0 ? (
-                <div className="text-center py-8">
-                  <h3 className="text-lg font-medium mb-2">No payment records found</h3>
-                  <p className="text-muted-foreground">
-                    You haven't made any payments yet.
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-muted text-muted-foreground text-left">
-                        <th className="p-3">Date</th>
-                        <th className="p-3">Amount</th>
-                        <th className="p-3">Payment Method</th>
-                        <th className="p-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paymentHistory.map((payment) => (
-                        <tr key={payment.id} className="border-b">
-                          <td className="p-3">
-                            {new Date(payment.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="p-3">
-                            ${payment.amount_usd} ({payment.amount_kwd} KWD)
-                          </td>
-                          <td className="p-3 capitalize">{payment.payment_method}</td>
-                          <td className="p-3">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              payment.status === 'completed' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {payment.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="profile">
-          <div className="space-y-8">
-            {/* Profile Information Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Profile Information</CardTitle>
-                <CardDescription>
+          </TabsContent>
+          
+          <TabsContent value="payments" className="space-y-6">
+            <Card className="mobile-optimize-rendering">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-xl sm:text-2xl">Payment History</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
+                  Your record of payments and transactions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6">
+                {paymentHistory.length === 0 ? (
+                  <div className="text-center py-6 sm:py-8">
+                    <h3 className="text-lg font-medium mb-2">No payment records found</h3>
+                    <p className="text-muted-foreground text-sm sm:text-base">
+                      You haven't made any payments yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Mobile-optimized payment cards */}
+                    {isMobile ? (
+                      <div className="space-y-3">
+                        {paymentHistory.map((payment) => (
+                          <div key={payment.id} className="p-4 border rounded-lg bg-white/50">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <p className="font-medium text-sm">
+                                  ${payment.amount_usd} ({payment.amount_kwd} KWD)
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(payment.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                payment.status === 'completed' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {payment.status}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground capitalize">
+                              via {payment.payment_method}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      // Desktop table layout
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-muted text-muted-foreground text-left">
+                              <th className="p-3">Date</th>
+                              <th className="p-3">Amount</th>
+                              <th className="p-3">Payment Method</th>
+                              <th className="p-3">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paymentHistory.map((payment) => (
+                              <tr key={payment.id} className="border-b">
+                                <td className="p-3">
+                                  {new Date(payment.created_at).toLocaleDateString()}
+                                </td>
+                                <td className="p-3">
+                                  ${payment.amount_usd} ({payment.amount_kwd} KWD)
+                                </td>
+                                <td className="p-3 capitalize">{payment.payment_method}</td>
+                                <td className="p-3">
+                                  <span className={`px-2 py-1 rounded-full text-xs ${
+                                    payment.status === 'completed' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                    {payment.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="profile" className="space-y-6">
+            {/* Profile Information Card - Mobile Optimized */}
+            <Card className="mobile-optimize-rendering">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-xl sm:text-2xl">Profile Information</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Update your account information
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 {profileLoading ? (
                   <div className="flex justify-center py-4">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-4">
-                      <Avatar className="h-16 w-16">
-                        <AvatarFallback className="bg-warm-gold text-white text-xl">
+                  <div className="space-y-4 sm:space-y-6">
+                    {/* Mobile-optimized profile header */}
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-3 sm:space-y-0 sm:space-x-4">
+                      <Avatar className="h-12 w-12 sm:h-16 sm:w-16">
+                        <AvatarFallback className="bg-warm-gold text-white text-lg sm:text-xl">
                           {firstName.charAt(0)}{lastName.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="font-medium text-lg">{`${firstName} ${lastName}`}</p>
-                        <p className="text-muted-foreground">{email}</p>
+                      <div className="text-center sm:text-left">
+                        <p className="font-medium text-base sm:text-lg">{`${firstName} ${lastName}`}</p>
+                        <p className="text-muted-foreground text-sm sm:text-base">{email}</p>
                       </div>
                     </div>
                     
                     <div className="space-y-4 pt-4">
-                      <h3 className="text-lg font-medium">Update Personal Information</h3>
+                      <h3 className="text-base sm:text-lg font-medium">Update Personal Information</h3>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Mobile-optimized form fields */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="firstName">First Name</Label>
+                          <Label htmlFor="firstName" className="text-sm">First Name</Label>
                           <Input
                             id="firstName"
                             value={firstName}
                             onChange={(e) => setFirstName(e.target.value)}
+                            className="mobile-input"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="lastName">Last Name</Label>
+                          <Label htmlFor="lastName" className="text-sm">Last Name</Label>
                           <Input
                             id="lastName"
                             value={lastName}
                             onChange={(e) => setLastName(e.target.value)}
+                            className="mobile-input"
                           />
                         </div>
                       </div>
@@ -418,6 +490,8 @@ export default function UserDashboardPage() {
                       <Button 
                         onClick={handleUpdateProfile}
                         disabled={updateLoading}
+                        className="w-full sm:w-auto"
+                        size={isMobile ? "default" : "lg"}
                       >
                         {updateLoading ? (
                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...</>
@@ -431,29 +505,30 @@ export default function UserDashboardPage() {
               </CardContent>
             </Card>
             
-            {/* Email Settings Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Email Address</CardTitle>
-                <CardDescription>
+            {/* Email Settings Card - Mobile Optimized */}
+            <Card className="mobile-optimize-rendering">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-lg sm:text-xl">Email Address</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Update your email address
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-sm">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      className="mobile-input"
                     />
                   </div>
                   
                   <Alert variant="default" className="mb-4">
-                    <AlertTitle>Verification Required</AlertTitle>
-                    <AlertDescription>
+                    <AlertTitle className="text-sm">Verification Required</AlertTitle>
+                    <AlertDescription className="text-xs sm:text-sm">
                       You'll need to verify your new email address by clicking on the link sent to it.
                     </AlertDescription>
                   </Alert>
@@ -461,6 +536,8 @@ export default function UserDashboardPage() {
                   <Button 
                     onClick={handleUpdateEmail}
                     disabled={updateLoading || email === user.email}
+                    className="w-full sm:w-auto"
+                    size={isMobile ? "default" : "lg"}
                   >
                     {updateLoading ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...</>
@@ -472,39 +549,43 @@ export default function UserDashboardPage() {
               </CardContent>
             </Card>
             
-            {/* Password Settings Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Password</CardTitle>
-                <CardDescription>
+            {/* Password Settings Card - Mobile Optimized */}
+            <Card className="mobile-optimize-rendering">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-lg sm:text-xl">Password</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Update your password
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="password">New Password</Label>
+                    <Label htmlFor="password" className="text-sm">New Password</Label>
                     <Input
                       id="password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      className="mobile-input"
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-sm">Confirm Password</Label>
                     <Input
                       id="confirmPassword"
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="mobile-input"
                     />
                   </div>
                   
                   <Button 
                     onClick={handleUpdatePassword}
                     disabled={updateLoading || !password || !confirmPassword || password !== confirmPassword}
+                    className="w-full sm:w-auto"
+                    size={isMobile ? "default" : "lg"}
                   >
                     {updateLoading ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...</>
@@ -515,9 +596,9 @@ export default function UserDashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      </Container>
     </div>
   );
 }

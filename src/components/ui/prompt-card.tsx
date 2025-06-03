@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { type Prompt, type PromptRow } from "@/types";
@@ -10,6 +9,7 @@ import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { Lock, Crown, Heart, Play, FileAudio, Workflow } from "lucide-react";
 import { Button } from "./button";
 import { ImageWrapper } from "./prompt-card/ImageWrapper";
+import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 
 interface PromptCardProps {
   prompt: Prompt | PromptRow;
@@ -52,6 +52,8 @@ export function PromptCard({
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
+  const isMobile = useIsMobile();
+  const isSmallMobile = useIsSmallMobile();
 
   useEffect(() => {
     async function loadImage() {
@@ -173,10 +175,11 @@ export function PromptCard({
       <div 
         className={cn(
           "group cursor-pointer overflow-hidden bg-soft-bg rounded-2xl shadow-md border-0",
-          "transition-all duration-300 hover:shadow-xl hover:scale-[1.02]",
-          // Mobile-first flexible height instead of fixed min-h-[400px]
-          "p-4 sm:p-6 space-y-3 sm:space-y-4 flex flex-col relative",
-          "touch-manipulation", // Better touch handling
+          "transition-all duration-300 hover:shadow-xl",
+          // Mobile-optimized scaling and spacing
+          isMobile ? "hover:scale-[1.01] active:scale-[0.99]" : "hover:scale-[1.02]",
+          "p-3 sm:p-4 lg:p-6 space-y-2 sm:space-y-3 lg:space-y-4 flex flex-col relative",
+          "touch-manipulation min-h-[280px] sm:min-h-[320px] lg:min-h-[400px]", // Responsive heights
           isSelected && "ring-2 ring-[#c49d68] shadow-lg",
           isLocked && "opacity-95"
         )} 
@@ -184,35 +187,36 @@ export function PromptCard({
       >
         {isLocked && (
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-center justify-center z-20 rounded-2xl">
-            <div className="bg-black/80 backdrop-blur-sm p-4 sm:p-6 rounded-xl flex flex-col items-center text-center max-w-[90%]">
-              <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-[#c49d68] mb-2 sm:mb-3" />
+            <div className="bg-black/80 backdrop-blur-sm p-3 sm:p-4 lg:p-6 rounded-xl flex flex-col items-center text-center max-w-[85%] sm:max-w-[90%]">
+              <Lock className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-[#c49d68] mb-2 sm:mb-3" />
               <p className="text-white font-semibold text-xs sm:text-sm mb-1">Premium Content</p>
-              <p className="text-white/80 text-xs mb-3 sm:mb-4 max-w-[180px] sm:max-w-[200px]">Upgrade your plan to access this content</p>
+              <p className="text-white/80 text-xs sm:text-sm mb-2 sm:mb-3 lg:mb-4 max-w-[160px] sm:max-w-[180px] lg:max-w-[200px]">
+                Upgrade your plan to access this content
+              </p>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="bg-[#c49d68]/90 text-white hover:bg-[#c49d68] border-[#c49d68] text-xs sm:text-sm"
+                className="bg-[#c49d68]/90 text-white hover:bg-[#c49d68] border-[#c49d68] text-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onUpgradeClick) onUpgradeClick();
                 }}
               >
-                <Crown className="h-3 w-3 mr-1 sm:mr-2" />
+                <Crown className="h-3 w-3 mr-1" />
                 Upgrade Plan
               </Button>
             </div>
           </div>
         )}
 
-        {/* Category Tag and Favorite */}
+        {/* Mobile-optimized category tag and favorite */}
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <span className={cn(
               "inline-block px-2 py-1 text-xs font-medium rounded-lg",
-              "sm:px-3", // Larger padding on larger screens
               getCategoryBadgeStyle(category)
             )}>
-              {category}
+              {isSmallMobile && category.length > 8 ? category.substring(0, 8) + '...' : category}
             </span>
             {isN8nWorkflow && (
               <Workflow className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
@@ -223,31 +227,36 @@ export function PromptCard({
             <button
               onClick={toggleFavorite}
               className={cn(
-                // Enhanced touch target for mobile
-                "p-2 rounded-full transition-all duration-200 min-h-[44px] min-w-[44px]",
-                "flex items-center justify-center",
-                "hover:bg-white/30",
+                // Enhanced mobile touch targets
+                "p-2 rounded-full transition-all duration-200",
+                "flex items-center justify-center min-w-[44px] min-h-[44px]", // Larger touch target
+                "hover:bg-white/30 active:bg-white/50", // Better mobile feedback
                 favorited 
                   ? "text-[#c49d68]" 
                   : "text-gray-400 hover:text-[#c49d68]"
               )}
             >
-              <Heart className={cn("h-4 w-4 sm:h-5 sm:w-5", favorited && "fill-current")} />
+              <Heart className={cn("h-4 w-4", favorited && "fill-current")} />
             </button>
           )}
         </div>
 
-        {/* Title with responsive typography */}
+        {/* Mobile-optimized title with better line heights */}
         <h3 className="text-gray-900 font-bold leading-tight flex-shrink-0">
-          <span className="block text-lg sm:text-xl line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem]">
+          <span className={cn(
+            "block line-clamp-2",
+            isSmallMobile ? "text-sm min-h-[2rem]" : "text-base sm:text-lg lg:text-xl min-h-[2.5rem] sm:min-h-[3rem]"
+          )}>
             {title}
           </span>
         </h3>
 
-        {/* Image with mobile-optimized aspect ratio */}
+        {/* Mobile-optimized image with responsive aspect ratios */}
         <div className="relative overflow-hidden rounded-xl bg-white/50 flex-shrink-0">
-          {/* Mobile: 16:9 aspect ratio, Desktop: square */}
-          <div className="aspect-video sm:aspect-square">
+          <div className={cn(
+            // Different aspect ratios for different screen sizes
+            isSmallMobile ? "aspect-[4/3]" : "aspect-video sm:aspect-square"
+          )}>
             <ImageWrapper 
               src={imageUrl}
               alt={title}
@@ -256,76 +265,84 @@ export function PromptCard({
             />
           </div>
           
-          {/* Media indicators */}
+          {/* Mobile-optimized media indicators */}
           {mediaFiles.length > 1 && (
-            <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+            <div className="absolute top-1 sm:top-2 right-1 sm:right-2 bg-black/70 text-white text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full">
               +{mediaFiles.length - 1} files
             </div>
           )}
           
           {mediaFiles.length > 0 && mediaFiles[0].type !== 'image' && (
-            <div className="absolute bottom-2 left-2 bg-black/70 p-1.5 sm:p-2 rounded-full">
+            <div className="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 bg-black/70 p-1 sm:p-1.5 lg:p-2 rounded-full">
               {getMediaTypeIcon(mediaFiles[0])}
             </div>
           )}
         </div>
 
-        {/* Description or Workflow Steps */}
+        {/* Mobile-optimized description or workflow steps */}
         {isN8nWorkflow && workflowSteps.length > 0 ? (
-          <div className="flex-grow space-y-2 sm:space-y-3">
-            <div className="space-y-1 sm:space-y-2">
-              <h4 className="text-xs sm:text-sm font-semibold text-gray-800 flex items-center gap-2">
+          <div className="flex-grow space-y-1 sm:space-y-2">
+            <div className="space-y-1">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-800 flex items-center gap-1 sm:gap-2">
                 <Workflow className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                 Workflow Steps
               </h4>
               <div className="space-y-1">
-                {workflowSteps.slice(0, 2).map((step, index) => (
-                  <div key={index} className="flex items-start gap-2 text-xs">
-                    <span className="flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-medium text-xs">
+                {workflowSteps.slice(0, isSmallMobile ? 1 : 2).map((step, index) => (
+                  <div key={index} className="flex items-start gap-1 sm:gap-2 text-xs">
+                    <span className="flex-shrink-0 w-4 h-4 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-medium text-xs">
                       {index + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-700 truncate text-xs sm:text-sm">{step.name}</p>
+                      <p className="font-medium text-gray-700 truncate text-xs">{step.name}</p>
                       <p className="text-gray-500 line-clamp-1 text-xs">{step.description}</p>
                     </div>
                   </div>
                 ))}
-                {workflowSteps.length > 2 && (
-                  <p className="text-xs text-gray-500 pl-6 sm:pl-7">+{workflowSteps.length - 2} more steps</p>
+                {workflowSteps.length > (isSmallMobile ? 1 : 2) && (
+                  <p className="text-xs text-gray-500 pl-5 sm:pl-6">
+                    +{workflowSteps.length - (isSmallMobile ? 1 : 2)} more steps
+                  </p>
                 )}
               </div>
             </div>
           </div>
         ) : (
-          <p className="text-gray-600 text-sm leading-relaxed flex-grow line-clamp-2 sm:line-clamp-3">
+          <p className={cn(
+            "text-gray-600 leading-relaxed flex-grow",
+            isSmallMobile ? "text-xs line-clamp-2" : "text-sm line-clamp-2 sm:line-clamp-3"
+          )}>
             {prompt_text}
           </p>
         )}
         
-        {/* Tags */}
+        {/* Mobile-optimized tags */}
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            {tags.slice(0, 3).map((tag, i) => (
+          <div className="flex flex-wrap gap-1">
+            {tags.slice(0, isSmallMobile ? 2 : 3).map((tag, i) => (
               <span 
                 key={i}
-                className="px-2 py-1 bg-white/60 text-gray-700 text-xs rounded-md border border-gray-200"
+                className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/60 text-gray-700 text-xs rounded-md border border-gray-200"
               >
-                {tag}
+                {isSmallMobile && tag.length > 8 ? tag.substring(0, 8) + '...' : tag}
               </span>
             ))}
-            {tags.length > 3 && (
-              <span className="px-2 py-1 bg-white/60 text-gray-500 text-xs rounded-md border border-gray-200">
-                +{tags.length - 3} more
+            {tags.length > (isSmallMobile ? 2 : 3) && (
+              <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/60 text-gray-500 text-xs rounded-md border border-gray-200">
+                +{tags.length - (isSmallMobile ? 2 : 3)} more
               </span>
             )}
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="mt-auto pt-2 space-y-2 sm:space-y-3 flex-shrink-0">
+        {/* Mobile-optimized action buttons */}
+        <div className="mt-auto pt-2 space-y-2 flex-shrink-0">
           {!isLocked && (
             <Button 
-              className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200 text-sm sm:text-base"
+              className={cn(
+                "w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold rounded-xl shadow-md transition-all duration-200",
+                isSmallMobile ? "py-2 text-xs" : "py-3 text-sm sm:text-base"
+              )}
             >
               {isN8nWorkflow ? "View Workflow" : "View Details"}
             </Button>
@@ -336,7 +353,7 @@ export function PromptCard({
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex-1 border-gray-300 hover:bg-gray-50 text-xs sm:text-sm"
+                className="flex-1 border-gray-300 hover:bg-gray-50 text-xs"
                 onClick={e => {
                   e.stopPropagation();
                   onEdit?.(prompt.id);
@@ -347,7 +364,7 @@ export function PromptCard({
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 text-xs sm:text-sm" 
+                className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 text-xs" 
                 onClick={e => {
                   e.stopPropagation();
                   onDelete?.(prompt.id);

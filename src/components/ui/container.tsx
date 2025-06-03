@@ -6,6 +6,7 @@ interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   noPadding?: boolean;
   mobileOptimized?: boolean;
+  centerContent?: boolean;
 }
 
 export function Container({ 
@@ -13,6 +14,7 @@ export function Container({
   size = 'xl', 
   noPadding = false,
   mobileOptimized = true,
+  centerContent = false,
   ...props 
 }: ContainerProps) {
   const sizeClasses = {
@@ -30,6 +32,7 @@ export function Container({
         sizeClasses[size],
         !noPadding && (mobileOptimized ? "mobile-container-padding" : "px-4 sm:px-6 lg:px-8"),
         mobileOptimized && "mobile-optimize-rendering",
+        centerContent && "flex flex-col items-center",
         className
       )}
       {...props}
