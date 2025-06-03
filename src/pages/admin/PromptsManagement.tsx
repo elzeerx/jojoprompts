@@ -68,6 +68,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   }, []);
   
   const handleAddPrompt = () => {
+    console.log("PromptsManagement - Adding new prompt");
     setEditing(null);
     setDialogOpen(true);
   };
@@ -75,7 +76,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   const handleEditPrompt = (promptId: string) => {
     const prompt = prompts.find(p => p.id === promptId);
     if (prompt) {
-      console.log("PromptsManagement - Editing prompt with metadata:", prompt.metadata);
+      console.log("PromptsManagement - Editing prompt:", prompt.id, "with metadata:", prompt.metadata);
       setEditing(prompt);
       setDialogOpen(true);
     }
@@ -117,6 +118,9 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     updatePromptsState(freshPrompts);
     setDialogOpen(false);
   };
+
+  // Create a unique dialog key that changes when editing different prompts
+  const dialogKey = editing ? `edit-${editing.id}` : 'new-prompt';
   
   return (
     <div>
@@ -154,6 +158,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       )}
       
       <PromptDialog
+        key={dialogKey}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSuccess={handleSuccess}

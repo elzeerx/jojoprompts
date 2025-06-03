@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -48,21 +49,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   console.log("PromptDialog - Dialog opened with editingPrompt:", editingPrompt?.id);
   console.log("PromptDialog - Current form data:", formData);
 
-  // Reset auxiliary state when dialog closes (but don't interfere with form data)
-  useEffect(() => {
-    if (!open) {
-      console.log("PromptDialog - Dialog closed, resetting auxiliary state only");
-      setCurrentFile(null);
-      setCurrentFiles([]);
-      setWorkflowFiles([]);
-      // Only call resetForm if we're not editing (for new prompts)
-      if (!editingPrompt) {
-        resetForm();
-      }
-    }
-  }, [open, editingPrompt, resetForm]);
-
-  // Initialize promptType and category if provided (for new prompts only)
+  // Initialize promptType and category for new prompts
   useEffect(() => {
     if (promptType && !editingPrompt && open) {
       console.log("PromptDialog - Setting initial prompt type and category for new prompt:", promptType, category);
@@ -76,6 +63,16 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       }));
     }
   }, [promptType, category, setFormData, editingPrompt, open]);
+
+  // Reset auxiliary state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      console.log("PromptDialog - Dialog closed, resetting auxiliary state");
+      setCurrentFile(null);
+      setCurrentFiles([]);
+      setWorkflowFiles([]);
+    }
+  }, [open]);
 
   const uploadFiles = async (files: File[], bucket?: string): Promise<string[]> => {
     const uploadedPaths: string[] = [];
