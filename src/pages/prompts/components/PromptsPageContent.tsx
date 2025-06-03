@@ -37,6 +37,7 @@ export function PromptsPageContent({
   // Get active categories from database
   const { categories: dbCategories, loading: categoriesLoading } = useCategories();
   const activeCategories = dbCategories.filter(cat => cat.is_active);
+  const activeCategoryNames = activeCategories.map(cat => cat.name);
 
   // Fetch user subscription and admin status
   useEffect(() => {
@@ -71,13 +72,15 @@ export function PromptsPageContent({
 
   // Filter prompts based on search query, category, and active categories
   const filteredPrompts = prompts.filter(prompt => {
-    // First check if the prompt's category is active
+    // First check if the prompt's category is active (or if no categories are set up yet)
     const promptCategory = prompt.metadata?.category;
-    const isCategoryActive = promptCategory && activeCategories.some(cat => cat.name === promptCategory);
     
-    // If prompt's category is not active, don't show it (unless it's a default category)
-    if (!isCategoryActive && promptCategory !== "ChatGPT" && promptCategory !== "Midjourney" && promptCategory !== "n8n") {
-      return false;
+    // If we have active categories set up, only show prompts with active categories
+    if (activeCategoryNames.length > 0 && promptCategory) {
+      const isCategoryActive = activeCategoryNames.includes(promptCategory);
+      if (!isCategoryActive) {
+        return false;
+      }
     }
 
     const matchesSearch = searchQuery === "" || 
@@ -100,7 +103,7 @@ export function PromptsPageContent({
     const planName = userSubscription?.subscription_plans?.name;
     const userTier = getSubscriptionTier(planName);
     
-    // Use category-based locking instead of prompt type
+    // Use category-based locking
     const category = prompt.metadata?.category;
     
     console.log(`Checking access for prompt "${prompt.title}":`, {
@@ -132,7 +135,7 @@ export function PromptsPageContent({
         </div>
       </div>
 
-      {/* Category tabs - using active categories from database */}
+      {/* Category tabs - only show active categories */}
       <Tabs defaultValue="all" value={selectedCategory} onValueChange={setSelectedCategory} className="mb-8">
         <div className="overflow-x-auto pb-3 mb-4 border-b border-warm-gold/10">
           <TabsList className="bg-transparent h-auto p-0 flex w-full justify-start space-x-4">
@@ -167,7 +170,12 @@ export function PromptsPageContent({
         </div>
       ) : filteredPrompts.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">No prompts found.</p>
+          <p className="text-muted-foreground mb-4">
+            {activeCategoryNames.length === 0 
+              ? "No active categories found. Please contact an administrator."
+              : "No prompts found for the selected criteria."
+            }
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

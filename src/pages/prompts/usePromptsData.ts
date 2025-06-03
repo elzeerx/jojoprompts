@@ -13,7 +13,6 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
 
   // Fetch active categories from database
   const { categories: dbCategories, loading: categoriesLoading } = useCategories();
-  const activeCategories = dbCategories.filter(cat => cat.is_active);
 
   const fetchPrompts = async () => {
     setIsLoading(true);
@@ -25,19 +24,16 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      
       const transformedData = (data ?? []).map((item) => {
         // Ensure metadata is always an object
         const metadata = typeof item.metadata === 'object' && item.metadata !== null 
           ? item.metadata 
           : {};
           
-        // Get category from metadata if it exists, otherwise use default
+        // Get category from metadata if it exists
         const metadataObj = metadata as Record<string, any>;
         const category = metadataObj.category || "";
-        
-        // Check if category exists in active categories list
-        const categoryExists = activeCategories.some(cat => cat.name === category);
-        const validCategory = categoryExists ? category : "ChatGPT"; // Default to ChatGPT
 
         return {
           id: item.id,
@@ -46,11 +42,11 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
           prompt_text: item.prompt_text,
           image_path: item.image_path,
           default_image_path: item.default_image_path,
-          image_url: null, // Set to null since this field doesn't exist in the database
+          image_url: null,
           prompt_type: item.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection',
           created_at: item.created_at || "",
           metadata: {
-            category: validCategory,
+            category: category,
             style: metadataObj.style ?? undefined,
             tags: Array.isArray(metadataObj.tags)
               ? metadataObj.tags
@@ -88,78 +84,27 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
 
   // Update categories list when active categories change
   useEffect(() => {
-    if (!categoriesLoading && activeCategories.length > 0) {
+    if (!categoriesLoading && dbCategories.length > 0) {
+      const activeCategories = dbCategories.filter(cat => cat.is_active);
       const categoryNames = ["all", ...activeCategories.map(cat => cat.name)];
       setCategories(categoryNames);
     }
-  }, [activeCategories, categoriesLoading]);
+  }, [categoriesLoading, dbCategories]);
 
-  // Update all existing prompts to use ChatGPT as their category
-  const updateExistingPrompts = async () => {
-    if (!session) return;
-    
-    try {
-      // This function will update all prompts without valid categories to use ChatGPT
-      const { data, error } = await supabase
-        .from("prompts")
-        .select("id, metadata");
-      
-      if (error) throw error;
-      
-      // For each prompt that doesn't have a proper category, update it
-      for (const prompt of (data || [])) {
-        // Ensure metadata is always an object
-        const metadata = typeof prompt.metadata === 'object' && prompt.metadata !== null 
-          ? prompt.metadata as Record<string, any>
-          : {};
-          
-        const category = metadata.category || "";
-        
-        // Check if the prompt category exists in active categories
-        const categoryExists = activeCategories.some(cat => cat.name === category);
-        
-        if (!categoryExists) {
-          const updatedMetadata = {
-            ...metadata,
-            category: "ChatGPT" // Set to default category
-          };
-          
-          await supabase
-            .from("prompts")
-            .update({ metadata: updatedMetadata })
-            .eq("id", prompt.id);
-        }
-      }
-    } catch (error) {
-      console.error("Error updating prompt categories:", error);
-    }
-  };
-
+  // Fetch prompts when auth is ready
   useEffect(() => {
     let mounted = true;
     if (!authLoading && !categoriesLoading) {
-      if (session) {
-        // First update existing prompts
-        updateExistingPrompts().then(() => {
-          // Then fetch prompts to show the updated data
-          fetchPrompts().then((data) => {
-            if (mounted && data) {
-              setPrompts(data);
-            }
-          });
-        });
-      } else {
-        fetchPrompts().then((data) => {
-          if (mounted && data) {
-            setPrompts(data);
-          }
-        });
-      }
+      fetchPrompts().then((data) => {
+        if (mounted && data) {
+          setPrompts(data);
+        }
+      });
     }
     return () => {
       mounted = false;
     };
-  }, [authLoading, session, categoriesLoading, activeCategories]);
+  }, [authLoading, categoriesLoading]);
 
   const reloadPrompts = async () => {
     console.log("Reloading prompts...");
