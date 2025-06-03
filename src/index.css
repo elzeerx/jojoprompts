@@ -112,53 +112,60 @@
   }
 }
 
-/* Ensure container always uses correct max-width and padding */
+/* Enhanced mobile-first container system */
 .container {
   max-width: 100%;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
-  padding-left: 1.25rem !important; /* match Tailwind config */
-  padding-right: 1.25rem !important;
+  padding-left: 1rem !important; /* Reduced from 1.25rem for better mobile */
+  padding-right: 1rem !important;
+}
+
+@media (min-width: 480px) {
+  .container {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
 }
 
 @media (min-width: 640px) {
   .container {
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
     max-width: 100vw;
   }
 }
 @media (min-width: 768px) {
   .container {
-    padding-left: 2.5rem !important;
-    padding-right: 2.5rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
     max-width: 720px;
   }
 }
 @media (min-width: 1024px) {
   .container {
-    padding-left: 3rem !important;
-    padding-right: 3rem !important;
+    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
     max-width: 960px;
   }
 }
 @media (min-width: 1280px) {
   .container {
-    padding-left: 4rem !important;
-    padding-right: 4rem !important;
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
     max-width: 1140px;
   }
 }
 @media (min-width: 1536px) {
   .container {
-    padding-left: 6rem !important;
-    padding-right: 6rem !important;
+    padding-left: 4rem !important;
+    padding-right: 4rem !important;
     max-width: 1340px;
   }
 }
 
-/* Remove any unnecessary hardcoded padding/margin in body */
+/* Mobile-first body styles */
 body {
   margin: 0;
   padding: 0;
@@ -166,7 +173,8 @@ body {
   @apply bg-background;
   color: #262626; /* dark-base */
   font-family: 'FormaDJRArabicText', sans-serif;
-  letter-spacing: 0.025em; /* Improved letter spacing for better readability */
+  letter-spacing: 0.025em;
+  line-height: 1.6; /* Better mobile readability */
 }
 
 /* Add shimmer animation */
@@ -183,22 +191,22 @@ body {
   animation: shimmer 2s infinite;
 }
 
-/* Add custom classes for our new premium design */
+/* Enhanced mobile-first custom classes */
 @layer components {
   .premium-card {
     @apply border border-warm-gold/20 rounded-lg shadow-md bg-white overflow-hidden transition-all duration-300;
   }
   
   .premium-card:hover {
-    @apply shadow-lg border-warm-gold/40 transform translate-y-[-4px];
+    @apply shadow-lg border-warm-gold/40 transform translate-y-[-2px];
   }
   
   .premium-button {
-    @apply bg-warm-gold text-white font-medium py-3 px-6 rounded-md hover:bg-warm-gold/90 transition-all;
+    @apply bg-warm-gold text-white font-medium py-3 px-4 sm:px-6 rounded-md hover:bg-warm-gold/90 transition-all min-h-[44px] touch-manipulation;
   }
   
   .premium-button-outline {
-    @apply border-2 border-warm-gold text-warm-gold font-medium py-3 px-6 rounded-md hover:bg-warm-gold/10 transition-all;
+    @apply border-2 border-warm-gold text-warm-gold font-medium py-3 px-4 sm:px-6 rounded-md hover:bg-warm-gold/10 transition-all min-h-[44px] touch-manipulation;
   }
   
   .pricing-card {
@@ -209,18 +217,79 @@ body {
     @apply border-2 border-warm-gold relative;
   }
   
+  /* Responsive typography with clamp() */
   .section-title {
-    @apply text-3xl md:text-4xl font-bold mb-4 text-dark-base;
-    letter-spacing: 0.02em; /* Slightly tighter for headers */
+    @apply font-bold mb-3 sm:mb-4 text-dark-base;
+    font-size: clamp(1.75rem, 4vw, 2.5rem); /* Mobile-first responsive sizing */
+    letter-spacing: 0.02em;
+    line-height: 1.2;
   }
   
   .section-subtitle {
-    @apply text-lg text-muted-teal mb-8 max-w-2xl mx-auto;
-    letter-spacing: 0.015em; /* Balanced spacing for subtitles */
+    @apply text-muted-teal mb-6 sm:mb-8 max-w-2xl mx-auto;
+    font-size: clamp(1rem, 2.5vw, 1.125rem);
+    letter-spacing: 0.015em;
+    line-height: 1.5;
   }
 
   .prompt-dialog {
-    @apply max-w-4xl p-0 border-none bg-soft-bg rounded-2xl shadow-xl overflow-hidden;
+    @apply max-w-[95vw] sm:max-w-4xl p-0 border-none bg-soft-bg rounded-2xl shadow-xl overflow-hidden;
+  }
+
+  /* Mobile-optimized touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation;
+  }
+  
+  /* Mobile-first card layouts */
+  .mobile-card {
+    @apply p-4 sm:p-6 space-y-3 sm:space-y-4 rounded-xl bg-white shadow-sm border border-gray-200;
+  }
+  
+  /* Mobile-optimized button variants */
+  .mobile-button-primary {
+    @apply w-full sm:w-auto bg-warm-gold hover:bg-warm-gold/90 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all duration-200 min-h-[44px] touch-manipulation;
+  }
+  
+  .mobile-button-secondary {
+    @apply w-full sm:w-auto border-2 border-warm-gold/30 bg-transparent hover:bg-warm-gold/10 text-dark-base font-semibold py-3 px-6 rounded-xl transition-all duration-200 min-h-[44px] touch-manipulation;
+  }
+
+  /* Mobile-first grid layouts */
+  .mobile-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
+  }
+  
+  .mobile-grid-2 {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6;
+  }
+
+  /* Mobile navigation tabs */
+  .mobile-tabs {
+    @apply flex overflow-x-auto scrollbar-hide gap-2 p-1 bg-gray-100 rounded-lg;
+    scroll-snap-type: x mandatory;
+  }
+  
+  .mobile-tab {
+    @apply flex-shrink-0 px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 min-h-[44px] flex items-center touch-manipulation;
+    scroll-snap-align: start;
+  }
+  
+  .mobile-tab-active {
+    @apply bg-warm-gold text-white shadow-sm;
+  }
+  
+  .mobile-tab-inactive {
+    @apply text-gray-600 hover:text-gray-800 hover:bg-white/50;
+  }
+
+  /* Mobile-optimized form elements */
+  .mobile-input {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-gold focus:border-transparent transition-all duration-200 text-base min-h-[44px];
+  }
+  
+  .mobile-textarea {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-gold focus:border-transparent transition-all duration-200 text-base min-h-[120px] resize-y;
   }
 
   /* Typography letter spacing utilities */
@@ -234,5 +303,41 @@ body {
   
   .letter-spacing-wide {
     letter-spacing: 0.05em;
+  }
+
+  /* Mobile-specific utility classes */
+  .mobile-only {
+    @apply block sm:hidden;
+  }
+  
+  .desktop-only {
+    @apply hidden sm:block;
+  }
+  
+  .mobile-text-center {
+    @apply text-center sm:text-left;
+  }
+  
+  .mobile-full-width {
+    @apply w-full sm:w-auto;
+  }
+
+  /* Enhanced scrollbar hiding */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Mobile-optimized spacing */
+  .mobile-section-padding {
+    @apply py-8 sm:py-12 lg:py-16;
+  }
+  
+  .mobile-container-padding {
+    @apply px-4 sm:px-6 lg:px-8;
   }
 }

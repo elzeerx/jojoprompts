@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Container } from "@/components/ui/container";
 import DashboardOverview from "./components/DashboardOverview";
 import PromptsManagement from "./PromptsManagement";
 import UsersManagement from "./components/users/UsersManagement";
@@ -11,49 +12,68 @@ import { CategoriesManagement } from "./components/categories/CategoriesManageme
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
+  const tabs = [
+    { id: "overview", label: "Overview" },
+    { id: "prompts", label: "Prompts" },
+    { id: "categories", label: "Categories" },
+    { id: "users", label: "Users" },
+    { id: "purchases", label: "Purchases" },
+    { id: "discounts", label: "Discounts" }
+  ];
+
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">
-          Manage your application settings and content
-        </p>
-      </div>
+    <div className="min-h-screen bg-soft-bg/30">
+      <Container className="py-6 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="section-title">Admin Dashboard</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Manage your application settings and content
+          </p>
+        </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="prompts">Prompts</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="purchases">Purchases</TabsTrigger>
-          <TabsTrigger value="discounts">Discount Codes</TabsTrigger>
-        </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {/* Mobile-optimized tab navigation */}
+          <div className="mb-6">
+            <TabsList className="mobile-tabs w-full justify-start bg-white/80 backdrop-blur-sm border border-gray-200 h-auto">
+              {tabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  className="mobile-tab data-[state=active]:mobile-tab-active data-[state=inactive]:mobile-tab-inactive text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3"
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <DashboardOverview />
-        </TabsContent>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <TabsContent value="overview" className="space-y-6 p-4 sm:p-6 m-0">
+              <DashboardOverview />
+            </TabsContent>
 
-        <TabsContent value="prompts" className="space-y-6">
-          <PromptsManagement />
-        </TabsContent>
+            <TabsContent value="prompts" className="space-y-6 p-4 sm:p-6 m-0">
+              <PromptsManagement />
+            </TabsContent>
 
-        <TabsContent value="categories" className="space-y-6">
-          <CategoriesManagement />
-        </TabsContent>
+            <TabsContent value="categories" className="space-y-6 p-4 sm:p-6 m-0">
+              <CategoriesManagement />
+            </TabsContent>
 
-        <TabsContent value="users" className="space-y-6">
-          <UsersManagement />
-        </TabsContent>
+            <TabsContent value="users" className="space-y-6 p-4 sm:p-6 m-0">
+              <UsersManagement />
+            </TabsContent>
 
-        <TabsContent value="purchases" className="space-y-6">
-          <PurchaseHistoryManagement />
-        </TabsContent>
+            <TabsContent value="purchases" className="space-y-6 p-4 sm:p-6 m-0">
+              <PurchaseHistoryManagement />
+            </TabsContent>
 
-        <TabsContent value="discounts" className="space-y-6">
-          <DiscountCodesManagement />
-        </TabsContent>
-      </Tabs>
+            <TabsContent value="discounts" className="space-y-6 p-4 sm:p-6 m-0">
+              <DiscountCodesManagement />
+            </TabsContent>
+          </div>
+        </Tabs>
+      </Container>
     </div>
   );
 }
