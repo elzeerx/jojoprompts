@@ -5,24 +5,24 @@
 
 /* Forma Font Face Declarations */
 @font-face {
-  font-family: 'FormaDJRArabicBanner';
-  src: url('/fonts/FormaDJRArabicBanner-Regular.woff2') format('woff2');
+  font-family: 'FormaDJRArabicText';
+  src: url('/fonts/FormaDJRArabicText-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'FormaDJRArabicBanner';
-  src: url('/fonts/FormaDJRArabicBanner-Medium.woff2') format('woff2');
+  font-family: 'FormaDJRArabicText';
+  src: url('/fonts/FormaDJRArabicText-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'FormaDJRArabicBanner';
-  src: url('/fonts/FormaDJRArabicBanner-Bold.woff2') format('woff2');
+  font-family: 'FormaDJRArabicText';
+  src: url('/fonts/FormaDJRArabicText-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -165,7 +165,7 @@ body {
   overflow-x: hidden;
   @apply bg-background;
   color: #262626; /* dark-base */
-  font-family: 'FormaDJRArabicBanner', sans-serif;
+  font-family: 'FormaDJRArabicText', sans-serif;
   letter-spacing: 0.025em; /* Improved letter spacing for better readability */
 }
 

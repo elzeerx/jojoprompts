@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -83,7 +82,7 @@ export default {
 				}
 			},
       fontFamily: {
-        'sans': ['FormaDJRArabicBanner', 'sans-serif'],
+        'sans': ['FormaDJRArabicText', 'sans-serif'],
         'arabic': ['Rubik', 'sans-serif'],
       },
 			borderRadius: {
