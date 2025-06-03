@@ -120,61 +120,71 @@ export function MagazinePromptCard({
       className={cn(
         "group cursor-pointer overflow-hidden bg-soft-bg rounded-2xl shadow-md border-0",
         "transition-all duration-300 hover:shadow-xl hover:scale-[1.02]",
-        "p-6 space-y-4 min-h-[400px] flex flex-col",
+        // Mobile-first responsive padding and spacing
+        "p-4 sm:p-6 space-y-3 sm:space-y-4 flex flex-col",
+        "touch-manipulation", // Better touch handling
         className
       )}
       onClick={onCardClick}
     >
-      {/* Category Tag */}
+      {/* Category Tag and Favorite */}
       <div className="flex items-start justify-between">
         <span className={cn(
-          "inline-block px-3 py-1 text-xs font-medium rounded-lg",
+          "inline-block px-2 py-1 text-xs font-medium rounded-lg",
+          "sm:px-3", // Larger padding on larger screens
           getCategoryBadgeStyle(prompt_type, category)
         )}>
           {category}
         </span>
         
-        {/* Favorite Button */}
+        {/* Mobile-optimized favorite button */}
         {session && (
           <button
             onClick={toggleFavorite}
             className={cn(
-              "p-2 rounded-full transition-all duration-200",
+              // Enhanced touch target for mobile
+              "p-2 rounded-full transition-all duration-200 min-h-[44px] min-w-[44px]",
+              "flex items-center justify-center",
               "hover:bg-white/30",
               favorited 
                 ? "text-[#c49d68]" 
                 : "text-gray-400 hover:text-[#c49d68]"
             )}
           >
-            <Heart className={cn("h-5 w-5", favorited && "fill-current")} />
+            <Heart className={cn("h-4 w-4 sm:h-5 sm:w-5", favorited && "fill-current")} />
           </button>
         )}
       </div>
       
-      {/* Title */}
-      <h3 className="text-gray-900 font-bold text-xl leading-tight line-clamp-2 min-h-[3rem]">
-        {title}
+      {/* Responsive title */}
+      <h3 className="text-gray-900 font-bold leading-tight flex-shrink-0">
+        <span className="block text-lg sm:text-xl line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem]">
+          {title}
+        </span>
       </h3>
       
-      {/* Image */}
+      {/* Mobile-optimized image */}
       {showImage && (
-        <div className="relative overflow-hidden rounded-xl h-48 bg-white/50">
-          <img
-            src={imageUrl}
-            alt={title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
+        <div className="relative overflow-hidden rounded-xl bg-white/50 flex-shrink-0">
+          {/* Mobile: 16:9 aspect ratio, larger screens: 4:3 */}
+          <div className="aspect-video sm:aspect-[4/3]">
+            <img
+              src={imageUrl}
+              alt={title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+          </div>
         </div>
       )}
       
-      {/* Description */}
-      <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed flex-grow">
+      {/* Description with responsive line clamping */}
+      <p className="text-gray-600 text-sm leading-relaxed flex-grow line-clamp-2 sm:line-clamp-3">
         {prompt_text}
       </p>
       
-      {/* Tags */}
+      {/* Mobile-optimized tags */}
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {tags.slice(0, 3).map((tag, i) => (
             <span 
               key={i}
@@ -191,10 +201,10 @@ export function MagazinePromptCard({
         </div>
       )}
       
-      {/* Action Button */}
-      <div className="mt-auto pt-2">
+      {/* Mobile-optimized action button */}
+      <div className="mt-auto pt-2 flex-shrink-0">
         <Button 
-          className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200"
+          className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200 text-sm sm:text-base"
         >
           View Details
         </Button>

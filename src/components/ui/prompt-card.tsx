@@ -174,7 +174,9 @@ export function PromptCard({
         className={cn(
           "group cursor-pointer overflow-hidden bg-soft-bg rounded-2xl shadow-md border-0",
           "transition-all duration-300 hover:shadow-xl hover:scale-[1.02]",
-          "p-6 space-y-4 min-h-[400px] flex flex-col relative",
+          // Mobile-first flexible height instead of fixed min-h-[400px]
+          "p-4 sm:p-6 space-y-3 sm:space-y-4 flex flex-col relative",
+          "touch-manipulation", // Better touch handling
           isSelected && "ring-2 ring-[#c49d68] shadow-lg",
           isLocked && "opacity-95"
         )} 
@@ -182,20 +184,20 @@ export function PromptCard({
       >
         {isLocked && (
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-center justify-center z-20 rounded-2xl">
-            <div className="bg-black/80 backdrop-blur-sm p-6 rounded-xl flex flex-col items-center text-center">
-              <Lock className="h-8 w-8 text-[#c49d68] mb-3" />
-              <p className="text-white font-semibold text-sm mb-1">Premium Content</p>
-              <p className="text-white/80 text-xs mb-4 max-w-[200px]">Upgrade your plan to access this content</p>
+            <div className="bg-black/80 backdrop-blur-sm p-4 sm:p-6 rounded-xl flex flex-col items-center text-center max-w-[90%]">
+              <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-[#c49d68] mb-2 sm:mb-3" />
+              <p className="text-white font-semibold text-xs sm:text-sm mb-1">Premium Content</p>
+              <p className="text-white/80 text-xs mb-3 sm:mb-4 max-w-[180px] sm:max-w-[200px]">Upgrade your plan to access this content</p>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="bg-[#c49d68]/90 text-white hover:bg-[#c49d68] border-[#c49d68]"
+                className="bg-[#c49d68]/90 text-white hover:bg-[#c49d68] border-[#c49d68] text-xs sm:text-sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onUpgradeClick) onUpgradeClick();
                 }}
               >
-                <Crown className="h-3 w-3 mr-2" />
+                <Crown className="h-3 w-3 mr-1 sm:mr-2" />
                 Upgrade Plan
               </Button>
             </div>
@@ -206,13 +208,14 @@ export function PromptCard({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <span className={cn(
-              "inline-block px-3 py-1 text-xs font-medium rounded-lg",
+              "inline-block px-2 py-1 text-xs font-medium rounded-lg",
+              "sm:px-3", // Larger padding on larger screens
               getCategoryBadgeStyle(category)
             )}>
               {category}
             </span>
             {isN8nWorkflow && (
-              <Workflow className="h-4 w-4 text-blue-600" />
+              <Workflow className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
             )}
           </div>
           
@@ -220,42 +223,48 @@ export function PromptCard({
             <button
               onClick={toggleFavorite}
               className={cn(
-                "p-2 rounded-full transition-all duration-200",
+                // Enhanced touch target for mobile
+                "p-2 rounded-full transition-all duration-200 min-h-[44px] min-w-[44px]",
+                "flex items-center justify-center",
                 "hover:bg-white/30",
                 favorited 
                   ? "text-[#c49d68]" 
                   : "text-gray-400 hover:text-[#c49d68]"
               )}
             >
-              <Heart className={cn("h-5 w-5", favorited && "fill-current")} />
+              <Heart className={cn("h-4 w-4 sm:h-5 sm:w-5", favorited && "fill-current")} />
             </button>
           )}
         </div>
 
-        {/* Title */}
-        <h3 className="text-gray-900 font-bold text-xl leading-tight line-clamp-2 min-h-[3rem]">
-          {title}
+        {/* Title with responsive typography */}
+        <h3 className="text-gray-900 font-bold leading-tight flex-shrink-0">
+          <span className="block text-lg sm:text-xl line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem]">
+            {title}
+          </span>
         </h3>
 
-        {/* Image with 1:1 aspect ratio */}
-        <div className="relative overflow-hidden rounded-xl aspect-square bg-white/50">
-          <ImageWrapper 
-            src={imageUrl}
-            alt={title}
-            aspect={1}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
+        {/* Image with mobile-optimized aspect ratio */}
+        <div className="relative overflow-hidden rounded-xl bg-white/50 flex-shrink-0">
+          {/* Mobile: 16:9 aspect ratio, Desktop: square */}
+          <div className="aspect-video sm:aspect-square">
+            <ImageWrapper 
+              src={imageUrl}
+              alt={title}
+              aspect={1}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+          </div>
           
-          {/* Media count indicator if multiple files */}
+          {/* Media indicators */}
           {mediaFiles.length > 1 && (
             <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
               +{mediaFiles.length - 1} files
             </div>
           )}
           
-          {/* Add a special icon for video or audio content */}
           {mediaFiles.length > 0 && mediaFiles[0].type !== 'image' && (
-            <div className="absolute bottom-2 left-2 bg-black/70 p-2 rounded-full">
+            <div className="absolute bottom-2 left-2 bg-black/70 p-1.5 sm:p-2 rounded-full">
               {getMediaTypeIcon(mediaFiles[0])}
             </div>
           )}
@@ -263,40 +272,39 @@ export function PromptCard({
 
         {/* Description or Workflow Steps */}
         {isN8nWorkflow && workflowSteps.length > 0 ? (
-          <div className="flex-grow space-y-3">
-            {/* Workflow Steps */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                <Workflow className="h-4 w-4 text-blue-600" />
+          <div className="flex-grow space-y-2 sm:space-y-3">
+            <div className="space-y-1 sm:space-y-2">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <Workflow className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                 Workflow Steps
               </h4>
               <div className="space-y-1">
                 {workflowSteps.slice(0, 2).map((step, index) => (
                   <div key={index} className="flex items-start gap-2 text-xs">
-                    <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-medium">
+                    <span className="flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-medium text-xs">
                       {index + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-700 truncate">{step.name}</p>
-                      <p className="text-gray-500 line-clamp-1">{step.description}</p>
+                      <p className="font-medium text-gray-700 truncate text-xs sm:text-sm">{step.name}</p>
+                      <p className="text-gray-500 line-clamp-1 text-xs">{step.description}</p>
                     </div>
                   </div>
                 ))}
                 {workflowSteps.length > 2 && (
-                  <p className="text-xs text-gray-500 pl-7">+{workflowSteps.length - 2} more steps</p>
+                  <p className="text-xs text-gray-500 pl-6 sm:pl-7">+{workflowSteps.length - 2} more steps</p>
                 )}
               </div>
             </div>
           </div>
         ) : (
-          <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed flex-grow">
+          <p className="text-gray-600 text-sm leading-relaxed flex-grow line-clamp-2 sm:line-clamp-3">
             {prompt_text}
           </p>
         )}
         
         {/* Tags */}
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {tags.slice(0, 3).map((tag, i) => (
               <span 
                 key={i}
@@ -314,10 +322,10 @@ export function PromptCard({
         )}
 
         {/* Action Buttons */}
-        <div className="mt-auto pt-2 space-y-3">
+        <div className="mt-auto pt-2 space-y-2 sm:space-y-3 flex-shrink-0">
           {!isLocked && (
             <Button 
-              className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200"
+              className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-200 text-sm sm:text-base"
             >
               {isN8nWorkflow ? "View Workflow" : "View Details"}
             </Button>
@@ -328,7 +336,7 @@ export function PromptCard({
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex-1 border-gray-300 hover:bg-gray-50"
+                className="flex-1 border-gray-300 hover:bg-gray-50 text-xs sm:text-sm"
                 onClick={e => {
                   e.stopPropagation();
                   onEdit?.(prompt.id);
@@ -339,7 +347,7 @@ export function PromptCard({
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" 
+                className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 text-xs sm:text-sm" 
                 onClick={e => {
                   e.stopPropagation();
                   onDelete?.(prompt.id);
