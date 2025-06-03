@@ -50,7 +50,9 @@ function App() {
             <Route path="faq" element={<FAQPage />} />
             <Route path="search" element={<SearchPage />} />
             <Route path="terms" element={<TermsOfServicePage />} />
+            <Route path="terms-of-service" element={<TermsOfServicePage />} />
             <Route path="privacy" element={<PrivacyPolicyPage />} />
+            <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
             
             {/* Protected Routes */}
             <Route 
