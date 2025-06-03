@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ interface PromptDialogProps {
   category?: string;
 }
 
-// Type for metadata to properly handle the Json type from Supabase
 interface PromptMetadata {
   category?: string;
   tags?: string[];
@@ -46,28 +46,44 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     validateForm
   } = usePromptForm(editingPrompt);
 
-  // Initialize promptType and category if provided
+  console.log("PromptDialog - Dialog opened with editingPrompt:", editingPrompt?.id);
+  console.log("PromptDialog - Current form data:", formData);
+
+  // Reset state when dialog opens/closes or editingPrompt changes
   useEffect(() => {
-    if (promptType && !editingPrompt) {
+    if (!open) {
+      console.log("PromptDialog - Dialog closed, resetting state");
+      resetForm();
+      setCurrentFile(null);
+      setCurrentFiles([]);
+      setWorkflowFiles([]);
+      return;
+    }
+
+    // When dialog opens with an editingPrompt, ensure form is properly initialized
+    if (open && editingPrompt) {
+      console.log("PromptDialog - Dialog opened with editing prompt, initializing form");
+      // The form will be initialized by usePromptForm, but we can add additional logging
+      setTimeout(() => {
+        console.log("PromptDialog - Form data after initialization:", formData);
+      }, 100);
+    }
+  }, [open, editingPrompt, resetForm]);
+
+  // Initialize promptType and category if provided (for new prompts)
+  useEffect(() => {
+    if (promptType && !editingPrompt && open) {
+      console.log("PromptDialog - Setting initial prompt type and category:", promptType, category);
       setFormData(prev => ({
         ...prev,
         promptType: promptType as 'text' | 'image' | 'workflow' | 'video' | 'sound',
         metadata: {
           ...prev.metadata,
-          category: category || prev.metadata?.category
+          category: category || prev.metadata?.category || 'ChatGPT'
         }
       }));
     }
-  }, [promptType, category, setFormData, editingPrompt]);
-
-  useEffect(() => {
-    if (!open) {
-      resetForm();
-      setCurrentFile(null);
-      setCurrentFiles([]);
-      setWorkflowFiles([]);
-    }
-  }, [open, resetForm]);
+  }, [promptType, category, setFormData, editingPrompt, open]);
 
   const uploadFiles = async (files: File[], bucket?: string): Promise<string[]> => {
     const uploadedPaths: string[] = [];
@@ -132,7 +148,6 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       if (currentFiles.length > 0) {
         const uploadedPaths = await uploadFiles(currentFiles);
         
-        // Update media files with uploaded paths
         const updatedMediaFiles = mediaFiles.map((media: any, index: number) => {
           if (media.file && uploadedPaths[index]) {
             return {
@@ -150,7 +165,6 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         
         mediaFiles = updatedMediaFiles;
       } else {
-        // Clean existing media files to remove non-serializable properties
         mediaFiles = mediaFiles.map((media: any) => ({
           type: media.type,
           path: media.path,
@@ -163,7 +177,6 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         console.log("PromptDialog - Uploading workflow files:", workflowFiles);
         const uploadedWorkflowPaths = await uploadFiles(workflowFiles, FILE_BUCKET);
 
-        // Create workflow files data with uploaded paths
         const newWorkflowFiles = workflowFiles.map((file, index) => {
           const fileExt = file.name.split('.').pop()?.toLowerCase() as 'json' | 'zip';
           return {
@@ -173,14 +186,10 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
           };
         });
 
-        // Filter out any existing entries without a valid path before merging
         const existingFiles = Array.isArray(workflowFilesData) ? workflowFilesData.filter((wf: any) => wf.path) : [];
-
-        // Merge with existing workflow files (keep existing ones, add new ones)
         workflowFilesData = [...existingFiles, ...newWorkflowFiles];
         console.log("PromptDialog - Final workflow files data:", workflowFilesData);
       } else {
-        // Clean existing workflow files to remove non-serializable properties
         workflowFilesData = Array.isArray(workflowFilesData) ? workflowFilesData.map((wf: any) => ({
           type: wf.type,
           path: wf.path,
@@ -188,7 +197,6 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         })) : [];
       }
 
-      // Prepare metadata as JSON-compatible object - serialize everything properly
       const cleanMetadata = JSON.parse(JSON.stringify({
         category: metadata?.category || 'ChatGPT',
         tags: metadata?.tags || [],
@@ -201,7 +209,6 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       }));
 
       console.log("PromptDialog - Clean metadata prepared for saving:", cleanMetadata);
-      console.log("PromptDialog - Workflow files in metadata:", cleanMetadata.workflow_files);
 
       const promptData = {
         title: formData.title,
@@ -226,10 +233,6 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         
         console.log("PromptDialog - Updated prompt data returned:", data);
         
-        // Type cast the returned metadata for safe access
-        const returnedMetadata = data?.[0]?.metadata as PromptMetadata;
-        console.log("PromptDialog - Updated prompt workflow files:", returnedMetadata?.workflow_files);
-        
         toast({
           title: "Success",
           description: "Prompt updated successfully"
@@ -243,10 +246,6 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         if (error) throw error;
         
         console.log("PromptDialog - Inserted prompt data returned:", data);
-        
-        // Type cast the returned metadata for safe access
-        const returnedMetadata = data?.[0]?.metadata as PromptMetadata;
-        console.log("PromptDialog - Inserted prompt workflow files:", returnedMetadata?.workflow_files);
         
         toast({
           title: "Success", 

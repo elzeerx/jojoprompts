@@ -39,12 +39,14 @@ export function PromptsPageContent({
   const activeCategories = dbCategories.filter(cat => cat.is_active);
   const activeCategoryNames = activeCategories.map(cat => cat.name);
 
+  console.log("PromptsPageContent - Active categories:", activeCategoryNames);
+  console.log("PromptsPageContent - Total prompts:", prompts.length);
+
   // Fetch user subscription and admin status
   useEffect(() => {
     const checkUserSubscriptionAndRole = async () => {
       if (!user) return;
       try {
-        // Check if user is admin
         const {
           data: profileData,
           error: profileError
@@ -52,7 +54,6 @@ export function PromptsPageContent({
         if (profileError) throw profileError;
         setIsAdmin(profileData?.role === "admin");
 
-        // Get user's active subscription
         const {
           data: subscription,
           error: subscriptionError
@@ -70,48 +71,71 @@ export function PromptsPageContent({
     checkUserSubscriptionAndRole();
   }, [user]);
 
-  // Filter prompts based on search query, category, and active categories
+  // Helper function to check if a prompt category matches an active category
+  const isPromptCategoryActive = (promptCategory: string | undefined) => {
+    if (!promptCategory) return false;
+    if (activeCategoryNames.length === 0) return true; // If no active categories, show all
+    
+    // Exact match
+    if (activeCategoryNames.includes(promptCategory)) return true;
+    
+    // Flexible matching for common variations
+    const normalizedPromptCategory = promptCategory.toLowerCase().trim();
+    return activeCategoryNames.some(activeCategory => {
+      const normalizedActiveCategory = activeCategory.toLowerCase().trim();
+      
+      // Check if they're variations of the same category
+      // e.g., "ChatGPT" matches "ChatGPT Prompts"
+      return normalizedPromptCategory.includes(normalizedActiveCategory) || 
+             normalizedActiveCategory.includes(normalizedPromptCategory) ||
+             normalizedPromptCategory.replace(/\s+prompts?$/i, '') === normalizedActiveCategory.replace(/\s+prompts?$/i, '');
+    });
+  };
+
+  // Filter prompts based on search query and category
   const filteredPrompts = prompts.filter(prompt => {
-    // First check if the prompt's category is active (or if no categories are set up yet)
     const promptCategory = prompt.metadata?.category;
     
-    // If we have active categories set up, only show prompts with active categories
-    if (activeCategoryNames.length > 0 && promptCategory) {
-      const isCategoryActive = activeCategoryNames.includes(promptCategory);
-      if (!isCategoryActive) {
-        return false;
-      }
+    console.log(`Checking prompt "${prompt.title}" with category:`, promptCategory);
+    
+    // Category filtering - only show prompts with active categories
+    const isCategoryActive = isPromptCategoryActive(promptCategory);
+    console.log(`Category "${promptCategory}" is active:`, isCategoryActive);
+    
+    if (!isCategoryActive) {
+      console.log(`Filtering out prompt "${prompt.title}" due to inactive category`);
+      return false;
     }
 
+    // Search filtering
     const matchesSearch = searchQuery === "" || 
       prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
       prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) || 
       (prompt.metadata?.tags && prompt.metadata.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase())));
     
+    // Selected category filtering
     const matchesCategory = selectedCategory === "all" || 
-      prompt.metadata?.category?.toLowerCase() === selectedCategory.toLowerCase() || 
-      (selectedCategory === "uncategorized" && !prompt.metadata?.category);
+      isPromptCategoryActive(prompt.metadata?.category) && (
+        prompt.metadata?.category?.toLowerCase() === selectedCategory.toLowerCase() ||
+        // Handle variations like "ChatGPT" vs "ChatGPT Prompts"
+        prompt.metadata?.category?.toLowerCase().replace(/\s+prompts?$/i, '') === selectedCategory.toLowerCase().replace(/\s+prompts?$/i, '')
+      );
     
-    return matchesSearch && matchesCategory;
+    const result = matchesSearch && matchesCategory;
+    console.log(`Prompt "${prompt.title}" - Search: ${matchesSearch}, Category: ${matchesCategory}, Final: ${result}`);
+    
+    return result;
   });
+
+  console.log("PromptsPageContent - Filtered prompts count:", filteredPrompts.length);
 
   // Check if a prompt is locked based on user subscription and category
   const isPromptLockedByCategory = (prompt: any) => {
-    if (isAdmin) return false; // Admins have access to all prompts
+    if (isAdmin) return false;
     
-    // Get the user's subscription tier
     const planName = userSubscription?.subscription_plans?.name;
     const userTier = getSubscriptionTier(planName);
-    
-    // Use category-based locking
     const category = prompt.metadata?.category;
-    
-    console.log(`Checking access for prompt "${prompt.title}":`, {
-      category,
-      userTier,
-      planName,
-      hasSubscription: !!userSubscription
-    });
     
     return isCategoryLocked(category, userTier, isAdmin);
   };
@@ -145,7 +169,7 @@ export function PromptsPageContent({
             >
               All Categories
             </TabsTrigger>
-            {categories.filter(category => category !== "all").map(category => (
+            {activeCategoryNames.map(category => (
               <TabsTrigger 
                 key={category} 
                 value={category.toLowerCase()} 
@@ -157,6 +181,16 @@ export function PromptsPageContent({
           </TabsList>
         </div>
       </Tabs>
+
+      {/* Debug information */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 p-4 bg-gray-100 rounded text-sm">
+          <div>Total prompts: {prompts.length}</div>
+          <div>Filtered prompts: {filteredPrompts.length}</div>
+          <div>Active categories: {activeCategoryNames.join(', ')}</div>
+          <div>Selected category: {selectedCategory}</div>
+        </div>
+      )}
 
       {/* Prompts display */}
       {isLoading || loading || categoriesLoading ? (
@@ -173,9 +207,16 @@ export function PromptsPageContent({
           <p className="text-muted-foreground mb-4">
             {activeCategoryNames.length === 0 
               ? "No active categories found. Please contact an administrator."
-              : "No prompts found for the selected criteria."
+              : prompts.length === 0
+              ? "No prompts found in the database."
+              : `No prompts found matching your criteria. Found ${prompts.length} total prompts, but none match the active categories: ${activeCategoryNames.join(', ')}`
             }
           </p>
+          {prompts.length > 0 && (
+            <Button onClick={() => setSelectedCategory("all")} variant="outline">
+              Reset Filters
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
