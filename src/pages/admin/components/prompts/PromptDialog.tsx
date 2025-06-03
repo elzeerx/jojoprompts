@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -49,31 +48,24 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   console.log("PromptDialog - Dialog opened with editingPrompt:", editingPrompt?.id);
   console.log("PromptDialog - Current form data:", formData);
 
-  // Reset state when dialog opens/closes or editingPrompt changes
+  // Reset auxiliary state when dialog closes (but don't interfere with form data)
   useEffect(() => {
     if (!open) {
-      console.log("PromptDialog - Dialog closed, resetting state");
-      resetForm();
+      console.log("PromptDialog - Dialog closed, resetting auxiliary state only");
       setCurrentFile(null);
       setCurrentFiles([]);
       setWorkflowFiles([]);
-      return;
-    }
-
-    // When dialog opens with an editingPrompt, ensure form is properly initialized
-    if (open && editingPrompt) {
-      console.log("PromptDialog - Dialog opened with editing prompt, initializing form");
-      // The form will be initialized by usePromptForm, but we can add additional logging
-      setTimeout(() => {
-        console.log("PromptDialog - Form data after initialization:", formData);
-      }, 100);
+      // Only call resetForm if we're not editing (for new prompts)
+      if (!editingPrompt) {
+        resetForm();
+      }
     }
   }, [open, editingPrompt, resetForm]);
 
-  // Initialize promptType and category if provided (for new prompts)
+  // Initialize promptType and category if provided (for new prompts only)
   useEffect(() => {
     if (promptType && !editingPrompt && open) {
-      console.log("PromptDialog - Setting initial prompt type and category:", promptType, category);
+      console.log("PromptDialog - Setting initial prompt type and category for new prompt:", promptType, category);
       setFormData(prev => ({
         ...prev,
         promptType: promptType as 'text' | 'image' | 'workflow' | 'video' | 'sound',

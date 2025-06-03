@@ -11,6 +11,7 @@ import { AutoGenerateButton } from "./AutoGenerateButton";
 import { ImageSelectionField } from "./ImageSelectionField";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
+import { useCategories } from "@/hooks/useCategories";
 
 interface DialogFormProps {
   formData: {
@@ -36,6 +37,10 @@ export function DialogForm({
 }: DialogFormProps) {
   const [generatedMetadata, setGeneratedMetadata] = useState<boolean>(false);
   const [workflowFiles, setWorkflowFiles] = useState<any[]>([]);
+  
+  // Get categories from database
+  const { categories, loading: categoriesLoading } = useCategories();
+  const activeCategories = categories.filter(cat => cat.is_active);
 
   // Check if this is an n8n workflow prompt
   const isN8nWorkflow = formData.promptType === 'workflow' || 
@@ -206,16 +211,32 @@ export function DialogForm({
             console.log("DialogForm - Manual category selection:", value);
             updateMetadata({ ...formData.metadata, category: value });
           }}
+          disabled={categoriesLoading}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select category" />
+            <SelectValue placeholder={categoriesLoading ? "Loading categories..." : "Select category"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ChatGPT">ChatGPT</SelectItem>
-            <SelectItem value="Midjourney">Midjourney</SelectItem>
-            <SelectItem value="n8n">n8n</SelectItem>
-            <SelectItem value="General">General</SelectItem>
+            {/* Show active categories from database */}
+            {activeCategories.map(category => (
+              <SelectItem key={category.id} value={category.name}>
+                {category.name}
+              </SelectItem>
+            ))}
+            
+            {/* Fallback options if no active categories or for backward compatibility */}
+            {activeCategories.length === 0 && (
+              <>
+                <SelectItem value="ChatGPT">ChatGPT</SelectItem>
+                <SelectItem value="Midjourney">Midjourney</SelectItem>
+                <SelectItem value="n8n">n8n</SelectItem>
+                <SelectItem value="General">General</SelectItem>
+              </>
+            )}
+            
+            {/* Show existing category if it's not in the active list */}
             {formData.metadata?.category && 
+             !activeCategories.some(cat => cat.name === formData.metadata.category) &&
              !["ChatGPT", "Midjourney", "n8n", "General"].includes(formData.metadata.category) && (
               <SelectItem value={formData.metadata.category}>{formData.metadata.category}</SelectItem>
             )}
