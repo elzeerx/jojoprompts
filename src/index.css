@@ -166,6 +166,7 @@ body {
   @apply bg-background;
   color: #262626; /* dark-base */
   font-family: 'FormaDJRArabicBanner', sans-serif;
+  letter-spacing: 0.025em; /* Improved letter spacing for better readability */
 }
 
 /* Add shimmer animation */
@@ -210,13 +211,28 @@ body {
   
   .section-title {
     @apply text-3xl md:text-4xl font-bold mb-4 text-dark-base;
+    letter-spacing: 0.02em; /* Slightly tighter for headers */
   }
   
   .section-subtitle {
     @apply text-lg text-muted-teal mb-8 max-w-2xl mx-auto;
+    letter-spacing: 0.015em; /* Balanced spacing for subtitles */
   }
 
   .prompt-dialog {
     @apply max-w-4xl p-0 border-none bg-soft-bg rounded-2xl shadow-xl overflow-hidden;
+  }
+
+  /* Typography letter spacing utilities */
+  .letter-spacing-tight {
+    letter-spacing: 0.01em;
+  }
+  
+  .letter-spacing-normal {
+    letter-spacing: 0.025em;
+  }
+  
+  .letter-spacing-wide {
+    letter-spacing: 0.05em;
   }
 }
