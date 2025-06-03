@@ -175,6 +175,10 @@ body {
   font-family: 'FormaDJRArabicText', sans-serif;
   letter-spacing: 0.025em;
   line-height: 1.6; /* Better mobile readability */
+  /* Mobile performance optimizations */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Add shimmer animation */
@@ -224,6 +228,41 @@ body {
   }
 }
 
+@keyframes pulse-gentle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-delayed {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  50% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-shimmer {
   animation: shimmer 2s infinite;
 }
@@ -238,6 +277,18 @@ body {
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 3s ease-in-out infinite;
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up 0.4s ease-out;
+}
+
+.animate-fade-in-delayed {
+  animation: fade-in-delayed 0.8s ease-out;
 }
 
 /* Enhanced mobile-first custom classes */
@@ -331,13 +382,13 @@ body {
 
   /* Enhanced mobile navigation tabs */
   .mobile-tabs {
-    @apply flex overflow-x-auto scrollbar-hide gap-2 p-1 bg-gray-100/80 rounded-lg;
+    @apply flex overflow-x-auto scrollbar-hide gap-1 sm:gap-2 p-1 bg-gray-100/80 rounded-lg;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
   }
   
   .mobile-tab {
-    @apply flex-shrink-0 px-4 py-2 rounded-md font-medium text-sm transition-all duration-200 min-h-[44px] flex items-center touch-manipulation;
+    @apply flex-shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md font-medium text-xs sm:text-sm transition-all duration-200 min-h-[40px] sm:min-h-[44px] flex items-center touch-manipulation;
     scroll-snap-align: start;
     -webkit-tap-highlight-color: transparent;
   }
@@ -352,18 +403,18 @@ body {
 
   /* Enhanced mobile form elements */
   .mobile-input {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-gold focus:border-transparent transition-all duration-200 text-base min-h-[44px];
+    @apply w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-gold focus:border-transparent transition-all duration-200 text-base min-h-[44px];
     -webkit-appearance: none;
     -webkit-tap-highlight-color: transparent;
   }
   
   .mobile-textarea {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-gold focus:border-transparent transition-all duration-200 text-base min-h-[120px] resize-y;
+    @apply w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-gold focus:border-transparent transition-all duration-200 text-base min-h-[120px] resize-y;
     -webkit-appearance: none;
   }
   
   .mobile-select {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-gold focus:border-transparent transition-all duration-200 text-base min-h-[44px] bg-white;
+    @apply w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-gold focus:border-transparent transition-all duration-200 text-base min-h-[44px] bg-white;
     -webkit-appearance: none;
     -webkit-tap-highlight-color: transparent;
   }
@@ -489,7 +540,78 @@ body {
   }
   
   .mobile-icon-lg {
-    @apply w-6 h-6 sm:w-8 sm:h-8;
+    @apply w-6 h-6 sm:w-8 sm:w-8;
+  }
+
+  /* Enhanced mobile performance utilities */
+  .mobile-optimize-rendering {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    perspective: 1000;
+  }
+  
+  .mobile-smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  .mobile-gpu-accelerate {
+    -webkit-transform: translate3d(0,0,0);
+    transform: translate3d(0,0,0);
+  }
+
+  /* Mobile-first loading states */
+  .mobile-loading-spinner {
+    @apply animate-spin inline-block w-5 h-5 sm:w-6 sm:h-6 border-2 border-current border-r-transparent rounded-full;
+  }
+  
+  .mobile-loading-dots {
+    @apply flex space-x-1;
+  }
+  
+  .mobile-loading-dots > div {
+    @apply w-2 h-2 bg-current rounded-full animate-pulse-gentle;
+  }
+  
+  .mobile-loading-dots > div:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  
+  .mobile-loading-dots > div:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  /* Enhanced mobile accessibility */
+  .mobile-screen-reader-only {
+    @apply sr-only;
+  }
+  
+  .mobile-high-contrast {
+    @apply contrast-125;
+  }
+  
+  .mobile-reduce-motion {
+    @apply motion-reduce:animate-none motion-reduce:transition-none;
+  }
+
+  /* Mobile gesture support utilities */
+  .mobile-swipe-container {
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .mobile-pull-to-refresh {
+    overscroll-behavior-y: contain;
+  }
+  
+  .mobile-no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
 }
 
@@ -502,6 +624,15 @@ body {
   .container {
     padding-left: 0.75rem !important;
     padding-right: 0.75rem !important;
+  }
+  
+  .section-title {
+    font-size: 1.5rem !important;
+    line-height: 1.3 !important;
+  }
+  
+  .section-subtitle {
+    font-size: 0.875rem !important;
   }
 }
 
@@ -518,6 +649,11 @@ body {
   .ios-safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+  
+  .ios-bounce-fix {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
 }
 
 /* Android specific optimizations */
@@ -525,6 +661,18 @@ body {
   .android-input {
     -webkit-appearance: none;
     border-radius: 0;
+  }
+  
+  .android-tap-highlight {
+    -webkit-tap-highlight-color: rgba(196, 157, 104, 0.2);
+  }
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .mobile-image {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
   }
 }
 
@@ -537,5 +685,36 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  
+  .mobile-reduce-motion {
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Dark mode preferences */
+@media (prefers-color-scheme: dark) {
+  .mobile-auto-dark {
+    @apply bg-dark-base text-white;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .mobile-high-contrast-auto {
+    @apply contrast-150 brightness-110;
+  }
+}
+
+/* Print styles for mobile */
+@media print {
+  .mobile-print-hidden {
+    display: none !important;
+  }
+  
+  .mobile-print-block {
+    display: block !important;
   }
 }

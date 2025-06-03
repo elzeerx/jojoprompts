@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function PricingSection() {
   const [plans, setPlans] = useState<any[]>([]);
@@ -12,6 +13,7 @@ export function PricingSection() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // Fetch available plans
   useEffect(() => {
@@ -51,15 +53,18 @@ export function PricingSection() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex justify-center py-8 sm:py-12">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-warm-gold mx-auto" />
+          <p className="text-sm sm:text-base text-muted-foreground">Loading pricing plans...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="w-full max-w-7xl mx-auto mobile-container-padding">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {plans.map((plan) => (
           <div key={plan.id} className="flex flex-col h-full">
             <PlanCard
