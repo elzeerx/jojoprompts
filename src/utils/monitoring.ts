@@ -123,7 +123,7 @@ export class SecurityError extends Error {
   }
 }
 
-// Rate limiting hook
+// Simple rate limiting hook using built-in Map
 export const useRateLimit = (key: string, maxRequests = 10, windowMs = 60000) => {
   const rateLimiter = SecurityUtils.createRateLimiter(maxRequests, windowMs);
   

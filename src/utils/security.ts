@@ -1,28 +1,6 @@
+
 // Centralized security utilities for input validation and sanitization
 
-export class SecurityUtils {
-  // Basic email validation
-  static isValidBasicEmail(email: string): boolean {
-    if (!email || typeof email !== 'string') return false;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
-  // Basic UUID validation
-  static isValidBasicUUID(uuid: string): boolean {
-    if (!uuid || typeof uuid !== 'string') return false;
-    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-    return uuidRegex.test(uuid);
-  }
-
-  // Sanitize user input to prevent XSS attacks
-  static sanitizeBasicUserInput(input: string): string {
-    if (!input || typeof input !== 'string') return '';
-    return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
-}
-
-// Enhanced SecurityUtils with new validation methods
 export class SecurityUtils {
   // Enhanced email validation
   static isValidEmail(email: string): boolean {
@@ -43,11 +21,25 @@ export class SecurityUtils {
     return !suspiciousPatterns.some(pattern => pattern.test(email));
   }
 
+  // Basic email validation (legacy method)
+  static isValidBasicEmail(email: string): boolean {
+    if (!email || typeof email !== 'string') return false;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
   // Enhanced UUID validation
   static isValidUUID(uuid: string): boolean {
     if (!uuid || typeof uuid !== 'string') return false;
     
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  // Basic UUID validation (legacy method)
+  static isValidBasicUUID(uuid: string): boolean {
+    if (!uuid || typeof uuid !== 'string') return false;
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     return uuidRegex.test(uuid);
   }
 
@@ -61,6 +53,57 @@ export class SecurityUtils {
       .replace(/[<>]/g, '') // Remove potential HTML tags
       .replace(/javascript:/gi, '') // Remove javascript: protocol
       .replace(/on\w+=/gi, ''); // Remove event handlers
+  }
+
+  // Basic input sanitization (legacy method)
+  static sanitizeBasicUserInput(input: string): string {
+    if (!input || typeof input !== 'string') return '';
+    return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Password strength validation
+  static isStrongPassword(password: string): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    
+    if (!password || typeof password !== 'string') {
+      errors.push('Password is required');
+      return { isValid: false, errors };
+    }
+
+    if (password.length < 8) {
+      errors.push('Password must be at least 8 characters long');
+    }
+
+    if (password.length > 128) {
+      errors.push('Password is too long');
+    }
+
+    if (!/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter');
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter');
+    }
+
+    if (!/[0-9]/.test(password)) {
+      errors.push('Password must contain at least one number');
+    }
+
+    if (!/[^a-zA-Z0-9]/.test(password)) {
+      errors.push('Password must contain at least one special character');
+    }
+
+    // Check for common weak passwords
+    const commonPasswords = ['password', '123456', 'qwerty', 'admin', 'letmein'];
+    if (commonPasswords.includes(password.toLowerCase())) {
+      errors.push('Password is too common');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
   }
 
   // Check for SQL injection patterns
@@ -116,4 +159,42 @@ export class SecurityUtils {
 
     return { isValid: true };
   }
+
+  // Create rate limiter function
+  static createRateLimiter(maxRequests: number, windowMs: number) {
+    const attempts = new Map<string, { count: number; resetTime: number }>();
+
+    return (identifier: string): boolean => {
+      const now = Date.now();
+      const record = attempts.get(identifier);
+
+      if (!record || now > record.resetTime) {
+        attempts.set(identifier, { count: 1, resetTime: now + windowMs });
+        return true;
+      }
+
+      if (record.count >= maxRequests) {
+        return false;
+      }
+
+      record.count++;
+      return true;
+    };
+  }
 }
+
+// Content Security Policy header
+export const getCSPHeader = (): string => {
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.supabase.io",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https://*.supabase.co https://*.supabase.io blob:",
+    "connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'"
+  ].join('; ');
+};
