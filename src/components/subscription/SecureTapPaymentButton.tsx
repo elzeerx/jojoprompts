@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ export function SecureTapPaymentButton({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   
   const getKWDAmount = (usdAmount: number) => {
@@ -48,12 +49,14 @@ export function SecureTapPaymentButton({
   const handleSuccess = useCallback((paymentId: string) => {
     console.log("Secure Tap payment successful:", paymentId);
     setIsDialogOpen(false);
+    setError(null);
     onSuccess(paymentId);
   }, [onSuccess]);
 
   const handleError = useCallback((error: any) => {
     console.error("Secure Tap payment error:", error);
-    setError("Payment failed. Please try again.");
+    const errorMessage = typeof error === 'string' ? error : error?.message || "Tap payment failed";
+    setError(errorMessage);
     setIsDialogOpen(false);
     if (onError) onError(error);
   }, [onError]);
@@ -73,6 +76,8 @@ export function SecureTapPaymentButton({
     setIsLoading(true);
     
     try {
+      console.log("Initializing Tap payment...");
+      
       // Get secure configuration from edge function
       const { data: config, error: configError } = await supabase.functions.invoke(
         "create-tap-session",
@@ -81,9 +86,16 @@ export function SecureTapPaymentButton({
         }
       );
 
-      if (configError || !config) {
-        throw new Error(configError?.message || "Failed to initialize payment");
+      if (configError) {
+        console.error("Config error:", configError);
+        throw new Error(`Configuration error: ${configError.message || 'Failed to initialize payment'}`);
       }
+
+      if (!config) {
+        throw new Error("Failed to get payment configuration");
+      }
+
+      console.log("Tap config loaded successfully");
 
       // Load Tap Payment script if not already loaded
       if (!window.Tapjsli) {
@@ -91,15 +103,35 @@ export function SecureTapPaymentButton({
       }
       
       setTimeout(() => {
-        initializeTapPayment(config);
-        setIsLoading(false);
+        try {
+          initializeTapPayment(config);
+          setIsLoading(false);
+          setRetryCount(0);
+        } catch (initError) {
+          console.error("Error during Tap initialization:", initError);
+          handleError(initError);
+          setIsLoading(false);
+        }
       }, 500);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error initializing secure Tap payment:", error);
-      setError("Failed to initialize payment. Please try again.");
-      handleError(error);
-      setIsLoading(false);
-      setIsDialogOpen(false);
+      
+      if (retryCount < 2 && (error.message?.includes('network') || error.message?.includes('timeout'))) {
+        console.log(`Retrying Tap payment initialization... (attempt ${retryCount + 1})`);
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => {
+          setIsLoading(false);
+          setIsDialogOpen(false);
+          openTapPayment();
+        }, 2000 * (retryCount + 1));
+      } else {
+        const errorMessage = error.message?.includes('network') 
+          ? "Network error. Please check your connection and try again."
+          : "Tap Payment is temporarily unavailable. Please try again later or use PayPal.";
+        setError(errorMessage);
+        setIsLoading(false);
+        setIsDialogOpen(false);
+      }
     }
   };
   
@@ -114,16 +146,21 @@ export function SecureTapPaymentButton({
       const script = document.createElement("script");
       script.src = "https://secure.tap.company/checkout/js/setup-v2.js";
       script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Failed to load Tap Payment script"));
+      script.onload = () => {
+        console.log("Tap Payment script loaded successfully");
+        resolve();
+      };
+      script.onerror = () => {
+        console.error("Failed to load Tap Payment script");
+        reject(new Error("Failed to load Tap Payment script"));
+      };
       document.head.appendChild(script);
     });
   };
   
   const initializeTapPayment = (config: any) => {
     if (!window.Tapjsli) {
-      setError("Payment system not available. Please try again.");
-      return;
+      throw new Error("Tap Payment system not available");
     }
 
     try {
@@ -153,8 +190,7 @@ export function SecureTapPaymentButton({
       });
     } catch (error) {
       console.error("Error initializing secure Tap payment:", error);
-      setError("Failed to initialize payment. Please try again.");
-      handleError(error);
+      throw new Error("Failed to initialize payment system");
     }
   };
   
@@ -162,6 +198,34 @@ export function SecureTapPaymentButton({
     setIsDialogOpen(false);
     setError(null);
   };
+
+  if (error) {
+    return (
+      <div className="w-full">
+        <div className="p-4 border border-red-200 rounded-md bg-red-50">
+          <div className="flex items-start space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-red-600 text-sm font-medium">Tap Payment Unavailable</p>
+              <p className="text-red-600 text-sm mt-1">{error}</p>
+            </div>
+          </div>
+          <Button 
+            className="w-full mt-3" 
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setError(null);
+              setRetryCount(0);
+              openTapPayment();
+            }}
+          >
+            Retry Tap Payment
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -179,12 +243,6 @@ export function SecureTapPaymentButton({
           `Pay with Tap Payment (${displayAmount} ${currency})`
         )}
       </Button>
-      
-      {error && (
-        <div className="mt-2 p-2 border border-red-200 rounded bg-red-50">
-          <p className="text-red-600 text-sm">{error}</p>
-        </div>
-      )}
       
       <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
         <DialogContent className="prompt-dialog sm:max-w-md">

@@ -48,12 +48,12 @@ class EnhancedRateLimiter {
       };
     }
 
-    // Progressive delay for rapid attempts
+    // Progressive delay for rapid attempts (but more lenient)
     if (config.progressiveDelay && record.lastAttempt) {
       const timeSinceLastAttempt = now - record.lastAttempt;
-      const minimumDelay = Math.min(1000 * Math.pow(2, record.attempts - 1), 30000); // Max 30s
+      const minimumDelay = Math.min(500 * Math.pow(1.5, record.attempts - 1), 5000); // Max 5s delay
       
-      if (timeSinceLastAttempt < minimumDelay) {
+      if (timeSinceLastAttempt < minimumDelay && record.attempts > 2) {
         return {
           allowed: false,
           retryAfter: Math.ceil((minimumDelay - timeSinceLastAttempt) / 1000)
@@ -130,7 +130,7 @@ class EnhancedRateLimiter {
   }
 }
 
-// Enhanced configurations
+// Enhanced configurations with more lenient payment limits
 export const EnhancedRateLimitConfigs = {
   AUTH_LOGIN: {
     maxAttempts: 5,
@@ -151,9 +151,9 @@ export const EnhancedRateLimitConfigs = {
     progressiveDelay: true
   },
   PAYMENT_ATTEMPT: {
-    maxAttempts: 3,
-    windowMs: 5 * 60 * 1000, // 5 minutes
-    blockDurationMs: 15 * 60 * 1000, // 15 minutes
+    maxAttempts: 5, // Increased from 3 to 5
+    windowMs: 10 * 60 * 1000, // Increased from 5 to 10 minutes
+    blockDurationMs: 10 * 60 * 1000, // Reduced from 15 to 10 minutes
     progressiveDelay: true
   },
   API_CALL: {

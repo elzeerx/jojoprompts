@@ -4,27 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logInfo, logWarn, logError, logDebug } from '@/utils/secureLogging';
-import { enhancedRateLimiter, EnhancedRateLimitConfigs } from '@/utils/enhancedRateLimiting';
 
 export function usePaymentHandling(user: any, selectedPlan: any, processing: boolean, setProcessing: any) {
   const navigate = useNavigate();
 
   const handlePaymentSuccess = useCallback(async (paymentData: any) => {
-    // Check rate limiting for payment attempts
-    const paymentRateCheck = enhancedRateLimiter.isAllowed(
-      `payment_${user?.id || 'anonymous'}`,
-      EnhancedRateLimitConfigs.PAYMENT_ATTEMPT
-    );
-
-    if (!paymentRateCheck.allowed) {
-      toast({
-        title: "Too Many Payment Attempts",
-        description: `Please wait ${paymentRateCheck.retryAfter} seconds before trying again.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (processing) {
       logWarn("Payment already processing, ignoring duplicate call", "payment", undefined, user?.id);
       return;
@@ -69,7 +53,7 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
 
       // Create a timeout promise for manual timeout handling
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Request timed out after 30 seconds")), 30000);
+        setTimeout(() => reject(new Error("Request timed out after 45 seconds")), 45000);
       });
 
       // Race between the function call and timeout
@@ -83,30 +67,24 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
 
       if (error) {
         logError("Supabase function error", "payment", { error: error.message }, user.id);
-        throw new Error(`Function error: ${error.message || JSON.stringify(error)}`);
+        throw new Error(`Payment processing failed: ${error.message || 'Unknown error'}`);
       }
 
       if (!data || !data.success) {
         logError("Function returned unsuccessful response", "payment", { dataExists: !!data }, user.id);
-        throw new Error(data?.error || "Function returned unsuccessful response");
+        throw new Error(data?.error || "Payment processing was unsuccessful");
       }
 
       logInfo("Plan access created successfully", "payment", undefined, user.id);
 
       toast({
-        title: "Success!",
-        description: "Your plan access has been activated",
+        title: "Payment Successful!",
+        description: "Your plan access has been activated successfully.",
       });
 
       navigate("/payment-success");
 
     } catch (error: any) {
-      // Record failed payment attempt for rate limiting
-      enhancedRateLimiter.recordFailedAttempt(
-        `payment_${user?.id}`,
-        { error: error.message, planId: selectedPlan?.id }
-      );
-      
       logError("Error creating plan access", "payment", { 
         error: error.message,
         errorType: error.name 
@@ -114,9 +92,19 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       
+      // Provide more specific error messages
+      let userMessage = "There was an issue processing your payment. Please try again.";
+      if (errorMessage.includes("timeout")) {
+        userMessage = "Payment processing is taking longer than expected. Please check your account or contact support.";
+      } else if (errorMessage.includes("network")) {
+        userMessage = "Network connection issue. Please check your internet connection and try again.";
+      } else if (errorMessage.includes("authentication")) {
+        userMessage = "Authentication error. Please refresh the page and try again.";
+      }
+      
       toast({
         title: "Payment Processing Error",
-        description: `Failed to activate plan access: ${errorMessage}. Please contact support if this persists.`,
+        description: userMessage,
         variant: "destructive",
       });
       
@@ -126,11 +114,20 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
   }, [processing, selectedPlan, user, navigate, setProcessing]);
 
   const handlePaymentError = useCallback((error: any) => {
-    logError("Payment error occurred", "payment", { error: error.message }, user?.id);
+    logError("Payment error occurred", "payment", { error: error.message || error }, user?.id);
     setProcessing(false);
+    
+    // More specific error handling
+    let errorMessage = "There was an issue processing your payment. Please try again.";
+    if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
+      errorMessage = "Network error. Please check your connection and try again.";
+    } else if (error?.message?.includes("timeout")) {
+      errorMessage = "Payment processing timed out. Please try again.";
+    }
+    
     toast({
       title: "Payment Failed",
-      description: "There was an issue processing your payment. Please try again.",
+      description: errorMessage,
       variant: "destructive",
     });
   }, [user?.id, setProcessing]);

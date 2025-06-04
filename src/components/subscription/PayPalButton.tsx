@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 declare global {
@@ -37,6 +37,7 @@ export function PayPalButton({
   const [buttonRendered, setButtonRendered] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paypalConfig, setPaypalConfig] = useState<PayPalConfig | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Memoize the payment amount to prevent unnecessary re-renders
   const memoizedAmount = React.useMemo(() => amount.toFixed(2), [amount]);
@@ -48,42 +49,50 @@ export function PayPalButton({
 
   const handleError = useCallback((error: any) => {
     console.error("PayPal payment error:", error);
-    setError("Payment failed. Please try again.");
+    const errorMessage = typeof error === 'string' ? error : error?.message || "PayPal payment failed";
+    setError(errorMessage);
     onError(error);
   }, [onError]);
 
-  // Fetch PayPal configuration
-  useEffect(() => {
-    const fetchPayPalConfig = async () => {
-      try {
-        console.log("Fetching PayPal configuration...");
-        const { data, error } = await supabase.functions.invoke("get-paypal-config");
-        
-        if (error) {
-          console.error("Error fetching PayPal config:", error);
-          setError("Failed to load PayPal configuration. Please contact support.");
-          setIsLoading(false);
-          return;
-        }
+  // Fetch PayPal configuration with retry logic
+  const fetchPayPalConfig = useCallback(async () => {
+    try {
+      console.log("Fetching PayPal configuration...");
+      setError(null);
+      
+      const { data, error } = await supabase.functions.invoke("get-paypal-config");
+      
+      if (error) {
+        console.error("Error fetching PayPal config:", error);
+        throw new Error(`Configuration error: ${error.message || 'Failed to load PayPal settings'}`);
+      }
 
-        if (!data?.clientId) {
-          console.error("No PayPal client ID in response:", data);
-          setError("PayPal is not properly configured. Please contact support.");
-          setIsLoading(false);
-          return;
-        }
+      if (!data?.clientId) {
+        console.error("No PayPal client ID in response:", data);
+        throw new Error("PayPal is not properly configured. Please contact support.");
+      }
 
-        console.log("PayPal config loaded:", { environment: data.environment, currency: data.currency });
-        setPaypalConfig(data);
-      } catch (error) {
-        console.error("Failed to fetch PayPal config:", error);
-        setError("Failed to initialize PayPal. Please refresh and try again.");
+      console.log("PayPal config loaded successfully");
+      setPaypalConfig(data);
+      setRetryCount(0);
+    } catch (error: any) {
+      console.error("Failed to fetch PayPal config:", error);
+      const errorMessage = error.message || "Failed to initialize PayPal";
+      
+      if (retryCount < 2) {
+        console.log(`Retrying PayPal config fetch... (attempt ${retryCount + 1})`);
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => fetchPayPalConfig(), 2000 * (retryCount + 1)); // Exponential backoff
+      } else {
+        setError("PayPal is temporarily unavailable. Please try again later or use an alternative payment method.");
         setIsLoading(false);
       }
-    };
+    }
+  }, [retryCount]);
 
+  useEffect(() => {
     fetchPayPalConfig();
-  }, []);
+  }, [fetchPayPalConfig]);
 
   // Load PayPal script
   useEffect(() => {
@@ -108,7 +117,7 @@ export function PayPalButton({
     
     script.onerror = () => {
       console.error("PayPal script failed to load");
-      setError("Failed to load PayPal. Please refresh and try again.");
+      setError("Failed to load PayPal payment system. Please refresh the page and try again.");
       setIsLoading(false);
       handleError(new Error("Failed to load PayPal script"));
     };
@@ -161,7 +170,7 @@ export function PayPalButton({
           },
           onCancel: () => {
             console.log("PayPal payment canceled by user");
-            setError("Payment was canceled. You can try again.");
+            setError("Payment was canceled. You can try again if needed.");
           },
           onError: (err: any) => {
             console.error("PayPal button error:", err);
@@ -183,12 +192,12 @@ export function PayPalButton({
         })
         .catch((error: any) => {
           console.error("Failed to render PayPal button:", error);
-          setError("Failed to initialize PayPal. Please refresh and try again.");
+          setError("Failed to initialize PayPal payment. Please refresh the page and try again.");
           handleError(error);
         });
     } catch (error) {
       console.error("Failed to initialize PayPal button:", error);
-      setError("Failed to initialize PayPal. Please refresh and try again.");
+      setError("Failed to initialize PayPal payment system.");
       handleError(error);
     }
   }, [isScriptLoaded, memoizedAmount, planName, buttonRendered, handleSuccess, handleError, paypalConfig]);
@@ -197,15 +206,23 @@ export function PayPalButton({
     return (
       <div className={`w-full ${className}`}>
         <div className="p-4 border border-red-200 rounded-md bg-red-50">
-          <p className="text-red-600 text-sm">{error}</p>
+          <div className="flex items-start space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-red-600 text-sm font-medium">PayPal Unavailable</p>
+              <p className="text-red-600 text-sm mt-1">{error}</p>
+            </div>
+          </div>
           <Button 
-            className="w-full mt-2" 
+            className="w-full mt-3" 
             variant="outline"
+            size="sm"
             onClick={() => {
               setError(null);
               setIsLoading(true);
               setButtonRendered(false);
-              window.location.reload();
+              setRetryCount(0);
+              fetchPayPalConfig();
             }}
           >
             Retry PayPal
@@ -218,9 +235,9 @@ export function PayPalButton({
   return (
     <div className={`w-full ${className}`}>
       {isLoading && (
-        <div className="w-full min-h-[45px] flex items-center justify-center bg-gray-50 rounded">
+        <div className="w-full min-h-[45px] flex items-center justify-center bg-gray-50 rounded border border-gray-200">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          <span className="text-sm">Loading PayPal...</span>
+          <span className="text-sm text-gray-600">Loading PayPal...</span>
         </div>
       )}
       <div 
