@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { securityMonitor } from "@/utils/monitoring";
 import { SecurityUtils } from "@/utils/security";
+import { logInfo, logWarn, logError } from "@/utils/secureLogging";
 
 export function useUserActions() {
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
@@ -19,6 +20,7 @@ export function useUserActions() {
 
       // Check if user has admin permissions
       if (!user || user.role !== 'admin') {
+        logWarn("Password reset attempted without admin permissions", "admin", undefined, user?.id);
         securityMonitor.logEvent('access_denied', {
           action: 'password_reset',
           reason: 'insufficient_permissions'
@@ -31,6 +33,7 @@ export function useUserActions() {
       });
       
       if (error) {
+        logError("Password reset email failed", "admin", { error: error.message }, user?.id);
         securityMonitor.logEvent('auth_failure', {
           action: 'password_reset_email',
           error: error.message
@@ -38,15 +41,15 @@ export function useUserActions() {
         throw error;
       }
 
-      // Log successful action
-      console.log(`Password reset email sent to ${email} by admin ${user.id}`);
+      // Log successful action (email domain only for privacy)
+      logInfo("Password reset email sent successfully", "admin", undefined, user.id);
       
       toast({
         title: "Password reset email sent",
-        description: `An email has been sent to ${email}`,
+        description: "A password reset email has been sent",
       });
     } catch (error: any) {
-      console.error("Error sending reset email:", error);
+      logError("Error sending reset email", "admin", { error: error.message }, user?.id);
       toast({
         title: "Error sending email",
         description: error.message || "Failed to send password reset email",
@@ -58,6 +61,7 @@ export function useUserActions() {
   const deleteUser = async (userId: string, email: string) => {
     // Input validation
     if (!SecurityUtils.isValidUUID(userId) || !SecurityUtils.isValidEmail(email)) {
+      logWarn("Invalid input for user deletion", "admin", { validUserId: SecurityUtils.isValidUUID(userId) }, user?.id);
       toast({
         title: "Invalid Input",
         description: "Invalid user ID or email format",
@@ -68,6 +72,7 @@ export function useUserActions() {
 
     // Check permissions
     if (!user || user.role !== 'admin') {
+      logWarn("User deletion attempted without admin permissions", "admin", undefined, user?.id);
       securityMonitor.logEvent('access_denied', {
         action: 'delete_user',
         targetUserId: userId,
@@ -84,6 +89,7 @@ export function useUserActions() {
 
     // Prevent self-deletion
     if (userId === user.id) {
+      logWarn("Admin attempted to delete own account", "admin", undefined, user.id);
       toast({
         title: "Action Not Allowed",
         description: "You cannot delete your own account",
@@ -94,13 +100,14 @@ export function useUserActions() {
 
     const sanitizedEmail = SecurityUtils.sanitizeUserInput(email);
     
-    if (!window.confirm(`Are you sure you want to permanently delete user: ${sanitizedEmail}? This action cannot be undone.`)) {
+    if (!window.confirm(`Are you sure you want to permanently delete this user? This action cannot be undone.`)) {
       return false;
     }
 
     setProcessingUserId(userId);
     try {
       if (!session) {
+        logError("User deletion attempted without session", "admin", undefined, user?.id);
         securityMonitor.logEvent('auth_failure', {
           action: 'delete_user',
           reason: 'no_session'
@@ -131,6 +138,7 @@ export function useUserActions() {
       if (error || (data && data.error)) {
         const errorMessage = error?.message || data?.error || "Error deleting user";
         
+        logError("User deletion failed", "admin", { error: errorMessage }, user?.id);
         securityMonitor.logEvent('access_denied', {
           action: 'delete_user',
           error: errorMessage,
@@ -140,17 +148,17 @@ export function useUserActions() {
         throw new Error(errorMessage);
       }
       
-      // Log successful deletion
-      console.log(`User ${userId} (${sanitizedEmail}) deleted by admin ${user.id}`);
+      // Log successful deletion (without exposing user details)
+      logInfo("User deleted successfully", "admin", { targetUserId: userId.substring(0, 8) + "***" }, user.id);
       
       toast({
         title: "User Deleted",
-        description: `User ${sanitizedEmail} has been permanently deleted.`,
+        description: "User has been permanently deleted.",
       });
 
       return true;
     } catch (error: any) {
-      console.error("Error deleting user:", error);
+      logError("Error deleting user", "admin", { error: error.message }, user?.id);
       
       securityMonitor.logEvent('payment_error', {
         action: 'delete_user',

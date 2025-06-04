@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Lock, Shield, UserPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { CheckoutSignupFormValues, checkoutSignupSchema } from "@/components/auth/validation";
+import { logInfo, logWarn, logError, logDebug } from "@/utils/secureLogging";
 
 interface CheckoutSignupFormProps {
   onSuccess: () => void;
@@ -41,7 +41,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
   });
 
   const handleGoogleAuth = async () => {
-    console.log("Starting Google OAuth from checkout");
+    logInfo("Starting Google OAuth from checkout", "auth");
     setIsGoogleLoading(true);
 
     try {
@@ -49,7 +49,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
       const currentUrl = new URL(window.location.href);
       currentUrl.searchParams.set('auth_callback', 'google');
       
-      console.log("Google OAuth redirect URL:", currentUrl.toString());
+      logDebug("Google OAuth redirect URL prepared", "auth");
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -59,17 +59,17 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
       });
 
       if (error) {
-        console.error("Google OAuth error:", error);
+        logError("Google OAuth error", "auth", { error: error.message });
         toast({
           variant: "destructive",
           title: "Error",
           description: error.message,
         });
       } else {
-        console.log("Google OAuth initiated successfully");
+        logInfo("Google OAuth initiated successfully", "auth");
       }
     } catch (error) {
-      console.error("Google authentication error:", error);
+      logError("Google authentication error", "auth", { error: error.message });
       toast({
         variant: "destructive",
         title: "Error",
@@ -81,12 +81,12 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
   };
 
   const handleSignup = async (values: CheckoutSignupFormValues) => {
-    console.log("Starting signup process with values:", { email: values.email, firstName: values.firstName, lastName: values.lastName });
+    logInfo("Starting signup process", "auth");
     setIsLoading(true);
 
     try {
       // Step 1: Sign up the user
-      console.log("Attempting to create user account");
+      logDebug("Attempting to create user account", "auth");
       const { data: signupData, error: signupError } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
@@ -99,7 +99,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
       });
 
       if (signupError) {
-        console.error("Signup error:", signupError);
+        logError("Signup error", "auth", { error: signupError.message });
         toast({
           variant: "destructive",
           title: "Error",
@@ -109,17 +109,17 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
         return;
       }
 
-      console.log("User account created successfully:", signupData);
+      logInfo("User account created successfully", "auth", undefined, signupData.user?.id);
 
       // Step 2: Automatically sign in the user
-      console.log("Attempting to sign in the new user");
+      logDebug("Attempting to sign in the new user", "auth", undefined, signupData.user?.id);
       const { error: signinError } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
 
       if (signinError) {
-        console.error("Auto sign-in error:", signinError);
+        logError("Auto sign-in error", "auth", { error: signinError.message }, signupData.user?.id);
         toast({
           variant: "destructive",
           title: "Account created but couldn't sign in automatically",
@@ -127,7 +127,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
         });
         setIsLogin(true);
       } else {
-        console.log("User signed in successfully, calling onSuccess");
+        logInfo("User signed in successfully", "auth", undefined, signupData.user?.id);
         toast({
           title: "Welcome!",
           description: "Your account has been created. Please complete your purchase.",
@@ -135,7 +135,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
         onSuccess();
       }
     } catch (error) {
-      console.error("Signup error:", error);
+      logError("Signup error", "auth", { error: error.message });
       toast({
         variant: "destructive",
         title: "Error",
@@ -147,24 +147,24 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
   };
 
   const handleLogin = async (values: { email: string; password: string }) => {
-    console.log("Starting login process for:", values.email);
+    logInfo("Starting login process", "auth");
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
 
       if (error) {
-        console.error("Login error:", error);
+        logError("Login error", "auth", { error: error.message });
         toast({
           variant: "destructive",
           title: "Error",
           description: error.message,
         });
       } else {
-        console.log("User logged in successfully, calling onSuccess");
+        logInfo("User logged in successfully", "auth", undefined, data.user?.id);
         toast({
           title: "Welcome back!",
           description: "You have been logged in. Please complete your purchase.",
@@ -172,7 +172,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
         onSuccess();
       }
     } catch (error) {
-      console.error("Login error:", error);
+      logError("Login error", "auth", { error: error.message });
       toast({
         variant: "destructive",
         title: "Error",

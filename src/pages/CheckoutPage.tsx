@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { CheckoutSignupForm } from "@/components/checkout/CheckoutSignupForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { logInfo, logWarn, logError, logDebug } from "@/utils/secureLogging";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -23,21 +23,21 @@ export default function CheckoutPage() {
   const [showAuthForm, setShowAuthForm] = useState(false);
   const { user, loading: authLoading } = useAuth();
 
-  // Log the current state for debugging
-  console.log("CheckoutPage state:", { 
-    user: user?.email, 
+  // Log the current state for debugging (with sanitized data)
+  logDebug("CheckoutPage state updated", "checkout", { 
+    hasUser: !!user, 
     authLoading, 
     loading, 
     showAuthForm, 
     planId,
     authCallback,
-    selectedPlan: selectedPlan?.name 
-  });
+    selectedPlanName: selectedPlan?.name 
+  }, user?.id);
 
   useEffect(() => {
     const fetchPlan = async () => {
       if (!planId) {
-        console.error("No plan ID provided");
+        logError("No plan ID provided in checkout", "checkout");
         setError("No plan selected");
         toast({
           title: "Error",
@@ -49,7 +49,7 @@ export default function CheckoutPage() {
       }
 
       try {
-        console.log("Fetching plan with ID:", planId);
+        logDebug("Fetching plan details", "checkout", { planId });
         setLoading(true);
         const { data, error } = await supabase
           .from("subscription_plans")
@@ -59,11 +59,11 @@ export default function CheckoutPage() {
 
         if (error) throw error;
 
-        console.log("Plan fetched successfully:", data);
+        logInfo("Plan fetched successfully", "checkout", { planName: data.name }, user?.id);
         setSelectedPlan(data);
         setError(null);
       } catch (error) {
-        console.error("Error fetching plan:", error);
+        logError("Error fetching plan details", "checkout", { planId, error: error.message }, user?.id);
         setError("Failed to load plan details");
         toast({
           title: "Error",
@@ -77,22 +77,28 @@ export default function CheckoutPage() {
     };
 
     fetchPlan();
-  }, [planId, navigate]);
+  }, [planId, navigate, user?.id]);
 
   useEffect(() => {
-    console.log("Auth state effect:", { user: user?.email, authLoading, loading, selectedPlan: selectedPlan?.name, authCallback });
+    logDebug("Auth state effect triggered", "checkout", { 
+      hasUser: !!user, 
+      authLoading, 
+      loading, 
+      selectedPlanName: selectedPlan?.name, 
+      authCallback 
+    }, user?.id);
     
     if (!authLoading && !loading && selectedPlan) {
       if (!user) {
-        console.log("No user found, showing auth form");
+        logInfo("No user found, showing auth form", "checkout");
         setShowAuthForm(true);
       } else {
-        console.log("User found, hiding auth form");
+        logInfo("User authenticated, hiding auth form", "checkout", undefined, user.id);
         setShowAuthForm(false);
         
         // If this is a Google OAuth callback, clean up the URL
         if (authCallback === 'google') {
-          console.log("Handling Google OAuth callback, cleaning URL");
+          logInfo("Handling Google OAuth callback", "checkout", undefined, user.id);
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.delete('auth_callback');
           window.history.replaceState({}, document.title, newUrl.toString());
@@ -107,22 +113,22 @@ export default function CheckoutPage() {
   }, [user, authLoading, loading, selectedPlan, authCallback]);
 
   const handleAuthSuccess = useCallback(() => {
-    console.log("Auth success callback triggered");
+    logInfo("Auth success callback triggered", "checkout", undefined, user?.id);
     setShowAuthForm(false);
     toast({
       title: "Success!",
       description: "Account ready. You can now complete your purchase.",
     });
-  }, []);
+  }, [user?.id]);
 
   const handlePaymentSuccess = useCallback(async (paymentData: any) => {
     if (processing) {
-      console.log("Payment already processing, ignoring duplicate call");
+      logWarn("Payment already processing, ignoring duplicate call", "payment", undefined, user?.id);
       return;
     }
     
     if (!user?.id) {
-      console.error("User not authenticated during payment success");
+      logError("User not authenticated during payment success", "payment");
       toast({
         title: "Authentication Error",
         description: "Please refresh the page and try again.",
@@ -134,9 +140,10 @@ export default function CheckoutPage() {
     setProcessing(true);
     
     try {
-      console.log("Processing payment success:", paymentData);
-      console.log("User ID:", user.id);
-      console.log("Plan ID:", selectedPlan.id);
+      logInfo("Processing payment success", "payment", { 
+        paymentMethod: paymentData.paymentMethod || (paymentData.source ? 'tap' : 'paypal'),
+        planId: selectedPlan.id 
+      }, user.id);
       
       // Standardize payment data structure
       const standardizedPaymentData = {
@@ -155,7 +162,7 @@ export default function CheckoutPage() {
         paymentData: standardizedPaymentData
       };
 
-      console.log("Sending request to create-subscription with payload:", requestPayload);
+      logDebug("Sending request to create-subscription", "payment", { planId: selectedPlan.id }, user.id);
 
       // Create a timeout promise for manual timeout handling
       const timeoutPromise = new Promise((_, reject) => {
@@ -169,19 +176,19 @@ export default function CheckoutPage() {
 
       const { data, error } = await Promise.race([functionPromise, timeoutPromise]) as any;
 
-      console.log("Supabase function response:", { data, error });
+      logDebug("Supabase function response received", "payment", { success: !!data?.success }, user.id);
 
       if (error) {
-        console.error("Supabase function error:", error);
+        logError("Supabase function error", "payment", { error: error.message }, user.id);
         throw new Error(`Function error: ${error.message || JSON.stringify(error)}`);
       }
 
       if (!data || !data.success) {
-        console.error("Function returned unsuccessful response:", data);
+        logError("Function returned unsuccessful response", "payment", { dataExists: !!data }, user.id);
         throw new Error(data?.error || "Function returned unsuccessful response");
       }
 
-      console.log("Plan access created successfully:", data);
+      logInfo("Plan access created successfully", "payment", undefined, user.id);
 
       toast({
         title: "Success!",
@@ -191,12 +198,10 @@ export default function CheckoutPage() {
       navigate("/payment-success");
 
     } catch (error) {
-      console.error("Error creating plan access:", error);
-      console.error("Error details:", {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
+      logError("Error creating plan access", "payment", { 
+        error: error.message,
+        errorType: error.name 
+      }, user?.id);
       
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       
@@ -212,14 +217,14 @@ export default function CheckoutPage() {
   }, [processing, selectedPlan, user, navigate]);
 
   const handlePaymentError = useCallback((error: any) => {
-    console.error("Payment error:", error);
+    logError("Payment error occurred", "payment", { error: error.message }, user?.id);
     setProcessing(false);
     toast({
       title: "Payment Failed",
       description: "There was an issue processing your payment. Please try again.",
       variant: "destructive",
     });
-  }, []);
+  }, [user?.id]);
 
   if (loading || authLoading) {
     return (
