@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,10 +43,13 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
     setIsGoogleLoading(true);
 
     try {
+      // Preserve the current checkout context with plan information
+      const currentUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/checkout`,
+          redirectTo: currentUrl,
         },
       });
 

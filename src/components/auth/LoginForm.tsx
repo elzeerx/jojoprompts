@@ -61,7 +61,7 @@ export function LoginForm() {
         
         // Handle redirection based on parameters
         if (selectedPlan) {
-          navigate(`/checkout?plan=${selectedPlan}`);
+          navigate(`/checkout?plan_id=${selectedPlan}`);
         } else if (redirectTo) {
           navigate(`/${redirectTo}`);
         } else {
@@ -84,10 +84,22 @@ export function LoginForm() {
     setIsGoogleLoading(true);
 
     try {
+      // Build redirect URL based on current context
+      let redirectUrl = `${window.location.origin}/prompts`;
+      
+      // If we're on checkout page or have plan parameters, preserve that context
+      const currentPath = window.location.pathname;
+      const currentSearch = window.location.search;
+      
+      if (currentPath === '/checkout' || currentSearch.includes('plan_id=') || selectedPlan) {
+        // Preserve the current checkout context
+        redirectUrl = `${window.location.origin}${currentPath}${currentSearch}`;
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/prompts`,
+          redirectTo: redirectUrl,
         },
       });
 
