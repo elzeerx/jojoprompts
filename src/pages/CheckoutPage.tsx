@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Check, Crown, AlertCircle, ArrowRight } from "lucide-react";
 import { PayPalButton } from "@/components/subscription/PayPalButton";
+import { SecureTapPaymentButton } from "@/components/subscription/SecureTapPaymentButton";
 import { TapPaymentButton } from "@/components/subscription/TapPaymentButton";
 import { CheckoutSignupForm } from "@/components/checkout/CheckoutSignupForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { logInfo, logWarn, logError, logDebug } from "@/utils/secureLogging";
+import { enhancedRateLimiter, EnhancedRateLimitConfigs } from "@/utils/enhancedRateLimiting";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -122,6 +124,21 @@ export default function CheckoutPage() {
   }, [user?.id]);
 
   const handlePaymentSuccess = useCallback(async (paymentData: any) => {
+    // Check rate limiting for payment attempts
+    const paymentRateCheck = enhancedRateLimiter.isAllowed(
+      `payment_${user?.id || 'anonymous'}`,
+      EnhancedRateLimitConfigs.PAYMENT_ATTEMPT
+    );
+
+    if (!paymentRateCheck.allowed) {
+      toast({
+        title: "Too Many Payment Attempts",
+        description: `Please wait ${paymentRateCheck.retryAfter} seconds before trying again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (processing) {
       logWarn("Payment already processing, ignoring duplicate call", "payment", undefined, user?.id);
       return;
@@ -198,6 +215,12 @@ export default function CheckoutPage() {
       navigate("/payment-success");
 
     } catch (error) {
+      // Record failed payment attempt for rate limiting
+      enhancedRateLimiter.recordFailedAttempt(
+        `payment_${user?.id}`,
+        { error: error.message, planId: selectedPlan?.id }
+      );
+      
       logError("Error creating plan access", "payment", { 
         error: error.message,
         errorType: error.name 
@@ -392,7 +415,7 @@ export default function CheckoutPage() {
 
                   <div>
                     <h4 className="font-medium mb-3">Credit Card (Tap Payments)</h4>
-                    <TapPaymentButton
+                    <SecureTapPaymentButton
                       amount={price}
                       planName={planName}
                       onSuccess={(paymentId) => {
