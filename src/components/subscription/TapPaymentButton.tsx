@@ -1,7 +1,11 @@
+
 import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { useTapPaymentScript } from "./hooks/useTapPaymentScript";
+import { usePaymentConversion } from "./hooks/usePaymentConversion";
+import { useTapPaymentInitialization } from "./hooks/useTapPaymentInitialization";
+import { TapPaymentDialog } from "./components/TapPaymentDialog";
 
 declare global {
   interface Window {
@@ -30,19 +34,12 @@ export function TapPaymentButton({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Fixed USD to KWD conversion rates
-  const getKWDAmount = (usdAmount: number) => {
-    const conversionRates: { [key: number]: number } = {
-      55: 15,
-      65: 20,
-      80: 25,
-      100: 30
-    };
-    
-    return conversionRates[usdAmount] || (usdAmount * 0.3);
-  };
+  const { loadTapPaymentScript } = useTapPaymentScript();
+  const { getKWDAmount } = usePaymentConversion();
+  const { initializeTapPayment } = useTapPaymentInitialization();
   
   const displayAmount = currency === "KWD" ? getKWDAmount(amount).toFixed(2) : amount.toFixed(2);
+  const containerID = "tap-payment-container";
   
   const handleSuccess = useCallback((paymentId: string) => {
     console.log("Tap payment successful:", paymentId);
@@ -70,7 +67,26 @@ export function TapPaymentButton({
       
       // Add a small delay to ensure proper initialization
       setTimeout(() => {
-        initializeTapPayment();
+        const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
+        
+        initializeTapPayment({
+          containerID,
+          amount: tapAmount,
+          currency,
+          onSuccess: (response: any) => {
+            console.log("Tap payment successful:", response);
+            handleSuccess(response.transaction.id);
+          },
+          onError: (error: any) => {
+            console.error("Tap payment error:", error);
+            handleError(error);
+          },
+          onClose: () => {
+            console.log("Tap payment closed");
+            setIsDialogOpen(false);
+          }
+        });
+        
         setIsLoading(false);
       }, 500);
     } catch (error) {
@@ -79,71 +95,6 @@ export function TapPaymentButton({
       handleError(error);
       setIsLoading(false);
       setIsDialogOpen(false);
-    }
-  };
-  
-  const loadTapPaymentScript = () => {
-    return new Promise<void>((resolve, reject) => {
-      const existingScript = document.querySelector('script[src*="tap.company"]');
-      if (existingScript) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.src = "https://secure.tap.company/checkout/js/setup-v2.js";
-      script.async = true;
-      script.onload = () => {
-        console.log("Tap Payment script loaded successfully");
-        resolve();
-      };
-      script.onerror = () => {
-        console.error("Failed to load Tap Payment script");
-        reject(new Error("Failed to load Tap Payment script"));
-      };
-      document.head.appendChild(script);
-    });
-  };
-  
-  const initializeTapPayment = () => {
-    if (!window.Tapjsli) {
-      setError("Payment system not available. Please try again.");
-      return;
-    }
-
-    try {
-      // Create a Tap instance with the publishable key
-      const tap = window.Tapjsli("pk_test_b5JZWEaPCRy61rhY4dqMnUiw");
-      
-      // Use KWD amount for Tap payment
-      const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
-      
-      tap.setup({
-        containerID: "tap-payment-container",
-        currencies: [currency],
-        amount: tapAmount,
-        defaultCurrency: currency,
-        uiLanguage: "en",
-        onReady: () => {
-          console.log("Tap payment ready");
-        },
-        onSuccess: (response: any) => {
-          console.log("Tap payment successful:", response);
-          handleSuccess(response.transaction.id);
-        },
-        onError: (error: any) => {
-          console.error("Tap payment error:", error);
-          handleError(error);
-        },
-        onClose: () => {
-          console.log("Tap payment closed");
-          setIsDialogOpen(false);
-        }
-      });
-    } catch (error) {
-      console.error("Error initializing Tap Payment:", error);
-      setError("Failed to initialize payment. Please try again.");
-      handleError(error);
     }
   };
   
@@ -175,27 +126,15 @@ export function TapPaymentButton({
         </div>
       )}
       
-      <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
-        <DialogContent className="prompt-dialog sm:max-w-md">
-          <div className="text-center mb-4">
-            <h3 className="text-lg font-medium">
-              {planName} Plan - {displayAmount} {currency}
-            </h3>
-            <p className="text-sm text-gray-500">
-              Secure payment via Tap Payment
-            </p>
-          </div>
-          
-          {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Initializing payment...</span>
-            </div>
-          ) : (
-            <div id="tap-payment-container" className="min-h-[300px]"></div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <TapPaymentDialog
+        isOpen={isDialogOpen}
+        onClose={closeDialog}
+        planName={planName}
+        displayAmount={displayAmount}
+        currency={currency}
+        isLoading={isLoading}
+        containerID={containerID}
+      />
     </>
   );
 }
