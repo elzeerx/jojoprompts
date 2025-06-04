@@ -78,7 +78,6 @@ export function SecureTapPaymentButton({
     try {
       console.log("Initializing Tap payment...");
       
-      // Get secure configuration from edge function
       const { data: config, error: configError } = await supabase.functions.invoke(
         "create-tap-session",
         {
@@ -88,7 +87,7 @@ export function SecureTapPaymentButton({
 
       if (configError) {
         console.error("Config error:", configError);
-        throw new Error(`Configuration error: ${configError.message || 'Failed to initialize payment'}`);
+        throw new Error(`Tap configuration error: ${configError.message || 'Failed to initialize payment'}`);
       }
 
       if (!config) {
@@ -97,7 +96,6 @@ export function SecureTapPaymentButton({
 
       console.log("Tap config loaded successfully");
 
-      // Load Tap Payment script if not already loaded
       if (!window.Tapjsli) {
         await loadTapPaymentScript();
       }

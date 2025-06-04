@@ -39,7 +39,6 @@ export function PayPalButton({
   const [paypalConfig, setPaypalConfig] = useState<PayPalConfig | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
-  // Memoize the payment amount to prevent unnecessary re-renders
   const memoizedAmount = React.useMemo(() => amount.toFixed(2), [amount]);
 
   const handleSuccess = useCallback((paymentId: string, details: any) => {
@@ -54,37 +53,36 @@ export function PayPalButton({
     onError(error);
   }, [onError]);
 
-  // Fetch PayPal configuration with retry logic
   const fetchPayPalConfig = useCallback(async () => {
     try {
       console.log("Fetching PayPal configuration...");
       setError(null);
+      setIsLoading(true);
       
       const { data, error } = await supabase.functions.invoke("get-paypal-config");
       
       if (error) {
         console.error("Error fetching PayPal config:", error);
-        throw new Error(`Configuration error: ${error.message || 'Failed to load PayPal settings'}`);
+        throw new Error(`PayPal configuration error: ${error.message || 'Failed to load PayPal settings'}`);
       }
 
       if (!data?.clientId) {
         console.error("No PayPal client ID in response:", data);
-        throw new Error("PayPal is not properly configured. Please contact support.");
+        throw new Error("PayPal is not configured. Please contact support.");
       }
 
-      console.log("PayPal config loaded successfully");
+      console.log("PayPal config loaded successfully:", { environment: data.environment });
       setPaypalConfig(data);
       setRetryCount(0);
     } catch (error: any) {
       console.error("Failed to fetch PayPal config:", error);
-      const errorMessage = error.message || "Failed to initialize PayPal";
       
-      if (retryCount < 2) {
+      if (retryCount < 2 && (error.message?.includes('network') || error.message?.includes('timeout'))) {
         console.log(`Retrying PayPal config fetch... (attempt ${retryCount + 1})`);
         setRetryCount(prev => prev + 1);
-        setTimeout(() => fetchPayPalConfig(), 2000 * (retryCount + 1)); // Exponential backoff
+        setTimeout(() => fetchPayPalConfig(), 2000 * (retryCount + 1));
       } else {
-        setError("PayPal is temporarily unavailable. Please try again later or use an alternative payment method.");
+        setError("PayPal is temporarily unavailable. Please try again later or use Tap Payment.");
         setIsLoading(false);
       }
     }
@@ -117,7 +115,7 @@ export function PayPalButton({
     
     script.onerror = () => {
       console.error("PayPal script failed to load");
-      setError("Failed to load PayPal payment system. Please refresh the page and try again.");
+      setError("Failed to load PayPal. Please refresh the page and try again.");
       setIsLoading(false);
       handleError(new Error("Failed to load PayPal script"));
     };
@@ -131,7 +129,7 @@ export function PayPalButton({
     };
   }, [paypalConfig, handleError]);
   
-  // Initialize PayPal button once script is loaded
+  // Initialize PayPal button
   useEffect(() => {
     if (!isScriptLoaded || !paypalRef.current || buttonRendered || !window.paypal || !paypalConfig) {
       return;
@@ -170,7 +168,6 @@ export function PayPalButton({
           },
           onCancel: () => {
             console.log("PayPal payment canceled by user");
-            setError("Payment was canceled. You can try again if needed.");
           },
           onError: (err: any) => {
             console.error("PayPal button error:", err);
