@@ -93,7 +93,7 @@ export default function CheckoutPage() {
         // If this is a Google OAuth callback, clean up the URL
         if (authCallback === 'google') {
           console.log("Handling Google OAuth callback, cleaning URL");
-          const newUrl = new URL(window.location);
+          const newUrl = new URL(window.location.href);
           newUrl.searchParams.delete('auth_callback');
           window.history.replaceState({}, document.title, newUrl.toString());
           
