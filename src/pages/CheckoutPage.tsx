@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,9 +22,20 @@ export default function CheckoutPage() {
   const [showAuthForm, setShowAuthForm] = useState(false);
   const { user, loading: authLoading } = useAuth();
 
+  // Log the current state for debugging
+  console.log("CheckoutPage state:", { 
+    user: user?.email, 
+    authLoading, 
+    loading, 
+    showAuthForm, 
+    planId,
+    selectedPlan: selectedPlan?.name 
+  });
+
   useEffect(() => {
     const fetchPlan = async () => {
       if (!planId) {
+        console.error("No plan ID provided");
         setError("No plan selected");
         toast({
           title: "Error",
@@ -35,6 +47,7 @@ export default function CheckoutPage() {
       }
 
       try {
+        console.log("Fetching plan with ID:", planId);
         setLoading(true);
         const { data, error } = await supabase
           .from("subscription_plans")
@@ -44,6 +57,7 @@ export default function CheckoutPage() {
 
         if (error) throw error;
 
+        console.log("Plan fetched successfully:", data);
         setSelectedPlan(data);
         setError(null);
       } catch (error) {
@@ -64,15 +78,21 @@ export default function CheckoutPage() {
   }, [planId, navigate]);
 
   useEffect(() => {
+    console.log("Auth state effect:", { user: user?.email, authLoading, loading, selectedPlan: selectedPlan?.name });
+    
     if (!authLoading && !loading && selectedPlan) {
       if (!user) {
+        console.log("No user found, showing auth form");
         setShowAuthForm(true);
+      } else {
+        console.log("User found, hiding auth form");
+        setShowAuthForm(false);
       }
     }
   }, [user, authLoading, loading, selectedPlan]);
 
   const handleAuthSuccess = useCallback(() => {
-    console.log("User authenticated successfully, proceeding to payment");
+    console.log("Auth success callback triggered");
     setShowAuthForm(false);
     toast({
       title: "Success!",

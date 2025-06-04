@@ -40,11 +40,13 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
   });
 
   const handleGoogleAuth = async () => {
+    console.log("Starting Google OAuth from checkout");
     setIsGoogleLoading(true);
 
     try {
       // Preserve the current checkout context with plan information
       const currentUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+      console.log("Google OAuth redirect URL:", currentUrl);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -54,11 +56,14 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
       });
 
       if (error) {
+        console.error("Google OAuth error:", error);
         toast({
           variant: "destructive",
           title: "Error",
           description: error.message,
         });
+      } else {
+        console.log("Google OAuth initiated successfully");
       }
     } catch (error) {
       console.error("Google authentication error:", error);
@@ -73,9 +78,12 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
   };
 
   const handleSignup = async (values: SignupFormValues) => {
+    console.log("Starting signup process with values:", { email: values.email, firstName: values.firstName, lastName: values.lastName });
     setIsLoading(true);
 
     try {
+      // Step 1: Sign up the user
+      console.log("Attempting to create user account");
       const { data: signupData, error: signupError } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
@@ -88,6 +96,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
       });
 
       if (signupError) {
+        console.error("Signup error:", signupError);
         toast({
           variant: "destructive",
           title: "Error",
@@ -97,13 +106,17 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
         return;
       }
 
-      // Automatically sign in the user
+      console.log("User account created successfully:", signupData);
+
+      // Step 2: Automatically sign in the user
+      console.log("Attempting to sign in the new user");
       const { error: signinError } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
 
       if (signinError) {
+        console.error("Auto sign-in error:", signinError);
         toast({
           variant: "destructive",
           title: "Account created but couldn't sign in automatically",
@@ -111,6 +124,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
         });
         setIsLogin(true);
       } else {
+        console.log("User signed in successfully, calling onSuccess");
         toast({
           title: "Welcome!",
           description: "Your account has been created. Please complete your purchase.",
@@ -130,6 +144,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
   };
 
   const handleLogin = async (values: { email: string; password: string }) => {
+    console.log("Starting login process for:", values.email);
     setIsLoading(true);
 
     try {
@@ -139,12 +154,14 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
       });
 
       if (error) {
+        console.error("Login error:", error);
         toast({
           variant: "destructive",
           title: "Error",
           description: error.message,
         });
       } else {
+        console.log("User logged in successfully, calling onSuccess");
         toast({
           title: "Welcome back!",
           description: "You have been logged in. Please complete your purchase.",
