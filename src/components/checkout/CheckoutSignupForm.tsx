@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Lock, Shield, UserPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { SignupFormValues, signupSchema } from "@/components/auth/validation";
+import { CheckoutSignupFormValues, checkoutSignupSchema } from "@/components/auth/validation";
 
 interface CheckoutSignupFormProps {
   onSuccess: () => void;
@@ -22,11 +22,12 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(false);
 
-  const signupForm = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
+  const signupForm = useForm<CheckoutSignupFormValues>({
+    resolver: zodResolver(checkoutSignupSchema),
     defaultValues: {
       email: "",
       password: "",
+      confirmPassword: "",
       firstName: "",
       lastName: "",
     },
@@ -44,14 +45,16 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
     setIsGoogleLoading(true);
 
     try {
-      // Preserve the current checkout context with plan information
-      const currentUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
-      console.log("Google OAuth redirect URL:", currentUrl);
+      // Build the current checkout URL with plan information preserved
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('auth_callback', 'google');
+      
+      console.log("Google OAuth redirect URL:", currentUrl.toString());
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: currentUrl,
+          redirectTo: currentUrl.toString(),
         },
       });
 
@@ -77,7 +80,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
     setIsGoogleLoading(false);
   };
 
-  const handleSignup = async (values: SignupFormValues) => {
+  const handleSignup = async (values: CheckoutSignupFormValues) => {
     console.log("Starting signup process with values:", { email: values.email, firstName: values.firstName, lastName: values.lastName });
     setIsLoading(true);
 
@@ -310,8 +313,21 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
                     </FormControl>
                     <FormMessage />
                     <p className="text-xs text-muted-foreground">
-                      Must be at least 6 characters long
+                      Must be at least 8 characters long
                     </p>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={signupForm.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

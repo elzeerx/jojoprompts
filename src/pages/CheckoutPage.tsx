@@ -15,6 +15,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const planId = searchParams.get("plan_id");
+  const authCallback = searchParams.get("auth_callback");
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -29,6 +30,7 @@ export default function CheckoutPage() {
     loading, 
     showAuthForm, 
     planId,
+    authCallback,
     selectedPlan: selectedPlan?.name 
   });
 
@@ -78,7 +80,7 @@ export default function CheckoutPage() {
   }, [planId, navigate]);
 
   useEffect(() => {
-    console.log("Auth state effect:", { user: user?.email, authLoading, loading, selectedPlan: selectedPlan?.name });
+    console.log("Auth state effect:", { user: user?.email, authLoading, loading, selectedPlan: selectedPlan?.name, authCallback });
     
     if (!authLoading && !loading && selectedPlan) {
       if (!user) {
@@ -87,9 +89,22 @@ export default function CheckoutPage() {
       } else {
         console.log("User found, hiding auth form");
         setShowAuthForm(false);
+        
+        // If this is a Google OAuth callback, clean up the URL
+        if (authCallback === 'google') {
+          console.log("Handling Google OAuth callback, cleaning URL");
+          const newUrl = new URL(window.location);
+          newUrl.searchParams.delete('auth_callback');
+          window.history.replaceState({}, document.title, newUrl.toString());
+          
+          toast({
+            title: "Welcome!",
+            description: "Successfully signed in with Google. Complete your purchase below.",
+          });
+        }
       }
     }
-  }, [user, authLoading, loading, selectedPlan]);
+  }, [user, authLoading, loading, selectedPlan, authCallback]);
 
   const handleAuthSuccess = useCallback(() => {
     console.log("Auth success callback triggered");

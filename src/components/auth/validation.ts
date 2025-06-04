@@ -25,6 +25,18 @@ export const signupSchema = z.object({
   path: ["confirmPassword"],
 });
 
+// Checkout-specific signup schema that matches the main signup schema
+export const checkoutSignupSchema = z.object({
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 export const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
@@ -40,6 +52,7 @@ export const resetPasswordSchema = z.object({
 // Type inference from schemas
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type SignupFormValues = z.infer<typeof signupSchema>;
+export type CheckoutSignupFormValues = z.infer<typeof checkoutSignupSchema>;
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
