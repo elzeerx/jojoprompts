@@ -1,3 +1,6 @@
+
+import { SecurityUtils } from "./security";
+
 // Security monitoring and logging utilities
 
 interface SecurityEvent {
