@@ -6,6 +6,9 @@ import { toast } from "@/hooks/use-toast";
 import { securityMonitor } from "@/utils/monitoring";
 import { SecurityUtils } from "@/utils/security";
 import { logInfo, logWarn, logError } from "@/utils/secureLogging";
+import { SecurityEnforcer } from "@/utils/enhancedSecurity";
+import { InputValidator } from "@/utils/inputValidation";
+import { RateLimiter, RateLimitConfigs } from "@/utils/rateLimiting";
 
 export function useUserActions() {
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
@@ -13,9 +16,21 @@ export function useUserActions() {
 
   const sendPasswordResetEmail = async (email: string) => {
     try {
-      // Validate email format
-      if (!SecurityUtils.isValidEmail(email)) {
-        throw new Error('Invalid email format');
+      // Enhanced email validation
+      const emailValidation = InputValidator.validateEmail(email);
+      if (!emailValidation.isValid) {
+        throw new Error(emailValidation.error);
+      }
+
+      // Check rate limiting for password resets
+      const rateLimitKey = `password_reset_${email}`;
+      const rateLimitCheck = RateLimiter.isAllowed(rateLimitKey, RateLimitConfigs.PASSWORD_RESET);
+      
+      if (!rateLimitCheck.allowed) {
+        const retryMessage = rateLimitCheck.retryAfter 
+          ? ` Please try again in ${rateLimitCheck.retryAfter} seconds.`
+          : '';
+        throw new Error(`Too many password reset attempts.${retryMessage}`);
       }
 
       // Check if user has admin permissions
@@ -27,6 +42,9 @@ export function useUserActions() {
         }, user?.id);
         throw new Error('Insufficient permissions');
       }
+
+      // Log the attempt
+      SecurityEnforcer.logAuthAttempt('password_reset', email, false, 'Admin initiated');
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/login?tab=reset`,
@@ -41,7 +59,8 @@ export function useUserActions() {
         throw error;
       }
 
-      // Log successful action (email domain only for privacy)
+      // Log successful action
+      SecurityEnforcer.logAuthAttempt('password_reset', email, true);
       logInfo("Password reset email sent successfully", "admin", undefined, user.id);
       
       toast({
@@ -59,12 +78,23 @@ export function useUserActions() {
   };
 
   const deleteUser = async (userId: string, email: string) => {
-    // Input validation
-    if (!SecurityUtils.isValidUUID(userId) || !SecurityUtils.isValidEmail(email)) {
-      logWarn("Invalid input for user deletion", "admin", { validUserId: SecurityUtils.isValidUUID(userId) }, user?.id);
+    // Enhanced input validation
+    if (!InputValidator.validateUUID(userId)) {
+      logWarn("Invalid UUID for user deletion", "admin", { userId }, user?.id);
       toast({
         title: "Invalid Input",
-        description: "Invalid user ID or email format",
+        description: "Invalid user ID format",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    const emailValidation = InputValidator.validateEmail(email);
+    if (!emailValidation.isValid) {
+      logWarn("Invalid email for user deletion", "admin", { error: emailValidation.error }, user?.id);
+      toast({
+        title: "Invalid Input",
+        description: emailValidation.error,
         variant: "destructive",
       });
       return false;
@@ -98,7 +128,22 @@ export function useUserActions() {
       return false;
     }
 
-    const sanitizedEmail = SecurityUtils.sanitizeUserInput(email);
+    // Check for suspicious activity
+    const isSuspicious = SecurityEnforcer.detectSuspiciousActivity('user_deletion', {
+      targetUserId: userId.substring(0, 8) + "***",
+      adminId: user.id.substring(0, 8) + "***"
+    });
+
+    if (isSuspicious) {
+      toast({
+        title: "Action Temporarily Blocked",
+        description: "Too many deletion attempts. Please wait before trying again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    const sanitizedEmail = InputValidator.sanitizeText(email);
     
     if (!window.confirm(`Are you sure you want to permanently delete this user? This action cannot be undone.`)) {
       return false;
