@@ -111,7 +111,7 @@ export class SecurityUtils {
     if (!input || typeof input !== 'string') return false;
     
     const sqlPatterns = [
-      /('|(\\')|(--;)|(\s*(=|;|\||,)\s*('|"|\\|\/\*))/i,
+      /('|(\\')|(--;)|(\s*(=|;|\||,)\s*('|"|\\|\/\*)))/i,
       /(union|select|insert|delete|update|drop|create|alter|exec|execute)/i,
       /(\s|^)(or|and)\s+\w+\s*(=|like|in)\s*/i
     ];
