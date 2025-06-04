@@ -1,14 +1,20 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { UserRole, validateRole } from "@/utils/roleValidation";
 
 export function useUserRoleManagement() {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
-  const updateUserRole = async (userId: string, newRole: string) => {
+  const updateUserRole = async (userId: string, newRole: UserRole) => {
     try {
       setUpdatingUserId(userId);
+      
+      // Validate the role before proceeding
+      const roleValidation = validateRole(newRole);
+      if (!roleValidation.isValid) {
+        throw new Error(roleValidation.error);
+      }
       
       // First check if profile exists
       const { data: currentData, error: fetchError } = await supabase

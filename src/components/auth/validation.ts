@@ -1,6 +1,6 @@
-
 import { SecurityUtils } from "@/utils/security";
 import { z } from "zod";
+import { VALID_ROLES, UserRole } from "@/utils/roleValidation";
 
 export interface ValidationResult {
   isValid: boolean;
@@ -19,6 +19,7 @@ export const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
+  role: z.enum(VALID_ROLES as [UserRole, ...UserRole[]]).optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -98,6 +99,21 @@ export const validateConfirmPassword = (password: string, confirmPassword: strin
     errors.push('Please confirm your password');
   } else if (password !== confirmPassword) {
     errors.push('Passwords do not match');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+export const validateUserRole = (role: string): ValidationResult => {
+  const errors: string[] = [];
+  
+  if (!role) {
+    errors.push('Role is required');
+  } else if (!VALID_ROLES.includes(role as UserRole)) {
+    errors.push(`Role must be one of: ${VALID_ROLES.join(', ')}`);
   }
   
   return {

@@ -5,11 +5,12 @@ import { toast } from "@/hooks/use-toast";
 import { useFetchUsers } from "./useFetchUsers";
 import { useUserRoleManagement } from "./useUserRoleManagement";
 import { UserProfile } from "@/types";
+import { validateRole, UserRole } from "@/utils/roleValidation";
 
 interface UserUpdateData {
   first_name?: string | null;
   last_name?: string | null;
-  role?: string;
+  role?: UserRole;
   email?: string;
 }
 
@@ -27,11 +28,12 @@ export function useUserManagement() {
       let updated = false;
       
       // Update roles if changed
-      if (data.role && data.role !== "admin" && data.role !== "user") {
-        throw new Error("Invalid role specified");
-      }
-      
       if (data.role) {
+        const roleValidation = validateRole(data.role);
+        if (!roleValidation.isValid) {
+          throw new Error(roleValidation.error);
+        }
+        
         await updateUserRole(userId, data.role);
         updated = true;
       }
