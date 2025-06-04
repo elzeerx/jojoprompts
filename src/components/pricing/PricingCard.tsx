@@ -3,7 +3,6 @@ import React from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PricingPlan {
@@ -24,7 +23,6 @@ interface PricingCardProps {
 }
 
 export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
-  const { user } = useAuth();
   const isMobile = useIsMobile();
 
   return (
@@ -77,17 +75,10 @@ export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
               : 'bg-dark-base hover:bg-dark-base/90'
           }`}
         >
-          {user ? (
-            // If logged in, go straight to checkout with correct parameter
-            <Link to={`/checkout?plan_id=${plan.id}`}>
-              {plan.ctaText}
-            </Link>
-          ) : (
-            // If not logged in, go to signup with plan parameter
-            <Link to={`/signup?plan_id=${plan.id}`}>
-              Sign Up & Get Started
-            </Link>
-          )}
+          {/* Always go to checkout regardless of authentication status */}
+          <Link to={`/checkout?plan_id=${plan.id}`}>
+            {plan.ctaText}
+          </Link>
         </Button>
       </div>
     </div>

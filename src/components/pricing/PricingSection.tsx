@@ -4,14 +4,12 @@ import { PlanCard } from "@/components/subscription/PlanCard";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export function PricingSection() {
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -43,11 +41,11 @@ export function PricingSection() {
     fetchPlans();
   }, []);
 
-  // Handle selecting a plan
+  // Handle selecting a plan - always navigate to checkout
   const handleSelectPlan = (planId: string) => {
     setSelectedPlanId(planId);
     
-    // Navigate to checkout with the correct parameter name
+    // Always navigate to checkout regardless of authentication status
     navigate(`/checkout?plan_id=${planId}`);
   };
 

@@ -74,6 +74,9 @@ function App() {
             <Route path="privacy" element={<PrivacyPolicyPage />} />
             <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
             
+            {/* Checkout is now public - visitors can access it directly */}
+            <Route path="checkout" element={<CheckoutPage />} />
+            
             {/* Protected Routes */}
             <Route 
               path="dashboard" 
@@ -120,14 +123,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <FavoritesPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="checkout" 
-              element={
-                <ProtectedRoute>
-                  <CheckoutPage />
                 </ProtectedRoute>
               } 
             />
