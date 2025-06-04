@@ -1,21 +1,50 @@
 
 import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { securityMonitor } from "@/utils/monitoring";
+import { SecurityUtils } from "@/utils/security";
 
 export default function PaymentSuccessPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   useEffect(() => {
     // Redirect to home if not authenticated
     if (!user) {
+      securityMonitor.logEvent('access_denied', {
+        page: 'payment_success',
+        reason: 'not_authenticated'
+      });
       navigate('/');
+      return;
     }
-  }, [user, navigate]);
+
+    // Validate payment success parameters if present
+    const paymentId = searchParams.get('payment_id');
+    const sessionId = searchParams.get('session_id');
+    
+    if (paymentId && !SecurityUtils.isValidUUID(paymentId)) {
+      securityMonitor.logEvent('suspicious_activity', {
+        page: 'payment_success',
+        reason: 'invalid_payment_id',
+        paymentId
+      }, user.id);
+    }
+
+    // Log successful payment page access
+    console.log(`Payment success page accessed by user ${user.id}`);
+    
+  }, [user, navigate, searchParams]);
+  
+  // Don't render anything while checking authentication
+  if (!user) {
+    return null;
+  }
   
   return (
     <div className="mobile-container-padding mobile-section-padding relative">

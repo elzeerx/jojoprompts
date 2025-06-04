@@ -1,10 +1,12 @@
 
+import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { RootLayout } from "@/components/layout/root-layout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { initializeSecurity } from "@/utils/securityHeaders";
 
 // Pages
 import Index from "@/pages/Index";
@@ -32,9 +34,27 @@ import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import PrompterDashboard from "@/pages/prompter/PrompterDashboard";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        // Don't retry on authentication errors
+        if (error?.status === 401 || error?.status === 403) {
+          return false;
+        }
+        return failureCount < 3;
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 function App() {
+  useEffect(() => {
+    // Initialize security measures
+    initializeSecurity();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
