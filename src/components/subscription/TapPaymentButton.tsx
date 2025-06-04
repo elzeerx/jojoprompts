@@ -69,6 +69,9 @@ export function TapPaymentButton({
       setTimeout(() => {
         const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
         
+        // Use a test publishable key - this should be fetched from your backend in production
+        const publishableKey = "pk_test_b5JZWEaPCRy61rhY4dqMnUiw";
+        
         initializeTapPayment({
           containerID,
           amount: tapAmount,
@@ -85,7 +88,7 @@ export function TapPaymentButton({
             console.log("Tap payment closed");
             setIsDialogOpen(false);
           }
-        });
+        }, publishableKey);
         
         setIsLoading(false);
       }, 500);
