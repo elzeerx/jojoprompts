@@ -76,7 +76,7 @@ export function SecureTapPaymentButton({
     setIsLoading(true);
     
     try {
-      console.log("Initializing Tap payment...");
+      console.log("Fetching Tap payment configuration...");
       
       const { data: config, error: configError } = await supabase.functions.invoke(
         "create-tap-session",
@@ -86,15 +86,16 @@ export function SecureTapPaymentButton({
       );
 
       if (configError) {
-        console.error("Config error:", configError);
+        console.error("Tap configuration error:", configError);
         throw new Error(`Tap configuration error: ${configError.message || 'Failed to initialize payment'}`);
       }
 
-      if (!config) {
+      if (!config || !config.publishableKey) {
+        console.error("Invalid Tap configuration response:", config);
         throw new Error("Failed to get payment configuration");
       }
 
-      console.log("Tap config loaded successfully");
+      console.log("Tap configuration loaded successfully");
 
       if (!window.Tapjsli) {
         await loadTapPaymentScript();
@@ -161,7 +162,12 @@ export function SecureTapPaymentButton({
       throw new Error("Tap Payment system not available");
     }
 
+    if (!config.publishableKey) {
+      throw new Error("Tap Payment configuration missing");
+    }
+
     try {
+      console.log("Initializing Tap Payment with publishable key");
       const tap = window.Tapjsli(config.publishableKey);
       
       tap.setup({
@@ -175,7 +181,7 @@ export function SecureTapPaymentButton({
         },
         onSuccess: (response: any) => {
           console.log("Secure Tap payment successful:", response);
-          handleSuccess(response.transaction.id);
+          handleSuccess(response.transaction?.id || response.id);
         },
         onError: (error: any) => {
           console.error("Secure Tap payment error:", error);

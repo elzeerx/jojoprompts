@@ -11,14 +11,24 @@ interface TapPaymentConfig {
 }
 
 export function useTapPaymentInitialization() {
-  const initializeTapPayment = useCallback((config: TapPaymentConfig) => {
+  const initializeTapPayment = useCallback((config: TapPaymentConfig, publishableKey: string) => {
     if (!window.Tapjsli) {
       throw new Error("Payment system not available. Please try again.");
     }
 
+    if (!publishableKey) {
+      throw new Error("Payment configuration missing. Please contact support.");
+    }
+
     try {
-      // Create a Tap instance with the publishable key
-      const tap = window.Tapjsli("pk_test_b5JZWEaPCRy61rhY4dqMnUiw");
+      console.log("Initializing Tap Payment with config:", { 
+        amount: config.amount, 
+        currency: config.currency,
+        containerID: config.containerID 
+      });
+      
+      // Create a Tap instance with the publishable key from backend
+      const tap = window.Tapjsli(publishableKey);
       
       tap.setup({
         containerID: config.containerID,
@@ -29,9 +39,18 @@ export function useTapPaymentInitialization() {
         onReady: () => {
           console.log("Tap payment ready");
         },
-        onSuccess: config.onSuccess,
-        onError: config.onError,
-        onClose: config.onClose
+        onSuccess: (response: any) => {
+          console.log("Tap payment success response:", response);
+          config.onSuccess(response);
+        },
+        onError: (error: any) => {
+          console.error("Tap payment error:", error);
+          config.onError(error);
+        },
+        onClose: () => {
+          console.log("Tap payment dialog closed");
+          config.onClose();
+        }
       });
     } catch (error) {
       console.error("Error initializing Tap Payment:", error);
