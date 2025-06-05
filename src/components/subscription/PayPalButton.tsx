@@ -37,7 +37,6 @@ export function PayPalButton({
 
   const handleError = useCallback((error: any) => {
     console.error("PayPal payment error:", error);
-    const errorMessage = typeof error === 'string' ? error : error?.message || "PayPal payment failed";
     onError(error);
   }, [onError]);
 
@@ -55,37 +54,45 @@ export function PayPalButton({
     paypalConfig: paypalConfig!
   });
 
-  // Load PayPal script when config is available
+  // Step 1: Load PayPal script when config is available
   useEffect(() => {
-    if (paypalConfig && !isScriptLoaded && !scriptError) {
+    if (paypalConfig && !isScriptLoaded && !scriptError && !configError) {
+      console.log("Step 1: Loading PayPal script with config");
       loadPayPalScript(paypalConfig).catch((error) => {
         console.error("Script loading failed:", error);
         handleError(error);
       });
     }
-  }, [paypalConfig, isScriptLoaded, scriptError, loadPayPalScript, handleError]);
+  }, [paypalConfig, isScriptLoaded, scriptError, configError, loadPayPalScript, handleError]);
 
-  // Initialize button when script is loaded
+  // Step 2: Initialize button when script is loaded and config is available
   useEffect(() => {
-    if (isScriptLoaded && paypalConfig && !buttonRendered && !buttonError) {
-      initializePayPalButton();
+    if (isScriptLoaded && paypalConfig && !buttonRendered && !buttonError && !configError) {
+      console.log("Step 2: Initializing PayPal button");
+      // Add small delay to ensure DOM is ready
+      setTimeout(() => {
+        initializePayPalButton();
+      }, 100);
     }
-  }, [isScriptLoaded, paypalConfig, buttonRendered, buttonError, initializePayPalButton]);
-
-  // Fetch config on mount
-  useEffect(() => {
-    if (!paypalConfig && !configError && configLoading) {
-      // Config fetching is handled by the hook
-    }
-  }, [paypalConfig, configError, configLoading]);
+  }, [isScriptLoaded, paypalConfig, buttonRendered, buttonError, configError, initializePayPalButton]);
 
   const handleRetry = () => {
+    console.log("Retrying PayPal initialization");
     resetConfig();
     resetButton();
   };
 
   const error = configError || scriptError || buttonError;
-  const isLoading = configLoading || (!isScriptLoaded && !error);
+  const isLoading = configLoading || (paypalConfig && !isScriptLoaded && !error);
+
+  console.log("PayPal Button State:", {
+    configLoading,
+    hasConfig: !!paypalConfig,
+    isScriptLoaded,
+    buttonRendered,
+    error,
+    isLoading
+  });
 
   if (error) {
     return (

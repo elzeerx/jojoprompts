@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PayPalConfig {
@@ -20,7 +20,14 @@ export function usePayPalConfig() {
       setError(null);
       setIsLoading(true);
       
-      const { data, error } = await supabase.functions.invoke("get-paypal-config");
+      // Add timeout and retry logic
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Configuration request timeout")), 15000);
+      });
+
+      const configPromise = supabase.functions.invoke("get-paypal-config");
+      
+      const { data, error } = await Promise.race([configPromise, timeoutPromise]) as any;
       
       if (error) {
         console.error("Error fetching PayPal config:", error);
@@ -35,19 +42,27 @@ export function usePayPalConfig() {
       console.log("PayPal config loaded successfully:", { environment: data.environment });
       setPaypalConfig(data);
       setRetryCount(0);
+      setIsLoading(false);
     } catch (error: any) {
       console.error("Failed to fetch PayPal config:", error);
       
-      if (retryCount < 2) {
-        console.log(`Retrying PayPal config fetch... (attempt ${retryCount + 1})`);
+      // Implement exponential backoff for retries
+      if (retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s, 16s
+        console.log(`Retrying PayPal config fetch in ${delay}ms... (attempt ${retryCount + 1})`);
         setRetryCount(prev => prev + 1);
-        setTimeout(() => fetchPayPalConfig(), Math.pow(2, retryCount) * 2000);
+        setTimeout(() => fetchPayPalConfig(), delay);
       } else {
         setError("PayPal is temporarily unavailable. Please try again later.");
         setIsLoading(false);
       }
     }
   }, [retryCount]);
+
+  // Auto-fetch configuration on mount
+  useEffect(() => {
+    fetchPayPalConfig();
+  }, []);
 
   const resetConfig = useCallback(() => {
     setError(null);

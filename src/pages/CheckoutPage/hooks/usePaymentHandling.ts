@@ -51,18 +51,19 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
 
       logDebug("Sending request to create-subscription", "payment", { planId: selectedPlan.id }, user.id);
 
-      // Create a timeout promise for manual timeout handling
+      // Enhanced timeout and retry logic
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Request timed out after 45 seconds")), 45000);
+        setTimeout(() => reject(new Error("Subscription creation timed out after 30 seconds")), 30000);
       });
 
-      // Race between the function call and timeout
       const functionPromise = supabase.functions.invoke("create-subscription", {
         body: requestPayload
       });
 
+      console.log("Calling create-subscription edge function with payload:", requestPayload);
       const { data, error } = await Promise.race([functionPromise, timeoutPromise]) as any;
 
+      console.log("create-subscription response:", { data, error });
       logDebug("Supabase function response received", "payment", { success: !!data?.success }, user.id);
 
       if (error) {
@@ -71,7 +72,7 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       }
 
       if (!data || !data.success) {
-        logError("Function returned unsuccessful response", "payment", { dataExists: !!data }, user.id);
+        logError("Function returned unsuccessful response", "payment", { dataExists: !!data, data }, user.id);
         throw new Error(data?.error || "Payment processing was unsuccessful");
       }
 
@@ -90,16 +91,20 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
         errorType: error.name 
       }, user?.id);
       
+      console.error("Payment processing error:", error);
+      
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       
       // Provide more specific error messages
       let userMessage = "There was an issue processing your payment. Please try again.";
-      if (errorMessage.includes("timeout")) {
+      if (errorMessage.includes("timeout") || errorMessage.includes("timed out")) {
         userMessage = "Payment processing is taking longer than expected. Please check your account or contact support.";
-      } else if (errorMessage.includes("network")) {
+      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
         userMessage = "Network connection issue. Please check your internet connection and try again.";
       } else if (errorMessage.includes("authentication")) {
         userMessage = "Authentication error. Please refresh the page and try again.";
+      } else if (errorMessage.includes("unsuccessful")) {
+        userMessage = "Payment was received but subscription setup failed. Please contact support.";
       }
       
       toast({
@@ -114,6 +119,7 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
   }, [processing, selectedPlan, user, navigate, setProcessing]);
 
   const handlePaymentError = useCallback((error: any) => {
+    console.error("Payment error occurred:", error);
     logError("Payment error occurred", "payment", { error: error.message || error }, user?.id);
     setProcessing(false);
     
@@ -123,6 +129,8 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       errorMessage = "Network error. Please check your connection and try again.";
     } else if (error?.message?.includes("timeout")) {
       errorMessage = "Payment processing timed out. Please try again.";
+    } else if (error?.message?.includes("script")) {
+      errorMessage = "Payment interface failed to load. Please refresh the page and try again.";
     }
     
     toast({

@@ -34,6 +34,7 @@ export function useTapPaymentFlow({
   const handleSuccess = useCallback((paymentId: string) => {
     console.log("Secure Tap payment successful:", paymentId);
     setError(null);
+    setIsLoading(false);
     onSuccess(paymentId);
   }, [onSuccess]);
 
@@ -41,6 +42,7 @@ export function useTapPaymentFlow({
     console.error("Secure Tap payment error:", error);
     const errorMessage = typeof error === 'string' ? error : error?.message || "Tap payment failed";
     setError(errorMessage);
+    setIsLoading(false);
     if (onError) onError(error);
   }, [onError]);
 
@@ -58,17 +60,18 @@ export function useTapPaymentFlow({
     setIsLoading(true);
     
     try {
-      console.log("Initializing Tap payment for amount:", amount, currency);
+      console.log("Step 1: Initializing Tap payment for amount:", amount, currency);
       
-      // Create a timeout for the request
+      // Enhanced timeout and retry logic
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Request timeout")), 30000);
+        setTimeout(() => reject(new Error("Request timeout after 20 seconds")), 20000);
       });
 
       const configPromise = supabase.functions.invoke("create-tap-session", {
         body: { amount, planName, currency }
       });
 
+      console.log("Step 2: Calling create-tap-session edge function");
       const { data: config, error: configError } = await Promise.race([
         configPromise,
         timeoutPromise
@@ -84,20 +87,33 @@ export function useTapPaymentFlow({
         throw new Error("Failed to get payment configuration from server");
       }
 
-      console.log("Tap configuration loaded successfully");
+      console.log("Step 3: Tap configuration loaded successfully");
 
       // Load Tap script if not already loaded
       if (!window.Tapjsli) {
-        console.log("Loading Tap payment script...");
+        console.log("Step 4: Loading Tap payment script...");
         await loadTapPaymentScript();
+        
+        // Wait for script to be fully ready
+        let attempts = 0;
+        while (!window.Tapjsli && attempts < 30) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+        
+        if (!window.Tapjsli) {
+          throw new Error("Tap payment script failed to load properly");
+        }
       }
       
-      // Give some time for script to initialize
+      console.log("Step 5: Initializing Tap payment interface");
+      
+      // Give some time for script to initialize and DOM to be ready
       setTimeout(() => {
         try {
           const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
           
-          console.log("Initializing Tap payment with:", {
+          console.log("Step 6: Creating Tap payment with:", {
             amount: tapAmount,
             currency,
             container: "secure-tap-payment-container"
@@ -108,15 +124,16 @@ export function useTapPaymentFlow({
             amount: tapAmount,
             currency,
             onSuccess: (response: any) => {
-              console.log("Tap payment successful:", response);
+              console.log("Tap payment completed successfully:", response);
               handleSuccess(response.transaction?.id || response.id);
             },
             onError: (error: any) => {
-              console.error("Tap payment error:", error);
+              console.error("Tap payment failed:", error);
               handleError(error);
             },
             onClose: () => {
-              console.log("Tap payment closed");
+              console.log("Tap payment dialog closed by user");
+              setIsLoading(false);
             }
           }, config.publishableKey);
           
@@ -125,20 +142,20 @@ export function useTapPaymentFlow({
         } catch (initError) {
           console.error("Error during Tap initialization:", initError);
           handleError(initError);
-          setIsLoading(false);
         }
       }, 1000);
       
     } catch (error: any) {
       console.error("Error initializing secure Tap payment:", error);
       
-      // Implement exponential backoff for retries
+      // Implement circuit breaker pattern with exponential backoff
       if (retryCount < 2 && (
         error.message?.includes('timeout') || 
         error.message?.includes('network') || 
-        error.message?.includes('fetch')
+        error.message?.includes('fetch') ||
+        error.message?.includes('Failed to fetch')
       )) {
-        const delay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s
+        const delay = Math.pow(2, retryCount) * 3000; // 3s, 6s, 12s
         console.log(`Retrying Tap payment initialization in ${delay}ms... (attempt ${retryCount + 1})`);
         setRetryCount(prev => prev + 1);
         setTimeout(() => {
@@ -150,10 +167,12 @@ export function useTapPaymentFlow({
         
         if (error.message?.includes('timeout')) {
           errorMessage = "Connection timeout. Please check your internet connection and try again.";
-        } else if (error.message?.includes('network')) {
+        } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
           errorMessage = "Network error. Please check your connection and try again.";
         } else if (error.message?.includes('configuration')) {
           errorMessage = "Payment service configuration error. Please contact support.";
+        } else if (error.message?.includes('script')) {
+          errorMessage = "Payment interface failed to load. Please refresh the page and try again.";
         }
         
         setError(errorMessage);
