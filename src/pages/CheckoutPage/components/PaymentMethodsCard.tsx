@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Shield, CreditCard, AlertTriangle } from "lucide-react";
 import { PayPalButton } from "@/components/subscription/PayPalButton";
 import { SecureTapPaymentButton } from "@/components/subscription/SecureTapPaymentButton";
+import { PaymentErrorRecovery } from "@/components/subscription/components/PaymentErrorRecovery";
+import { useNetworkDiagnostics } from "@/components/subscription/hooks/useNetworkDiagnostics";
 
 interface PaymentMethodsCardProps {
   processing: boolean;
@@ -20,7 +22,59 @@ export function PaymentMethodsCard({
   handlePaymentSuccess,
   handlePaymentError
 }: PaymentMethodsCardProps) {
+  const {
+    isTestingConnectivity,
+    connectivityStatus,
+    runConnectivityTests
+  } = useNetworkDiagnostics();
+
+  const [paypalError, setPaypalError] = React.useState<string | null>(null);
+  const [tapError, setTapError] = React.useState<string | null>(null);
+  const [paypalKey, setPaypalKey] = React.useState(0);
+  const [tapKey, setTapKey] = React.useState(0);
+
   console.log("PaymentMethodsCard rendered with:", { processing, price, planName });
+
+  const handlePayPalError = (error: any) => {
+    console.error("PayPal error in PaymentMethodsCard:", error);
+    setPaypalError(error?.message || "PayPal is currently unavailable");
+    handlePaymentError(error);
+  };
+
+  const handleTapError = (error: any) => {
+    console.error("Tap error in PaymentMethodsCard:", error);
+    setTapError(error?.message || "Tap Payment is currently unavailable");
+    handlePaymentError(error);
+  };
+
+  const retryPayPal = () => {
+    console.log("Retrying PayPal...");
+    setPaypalError(null);
+    setPaypalKey(prev => prev + 1);
+  };
+
+  const retryTap = () => {
+    console.log("Retrying Tap Payment...");
+    setTapError(null);
+    setTapKey(prev => prev + 1);
+  };
+
+  const handleDiagnostics = async () => {
+    console.log("Running payment diagnostics...");
+    const results = await runConnectivityTests();
+    
+    if (!results.paypal) {
+      setPaypalError("PayPal service is not reachable");
+    } else {
+      setPaypalError(null);
+    }
+    
+    if (!results.tap) {
+      setTapError("Tap Payment service is not reachable");
+    } else {
+      setTapError(null);
+    }
+  };
 
   return (
     <Card className="relative">
@@ -43,6 +97,17 @@ export function PaymentMethodsCard({
             </div>
           </div>
         )}
+
+        {/* Error Recovery Section */}
+        <PaymentErrorRecovery
+          paypalError={paypalError}
+          tapError={tapError}
+          onRetryPayPal={retryPayPal}
+          onRetryTap={retryTap}
+          onRunDiagnostics={handleDiagnostics}
+          isTestingConnectivity={isTestingConnectivity}
+          connectivityStatus={connectivityStatus}
+        />
         
         <div className="space-y-6">
           <div>
@@ -55,20 +120,19 @@ export function PaymentMethodsCard({
             </p>
             <div className="min-h-[60px]">
               <PayPalButton
+                key={paypalKey}
                 amount={price}
                 planName={planName}
                 onSuccess={(paymentId, details) => {
                   console.log("PayPal payment success in PaymentMethodsCard:", { paymentId, details });
+                  setPaypalError(null);
                   handlePaymentSuccess({
                     paymentId,
                     paymentMethod: 'paypal',
                     details
                   });
                 }}
-                onError={(error) => {
-                  console.error("PayPal payment error in PaymentMethodsCard:", error);
-                  handlePaymentError(error);
-                }}
+                onError={handlePayPalError}
                 className="w-full"
               />
             </div>
@@ -95,20 +159,19 @@ export function PaymentMethodsCard({
             </p>
             <div className="min-h-[60px]">
               <SecureTapPaymentButton
+                key={tapKey}
                 amount={price}
                 planName={planName}
                 onSuccess={(paymentId) => {
                   console.log("Tap payment success in PaymentMethodsCard:", { paymentId });
+                  setTapError(null);
                   handlePaymentSuccess({
                     paymentId,
                     paymentMethod: 'tap',
                     payment_id: paymentId
                   });
                 }}
-                onError={(error) => {
-                  console.error("Tap payment error in PaymentMethodsCard:", error);
-                  handlePaymentError(error);
-                }}
+                onError={handleTapError}
               />
             </div>
           </div>
@@ -130,7 +193,7 @@ export function PaymentMethodsCard({
             <div>
               <p className="text-xs font-medium text-blue-800">Having trouble?</p>
               <p className="text-xs text-blue-700 mt-1">
-                If a payment method isn't working, try the other option or refresh the page. Contact support if issues persist.
+                If a payment method isn't working, try the other option or use the "Test Payment Services" button above.
               </p>
             </div>
           </div>

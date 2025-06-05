@@ -62,9 +62,9 @@ export function useTapPaymentFlow({
     try {
       console.log("Step 1: Initializing Tap payment for amount:", amount, currency);
       
-      // Enhanced timeout and retry logic
+      // Enhanced timeout and connectivity check
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Request timeout after 20 seconds")), 20000);
+        setTimeout(() => reject(new Error("Tap service connection timeout after 20 seconds")), 20000);
       });
 
       const configPromise = supabase.functions.invoke("create-tap-session", {
@@ -79,7 +79,15 @@ export function useTapPaymentFlow({
 
       if (configError) {
         console.error("Tap configuration error:", configError);
-        throw new Error(`Tap configuration error: ${configError.message || 'Failed to initialize payment'}`);
+        
+        // Provide specific error messages based on error type
+        if (configError.message?.includes('fetch')) {
+          throw new Error("Network connection failed. Please check your internet connection.");
+        } else if (configError.message?.includes('timeout')) {
+          throw new Error("Tap service is taking too long to respond. Please try again.");
+        } else {
+          throw new Error(`Tap configuration error: ${configError.message || 'Service temporarily unavailable'}`);
+        }
       }
 
       if (!config || !config.publishableKey) {
@@ -94,9 +102,9 @@ export function useTapPaymentFlow({
         console.log("Step 4: Loading Tap payment script...");
         await loadTapPaymentScript();
         
-        // Wait for script to be fully ready
+        // Wait for script to be fully ready with timeout
         let attempts = 0;
-        while (!window.Tapjsli && attempts < 30) {
+        while (!window.Tapjsli && attempts < 50) {
           await new Promise(resolve => setTimeout(resolve, 100));
           attempts++;
         }
@@ -108,7 +116,7 @@ export function useTapPaymentFlow({
       
       console.log("Step 5: Initializing Tap payment interface");
       
-      // Give some time for script to initialize and DOM to be ready
+      // Give time for script to initialize and DOM to be ready
       setTimeout(() => {
         try {
           const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
@@ -148,7 +156,7 @@ export function useTapPaymentFlow({
     } catch (error: any) {
       console.error("Error initializing secure Tap payment:", error);
       
-      // Implement circuit breaker pattern with exponential backoff
+      // Circuit breaker pattern with exponential backoff
       if (retryCount < 2 && (
         error.message?.includes('timeout') || 
         error.message?.includes('network') || 

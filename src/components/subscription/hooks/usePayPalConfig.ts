@@ -11,7 +11,7 @@ interface PayPalConfig {
 export function usePayPalConfig() {
   const [paypalConfig, setPaypalConfig] = useState<PayPalConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
   const fetchPayPalConfig = useCallback(async () => {
@@ -20,9 +20,9 @@ export function usePayPalConfig() {
       setError(null);
       setIsLoading(true);
       
-      // Add timeout and retry logic
+      // Enhanced timeout and connectivity check
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Configuration request timeout")), 15000);
+        setTimeout(() => reject(new Error("PayPal configuration request timeout after 15 seconds")), 15000);
       });
 
       const configPromise = supabase.functions.invoke("get-paypal-config");
@@ -31,12 +31,20 @@ export function usePayPalConfig() {
       
       if (error) {
         console.error("Error fetching PayPal config:", error);
-        throw new Error(`PayPal configuration error: ${error.message || 'Failed to load PayPal settings'}`);
+        
+        // Provide specific error messages based on error type
+        if (error.message?.includes('fetch')) {
+          throw new Error("Network connection failed. Please check your internet connection.");
+        } else if (error.message?.includes('timeout')) {
+          throw new Error("PayPal service is taking too long to respond. Please try again.");
+        } else {
+          throw new Error(`PayPal configuration error: ${error.message || 'Service temporarily unavailable'}`);
+        }
       }
 
       if (!data?.clientId) {
         console.error("No PayPal client ID in response:", data);
-        throw new Error("PayPal is not configured. Please contact support.");
+        throw new Error("PayPal is not properly configured. Please contact support.");
       }
 
       console.log("PayPal config loaded successfully:", { environment: data.environment });
@@ -46,14 +54,29 @@ export function usePayPalConfig() {
     } catch (error: any) {
       console.error("Failed to fetch PayPal config:", error);
       
-      // Implement exponential backoff for retries
-      if (retryCount < 3) {
-        const delay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s, 16s
+      // Circuit breaker pattern with exponential backoff
+      if (retryCount < 2 && (
+        error.message?.includes('timeout') || 
+        error.message?.includes('network') || 
+        error.message?.includes('fetch') ||
+        error.message?.includes('Failed to fetch')
+      )) {
+        const delay = Math.pow(2, retryCount) * 3000; // 3s, 6s, 12s
         console.log(`Retrying PayPal config fetch in ${delay}ms... (attempt ${retryCount + 1})`);
         setRetryCount(prev => prev + 1);
         setTimeout(() => fetchPayPalConfig(), delay);
       } else {
-        setError("PayPal is temporarily unavailable. Please try again later.");
+        let errorMessage = "PayPal is temporarily unavailable. Please try again later.";
+        
+        if (error.message?.includes('timeout')) {
+          errorMessage = "Connection timeout. Please check your internet connection and try again.";
+        } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (error.message?.includes('configuration')) {
+          errorMessage = "PayPal service configuration error. Please contact support.";
+        }
+        
+        setError(errorMessage);
         setIsLoading(false);
       }
     }
