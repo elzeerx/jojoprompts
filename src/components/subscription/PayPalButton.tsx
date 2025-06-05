@@ -1,8 +1,10 @@
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useEffect, useCallback } from "react";
+import { usePayPalConfig } from "./hooks/usePayPalConfig";
+import { usePayPalScript } from "./hooks/usePayPalScript";
+import { usePayPalButton } from "./hooks/usePayPalButton";
+import { PayPalErrorDisplay } from "./components/PayPalErrorDisplay";
+import { PayPalLoadingDisplay } from "./components/PayPalLoadingDisplay";
 
 declare global {
   interface Window {
@@ -18,12 +20,6 @@ interface PayPalButtonProps {
   onError?: (error: any) => void;
 }
 
-interface PayPalConfig {
-  clientId: string;
-  environment: string;
-  currency: string;
-}
-
 export function PayPalButton({ 
   amount, 
   planName, 
@@ -31,16 +27,9 @@ export function PayPalButton({
   onSuccess, 
   onError = (error) => console.error("PayPal error:", error) 
 }: PayPalButtonProps) {
-  const paypalRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
-  const [buttonRendered, setButtonRendered] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [paypalConfig, setPaypalConfig] = useState<PayPalConfig | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-
-  const memoizedAmount = React.useMemo(() => amount.toFixed(2), [amount]);
-
+  const { paypalConfig, error: configError, isLoading: configLoading, resetConfig } = usePayPalConfig();
+  const { isScriptLoaded, scriptError, loadPayPalScript } = usePayPalScript();
+  
   const handleSuccess = useCallback((paymentId: string, details: any) => {
     console.log("PayPal payment successful:", { paymentId, details });
     onSuccess(paymentId, details);
@@ -49,225 +38,68 @@ export function PayPalButton({
   const handleError = useCallback((error: any) => {
     console.error("PayPal payment error:", error);
     const errorMessage = typeof error === 'string' ? error : error?.message || "PayPal payment failed";
-    setError(errorMessage);
     onError(error);
   }, [onError]);
 
-  const fetchPayPalConfig = useCallback(async () => {
-    try {
-      console.log("Fetching PayPal configuration...");
-      setError(null);
-      setIsLoading(true);
-      
-      const { data, error } = await supabase.functions.invoke("get-paypal-config");
-      
-      if (error) {
-        console.error("Error fetching PayPal config:", error);
-        throw new Error(`PayPal configuration error: ${error.message || 'Failed to load PayPal settings'}`);
-      }
+  const { 
+    paypalRef, 
+    buttonRendered, 
+    buttonError, 
+    initializePayPalButton, 
+    resetButton 
+  } = usePayPalButton({
+    amount,
+    planName,
+    onSuccess: handleSuccess,
+    onError: handleError,
+    paypalConfig: paypalConfig!
+  });
 
-      if (!data?.clientId) {
-        console.error("No PayPal client ID in response:", data);
-        throw new Error("PayPal is not configured. Please contact support.");
-      }
-
-      console.log("PayPal config loaded successfully:", { environment: data.environment });
-      setPaypalConfig(data);
-      setRetryCount(0);
-    } catch (error: any) {
-      console.error("Failed to fetch PayPal config:", error);
-      
-      if (retryCount < 2) {
-        console.log(`Retrying PayPal config fetch... (attempt ${retryCount + 1})`);
-        setRetryCount(prev => prev + 1);
-        setTimeout(() => fetchPayPalConfig(), Math.pow(2, retryCount) * 2000);
-      } else {
-        setError("PayPal is temporarily unavailable. Please try again later.");
-        setIsLoading(false);
-      }
-    }
-  }, [retryCount]);
-
+  // Load PayPal script when config is available
   useEffect(() => {
-    fetchPayPalConfig();
-  }, [fetchPayPalConfig]);
-
-  const loadPayPalScript = useCallback(async () => {
-    if (!paypalConfig) return;
-
-    return new Promise<void>((resolve, reject) => {
-      if (window.paypal) {
-        console.log("PayPal already loaded");
-        setIsScriptLoaded(true);
-        setIsLoading(false);
-        resolve();
-        return;
-      }
-
-      // Clean up any existing scripts
-      const existingScripts = document.querySelectorAll('script[src*="paypal.com"]');
-      existingScripts.forEach(script => script.remove());
-
-      const script = document.createElement("script");
-      const environment = paypalConfig.environment === "production" ? "" : ".sandbox";
-      script.src = `https://www${environment}.paypal.com/sdk/js?client-id=${paypalConfig.clientId}&currency=${paypalConfig.currency}&intent=capture&enable-funding=venmo,card&disable-funding=credit`;
-      script.async = true;
-      script.defer = true;
-      
-      let timeoutId: NodeJS.Timeout;
-      
-      const cleanup = () => {
-        if (timeoutId) clearTimeout(timeoutId);
-        script.onload = null;
-        script.onerror = null;
-      };
-      
-      timeoutId = setTimeout(() => {
-        cleanup();
-        console.error("PayPal script loading timeout");
-        reject(new Error("PayPal script loading timeout"));
-      }, 20000);
-      
-      script.onload = () => {
-        cleanup();
-        console.log("PayPal script loaded successfully");
-        setIsScriptLoaded(true);
-        setIsLoading(false);
-        resolve();
-      };
-      
-      script.onerror = (event) => {
-        cleanup();
-        console.error("PayPal script failed to load:", event);
-        reject(new Error("Failed to load PayPal script"));
-      };
-      
-      document.head.appendChild(script);
-    });
-  }, [paypalConfig]);
-
-  useEffect(() => {
-    if (paypalConfig && !isScriptLoaded) {
-      loadPayPalScript().catch((error) => {
+    if (paypalConfig && !isScriptLoaded && !scriptError) {
+      loadPayPalScript(paypalConfig).catch((error) => {
         console.error("Script loading failed:", error);
-        setError("Failed to load PayPal. Please refresh the page and try again.");
-        setIsLoading(false);
         handleError(error);
       });
     }
-  }, [paypalConfig, isScriptLoaded, loadPayPalScript, handleError]);
-  
-  // Initialize PayPal button
-  useEffect(() => {
-    if (!isScriptLoaded || !paypalRef.current || buttonRendered || !window.paypal || !paypalConfig) {
-      return;
-    }
+  }, [paypalConfig, isScriptLoaded, scriptError, loadPayPalScript, handleError]);
 
-    try {
-      console.log("Initializing PayPal button with amount:", memoizedAmount);
-      
-      window.paypal
-        .Buttons({
-          createOrder: (data: any, actions: any) => {
-            console.log("Creating PayPal order for amount:", memoizedAmount);
-            return actions.order.create({
-              purchase_units: [
-                {
-                  description: `JojoPrompts - ${planName} Plan`,
-                  amount: {
-                    currency_code: paypalConfig.currency,
-                    value: memoizedAmount,
-                  },
-                },
-              ],
-              application_context: {
-                shipping_preference: "NO_SHIPPING"
-              }
-            });
-          },
-          onApprove: async (data: any, actions: any) => {
-            try {
-              console.log("PayPal payment approved, capturing order:", data.orderID);
-              const order = await actions.order.capture();
-              console.log("PayPal order captured successfully:", order);
-              handleSuccess(order.id, order);
-            } catch (error) {
-              console.error("Error capturing PayPal order:", error);
-              handleError(error);
-            }
-          },
-          onCancel: () => {
-            console.log("PayPal payment canceled by user");
-          },
-          onError: (err: any) => {
-            console.error("PayPal button error:", err);
-            handleError(err);
-          },
-          style: {
-            layout: 'vertical',
-            color: 'gold',
-            shape: 'rect',
-            label: 'pay',
-            height: 45,
-            tagline: false
-          }
-        })
-        .render(paypalRef.current)
-        .then(() => {
-          console.log("PayPal button rendered successfully");
-          setButtonRendered(true);
-        })
-        .catch((error: any) => {
-          console.error("Failed to render PayPal button:", error);
-          setError("Failed to initialize PayPal payment. Please refresh the page and try again.");
-          handleError(error);
-        });
-    } catch (error) {
-      console.error("Failed to initialize PayPal button:", error);
-      setError("Failed to initialize PayPal payment system.");
-      handleError(error);
+  // Initialize button when script is loaded
+  useEffect(() => {
+    if (isScriptLoaded && paypalConfig && !buttonRendered && !buttonError) {
+      initializePayPalButton();
     }
-  }, [isScriptLoaded, memoizedAmount, planName, buttonRendered, handleSuccess, handleError, paypalConfig]);
+  }, [isScriptLoaded, paypalConfig, buttonRendered, buttonError, initializePayPalButton]);
+
+  // Fetch config on mount
+  useEffect(() => {
+    if (!paypalConfig && !configError && configLoading) {
+      // Config fetching is handled by the hook
+    }
+  }, [paypalConfig, configError, configLoading]);
+
+  const handleRetry = () => {
+    resetConfig();
+    resetButton();
+  };
+
+  const error = configError || scriptError || buttonError;
+  const isLoading = configLoading || (!isScriptLoaded && !error);
 
   if (error) {
     return (
-      <div className={`w-full ${className}`}>
-        <div className="p-4 border border-red-200 rounded-md bg-red-50">
-          <div className="flex items-start space-x-2">
-            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-red-600 text-sm font-medium">PayPal Unavailable</p>
-              <p className="text-red-600 text-sm mt-1">{error}</p>
-            </div>
-          </div>
-          <Button 
-            className="w-full mt-3" 
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setError(null);
-              setIsLoading(true);
-              setButtonRendered(false);
-              setIsScriptLoaded(false);
-              setRetryCount(0);
-              fetchPayPalConfig();
-            }}
-          >
-            Retry PayPal
-          </Button>
-        </div>
-      </div>
+      <PayPalErrorDisplay 
+        error={error} 
+        onRetry={handleRetry} 
+        className={className} 
+      />
     );
   }
 
   return (
     <div className={`w-full ${className}`}>
-      {isLoading && (
-        <div className="w-full min-h-[45px] flex items-center justify-center bg-gray-50 rounded border border-gray-200">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          <span className="text-sm text-gray-600">Loading PayPal...</span>
-        </div>
-      )}
+      {isLoading && <PayPalLoadingDisplay />}
       <div 
         ref={paypalRef} 
         className={`paypal-button-container ${isLoading ? 'hidden' : ''}`}
