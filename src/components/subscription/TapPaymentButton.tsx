@@ -6,6 +6,7 @@ import { useTapPaymentScript } from "./hooks/useTapPaymentScript";
 import { usePaymentConversion } from "./hooks/usePaymentConversion";
 import { useTapPaymentInitialization } from "./hooks/useTapPaymentInitialization";
 import { TapPaymentDialog } from "./components/TapPaymentDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 declare global {
   interface Window {
@@ -60,6 +61,28 @@ export function TapPaymentButton({
     setIsLoading(true);
     
     try {
+      // Fetch Tap configuration from backend
+      console.log("Fetching Tap payment configuration...");
+      
+      const { data: config, error: configError } = await supabase.functions.invoke(
+        "create-tap-session",
+        {
+          body: { amount, planName, currency }
+        }
+      );
+
+      if (configError) {
+        console.error("Tap configuration error:", configError);
+        throw new Error(`Tap configuration error: ${configError.message || 'Failed to initialize payment'}`);
+      }
+
+      if (!config || !config.publishableKey) {
+        console.error("Invalid Tap configuration response:", config);
+        throw new Error("Failed to get payment configuration");
+      }
+
+      console.log("Tap configuration loaded successfully");
+
       // Load Tap Payment script
       if (!window.Tapjsli) {
         await loadTapPaymentScript();
@@ -68,9 +91,6 @@ export function TapPaymentButton({
       // Add a small delay to ensure proper initialization
       setTimeout(() => {
         const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
-        
-        // Use a test publishable key - this should be fetched from your backend in production
-        const publishableKey = "pk_test_b5JZWEaPCRy61rhY4dqMnUiw";
         
         initializeTapPayment({
           containerID,
@@ -88,7 +108,7 @@ export function TapPaymentButton({
             console.log("Tap payment closed");
             setIsDialogOpen(false);
           }
-        }, publishableKey);
+        }, config.publishableKey);
         
         setIsLoading(false);
       }, 500);

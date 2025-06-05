@@ -101,10 +101,12 @@ serve(async (req: Request) => {
     const sanitizedPlanName = sanitizeInput(planName);
     const sanitizedCurrency = sanitizeInput(currency);
 
-    // Get Tap API key from secrets
+    // Get Tap API keys from secrets
+    const tapPublishableKey = Deno.env.get("TAP_PUBLISHABLE_KEY");
     const tapSecretKey = Deno.env.get("TAP_SECRET_KEY");
-    if (!tapSecretKey) {
-      console.error("TAP_SECRET_KEY not configured");
+    
+    if (!tapPublishableKey || !tapSecretKey) {
+      console.error("TAP API keys not configured");
       return new Response(JSON.stringify({ error: "Payment service not configured" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 503
@@ -112,10 +114,6 @@ serve(async (req: Request) => {
     }
 
     console.log("Tap configuration request:", { amount: parseFloat(amount), currency: sanitizedCurrency, planName: sanitizedPlanName });
-
-    // Get the publishable key - this should be derived from your secret key or configured separately
-    // For now, using the test publishable key, but in production you should get this from Tap dashboard
-    const tapPublishableKey = "pk_test_b5JZWEaPCRy61rhY4dqMnUiw";
 
     // Return secure configuration for frontend
     const config = {
