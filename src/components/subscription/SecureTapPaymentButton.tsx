@@ -73,14 +73,21 @@ export function SecureTapPaymentButton({
     setIsLoading(true);
     
     try {
-      console.log("Fetching Tap payment configuration...");
+      console.log("Initializing Tap payment for amount:", amount, currency);
       
-      const { data: config, error: configError } = await supabase.functions.invoke(
-        "create-tap-session",
-        {
-          body: { amount, planName, currency }
-        }
-      );
+      // Create a timeout for the request
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Request timeout")), 30000);
+      });
+
+      const configPromise = supabase.functions.invoke("create-tap-session", {
+        body: { amount, planName, currency }
+      });
+
+      const { data: config, error: configError } = await Promise.race([
+        configPromise,
+        timeoutPromise
+      ]) as any;
 
       if (configError) {
         console.error("Tap configuration error:", configError);
@@ -89,18 +96,27 @@ export function SecureTapPaymentButton({
 
       if (!config || !config.publishableKey) {
         console.error("Invalid Tap configuration response:", config);
-        throw new Error("Failed to get payment configuration");
+        throw new Error("Failed to get payment configuration from server");
       }
 
       console.log("Tap configuration loaded successfully");
 
+      // Load Tap script if not already loaded
       if (!window.Tapjsli) {
+        console.log("Loading Tap payment script...");
         await loadTapPaymentScript();
       }
       
+      // Give some time for script to initialize
       setTimeout(() => {
         try {
           const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
+          
+          console.log("Initializing Tap payment with:", {
+            amount: tapAmount,
+            currency,
+            container: "secure-tap-payment-container"
+          });
           
           initializeTapPayment({
             containerID: "secure-tap-payment-container",
@@ -127,22 +143,36 @@ export function SecureTapPaymentButton({
           handleError(initError);
           setIsLoading(false);
         }
-      }, 500);
+      }, 1000);
+      
     } catch (error: any) {
       console.error("Error initializing secure Tap payment:", error);
       
-      if (retryCount < 2 && (error.message?.includes('network') || error.message?.includes('timeout'))) {
-        console.log(`Retrying Tap payment initialization... (attempt ${retryCount + 1})`);
+      // Implement exponential backoff for retries
+      if (retryCount < 2 && (
+        error.message?.includes('timeout') || 
+        error.message?.includes('network') || 
+        error.message?.includes('fetch')
+      )) {
+        const delay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s
+        console.log(`Retrying Tap payment initialization in ${delay}ms... (attempt ${retryCount + 1})`);
         setRetryCount(prev => prev + 1);
         setTimeout(() => {
           setIsLoading(false);
           setIsDialogOpen(false);
           openTapPayment();
-        }, 2000 * (retryCount + 1));
+        }, delay);
       } else {
-        const errorMessage = error.message?.includes('network') 
-          ? "Network error. Please check your connection and try again."
-          : "Tap Payment is temporarily unavailable. Please try again later or use PayPal.";
+        let errorMessage = "Tap Payment is temporarily unavailable. Please try again later.";
+        
+        if (error.message?.includes('timeout')) {
+          errorMessage = "Connection timeout. Please check your internet connection and try again.";
+        } else if (error.message?.includes('network')) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (error.message?.includes('configuration')) {
+          errorMessage = "Payment service configuration error. Please contact support.";
+        }
+        
         setError(errorMessage);
         setIsLoading(false);
         setIsDialogOpen(false);
