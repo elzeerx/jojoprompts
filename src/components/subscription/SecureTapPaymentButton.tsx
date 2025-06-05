@@ -6,6 +6,9 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { useTapPaymentScript } from "./hooks/useTapPaymentScript";
+import { usePaymentConversion } from "./hooks/usePaymentConversion";
+import { useTapPaymentInitialization } from "./hooks/useTapPaymentInitialization";
 
 declare global {
   interface Window {
@@ -34,15 +37,9 @@ export function SecureTapPaymentButton({
   const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   
-  const getKWDAmount = (usdAmount: number) => {
-    const conversionRates: { [key: number]: number } = {
-      55: 15,
-      65: 20,
-      80: 25,
-      100: 30
-    };
-    return conversionRates[usdAmount] || (usdAmount * 0.3);
-  };
+  const { loadTapPaymentScript } = useTapPaymentScript();
+  const { getKWDAmount } = usePaymentConversion();
+  const { initializeTapPayment } = useTapPaymentInitialization();
   
   const displayAmount = currency === "KWD" ? getKWDAmount(amount).toFixed(2) : amount.toFixed(2);
   
@@ -103,7 +100,26 @@ export function SecureTapPaymentButton({
       
       setTimeout(() => {
         try {
-          initializeTapPayment(config);
+          const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
+          
+          initializeTapPayment({
+            containerID: "secure-tap-payment-container",
+            amount: tapAmount,
+            currency,
+            onSuccess: (response: any) => {
+              console.log("Tap payment successful:", response);
+              handleSuccess(response.transaction?.id || response.id);
+            },
+            onError: (error: any) => {
+              console.error("Tap payment error:", error);
+              handleError(error);
+            },
+            onClose: () => {
+              console.log("Tap payment closed");
+              setIsDialogOpen(false);
+            }
+          }, config.publishableKey);
+          
           setIsLoading(false);
           setRetryCount(0);
         } catch (initError) {
@@ -131,70 +147,6 @@ export function SecureTapPaymentButton({
         setIsLoading(false);
         setIsDialogOpen(false);
       }
-    }
-  };
-  
-  const loadTapPaymentScript = () => {
-    return new Promise<void>((resolve, reject) => {
-      const existingScript = document.querySelector('script[src*="tap.company"]');
-      if (existingScript) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.src = "https://secure.tap.company/checkout/js/setup-v2.js";
-      script.async = true;
-      script.onload = () => {
-        console.log("Tap Payment script loaded successfully");
-        resolve();
-      };
-      script.onerror = () => {
-        console.error("Failed to load Tap Payment script");
-        reject(new Error("Failed to load Tap Payment script"));
-      };
-      document.head.appendChild(script);
-    });
-  };
-  
-  const initializeTapPayment = (config: any) => {
-    if (!window.Tapjsli) {
-      throw new Error("Tap Payment system not available");
-    }
-
-    if (!config.publishableKey) {
-      throw new Error("Tap Payment configuration missing");
-    }
-
-    try {
-      console.log("Initializing Tap Payment with publishable key");
-      const tap = window.Tapjsli(config.publishableKey);
-      
-      tap.setup({
-        containerID: "secure-tap-payment-container",
-        currencies: [config.currency],
-        amount: config.amount,
-        defaultCurrency: config.currency,
-        uiLanguage: "en",
-        onReady: () => {
-          console.log("Secure Tap payment ready");
-        },
-        onSuccess: (response: any) => {
-          console.log("Secure Tap payment successful:", response);
-          handleSuccess(response.transaction?.id || response.id);
-        },
-        onError: (error: any) => {
-          console.error("Secure Tap payment error:", error);
-          handleError(error);
-        },
-        onClose: () => {
-          console.log("Secure Tap payment closed");
-          setIsDialogOpen(false);
-        }
-      });
-    } catch (error) {
-      console.error("Error initializing secure Tap payment:", error);
-      throw new Error("Failed to initialize payment system");
     }
   };
   

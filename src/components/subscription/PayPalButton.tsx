@@ -38,6 +38,7 @@ export function PayPalButton({
   const [error, setError] = useState<string | null>(null);
   const [paypalConfig, setPaypalConfig] = useState<PayPalConfig | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [scriptRetryCount, setScriptRetryCount] = useState(0);
 
   const memoizedAmount = React.useMemo(() => amount.toFixed(2), [amount]);
 
@@ -92,42 +93,66 @@ export function PayPalButton({
     fetchPayPalConfig();
   }, [fetchPayPalConfig]);
 
-  // Load PayPal script
-  useEffect(() => {
+  const loadPayPalScript = useCallback(async () => {
     if (!paypalConfig) return;
 
-    if (window.paypal) {
-      setIsScriptLoaded(true);
-      setIsLoading(false);
-      return;
-    }
-
-    const script = document.createElement("script");
-    const environment = paypalConfig.environment === "production" ? "" : ".sandbox";
-    script.src = `https://www${environment}.paypal.com/sdk/js?client-id=${paypalConfig.clientId}&currency=${paypalConfig.currency}&intent=capture&enable-funding=venmo,card&disable-funding=credit`;
-    script.async = true;
-    
-    script.onload = () => {
-      console.log("PayPal script loaded successfully");
-      setIsScriptLoaded(true);
-      setIsLoading(false);
-    };
-    
-    script.onerror = () => {
-      console.error("PayPal script failed to load");
-      setError("Failed to load PayPal. Please refresh the page and try again.");
-      setIsLoading(false);
-      handleError(new Error("Failed to load PayPal script"));
-    };
-    
-    document.head.appendChild(script);
-    
-    return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
+    return new Promise<void>((resolve, reject) => {
+      if (window.paypal) {
+        setIsScriptLoaded(true);
+        setIsLoading(false);
+        resolve();
+        return;
       }
-    };
-  }, [paypalConfig, handleError]);
+
+      // Remove any existing PayPal scripts to prevent conflicts
+      const existingScripts = document.querySelectorAll('script[src*="paypal.com"]');
+      existingScripts.forEach(script => script.remove());
+
+      const script = document.createElement("script");
+      const environment = paypalConfig.environment === "production" ? "" : ".sandbox";
+      script.src = `https://www${environment}.paypal.com/sdk/js?client-id=${paypalConfig.clientId}&currency=${paypalConfig.currency}&intent=capture&enable-funding=venmo,card&disable-funding=credit`;
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      
+      const timeoutId = setTimeout(() => {
+        console.error("PayPal script loading timeout");
+        reject(new Error("PayPal script loading timeout"));
+      }, 15000);
+      
+      script.onload = () => {
+        clearTimeout(timeoutId);
+        console.log("PayPal script loaded successfully");
+        setIsScriptLoaded(true);
+        setIsLoading(false);
+        setScriptRetryCount(0);
+        resolve();
+      };
+      
+      script.onerror = () => {
+        clearTimeout(timeoutId);
+        console.error("PayPal script failed to load");
+        
+        if (scriptRetryCount < 2) {
+          console.log(`Retrying PayPal script load... (attempt ${scriptRetryCount + 1})`);
+          setScriptRetryCount(prev => prev + 1);
+          setTimeout(() => loadPayPalScript(), 2000 * (scriptRetryCount + 1));
+        } else {
+          setError("Failed to load PayPal. Please refresh the page and try again.");
+          setIsLoading(false);
+          handleError(new Error("Failed to load PayPal script"));
+        }
+        reject(new Error("PayPal script failed to load"));
+      };
+      
+      document.head.appendChild(script);
+    });
+  }, [paypalConfig, handleError, scriptRetryCount]);
+
+  useEffect(() => {
+    if (paypalConfig) {
+      loadPayPalScript();
+    }
+  }, [paypalConfig, loadPayPalScript]);
   
   // Initialize PayPal button
   useEffect(() => {
@@ -219,6 +244,7 @@ export function PayPalButton({
               setIsLoading(true);
               setButtonRendered(false);
               setRetryCount(0);
+              setScriptRetryCount(0);
               fetchPayPalConfig();
             }}
           >
