@@ -135,6 +135,8 @@ export default function CheckoutPage() {
                 processing={processing}
                 price={price}
                 planName={planName}
+                planId={selectedPlan.id}
+                userId={user?.id || ''}
                 handlePaymentSuccess={handlePaymentSuccess}
                 handlePaymentError={handlePaymentError}
               />
