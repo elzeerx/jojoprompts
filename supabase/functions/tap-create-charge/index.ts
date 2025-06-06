@@ -20,15 +20,29 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { amount = 3.07 } = await req.json().catch(() => ({})); // $9.99 USD ≈ 3.07 KWD
+    const { amount = 9.99 } = await req.json().catch(() => ({})); // Default $9.99 USD
     const tapSk = Deno.env.get("TAP_SK");
 
+    console.log("Creating Tap charge for amount:", amount, "USD");
+
     if (!tapSk) {
+      console.error("Tap secret key not configured");
       return new Response(JSON.stringify({ error: "Tap secret key not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const chargePayload = {
+      amount,
+      currency: "USD",
+      threeDSecure: true,
+      description: "JojoPrompts access",
+      source: { id: "src_all" },
+      redirect: { url: "https://jojoprompts.lovable.app/payment-success" },
+    };
+
+    console.log("Sending request to Tap API with payload:", chargePayload);
 
     const response = await fetch("https://api.tap.company/v2/charges", {
       method: "POST",
@@ -36,17 +50,12 @@ serve(async (req: Request) => {
         "Authorization": `Bearer ${tapSk}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        amount,
-        currency: "KWD",
-        threeDSecure: true,
-        description: "JojoPrompts access",
-        source: { id: "src_all" },
-        redirect: { url: "https://jojoprompts.lovable.app/payment-success" },
-      }),
+      body: JSON.stringify(chargePayload),
     });
 
     const data = await response.text();
+    console.log("Tap API response status:", response.status);
+    console.log("Tap API response data:", data);
     
     return new Response(data, {
       status: response.status,
