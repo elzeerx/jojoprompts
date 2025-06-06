@@ -39,34 +39,34 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <BrowserRouter>
-            <RootLayout>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/prompts" element={<PromptsPage />} />
-                <Route path="/prompts/chatgpt" element={<ChatGPTPromptsPage />} />
-                <Route path="/prompts/midjourney" element={<MidjourneyPromptsPage />} />
-                <Route path="/prompts/workflow" element={<WorkflowPromptsPage />} />
-                <Route path="/favorites" element={<FavoritesPage />} />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/payment-success" element={<PaymentSuccessPage />} />
-                <Route path="/payment-failed" element={<PaymentFailedPage />} />
-                <Route path="/dashboard" element={<UserDashboardPage />} />
-                <Route path="/dashboard/subscription" element={<SubscriptionDashboard />} />
-                <Route path="/dashboard/prompter" element={<PrompterDashboard />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/prompts" element={<PromptsManagement />} />
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                <Route path="/faq" element={<FAQPage />} />
-                <Route path="/privacy" element={<PrivacyPolicyPage />} />
-                <Route path="/terms" element={<TermsOfServicePage />} />
+            <Routes>
+              <Route path="/" element={<RootLayout />}>
+                <Route index element={<Index />} />
+                <Route path="login" element={<LoginPage />} />
+                <Route path="signup" element={<SignupPage />} />
+                <Route path="prompts" element={<PromptsPage />} />
+                <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />
+                <Route path="prompts/midjourney" element={<MidjourneyPromptsPage />} />
+                <Route path="prompts/workflow" element={<WorkflowPromptsPage />} />
+                <Route path="favorites" element={<FavoritesPage />} />
+                <Route path="search" element={<SearchPage />} />
+                <Route path="pricing" element={<PricingPage />} />
+                <Route path="checkout" element={<CheckoutPage />} />
+                <Route path="payment-success" element={<PaymentSuccessPage />} />
+                <Route path="payment-failed" element={<PaymentFailedPage />} />
+                <Route path="dashboard" element={<UserDashboardPage />} />
+                <Route path="dashboard/subscription" element={<SubscriptionDashboard />} />
+                <Route path="dashboard/prompter" element={<PrompterDashboard />} />
+                <Route path="admin" element={<AdminDashboard />} />
+                <Route path="admin/prompts" element={<PromptsManagement />} />
+                <Route path="about" element={<AboutPage />} />
+                <Route path="contact" element={<ContactPage />} />
+                <Route path="faq" element={<FAQPage />} />
+                <Route path="privacy" element={<PrivacyPolicyPage />} />
+                <Route path="terms" element={<TermsOfServicePage />} />
                 <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </RootLayout>
+              </Route>
+            </Routes>
           </BrowserRouter>
           <Toaster />
           <Sonner />
