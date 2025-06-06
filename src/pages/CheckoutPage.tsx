@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { usePaymentHandling } from "./CheckoutPage/hooks/usePaymentHandling";
 import { CheckoutProgress } from "./CheckoutPage/components/CheckoutProgress";
 import { PlanSummaryCard } from "./CheckoutPage/components/PlanSummaryCard";
 import { PaymentMethodsCard } from "./CheckoutPage/components/PaymentMethodsCard";
+import { PaymentErrorBoundary } from "@/components/subscription/PaymentErrorBoundary";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -130,13 +130,15 @@ export default function CheckoutPage() {
               planPrice={price}
             />
           ) : (
-            <PaymentMethodsCard
-              processing={processing}
-              price={price}
-              planName={planName}
-              handlePaymentSuccess={handlePaymentSuccess}
-              handlePaymentError={handlePaymentError}
-            />
+            <PaymentErrorBoundary>
+              <PaymentMethodsCard
+                processing={processing}
+                price={price}
+                planName={planName}
+                handlePaymentSuccess={handlePaymentSuccess}
+                handlePaymentError={handlePaymentError}
+              />
+            </PaymentErrorBoundary>
           )}
         </div>
 
