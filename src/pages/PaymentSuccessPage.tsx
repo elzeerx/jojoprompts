@@ -35,21 +35,34 @@ export default function PaymentSuccessPage() {
         const userId = searchParams.get('userId');
         const tapId = searchParams.get('tap_id');
         const chargeStatus = searchParams.get('status');
+        const responseCode = searchParams.get('response_code');
         
-        console.log('Payment verification params:', { planId, userId, tapId, chargeStatus });
+        console.log('Payment verification params:', { 
+          planId, 
+          userId, 
+          tapId, 
+          chargeStatus, 
+          responseCode,
+          currentUrl: window.location.href
+        });
 
-        // Check for explicit failure status from Tap
-        if (chargeStatus && ['DECLINED', 'FAILED', 'CANCELLED'].includes(chargeStatus.toUpperCase())) {
+        // Check for explicit failure indicators from Tap
+        if (chargeStatus && ['DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED'].includes(chargeStatus.toUpperCase())) {
           console.log('Payment explicitly failed with status:', chargeStatus);
           const reason = `Payment ${chargeStatus.toLowerCase()}`;
           navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
           return;
         }
 
-        // Get pending payment info from localStorage
-        const pendingPaymentStr = localStorage.getItem('pending_payment');
-        const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
+        // Check response code for failures (Tap uses numeric codes)
+        if (responseCode && responseCode !== '100') {
+          console.log('Payment failed with response code:', responseCode);
+          const reason = `Payment failed (Code: ${responseCode})`;
+          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          return;
+        }
 
+        // Check if we have the required payment parameters
         if (!planId || !userId) {
           console.error('Missing payment parameters');
           setError('Missing payment information');
@@ -57,6 +70,7 @@ export default function PaymentSuccessPage() {
           return;
         }
 
+        // Verify user ID matches authenticated user
         if (userId !== user.id) {
           console.error('User ID mismatch');
           setError('Invalid payment session');
@@ -64,15 +78,21 @@ export default function PaymentSuccessPage() {
           return;
         }
 
-        // For now, we'll create the subscription directly
-        // In a production environment, you should verify the payment with Tap first
+        // Get pending payment info from localStorage
+        const pendingPaymentStr = localStorage.getItem('pending_payment');
+        const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
+
+        // If we reach here, assume success (no explicit failure indicators)
+        console.log('Proceeding with subscription creation - no failure indicators found');
+
         const paymentData = {
           paymentId: tapId || pendingPayment?.paymentId || `tap_${Date.now()}`,
           paymentMethod: 'tap',
           details: {
             id: tapId || pendingPayment?.paymentId,
-            status: 'completed',
-            amount: pendingPayment?.amount
+            status: chargeStatus || 'completed',
+            amount: pendingPayment?.amount,
+            response_code: responseCode
           }
         };
 
