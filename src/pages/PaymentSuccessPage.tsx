@@ -1,17 +1,21 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Sparkles } from "lucide-react";
+import { CheckCircle, Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { securityMonitor } from "@/utils/monitoring";
 import { SecurityUtils } from "@/utils/security";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export default function PaymentSuccessPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [verifying, setVerifying] = useState(true);
+  const [verified, setVerified] = useState(false);
   
   useEffect(() => {
     // Redirect to home if not authenticated
@@ -24,26 +28,106 @@ export default function PaymentSuccessPage() {
       return;
     }
 
-    // Validate payment success parameters if present
-    const paymentId = searchParams.get('payment_id');
-    const sessionId = searchParams.get('session_id');
-    
-    if (paymentId && !SecurityUtils.isValidUUID(paymentId)) {
-      securityMonitor.logEvent('suspicious_activity', {
-        page: 'payment_success',
-        reason: 'invalid_payment_id',
-        paymentId
-      }, user.id);
-    }
+    const verifyPayment = async () => {
+      try {
+        const planId = searchParams.get('planId');
+        const userId = searchParams.get('userId');
+        const tapId = searchParams.get('tap_id');
+        
+        // Get pending payment info from localStorage
+        const pendingPaymentStr = localStorage.getItem('pending_payment');
+        const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
 
-    // Log successful payment page access
-    console.log(`Payment success page accessed by user ${user.id}`);
+        if (!planId || !userId) {
+          console.error('Missing payment parameters');
+          navigate('/payment-failed?reason=Missing payment information');
+          return;
+        }
+
+        if (userId !== user.id) {
+          console.error('User ID mismatch');
+          navigate('/payment-failed?reason=Invalid payment session');
+          return;
+        }
+
+        // For now, we'll create the subscription directly
+        // In a production environment, you should verify the payment with Tap first
+        const paymentData = {
+          paymentId: tapId || pendingPayment?.paymentId || `tap_${Date.now()}`,
+          paymentMethod: 'tap',
+          details: {
+            id: tapId || pendingPayment?.paymentId,
+            status: 'completed',
+            amount: pendingPayment?.amount
+          }
+        };
+
+        console.log('Creating subscription with payment data:', paymentData);
+
+        const { data, error } = await supabase.functions.invoke("create-subscription", {
+          body: {
+            planId,
+            userId,
+            paymentData
+          }
+        });
+
+        if (error) {
+          console.error('Subscription creation error:', error);
+          toast({
+            title: "Subscription Error",
+            description: "Payment was successful but subscription setup failed. Please contact support.",
+            variant: "destructive",
+          });
+          navigate('/payment-failed?reason=Subscription setup failed');
+          return;
+        }
+
+        if (!data || !data.success) {
+          console.error('Subscription creation unsuccessful:', data);
+          navigate('/payment-failed?reason=Subscription activation failed');
+          return;
+        }
+
+        // Clear pending payment
+        localStorage.removeItem('pending_payment');
+        
+        setVerified(true);
+        setVerifying(false);
+
+        toast({
+          title: "Payment Successful!",
+          description: "Your subscription has been activated successfully.",
+        });
+
+      } catch (error) {
+        console.error('Payment verification error:', error);
+        navigate('/payment-failed?reason=Payment verification failed');
+      }
+    };
+
+    verifyPayment();
     
   }, [user, navigate, searchParams]);
   
   // Don't render anything while checking authentication
   if (!user) {
     return null;
+  }
+
+  if (verifying) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Verifying your payment...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!verified) {
+    return null; // Will redirect to failed page
   }
   
   return (

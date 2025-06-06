@@ -59,12 +59,37 @@ export function TapPaymentButton({
         throw new Error('No payment data received');
       }
 
-      // Check if we have a redirect URL from Tap
-      if (paymentData.transaction?.url) {
+      console.log('Tap payment response:', paymentData);
+
+      // Check for redirect URL in different possible locations
+      const redirectUrl = 
+        paymentData.transaction?.url || 
+        paymentData.redirect?.url || 
+        paymentData.url ||
+        paymentData.redirect_url;
+
+      if (redirectUrl) {
+        console.log('Redirecting to Tap payment page:', redirectUrl);
+        // Store payment info for verification later
+        localStorage.setItem('pending_payment', JSON.stringify({
+          planId,
+          userId,
+          paymentId: paymentData.id,
+          amount,
+          timestamp: Date.now()
+        }));
+        
         // Redirect to Tap payment page
-        window.location.href = paymentData.transaction.url;
+        window.location.href = redirectUrl;
       } else {
-        throw new Error('No payment URL received from Tap');
+        console.error('No redirect URL found in response:', paymentData);
+        
+        // If no redirect URL but payment was created, show error
+        if (paymentData.id) {
+          throw new Error('Payment was created but no redirect URL provided. Please contact support.');
+        } else {
+          throw new Error('No payment URL received from Tap');
+        }
       }
 
     } catch (error: any) {
@@ -75,6 +100,8 @@ export function TapPaymentButton({
         errorMessage = 'Network error. Please check your connection and try again.';
       } else if (error.message?.includes('authentication')) {
         errorMessage = 'Authentication error. Please refresh the page and try again.';
+      } else if (error.message?.includes('contact support')) {
+        errorMessage = error.message;
       }
       
       toast({

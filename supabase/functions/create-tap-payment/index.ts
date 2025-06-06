@@ -112,31 +112,52 @@ serve(async (req: Request) => {
       });
     }
 
-    // Create Tap payment
+    // Create Tap charge with correct payload structure
     const tapPayload = {
       amount: numericAmount,
-      currency: currency,
+      currency: currency.toUpperCase(),
+      threeDSecure: true,
+      save_card: false,
+      description: `JojoPrompts - ${sanitizeInput(plan.name)} Plan`,
+      statement_descriptor: "JojoPrompts",
+      metadata: {
+        udf1: sanitizeInput(userId),
+        udf2: sanitizeInput(planId),
+        udf3: new Date().toISOString()
+      },
+      reference: {
+        transaction: `jojo_${planId}_${userId}_${Date.now()}`,
+        order: `order_${Date.now()}`
+      },
+      receipt: {
+        email: false,
+        sms: false
+      },
       customer: {
-        id: sanitizeInput(userId),
         first_name: sanitizeInput(user.first_name || "User"),
         last_name: sanitizeInput(user.last_name || ""),
+        email: "",
+        phone: {
+          country_code: "",
+          number: ""
+        }
       },
-      source: { id: "src_all" },
-      redirect: {
+      source: {
+        id: "src_all"
+      },
+      post: {
         url: `${FRONTEND_URL}/payment-success?planId=${planId}&userId=${userId}`
       },
-      description: `JojoPrompts - ${sanitizeInput(plan.name)} Plan`,
-      metadata: {
-        userId: sanitizeInput(userId),
-        planId: sanitizeInput(planId),
-        timestamp: new Date().toISOString()
+      redirect: {
+        url: `${FRONTEND_URL}/payment-success?planId=${planId}&userId=${userId}`
       }
     };
 
-    console.log("Creating Tap payment:", { 
+    console.log("Creating Tap charge:", { 
       amount: tapPayload.amount, 
       currency: tapPayload.currency,
-      planName: plan.name 
+      planName: plan.name,
+      reference: tapPayload.reference.transaction
     });
 
     const response = await fetch("https://api.tap.company/v2/charges", {
@@ -148,21 +169,37 @@ serve(async (req: Request) => {
       body: JSON.stringify(tapPayload)
     });
 
+    const responseText = await response.text();
+    console.log("Tap API raw response:", responseText);
+
     if (!response.ok) {
-      console.error("Tap API error:", response.status, response.statusText);
+      console.error("Tap API error:", response.status, response.statusText, responseText);
       return new Response(JSON.stringify({ 
-        error: "Payment gateway error" 
+        error: "Payment gateway error",
+        details: responseText
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 502
       });
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse Tap response:", parseError);
+      return new Response(JSON.stringify({ 
+        error: "Invalid response from payment gateway" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 502
+      });
+    }
     
-    console.log("Tap payment created successfully:", { 
+    console.log("Tap charge created successfully:", { 
       id: data.id, 
-      status: data.status 
+      status: data.status,
+      transaction_url: data.transaction?.url
     });
     
     return new Response(JSON.stringify(data), {
