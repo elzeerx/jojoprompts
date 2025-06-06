@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,34 +17,67 @@ interface TapPaymentProps {
   planName: string;
   onSuccess: (paymentData: any) => void;
   onError: (error: any) => void;
+  onStart?: () => void;
+  onUnavailable?: (reason: string) => void;
 }
 
-export function TapPayment({ amount, planName, onSuccess, onError }: TapPaymentProps) {
+export function TapPayment({ 
+  amount, 
+  planName, 
+  onSuccess, 
+  onError,
+  onStart,
+  onUnavailable 
+}: TapPaymentProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const componentMountedRef = useRef(true);
 
   const maxRetries = 3;
   const USD_TO_KWD_RATE = 0.307; // Fixed conversion rate
 
+  const logTapEvent = (event: string, data?: any) => {
+    console.log(`[Tap Payment] ${event}:`, {
+      amount,
+      planName,
+      userEmail: user?.email,
+      timestamp: new Date().toISOString(),
+      ...data
+    });
+  };
+
+  useEffect(() => {
+    componentMountedRef.current = true;
+    return () => {
+      componentMountedRef.current = false;
+      logTapEvent('Component Unmounted');
+    };
+  }, []);
+
   const loadTapScript = async (): Promise<void> => {
     if (window.Tapjsli) {
+      logTapEvent('Script Already Loaded');
       return;
     }
 
+    logTapEvent('Script Loading Started');
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = 'https://tap.company/js/pay.js';
       
       script.onload = () => {
-        console.log('Tap script loaded successfully');
+        if (!componentMountedRef.current) return;
+        logTapEvent('Script Loaded Successfully');
         resolve();
       };
       
       script.onerror = () => {
-        console.error('Failed to load Tap script');
-        reject(new Error('Failed to load Tap payment system'));
+        if (!componentMountedRef.current) return;
+        const errorMessage = 'Failed to load Tap payment system';
+        logTapEvent('Script Load Error', { error: errorMessage });
+        reject(new Error(errorMessage));
       };
       
       document.head.appendChild(script);
@@ -53,6 +86,8 @@ export function TapPayment({ amount, planName, onSuccess, onError }: TapPaymentP
 
   const handleTapPayment = async () => {
     if (!user) {
+      const errorMessage = 'Authentication required for Tap payment';
+      logTapEvent('Authentication Error', { error: errorMessage });
       toast({
         title: "Authentication Required",
         description: "Please log in to continue with payment",
@@ -61,16 +96,21 @@ export function TapPayment({ amount, planName, onSuccess, onError }: TapPaymentP
       return;
     }
 
+    if (!componentMountedRef.current) return;
+
     setLoading(true);
     setError(null);
+    onStart?.();
+    logTapEvent('Payment Process Started');
 
     try {
-      console.log('Initializing Tap payment...');
-
       // Load Tap script first
       await loadTapScript();
 
+      if (!componentMountedRef.current) return;
+
       // Get Tap configuration
+      logTapEvent('Fetching Configuration');
       const { data: config, error: configError } = await supabase.functions.invoke('create-tap-session', {
         body: {
           amount: amount * USD_TO_KWD_RATE,
@@ -79,17 +119,26 @@ export function TapPayment({ amount, planName, onSuccess, onError }: TapPaymentP
         }
       });
 
+      if (!componentMountedRef.current) return;
+
       if (configError) {
         throw new Error(`Configuration error: ${configError.message}`);
       }
 
       if (!config?.publishableKey) {
-        throw new Error('Tap payment configuration not available');
+        const errorMessage = 'Tap payment configuration not available';
+        logTapEvent('Configuration Error', { error: errorMessage });
+        onUnavailable?.(errorMessage);
+        throw new Error(errorMessage);
       }
 
-      console.log('Tap configuration received, initializing payment...');
+      logTapEvent('Configuration Received', { 
+        amount: config.amount,
+        currency: config.currency 
+      });
 
       // Initialize Tap payment
+      logTapEvent('Initializing Tap Payment Dialog');
       window.Tapjsli({
         publicKey: config.publishableKey,
         merchant: config.publishableKey,
@@ -101,7 +150,11 @@ export function TapPayment({ amount, planName, onSuccess, onError }: TapPaymentP
           name: user.email
         },
         onSuccess: (response: any) => {
-          console.log('Tap payment success:', response);
+          if (!componentMountedRef.current) return;
+          logTapEvent('Payment Success', { 
+            transactionId: response.transaction?.id || response.id,
+            status: response.status 
+          });
           setLoading(false);
           onSuccess({
             paymentId: response.transaction?.id || response.id,
@@ -110,27 +163,37 @@ export function TapPayment({ amount, planName, onSuccess, onError }: TapPaymentP
           });
         },
         onError: (error: any) => {
-          console.error('Tap payment error:', error);
+          if (!componentMountedRef.current) return;
+          logTapEvent('Payment Error', { error: error.message || error });
           setLoading(false);
           setError(error.message || 'Payment failed');
-          onError(error);
+          onError({
+            message: error.message || 'Tap payment failed',
+            code: 'TAP_ERROR'
+          });
         },
         onClose: () => {
-          console.log('Tap payment dialog closed');
+          if (!componentMountedRef.current) return;
+          logTapEvent('Payment Dialog Closed');
           setLoading(false);
         }
       });
 
     } catch (error: any) {
-      console.error('Tap payment initialization error:', error);
+      if (!componentMountedRef.current) return;
+      logTapEvent('Payment Process Error', { error: error.message });
       setError(error.message || 'Failed to initialize payment');
       setLoading(false);
-      onError(error);
+      onError({
+        message: error.message || 'Failed to initialize Tap payment',
+        code: 'INIT_ERROR'
+      });
     }
   };
 
   const handleRetry = () => {
-    if (retryCount < maxRetries) {
+    if (retryCount < maxRetries && componentMountedRef.current) {
+      logTapEvent('Retry Attempted', { attempt: retryCount + 1 });
       setRetryCount(prev => prev + 1);
       setError(null);
       handleTapPayment();

@@ -15,17 +15,36 @@ interface PayPalPaymentProps {
   planName: string;
   onSuccess: (paymentData: any) => void;
   onError: (error: any) => void;
+  onStart?: () => void;
+  onUnavailable?: (reason: string) => void;
 }
 
-export function PayPalPayment({ amount, planName, onSuccess, onError }: PayPalPaymentProps) {
+export function PayPalPayment({ 
+  amount, 
+  planName, 
+  onSuccess, 
+  onError, 
+  onStart,
+  onUnavailable 
+}: PayPalPaymentProps) {
   const paypalRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const scriptLoadedRef = useRef(false);
+  const componentMountedRef = useRef(true);
 
   const maxRetries = 3;
+
+  const logPayPalEvent = (event: string, data?: any) => {
+    console.log(`[PayPal Payment] ${event}:`, {
+      amount,
+      planName,
+      timestamp: new Date().toISOString(),
+      ...data
+    });
+  };
 
   const loadPayPalScript = async () => {
     if (window.paypal && scriptLoadedRef.current) {
@@ -33,26 +52,33 @@ export function PayPalPayment({ amount, planName, onSuccess, onError }: PayPalPa
       return;
     }
 
+    if (!componentMountedRef.current) return;
+
     setLoading(true);
     setError(null);
+    logPayPalEvent('Script Loading Started');
 
     try {
-      console.log('Loading PayPal configuration...');
-      
       const { data: config, error: configError } = await supabase.functions.invoke('get-paypal-config');
 
+      if (!componentMountedRef.current) return;
+
       if (configError) {
-        throw new Error(`Config error: ${configError.message}`);
+        throw new Error(`Configuration error: ${configError.message}`);
       }
 
       if (!config?.clientId) {
-        throw new Error('PayPal configuration not available');
+        const errorMessage = 'PayPal configuration not available';
+        logPayPalEvent('Configuration Error', { error: errorMessage });
+        onUnavailable?.(errorMessage);
+        throw new Error(errorMessage);
       }
 
       // Remove existing PayPal script if any
       const existingScript = document.querySelector('script[src*="paypal.com/sdk"]');
       if (existingScript) {
         existingScript.remove();
+        logPayPalEvent('Existing Script Removed');
       }
 
       // Load PayPal script
@@ -61,35 +87,44 @@ export function PayPalPayment({ amount, planName, onSuccess, onError }: PayPalPa
       script.src = `https://www${environment}.paypal.com/sdk/js?client-id=${config.clientId}&currency=USD&intent=capture`;
       
       script.onload = () => {
-        console.log('PayPal script loaded successfully');
+        if (!componentMountedRef.current) return;
+        logPayPalEvent('Script Loaded Successfully');
         scriptLoadedRef.current = true;
         setReady(true);
         setLoading(false);
       };
       
       script.onerror = () => {
-        console.error('Failed to load PayPal script');
-        setError('Failed to load PayPal payment system');
+        if (!componentMountedRef.current) return;
+        const errorMessage = 'Failed to load PayPal payment system';
+        logPayPalEvent('Script Load Error', { error: errorMessage });
+        setError(errorMessage);
         setLoading(false);
+        onUnavailable?.(errorMessage);
       };
       
       document.head.appendChild(script);
       
     } catch (error: any) {
-      console.error('PayPal initialization error:', error);
+      if (!componentMountedRef.current) return;
+      logPayPalEvent('Initialization Error', { error: error.message });
       setError(error.message || 'Failed to initialize PayPal');
       setLoading(false);
     }
   };
 
   const renderPayPalButton = () => {
-    if (!window.paypal || !paypalRef.current || paypalRef.current.hasChildNodes()) {
+    if (!window.paypal || !paypalRef.current || paypalRef.current.hasChildNodes() || !componentMountedRef.current) {
       return;
     }
+
+    logPayPalEvent('Button Rendering Started');
 
     try {
       window.paypal.Buttons({
         createOrder: (data: any, actions: any) => {
+          logPayPalEvent('Order Creation Started');
+          onStart?.();
           return actions.order.create({
             purchase_units: [{
               amount: {
@@ -102,34 +137,52 @@ export function PayPalPayment({ amount, planName, onSuccess, onError }: PayPalPa
         },
         onApprove: async (data: any, actions: any) => {
           try {
+            logPayPalEvent('Payment Approved', { orderID: data.orderID });
             const details = await actions.order.capture();
-            console.log('PayPal payment approved:', data.orderID);
+            logPayPalEvent('Payment Captured Successfully', { 
+              orderID: data.orderID,
+              status: details.status 
+            });
             onSuccess({
               paymentId: data.orderID,
               paymentMethod: 'paypal',
               details
             });
-          } catch (error) {
-            console.error('PayPal capture error:', error);
-            onError(error);
+          } catch (error: any) {
+            logPayPalEvent('Capture Error', { error: error.message });
+            onError({
+              message: error.message || 'Payment capture failed',
+              code: 'CAPTURE_ERROR'
+            });
           }
         },
         onError: (error: any) => {
-          console.error('PayPal payment error:', error);
-          onError(error);
+          logPayPalEvent('Payment Error', { error: error.message || error });
+          onError({
+            message: error.message || 'PayPal payment failed',
+            code: 'PAYPAL_ERROR'
+          });
         },
         onCancel: () => {
-          console.log('PayPal payment cancelled');
+          logPayPalEvent('Payment Cancelled');
         }
       }).render(paypalRef.current);
-    } catch (error) {
-      console.error('PayPal button render error:', error);
+      
+      logPayPalEvent('Button Rendered Successfully');
+    } catch (error: any) {
+      logPayPalEvent('Button Render Error', { error: error.message });
       setError('Failed to render PayPal button');
+      onError({
+        message: 'Failed to render PayPal button',
+        code: 'RENDER_ERROR',
+        critical: true
+      });
     }
   };
 
   const handleRetry = () => {
-    if (retryCount < maxRetries) {
+    if (retryCount < maxRetries && componentMountedRef.current) {
+      logPayPalEvent('Retry Attempted', { attempt: retryCount + 1 });
       setRetryCount(prev => prev + 1);
       setError(null);
       setReady(false);
@@ -145,9 +198,12 @@ export function PayPalPayment({ amount, planName, onSuccess, onError }: PayPalPa
   };
 
   useEffect(() => {
+    componentMountedRef.current = true;
     loadPayPalScript();
     
     return () => {
+      componentMountedRef.current = false;
+      logPayPalEvent('Component Unmounted');
       // Cleanup on unmount
       if (paypalRef.current) {
         paypalRef.current.innerHTML = '';
@@ -156,7 +212,7 @@ export function PayPalPayment({ amount, planName, onSuccess, onError }: PayPalPa
   }, []);
 
   useEffect(() => {
-    if (ready && window.paypal) {
+    if (ready && window.paypal && componentMountedRef.current) {
       renderPayPalButton();
     }
   }, [ready, amount, planName]);
