@@ -21,22 +21,23 @@ interface PayPalButtonProps {
 export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalButtonProps) {
   const paypalRef = useRef<HTMLDivElement>(null);
   const [buttonRendered, setButtonRendered] = useState(false);
-  const [buttonError, setButtonError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const { config, loading: configLoading, error: configError } = usePayPalConfig();
   const { scriptLoaded, loading: scriptLoading, error: scriptError, loadScript } = usePayPalScript();
 
-  // Load script when config is ready
   useEffect(() => {
-    if (config && !scriptLoaded && !scriptLoading) {
+    if (config && !scriptLoaded && !scriptLoading && retryCount < 3) {
+      console.log("Attempting to load PayPal script, retry:", retryCount);
       loadScript(config);
     }
-  }, [config, scriptLoaded, scriptLoading, loadScript]);
+  }, [config, scriptLoaded, scriptLoading, loadScript, retryCount]);
 
-  // Render button when script is loaded
   useEffect(() => {
     if (scriptLoaded && !buttonRendered && paypalRef.current) {
       try {
+        console.log("Rendering PayPal button");
+        
         window.paypal.Buttons({
           createOrder: (data: any, actions: any) => {
             return actions.order.create({
@@ -52,6 +53,7 @@ export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalBut
           onApprove: async (data: any, actions: any) => {
             try {
               const details = await actions.order.capture();
+              console.log("PayPal payment approved:", data.orderID);
               onSuccess(data.orderID, details);
             } catch (error) {
               console.error("PayPal capture error:", error);
@@ -65,26 +67,32 @@ export function PayPalButton({ amount, planName, onSuccess, onError }: PayPalBut
         }).render(paypalRef.current);
         
         setButtonRendered(true);
+        console.log("PayPal button rendered successfully");
+        
       } catch (error: any) {
         console.error("PayPal button render error:", error);
-        setButtonError(error.message);
+        if (onError) onError(error);
       }
     }
   }, [scriptLoaded, buttonRendered, amount, planName, onSuccess, onError]);
 
-  const error = configError || scriptError || buttonError;
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setButtonRendered(false);
+    if (paypalRef.current) {
+      paypalRef.current.innerHTML = '';
+    }
+  };
+
+  const error = configError || scriptError;
   const loading = configLoading || scriptLoading;
 
   if (error) {
     return (
       <div className="w-full p-4 bg-red-50 border border-red-200 rounded">
         <p className="text-red-800 text-sm mb-2">{error}</p>
-        <Button 
-          size="sm" 
-          variant="outline" 
-          onClick={() => window.location.reload()}
-        >
-          Retry
+        <Button size="sm" variant="outline" onClick={handleRetry}>
+          Retry ({retryCount}/3)
         </Button>
       </div>
     );

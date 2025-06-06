@@ -20,28 +20,51 @@ export function usePayPalScript() {
 
     if (loading) return;
 
-    setLoading(true);
-    setError(null);
-
     try {
-      const script = document.createElement("script");
+      setLoading(true);
+      setError(null);
+      
+      console.log("Loading PayPal script...");
+      
       const environment = config.environment === "production" ? "" : ".sandbox";
-      script.src = `https://www${environment}.paypal.com/sdk/js?client-id=${config.clientId}&currency=${config.currency}&intent=capture`;
+      const scriptSrc = `https://www${environment}.paypal.com/sdk/js?client-id=${config.clientId}&currency=${config.currency}&intent=capture`;
+      
+      const existingScript = document.querySelector(`script[src="${scriptSrc}"]`);
+      if (existingScript) {
+        existingScript.remove();
+      }
+
+      const script = document.createElement("script");
+      script.src = scriptSrc;
       script.async = true;
 
-      await new Promise((resolve, reject) => {
+      const loadPromise = new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("PayPal script loading timeout"));
+        }, 10000);
+
         script.onload = () => {
+          clearTimeout(timeout);
           if (window.paypal) {
+            console.log("PayPal script loaded successfully");
             setScriptLoaded(true);
-            resolve(undefined);
+            resolve();
           } else {
             reject(new Error("PayPal object not available"));
           }
         };
-        script.onerror = () => reject(new Error("Failed to load PayPal script"));
-        document.head.appendChild(script);
+
+        script.onerror = () => {
+          clearTimeout(timeout);
+          reject(new Error("Failed to load PayPal script"));
+        };
       });
+
+      document.head.appendChild(script);
+      await loadPromise;
+
     } catch (err: any) {
+      console.error("PayPal script loading error:", err);
       setError(err.message);
     } finally {
       setLoading(false);

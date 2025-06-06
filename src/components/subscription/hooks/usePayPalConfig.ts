@@ -16,20 +16,25 @@ export function usePayPalConfig() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        console.log("Fetching PayPal config...");
-        const { data, error } = await supabase.functions.invoke("get-paypal-config");
+        setLoading(true);
+        setError(null);
         
-        if (error) {
-          throw error;
+        console.log("Fetching PayPal config...");
+        
+        const { data, error: fetchError } = await supabase.functions.invoke("get-paypal-config");
+        
+        if (fetchError) {
+          console.error("PayPal config fetch error:", fetchError);
+          throw new Error(fetchError.message || "Failed to fetch PayPal config");
         }
         
         if (!data?.clientId) {
-          throw new Error("PayPal configuration is incomplete");
+          throw new Error("Invalid PayPal configuration received");
         }
         
-        console.log("PayPal config loaded successfully");
+        console.log("PayPal config loaded successfully:", { environment: data.environment });
         setConfig(data);
-        setError(null);
+        
       } catch (err: any) {
         console.error("PayPal config error:", err);
         setError(err.message || "Failed to load PayPal configuration");

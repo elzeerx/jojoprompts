@@ -11,21 +11,29 @@ export function useTapConfig() {
     setError(null);
 
     try {
-      console.log("Getting Tap config...");
-      const { data, error } = await supabase.functions.invoke("create-tap-session", {
-        body: { amount, planName, currency: "KWD" }
+      console.log("Getting Tap config for:", { amount, planName });
+      
+      const { data, error: fetchError } = await supabase.functions.invoke("create-tap-session", {
+        body: { 
+          amount, 
+          planName, 
+          currency: "KWD" 
+        }
       });
 
-      if (error) {
-        throw error;
+      if (fetchError) {
+        console.error("Tap config fetch error:", fetchError);
+        throw new Error(fetchError.message || "Failed to fetch Tap config");
       }
 
       if (!data?.publishableKey) {
-        throw new Error("Tap configuration is incomplete");
+        console.error("Invalid Tap config received:", data);
+        throw new Error("Invalid Tap configuration received");
       }
 
       console.log("Tap config loaded successfully");
       return data;
+      
     } catch (err: any) {
       console.error("Tap config error:", err);
       const errorMessage = err.message || "Failed to load Tap configuration";

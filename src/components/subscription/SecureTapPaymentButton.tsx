@@ -1,7 +1,6 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -27,18 +26,18 @@ export function SecureTapPaymentButton({
   onSuccess,
   onError
 }: SecureTapPaymentButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   const { user } = useAuth();
   const { getTapConfig } = useTapConfig();
   const { getKWDAmount } = usePaymentConversion();
 
-  const loadTapScript = async () => {
+  const loadTapScript = async (): Promise<boolean> => {
     if (window.Tapjsli) return true;
 
-    return new Promise<boolean>((resolve) => {
+    return new Promise((resolve) => {
       const script = document.createElement("script");
       script.src = "https://tap.company/js/pay.js";
       script.onload = () => resolve(!!window.Tapjsli);
@@ -57,19 +56,23 @@ export function SecureTapPaymentButton({
       return;
     }
 
-    setIsOpen(true);
     setLoading(true);
     setError(null);
 
     try {
+      console.log("Starting Tap payment process");
+      
       // Get configuration
       const config = await getTapConfig(amount, planName);
+      console.log("Tap config received");
       
       // Load script
       const scriptLoaded = await loadTapScript();
       if (!scriptLoaded) {
         throw new Error("Failed to load Tap payment interface");
       }
+      
+      console.log("Tap script loaded");
 
       // Initialize payment
       const kwdAmount = getKWDAmount(amount);
@@ -85,11 +88,12 @@ export function SecureTapPaymentButton({
         },
         onSuccess: (response: any) => {
           console.log("Tap payment success:", response);
-          setIsOpen(false);
+          setLoading(false);
           onSuccess(response.transaction?.id || response.id);
         },
         onError: (error: any) => {
           console.error("Tap payment error:", error);
+          setLoading(false);
           setError(error.message || "Payment failed");
           if (onError) onError(error);
         },
@@ -98,12 +102,17 @@ export function SecureTapPaymentButton({
         }
       });
 
-      setLoading(false);
     } catch (err: any) {
       console.error("Tap initialization error:", err);
       setError(err.message);
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setError(null);
+    handlePayment();
   };
 
   const displayAmount = getKWDAmount(amount).toFixed(2);
@@ -115,49 +124,29 @@ export function SecureTapPaymentButton({
         <Button 
           size="sm" 
           variant="outline" 
-          onClick={() => {
-            setError(null);
-            handlePayment();
-          }}
+          onClick={handleRetry}
+          disabled={retryCount >= 3}
         >
-          Retry
+          Retry ({retryCount}/3)
         </Button>
       </div>
     );
   }
 
   return (
-    <>
-      <Button 
-        className="w-full" 
-        onClick={handlePayment}
-        disabled={loading}
-      >
-        {loading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loading...
-          </>
-        ) : (
-          `Pay with Tap Payment (${displayAmount} KWD)`
-        )}
-      </Button>
-      
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
-          <div className="text-center">
-            <h3 className="text-lg font-medium mb-2">
-              {planName} Plan - {displayAmount} KWD
-            </h3>
-            {loading && (
-              <div className="py-8">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                <p>Initializing secure payment...</p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Button 
+      className="w-full" 
+      onClick={handlePayment}
+      disabled={loading}
+    >
+      {loading ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Processing...
+        </>
+      ) : (
+        `Pay with Tap Payment (${displayAmount} KWD)`
+      )}
+    </Button>
   );
 }
