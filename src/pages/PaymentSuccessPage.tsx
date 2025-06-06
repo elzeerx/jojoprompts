@@ -10,6 +10,20 @@ import { SecurityUtils } from "@/utils/security";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+// Comprehensive list of Tap failure status codes and indicators
+const TAP_FAILURE_STATUSES = [
+  'DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED', 'EXPIRED', 
+  'REJECTED', 'VOIDED', 'ERROR', 'TIMEOUT'
+];
+
+const TAP_FAILURE_RESPONSE_CODES = [
+  '101', '102', '103', '104', '105', '106', '107', '108', '109', '110',
+  '201', '202', '203', '204', '205', '206', '207', '208', '209', '210',
+  '301', '302', '303', '304', '305', '306', '307', '308', '309', '310',
+  '401', '402', '403', '404', '405', '406', '407', '408', '409', '410',
+  '501', '502', '503', '504', '505', '506', '507', '508', '509', '510'
+];
+
 export default function PaymentSuccessPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -36,45 +50,66 @@ export default function PaymentSuccessPage() {
         const tapId = searchParams.get('tap_id');
         const chargeStatus = searchParams.get('status');
         const responseCode = searchParams.get('response_code');
+        const chargeId = searchParams.get('charge_id');
+        const paymentResult = searchParams.get('payment_result');
         
-        console.log('Payment verification params:', { 
+        console.log('Payment verification - All URL params:', { 
           planId, 
           userId, 
           tapId, 
           chargeStatus, 
           responseCode,
-          currentUrl: window.location.href
+          chargeId,
+          paymentResult,
+          fullUrl: window.location.href,
+          searchString: window.location.search
         });
 
-        // Check for explicit failure indicators from Tap
-        if (chargeStatus && ['DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED'].includes(chargeStatus.toUpperCase())) {
-          console.log('Payment explicitly failed with status:', chargeStatus);
+        // Enhanced failure detection
+        const isFailedStatus = chargeStatus && TAP_FAILURE_STATUSES.includes(chargeStatus.toUpperCase());
+        const isFailedResponseCode = responseCode && TAP_FAILURE_RESPONSE_CODES.includes(responseCode);
+        const isExplicitFailure = paymentResult === 'failed' || paymentResult === 'error';
+
+        if (isFailedStatus) {
+          console.log('Payment failed - Status indicates failure:', chargeStatus);
           const reason = `Payment ${chargeStatus.toLowerCase()}`;
           navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
           return;
         }
 
-        // Check response code for failures (Tap uses numeric codes)
-        if (responseCode && responseCode !== '100') {
-          console.log('Payment failed with response code:', responseCode);
-          const reason = `Payment failed (Code: ${responseCode})`;
+        if (isFailedResponseCode) {
+          console.log('Payment failed - Response code indicates failure:', responseCode);
+          const reason = `Payment declined (Code: ${responseCode})`;
+          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          return;
+        }
+
+        if (isExplicitFailure) {
+          console.log('Payment failed - Explicit failure result:', paymentResult);
+          const reason = 'Payment was not completed successfully';
           navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
           return;
         }
 
         // Check if we have the required payment parameters
         if (!planId || !userId) {
-          console.error('Missing payment parameters');
+          console.error('Missing required payment parameters:', { planId, userId });
           setError('Missing payment information');
-          setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Missing payment information')}`), 2000);
+          setTimeout(() => {
+            const reason = 'Missing payment information';
+            navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
+          }, 2000);
           return;
         }
 
         // Verify user ID matches authenticated user
         if (userId !== user.id) {
-          console.error('User ID mismatch');
+          console.error('User ID mismatch - URL user:', userId, 'Auth user:', user.id);
           setError('Invalid payment session');
-          setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Invalid payment session')}`), 2000);
+          setTimeout(() => {
+            const reason = 'Invalid payment session';
+            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          }, 2000);
           return;
         }
 
@@ -82,17 +117,18 @@ export default function PaymentSuccessPage() {
         const pendingPaymentStr = localStorage.getItem('pending_payment');
         const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
 
-        // If we reach here, assume success (no explicit failure indicators)
-        console.log('Proceeding with subscription creation - no failure indicators found');
+        // If we reach here, we assume success (no explicit failure indicators found)
+        console.log('Proceeding with subscription creation - no failure indicators detected');
 
         const paymentData = {
-          paymentId: tapId || pendingPayment?.paymentId || `tap_${Date.now()}`,
+          paymentId: tapId || chargeId || pendingPayment?.paymentId || `tap_${Date.now()}`,
           paymentMethod: 'tap',
           details: {
-            id: tapId || pendingPayment?.paymentId,
+            id: tapId || chargeId || pendingPayment?.paymentId,
             status: chargeStatus || 'completed',
             amount: pendingPayment?.amount,
-            response_code: responseCode
+            response_code: responseCode,
+            payment_result: paymentResult
           }
         };
 
@@ -114,14 +150,20 @@ export default function PaymentSuccessPage() {
             description: "Payment was successful but subscription setup failed. Please contact support.",
             variant: "destructive",
           });
-          setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Subscription setup failed')}`), 2000);
+          setTimeout(() => {
+            const reason = 'Subscription setup failed';
+            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          }, 2000);
           return;
         }
 
         if (!data || !data.success) {
           console.error('Subscription creation unsuccessful:', data);
           setError('Subscription activation failed');
-          setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Subscription activation failed')}`), 2000);
+          setTimeout(() => {
+            const reason = 'Subscription activation failed';
+            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          }, 2000);
           return;
         }
 
@@ -139,7 +181,11 @@ export default function PaymentSuccessPage() {
       } catch (error) {
         console.error('Payment verification error:', error);
         setError('Payment verification failed');
-        setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Payment verification failed')}`), 2000);
+        setTimeout(() => {
+          const planId = searchParams.get('planId');
+          const reason = 'Payment verification failed';
+          navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
+        }, 2000);
       }
     };
 

@@ -128,10 +128,10 @@ serve(async (req: Request) => {
     const userEmail = authUser.user.email;
     console.log("User email retrieved:", userEmail);
 
-    // Create URLs with proper formatting - single success URL that handles status
-    const successUrl = `${FRONTEND_URL}/payment-success?planId=${planId}&userId=${userId}`;
+    // Create the single redirect URL - Tap will add status parameters automatically
+    const redirectUrl = `${FRONTEND_URL}/payment-success?planId=${planId}&userId=${userId}`;
 
-    console.log("Success URL configured:", successUrl);
+    console.log("Redirect URL configured:", redirectUrl);
 
     const tapPayload = {
       amount: numericAmount,
@@ -165,11 +165,13 @@ serve(async (req: Request) => {
       source: {
         id: "src_all"
       },
+      // Both post and redirect point to the same URL
+      // Tap will add status parameters automatically
       post: {
-        url: successUrl
+        url: redirectUrl
       },
       redirect: {
-        url: successUrl
+        url: redirectUrl
       }
     };
 
@@ -179,7 +181,7 @@ serve(async (req: Request) => {
       planName: plan.name,
       reference: tapPayload.reference.transaction,
       customerEmail: userEmail,
-      successUrl
+      redirectUrl
     });
 
     const response = await fetch("https://api.tap.company/v2/charges", {
