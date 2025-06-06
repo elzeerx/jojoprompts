@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Sparkles, Loader2 } from "lucide-react";
+import { CheckCircle, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { securityMonitor } from "@/utils/monitoring";
 import { SecurityUtils } from "@/utils/security";
@@ -16,6 +16,7 @@ export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
   const [verifying, setVerifying] = useState(true);
   const [verified, setVerified] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     // Redirect to home if not authenticated
@@ -33,20 +34,33 @@ export default function PaymentSuccessPage() {
         const planId = searchParams.get('planId');
         const userId = searchParams.get('userId');
         const tapId = searchParams.get('tap_id');
+        const chargeStatus = searchParams.get('status');
         
+        console.log('Payment verification params:', { planId, userId, tapId, chargeStatus });
+
+        // Check for explicit failure status from Tap
+        if (chargeStatus && ['DECLINED', 'FAILED', 'CANCELLED'].includes(chargeStatus.toUpperCase())) {
+          console.log('Payment explicitly failed with status:', chargeStatus);
+          const reason = `Payment ${chargeStatus.toLowerCase()}`;
+          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          return;
+        }
+
         // Get pending payment info from localStorage
         const pendingPaymentStr = localStorage.getItem('pending_payment');
         const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
 
         if (!planId || !userId) {
           console.error('Missing payment parameters');
-          navigate('/payment-failed?reason=Missing payment information');
+          setError('Missing payment information');
+          setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Missing payment information')}`), 2000);
           return;
         }
 
         if (userId !== user.id) {
           console.error('User ID mismatch');
-          navigate('/payment-failed?reason=Invalid payment session');
+          setError('Invalid payment session');
+          setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Invalid payment session')}`), 2000);
           return;
         }
 
@@ -74,18 +88,20 @@ export default function PaymentSuccessPage() {
 
         if (error) {
           console.error('Subscription creation error:', error);
+          setError('Subscription setup failed');
           toast({
             title: "Subscription Error",
             description: "Payment was successful but subscription setup failed. Please contact support.",
             variant: "destructive",
           });
-          navigate('/payment-failed?reason=Subscription setup failed');
+          setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Subscription setup failed')}`), 2000);
           return;
         }
 
         if (!data || !data.success) {
           console.error('Subscription creation unsuccessful:', data);
-          navigate('/payment-failed?reason=Subscription activation failed');
+          setError('Subscription activation failed');
+          setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Subscription activation failed')}`), 2000);
           return;
         }
 
@@ -102,7 +118,8 @@ export default function PaymentSuccessPage() {
 
       } catch (error) {
         console.error('Payment verification error:', error);
-        navigate('/payment-failed?reason=Payment verification failed');
+        setError('Payment verification failed');
+        setTimeout(() => navigate(`/payment-failed?reason=${encodeURIComponent('Payment verification failed')}`), 2000);
       }
     };
 
@@ -121,6 +138,19 @@ export default function PaymentSuccessPage() {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p>Verifying your payment...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+        <div className="text-center max-w-md mx-auto p-6">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Payment Processing Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-sm text-gray-500">Redirecting to payment failed page...</p>
         </div>
       </div>
     );

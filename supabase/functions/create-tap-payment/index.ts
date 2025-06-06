@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
 
@@ -128,7 +127,10 @@ serve(async (req: Request) => {
     const userEmail = authUser.user.email;
     console.log("User email retrieved:", userEmail);
 
-    // Create Tap charge with correct payload structure
+    // Create Tap charge with correct payload structure and fixed URLs
+    const successUrl = `${FRONTEND_URL}/payment-success?planId=${planId}&userId=${userId}`;
+    const failureUrl = `${FRONTEND_URL}/payment-failed?planId=${planId}&userId=${userId}&reason=Payment failed`;
+
     const tapPayload = {
       amount: numericAmount,
       currency: currency.toUpperCase(),
@@ -162,10 +164,10 @@ serve(async (req: Request) => {
         id: "src_all"
       },
       post: {
-        url: `${FRONTEND_URL}/payment-success?planId=${planId}&userId=${userId}`
+        url: successUrl
       },
       redirect: {
-        url: `${FRONTEND_URL}/payment-success?planId=${planId}&userId=${userId}`
+        url: successUrl
       }
     };
 
@@ -174,7 +176,9 @@ serve(async (req: Request) => {
       currency: tapPayload.currency,
       planName: plan.name,
       reference: tapPayload.reference.transaction,
-      customerEmail: userEmail
+      customerEmail: userEmail,
+      successUrl,
+      failureUrl
     });
 
     const response = await fetch("https://api.tap.company/v2/charges", {
