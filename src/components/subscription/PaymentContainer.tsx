@@ -47,7 +47,7 @@ export function PaymentContainer({ amount, planName, onSuccess, onError }: Payme
 
   return (
     <div className="space-y-6">
-      <PaymentErrorAlert hasErrors={hasAnyErrors} />
+      <PaymentErrorAlert hasErrors={!!hasAnyErrors} />
 
       {/* PayPal Section */}
       {methodAvailable.paypal && (
