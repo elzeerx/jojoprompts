@@ -1,6 +1,6 @@
 
 import React from "react";
-import { UnifiedPaymentManager } from "./UnifiedPaymentManager";
+import { SimplePaymentSelection } from "@/components/payment/SimplePaymentSelection";
 
 interface PaymentContainerProps {
   amount: number;
@@ -12,7 +12,7 @@ interface PaymentContainerProps {
 export function PaymentContainer({ amount, planName, onSuccess, onError }: PaymentContainerProps) {
   return (
     <div className="w-full max-w-md mx-auto">
-      <UnifiedPaymentManager
+      <SimplePaymentSelection
         amount={amount}
         planName={planName}
         onSuccess={onSuccess}
