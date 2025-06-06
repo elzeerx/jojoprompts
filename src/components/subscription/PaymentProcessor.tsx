@@ -29,6 +29,7 @@ export function PaymentProcessor({
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [detailedError, setDetailedError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const paymentContainerRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
   const { user } = useAuth();
@@ -49,34 +50,47 @@ export function PaymentProcessor({
     }
   }, [method, amount, retryCount]);
 
+  const logDebugInfo = (info: any) => {
+    console.log('[Payment Debug]', info);
+    setDebugInfo(info);
+  };
+
   const getUserFriendlyError = (error: any, method: string): { message: string; details: string } => {
     const errorMessage = error?.message || error || 'Unknown error';
     
-    if (errorMessage.includes('configuration not found') || errorMessage.includes('client ID missing')) {
+    // Check for specific error patterns
+    if (errorMessage.includes('NetworkError') || errorMessage.includes('fetch')) {
       return {
-        message: `${method === 'paypal' ? 'PayPal' : 'Tap'} is not properly configured. Please try the other payment method.`,
-        details: 'Payment configuration missing. Contact support if this continues.'
+        message: `Failed to connect to ${method === 'paypal' ? 'PayPal' : 'Tap'} servers. Please check your internet connection.`,
+        details: 'Network request failed - check internet connection'
+      };
+    }
+    
+    if (errorMessage.includes('CORS') || errorMessage.includes('cross-origin')) {
+      return {
+        message: `${method === 'paypal' ? 'PayPal' : 'Tap'} service configuration issue. Please try again later.`,
+        details: 'CORS policy error - server configuration issue'
+      };
+    }
+    
+    if (errorMessage.includes('FunctionsError') || errorMessage.includes('Edge Function')) {
+      return {
+        message: `Payment service is temporarily unavailable. Please try again.`,
+        details: 'Edge function error - backend service issue'
       };
     }
     
     if (errorMessage.includes('timeout')) {
       return {
-        message: `${method === 'paypal' ? 'PayPal' : 'Tap'} is taking too long to load. Please check your internet connection.`,
-        details: 'Network timeout after 30 seconds'
+        message: `${method === 'paypal' ? 'PayPal' : 'Tap'} is taking too long to respond. Please try again.`,
+        details: 'Request timeout after 30 seconds'
       };
     }
     
-    if (errorMessage.includes('network') || errorMessage.includes('Failed to fetch')) {
+    if (errorMessage.includes('configuration not found') || errorMessage.includes('client ID missing')) {
       return {
-        message: 'Network connection issue. Please check your internet connection and try again.',
-        details: 'Unable to connect to payment service'
-      };
-    }
-    
-    if (errorMessage.includes('Invalid') && errorMessage.includes('client ID')) {
-      return {
-        message: `${method === 'paypal' ? 'PayPal' : 'Tap'} configuration error. Please try the other payment method.`,
-        details: 'Invalid payment configuration'
+        message: `${method === 'paypal' ? 'PayPal' : 'Tap'} is not properly configured. Please contact support.`,
+        details: 'Payment service configuration missing'
       };
     }
     
@@ -91,21 +105,51 @@ export function PaymentProcessor({
       setLoading(true);
       setError(null);
       setDetailedError(null);
+      setDebugInfo(null);
 
-      console.log('[PayPal] Starting initialization process');
+      logDebugInfo({ step: 'paypal_init_start', amount, planName });
 
-      // Get PayPal configuration
-      const { data: config, error: configError } = await supabase.functions.invoke('get-paypal-config');
+      // Test network connectivity first
+      try {
+        const testResponse = await fetch('https://httpbin.org/get', { method: 'GET' });
+        if (!testResponse.ok) {
+          throw new Error('Network connectivity test failed');
+        }
+        logDebugInfo({ step: 'network_test', status: 'passed' });
+      } catch (networkError) {
+        logDebugInfo({ step: 'network_test', status: 'failed', error: networkError });
+        throw new Error('No internet connection. Please check your network and try again.');
+      }
+
+      // Get PayPal configuration with detailed error handling
+      logDebugInfo({ step: 'fetching_paypal_config' });
       
+      const { data: config, error: configError } = await supabase.functions.invoke('get-paypal-config', {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      logDebugInfo({ 
+        step: 'paypal_config_response', 
+        hasData: !!config, 
+        hasError: !!configError,
+        errorDetails: configError 
+      });
+
+      if (!componentMountedRef.current) return;
+
       if (configError) {
-        throw new Error(`PayPal configuration error: ${configError.message}`);
+        logDebugInfo({ step: 'config_error', error: configError });
+        throw new Error(`PayPal configuration error: ${configError.message || 'Unknown configuration error'}`);
       }
 
       if (!config?.clientId) {
-        throw new Error('PayPal configuration not found - client ID missing');
+        logDebugInfo({ step: 'missing_client_id', config });
+        throw new Error('PayPal configuration not available - missing client ID');
       }
 
-      console.log('[PayPal] Configuration received, loading SDK');
+      logDebugInfo({ step: 'paypal_config_success', environment: config.environment });
 
       // Load PayPal SDK
       await loadPayPalSDK(config.clientId);
@@ -114,11 +158,11 @@ export function PaymentProcessor({
       if (mountedRef.current && paymentContainerRef.current && window.paypal) {
         paymentContainerRef.current.innerHTML = '';
         
-        console.log('[PayPal] Rendering payment buttons');
+        logDebugInfo({ step: 'rendering_paypal_buttons' });
         
         const buttons = window.paypal.Buttons({
           createOrder: (data: any, actions: any) => {
-            console.log('[PayPal] Creating order');
+            logDebugInfo({ step: 'creating_paypal_order' });
             onStart?.();
             return actions.order.create({
               purchase_units: [{
@@ -132,7 +176,7 @@ export function PaymentProcessor({
           },
           onApprove: async (data: any, actions: any) => {
             try {
-              console.log('[PayPal] Payment approved, capturing order');
+              logDebugInfo({ step: 'paypal_payment_approved', orderID: data.orderID });
               const details = await actions.order.capture();
               if (mountedRef.current) {
                 onSuccess({
@@ -142,7 +186,7 @@ export function PaymentProcessor({
                 });
               }
             } catch (err: any) {
-              console.error('[PayPal] Capture error:', err);
+              logDebugInfo({ step: 'paypal_capture_error', error: err });
               if (mountedRef.current) {
                 onError({
                   message: err.message || 'Payment capture failed',
@@ -152,7 +196,7 @@ export function PaymentProcessor({
             }
           },
           onError: (err: any) => {
-            console.error('[PayPal] Payment error:', err);
+            logDebugInfo({ step: 'paypal_payment_error', error: err });
             if (mountedRef.current) {
               onError({
                 message: err.message || 'PayPal payment failed',
@@ -161,7 +205,7 @@ export function PaymentProcessor({
             }
           },
           onCancel: () => {
-            console.log('[PayPal] Payment cancelled by user');
+            logDebugInfo({ step: 'paypal_payment_cancelled' });
             if (mountedRef.current) {
               onBack();
             }
@@ -169,14 +213,14 @@ export function PaymentProcessor({
         });
 
         await buttons.render(paymentContainerRef.current);
-        console.log('[PayPal] Buttons rendered successfully');
+        logDebugInfo({ step: 'paypal_buttons_rendered' });
         
         if (mountedRef.current) {
           setLoading(false);
         }
       }
     } catch (err: any) {
-      console.error('[PayPal] Initialization error:', err);
+      logDebugInfo({ step: 'paypal_init_error', error: err });
       if (mountedRef.current) {
         const { message, details } = getUserFriendlyError(err, 'paypal');
         setError(message);
@@ -191,17 +235,32 @@ export function PaymentProcessor({
       setLoading(true);
       setError(null);
       setDetailedError(null);
+      setDebugInfo(null);
 
       if (!user) {
         throw new Error('Please log in to continue with payment');
       }
 
-      console.log('[Tap] Starting initialization process');
+      logDebugInfo({ step: 'tap_init_start', amount, planName, userId: user.id });
+
+      // Test network connectivity first
+      try {
+        const testResponse = await fetch('https://httpbin.org/get', { method: 'GET' });
+        if (!testResponse.ok) {
+          throw new Error('Network connectivity test failed');
+        }
+        logDebugInfo({ step: 'network_test', status: 'passed' });
+      } catch (networkError) {
+        logDebugInfo({ step: 'network_test', status: 'failed', error: networkError });
+        throw new Error('No internet connection. Please check your network and try again.');
+      }
 
       // Load Tap SDK
       await loadTapSDK();
 
       // Get Tap configuration
+      logDebugInfo({ step: 'fetching_tap_config' });
+      
       const { data: tapConfig, error: configError } = await supabase.functions.invoke('create-tap-session', {
         body: {
           amount: amount,
@@ -210,15 +269,24 @@ export function PaymentProcessor({
         }
       });
 
+      logDebugInfo({ 
+        step: 'tap_config_response', 
+        hasData: !!tapConfig, 
+        hasError: !!configError,
+        errorDetails: configError 
+      });
+
       if (configError) {
-        throw new Error(`Tap configuration error: ${configError.message}`);
+        logDebugInfo({ step: 'tap_config_error', error: configError });
+        throw new Error(`Tap configuration error: ${configError.message || 'Unknown configuration error'}`);
       }
 
       if (!tapConfig?.publishableKey) {
+        logDebugInfo({ step: 'missing_publishable_key', config: tapConfig });
         throw new Error('Tap payment configuration not available');
       }
 
-      console.log('[Tap] Configuration received, initializing payment');
+      logDebugInfo({ step: 'tap_config_success' });
 
       // Initialize Tap payment
       if (mountedRef.current && window.Tapjsli) {
@@ -235,7 +303,7 @@ export function PaymentProcessor({
             name: user.email
           },
           onSuccess: (response: any) => {
-            console.log('[Tap] Payment successful:', response);
+            logDebugInfo({ step: 'tap_payment_success', response });
             if (mountedRef.current) {
               onSuccess({
                 paymentId: response.transaction?.id || response.id,
@@ -245,7 +313,7 @@ export function PaymentProcessor({
             }
           },
           onError: (error: any) => {
-            console.error('[Tap] Payment error:', error);
+            logDebugInfo({ step: 'tap_payment_error', error });
             if (mountedRef.current) {
               onError({
                 message: error.message || 'Tap payment failed',
@@ -254,7 +322,7 @@ export function PaymentProcessor({
             }
           },
           onClose: () => {
-            console.log('[Tap] Payment dialog closed');
+            logDebugInfo({ step: 'tap_payment_closed' });
             if (mountedRef.current) {
               setLoading(false);
             }
@@ -264,7 +332,7 @@ export function PaymentProcessor({
         setLoading(false);
       }
     } catch (err: any) {
-      console.error('[Tap] Initialization error:', err);
+      logDebugInfo({ step: 'tap_init_error', error: err });
       if (mountedRef.current) {
         const { message, details } = getUserFriendlyError(err, 'tap');
         setError(message);
@@ -277,13 +345,40 @@ export function PaymentProcessor({
   const handleRetry = () => {
     if (retryCount >= 3) return;
     
-    console.log(`[${method}] Retry attempt ${retryCount + 1}/3`);
+    logDebugInfo({ step: 'manual_retry', attempt: retryCount + 1, method });
     setRetryCount(prev => prev + 1);
     
     if (method === 'paypal') {
       resetPayPal();
     } else if (method === 'tap') {
       resetTap();
+    }
+  };
+
+  const handleDiagnose = async () => {
+    logDebugInfo({ step: 'running_diagnostics' });
+    
+    try {
+      // Test basic connectivity
+      const connectivityTest = await fetch('https://httpbin.org/get');
+      logDebugInfo({ connectivity: connectivityTest.ok });
+
+      // Test Supabase connection
+      const { data: testData } = await supabase.from('profiles').select('id').limit(1);
+      logDebugInfo({ supabase_connection: !!testData });
+
+      // Test edge function endpoints
+      if (method === 'paypal') {
+        const { data, error } = await supabase.functions.invoke('get-paypal-config');
+        logDebugInfo({ paypal_config_test: { hasData: !!data, error } });
+      } else {
+        const { data, error } = await supabase.functions.invoke('create-tap-session', {
+          body: { amount: 1, planName: 'test', currency: 'USD' }
+        });
+        logDebugInfo({ tap_config_test: { hasData: !!data, error } });
+      }
+    } catch (diagError) {
+      logDebugInfo({ diagnostic_error: diagError });
     }
   };
 
@@ -297,10 +392,18 @@ export function PaymentProcessor({
             {detailedError && (
               <p className="text-red-700 text-sm mt-1">{detailedError}</p>
             )}
+            {debugInfo && (
+              <details className="mt-2">
+                <summary className="text-xs text-red-600 cursor-pointer">Debug Info</summary>
+                <pre className="text-xs text-red-600 mt-1 bg-red-100 p-2 rounded overflow-auto">
+                  {JSON.stringify(debugInfo, null, 2)}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={onBack}>
             Back to Methods
           </Button>
@@ -310,6 +413,9 @@ export function PaymentProcessor({
               Retry ({retryCount + 1}/3)
             </Button>
           )}
+          <Button variant="outline" onClick={handleDiagnose} className="flex items-center gap-2">
+            🔍 Diagnose
+          </Button>
         </div>
       </div>
     );
@@ -340,6 +446,15 @@ export function PaymentProcessor({
       )}
 
       <div ref={paymentContainerRef} className="min-h-[200px]" />
+      
+      {debugInfo && (
+        <details className="mt-4">
+          <summary className="text-xs text-gray-600 cursor-pointer">Debug Information</summary>
+          <pre className="text-xs text-gray-600 mt-1 bg-gray-100 p-2 rounded overflow-auto max-h-40">
+            {JSON.stringify(debugInfo, null, 2)}
+          </pre>
+        </details>
+      )}
     </div>
   );
 }

@@ -34,9 +34,9 @@ export function usePaymentSDKLoader(): PaymentSDKLoader {
       return Promise.resolve();
     }
 
-    // Validate client ID
+    // Validate client ID format
     if (!clientId || !clientId.startsWith('A') || clientId.length < 50) {
-      const error = new Error('Invalid PayPal client ID provided');
+      const error = new Error('Invalid PayPal client ID format provided');
       logSDKEvent('PayPal', 'Validation Failed', { error: error.message });
       throw error;
     }
@@ -59,6 +59,7 @@ export function usePaymentSDKLoader(): PaymentSDKLoader {
       const timeout = setTimeout(() => {
         logSDKEvent('PayPal', 'Loading Timeout - 30 seconds exceeded');
         script.remove();
+        paypalLoadingRef.current = null;
         reject(new Error('PayPal SDK loading timeout after 30 seconds'));
       }, 30000);
 
@@ -66,20 +67,25 @@ export function usePaymentSDKLoader(): PaymentSDKLoader {
         clearTimeout(timeout);
         logSDKEvent('PayPal', 'Script Loaded Successfully');
         
-        if (window.paypal) {
-          paypalLoadedRef.current = true;
-          logSDKEvent('PayPal', 'PayPal Object Available');
-          resolve();
-        } else {
-          logSDKEvent('PayPal', 'Script Loaded but PayPal Object Missing');
-          reject(new Error('PayPal SDK loaded but paypal object not available'));
-        }
+        // Wait a bit for PayPal object to be available
+        setTimeout(() => {
+          if (window.paypal) {
+            paypalLoadedRef.current = true;
+            logSDKEvent('PayPal', 'PayPal Object Available');
+            resolve();
+          } else {
+            logSDKEvent('PayPal', 'Script Loaded but PayPal Object Missing');
+            paypalLoadingRef.current = null;
+            reject(new Error('PayPal SDK loaded but paypal object not available'));
+          }
+        }, 500);
       };
 
-      script.onerror = () => {
+      script.onerror = (event) => {
         clearTimeout(timeout);
-        logSDKEvent('PayPal', 'Script Load Error');
+        logSDKEvent('PayPal', 'Script Load Error', { event });
         script.remove();
+        paypalLoadingRef.current = null;
         reject(new Error('Failed to load PayPal SDK - network or server error'));
       };
 
@@ -130,6 +136,7 @@ export function usePaymentSDKLoader(): PaymentSDKLoader {
       const timeout = setTimeout(() => {
         logSDKEvent('Tap', 'Loading Timeout - 30 seconds exceeded');
         script.remove();
+        tapLoadingRef.current = null;
         reject(new Error('Tap SDK loading timeout after 30 seconds'));
       }, 30000);
 
@@ -137,20 +144,25 @@ export function usePaymentSDKLoader(): PaymentSDKLoader {
         clearTimeout(timeout);
         logSDKEvent('Tap', 'Script Loaded Successfully');
         
-        if (window.Tapjsli) {
-          tapLoadedRef.current = true;
-          logSDKEvent('Tap', 'Tapjsli Object Available');
-          resolve();
-        } else {
-          logSDKEvent('Tap', 'Script Loaded but Tapjsli Object Missing');
-          reject(new Error('Tap SDK loaded but Tapjsli object not available'));
-        }
+        // Wait a bit for Tap object to be available
+        setTimeout(() => {
+          if (window.Tapjsli) {
+            tapLoadedRef.current = true;
+            logSDKEvent('Tap', 'Tapjsli Object Available');
+            resolve();
+          } else {
+            logSDKEvent('Tap', 'Script Loaded but Tapjsli Object Missing');
+            tapLoadingRef.current = null;
+            reject(new Error('Tap SDK loaded but Tapjsli object not available'));
+          }
+        }, 500);
       };
 
-      script.onerror = () => {
+      script.onerror = (event) => {
         clearTimeout(timeout);
-        logSDKEvent('Tap', 'Script Load Error');
+        logSDKEvent('Tap', 'Script Load Error', { event });
         script.remove();
+        tapLoadingRef.current = null;
         reject(new Error('Failed to load Tap SDK - network or server error'));
       };
 
