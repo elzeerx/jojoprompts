@@ -24,7 +24,6 @@ export function useTapPaymentFlow({
 }: UseTapPaymentFlowProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   
   const { loadTapPaymentScript } = useTapPaymentScript();
@@ -32,14 +31,14 @@ export function useTapPaymentFlow({
   const { initializeTapPayment } = useTapPaymentInitialization();
 
   const handleSuccess = useCallback((paymentId: string) => {
-    console.log("Secure Tap payment successful:", paymentId);
+    console.log("Tap payment successful:", paymentId);
     setError(null);
     setIsLoading(false);
     onSuccess(paymentId);
   }, [onSuccess]);
 
   const handleError = useCallback((error: any) => {
-    console.error("Secure Tap payment error:", error);
+    console.error("Tap payment error:", error);
     const errorMessage = typeof error === 'string' ? error : error?.message || "Tap payment failed";
     setError(errorMessage);
     setIsLoading(false);
@@ -60,138 +59,104 @@ export function useTapPaymentFlow({
     setIsLoading(true);
     
     try {
-      console.log("Step 1: Initializing Tap payment for amount:", amount, currency);
+      console.log("Step 1: Starting Tap payment initialization");
       
-      // Enhanced timeout and connectivity check
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Tap service connection timeout after 20 seconds")), 20000);
+      // First, ensure we can reach the edge function with a simple health check approach
+      const healthCheck = await supabase.functions.invoke("create-tap-session", {
+        body: { amount: 1, planName: "test", currency: "KWD" }
       });
+      
+      if (healthCheck.error) {
+        throw new Error(`Edge function not reachable: ${healthCheck.error.message}`);
+      }
 
-      const configPromise = supabase.functions.invoke("create-tap-session", {
+      console.log("Step 2: Edge function is reachable, proceeding with actual request");
+      
+      const { data: config, error: configError } = await supabase.functions.invoke("create-tap-session", {
         body: { amount, planName, currency }
       });
 
-      console.log("Step 2: Calling create-tap-session edge function");
-      const { data: config, error: configError } = await Promise.race([
-        configPromise,
-        timeoutPromise
-      ]) as any;
-
       if (configError) {
         console.error("Tap configuration error:", configError);
-        
-        // Provide specific error messages based on error type
-        if (configError.message?.includes('fetch')) {
-          throw new Error("Network connection failed. Please check your internet connection.");
-        } else if (configError.message?.includes('timeout')) {
-          throw new Error("Tap service is taking too long to respond. Please try again.");
-        } else {
-          throw new Error(`Tap configuration error: ${configError.message || 'Service temporarily unavailable'}`);
-        }
+        throw new Error(`Configuration failed: ${configError.message}`);
       }
 
       if (!config || !config.publishableKey) {
-        console.error("Invalid Tap configuration response:", config);
-        throw new Error("Failed to get payment configuration from server");
+        console.error("Invalid Tap configuration:", config);
+        throw new Error("Invalid payment configuration received");
       }
 
-      console.log("Step 3: Tap configuration loaded successfully");
+      console.log("Step 3: Configuration received, loading Tap script");
 
-      // Load Tap script if not already loaded
-      if (!window.Tapjsli) {
-        console.log("Step 4: Loading Tap payment script...");
-        await loadTapPaymentScript();
-        
-        // Wait for script to be fully ready with timeout
-        let attempts = 0;
-        while (!window.Tapjsli && attempts < 50) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          attempts++;
+      // Load Tap script with verification
+      await loadTapPaymentScript();
+      
+      // Verify script loaded properly
+      let scriptReady = false;
+      for (let i = 0; i < 50; i++) {
+        if (window.Tapjsli) {
+          scriptReady = true;
+          break;
         }
-        
-        if (!window.Tapjsli) {
-          throw new Error("Tap payment script failed to load properly");
-        }
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
-      console.log("Step 5: Initializing Tap payment interface");
+      if (!scriptReady) {
+        throw new Error("Tap payment interface failed to load");
+      }
       
-      // Give time for script to initialize and DOM to be ready
+      console.log("Step 4: Script loaded, initializing payment interface");
+      
+      // Initialize payment with proper error handling
       setTimeout(() => {
         try {
           const tapAmount = currency === "KWD" ? getKWDAmount(amount) : amount;
-          
-          console.log("Step 6: Creating Tap payment with:", {
-            amount: tapAmount,
-            currency,
-            container: "secure-tap-payment-container"
-          });
           
           initializeTapPayment({
             containerID: "secure-tap-payment-container",
             amount: tapAmount,
             currency,
             onSuccess: (response: any) => {
-              console.log("Tap payment completed successfully:", response);
+              console.log("Tap payment completed:", response);
               handleSuccess(response.transaction?.id || response.id);
             },
             onError: (error: any) => {
-              console.error("Tap payment failed:", error);
+              console.error("Tap payment interface error:", error);
               handleError(error);
             },
             onClose: () => {
-              console.log("Tap payment dialog closed by user");
+              console.log("Tap payment closed by user");
               setIsLoading(false);
             }
           }, config.publishableKey);
           
           setIsLoading(false);
-          setRetryCount(0);
         } catch (initError) {
-          console.error("Error during Tap initialization:", initError);
+          console.error("Payment interface initialization error:", initError);
           handleError(initError);
         }
       }, 1000);
       
     } catch (error: any) {
-      console.error("Error initializing secure Tap payment:", error);
+      console.error("Tap payment initialization failed:", error);
       
-      // Circuit breaker pattern with exponential backoff
-      if (retryCount < 2 && (
-        error.message?.includes('timeout') || 
-        error.message?.includes('network') || 
-        error.message?.includes('fetch') ||
-        error.message?.includes('Failed to fetch')
-      )) {
-        const delay = Math.pow(2, retryCount) * 3000; // 3s, 6s, 12s
-        console.log(`Retrying Tap payment initialization in ${delay}ms... (attempt ${retryCount + 1})`);
-        setRetryCount(prev => prev + 1);
-        setTimeout(() => {
-          setIsLoading(false);
-          initializePayment();
-        }, delay);
-      } else {
-        let errorMessage = "Tap Payment is temporarily unavailable. Please try again later.";
-        
-        if (error.message?.includes('timeout')) {
-          errorMessage = "Connection timeout. Please check your internet connection and try again.";
-        } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
-          errorMessage = "Network error. Please check your connection and try again.";
-        } else if (error.message?.includes('configuration')) {
-          errorMessage = "Payment service configuration error. Please contact support.";
-        } else if (error.message?.includes('script')) {
-          errorMessage = "Payment interface failed to load. Please refresh the page and try again.";
-        }
-        
-        setError(errorMessage);
-        setIsLoading(false);
+      let errorMessage = "Tap Payment is currently unavailable. Please try again later.";
+      
+      if (error.message?.includes('Edge function not reachable')) {
+        errorMessage = "Payment service is temporarily unavailable. Please try again in a few moments.";
+      } else if (error.message?.includes('Configuration failed')) {
+        errorMessage = "Payment configuration error. Please contact support if this persists.";
+      } else if (error.message?.includes('script')) {
+        errorMessage = "Payment interface failed to load. Please refresh the page and try again.";
       }
+      
+      setError(errorMessage);
+      setIsLoading(false);
     }
-  }, [user, amount, planName, currency, retryCount, loadTapPaymentScript, getKWDAmount, initializeTapPayment, handleSuccess, handleError]);
+  }, [user, amount, planName, currency, loadTapPaymentScript, getKWDAmount, initializeTapPayment, handleSuccess, handleError]);
 
   const resetError = useCallback(() => {
     setError(null);
-    setRetryCount(0);
   }, []);
 
   return {

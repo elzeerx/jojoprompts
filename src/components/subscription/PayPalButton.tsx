@@ -1,8 +1,7 @@
 
-import React, { useEffect, useCallback } from "react";
-import { usePayPalConfig } from "./hooks/usePayPalConfig";
-import { usePayPalScript } from "./hooks/usePayPalScript";
+import React from "react";
 import { usePayPalButton } from "./hooks/usePayPalButton";
+import { usePaymentManager } from "./hooks/usePaymentManager";
 import { PayPalErrorDisplay } from "./components/PayPalErrorDisplay";
 import { PayPalLoadingDisplay } from "./components/PayPalLoadingDisplay";
 
@@ -27,68 +26,37 @@ export function PayPalButton({
   onSuccess, 
   onError = (error) => console.error("PayPal error:", error) 
 }: PayPalButtonProps) {
-  const { paypalConfig, error: configError, isLoading: configLoading, resetConfig } = usePayPalConfig();
-  const { isScriptLoaded, scriptError, loadPayPalScript } = usePayPalScript();
-  
-  const handleSuccess = useCallback((paymentId: string, details: any) => {
-    console.log("PayPal payment successful:", { paymentId, details });
-    onSuccess(paymentId, details);
-  }, [onSuccess]);
-
-  const handleError = useCallback((error: any) => {
-    console.error("PayPal payment error:", error);
-    onError(error);
-  }, [onError]);
+  const { paypalReady, paypalError, isInitializing, retryPayPal } = usePaymentManager();
 
   const { 
     paypalRef, 
     buttonRendered, 
     buttonError, 
-    initializePayPalButton, 
-    resetButton 
+    initializePayPalButton 
   } = usePayPalButton({
     amount,
     planName,
-    onSuccess: handleSuccess,
-    onError: handleError,
-    paypalConfig: paypalConfig!
+    onSuccess,
+    onError,
+    paypalConfig: { clientId: '', environment: 'sandbox', currency: 'USD' } // Will be ignored when using payment manager
   });
 
-  // Step 1: Load PayPal script when config is available
-  useEffect(() => {
-    if (paypalConfig && !isScriptLoaded && !scriptError && !configError) {
-      console.log("Step 1: Loading PayPal script with config");
-      loadPayPalScript(paypalConfig).catch((error) => {
-        console.error("Script loading failed:", error);
-        handleError(error);
-      });
-    }
-  }, [paypalConfig, isScriptLoaded, scriptError, configError, loadPayPalScript, handleError]);
-
-  // Step 2: Initialize button when script is loaded and config is available
-  useEffect(() => {
-    if (isScriptLoaded && paypalConfig && !buttonRendered && !buttonError && !configError) {
-      console.log("Step 2: Initializing PayPal button");
-      // Add small delay to ensure DOM is ready
+  // Initialize button when PayPal is ready
+  React.useEffect(() => {
+    if (paypalReady && !buttonRendered && !buttonError) {
+      console.log("PayPal ready, initializing button...");
       setTimeout(() => {
         initializePayPalButton();
       }, 100);
     }
-  }, [isScriptLoaded, paypalConfig, buttonRendered, buttonError, configError, initializePayPalButton]);
+  }, [paypalReady, buttonRendered, buttonError, initializePayPalButton]);
 
-  const handleRetry = () => {
-    console.log("Retrying PayPal initialization");
-    resetConfig();
-    resetButton();
-  };
-
-  const error = configError || scriptError || buttonError;
-  const isLoading = configLoading || (paypalConfig && !isScriptLoaded && !error);
+  const error = paypalError || buttonError;
+  const isLoading = isInitializing || (paypalReady && !buttonRendered && !error);
 
   console.log("PayPal Button State:", {
-    configLoading,
-    hasConfig: !!paypalConfig,
-    isScriptLoaded,
+    paypalReady,
+    isInitializing,
     buttonRendered,
     error,
     isLoading
@@ -98,7 +66,7 @@ export function PayPalButton({
     return (
       <PayPalErrorDisplay 
         error={error} 
-        onRetry={handleRetry} 
+        onRetry={retryPayPal} 
         className={className} 
       />
     );
