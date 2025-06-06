@@ -95,7 +95,7 @@ serve(async (req: Request) => {
       });
     }
 
-    // Verify user exists
+    // Verify user exists and get profile data
     const { data: user, error: userError } = await supabase
       .from("profiles")
       .select("id, first_name, last_name")
@@ -111,6 +111,22 @@ serve(async (req: Request) => {
         status: 400
       });
     }
+
+    // Get user email from auth.users table
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
+    
+    if (authError || !authUser?.user?.email) {
+      console.error("Failed to get user email:", authError);
+      return new Response(JSON.stringify({ 
+        error: "Unable to retrieve user email" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
+    const userEmail = authUser.user.email;
+    console.log("User email retrieved:", userEmail);
 
     // Create Tap charge with correct payload structure
     const tapPayload = {
@@ -136,7 +152,7 @@ serve(async (req: Request) => {
       customer: {
         first_name: sanitizeInput(user.first_name || "User"),
         last_name: sanitizeInput(user.last_name || ""),
-        email: "",
+        email: userEmail,
         phone: {
           country_code: "",
           number: ""
@@ -157,7 +173,8 @@ serve(async (req: Request) => {
       amount: tapPayload.amount, 
       currency: tapPayload.currency,
       planName: plan.name,
-      reference: tapPayload.reference.transaction
+      reference: tapPayload.reference.transaction,
+      customerEmail: userEmail
     });
 
     const response = await fetch("https://api.tap.company/v2/charges", {
