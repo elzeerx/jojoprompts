@@ -1,7 +1,7 @@
 
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UnifiedPaymentManager } from "@/components/subscription/UnifiedPaymentManager";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SimplePaymentSelection } from "@/components/payment/SimplePaymentSelection";
 
 interface PaymentMethodsCardProps {
   processing: boolean;
@@ -21,27 +21,15 @@ export function PaymentMethodsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payment Method</CardTitle>
-        <CardDescription>
-          Choose your preferred payment method to complete your purchase
-        </CardDescription>
+        <CardTitle>Payment Information</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <UnifiedPaymentManager
+      <CardContent>
+        <SimplePaymentSelection
           amount={price}
           planName={planName}
           onSuccess={handlePaymentSuccess}
           onError={handlePaymentError}
-          onStart={() => {
-            // Optional: can add loading state here
-          }}
         />
-        
-        {processing && (
-          <div className="text-center text-sm text-muted-foreground">
-            <p>Processing your payment...</p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
