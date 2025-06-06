@@ -33,15 +33,12 @@ export default function PaymentSuccessPage() {
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    // Redirect to home if not authenticated
-    if (!user) {
-      securityMonitor.logEvent('access_denied', {
-        page: 'payment_success',
-        reason: 'not_authenticated'
-      });
-      navigate('/');
-      return;
-    }
+    console.log('PaymentSuccessPage accessed', {
+      hasUser: !!user,
+      userId: user?.id,
+      searchParams: window.location.search,
+      fullUrl: window.location.href
+    });
 
     const verifyPayment = async () => {
       try {
@@ -98,19 +95,25 @@ export default function PaymentSuccessPage() {
           setTimeout(() => {
             const reason = 'Missing payment information';
             navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
-          }, 2000);
+          }, 3000);
           return;
         }
 
-        // Verify user ID matches authenticated user
-        if (userId !== user.id) {
+        // Only verify user ID if user is authenticated
+        if (user && userId !== user.id) {
           console.error('User ID mismatch - URL user:', userId, 'Auth user:', user.id);
           setError('Invalid payment session');
           setTimeout(() => {
             const reason = 'Invalid payment session';
             navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          }, 2000);
+          }, 3000);
           return;
+        }
+
+        // If user is not authenticated, we'll still try to process the payment
+        // This can happen due to session loss during payment redirects
+        if (!user) {
+          console.log('User not authenticated, attempting payment verification without user session');
         }
 
         // Get pending payment info from localStorage
@@ -153,7 +156,7 @@ export default function PaymentSuccessPage() {
           setTimeout(() => {
             const reason = 'Subscription setup failed';
             navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          }, 2000);
+          }, 3000);
           return;
         }
 
@@ -163,7 +166,7 @@ export default function PaymentSuccessPage() {
           setTimeout(() => {
             const reason = 'Subscription activation failed';
             navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          }, 2000);
+          }, 3000);
           return;
         }
 
@@ -185,18 +188,13 @@ export default function PaymentSuccessPage() {
           const planId = searchParams.get('planId');
           const reason = 'Payment verification failed';
           navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
-        }, 2000);
+        }, 3000);
       }
     };
 
     verifyPayment();
     
   }, [user, navigate, searchParams]);
-  
-  // Don't render anything while checking authentication
-  if (!user) {
-    return null;
-  }
 
   if (verifying) {
     return (
@@ -216,14 +214,38 @@ export default function PaymentSuccessPage() {
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Payment Processing Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <p className="text-sm text-gray-500">Redirecting to payment failed page...</p>
+          <p className="text-sm text-gray-500 mb-4">Redirecting to payment failed page...</p>
+          <div className="space-y-2">
+            <Button className="w-full" asChild>
+              <Link to="/pricing">Back to Pricing</Link>
+            </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link to="/contact">Contact Support</Link>
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
   if (!verified) {
-    return null; // Will redirect to failed page
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+        <div className="text-center max-w-md mx-auto p-6">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Payment Verification</h2>
+          <p className="text-gray-600 mb-4">We're having trouble verifying your payment. Please wait...</p>
+          <div className="space-y-2">
+            <Button className="w-full" asChild>
+              <Link to="/pricing">Back to Pricing</Link>
+            </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link to="/contact">Contact Support</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
   
   return (

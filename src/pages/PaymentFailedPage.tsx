@@ -1,37 +1,24 @@
 
 import { useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { XCircle, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { securityMonitor } from "@/utils/monitoring";
 
 export default function PaymentFailedPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
   useEffect(() => {
-    // Redirect to home if not authenticated
-    if (!user) {
-      securityMonitor.logEvent('access_denied', {
-        page: 'payment_failed',
-        reason: 'not_authenticated'
-      });
-      navigate('/');
-      return;
-    }
-
-    // Log failed payment page access
-    console.log(`Payment failed page accessed by user ${user.id}`);
+    console.log('PaymentFailedPage accessed', {
+      hasUser: !!user,
+      userId: user?.id,
+      searchParams: window.location.search,
+      fullUrl: window.location.href
+    });
     
-  }, [user, navigate, searchParams]);
-  
-  // Don't render anything while checking authentication
-  if (!user) {
-    return null;
-  }
+  }, [user, searchParams]);
 
   const planId = searchParams.get('planId');
   const reason = searchParams.get('reason') || 'Payment was not completed';
