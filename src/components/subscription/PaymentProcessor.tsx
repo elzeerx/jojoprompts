@@ -137,7 +137,7 @@ export function PaymentProcessor({
         errorDetails: configError 
       });
 
-      if (!componentMountedRef.current) return;
+      if (!mountedRef.current) return;
 
       if (configError) {
         logDebugInfo({ step: 'config_error', error: configError });
