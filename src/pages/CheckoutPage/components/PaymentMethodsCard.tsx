@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PaymentGatewayManager } from "@/components/subscription/PaymentGatewayManager";
+import { UnifiedPaymentManager } from "@/components/subscription/UnifiedPaymentManager";
 
 interface PaymentMethodsCardProps {
   processing: boolean;
@@ -27,7 +27,7 @@ export function PaymentMethodsCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <PaymentGatewayManager
+        <UnifiedPaymentManager
           amount={price}
           planName={planName}
           onSuccess={handlePaymentSuccess}
@@ -35,7 +35,6 @@ export function PaymentMethodsCard({
           onStart={() => {
             // Optional: can add loading state here
           }}
-          useEnhanced={true} // Use the enhanced components
         />
         
         {processing && (

@@ -22,10 +22,10 @@ serve(async (req: Request) => {
   }
 
   try {
-    console.log("Processing Tap configuration request");
+    console.log("Processing Tap configuration request for USD");
     
     const body = await req.json().catch(() => ({}));
-    const { amount, planName, currency = "KWD" } = body;
+    const { amount, planName, currency = "USD" } = body;
 
     console.log("Request body:", { amount, planName, currency });
 
@@ -50,11 +50,11 @@ serve(async (req: Request) => {
     const config = {
       publishableKey: tapPublishableKey,
       amount: parseFloat(amount),
-      currency,
+      currency: "USD",
       planName
     };
 
-    console.log("Returning Tap configuration");
+    console.log("Returning Tap configuration for USD");
     
     return new Response(JSON.stringify(config), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
