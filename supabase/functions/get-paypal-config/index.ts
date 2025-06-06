@@ -18,7 +18,7 @@ serve(async (req: Request) => {
     // Get PayPal client ID from environment variables
     const sandboxClientId = Deno.env.get("PAYPAL_SANDBOX_CLIENT_ID");
     const liveClientId = Deno.env.get("PAYPAL_LIVE_CLIENT_ID");
-    const environment = Deno.env.get("PAYPAL_ENVIRONMENT")?.toLowerCase()?.trim();
+    const environment = Deno.env.get("PAYPAL_ENVIRONMENT")?.toLowerCase()?.trim() || "sandbox";
     
     console.log("Environment configuration:", { 
       environment,
@@ -37,7 +37,23 @@ serve(async (req: Request) => {
         JSON.stringify({ 
           error: "PayPal configuration not found",
           environment: isProduction ? "production" : "sandbox",
-          details: isProduction ? "Live client ID missing" : "Sandbox client ID missing"
+          details: isProduction ? "Live client ID missing" : "Sandbox client ID missing",
+          message: "Please configure PayPal environment variables in Supabase Edge Functions settings"
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: 500 
+        }
+      );
+    }
+
+    // Validate client ID format (basic validation)
+    if (!clientId.startsWith('A') || clientId.length < 50) {
+      console.error("Invalid PayPal client ID format");
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid PayPal client ID format",
+          message: "The PayPal client ID appears to be invalid. Please check your configuration."
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" }, 
@@ -65,7 +81,8 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         error: "Internal server error",
-        details: error.message 
+        details: error.message,
+        message: "Failed to retrieve PayPal configuration. Please try again."
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" }, 

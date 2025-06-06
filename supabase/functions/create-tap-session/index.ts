@@ -31,7 +31,10 @@ serve(async (req: Request) => {
 
     if (!amount || !planName) {
       console.error("Missing required fields");
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+      return new Response(JSON.stringify({ 
+        error: "Missing required fields",
+        message: "Amount and plan name are required"
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400
       });
@@ -41,20 +44,40 @@ serve(async (req: Request) => {
     
     if (!tapPublishableKey) {
       console.error("TAP_PUBLISHABLE_KEY not configured");
-      return new Response(JSON.stringify({ error: "Payment service not configured" }), {
+      return new Response(JSON.stringify({ 
+        error: "Payment service not configured",
+        message: "Tap payment configuration is missing. Please contact support."
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 503
       });
     }
 
+    // Validate amount
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      console.error("Invalid amount:", amount);
+      return new Response(JSON.stringify({ 
+        error: "Invalid amount",
+        message: "Amount must be a positive number"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
     const config = {
       publishableKey: tapPublishableKey,
-      amount: parseFloat(amount),
+      amount: numericAmount,
       currency: "USD",
-      planName
+      planName: planName
     };
 
-    console.log("Returning Tap configuration for USD");
+    console.log("Returning Tap configuration for USD:", { 
+      amount: config.amount, 
+      currency: config.currency,
+      planName: config.planName 
+    });
     
     return new Response(JSON.stringify(config), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -64,7 +87,8 @@ serve(async (req: Request) => {
     console.error("Error in create-tap-session:", error);
     return new Response(JSON.stringify({ 
       error: "Internal server error",
-      details: error.message 
+      details: error.message,
+      message: "Failed to create Tap payment session. Please try again."
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500
