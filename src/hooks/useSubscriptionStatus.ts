@@ -37,9 +37,9 @@ export function useSubscriptionStatus() {
       
       logInfo('Checking subscription status', 'subscription', undefined, user.id);
 
-      // Get active subscription
+      // Get active subscription from user_subscriptions table
       const { data: subscription, error: subscriptionError } = await supabase
-        .from('subscriptions')
+        .from('user_subscriptions')
         .select(`
           *,
           subscription_plans:plan_id (
@@ -77,17 +77,16 @@ export function useSubscriptionStatus() {
       
       // Calculate expiration date if not lifetime
       let expiresAt = null;
-      if (!isLifetime && plan?.duration_days) {
-        const createdDate = new Date(subscription.created_at);
-        const expirationDate = new Date(createdDate.getTime() + (plan.duration_days * 24 * 60 * 60 * 1000));
-        expiresAt = expirationDate.toISOString();
+      if (!isLifetime && subscription.end_date) {
+        expiresAt = subscription.end_date;
         
         // Check if subscription has expired
         const now = new Date();
-        if (expirationDate < now) {
+        const endDate = new Date(subscription.end_date);
+        if (endDate < now) {
           // Mark subscription as expired
           await supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .update({ status: 'expired' })
             .eq('id', subscription.id);
           

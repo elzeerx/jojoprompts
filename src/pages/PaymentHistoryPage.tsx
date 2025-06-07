@@ -19,7 +19,7 @@ interface PaymentRecord {
   created_at: string;
   subscription_plans?: {
     name: string;
-  };
+  } | null;
 }
 
 export default function PaymentHistoryPage() {
@@ -33,20 +33,42 @@ export default function PaymentHistoryPage() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // First get payment history
+      const { data: paymentData, error: paymentError } = await supabase
         .from('payment_history')
-        .select(`
-          *,
-          subscription_plans:subscription_id (
-            name
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (paymentError) throw paymentError;
 
-      setPayments(data || []);
+      // Then get subscription plans for each payment if subscription_id exists
+      const paymentsWithPlans = await Promise.all(
+        (paymentData || []).map(async (payment) => {
+          if (payment.subscription_id) {
+            const { data: subscriptionData } = await supabase
+              .from('user_subscriptions')
+              .select(`
+                subscription_plans:plan_id (
+                  name
+                )
+              `)
+              .eq('id', payment.subscription_id)
+              .maybeSingle();
+            
+            return {
+              ...payment,
+              subscription_plans: subscriptionData?.subscription_plans || null
+            };
+          }
+          return {
+            ...payment,
+            subscription_plans: null
+          };
+        })
+      );
+
+      setPayments(paymentsWithPlans);
     } catch (error: any) {
       toast({
         title: "Error",
