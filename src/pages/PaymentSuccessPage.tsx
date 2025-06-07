@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,8 @@ export default function PaymentSuccessPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [verifying, setVerifying] = useState(true);
-  const [verified, setVerified] = useState(false);
+  const [processing, setProcessing] = useState(true);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
@@ -23,108 +24,58 @@ export default function PaymentSuccessPage() {
       fullUrl: window.location.href
     });
 
-    const verifyPayment = async () => {
+    const createSubscription = async () => {
       try {
         // Extract parameters from URL
         const planId = searchParams.get('planId');
         const userId = searchParams.get('userId');
         const tapId = searchParams.get('tap_id');
-        const chargeStatus = searchParams.get('status');
+        const paymentStatus = searchParams.get('status');
         const responseCode = searchParams.get('response_code');
-        const chargeId = searchParams.get('charge_id');
+        const amount = searchParams.get('amount');
         
-        console.log('FIXED: Payment verification - Starting with params:', { 
+        console.log('PaymentSuccessPage: Creating subscription with params:', { 
           planId, 
           userId, 
           tapId, 
-          chargeStatus, 
+          paymentStatus,
           responseCode,
-          chargeId,
-          fullUrl: window.location.href
+          amount
         });
 
         // Check for required parameters
-        if (!planId || !userId) {
-          console.error('FIXED: Missing required payment parameters:', { planId, userId });
+        if (!planId || !userId || !tapId) {
+          console.error('PaymentSuccessPage: Missing required parameters');
           throw new Error('Missing payment information');
         }
 
         // Verify user ID matches authenticated user (if user is logged in)
         if (user && userId !== user.id) {
-          console.error('FIXED: User ID mismatch - URL user:', userId, 'Auth user:', user.id);
+          console.error('PaymentSuccessPage: User ID mismatch');
           throw new Error('Invalid payment session');
         }
 
-        // Get the payment ID for verification
-        const verifyChargeId = tapId || chargeId;
-        
-        if (!verifyChargeId) {
-          console.error('FIXED: No payment ID found for verification');
-          throw new Error('No payment ID provided');
-        }
-
-        console.log('FIXED: Verifying payment with Tap API, charge ID:', verifyChargeId);
-
-        // MANDATORY payment verification with Tap API - this is the key fix
-        const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-tap-payment', {
-          body: { chargeId: verifyChargeId }
-        });
-
-        if (verifyError) {
-          console.error('FIXED: Payment verification failed:', verifyError);
-          throw new Error('Payment verification failed: ' + verifyError.message);
-        }
-
-        if (!verifyData) {
-          console.error('FIXED: No verification data received');
-          throw new Error('Payment verification returned no data');
-        }
-
-        console.log('FIXED: Tap verification result:', verifyData);
-
-        // STRICT SUCCESS CHECK - only these statuses create subscriptions
-        const verifiedStatus = verifyData.status;
+        // Double-check payment status is successful
         const successStatuses = ['CAPTURED', 'PAID', 'AUTHORIZED'];
-        
-        if (!verifiedStatus || !successStatuses.includes(verifiedStatus.toUpperCase())) {
-          console.log('FIXED: Payment not successful, verified status:', verifiedStatus);
-          // Redirect to failure page if payment wasn't successful
-          setTimeout(() => {
-            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(`Payment was ${verifiedStatus || 'not completed'}`)}`);
-          }, 1000);
-          throw new Error(`Payment was ${verifiedStatus || 'not completed'}`);
+        if (!paymentStatus || !successStatuses.includes(paymentStatus.toUpperCase())) {
+          console.error('PaymentSuccessPage: Invalid payment status:', paymentStatus);
+          throw new Error(`Payment status is not successful: ${paymentStatus}`);
         }
-
-        // Additional verification: check amount matches if available
-        if (verifyData.amount) {
-          const pendingPaymentStr = localStorage.getItem('pending_payment');
-          const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
-          
-          if (pendingPayment?.amount && Math.abs(verifyData.amount - pendingPayment.amount) > 0.01) {
-            console.error('FIXED: Payment amount mismatch:', { 
-              verified: verifyData.amount, 
-              expected: pendingPayment.amount 
-            });
-            throw new Error('Payment amount verification failed');
-          }
-        }
-
-        console.log('FIXED: Payment successfully verified as SUCCESSFUL, proceeding with subscription creation');
 
         // Prepare payment data for subscription creation
         const paymentData = {
-          paymentId: verifyChargeId,
+          paymentId: tapId,
           paymentMethod: 'tap',
           details: {
-            id: verifyChargeId,
-            status: verifiedStatus,
-            amount: verifyData.amount,
+            id: tapId,
+            status: paymentStatus,
+            amount: amount ? parseFloat(amount) : undefined,
             response_code: responseCode,
             verified_at: new Date().toISOString()
           }
         };
 
-        console.log('FIXED: Creating subscription with verified successful payment data:', paymentData);
+        console.log('PaymentSuccessPage: Creating subscription with verified payment data:', paymentData);
 
         const { data, error } = await supabase.functions.invoke("create-subscription", {
           body: {
@@ -135,21 +86,21 @@ export default function PaymentSuccessPage() {
         });
 
         if (error) {
-          console.error('FIXED: Subscription creation error:', error);
-          throw new Error('Subscription setup failed after verified payment: ' + error.message);
+          console.error('PaymentSuccessPage: Subscription creation error:', error);
+          throw new Error('Subscription setup failed: ' + error.message);
         }
 
         if (!data || !data.success) {
-          console.error('FIXED: Subscription creation unsuccessful:', data);
-          throw new Error('Subscription activation failed after verified payment');
+          console.error('PaymentSuccessPage: Subscription creation unsuccessful:', data);
+          throw new Error('Subscription activation failed');
         }
 
         // Success! Clear pending payment and update state
         localStorage.removeItem('pending_payment');
-        setVerified(true);
-        setVerifying(false);
+        setSuccess(true);
+        setProcessing(false);
 
-        console.log('FIXED: Payment and subscription creation completed successfully');
+        console.log('PaymentSuccessPage: Subscription creation completed successfully');
 
         toast({
           title: "Payment Successful!",
@@ -157,13 +108,13 @@ export default function PaymentSuccessPage() {
         });
 
       } catch (error: any) {
-        console.error('FIXED: Payment verification/processing error:', error);
+        console.error('PaymentSuccessPage: Subscription creation error:', error);
         
         // For any error, redirect to failure page
         const planId = searchParams.get('planId');
-        const errorMessage = error.message || 'Payment verification failed';
+        const errorMessage = error.message || 'Subscription creation failed';
         
-        console.log('FIXED: Redirecting to failure page due to error:', errorMessage);
+        console.log('PaymentSuccessPage: Redirecting to failure page due to error:', errorMessage);
         
         // Small delay to ensure logging is captured
         setTimeout(() => {
@@ -171,21 +122,21 @@ export default function PaymentSuccessPage() {
         }, 1000);
         
         setError(errorMessage);
-        setVerifying(false);
+        setProcessing(false);
       }
     };
 
-    verifyPayment();
+    createSubscription();
     
   }, [user, navigate, searchParams]);
 
-  if (verifying) {
+  if (processing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Verifying your payment...</p>
-          <p className="text-sm text-gray-500 mt-2">Please wait while we confirm your payment with the bank...</p>
+          <p className="text-lg font-medium">Activating your subscription...</p>
+          <p className="text-sm text-gray-500 mt-2">Please wait while we set up your account...</p>
         </div>
       </div>
     );
@@ -196,9 +147,9 @@ export default function PaymentSuccessPage() {
       <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Payment Verification Failed</h2>
+          <h2 className="text-xl font-semibold mb-2">Subscription Setup Failed</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <p className="text-sm text-gray-500 mb-4">Redirecting to payment status page...</p>
+          <p className="text-sm text-gray-500 mb-4">Redirecting to support page...</p>
           <div className="space-y-2">
             <Button className="w-full" asChild>
               <Link to="/pricing">Back to Pricing</Link>
@@ -212,13 +163,13 @@ export default function PaymentSuccessPage() {
     );
   }
 
-  if (!verified) {
+  if (!success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Payment Not Verified</h2>
-          <p className="text-gray-600 mb-4">We couldn't verify your payment status.</p>
+          <h2 className="text-xl font-semibold mb-2">Subscription Not Activated</h2>
+          <p className="text-gray-600 mb-4">We couldn't activate your subscription.</p>
           <div className="space-y-2">
             <Button className="w-full" asChild>
               <Link to="/pricing">Back to Pricing</Link>

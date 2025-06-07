@@ -17,6 +17,7 @@ import FavoritesPage from "./pages/FavoritesPage";
 import SearchPage from "./pages/SearchPage";
 import PricingPage from "./pages/PricingPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import PaymentResultPage from "./pages/PaymentResultPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
 import UserDashboardPage from "./pages/UserDashboardPage";
@@ -52,6 +53,7 @@ function App() {
                 <Route path="search" element={<SearchPage />} />
                 <Route path="pricing" element={<PricingPage />} />
                 <Route path="checkout" element={<CheckoutPage />} />
+                <Route path="payment-result" element={<PaymentResultPage />} />
                 <Route path="payment-success" element={<PaymentSuccessPage />} />
                 <Route path="payment-failed" element={<PaymentFailedPage />} />
                 <Route path="dashboard" element={<UserDashboardPage />} />

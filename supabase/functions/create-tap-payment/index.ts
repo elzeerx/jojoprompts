@@ -21,9 +21,7 @@ function sanitizeInput(input: any): string {
 }
 
 function sanitizeUrl(baseUrl: string, path: string): string {
-  // Remove trailing slash from base URL
   const cleanBase = baseUrl.replace(/\/+$/, '');
-  // Ensure path starts with slash
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${cleanBase}${cleanPath}`;
 }
@@ -136,13 +134,16 @@ serve(async (req: Request) => {
     const userEmail = authUser.user.email;
     console.log("User email retrieved:", userEmail);
 
-    // FIXED: Create properly separated success and failure URLs
-    // Success URL points to payment-success page
-    const successUrl = sanitizeUrl(FRONTEND_URL, `/payment-success?planId=${planId}&userId=${userId}`);
-    // Failure URL points to payment-failed page  
-    const failureUrl = sanitizeUrl(FRONTEND_URL, `/payment-failed?planId=${planId}&userId=${userId}`);
+    // FIXED: Create neutral verification URL for all payment completions
+    // This single URL will receive both success and failure results and verify the actual status
+    const verificationUrl = sanitizeUrl(FRONTEND_URL, `/payment-result?planId=${planId}&userId=${userId}`);
+    // Cancellation URL for when users cancel the payment
+    const cancellationUrl = sanitizeUrl(FRONTEND_URL, `/payment-failed?planId=${planId}&userId=${userId}&reason=cancelled`);
 
-    console.log("FIXED: Redirect URLs configured correctly:", { successUrl, failureUrl });
+    console.log("FIXED: Redirect URLs configured for verification flow:", { 
+      verificationUrl, 
+      cancellationUrl 
+    });
 
     const tapPayload = {
       amount: numericAmount,
@@ -176,25 +177,25 @@ serve(async (req: Request) => {
       source: {
         id: "src_all"
       },
-      // FIXED: Proper redirect configuration
-      // post URL handles successful payments - redirect to success page
+      // FIXED: Proper redirect configuration for verification flow
+      // post URL handles ALL payment completions (success/failure) - goes to verification page
       post: {
-        url: successUrl
+        url: verificationUrl
       },
-      // redirect URL handles failed/cancelled payments - redirect to failure page
+      // redirect URL handles cancellations - goes directly to failure page
       redirect: {
-        url: failureUrl
+        url: cancellationUrl
       }
     };
 
-    console.log("Creating Tap charge with FIXED redirects:", { 
+    console.log("Creating Tap charge with FIXED verification flow:", { 
       amount: tapPayload.amount, 
       currency: tapPayload.currency,
       planName: plan.name,
       reference: tapPayload.reference.transaction,
       customerEmail: userEmail,
-      successUrl,
-      failureUrl
+      verificationUrl,
+      cancellationUrl
     });
 
     const response = await fetch("https://api.tap.company/v2/charges", {
