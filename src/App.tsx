@@ -22,6 +22,7 @@ import PaymentResultPage from "./pages/PaymentResultPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
 import PaymentNotFoundPage from "./pages/payment/PaymentNotFoundPage";
+import PaymentHistoryPage from "./pages/PaymentHistoryPage";
 import UserDashboardPage from "./pages/UserDashboardPage";
 import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
 import PrompterDashboard from "./pages/prompter/PrompterDashboard";
