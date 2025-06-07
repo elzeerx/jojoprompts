@@ -459,6 +459,39 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: number
+          plan_id: string
+          provider: string | null
+          provider_tx_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: never
+          plan_id: string
+          provider?: string | null
+          provider_tx_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: never
+          plan_id?: string
+          provider?: string | null
+          provider_tx_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_subscriptions: {
         Row: {
           created_at: string | null
@@ -517,6 +550,10 @@ export type Database = {
       }
       cancel_user_subscription: {
         Args: { _user_id: string; _admin_id: string }
+        Returns: Json
+      }
+      create_subscription: {
+        Args: { p_user_id: string; p_plan_id: string; p_tap_id: string }
         Returns: Json
       }
       has_role: {

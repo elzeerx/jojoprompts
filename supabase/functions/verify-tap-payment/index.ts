@@ -1,5 +1,10 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,14 +25,14 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { chargeId } = await req.json();
+    const { tap_id } = await req.json();
 
-    console.log("verify-tap-payment: Starting verification for charge ID:", chargeId);
+    console.log("verify-tap-payment: Starting verification for tap_id:", tap_id);
 
-    if (!chargeId) {
-      console.error("verify-tap-payment: Missing chargeId in request");
+    if (!tap_id) {
+      console.error("verify-tap-payment: Missing tap_id in request");
       return new Response(
-        JSON.stringify({ error: "Missing chargeId" }),
+        JSON.stringify({ error: "Missing tap_id" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
@@ -41,9 +46,10 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("verify-tap-payment: Making request to Tap API for charge:", chargeId);
+    console.log("verify-tap-payment: Making request to Tap API for charge:", tap_id);
 
-    const response = await fetch(`https://api.tap.company/v2/charges/${encodeURIComponent(chargeId)}`, {
+    // Fetch charge details from Tap
+    const response = await fetch(`https://api.tap.company/v2/charges/${encodeURIComponent(tap_id)}`, {
       headers: {
         "Authorization": `Bearer ${tapKey}`,
         "Content-Type": "application/json",
@@ -69,7 +75,8 @@ serve(async (req: Request) => {
         id: data.id,
         status: data.status,
         amount: data.amount,
-        currency: data.currency
+        currency: data.currency,
+        metadata: data.metadata
       });
     } catch (parseError) {
       console.error("verify-tap-payment: Failed to parse Tap response:", parseError);
@@ -79,7 +86,52 @@ serve(async (req: Request) => {
       );
     }
 
-    return new Response(JSON.stringify(data), {
+    // Check if payment is captured
+    if (data.status !== "CAPTURED") {
+      console.log("verify-tap-payment: Payment not captured, status:", data.status);
+      return new Response(
+        JSON.stringify({ success: false, error: "Payment not captured", status: data.status }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // Extract metadata
+    const userId = data.metadata?.udf1;
+    const planId = data.metadata?.udf2;
+
+    if (!userId || !planId) {
+      console.error("verify-tap-payment: Missing metadata in charge:", { userId, planId });
+      return new Response(
+        JSON.stringify({ success: false, error: "Missing payment metadata" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
+    console.log("verify-tap-payment: Creating subscription for:", { userId, planId, tap_id });
+
+    // Create subscription if it doesn't exist
+    const { data: result, error } = await supabase.rpc('create_subscription', {
+      p_user_id: userId,
+      p_plan_id: planId,
+      p_tap_id: tap_id
+    });
+
+    if (error) {
+      console.error("verify-tap-payment: Failed to create subscription:", error);
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to create subscription" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
+
+    console.log("verify-tap-payment: Subscription result:", result);
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      plan_id: planId,
+      user_id: userId,
+      message: "Payment verified and subscription created"
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

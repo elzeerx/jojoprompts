@@ -134,14 +134,13 @@ serve(async (req: Request) => {
     const userEmail = authUser.user.email;
     console.log("User email retrieved:", userEmail);
 
-    // FIXED: Create redirect URLs with Tap charge ID placeholder
-    // Tap uses {charge.id} as the placeholder for the charge ID in redirect URLs
-    const verificationUrl = sanitizeUrl(FRONTEND_URL, `/payment-result?planId=${planId}&userId=${userId}&tap_id={charge.id}&response_code={response.code}`);
-    const cancellationUrl = sanitizeUrl(FRONTEND_URL, `/payment-failed?planId=${planId}&userId=${userId}&reason=cancelled`);
+    // FIXED: Create redirect URLs - Tap will append tap_id automatically
+    const redirectBase = sanitizeUrl(FRONTEND_URL, "/payment-result");
+    const webhookUrl = sanitizeUrl(FRONTEND_URL.replace("jojoprompts.lovable.app", "fxkqgjakbyrxkmevkglv.supabase.co"), "/functions/v1/tap-webhook");
 
-    console.log("FIXED: Enhanced redirect URLs with charge ID placeholders:", { 
-      verificationUrl, 
-      cancellationUrl 
+    console.log("FIXED: Simplified redirect URLs:", { 
+      redirectBase,
+      webhookUrl
     });
 
     const tapPayload = {
@@ -152,8 +151,8 @@ serve(async (req: Request) => {
       description: `JojoPrompts - ${sanitizeInput(plan.name)} Plan`,
       statement_descriptor: "JojoPrompts",
       metadata: {
-        udf1: sanitizeInput(userId),
-        udf2: sanitizeInput(planId),
+        udf1: sanitizeInput(userId),  // user_id
+        udf2: sanitizeInput(planId),  // plan_id
         udf3: new Date().toISOString()
       },
       reference: {
@@ -176,26 +175,26 @@ serve(async (req: Request) => {
       source: {
         id: "src_all"
       },
-      // FIXED: Enhanced redirect configuration with charge ID placeholders
-      // post URL handles ALL payment completions (success/failure) with charge ID
-      post: {
-        url: verificationUrl
-      },
-      // redirect URL handles cancellations - goes directly to failure page
+      // FIXED: Simplified redirect configuration
+      // Tap will append ?tap_id=CHARGE_ID automatically to redirect URL
       redirect: {
-        url: cancellationUrl
+        url: redirectBase
+      },
+      // Webhook for server-side processing
+      post: {
+        url: webhookUrl
       }
     };
 
-    console.log("Creating Tap charge with FIXED enhanced verification flow:", { 
+    console.log("Creating Tap charge with FIXED redirect flow:", { 
       amount: tapPayload.amount, 
       currency: tapPayload.currency,
       planName: plan.name,
       reference: tapPayload.reference.transaction,
       customerEmail: userEmail,
-      verificationUrl,
-      cancellationUrl,
-      tapPlaceholders: "Using {charge.id} and {response.code} placeholders"
+      redirectUrl: redirectBase,
+      webhookUrl,
+      note: "Tap will append tap_id parameter automatically"
     });
 
     const response = await fetch("https://api.tap.company/v2/charges", {
@@ -234,7 +233,7 @@ serve(async (req: Request) => {
       });
     }
     
-    console.log("Tap charge created successfully with enhanced redirect URLs:", { 
+    console.log("Tap charge created successfully with FIXED redirect URLs:", { 
       id: data.id, 
       status: data.status,
       transaction_url: data.transaction?.url,
