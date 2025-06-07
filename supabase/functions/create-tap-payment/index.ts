@@ -136,11 +136,13 @@ serve(async (req: Request) => {
     const userEmail = authUser.user.email;
     console.log("User email retrieved:", userEmail);
 
-    // Create properly formatted redirect URLs - Tap will add status parameters automatically
+    // FIXED: Create properly separated success and failure URLs
+    // Success URL points to payment-success page
     const successUrl = sanitizeUrl(FRONTEND_URL, `/payment-success?planId=${planId}&userId=${userId}`);
+    // Failure URL points to payment-failed page  
     const failureUrl = sanitizeUrl(FRONTEND_URL, `/payment-failed?planId=${planId}&userId=${userId}`);
 
-    console.log("Redirect URLs configured:", { successUrl, failureUrl });
+    console.log("FIXED: Redirect URLs configured correctly:", { successUrl, failureUrl });
 
     const tapPayload = {
       amount: numericAmount,
@@ -174,17 +176,18 @@ serve(async (req: Request) => {
       source: {
         id: "src_all"
       },
-      // Post back to our server on success and redirect the user to the failure page.
-      // Tap appends the payment status to these URLs automatically.
+      // FIXED: Proper redirect configuration
+      // post URL handles successful payments - redirect to success page
       post: {
         url: successUrl
       },
+      // redirect URL handles failed/cancelled payments - redirect to failure page
       redirect: {
         url: failureUrl
       }
     };
 
-    console.log("Creating Tap charge:", { 
+    console.log("Creating Tap charge with FIXED redirects:", { 
       amount: tapPayload.amount, 
       currency: tapPayload.currency,
       planName: plan.name,

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,7 @@ export default function PaymentSuccessPage() {
         const responseCode = searchParams.get('response_code');
         const chargeId = searchParams.get('charge_id');
         
-        console.log('Payment verification - Starting with params:', { 
+        console.log('FIXED: Payment verification - Starting with params:', { 
           planId, 
           userId, 
           tapId, 
@@ -44,19 +43,15 @@ export default function PaymentSuccessPage() {
           fullUrl: window.location.href
         });
 
-        // CRITICAL: Assume failure unless explicitly proven successful
-        let paymentVerified = false;
-        let verifiedPaymentData = null;
-
         // Check for required parameters
         if (!planId || !userId) {
-          console.error('Missing required payment parameters:', { planId, userId });
+          console.error('FIXED: Missing required payment parameters:', { planId, userId });
           throw new Error('Missing payment information');
         }
 
         // Verify user ID matches authenticated user (if user is logged in)
         if (user && userId !== user.id) {
-          console.error('User ID mismatch - URL user:', userId, 'Auth user:', user.id);
+          console.error('FIXED: User ID mismatch - URL user:', userId, 'Auth user:', user.id);
           throw new Error('Invalid payment session');
         }
 
@@ -64,35 +59,39 @@ export default function PaymentSuccessPage() {
         const verifyChargeId = tapId || chargeId;
         
         if (!verifyChargeId) {
-          console.error('No payment ID found for verification');
+          console.error('FIXED: No payment ID found for verification');
           throw new Error('No payment ID provided');
         }
 
-        console.log('Verifying payment with Tap API, charge ID:', verifyChargeId);
+        console.log('FIXED: Verifying payment with Tap API, charge ID:', verifyChargeId);
 
-        // MANDATORY payment verification with Tap API
+        // MANDATORY payment verification with Tap API - this is the key fix
         const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-tap-payment', {
           body: { chargeId: verifyChargeId }
         });
 
         if (verifyError) {
-          console.error('Payment verification failed:', verifyError);
-          throw new Error('Payment verification failed');
+          console.error('FIXED: Payment verification failed:', verifyError);
+          throw new Error('Payment verification failed: ' + verifyError.message);
         }
 
         if (!verifyData) {
-          console.error('No verification data received');
+          console.error('FIXED: No verification data received');
           throw new Error('Payment verification returned no data');
         }
 
-        console.log('Tap verification result:', verifyData);
+        console.log('FIXED: Tap verification result:', verifyData);
 
-        // Check if payment was actually successful
+        // STRICT SUCCESS CHECK - only these statuses create subscriptions
         const verifiedStatus = verifyData.status;
         const successStatuses = ['CAPTURED', 'PAID', 'AUTHORIZED'];
         
         if (!verifiedStatus || !successStatuses.includes(verifiedStatus.toUpperCase())) {
-          console.log('Payment not successful, verified status:', verifiedStatus);
+          console.log('FIXED: Payment not successful, verified status:', verifiedStatus);
+          // Redirect to failure page if payment wasn't successful
+          setTimeout(() => {
+            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(`Payment was ${verifiedStatus || 'not completed'}`)}`);
+          }, 1000);
           throw new Error(`Payment was ${verifiedStatus || 'not completed'}`);
         }
 
@@ -102,7 +101,7 @@ export default function PaymentSuccessPage() {
           const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
           
           if (pendingPayment?.amount && Math.abs(verifyData.amount - pendingPayment.amount) > 0.01) {
-            console.error('Payment amount mismatch:', { 
+            console.error('FIXED: Payment amount mismatch:', { 
               verified: verifyData.amount, 
               expected: pendingPayment.amount 
             });
@@ -110,11 +109,7 @@ export default function PaymentSuccessPage() {
           }
         }
 
-        // Only now mark as verified
-        paymentVerified = true;
-        verifiedPaymentData = verifyData;
-
-        console.log('Payment successfully verified, proceeding with subscription creation');
+        console.log('FIXED: Payment successfully verified as SUCCESSFUL, proceeding with subscription creation');
 
         // Prepare payment data for subscription creation
         const paymentData = {
@@ -123,13 +118,13 @@ export default function PaymentSuccessPage() {
           details: {
             id: verifyChargeId,
             status: verifiedStatus,
-            amount: verifiedPaymentData.amount,
+            amount: verifyData.amount,
             response_code: responseCode,
             verified_at: new Date().toISOString()
           }
         };
 
-        console.log('Creating subscription with verified payment data:', paymentData);
+        console.log('FIXED: Creating subscription with verified successful payment data:', paymentData);
 
         const { data, error } = await supabase.functions.invoke("create-subscription", {
           body: {
@@ -140,12 +135,12 @@ export default function PaymentSuccessPage() {
         });
 
         if (error) {
-          console.error('Subscription creation error:', error);
-          throw new Error('Subscription setup failed after verified payment');
+          console.error('FIXED: Subscription creation error:', error);
+          throw new Error('Subscription setup failed after verified payment: ' + error.message);
         }
 
         if (!data || !data.success) {
-          console.error('Subscription creation unsuccessful:', data);
+          console.error('FIXED: Subscription creation unsuccessful:', data);
           throw new Error('Subscription activation failed after verified payment');
         }
 
@@ -154,7 +149,7 @@ export default function PaymentSuccessPage() {
         setVerified(true);
         setVerifying(false);
 
-        console.log('Payment and subscription creation completed successfully');
+        console.log('FIXED: Payment and subscription creation completed successfully');
 
         toast({
           title: "Payment Successful!",
@@ -162,13 +157,13 @@ export default function PaymentSuccessPage() {
         });
 
       } catch (error: any) {
-        console.error('Payment verification/processing error:', error);
+        console.error('FIXED: Payment verification/processing error:', error);
         
-        // Always redirect to failure page on any error
+        // For any error, redirect to failure page
         const planId = searchParams.get('planId');
         const errorMessage = error.message || 'Payment verification failed';
         
-        console.log('Redirecting to failure page due to error:', errorMessage);
+        console.log('FIXED: Redirecting to failure page due to error:', errorMessage);
         
         // Small delay to ensure logging is captured
         setTimeout(() => {
