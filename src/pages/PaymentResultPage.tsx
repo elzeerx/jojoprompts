@@ -12,12 +12,16 @@ export default function PaymentResultPage() {
   useEffect(() => {
     const verifyPaymentAndRedirect = async () => {
       try {
-        // Extract parameters from URL
+        // Extract parameters from URL - enhanced logging
         const planId = searchParams.get('planId');
         const userId = searchParams.get('userId');
         const tapId = searchParams.get('tap_id');
         const chargeId = searchParams.get('charge_id');
         const responseCode = searchParams.get('response_code');
+        
+        // Log all available URL parameters for debugging
+        const allParams = Object.fromEntries(searchParams.entries());
+        console.log('PaymentResultPage: ALL URL parameters received:', allParams);
         
         console.log('PaymentResultPage: Starting verification with params:', { 
           planId, 
@@ -25,21 +29,31 @@ export default function PaymentResultPage() {
           tapId, 
           chargeId,
           responseCode,
-          fullUrl: window.location.href
+          fullUrl: window.location.href,
+          searchString: window.location.search
         });
 
         // Check for required parameters
         if (!planId || !userId) {
-          console.error('PaymentResultPage: Missing required parameters');
+          console.error('PaymentResultPage: Missing required parameters planId or userId');
           navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent('Missing payment information')}`);
           return;
         }
 
-        // Get the payment ID for verification
-        const verifyChargeId = tapId || chargeId;
+        // Enhanced charge ID detection with fallback logic
+        let verifyChargeId = tapId || chargeId;
+        
+        // Fallback: try to extract charge ID from other possible parameter names
+        if (!verifyChargeId) {
+          verifyChargeId = searchParams.get('id') || 
+                          searchParams.get('charge') || 
+                          searchParams.get('payment_id') ||
+                          searchParams.get('transaction_id');
+          console.log('PaymentResultPage: Using fallback charge ID extraction:', verifyChargeId);
+        }
         
         if (!verifyChargeId) {
-          console.error('PaymentResultPage: No payment ID found for verification');
+          console.error('PaymentResultPage: No payment ID found for verification. Available params:', allParams);
           navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent('No payment ID provided')}`);
           return;
         }
@@ -53,7 +67,7 @@ export default function PaymentResultPage() {
 
         if (verifyError) {
           console.error('PaymentResultPage: Payment verification failed:', verifyError);
-          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent('Payment verification failed')}`);
+          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent('Payment verification failed: ' + verifyError.message)}`);
           return;
         }
 
@@ -83,7 +97,7 @@ export default function PaymentResultPage() {
       } catch (error: any) {
         console.error('PaymentResultPage: Verification error:', error);
         const planId = searchParams.get('planId');
-        navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent('Payment verification failed')}`);
+        navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent('Payment verification failed: ' + error.message)}`);
       } finally {
         setVerifying(false);
       }

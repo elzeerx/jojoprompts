@@ -134,13 +134,12 @@ serve(async (req: Request) => {
     const userEmail = authUser.user.email;
     console.log("User email retrieved:", userEmail);
 
-    // FIXED: Create neutral verification URL for all payment completions
-    // This single URL will receive both success and failure results and verify the actual status
-    const verificationUrl = sanitizeUrl(FRONTEND_URL, `/payment-result?planId=${planId}&userId=${userId}`);
-    // Cancellation URL for when users cancel the payment
+    // FIXED: Create redirect URLs with Tap charge ID placeholder
+    // Tap uses {charge.id} as the placeholder for the charge ID in redirect URLs
+    const verificationUrl = sanitizeUrl(FRONTEND_URL, `/payment-result?planId=${planId}&userId=${userId}&tap_id={charge.id}&response_code={response.code}`);
     const cancellationUrl = sanitizeUrl(FRONTEND_URL, `/payment-failed?planId=${planId}&userId=${userId}&reason=cancelled`);
 
-    console.log("FIXED: Redirect URLs configured for verification flow:", { 
+    console.log("FIXED: Enhanced redirect URLs with charge ID placeholders:", { 
       verificationUrl, 
       cancellationUrl 
     });
@@ -177,8 +176,8 @@ serve(async (req: Request) => {
       source: {
         id: "src_all"
       },
-      // FIXED: Proper redirect configuration for verification flow
-      // post URL handles ALL payment completions (success/failure) - goes to verification page
+      // FIXED: Enhanced redirect configuration with charge ID placeholders
+      // post URL handles ALL payment completions (success/failure) with charge ID
       post: {
         url: verificationUrl
       },
@@ -188,14 +187,15 @@ serve(async (req: Request) => {
       }
     };
 
-    console.log("Creating Tap charge with FIXED verification flow:", { 
+    console.log("Creating Tap charge with FIXED enhanced verification flow:", { 
       amount: tapPayload.amount, 
       currency: tapPayload.currency,
       planName: plan.name,
       reference: tapPayload.reference.transaction,
       customerEmail: userEmail,
       verificationUrl,
-      cancellationUrl
+      cancellationUrl,
+      tapPlaceholders: "Using {charge.id} and {response.code} placeholders"
     });
 
     const response = await fetch("https://api.tap.company/v2/charges", {
@@ -234,10 +234,12 @@ serve(async (req: Request) => {
       });
     }
     
-    console.log("Tap charge created successfully:", { 
+    console.log("Tap charge created successfully with enhanced redirect URLs:", { 
       id: data.id, 
       status: data.status,
-      transaction_url: data.transaction?.url
+      transaction_url: data.transaction?.url,
+      post_url: data.post?.url,
+      redirect_url: data.redirect?.url
     });
     
     return new Response(JSON.stringify(data), {
