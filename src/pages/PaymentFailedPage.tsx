@@ -38,8 +38,8 @@ export default function PaymentFailedPage() {
   });
   
   return (
-    <div className="mobile-container-padding mobile-section-padding relative">
-      <div className="max-w-lg mx-auto relative z-10">
+    <div className="mobile-container-padding mobile-section-padding">
+      <div className="max-w-lg mx-auto">
         <Card className="border-2 border-red-200 shadow-xl bg-white/95 backdrop-blur-sm rounded-2xl overflow-hidden">
           <CardHeader className="text-center pb-4 bg-gradient-to-r from-red-50 to-red-100/5">
             <div className="flex justify-center mb-4">

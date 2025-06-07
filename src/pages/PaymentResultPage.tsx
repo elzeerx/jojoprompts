@@ -20,7 +20,7 @@ export default function PaymentResultPage() {
 
         if (!tapId) {
           console.error('PaymentResultPage: No tap_id found in URL');
-          navigate('/payment-failed?reason=' + encodeURIComponent('No payment ID found'));
+          navigate('/payment/failed?reason=' + encodeURIComponent('No payment ID found'));
           return;
         }
 
@@ -33,13 +33,13 @@ export default function PaymentResultPage() {
 
         if (verifyError) {
           console.error('PaymentResultPage: Payment verification failed:', verifyError);
-          navigate('/payment-failed?reason=' + encodeURIComponent('Payment verification failed: ' + verifyError.message));
+          navigate('/payment/failed?reason=' + encodeURIComponent('Payment verification failed: ' + verifyError.message));
           return;
         }
 
         if (!verifyData) {
           console.error('PaymentResultPage: No verification data received');
-          navigate('/payment-failed?reason=' + encodeURIComponent('Payment verification returned no data'));
+          navigate('/payment/failed?reason=' + encodeURIComponent('Payment verification returned no data'));
           return;
         }
 
@@ -48,18 +48,18 @@ export default function PaymentResultPage() {
         // Check if verification was successful
         if (!verifyData.success) {
           console.log('PaymentResultPage: Payment verification unsuccessful:', verifyData.error);
-          navigate('/payment-failed?reason=' + encodeURIComponent(verifyData.error || 'Payment verification failed'));
+          navigate('/payment/failed?reason=' + encodeURIComponent(verifyData.error || 'Payment verification failed'));
           return;
         }
 
         console.log('PaymentResultPage: Payment verified successfully, redirecting to success page');
         
         // Payment was successful - redirect to success page
-        navigate(`/payment-success?planId=${verifyData.plan_id}&userId=${verifyData.user_id}&tap_id=${tapId}`);
+        navigate(`/payment/success?planId=${verifyData.plan_id}&userId=${verifyData.user_id}&tap_id=${tapId}`);
 
       } catch (error: any) {
         console.error('PaymentResultPage: Verification error:', error);
-        navigate('/payment-failed?reason=' + encodeURIComponent('Payment verification failed: ' + error.message));
+        navigate('/payment/failed?reason=' + encodeURIComponent('Payment verification failed: ' + error.message));
       } finally {
         setVerifying(false);
       }
@@ -70,7 +70,7 @@ export default function PaymentResultPage() {
 
   if (verifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-lg font-medium">Verifying your payment...</p>
@@ -82,7 +82,7 @@ export default function PaymentResultPage() {
 
   // This should not be reached as we always redirect
   return (
-    <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <p>Processing payment result...</p>
       </div>

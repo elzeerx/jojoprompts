@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { RootLayout } from "./components/layout/root-layout";
+import { PaymentLayout } from "./components/layout/PaymentLayout";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
@@ -20,6 +21,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import PaymentResultPage from "./pages/PaymentResultPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
+import PaymentNotFoundPage from "./pages/payment/PaymentNotFoundPage";
 import UserDashboardPage from "./pages/UserDashboardPage";
 import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
 import PrompterDashboard from "./pages/prompter/PrompterDashboard";
@@ -53,9 +55,6 @@ function App() {
                 <Route path="search" element={<SearchPage />} />
                 <Route path="pricing" element={<PricingPage />} />
                 <Route path="checkout" element={<CheckoutPage />} />
-                <Route path="payment-result" element={<PaymentResultPage />} />
-                <Route path="payment-success" element={<PaymentSuccessPage />} />
-                <Route path="payment-failed" element={<PaymentFailedPage />} />
                 <Route path="dashboard" element={<UserDashboardPage />} />
                 <Route path="dashboard/subscription" element={<SubscriptionDashboard />} />
                 <Route path="dashboard/prompter" element={<PrompterDashboard />} />
@@ -67,6 +66,14 @@ function App() {
                 <Route path="privacy" element={<PrivacyPolicyPage />} />
                 <Route path="terms" element={<TermsOfServicePage />} />
                 <Route path="*" element={<NotFoundPage />} />
+              </Route>
+              
+              {/* Nested payment routes with shared layout */}
+              <Route path="/payment" element={<PaymentLayout />}>
+                <Route path="result" element={<PaymentResultPage />} />
+                <Route path="success" element={<PaymentSuccessPage />} />
+                <Route path="failed" element={<PaymentFailedPage />} />
+                <Route path="*" element={<PaymentNotFoundPage />} />
               </Route>
             </Routes>
             <Toaster />

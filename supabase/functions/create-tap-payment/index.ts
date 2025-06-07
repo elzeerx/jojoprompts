@@ -134,11 +134,11 @@ serve(async (req: Request) => {
     const userEmail = authUser.user.email;
     console.log("User email retrieved:", userEmail);
 
-    // FIXED: Create redirect URLs - Tap will append tap_id automatically
-    const redirectBase = sanitizeUrl(FRONTEND_URL, "/payment-result");
+    // UPDATED: Use new nested route structure - Tap will append tap_id automatically
+    const redirectBase = sanitizeUrl(FRONTEND_URL, "/payment/result");
     const webhookUrl = sanitizeUrl(FRONTEND_URL.replace("jojoprompts.lovable.app", "fxkqgjakbyrxkmevkglv.supabase.co"), "/functions/v1/tap-webhook");
 
-    console.log("FIXED: Simplified redirect URLs:", { 
+    console.log("UPDATED: Using new nested route structure:", { 
       redirectBase,
       webhookUrl
     });
@@ -175,8 +175,7 @@ serve(async (req: Request) => {
       source: {
         id: "src_all"
       },
-      // FIXED: Simplified redirect configuration
-      // Tap will append ?tap_id=CHARGE_ID automatically to redirect URL
+      // UPDATED: Using new nested route - Tap will append ?tap_id=CHARGE_ID automatically
       redirect: {
         url: redirectBase
       },
@@ -186,7 +185,7 @@ serve(async (req: Request) => {
       }
     };
 
-    console.log("Creating Tap charge with FIXED redirect flow:", { 
+    console.log("Creating Tap charge with UPDATED nested route structure:", { 
       amount: tapPayload.amount, 
       currency: tapPayload.currency,
       planName: plan.name,
@@ -194,7 +193,7 @@ serve(async (req: Request) => {
       customerEmail: userEmail,
       redirectUrl: redirectBase,
       webhookUrl,
-      note: "Tap will append tap_id parameter automatically"
+      note: "Using new /payment/result nested route structure"
     });
 
     const response = await fetch("https://api.tap.company/v2/charges", {
@@ -233,7 +232,7 @@ serve(async (req: Request) => {
       });
     }
     
-    console.log("Tap charge created successfully with FIXED redirect URLs:", { 
+    console.log("Tap charge created successfully with UPDATED nested route structure:", { 
       id: data.id, 
       status: data.status,
       transaction_url: data.transaction?.url,

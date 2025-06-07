@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -92,7 +93,7 @@ export default function PaymentSuccessPage() {
 
   if (processing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-lg font-medium">Validating your subscription...</p>
@@ -104,7 +105,7 @@ export default function PaymentSuccessPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Subscription Validation Failed</h2>
@@ -124,7 +125,7 @@ export default function PaymentSuccessPage() {
 
   if (!success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Subscription Not Found</h2>
@@ -143,18 +144,8 @@ export default function PaymentSuccessPage() {
   }
   
   return (
-    <div className="mobile-container-padding mobile-section-padding relative">
-      {/* Enhanced mobile background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-10 right-10 text-warm-gold/20 animate-pulse">
-          <Sparkles className="h-8 w-8" />
-        </div>
-        <div className="absolute bottom-10 left-10 text-muted-teal/20 animate-pulse delay-1000">
-          <Sparkles className="h-6 w-6" />
-        </div>
-      </div>
-
-      <div className="max-w-lg mx-auto relative z-10">
+    <div className="mobile-container-padding mobile-section-padding">
+      <div className="max-w-lg mx-auto">
         <Card className="border-2 border-green-200 shadow-xl bg-white/95 backdrop-blur-sm rounded-2xl overflow-hidden">
           <CardHeader className="text-center pb-4 bg-gradient-to-r from-green-50 to-warm-gold/5">
             <div className="flex justify-center mb-4">
