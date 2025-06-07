@@ -95,15 +95,39 @@ export default function PaymentSuccessPage() {
         const pendingPaymentStr = localStorage.getItem('pending_payment');
         const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
 
-        // Assume success if we reach here (no explicit failure indicators)
-        console.log('Proceeding with subscription creation - no failure indicators detected');
+        // Verify payment status with backend
+        const verifyChargeId = tapId || chargeId || pendingPayment?.paymentId;
+        let finalStatus = chargeStatus;
+        if (verifyChargeId) {
+          const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-tap-payment', {
+            body: { chargeId: verifyChargeId }
+          });
+          if (verifyError) {
+            console.error('Tap verification error:', verifyError);
+          } else {
+            console.log('Tap verification result:', verifyData);
+            if (verifyData?.status) {
+              finalStatus = verifyData.status as string;
+            }
+          }
+        }
+
+        const successStatuses = ['CAPTURED', 'PAID', 'AUTHORIZED'];
+        if (!finalStatus || !successStatuses.includes(finalStatus.toUpperCase())) {
+          const reason = finalStatus ? `Payment ${finalStatus.toLowerCase()}` : 'Payment not confirmed';
+          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          return;
+        }
+
+        // Proceed with subscription creation
+        console.log('Proceeding with subscription creation - verified status:', finalStatus);
 
         const paymentData = {
-          paymentId: tapId || chargeId || pendingPayment?.paymentId || `tap_${Date.now()}`,
+          paymentId: verifyChargeId || `tap_${Date.now()}`,
           paymentMethod: 'tap',
           details: {
-            id: tapId || chargeId || pendingPayment?.paymentId,
-            status: chargeStatus || 'completed',
+            id: verifyChargeId,
+            status: finalStatus,
             amount: pendingPayment?.amount,
             response_code: responseCode,
             payment_result: paymentResult
