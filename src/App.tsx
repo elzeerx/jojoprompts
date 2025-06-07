@@ -43,6 +43,15 @@ function App() {
         <BrowserRouter>
           <AuthProvider>
             <Routes>
+              {/* Payment routes - must come first to avoid wildcard catch */}
+              <Route path="/payment" element={<PaymentLayout />}>
+                <Route path="result" element={<PaymentResultPage />} />
+                <Route path="success" element={<PaymentSuccessPage />} />
+                <Route path="failed" element={<PaymentFailedPage />} />
+                <Route path="*" element={<PaymentNotFoundPage />} />
+              </Route>
+              
+              {/* Main app routes with wildcard fallback */}
               <Route path="/" element={<RootLayout />}>
                 <Route index element={<Index />} />
                 <Route path="login" element={<LoginPage />} />
@@ -66,14 +75,6 @@ function App() {
                 <Route path="privacy" element={<PrivacyPolicyPage />} />
                 <Route path="terms" element={<TermsOfServicePage />} />
                 <Route path="*" element={<NotFoundPage />} />
-              </Route>
-              
-              {/* Nested payment routes with shared layout */}
-              <Route path="/payment" element={<PaymentLayout />}>
-                <Route path="result" element={<PaymentResultPage />} />
-                <Route path="success" element={<PaymentSuccessPage />} />
-                <Route path="failed" element={<PaymentFailedPage />} />
-                <Route path="*" element={<PaymentNotFoundPage />} />
               </Route>
             </Routes>
             <Toaster />
