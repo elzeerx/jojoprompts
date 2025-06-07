@@ -174,12 +174,13 @@ serve(async (req: Request) => {
       source: {
         id: "src_all"
       },
-      // Use success URL for both post and redirect - Tap will add status parameters
+      // Post back to our server on success and redirect the user to the failure page.
+      // Tap appends the payment status to these URLs automatically.
       post: {
         url: successUrl
       },
       redirect: {
-        url: successUrl
+        url: failureUrl
       }
     };
 
