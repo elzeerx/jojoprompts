@@ -21,7 +21,21 @@ export default function PaymentFailedPage() {
   }, [user, searchParams]);
 
   const planId = searchParams.get('planId');
+  const userId = searchParams.get('userId');
   const reason = searchParams.get('reason') || 'Payment was not completed';
+  const tapId = searchParams.get('tap_id');
+  const chargeStatus = searchParams.get('status');
+  const responseCode = searchParams.get('response_code');
+  
+  // Log all parameters for debugging
+  console.log('PaymentFailedPage parameters:', {
+    planId,
+    userId,
+    reason,
+    tapId,
+    chargeStatus,
+    responseCode
+  });
   
   return (
     <div className="mobile-container-padding mobile-section-padding relative">
@@ -44,6 +58,12 @@ export default function PaymentFailedPage() {
                 <div>
                   <p className="font-medium text-red-800 text-sm sm:text-base">Payment Error</p>
                   <p className="text-xs sm:text-sm mt-1 text-red-700">{reason}</p>
+                  {chargeStatus && (
+                    <p className="text-xs mt-1 text-red-600">Status: {chargeStatus}</p>
+                  )}
+                  {responseCode && (
+                    <p className="text-xs mt-1 text-red-600">Code: {responseCode}</p>
+                  )}
                 </div>
               </div>
             </div>

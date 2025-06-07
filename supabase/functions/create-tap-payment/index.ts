@@ -20,6 +20,14 @@ function sanitizeInput(input: any): string {
   return input.replace(/[<>]/g, '').trim();
 }
 
+function sanitizeUrl(baseUrl: string, path: string): string {
+  // Remove trailing slash from base URL
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  // Ensure path starts with slash
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${cleanBase}${cleanPath}`;
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -128,10 +136,11 @@ serve(async (req: Request) => {
     const userEmail = authUser.user.email;
     console.log("User email retrieved:", userEmail);
 
-    // Create the single redirect URL - Tap will add status parameters automatically
-    const redirectUrl = `${FRONTEND_URL}/payment-success?planId=${planId}&userId=${userId}`;
+    // Create properly formatted redirect URLs - Tap will add status parameters automatically
+    const successUrl = sanitizeUrl(FRONTEND_URL, `/payment-success?planId=${planId}&userId=${userId}`);
+    const failureUrl = sanitizeUrl(FRONTEND_URL, `/payment-failed?planId=${planId}&userId=${userId}`);
 
-    console.log("Redirect URL configured:", redirectUrl);
+    console.log("Redirect URLs configured:", { successUrl, failureUrl });
 
     const tapPayload = {
       amount: numericAmount,
@@ -165,13 +174,12 @@ serve(async (req: Request) => {
       source: {
         id: "src_all"
       },
-      // Both post and redirect point to the same URL
-      // Tap will add status parameters automatically
+      // Use success URL for both post and redirect - Tap will add status parameters
       post: {
-        url: redirectUrl
+        url: successUrl
       },
       redirect: {
-        url: redirectUrl
+        url: successUrl
       }
     };
 
@@ -181,7 +189,8 @@ serve(async (req: Request) => {
       planName: plan.name,
       reference: tapPayload.reference.transaction,
       customerEmail: userEmail,
-      redirectUrl
+      successUrl,
+      failureUrl
     });
 
     const response = await fetch("https://api.tap.company/v2/charges", {

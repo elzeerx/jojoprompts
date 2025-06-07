@@ -5,24 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { securityMonitor } from "@/utils/monitoring";
-import { SecurityUtils } from "@/utils/security";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-
-// Comprehensive list of Tap failure status codes and indicators
-const TAP_FAILURE_STATUSES = [
-  'DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED', 'EXPIRED', 
-  'REJECTED', 'VOIDED', 'ERROR', 'TIMEOUT'
-];
-
-const TAP_FAILURE_RESPONSE_CODES = [
-  '101', '102', '103', '104', '105', '106', '107', '108', '109', '110',
-  '201', '202', '203', '204', '205', '206', '207', '208', '209', '210',
-  '301', '302', '303', '304', '305', '306', '307', '308', '309', '310',
-  '401', '402', '403', '404', '405', '406', '407', '408', '409', '410',
-  '501', '502', '503', '504', '505', '506', '507', '508', '509', '510'
-];
 
 export default function PaymentSuccessPage() {
   const { user } = useAuth();
@@ -42,6 +26,7 @@ export default function PaymentSuccessPage() {
 
     const verifyPayment = async () => {
       try {
+        // Extract all possible parameters from URL
         const planId = searchParams.get('planId');
         const userId = searchParams.get('userId');
         const tapId = searchParams.get('tap_id');
@@ -62,28 +47,19 @@ export default function PaymentSuccessPage() {
           searchString: window.location.search
         });
 
-        // Enhanced failure detection
-        const isFailedStatus = chargeStatus && TAP_FAILURE_STATUSES.includes(chargeStatus.toUpperCase());
-        const isFailedResponseCode = responseCode && TAP_FAILURE_RESPONSE_CODES.includes(responseCode);
-        const isExplicitFailure = paymentResult === 'failed' || paymentResult === 'error';
-
-        if (isFailedStatus) {
-          console.log('Payment failed - Status indicates failure:', chargeStatus);
-          const reason = `Payment ${chargeStatus.toLowerCase()}`;
-          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          return;
-        }
-
-        if (isFailedResponseCode) {
-          console.log('Payment failed - Response code indicates failure:', responseCode);
-          const reason = `Payment declined (Code: ${responseCode})`;
-          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          return;
-        }
+        // Check for explicit failure indicators first
+        const explicitFailures = ['DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED', 'EXPIRED', 'REJECTED', 'VOIDED', 'ERROR', 'TIMEOUT'];
+        const failureResponseCodes = ['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '201', '202', '203', '204', '205', '206', '207', '208', '209', '210'];
+        
+        const isExplicitFailure = (chargeStatus && explicitFailures.includes(chargeStatus.toUpperCase())) ||
+                                 (responseCode && failureResponseCodes.includes(responseCode)) ||
+                                 paymentResult === 'failed' || paymentResult === 'error';
 
         if (isExplicitFailure) {
-          console.log('Payment failed - Explicit failure result:', paymentResult);
-          const reason = 'Payment was not completed successfully';
+          console.log('Payment failed - redirecting to failure page:', { chargeStatus, responseCode, paymentResult });
+          const reason = chargeStatus ? `Payment ${chargeStatus.toLowerCase()}` : 
+                        responseCode ? `Payment declined (Code: ${responseCode})` : 
+                        'Payment was not completed successfully';
           navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
           return;
         }
@@ -111,16 +87,15 @@ export default function PaymentSuccessPage() {
         }
 
         // If user is not authenticated, we'll still try to process the payment
-        // This can happen due to session loss during payment redirects
         if (!user) {
           console.log('User not authenticated, attempting payment verification without user session');
         }
 
-        // Get pending payment info from localStorage
+        // Get pending payment info from localStorage for fallback data
         const pendingPaymentStr = localStorage.getItem('pending_payment');
         const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
 
-        // If we reach here, we assume success (no explicit failure indicators found)
+        // Assume success if we reach here (no explicit failure indicators)
         console.log('Proceeding with subscription creation - no failure indicators detected');
 
         const paymentData = {
