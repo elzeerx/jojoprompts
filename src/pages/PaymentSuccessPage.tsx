@@ -26,115 +26,110 @@ export default function PaymentSuccessPage() {
 
     const verifyPayment = async () => {
       try {
-        // Extract all possible parameters from URL
+        // Extract parameters from URL
         const planId = searchParams.get('planId');
         const userId = searchParams.get('userId');
         const tapId = searchParams.get('tap_id');
         const chargeStatus = searchParams.get('status');
         const responseCode = searchParams.get('response_code');
         const chargeId = searchParams.get('charge_id');
-        const paymentResult = searchParams.get('payment_result');
         
-        console.log('Payment verification - All URL params:', { 
+        console.log('Payment verification - Starting with params:', { 
           planId, 
           userId, 
           tapId, 
           chargeStatus, 
           responseCode,
           chargeId,
-          paymentResult,
-          fullUrl: window.location.href,
-          searchString: window.location.search
+          fullUrl: window.location.href
         });
 
-        // Check for explicit failure indicators first
-        const explicitFailures = ['DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED', 'EXPIRED', 'REJECTED', 'VOIDED', 'ERROR', 'TIMEOUT'];
-        const failureResponseCodes = ['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '201', '202', '203', '204', '205', '206', '207', '208', '209', '210'];
-        
-        const isExplicitFailure = (chargeStatus && explicitFailures.includes(chargeStatus.toUpperCase())) ||
-                                 (responseCode && failureResponseCodes.includes(responseCode)) ||
-                                 paymentResult === 'failed' || paymentResult === 'error';
+        // CRITICAL: Assume failure unless explicitly proven successful
+        let paymentVerified = false;
+        let verifiedPaymentData = null;
 
-        if (isExplicitFailure) {
-          console.log('Payment failed - redirecting to failure page:', { chargeStatus, responseCode, paymentResult });
-          const reason = chargeStatus ? `Payment ${chargeStatus.toLowerCase()}` : 
-                        responseCode ? `Payment declined (Code: ${responseCode})` : 
-                        'Payment was not completed successfully';
-          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          return;
-        }
-
-        // Check if we have the required payment parameters
+        // Check for required parameters
         if (!planId || !userId) {
           console.error('Missing required payment parameters:', { planId, userId });
-          setError('Missing payment information');
-          setTimeout(() => {
-            const reason = 'Missing payment information';
-            navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
-          }, 3000);
-          return;
+          throw new Error('Missing payment information');
         }
 
-        // Only verify user ID if user is authenticated
+        // Verify user ID matches authenticated user (if user is logged in)
         if (user && userId !== user.id) {
           console.error('User ID mismatch - URL user:', userId, 'Auth user:', user.id);
-          setError('Invalid payment session');
-          setTimeout(() => {
-            const reason = 'Invalid payment session';
-            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          }, 3000);
-          return;
+          throw new Error('Invalid payment session');
         }
 
-        // If user is not authenticated, we'll still try to process the payment
-        if (!user) {
-          console.log('User not authenticated, attempting payment verification without user session');
+        // Get the payment ID for verification
+        const verifyChargeId = tapId || chargeId;
+        
+        if (!verifyChargeId) {
+          console.error('No payment ID found for verification');
+          throw new Error('No payment ID provided');
         }
 
-        // Get pending payment info from localStorage for fallback data
-        const pendingPaymentStr = localStorage.getItem('pending_payment');
-        const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
+        console.log('Verifying payment with Tap API, charge ID:', verifyChargeId);
 
-        // Verify payment status with backend
-        const verifyChargeId = tapId || chargeId || pendingPayment?.paymentId;
-        let finalStatus = chargeStatus;
-        if (verifyChargeId) {
-          const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-tap-payment', {
-            body: { chargeId: verifyChargeId }
-          });
-          if (verifyError) {
-            console.error('Tap verification error:', verifyError);
-          } else {
-            console.log('Tap verification result:', verifyData);
-            if (verifyData?.status) {
-              finalStatus = verifyData.status as string;
-            }
+        // MANDATORY payment verification with Tap API
+        const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-tap-payment', {
+          body: { chargeId: verifyChargeId }
+        });
+
+        if (verifyError) {
+          console.error('Payment verification failed:', verifyError);
+          throw new Error('Payment verification failed');
+        }
+
+        if (!verifyData) {
+          console.error('No verification data received');
+          throw new Error('Payment verification returned no data');
+        }
+
+        console.log('Tap verification result:', verifyData);
+
+        // Check if payment was actually successful
+        const verifiedStatus = verifyData.status;
+        const successStatuses = ['CAPTURED', 'PAID', 'AUTHORIZED'];
+        
+        if (!verifiedStatus || !successStatuses.includes(verifiedStatus.toUpperCase())) {
+          console.log('Payment not successful, verified status:', verifiedStatus);
+          throw new Error(`Payment was ${verifiedStatus || 'not completed'}`);
+        }
+
+        // Additional verification: check amount matches if available
+        if (verifyData.amount) {
+          const pendingPaymentStr = localStorage.getItem('pending_payment');
+          const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
+          
+          if (pendingPayment?.amount && Math.abs(verifyData.amount - pendingPayment.amount) > 0.01) {
+            console.error('Payment amount mismatch:', { 
+              verified: verifyData.amount, 
+              expected: pendingPayment.amount 
+            });
+            throw new Error('Payment amount verification failed');
           }
         }
 
-        const successStatuses = ['CAPTURED', 'PAID', 'AUTHORIZED'];
-        if (!finalStatus || !successStatuses.includes(finalStatus.toUpperCase())) {
-          const reason = finalStatus ? `Payment ${finalStatus.toLowerCase()}` : 'Payment not confirmed';
-          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          return;
-        }
+        // Only now mark as verified
+        paymentVerified = true;
+        verifiedPaymentData = verifyData;
 
-        // Proceed with subscription creation
-        console.log('Proceeding with subscription creation - verified status:', finalStatus);
+        console.log('Payment successfully verified, proceeding with subscription creation');
 
+        // Prepare payment data for subscription creation
         const paymentData = {
-          paymentId: verifyChargeId || `tap_${Date.now()}`,
+          paymentId: verifyChargeId,
           paymentMethod: 'tap',
           details: {
             id: verifyChargeId,
-            status: finalStatus,
-            amount: pendingPayment?.amount,
+            status: verifiedStatus,
+            amount: verifiedPaymentData.amount,
             response_code: responseCode,
-            payment_result: paymentResult
+            verified_at: new Date().toISOString()
           }
         };
 
-        console.log('Creating subscription with payment data:', paymentData);
+        console.log('Creating subscription with verified payment data:', paymentData);
 
         const { data, error } = await supabase.functions.invoke("create-subscription", {
           body: {
@@ -146,48 +141,42 @@ export default function PaymentSuccessPage() {
 
         if (error) {
           console.error('Subscription creation error:', error);
-          setError('Subscription setup failed');
-          toast({
-            title: "Subscription Error",
-            description: "Payment was successful but subscription setup failed. Please contact support.",
-            variant: "destructive",
-          });
-          setTimeout(() => {
-            const reason = 'Subscription setup failed';
-            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          }, 3000);
-          return;
+          throw new Error('Subscription setup failed after verified payment');
         }
 
         if (!data || !data.success) {
           console.error('Subscription creation unsuccessful:', data);
-          setError('Subscription activation failed');
-          setTimeout(() => {
-            const reason = 'Subscription activation failed';
-            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          }, 3000);
-          return;
+          throw new Error('Subscription activation failed after verified payment');
         }
 
-        // Clear pending payment
+        // Success! Clear pending payment and update state
         localStorage.removeItem('pending_payment');
-        
         setVerified(true);
         setVerifying(false);
+
+        console.log('Payment and subscription creation completed successfully');
 
         toast({
           title: "Payment Successful!",
           description: "Your subscription has been activated successfully.",
         });
 
-      } catch (error) {
-        console.error('Payment verification error:', error);
-        setError('Payment verification failed');
+      } catch (error: any) {
+        console.error('Payment verification/processing error:', error);
+        
+        // Always redirect to failure page on any error
+        const planId = searchParams.get('planId');
+        const errorMessage = error.message || 'Payment verification failed';
+        
+        console.log('Redirecting to failure page due to error:', errorMessage);
+        
+        // Small delay to ensure logging is captured
         setTimeout(() => {
-          const planId = searchParams.get('planId');
-          const reason = 'Payment verification failed';
-          navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
-        }, 3000);
+          navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(errorMessage)}`);
+        }, 1000);
+        
+        setError(errorMessage);
+        setVerifying(false);
       }
     };
 
@@ -201,6 +190,7 @@ export default function PaymentSuccessPage() {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p>Verifying your payment...</p>
+          <p className="text-sm text-gray-500 mt-2">Please wait while we confirm your payment with the bank...</p>
         </div>
       </div>
     );
@@ -211,9 +201,9 @@ export default function PaymentSuccessPage() {
       <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Payment Processing Error</h2>
+          <h2 className="text-xl font-semibold mb-2">Payment Verification Failed</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <p className="text-sm text-gray-500 mb-4">Redirecting to payment failed page...</p>
+          <p className="text-sm text-gray-500 mb-4">Redirecting to payment status page...</p>
           <div className="space-y-2">
             <Button className="w-full" asChild>
               <Link to="/pricing">Back to Pricing</Link>
@@ -232,8 +222,8 @@ export default function PaymentSuccessPage() {
       <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Payment Verification</h2>
-          <p className="text-gray-600 mb-4">We're having trouble verifying your payment. Please wait...</p>
+          <h2 className="text-xl font-semibold mb-2">Payment Not Verified</h2>
+          <p className="text-gray-600 mb-4">We couldn't verify your payment status.</p>
           <div className="space-y-2">
             <Button className="w-full" asChild>
               <Link to="/pricing">Back to Pricing</Link>

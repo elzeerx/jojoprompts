@@ -111,25 +111,100 @@ serve(async (req: Request) => {
       );
     }
 
-    // Extract payment information from standardized data
+    // CRITICAL: Enhanced payment verification
     const paymentMethod = paymentData.paymentMethod || 'unknown';
     const paymentId = paymentData.paymentId || paymentData.payment_id || null;
-
-    // Parse payment status from details
     const rawStatus = paymentData?.details?.status;
     const paymentStatus = typeof rawStatus === 'string' ? rawStatus.toUpperCase() : '';
-    console.log("Processing subscription for:", { userId, planId, paymentMethod, paymentId, paymentStatus });
+    
+    console.log("CRITICAL: Payment verification starting:", { 
+      userId, 
+      planId, 
+      paymentMethod, 
+      paymentId, 
+      paymentStatus,
+      hasVerifiedAt: !!paymentData?.details?.verified_at 
+    });
 
-    // Only continue if payment was captured/paid
-    if (!['CAPTURED', 'PAID'].includes(paymentStatus)) {
-      console.error('Payment status not CAPTURED or PAID:', paymentStatus);
+    // STRICT payment verification - must be explicitly successful
+    const acceptedStatuses = ['CAPTURED', 'PAID', 'AUTHORIZED'];
+    if (!acceptedStatuses.includes(paymentStatus)) {
+      console.error('CRITICAL: Payment status not acceptable for subscription creation:', {
+        receivedStatus: paymentStatus,
+        acceptedStatuses,
+        paymentData
+      });
       return new Response(
         JSON.stringify({
-          error: 'Payment not completed',
-          status: paymentStatus || 'UNKNOWN'
+          error: 'Payment not verified as successful',
+          status: paymentStatus || 'UNKNOWN',
+          details: 'Subscription can only be created for successfully paid transactions'
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
+    }
+
+    // Additional verification: check if payment was verified recently
+    if (paymentData?.details?.verified_at) {
+      const verifiedAt = new Date(paymentData.details.verified_at);
+      const now = new Date();
+      const timeDiff = now.getTime() - verifiedAt.getTime();
+      const maxAge = 5 * 60 * 1000; // 5 minutes
+      
+      if (timeDiff > maxAge) {
+        console.error('CRITICAL: Payment verification too old:', {
+          verifiedAt: paymentData.details.verified_at,
+          timeDiff,
+          maxAge
+        });
+        return new Response(
+          JSON.stringify({
+            error: 'Payment verification expired',
+            details: 'Payment verification is too old'
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    }
+
+    // Check for existing subscription to prevent duplicates
+    console.log("Checking for existing active subscription...");
+    const { data: existingSubscription, error: existingError } = await supabase
+      .from("user_subscriptions")
+      .select("id, payment_id, created_at")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("Error checking existing subscription:", existingError);
+    } else if (existingSubscription) {
+      console.log("Existing active subscription found:", existingSubscription);
+      
+      // Check if this is the same payment
+      if (existingSubscription.payment_id === paymentId) {
+        console.log("Subscription already exists for this payment, returning existing subscription");
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Subscription already exists for this payment",
+            subscription: {
+              id: existingSubscription.id,
+              status: "active",
+              existing: true
+            }
+          }),
+          { 
+            headers: { 
+              ...corsHeaders,
+              "Content-Type": "application/json"
+            },
+            status: 200
+          }
+        );
+      }
     }
 
     // Get plan details
@@ -150,6 +225,25 @@ serve(async (req: Request) => {
 
     console.log("Plan found:", { planName: plan.name, price: plan.price_usd, isLifetime: plan.is_lifetime });
 
+    // Verify payment amount matches plan price (if amount is available)
+    if (paymentData?.details?.amount && plan.price_usd) {
+      const amountDiff = Math.abs(paymentData.details.amount - plan.price_usd);
+      if (amountDiff > 0.01) {
+        console.error('CRITICAL: Payment amount does not match plan price:', {
+          paymentAmount: paymentData.details.amount,
+          planPrice: plan.price_usd,
+          difference: amountDiff
+        });
+        return new Response(
+          JSON.stringify({
+            error: 'Payment amount verification failed',
+            details: 'Payment amount does not match plan price'
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    }
+
     // Calculate end date for non-lifetime plans
     let endDate = null;
     if (!plan.is_lifetime && plan.duration_days) {
@@ -160,7 +254,7 @@ serve(async (req: Request) => {
     }
 
     // Create the subscription
-    console.log("Creating subscription record...");
+    console.log("CRITICAL: Creating verified subscription record...");
     const { data: subscription, error: subscriptionError } = await supabase
       .from("user_subscriptions")
       .insert({
@@ -185,7 +279,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("Subscription created successfully:", subscription.id);
+    console.log("CRITICAL: Subscription created successfully:", subscription.id);
 
     // Create payment history record
     console.log("Creating payment history record...");
@@ -214,11 +308,12 @@ serve(async (req: Request) => {
       subscription: {
         id: subscription.id,
         status: subscription.status,
-        plan_name: plan.name
+        plan_name: plan.name,
+        verified_payment: true
       }
     };
 
-    console.log("Returning success response:", successResponse);
+    console.log("CRITICAL: Returning verified subscription success:", successResponse);
 
     return new Response(
       JSON.stringify(successResponse),
@@ -231,7 +326,7 @@ serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error("Unexpected error in create-subscription:", error);
+    console.error("CRITICAL: Unexpected error in create-subscription:", error);
     console.error("Error stack:", error.stack);
     
     return new Response(
