@@ -36,6 +36,33 @@ serve(async (req: Request) => {
   }
 
   try {
+    // Verify Authorization header and JWT
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("Missing Authorization header");
+      return new Response(
+        JSON.stringify({ error: "Missing Authorization header" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401
+        }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error("Failed to verify JWT:", authError);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401
+        }
+      );
+    }
+
     // Parse the request body
     const requestBody = await req.text();
     console.log("Raw request body:", requestBody);
@@ -56,6 +83,17 @@ serve(async (req: Request) => {
 
     const { userId, planId, paymentData } = parsedBody;
     console.log("Parsed request data:", { userId, planId, paymentData: paymentData ? "present" : "missing" });
+
+    if (userId !== user.id) {
+      console.error(`User ID mismatch: body ${userId} does not match token ${user.id}`);
+      return new Response(
+        JSON.stringify({ error: "User ID does not match authenticated user" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403
+        }
+      );
+    }
 
     // Basic validation
     if (!userId || !planId || !paymentData) {
