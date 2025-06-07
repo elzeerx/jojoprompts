@@ -2,12 +2,15 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Settings, CreditCard, History } from "lucide-react";
+import { User, Settings, CreditCard, History, TestTube } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SubscriptionDashboard } from "@/components/subscription/SubscriptionDashboard";
+import { PaymentFlowTester } from "@/components/testing/PaymentFlowTester";
+import { useState } from "react";
 
 export default function UserDashboardPage() {
   const { user } = useAuth();
+  const [showTesting, setShowTesting] = useState(false);
 
   if (!user) {
     return (
@@ -32,6 +35,21 @@ export default function UserDashboardPage() {
           <h1 className="text-3xl font-bold">Welcome back!</h1>
           <p className="text-gray-600">Manage your account and subscription</p>
         </div>
+
+        {/* Testing Toggle */}
+        <div className="flex justify-end">
+          <Button
+            onClick={() => setShowTesting(!showTesting)}
+            variant="outline"
+            size="sm"
+          >
+            <TestTube className="h-4 w-4 mr-2" />
+            {showTesting ? 'Hide' : 'Show'} Payment Testing
+          </Button>
+        </div>
+
+        {/* Payment Flow Tester */}
+        {showTesting && <PaymentFlowTester />}
 
         {/* Subscription Status */}
         <div>
