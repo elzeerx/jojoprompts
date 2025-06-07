@@ -77,7 +77,22 @@ serve(async (req: Request) => {
     const paymentMethod = paymentData.paymentMethod || 'unknown';
     const paymentId = paymentData.paymentId || paymentData.payment_id || null;
 
-    console.log("Processing subscription for:", { userId, planId, paymentMethod, paymentId });
+    // Parse payment status from details
+    const rawStatus = paymentData?.details?.status;
+    const paymentStatus = typeof rawStatus === 'string' ? rawStatus.toUpperCase() : '';
+    console.log("Processing subscription for:", { userId, planId, paymentMethod, paymentId, paymentStatus });
+
+    // Only continue if payment was captured/paid
+    if (!['CAPTURED', 'PAID'].includes(paymentStatus)) {
+      console.error('Payment status not CAPTURED or PAID:', paymentStatus);
+      return new Response(
+        JSON.stringify({
+          error: 'Payment not completed',
+          status: paymentStatus || 'UNKNOWN'
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
     // Get plan details
     console.log("Fetching plan details...");
