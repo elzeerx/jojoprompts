@@ -1,29 +1,21 @@
+
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from "@/components/ui/sonner"
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import LandingPage from './pages/LandingPage';
+import HomePage from './pages/HomePage';
 import PricingPage from './pages/PricingPage';
-import DashboardPage from './pages/DashboardPage';
+import UserDashboardPage from './pages/UserDashboardPage';
 import PromptsPage from './pages/PromptsPage';
-import AccountSettingsPage from './pages/AccountSettingsPage';
-import ContactPage from './pages/ContactPage';
 import CheckoutPage from './pages/CheckoutPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentFailedPage from './pages/PaymentFailedPage';
 import PaymentHistoryPage from './pages/PaymentHistoryPage';
+import ContactPage from './pages/ContactPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminPromptsPage from './pages/admin/AdminPromptsPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
-import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
-import CreatePromptPage from './pages/admin/CreatePromptPage';
-import EditPromptPage from './pages/admin/EditPromptPage';
-import CategoryDetailsPage from './pages/admin/CategoryDetailsPage';
-import DiscountCodesPage from './pages/admin/DiscountCodesPage';
-import DiscountCodeDetailsPage from './pages/admin/DiscountCodeDetailsPage';
+import PromptsManagement from './pages/admin/PromptsManagement';
 import PaymentHandler from "./pages/PaymentHandler";
 
 const queryClient = new QueryClient();
@@ -35,7 +27,7 @@ function App() {
         <Toaster />
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<HomePage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/prompts" element={<PromptsPage />} />
@@ -44,15 +36,7 @@ function App() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/account-settings"
-              element={
-                <ProtectedRoute>
-                  <AccountSettingsPage />
+                  <UserDashboardPage />
                 </ProtectedRoute>
               }
             />
@@ -78,71 +62,7 @@ function App() {
               path="/admin/prompts"
               element={
                 <AdminRoute>
-                  <AdminPromptsPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/prompts/create"
-              element={
-                <AdminRoute>
-                  <CreatePromptPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/prompts/:id/edit"
-              element={
-                <AdminRoute>
-                  <EditPromptPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <AdminRoute>
-                  <AdminUsersPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/categories"
-              element={
-                <AdminRoute>
-                  <AdminCategoriesPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/categories/:id"
-              element={
-                <AdminRoute>
-                  <CategoryDetailsPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/payments"
-              element={
-                <AdminRoute>
-                  <AdminPaymentsPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/discount-codes"
-              element={
-                <AdminRoute>
-                  <DiscountCodesPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/discount-codes/:id"
-              element={
-                <AdminRoute>
-                  <DiscountCodeDetailsPage />
+                  <PromptsManagement />
                 </AdminRoute>
               }
             />
@@ -169,9 +89,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAdmin, isLoading } = useAuth();
+  const { isAdmin, loading } = useAuth();
 
-  if (isLoading) {
+  if (loading) {
     return <div>Loading...</div>;
   }
 
