@@ -23,6 +23,7 @@ export default function PromptsPage() {
 
   if (!authLoading && !session) {
     navigate("/pricing");
+    return null;
   }
 
   return (

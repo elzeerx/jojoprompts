@@ -10,7 +10,7 @@ import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import PricingPage from './pages/PricingPage';
 import UserDashboardPage from './pages/UserDashboardPage';
-import PromptsPage from './pages/PromptsPage';
+import PromptsPage from './pages/prompts/PromptsPage';
 import FavoritesPage from './pages/FavoritesPage';
 import LoginPage from './pages/LoginPage';
 import CheckoutPage from './pages/CheckoutPage';
