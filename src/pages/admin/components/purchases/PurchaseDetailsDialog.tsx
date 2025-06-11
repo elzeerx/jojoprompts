@@ -8,16 +8,13 @@ interface Payment {
   id: string;
   user_id: string;
   amount_usd: number;
-  amount_kwd: number;
   payment_method: string;
   payment_id: string | null;
   status: string;
   created_at: string;
   discount_code_id: string | null;
   discount_amount_usd: number | null;
-  discount_amount_kwd: number | null;
   original_amount_usd: number | null;
-  original_amount_kwd: number | null;
   subscription?: {
     plan_name: string;
   };
@@ -120,27 +117,18 @@ export function PurchaseDetailsDialog({ payment, open, onClose }: PurchaseDetail
                 <>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Original Amount:</span>
-                    <div className="text-right">
-                      <div>${payment.original_amount_usd}</div>
-                      <div className="text-sm text-muted-foreground">{payment.original_amount_kwd} KWD</div>
-                    </div>
+                    <div className="font-medium">${payment.original_amount_usd}</div>
                   </div>
                   <div className="flex justify-between text-green-600">
                     <span>Discount ({payment.discount_code?.code}):</span>
-                    <div className="text-right">
-                      <div>-${payment.discount_amount_usd}</div>
-                      <div className="text-sm">-{payment.discount_amount_kwd} KWD</div>
-                    </div>
+                    <div>-${payment.discount_amount_usd}</div>
                   </div>
                   <Separator />
                 </>
               ) : null}
               <div className="flex justify-between font-semibold text-lg">
                 <span>Final Amount:</span>
-                <div className="text-right">
-                  <div>${payment.amount_usd}</div>
-                  <div className="text-sm text-muted-foreground">{payment.amount_kwd} KWD</div>
-                </div>
+                <div>${payment.amount_usd}</div>
               </div>
             </CardContent>
           </Card>
