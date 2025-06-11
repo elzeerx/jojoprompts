@@ -229,14 +229,11 @@ export type Database = {
       }
       payment_history: {
         Row: {
-          amount_kwd: number
           amount_usd: number
           created_at: string | null
-          discount_amount_kwd: number | null
           discount_amount_usd: number | null
           discount_code_id: string | null
           id: string
-          original_amount_kwd: number | null
           original_amount_usd: number | null
           payment_id: string | null
           payment_method: string
@@ -245,14 +242,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          amount_kwd: number
           amount_usd: number
           created_at?: string | null
-          discount_amount_kwd?: number | null
           discount_amount_usd?: number | null
           discount_code_id?: string | null
           id?: string
-          original_amount_kwd?: number | null
           original_amount_usd?: number | null
           payment_id?: string | null
           payment_method: string
@@ -261,14 +255,11 @@ export type Database = {
           user_id: string
         }
         Update: {
-          amount_kwd?: number
           amount_usd?: number
           created_at?: string | null
-          discount_amount_kwd?: number | null
           discount_amount_usd?: number | null
           discount_code_id?: string | null
           id?: string
-          original_amount_kwd?: number | null
           original_amount_usd?: number | null
           payment_id?: string | null
           payment_method?: string
@@ -430,7 +421,6 @@ export type Database = {
           id: string
           is_lifetime: boolean
           name: string
-          price_kwd: number
           price_usd: number
         }
         Insert: {
@@ -442,7 +432,6 @@ export type Database = {
           id?: string
           is_lifetime?: boolean
           name: string
-          price_kwd: number
           price_usd: number
         }
         Update: {
@@ -454,7 +443,6 @@ export type Database = {
           id?: string
           is_lifetime?: boolean
           name?: string
-          price_kwd?: number
           price_usd?: number
         }
         Relationships: []

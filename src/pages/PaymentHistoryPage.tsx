@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +12,6 @@ interface PaymentRecord {
   id: string;
   payment_id: string;
   amount_usd: number;
-  amount_kwd: number;
   status: string;
   payment_method: string;
   created_at: string;
@@ -166,11 +164,6 @@ export default function PaymentHistoryPage() {
                     <p className="text-sm text-gray-600">Amount</p>
                     <p className="font-semibold">
                       ${payment.amount_usd.toFixed(2)} USD
-                      {payment.amount_kwd > 0 && (
-                        <span className="text-sm text-gray-500 ml-2">
-                          ({payment.amount_kwd.toFixed(3)} KWD)
-                        </span>
-                      )}
                     </p>
                   </div>
                   <div>

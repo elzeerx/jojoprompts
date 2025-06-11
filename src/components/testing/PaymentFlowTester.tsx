@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,6 @@ interface TestPlan {
   id: string;
   name: string;
   price_usd: number;
-  price_kwd: number;
   is_lifetime: boolean;
 }
 
@@ -31,7 +29,7 @@ export function PaymentFlowTester() {
       setLoadingPlans(true);
       const { data, error } = await supabase
         .from('subscription_plans')
-        .select('id, name, price_usd, price_kwd, is_lifetime')
+        .select('id, name, price_usd, is_lifetime')
         .order('price_usd', { ascending: true });
 
       if (error) throw error;
@@ -85,7 +83,6 @@ export function PaymentFlowTester() {
         .insert({
           user_id: user.id,
           amount_usd: selectedPlan.price_usd,
-          amount_kwd: selectedPlan.price_kwd,
           status: 'completed',
           payment_method: 'test_payment'
         });
@@ -212,7 +209,7 @@ export function PaymentFlowTester() {
                         )}
                       </div>
                       <div className="text-sm text-gray-600 mb-3">
-                        ${plan.price_usd} USD ({plan.price_kwd} KWD)
+                        ${plan.price_usd} USD
                       </div>
                       <Button
                         onClick={() => testPaymentFlow(plan.id)}

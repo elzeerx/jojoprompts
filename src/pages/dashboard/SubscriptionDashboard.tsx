@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +19,6 @@ interface Subscription {
     id: string;
     name: string;
     price_usd: number;
-    price_kwd: number;
     is_lifetime: boolean;
   };
 }
@@ -29,7 +27,6 @@ interface Payment {
   id: string;
   created_at: string;
   amount_usd: number;
-  amount_kwd: number;
   payment_method: string;
   status: string;
 }
@@ -67,7 +64,6 @@ export default function SubscriptionDashboard() {
               id,
               name,
               price_usd,
-              price_kwd,
               is_lifetime
             )
           `)
@@ -216,7 +212,7 @@ export default function SubscriptionDashboard() {
                   
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Price Paid</span>
-                    <span>${activeSubscription.plan.price_usd} (or {activeSubscription.plan.price_kwd} KWD)</span>
+                    <span>${activeSubscription.plan.price_usd} USD</span>
                   </div>
                   
                   {isExpiringSoon && (
@@ -287,7 +283,7 @@ export default function SubscriptionDashboard() {
                         </div>
                         <div className="text-right">
                           <p className="font-medium">
-                            ${payment.amount_usd} / {payment.amount_kwd} KWD
+                            ${payment.amount_usd} USD
                           </p>
                           <p className="text-sm capitalize text-muted-foreground">
                             {payment.payment_method}
