@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -153,7 +152,8 @@ export function useUserManagement() {
       const { error: opError } = await operation;
       if (opError) throw opError;
       
-      // Add to payment history
+      // Add to payment history with default KWD amount (convert USD to KWD if needed)
+      const kwdAmount = planData.price_usd * 0.3; // Approximate conversion rate, should be configurable
       await supabase
         .from('payment_history')
         .insert({
@@ -161,7 +161,7 @@ export function useUserManagement() {
           payment_method: 'admin_assigned',
           status: 'completed',
           amount_usd: planData.price_usd,
-          amount_kwd: planData.price_kwd
+          amount_kwd: kwdAmount
         });
       
       toast({

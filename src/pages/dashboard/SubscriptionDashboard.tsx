@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +19,6 @@ interface Subscription {
     id: string;
     name: string;
     price_usd: number;
-    price_kwd: number;
     is_lifetime: boolean;
   };
 }
@@ -67,7 +65,6 @@ export default function SubscriptionDashboard() {
               id,
               name,
               price_usd,
-              price_kwd,
               is_lifetime
             )
           `)
@@ -85,16 +82,22 @@ export default function SubscriptionDashboard() {
           setActiveSubscription(subData as any);
         }
         
-        // Fetch payment history
+        // Fetch payment history - ensure we get amount_kwd with a default value
         const { data: paymentData, error: paymentError } = await supabase
           .from('payment_history')
-          .select('*')
+          .select('id, created_at, amount_usd, amount_kwd, payment_method, status')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
         
         if (paymentError) throw paymentError;
         
-        setPayments(paymentData || []);
+        // Ensure amount_kwd has a default value if missing
+        const paymentsWithKwd = (paymentData || []).map(payment => ({
+          ...payment,
+          amount_kwd: payment.amount_kwd || 0
+        }));
+        
+        setPayments(paymentsWithKwd);
       } catch (err: any) {
         console.error('Error fetching subscription data:', err);
         setError(err.message || 'Failed to load subscription data');
@@ -216,7 +219,7 @@ export default function SubscriptionDashboard() {
                   
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Price Paid</span>
-                    <span>${activeSubscription.plan.price_usd} (or {activeSubscription.plan.price_kwd} KWD)</span>
+                    <span>${activeSubscription.plan.price_usd}</span>
                   </div>
                   
                   {isExpiringSoon && (
@@ -287,7 +290,7 @@ export default function SubscriptionDashboard() {
                         </div>
                         <div className="text-right">
                           <p className="font-medium">
-                            ${payment.amount_usd} / {payment.amount_kwd} KWD
+                            ${payment.amount_usd} {payment.amount_kwd > 0 && `/ ${payment.amount_kwd} KWD`}
                           </p>
                           <p className="text-sm capitalize text-muted-foreground">
                             {payment.payment_method}

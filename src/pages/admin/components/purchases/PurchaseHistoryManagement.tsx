@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -99,6 +98,10 @@ export default function PurchaseHistoryManagement() {
 
       const enrichedPayments = data?.map(payment => ({
         ...payment,
+        // Ensure KWD amounts have default values if missing
+        amount_kwd: payment.amount_kwd || 0,
+        discount_amount_kwd: payment.discount_amount_kwd || 0,
+        original_amount_kwd: payment.original_amount_kwd || 0,
         user_email: userEmailMap.get(payment.user_id) || 'Unknown',
         subscription: {
           plan_name: payment.user_subscriptions?.subscription_plans?.name || 'Unknown Plan'
