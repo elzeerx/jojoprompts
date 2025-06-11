@@ -1,11 +1,82 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { createHmac } from "https://deno.land/std@0.177.0/crypto/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, hashstring',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+// Rate limiting storage
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+// Input validation utilities
+function validateWebhookPayload(payload: any): boolean {
+  if (!payload || typeof payload !== 'object') return false;
+  if (!payload.id || typeof payload.id !== 'string') return false;
+  if (!payload.status || typeof payload.status !== 'string') return false;
+  return true;
+}
+
+function sanitizePayload(payload: any): any {
+  // Remove any potentially harmful properties and ensure basic structure
+  return {
+    id: String(payload.id || '').slice(0, 100),
+    status: String(payload.status || '').slice(0, 50),
+    amount: payload.amount ? Number(payload.amount) : null,
+    currency: String(payload.currency || '').slice(0, 10),
+    metadata: payload.metadata && typeof payload.metadata === 'object' ? payload.metadata : {},
+    created: payload.created ? String(payload.created).slice(0, 50) : null
+  };
+}
+
+// Rate limiting function
+function isRateLimited(identifier: string, maxRequests = 10, windowMs = 60000): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(identifier);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs });
+    return false;
+  }
+  
+  if (record.count >= maxRequests) {
+    return true;
+  }
+  
+  record.count++;
+  return false;
+}
+
+// Verify webhook signature
+async function verifyWebhookSignature(payload: string, signature: string, secret: string): Promise<boolean> {
+  try {
+    // Remove 'sha256=' prefix if present
+    const cleanSignature = signature.replace('sha256=', '');
+    
+    // Create expected signature
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(payload);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    return expectedSignature === cleanSignature;
+  } catch (error) {
+    console.error('Signature verification error:', error);
+    return false;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -20,11 +91,23 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const tapWebhookSecret = Deno.env.get('TAP_WEBHOOK_SECRET')!
     
+    if (!tapWebhookSecret) {
+      console.error('TAP_WEBHOOK_SECRET not configured')
+      return new Response('Configuration error', { status: 500, headers: corsHeaders })
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
+    // Rate limiting check
+    const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    if (isRateLimited(clientIp, 20, 60000)) { // 20 requests per minute
+      console.warn('Rate limit exceeded for IP:', clientIp);
+      return new Response('Rate limit exceeded', { status: 429, headers: corsHeaders });
+    }
+    
     // Get the webhook payload
-    const payload = await req.json()
-    console.log('Webhook payload received:', JSON.stringify(payload, null, 2))
+    const payloadText = await req.text()
+    console.log('Raw webhook payload:', payloadText)
     
     // Verify webhook signature
     const hashstring = req.headers.get('hashstring')
@@ -33,33 +116,47 @@ Deno.serve(async (req) => {
       return new Response('Missing signature', { status: 400, headers: corsHeaders })
     }
     
-    // Create HMAC hash of the payload
-    const payloadString = JSON.stringify(payload)
-    const expectedHash = await createHmac('sha256', tapWebhookSecret).update(payloadString).digest('hex')
-    const providedHash = hashstring.replace('sha256=', '')
-    
-    if (expectedHash !== providedHash) {
+    const isValidSignature = await verifyWebhookSignature(payloadText, hashstring, tapWebhookSecret);
+    if (!isValidSignature) {
       console.error('Invalid webhook signature')
       return new Response('Invalid signature', { status: 401, headers: corsHeaders })
     }
     
     console.log('Webhook signature verified successfully')
     
+    // Parse and validate payload
+    let payload;
+    try {
+      payload = JSON.parse(payloadText);
+    } catch (error) {
+      console.error('Invalid JSON payload:', error);
+      return new Response('Invalid JSON', { status: 400, headers: corsHeaders });
+    }
+    
+    if (!validateWebhookPayload(payload)) {
+      console.error('Invalid payload structure:', payload);
+      return new Response('Invalid payload', { status: 400, headers: corsHeaders });
+    }
+    
+    // Sanitize payload
+    const sanitizedPayload = sanitizePayload(payload);
+    console.log('Sanitized webhook payload:', JSON.stringify(sanitizedPayload, null, 2))
+    
     // Extract charge information
-    const chargeId = payload.id
-    const status = payload.status
-    const userId = payload.metadata?.user_id
+    const chargeId = sanitizedPayload.id
+    const status = sanitizedPayload.status
+    const userId = sanitizedPayload.metadata?.user_id
     
     console.log('Processing webhook:', { chargeId, status, userId })
     
-    // Log webhook event to payments_log table
+    // Log webhook event to payments_log table with sanitized payload
     const { error: logError } = await supabase
       .from('payments_log')
       .insert({
         user_id: userId,
         tap_charge: chargeId,
         status: status,
-        payload: payload
+        payload: sanitizedPayload
       })
     
     if (logError) {
