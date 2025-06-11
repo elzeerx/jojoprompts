@@ -40,8 +40,6 @@ export function TapPaymentButton({
         description: "Redirecting to Tap Payment Gateway...",
       });
 
-      console.log('TapPaymentButton: Creating Tap payment for:', { planId, userId, amount });
-
       // Create payment charge through Tap API
       const { data: paymentData, error } = await supabase.functions.invoke('create-tap-payment', {
         body: { 
@@ -53,7 +51,7 @@ export function TapPaymentButton({
       });
 
       if (error) {
-        console.error('TapPaymentButton: Payment creation error:', error);
+        console.error('Tap payment creation error:', error);
         throw new Error('Failed to initialize payment');
       }
 
@@ -61,9 +59,9 @@ export function TapPaymentButton({
         throw new Error('No payment data received');
       }
 
-      console.log('TapPaymentButton: Payment response:', paymentData);
+      console.log('Tap payment response:', paymentData);
 
-      // Check for redirect URL in the response
+      // Check for redirect URL in different possible locations
       const redirectUrl = 
         paymentData.transaction?.url || 
         paymentData.redirect?.url || 
@@ -71,8 +69,7 @@ export function TapPaymentButton({
         paymentData.redirect_url;
 
       if (redirectUrl) {
-        console.log('TapPaymentButton: Redirecting to Tap payment page:', redirectUrl);
-        
+        console.log('Redirecting to Tap payment page:', redirectUrl);
         // Store payment info for verification later
         localStorage.setItem('pending_payment', JSON.stringify({
           planId,
@@ -85,8 +82,9 @@ export function TapPaymentButton({
         // Redirect to Tap payment page
         window.location.href = redirectUrl;
       } else {
-        console.error('TapPaymentButton: No redirect URL found in response:', paymentData);
+        console.error('No redirect URL found in response:', paymentData);
         
+        // If no redirect URL but payment was created, show error
         if (paymentData.id) {
           throw new Error('Payment was created but no redirect URL provided. Please contact support.');
         } else {
@@ -95,7 +93,7 @@ export function TapPaymentButton({
       }
 
     } catch (error: any) {
-      console.error('TapPaymentButton: Payment initialization error:', error);
+      console.error('Payment initialization error:', error);
       
       let errorMessage = 'Failed to initialize payment. Please try again.';
       if (error.message?.includes('network')) {

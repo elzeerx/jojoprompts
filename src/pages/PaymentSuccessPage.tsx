@@ -12,8 +12,8 @@ export default function PaymentSuccessPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [processing, setProcessing] = useState(true);
-  const [success, setSuccess] = useState(false);
+  const [verifying, setVerifying] = useState(true);
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
@@ -24,77 +24,159 @@ export default function PaymentSuccessPage() {
       fullUrl: window.location.href
     });
 
-    const validateSubscription = async () => {
+    const verifyPayment = async () => {
       try {
+        // Extract all possible parameters from URL
+        const planId = searchParams.get('planId');
+        const userId = searchParams.get('userId');
         const tapId = searchParams.get('tap_id');
+        const chargeStatus = searchParams.get('status');
+        const responseCode = searchParams.get('response_code');
+        const chargeId = searchParams.get('charge_id');
+        const paymentResult = searchParams.get('payment_result');
         
-        console.log('PaymentSuccessPage: Validating subscription with tap_id:', tapId);
+        console.log('Payment verification - All URL params:', { 
+          planId, 
+          userId, 
+          tapId, 
+          chargeStatus, 
+          responseCode,
+          chargeId,
+          paymentResult,
+          fullUrl: window.location.href,
+          searchString: window.location.search
+        });
 
-        if (!tapId) {
-          console.error('PaymentSuccessPage: Missing tap_id parameter');
-          throw new Error('Missing payment information');
-        }
-
-        // Check if subscription exists with this tap_charge
-        const { data: subscription, error: subError } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('tap_charge', tapId)
-          .eq('status', 'active')
-          .single();
-
-        if (subError || !subscription) {
-          console.error('PaymentSuccessPage: Subscription not found:', subError);
-          throw new Error('Subscription not found - please contact support if payment was successful');
-        }
-
-        console.log('PaymentSuccessPage: Subscription found:', subscription);
-
-        // Verify user matches if user is logged in
-        if (user && subscription.user_id !== user.id) {
-          console.error('PaymentSuccessPage: User ID mismatch');
-          throw new Error('Invalid subscription session');
-        }
-
-        // Check if subscription is still active and valid
-        const currentPeriodEnd = new Date(subscription.current_period_end);
-        const now = new Date();
+        // Check for explicit failure indicators first
+        const explicitFailures = ['DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED', 'EXPIRED', 'REJECTED', 'VOIDED', 'ERROR', 'TIMEOUT'];
+        const failureResponseCodes = ['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '201', '202', '203', '204', '205', '206', '207', '208', '209', '210'];
         
-        if (currentPeriodEnd <= now) {
-          console.error('PaymentSuccessPage: Subscription has expired');
-          throw new Error('Subscription has expired');
+        const isExplicitFailure = (chargeStatus && explicitFailures.includes(chargeStatus.toUpperCase())) ||
+                                 (responseCode && failureResponseCodes.includes(responseCode)) ||
+                                 paymentResult === 'failed' || paymentResult === 'error';
+
+        if (isExplicitFailure) {
+          console.log('Payment failed - redirecting to failure page:', { chargeStatus, responseCode, paymentResult });
+          const reason = chargeStatus ? `Payment ${chargeStatus.toLowerCase()}` : 
+                        responseCode ? `Payment declined (Code: ${responseCode})` : 
+                        'Payment was not completed successfully';
+          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          return;
         }
 
-        setSuccess(true);
-        setProcessing(false);
+        // Check if we have the required payment parameters
+        if (!planId || !userId) {
+          console.error('Missing required payment parameters:', { planId, userId });
+          setError('Missing payment information');
+          setTimeout(() => {
+            const reason = 'Missing payment information';
+            navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
+          }, 3000);
+          return;
+        }
 
-        console.log('PaymentSuccessPage: Subscription validation completed successfully');
+        // Only verify user ID if user is authenticated
+        if (user && userId !== user.id) {
+          console.error('User ID mismatch - URL user:', userId, 'Auth user:', user.id);
+          setError('Invalid payment session');
+          setTimeout(() => {
+            const reason = 'Invalid payment session';
+            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          }, 3000);
+          return;
+        }
+
+        // If user is not authenticated, we'll still try to process the payment
+        if (!user) {
+          console.log('User not authenticated, attempting payment verification without user session');
+        }
+
+        // Get pending payment info from localStorage for fallback data
+        const pendingPaymentStr = localStorage.getItem('pending_payment');
+        const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
+
+        // Assume success if we reach here (no explicit failure indicators)
+        console.log('Proceeding with subscription creation - no failure indicators detected');
+
+        const paymentData = {
+          paymentId: tapId || chargeId || pendingPayment?.paymentId || `tap_${Date.now()}`,
+          paymentMethod: 'tap',
+          details: {
+            id: tapId || chargeId || pendingPayment?.paymentId,
+            status: chargeStatus || 'completed',
+            amount: pendingPayment?.amount,
+            response_code: responseCode,
+            payment_result: paymentResult
+          }
+        };
+
+        console.log('Creating subscription with payment data:', paymentData);
+
+        const { data, error } = await supabase.functions.invoke("create-subscription", {
+          body: {
+            planId,
+            userId,
+            paymentData
+          }
+        });
+
+        if (error) {
+          console.error('Subscription creation error:', error);
+          setError('Subscription setup failed');
+          toast({
+            title: "Subscription Error",
+            description: "Payment was successful but subscription setup failed. Please contact support.",
+            variant: "destructive",
+          });
+          setTimeout(() => {
+            const reason = 'Subscription setup failed';
+            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          }, 3000);
+          return;
+        }
+
+        if (!data || !data.success) {
+          console.error('Subscription creation unsuccessful:', data);
+          setError('Subscription activation failed');
+          setTimeout(() => {
+            const reason = 'Subscription activation failed';
+            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+          }, 3000);
+          return;
+        }
+
+        // Clear pending payment
+        localStorage.removeItem('pending_payment');
+        
+        setVerified(true);
+        setVerifying(false);
 
         toast({
           title: "Payment Successful!",
           description: "Your subscription has been activated successfully.",
         });
 
-      } catch (error: any) {
-        console.error('PaymentSuccessPage: Validation error:', error);
-        
-        const errorMessage = error.message || 'Subscription validation failed';
-        setError(errorMessage);
-        setProcessing(false);
+      } catch (error) {
+        console.error('Payment verification error:', error);
+        setError('Payment verification failed');
+        setTimeout(() => {
+          const planId = searchParams.get('planId');
+          const reason = 'Payment verification failed';
+          navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
+        }, 3000);
       }
     };
 
-    validateSubscription();
+    verifyPayment();
     
   }, [user, navigate, searchParams]);
 
-  if (processing) {
+  if (verifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-lg font-medium">Validating your subscription...</p>
-          <p className="text-sm text-gray-500 mt-2">Please wait while we confirm your access...</p>
+          <p>Verifying your payment...</p>
         </div>
       </div>
     );
@@ -102,11 +184,12 @@ export default function PaymentSuccessPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Subscription Validation Failed</h2>
+          <h2 className="text-xl font-semibold mb-2">Payment Processing Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-sm text-gray-500 mb-4">Redirecting to payment failed page...</p>
           <div className="space-y-2">
             <Button className="w-full" asChild>
               <Link to="/pricing">Back to Pricing</Link>
@@ -120,13 +203,13 @@ export default function PaymentSuccessPage() {
     );
   }
 
-  if (!success) {
+  if (!verified) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center max-w-md mx-auto p-6">
           <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Subscription Not Found</h2>
-          <p className="text-gray-600 mb-4">We couldn't find your subscription.</p>
+          <h2 className="text-xl font-semibold mb-2">Payment Verification</h2>
+          <p className="text-gray-600 mb-4">We're having trouble verifying your payment. Please wait...</p>
           <div className="space-y-2">
             <Button className="w-full" asChild>
               <Link to="/pricing">Back to Pricing</Link>
@@ -141,8 +224,18 @@ export default function PaymentSuccessPage() {
   }
   
   return (
-    <div className="mobile-container-padding mobile-section-padding">
-      <div className="max-w-lg mx-auto">
+    <div className="mobile-container-padding mobile-section-padding relative">
+      {/* Enhanced mobile background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-10 right-10 text-warm-gold/20 animate-pulse">
+          <Sparkles className="h-8 w-8" />
+        </div>
+        <div className="absolute bottom-10 left-10 text-muted-teal/20 animate-pulse delay-1000">
+          <Sparkles className="h-6 w-6" />
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto relative z-10">
         <Card className="border-2 border-green-200 shadow-xl bg-white/95 backdrop-blur-sm rounded-2xl overflow-hidden">
           <CardHeader className="text-center pb-4 bg-gradient-to-r from-green-50 to-warm-gold/5">
             <div className="flex justify-center mb-4">
@@ -167,7 +260,7 @@ export default function PaymentSuccessPage() {
             
             <div className="border-t pt-4 sm:pt-6">
               <p className="text-sm sm:text-base text-muted-foreground">
-                You can now start using all the features included in your subscription plan.
+                We've sent you a confirmation email with your receipt and access details.
               </p>
             </div>
           </CardContent>

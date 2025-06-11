@@ -22,8 +22,7 @@ export default function PromptsPage() {
   }, []);
 
   if (!authLoading && !session) {
-    navigate("/pricing");
-    return null;
+    navigate("/login");
   }
 
   return (

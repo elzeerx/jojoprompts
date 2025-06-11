@@ -9,6 +9,7 @@ interface PlanCardProps {
     name: string;
     description: string;
     price_usd: number;
+    price_kwd: number;
     features: string[];
     excluded_features: string[];
     is_lifetime: boolean;
@@ -18,14 +19,7 @@ interface PlanCardProps {
 }
 
 export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
-  const { name, description, price_usd, features, excluded_features, is_lifetime } = plan;
-  
-  const handleButtonClick = (e: React.MouseEvent) => {
-    console.log("[PLAN_CARD] Button clicked for plan:", plan.id);
-    e.preventDefault();
-    e.stopPropagation();
-    onSelect();
-  };
+  const { name, description, price_usd, price_kwd, features, excluded_features, is_lifetime } = plan;
   
   return (
     <Card className={`flex flex-col h-full transition-all ${
@@ -38,7 +32,7 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           <h3 className="text-xl font-bold">{name}</h3>
           <div className="mt-2 flex items-baseline justify-center">
             <span className="text-3xl font-bold text-warm-gold">${price_usd}</span>
-            <span className="ml-1 text-sm text-gray-500">USD</span>
+            <span className="ml-1 text-sm text-gray-500">({price_kwd} KWD)</span>
           </div>
           <div className="mt-1">
             {is_lifetime ? (
@@ -71,8 +65,7 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
       
       <CardFooter className="pt-4 px-4 py-4">
         <Button
-          type="button"
-          onClick={handleButtonClick}
+          onClick={onSelect}
           className="w-full"
           variant={isSelected ? "default" : "outline"}
         >

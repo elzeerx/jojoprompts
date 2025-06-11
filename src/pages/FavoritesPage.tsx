@@ -1,50 +1,192 @@
-
-import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Heart, Plus } from "lucide-react";
-import { Link } from "react-router-dom";
+import { PromptCard } from "@/components/ui/prompt-card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, Heart } from "lucide-react";
+import { useState, useEffect } from "react";
+import { type Prompt } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 export default function FavoritesPage() {
-  const { user } = useAuth();
+  const [selectedFavoritePrompts, setSelectedFavoritePrompts] = useState<string[]>([]);
+  const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
 
-  if (!user) {
-    return <Navigate to="/pricing" replace />;
-  }
+  useEffect(() => {
+    let mounted = true;
+
+    const loadFavoritePrompts = async () => {
+      if (authLoading || !user) return;
+
+      setIsLoadingFavorites(true);
+      setLoadError(null);
+
+      try {
+        const { data, error } = await supabase
+          .from("favorites")
+          .select("prompt:prompts(*)")
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+        if (!mounted) return;
+
+        const transformedPrompts = data?.map(item => {
+          const promptData = item.prompt as any;
+          return {
+            id: promptData.id,
+            user_id: promptData.user_id,
+            title: promptData.title,
+            prompt_text: promptData.prompt_text,
+            image_path: promptData.image_path,
+            created_at: promptData.created_at || "",
+            metadata: {
+              category: promptData.metadata?.category || undefined,
+              style: promptData.metadata?.style || undefined,
+              tags: Array.isArray(promptData.metadata?.tags) ? promptData.metadata?.tags : []
+            }
+          } as Prompt;
+        }) || [];
+
+        setFavoritePrompts(transformedPrompts);
+      } catch (error: any) {
+        console.error("Error loading favorites:", error);
+        if (mounted) {
+          setLoadError("Failed to load favorite prompts");
+          toast({
+            title: "Error",
+            description: "Failed to load your favorite prompts. Please try again later.",
+            variant: "destructive"
+          });
+        }
+      } finally {
+        if (mounted) {
+          setIsLoadingFavorites(false);
+        }
+      }
+    };
+
+    loadFavoritePrompts();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user, authLoading]);
+
+  const handleSelectFavorite = (promptId: string) => {
+    setSelectedFavoritePrompts(prev =>
+      prev.includes(promptId)
+        ? prev.filter(id => id !== promptId)
+        : [...prev, promptId]
+    );
+  };
+
+  const renderFavoritesContent = () => {
+    if (authLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-muted-foreground mb-2">Checking authentication...</p>
+          <div className="h-1 w-48 sm:w-64 bg-secondary overflow-hidden rounded-full">
+            <div className="h-full bg-primary animate-pulse rounded-full"></div>
+          </div>
+        </div>
+      );
+    }
+
+    if (isLoadingFavorites) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-muted-foreground mb-2">Loading your favorite prompts...</p>
+          <div className="h-1 w-48 sm:w-64 bg-secondary overflow-hidden rounded-full">
+            <div className="h-full bg-primary animate-pulse rounded-full"></div>
+          </div>
+        </div>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-destructive mb-4">{loadError}</p>
+          <Button
+            variant="outline"
+            onClick={() => window.location.reload()}
+            className="mobile-button-secondary"
+          >
+            Retry
+          </Button>
+        </div>
+      );
+    }
+
+    if (favoritePrompts.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="rounded-full bg-primary/10 p-3 mb-4">
+            <Heart className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="text-lg font-semibold mb-1">No favorite prompts yet</h3>
+          <p className="text-muted-foreground mb-4 max-w-md text-sm sm:text-base px-4">
+            You haven't added any prompts to your favorites. Browse and save the ones you like!
+          </p>
+          <Button asChild className="mobile-button-primary">
+            <a href="/prompts">Browse Prompts</a>
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mobile-grid gap-4 sm:gap-6">
+        {favoritePrompts.map((prompt) => (
+          <PromptCard
+            key={prompt.id}
+            prompt={prompt}
+            isSelectable={true}
+            isSelected={selectedFavoritePrompts.includes(prompt.id)}
+            onSelect={handleSelectFavorite}
+            initiallyFavorited={true}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-soft-bg mobile-container-padding mobile-section-padding">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="rounded-full bg-warm-gold/10 p-3">
-              <Heart className="h-8 w-8 text-warm-gold" />
-            </div>
-          </div>
-          <h1 className="section-title mb-4 text-dark-base">Your Favorites</h1>
-          <p className="section-subtitle">
-            Save and organize your favorite AI prompts for quick access
+    <div className="mobile-container-padding mobile-section-padding">
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-dark-base">My Favorites</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Manage your favorite prompts
           </p>
         </div>
 
-        <Card className="border-2 border-dashed border-warm-gold/30 bg-warm-gold/5">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl text-dark-base">No Favorites Yet</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">
-              Start browsing our prompt collection and save your favorites for easy access later.
-            </p>
-            <Button asChild className="bg-warm-gold hover:bg-warm-gold/90">
-              <Link to="/prompts" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Browse Prompts
-              </Link>
+        {selectedFavoritePrompts.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => setSelectedFavoritePrompts([])}
+              className="mobile-button-ghost text-xs sm:text-sm"
+            >
+              Clear ({selectedFavoritePrompts.length})
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        )}
       </div>
+
+      <Tabs defaultValue="favorites">
+        <TabsList className="mb-4 sm:mb-6 mobile-tabs">
+          <TabsTrigger value="favorites" className="mobile-tab touch-target">Favorites</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="favorites">
+          {renderFavoritesContent()}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

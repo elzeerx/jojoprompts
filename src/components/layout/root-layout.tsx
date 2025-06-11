@@ -2,6 +2,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { Header } from "./header";
 import { Footer } from "./footer";
+import { useAuth } from "@/contexts/AuthContext";
 import { FloatingAddPromptButton } from "../ui/FloatingAddPromptButton";
 
 export function RootLayout() {

@@ -1,96 +1,83 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Users, CreditCard, TrendingUp } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Percent } from "lucide-react";
 
-interface PaymentRecord {
-  id: string;
-  user_id: string;
+interface Payment {
   amount_usd: number;
-  payment_method: string;
-  payment_id: string | null;
+  amount_kwd: number;
   status: string;
-  created_at: string;
-  discount_code_id: string | null;
   discount_amount_usd: number | null;
-  original_amount_usd: number | null;
-  subscription?: {
-    plan_name: string;
-  };
-  user_email?: string;
-  discount_code?: {
-    code: string;
-  };
+  discount_amount_kwd: number | null;
+  user_id: string;
 }
 
 interface PurchaseHistoryStatsProps {
-  payments: PaymentRecord[];
+  payments: Payment[];
 }
 
 export function PurchaseHistoryStats({ payments }: PurchaseHistoryStatsProps) {
-  const totalRevenue = payments
-    .filter(p => p.status === 'completed')
-    .reduce((sum, payment) => sum + payment.amount_usd, 0);
-
-  const totalCustomers = new Set(
-    payments
-      .filter(p => p.status === 'completed')
-      .map(p => p.user_id)
-  ).size;
-
-  const successfulPayments = payments.filter(p => p.status === 'completed').length;
-  const totalPayments = payments.length;
-  const successRate = totalPayments > 0 ? (successfulPayments / totalPayments) * 100 : 0;
-
-  const avgOrderValue = successfulPayments > 0 ? totalRevenue / successfulPayments : 0;
-
-  const stats = [
-    {
-      title: "Total Revenue",
-      value: `$${totalRevenue.toFixed(2)}`,
-      icon: DollarSign,
-      description: "From completed payments"
-    },
-    {
-      title: "Total Customers",
-      value: totalCustomers.toString(),
-      icon: Users,
-      description: "Unique paying customers"
-    },
-    {
-      title: "Success Rate",
-      value: `${successRate.toFixed(1)}%`,
-      icon: TrendingUp,
-      description: `${successfulPayments}/${totalPayments} payments`
-    },
-    {
-      title: "Avg Order Value",
-      value: `$${avgOrderValue.toFixed(2)}`,
-      icon: CreditCard,
-      description: "Per successful payment"
-    }
-  ];
+  const completedPayments = payments.filter(p => p.status === 'completed');
+  const totalRevenueUSD = completedPayments.reduce((sum, p) => sum + p.amount_usd, 0);
+  const totalRevenueKWD = completedPayments.reduce((sum, p) => sum + p.amount_kwd, 0);
+  const totalDiscountUSD = completedPayments.reduce((sum, p) => sum + (p.discount_amount_usd || 0), 0);
+  const totalDiscountKWD = completedPayments.reduce((sum, p) => sum + (p.discount_amount_kwd || 0), 0);
+  const uniqueCustomers = new Set(completedPayments.map(p => p.user_id)).size;
+  const paymentsWithDiscount = completedPayments.filter(p => p.discount_amount_usd && p.discount_amount_usd > 0);
+  const discountUsageRate = completedPayments.length > 0 ? (paymentsWithDiscount.length / completedPayments.length) * 100 : 0;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {stats.map((stat, index) => {
-        const Icon = stat.icon;
-        return (
-          <Card key={index} className="border-warm-gold/20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <Icon className="h-4 w-4 text-warm-gold" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-dark-base">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stat.description}
-              </p>
-            </CardContent>
-          </Card>
-        );
-      })}
+      <Card className="border-warm-gold/20">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">${totalRevenueUSD.toLocaleString()}</div>
+          <p className="text-xs text-muted-foreground">
+            {totalRevenueKWD.toLocaleString()} KWD
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-warm-gold/20">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{payments.length}</div>
+          <p className="text-xs text-muted-foreground">
+            {completedPayments.length} completed
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-warm-gold/20">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Unique Customers</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{uniqueCustomers}</div>
+          <p className="text-xs text-muted-foreground">
+            Paying customers
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-warm-gold/20">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Discount Usage</CardTitle>
+          <Percent className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{discountUsageRate.toFixed(1)}%</div>
+          <p className="text-xs text-muted-foreground">
+            ${totalDiscountUSD.toLocaleString()} saved
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

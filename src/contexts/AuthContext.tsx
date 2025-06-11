@@ -151,8 +151,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       
-      debug("Logout successful, navigating to pricing");
-      navigate('/pricing');
+      debug("Logout successful, navigating to login");
+      navigate('/login');
       
       toast({
         title: "Logged out",

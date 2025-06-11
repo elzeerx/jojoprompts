@@ -2,18 +2,22 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface PaymentRecord {
+interface Payment {
   id: string;
   user_id: string;
   amount_usd: number;
+  amount_kwd: number;
   payment_method: string;
   payment_id: string | null;
   status: string;
   created_at: string;
   discount_code_id: string | null;
   discount_amount_usd: number | null;
+  discount_amount_kwd: number | null;
   original_amount_usd: number | null;
+  original_amount_kwd: number | null;
   subscription?: {
     plan_name: string;
   };
@@ -24,164 +28,122 @@ interface PaymentRecord {
 }
 
 interface PurchaseDetailsDialogProps {
-  payment: PaymentRecord | null;
+  payment: Payment | null;
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
 }
 
-export function PurchaseDetailsDialog({ payment, open, onOpenChange }: PurchaseDetailsDialogProps) {
+export function PurchaseDetailsDialog({ payment, open, onClose }: PurchaseDetailsDialogProps) {
   if (!payment) return null;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'failed':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'refunded':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getPaymentMethodColor = (method: string) => {
-    switch (method) {
-      case 'paypal':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'tap':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'stripe':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-      case 'admin_assigned':
-        return 'bg-warm-gold/20 text-warm-gold border-warm-gold/30';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Payment Details</DialogTitle>
+          <DialogTitle>Purchase Details</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Payment Status and Method */}
-          <div className="flex items-center gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Status</label>
-              <div className="mt-1">
-                <Badge className={getStatusColor(payment.status)}>
-                  {payment.status}
-                </Badge>
+          {/* Customer Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Customer Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Email:</span>
+                <span className="font-medium">{payment.user_email}</span>
               </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Payment Method</label>
-              <div className="mt-1">
-                <Badge className={getPaymentMethodColor(payment.payment_method)}>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">User ID:</span>
+                <span className="font-mono text-sm">{payment.user_id}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Payment Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Payment ID:</span>
+                <span className="font-mono text-sm">{payment.payment_id || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Date:</span>
+                <span>{new Date(payment.created_at).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Method:</span>
+                <Badge variant="secondary" className="capitalize">
                   {payment.payment_method}
                 </Badge>
               </div>
-            </div>
-          </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status:</span>
+                <Badge className={
+                  payment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  payment.status === 'failed' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }>
+                  {payment.status}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
 
-          <Separator />
+          {/* Subscription Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Subscription Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Plan:</span>
+                <Badge variant="outline" className="border-warm-gold/30">
+                  {payment.subscription?.plan_name}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Customer Information */}
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Customer Email</label>
-              <p className="mt-1 font-mono text-sm">{payment.user_email || 'Unknown'}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">User ID</label>
-              <p className="mt-1 font-mono text-sm">{payment.user_id}</p>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Plan Information */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">Subscription Plan</label>
-            <p className="mt-1 text-sm">{payment.subscription?.plan_name || 'Unknown Plan'}</p>
-          </div>
-
-          <Separator />
-
-          {/* Payment Amount Details */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Payment Details</h3>
-            
-            {payment.original_amount_usd && payment.original_amount_usd !== payment.amount_usd && (
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Original Amount</label>
-                  <p className="mt-1 font-mono text-sm">${payment.original_amount_usd.toFixed(2)} USD</p>
+          {/* Amount Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Amount Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {payment.original_amount_usd && payment.discount_amount_usd ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Original Amount:</span>
+                    <div className="text-right">
+                      <div>${payment.original_amount_usd}</div>
+                      <div className="text-sm text-muted-foreground">{payment.original_amount_kwd} KWD</div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount ({payment.discount_code?.code}):</span>
+                    <div className="text-right">
+                      <div>-${payment.discount_amount_usd}</div>
+                      <div className="text-sm">-{payment.discount_amount_kwd} KWD</div>
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              ) : null}
+              <div className="flex justify-between font-semibold text-lg">
+                <span>Final Amount:</span>
+                <div className="text-right">
+                  <div>${payment.amount_usd}</div>
+                  <div className="text-sm text-muted-foreground">{payment.amount_kwd} KWD</div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Discount Applied</label>
-                  <p className="mt-1 font-mono text-sm text-green-600">
-                    -${(payment.discount_amount_usd || 0).toFixed(2)} USD
-                  </p>
-                </div>
               </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Final Amount</label>
-                <p className="mt-1 font-mono text-lg font-semibold">${payment.amount_usd.toFixed(2)} USD</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Payment Date</label>
-                <p className="mt-1 font-mono text-sm">
-                  {new Date(payment.created_at).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Discount Information */}
-          {payment.discount_code?.code && (
-            <>
-              <Separator />
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Discount Code Used</label>
-                <p className="mt-1 font-mono text-sm">{payment.discount_code.code}</p>
-              </div>
-            </>
-          )}
-
-          {/* Transaction Details */}
-          {payment.payment_id && (
-            <>
-              <Separator />
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Transaction ID</label>
-                <p className="mt-1 font-mono text-sm break-all">{payment.payment_id}</p>
-              </div>
-            </>
-          )}
-
-          <Separator />
-
-          {/* System Information */}
-          <div className="grid grid-cols-2 gap-6 text-xs text-muted-foreground">
-            <div>
-              <label className="font-medium">Payment ID</label>
-              <p className="mt-1 font-mono break-all">{payment.id}</p>
-            </div>
-            <div>
-              <label className="font-medium">Created At</label>
-              <p className="mt-1 font-mono">{new Date(payment.created_at).toISOString()}</p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </DialogContent>
     </Dialog>

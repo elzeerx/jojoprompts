@@ -36,33 +36,6 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Verify Authorization header and JWT
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      console.error("Missing Authorization header");
-      return new Response(
-        JSON.stringify({ error: "Missing Authorization header" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 401
-        }
-      );
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      console.error("Failed to verify JWT:", authError);
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 401
-        }
-      );
-    }
-
     // Parse the request body
     const requestBody = await req.text();
     console.log("Raw request body:", requestBody);
@@ -84,17 +57,6 @@ serve(async (req: Request) => {
     const { userId, planId, paymentData } = parsedBody;
     console.log("Parsed request data:", { userId, planId, paymentData: paymentData ? "present" : "missing" });
 
-    if (userId !== user.id) {
-      console.error(`User ID mismatch: body ${userId} does not match token ${user.id}`);
-      return new Response(
-        JSON.stringify({ error: "User ID does not match authenticated user" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 403
-        }
-      );
-    }
-
     // Basic validation
     if (!userId || !planId || !paymentData) {
       console.error("Missing required fields:", { userId: !!userId, planId: !!planId, paymentData: !!paymentData });
@@ -111,101 +73,11 @@ serve(async (req: Request) => {
       );
     }
 
-    // CRITICAL: Enhanced payment verification
+    // Extract payment information from standardized data
     const paymentMethod = paymentData.paymentMethod || 'unknown';
     const paymentId = paymentData.paymentId || paymentData.payment_id || null;
-    const rawStatus = paymentData?.details?.status;
-    const paymentStatus = typeof rawStatus === 'string' ? rawStatus.toUpperCase() : '';
-    
-    console.log("CRITICAL: Payment verification starting:", { 
-      userId, 
-      planId, 
-      paymentMethod, 
-      paymentId, 
-      paymentStatus,
-      hasVerifiedAt: !!paymentData?.details?.verified_at 
-    });
 
-    // STRICT payment verification - must be explicitly successful
-    const acceptedStatuses = ['CAPTURED', 'PAID', 'AUTHORIZED'];
-    if (!acceptedStatuses.includes(paymentStatus)) {
-      console.error('CRITICAL: Payment status not acceptable for subscription creation:', {
-        receivedStatus: paymentStatus,
-        acceptedStatuses,
-        paymentData
-      });
-      return new Response(
-        JSON.stringify({
-          error: 'Payment not verified as successful',
-          status: paymentStatus || 'UNKNOWN',
-          details: 'Subscription can only be created for successfully paid transactions'
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-
-    // Additional verification: check if payment was verified recently
-    if (paymentData?.details?.verified_at) {
-      const verifiedAt = new Date(paymentData.details.verified_at);
-      const now = new Date();
-      const timeDiff = now.getTime() - verifiedAt.getTime();
-      const maxAge = 5 * 60 * 1000; // 5 minutes
-      
-      if (timeDiff > maxAge) {
-        console.error('CRITICAL: Payment verification too old:', {
-          verifiedAt: paymentData.details.verified_at,
-          timeDiff,
-          maxAge
-        });
-        return new Response(
-          JSON.stringify({
-            error: 'Payment verification expired',
-            details: 'Payment verification is too old'
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-        );
-      }
-    }
-
-    // Check for existing subscription to prevent duplicates
-    console.log("Checking for existing active subscription...");
-    const { data: existingSubscription, error: existingError } = await supabase
-      .from("user_subscriptions")
-      .select("id, payment_id, created_at")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingError) {
-      console.error("Error checking existing subscription:", existingError);
-    } else if (existingSubscription) {
-      console.log("Existing active subscription found:", existingSubscription);
-      
-      // Check if this is the same payment
-      if (existingSubscription.payment_id === paymentId) {
-        console.log("Subscription already exists for this payment, returning existing subscription");
-        return new Response(
-          JSON.stringify({
-            success: true,
-            message: "Subscription already exists for this payment",
-            subscription: {
-              id: existingSubscription.id,
-              status: "active",
-              existing: true
-            }
-          }),
-          { 
-            headers: { 
-              ...corsHeaders,
-              "Content-Type": "application/json"
-            },
-            status: 200
-          }
-        );
-      }
-    }
+    console.log("Processing subscription for:", { userId, planId, paymentMethod, paymentId });
 
     // Get plan details
     console.log("Fetching plan details...");
@@ -225,25 +97,6 @@ serve(async (req: Request) => {
 
     console.log("Plan found:", { planName: plan.name, price: plan.price_usd, isLifetime: plan.is_lifetime });
 
-    // Verify payment amount matches plan price (if amount is available)
-    if (paymentData?.details?.amount && plan.price_usd) {
-      const amountDiff = Math.abs(paymentData.details.amount - plan.price_usd);
-      if (amountDiff > 0.01) {
-        console.error('CRITICAL: Payment amount does not match plan price:', {
-          paymentAmount: paymentData.details.amount,
-          planPrice: plan.price_usd,
-          difference: amountDiff
-        });
-        return new Response(
-          JSON.stringify({
-            error: 'Payment amount verification failed',
-            details: 'Payment amount does not match plan price'
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-        );
-      }
-    }
-
     // Calculate end date for non-lifetime plans
     let endDate = null;
     if (!plan.is_lifetime && plan.duration_days) {
@@ -254,7 +107,7 @@ serve(async (req: Request) => {
     }
 
     // Create the subscription
-    console.log("CRITICAL: Creating verified subscription record...");
+    console.log("Creating subscription record...");
     const { data: subscription, error: subscriptionError } = await supabase
       .from("user_subscriptions")
       .insert({
@@ -279,7 +132,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("CRITICAL: Subscription created successfully:", subscription.id);
+    console.log("Subscription created successfully:", subscription.id);
 
     // Create payment history record
     console.log("Creating payment history record...");
@@ -308,12 +161,11 @@ serve(async (req: Request) => {
       subscription: {
         id: subscription.id,
         status: subscription.status,
-        plan_name: plan.name,
-        verified_payment: true
+        plan_name: plan.name
       }
     };
 
-    console.log("CRITICAL: Returning verified subscription success:", successResponse);
+    console.log("Returning success response:", successResponse);
 
     return new Response(
       JSON.stringify(successResponse),
@@ -326,7 +178,7 @@ serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error("CRITICAL: Unexpected error in create-subscription:", error);
+    console.error("Unexpected error in create-subscription:", error);
     console.error("Error stack:", error.stack);
     
     return new Response(

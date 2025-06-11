@@ -1,105 +1,251 @@
 
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
+
+const TAP_SECRET_KEY = Deno.env.get("TAP_SECRET_KEY");
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://jojoprompts.lovable.app";
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info, apikey"
+};
+
+function sanitizeInput(input: any): string {
+  if (typeof input !== 'string') return '';
+  return input.replace(/[<>]/g, '').trim();
 }
 
-Deno.serve(async (req) => {
-  console.log('Create Tap payment received:', req.method, req.url)
-  
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+function sanitizeUrl(baseUrl: string, path: string): string {
+  // Remove trailing slash from base URL
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  // Ensure path starts with slash
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${cleanBase}${cleanPath}`;
+}
+
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ 
+      error: "Method not allowed" 
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 405
+    });
   }
 
   try {
-    const tapSecretKey = Deno.env.get('TAP_SECRET_KEY')!
-    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://fxkqgjakbyrxkmevkglv.supabase.co'
-    
-    const { planId, userId, amount, currency = 'USD' } = await req.json()
-    
-    if (!planId || !userId || !amount) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }), 
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    if (!TAP_SECRET_KEY) {
+      console.error("TAP_SECRET_KEY not configured");
+      return new Response(JSON.stringify({ 
+        error: "Payment service not configured" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 503
+      });
     }
+
+    const body = await req.json().catch(() => null);
     
-    console.log('Creating Tap payment:', { planId, userId, amount, currency })
+    if (!body) {
+      return new Response(JSON.stringify({ 
+        error: "Invalid request body" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
+    const { planId, userId, amount, currency = "USD" } = body;
+
+    if (!planId || !userId || !amount) {
+      return new Response(JSON.stringify({ 
+        error: "Missing required fields: planId, userId, amount" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
+    // Validate amount
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0 || numericAmount > 10000) {
+      return new Response(JSON.stringify({ 
+        error: "Invalid amount" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
+    // Verify plan exists
+    const { data: plan, error: planError } = await supabase
+      .from("subscription_plans")
+      .select("*")
+      .eq("id", planId)
+      .single();
+
+    if (planError || !plan) {
+      console.error("Plan validation error:", planError);
+      return new Response(JSON.stringify({ 
+        error: "Invalid plan" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
+    // Verify user exists and get profile data
+    const { data: user, error: userError } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name")
+      .eq("id", userId)
+      .single();
+
+    if (userError || !user) {
+      console.error("User validation error:", userError);
+      return new Response(JSON.stringify({ 
+        error: "Invalid user" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
+    // Get user email from auth.users table
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
     
-    // Generate idempotency key to prevent duplicate charges
-    const idempotencyKey = `${userId}-${planId}-${Date.now()}`
-    
+    if (authError || !authUser?.user?.email) {
+      console.error("Failed to get user email:", authError);
+      return new Response(JSON.stringify({ 
+        error: "Unable to retrieve user email" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
+    const userEmail = authUser.user.email;
+    console.log("User email retrieved:", userEmail);
+
+    // Create properly formatted redirect URLs - Tap will add status parameters automatically
+    const successUrl = sanitizeUrl(FRONTEND_URL, `/payment-success?planId=${planId}&userId=${userId}`);
+    const failureUrl = sanitizeUrl(FRONTEND_URL, `/payment-failed?planId=${planId}&userId=${userId}`);
+
+    console.log("Redirect URLs configured:", { successUrl, failureUrl });
+
     const tapPayload = {
-      amount: amount,
-      currency: currency,
+      amount: numericAmount,
+      currency: currency.toUpperCase(),
       threeDSecure: true,
       save_card: false,
-      description: `Subscription for plan ${planId}`,
+      description: `JojoPrompts - ${sanitizeInput(plan.name)} Plan`,
+      statement_descriptor: "JojoPrompts",
       metadata: {
-        user_id: userId,
-        plan_id: planId
+        udf1: sanitizeInput(userId),
+        udf2: sanitizeInput(planId),
+        udf3: new Date().toISOString()
       },
       reference: {
-        transaction: idempotencyKey,
-        order: `order-${userId}-${Date.now()}`
+        transaction: `jojo_${planId}_${userId}_${Date.now()}`,
+        order: `order_${Date.now()}`
       },
       receipt: {
         email: false,
         sms: false
       },
       customer: {
-        first_name: "Customer",
-        last_name: "User",
-        email: "customer@example.com"
-      },
-      merchant: {
-        id: ""
+        first_name: sanitizeInput(user.first_name || "User"),
+        last_name: sanitizeInput(user.last_name || ""),
+        email: userEmail,
+        phone: {
+          country_code: "",
+          number: ""
+        }
       },
       source: {
         id: "src_all"
       },
+      // Use success URL for both post and redirect - Tap will add status parameters
       post: {
-        url: `${frontendUrl}/functions/v1/tap-webhook`
+        url: successUrl
       },
       redirect: {
-        url: `${frontendUrl}/payment-handler`
+        url: successUrl
       }
-    }
-    
-    console.log('Sending request to Tap API with payload:', JSON.stringify(tapPayload, null, 2))
-    
-    const tapResponse = await fetch('https://api.tap.company/v2/charges', {
-      method: 'POST',
+    };
+
+    console.log("Creating Tap charge:", { 
+      amount: tapPayload.amount, 
+      currency: tapPayload.currency,
+      planName: plan.name,
+      reference: tapPayload.reference.transaction,
+      customerEmail: userEmail,
+      successUrl,
+      failureUrl
+    });
+
+    const response = await fetch("https://api.tap.company/v2/charges", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${tapSecretKey}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': idempotencyKey
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${TAP_SECRET_KEY}`
       },
       body: JSON.stringify(tapPayload)
-    })
-    
-    const responseData = await tapResponse.json()
-    console.log('Tap API response:', JSON.stringify(responseData, null, 2))
-    
-    if (!tapResponse.ok) {
-      console.error('Tap API error:', tapResponse.status, responseData)
-      return new Response(
-        JSON.stringify({ error: 'Failed to create payment charge', details: responseData }), 
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    });
+
+    const responseText = await response.text();
+    console.log("Tap API raw response:", responseText);
+
+    if (!response.ok) {
+      console.error("Tap API error:", response.status, response.statusText, responseText);
+      return new Response(JSON.stringify({ 
+        error: "Payment gateway error",
+        details: responseText
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 502
+      });
+    }
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse Tap response:", parseError);
+      return new Response(JSON.stringify({ 
+        error: "Invalid response from payment gateway" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 502
+      });
     }
     
-    return new Response(
-      JSON.stringify(responseData), 
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    console.log("Tap charge created successfully:", { 
+      id: data.id, 
+      status: data.status,
+      transaction_url: data.transaction?.url
+    });
     
+    return new Response(JSON.stringify(data), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+
   } catch (error) {
-    console.error('Payment creation error:', error)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }), 
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    console.error("Payment creation error:", error);
+    return new Response(JSON.stringify({ 
+      error: "Internal server error" 
+    }), { 
+      headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+      status: 500 
+    });
   }
-})
+});

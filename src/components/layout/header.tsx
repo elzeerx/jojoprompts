@@ -30,8 +30,8 @@ export function Header() {
     <header className="bg-white/95 backdrop-blur-sm border-b border-warm-gold/20 sticky top-0 z-50">
       <div className="container mx-auto">
         <div className="flex items-center justify-between h-14 sm:h-16">
-          {/* Logo - Fixed link to use "/" instead of "/home" */}
-          <Link to="/" className="flex items-center space-x-2 touch-manipulation">
+          {/* Logo - Mobile optimized */}
+          <Link to="/home" className="flex items-center space-x-2 touch-manipulation">
             <img 
               alt="JojoPrompts" 
               className="h-6 w-auto sm:h-8 transition-all duration-200" 
@@ -56,10 +56,10 @@ export function Header() {
               </Link>
             )}
             <Link 
-              to="/contact" 
+              to="/about" 
               className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
             >
-              Contact
+              About
             </Link>
           </nav>
 
@@ -121,7 +121,7 @@ export function Header() {
               <div className="flex items-center space-x-2">
                 <Button 
                   variant="ghost" 
-                  onClick={() => navigate("/pricing")} 
+                  onClick={() => navigate("/login")} 
                   className="text-dark-base hover:text-warm-gold text-sm lg:text-base py-2 px-3 touch-manipulation"
                 >
                   Login
@@ -171,11 +171,11 @@ export function Header() {
                 </Link>
               )}
               <Link 
-                to="/contact" 
+                to="/about" 
                 className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2" 
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Contact
+                About
               </Link>
               
               {user ? (
@@ -220,7 +220,7 @@ export function Header() {
                   <Button 
                     variant="ghost" 
                     onClick={() => {
-                      navigate("/pricing");
+                      navigate("/login");
                       setIsMobileMenuOpen(false);
                     }} 
                     className="w-full justify-start text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 touch-manipulation h-12"

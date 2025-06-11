@@ -1,135 +1,78 @@
 
-import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from "@/components/ui/sonner"
-
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { RootLayout } from './components/layout/RootLayout';
-import HomePage from './pages/HomePage';
-import AboutPage from './pages/AboutPage';
-import PricingPage from './pages/PricingPage';
-import UserDashboardPage from './pages/UserDashboardPage';
-import PromptsPage from './pages/prompts/PromptsPage';
-import FavoritesPage from './pages/FavoritesPage';
-import LoginPage from './pages/LoginPage';
-import CheckoutPage from './pages/CheckoutPage';
-import PaymentSuccessPage from './pages/PaymentSuccessPage';
-import PaymentFailedPage from './pages/PaymentFailedPage';
-import PaymentHistoryPage from './pages/PaymentHistoryPage';
-import ContactPage from './pages/ContactPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
-import NotFoundPage from './pages/NotFoundPage';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import PromptsManagement from './pages/admin/PromptsManagement';
-import PaymentHandler from "./pages/PaymentHandler";
-import TestingDashboard from './pages/TestingDashboard';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import { RootLayout } from "./components/layout/root-layout";
+import Index from "./pages/Index";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
+import PromptsPage from "./pages/PromptsPage";
+import ChatGPTPromptsPage from "./pages/prompts/ChatGPTPromptsPage";
+import MidjourneyPromptsPage from "./pages/prompts/MidjourneyPromptsPage";
+import WorkflowPromptsPage from "./pages/prompts/WorkflowPromptsPage";
+import FavoritesPage from "./pages/FavoritesPage";
+import SearchPage from "./pages/SearchPage";
+import PricingPage from "./pages/PricingPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import PaymentFailedPage from "./pages/PaymentFailedPage";
+import UserDashboardPage from "./pages/UserDashboardPage";
+import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
+import PrompterDashboard from "./pages/prompter/PrompterDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import PromptsManagement from "./pages/admin/PromptsManagement";
+import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
+import FAQPage from "./pages/FAQPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsOfServicePage from "./pages/TermsOfServicePage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  if (!user) {
-    return <Navigate to="/pricing" replace />;
-  }
-  return <>{children}</>;
-}
-
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAdmin, loading } = useAuth();
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-}
-
 function App() {
   return (
-    <Router>
-      <QueryClientProvider client={queryClient}>
-        <Toaster />
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<RootLayout />}>
-              <Route index element={<HomePage />} />
-              <Route path="about" element={<AboutPage />} />
-              <Route path="pricing" element={<PricingPage />} />
-              <Route path="contact" element={<ContactPage />} />
-              <Route path="prompts" element={<PromptsPage />} />
-              <Route path="login" element={<LoginPage />} />
-              <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
-              <Route path="terms-of-service" element={<TermsOfServicePage />} />
-              <Route path="payment-history" element={<PaymentHistoryPage />} />
-              <Route
-                path="favorites"
-                element={
-                  <ProtectedRoute>
-                    <FavoritesPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="dashboard"
-                element={
-                  <ProtectedRoute>
-                    <UserDashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="checkout"
-                element={
-                  <ProtectedRoute>
-                    <CheckoutPage />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Admin routes */}
-              <Route
-                path="admin"
-                element={
-                  <AdminRoute>
-                    <AdminDashboard />
-                  </AdminRoute>
-                }
-              />
-              <Route
-                path="admin/prompts"
-                element={
-                  <AdminRoute>
-                    <PromptsManagement />
-                  </AdminRoute>
-                }
-              />
-              <Route
-                path="admin/testing"
-                element={
-                  <AdminRoute>
-                    <TestingDashboard />
-                  </AdminRoute>
-                }
-              />
-            </Route>
-            
-            {/* Payment routes outside of RootLayout for full-screen experience */}
-            <Route path="/payment-handler" element={<PaymentHandler />} />
-            <Route path="/payment/success" element={<PaymentSuccessPage />} />
-            <Route path="/payment/failed" element={<PaymentFailedPage />} />
-            
-            {/* Catch-all 404 route */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </AuthProvider>
-      </QueryClientProvider>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<RootLayout />}>
+                <Route index element={<Index />} />
+                <Route path="login" element={<LoginPage />} />
+                <Route path="signup" element={<SignupPage />} />
+                <Route path="prompts" element={<PromptsPage />} />
+                <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />
+                <Route path="prompts/midjourney" element={<MidjourneyPromptsPage />} />
+                <Route path="prompts/workflow" element={<WorkflowPromptsPage />} />
+                <Route path="favorites" element={<FavoritesPage />} />
+                <Route path="search" element={<SearchPage />} />
+                <Route path="pricing" element={<PricingPage />} />
+                <Route path="checkout" element={<CheckoutPage />} />
+                <Route path="payment-success" element={<PaymentSuccessPage />} />
+                <Route path="payment-failed" element={<PaymentFailedPage />} />
+                <Route path="dashboard" element={<UserDashboardPage />} />
+                <Route path="dashboard/subscription" element={<SubscriptionDashboard />} />
+                <Route path="dashboard/prompter" element={<PrompterDashboard />} />
+                <Route path="admin" element={<AdminDashboard />} />
+                <Route path="admin/prompts" element={<PromptsManagement />} />
+                <Route path="about" element={<AboutPage />} />
+                <Route path="contact" element={<ContactPage />} />
+                <Route path="faq" element={<FAQPage />} />
+                <Route path="privacy" element={<PrivacyPolicyPage />} />
+                <Route path="terms" element={<TermsOfServicePage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
+            </Routes>
+            <Toaster />
+            <Sonner />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 
