@@ -284,6 +284,33 @@ export type Database = {
           },
         ]
       }
+      payments_log: {
+        Row: {
+          id: number
+          logged_at: string | null
+          payload: Json | null
+          status: string | null
+          tap_charge: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: number
+          logged_at?: string | null
+          payload?: Json | null
+          status?: string | null
+          tap_charge?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: number
+          logged_at?: string | null
+          payload?: Json | null
+          status?: string | null
+          tap_charge?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -450,32 +477,23 @@ export type Database = {
       subscriptions: {
         Row: {
           created_at: string | null
-          expires_at: string | null
-          id: number
-          plan_id: string
-          provider: string | null
-          provider_tx_id: string
+          current_period_end: string | null
           status: string
+          tap_charge: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
-          expires_at?: string | null
-          id?: never
-          plan_id: string
-          provider?: string | null
-          provider_tx_id: string
+          current_period_end?: string | null
           status?: string
+          tap_charge?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
-          expires_at?: string | null
-          id?: never
-          plan_id?: string
-          provider?: string | null
-          provider_tx_id?: string
+          current_period_end?: string | null
           status?: string
+          tap_charge?: string | null
           user_id?: string
         }
         Relationships: []

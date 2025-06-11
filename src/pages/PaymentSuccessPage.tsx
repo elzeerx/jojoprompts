@@ -26,45 +26,45 @@ export default function PaymentSuccessPage() {
 
     const validateSubscription = async () => {
       try {
-        // Extract parameters from URL
-        const planId = searchParams.get('planId');
-        const userId = searchParams.get('userId');
         const tapId = searchParams.get('tap_id');
         
-        console.log('PaymentSuccessPage: Validating subscription with params:', { 
-          planId, 
-          userId, 
-          tapId
-        });
+        console.log('PaymentSuccessPage: Validating subscription with tap_id:', tapId);
 
-        // Check for required parameters
-        if (!planId || !userId || !tapId) {
-          console.error('PaymentSuccessPage: Missing required parameters');
+        if (!tapId) {
+          console.error('PaymentSuccessPage: Missing tap_id parameter');
           throw new Error('Missing payment information');
         }
 
-        // Verify user ID matches authenticated user (if user is logged in)
-        if (user && userId !== user.id) {
-          console.error('PaymentSuccessPage: User ID mismatch');
-          throw new Error('Invalid payment session');
-        }
-
-        // Check if subscription exists in our new subscriptions table
+        // Check if subscription exists with this tap_charge
         const { data: subscription, error: subError } = await supabase
           .from('subscriptions')
           .select('*')
-          .eq('provider_tx_id', tapId)
-          .eq('user_id', userId)
+          .eq('tap_charge', tapId)
+          .eq('status', 'active')
           .single();
 
         if (subError || !subscription) {
           console.error('PaymentSuccessPage: Subscription not found:', subError);
-          throw new Error('Subscription not found - please contact support');
+          throw new Error('Subscription not found - please contact support if payment was successful');
         }
 
         console.log('PaymentSuccessPage: Subscription found:', subscription);
 
-        // Success! 
+        // Verify user matches if user is logged in
+        if (user && subscription.user_id !== user.id) {
+          console.error('PaymentSuccessPage: User ID mismatch');
+          throw new Error('Invalid subscription session');
+        }
+
+        // Check if subscription is still active and valid
+        const currentPeriodEnd = new Date(subscription.current_period_end);
+        const now = new Date();
+        
+        if (currentPeriodEnd <= now) {
+          console.error('PaymentSuccessPage: Subscription has expired');
+          throw new Error('Subscription has expired');
+        }
+
         setSuccess(true);
         setProcessing(false);
 
@@ -79,9 +79,6 @@ export default function PaymentSuccessPage() {
         console.error('PaymentSuccessPage: Validation error:', error);
         
         const errorMessage = error.message || 'Subscription validation failed';
-        
-        console.log('PaymentSuccessPage: Setting error state:', errorMessage);
-        
         setError(errorMessage);
         setProcessing(false);
       }
