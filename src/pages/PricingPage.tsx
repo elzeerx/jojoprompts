@@ -1,112 +1,202 @@
 
-import React from 'react';
-import { PricingComparison } from '@/components/pricing/PricingComparison';
-import { PricingSection } from '@/components/pricing/PricingSection';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { Container } from '@/components/ui/container';
-import { Check } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Check, Crown, Zap, Star } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function PricingPage() {
-  const { user } = useAuth();
-  const isMobile = useIsMobile();
-  
-  const keyFeatures = [
-    "Access to premium AI prompts collection",
-    "One-time payment, no recurring fees",
-    "Regular content updates during access period",
-    "Access to exclusive templates",
-  ];
-  
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      <Container className="mobile-section-padding">
-        {/* Hero Section */}
-        <div className="text-center mobile-container-padding mb-8 sm:mb-12">
-          <h1 className="section-title mobile-text-center mb-4 sm:mb-6">
-            Choose Your Access Plan
-          </h1>
-          <p className="section-subtitle mobile-text-center max-w-3xl mx-auto">
-            Get access to our premium collection of AI prompts with a simple one-time payment.
-            No subscriptions, no recurring fees.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-soft-bg via-warm-gold/10 to-muted-teal/20 mobile-container-padding mobile-section-padding">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="flex justify-center mb-6">
+            <div className="rounded-full bg-warm-gold/10 p-4 border-2 border-warm-gold/20">
+              <Crown className="h-12 w-12 text-warm-gold" />
+            </div>
+          </div>
           
-          {/* Key Features - Mobile Optimized */}
-          <div className="mobile-grid-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 sm:mt-8 max-w-4xl mx-auto">
-            {keyFeatures.map((feature, index) => (
-              <div key={index} className="flex items-center justify-center sm:justify-start text-center sm:text-left">
-                <Check className="mobile-icon text-warm-gold mr-2 flex-shrink-0" />
-                <span className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{feature}</span>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 text-dark-base">
+            Simple, Transparent Pricing
+          </h1>
+          
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
+            Choose the perfect plan for your AI prompt needs. All plans include lifetime access with regular updates.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {/* Starter Plan */}
+          <Card className="relative border-2 border-muted-teal/20 bg-muted-teal/5">
+            <CardHeader className="text-center pb-8">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-muted-teal/10 p-3">
+                  <Zap className="h-8 w-8 text-muted-teal" />
+                </div>
               </div>
-            ))}
+              <CardTitle className="text-2xl text-dark-base">Starter</CardTitle>
+              <div className="text-3xl font-bold text-dark-base">$29</div>
+              <p className="text-muted-foreground">One-time payment</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-muted-teal" />
+                  <span>100+ Premium Prompts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-muted-teal" />
+                  <span>ChatGPT & GPT-4 Prompts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-muted-teal" />
+                  <span>Basic Midjourney Prompts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-muted-teal" />
+                  <span>Lifetime Access</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-muted-teal" />
+                  <span>Regular Updates</span>
+                </div>
+              </div>
+              <Button className="w-full mt-6 bg-muted-teal hover:bg-muted-teal/90" asChild>
+                <Link to="/checkout?plan=starter">
+                  Get Started
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Pro Plan */}
+          <Card className="relative border-2 border-warm-gold/30 bg-warm-gold/10 transform scale-105">
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+              <Badge className="bg-warm-gold text-white">Most Popular</Badge>
+            </div>
+            <CardHeader className="text-center pb-8">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-warm-gold/20 p-3">
+                  <Star className="h-8 w-8 text-warm-gold" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl text-dark-base">Pro</CardTitle>
+              <div className="text-3xl font-bold text-dark-base">$49</div>
+              <p className="text-muted-foreground">One-time payment</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-warm-gold" />
+                  <span>500+ Premium Prompts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-warm-gold" />
+                  <span>All GPT Model Prompts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-warm-gold" />
+                  <span>Advanced Midjourney Prompts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-warm-gold" />
+                  <span>DALL-E & Stable Diffusion</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-warm-gold" />
+                  <span>Workflow Templates</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-warm-gold" />
+                  <span>Priority Support</span>
+                </div>
+              </div>
+              <Button className="w-full mt-6 bg-warm-gold hover:bg-warm-gold/90" asChild>
+                <Link to="/checkout?plan=pro">
+                  Get Pro Access
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Premium Plan */}
+          <Card className="relative border-2 border-dark-base/20 bg-dark-base/5">
+            <CardHeader className="text-center pb-8">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-dark-base/10 p-3">
+                  <Crown className="h-8 w-8 text-dark-base" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl text-dark-base">Premium</CardTitle>
+              <div className="text-3xl font-bold text-dark-base">$99</div>
+              <p className="text-muted-foreground">One-time payment</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-dark-base" />
+                  <span>1000+ Premium Prompts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-dark-base" />
+                  <span>Everything in Pro</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-dark-base" />
+                  <span>Exclusive Enterprise Prompts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-dark-base" />
+                  <span>Custom Prompt Requests</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-dark-base" />
+                  <span>1-on-1 Consultation</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-dark-base" />
+                  <span>Commercial License</span>
+                </div>
+              </div>
+              <Button className="w-full mt-6 bg-dark-base hover:bg-dark-base/90" asChild>
+                <Link to="/checkout?plan=premium">
+                  Get Premium
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* FAQ Section */}
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-6 text-dark-base">
+            Frequently Asked Questions
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg text-left">Is this really a one-time payment?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-left text-muted-foreground">
+                  Yes! Pay once and get lifetime access to your chosen plan with all future updates included.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg text-left">Can I upgrade later?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-left text-muted-foreground">
+                  Absolutely! You can upgrade to a higher plan anytime by paying the difference.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
-
-        {/* Pricing cards */}
-        <div className="mb-16 sm:mb-24">
-          <PricingSection />
-        </div>
-
-        {/* Pricing comparison table */}
-        <div className="mb-16 sm:mb-24">
-          <h2 className="section-title text-center mobile-text-center mb-6 sm:mb-8">Plan Comparison</h2>
-          <PricingComparison />
-        </div>
-
-        {/* CTA Section */}
-        <div className="mobile-container-padding bg-warm-gold/10 rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-warm-gold/20 mb-16 sm:mb-24">
-          <div className="text-center">
-            <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-dark-base">Ready to access premium AI prompts?</h3>
-            <p className="text-sm sm:text-lg mb-4 sm:mb-6 text-muted-foreground max-w-2xl mx-auto">
-              Join thousands of users who are creating amazing content with our premium prompts.
-            </p>
-            <Button 
-              size={isMobile ? "default" : "lg"}
-              className="mobile-button-primary bg-warm-gold hover:bg-warm-gold/90 text-white"
-              asChild
-            >
-              <a href="#pricing" onClick={(e) => {
-                e.preventDefault();
-                document.querySelector('#pricing')?.scrollIntoView({ behavior: 'smooth' });
-              }}>
-                Get Access Today
-              </a>
-            </Button>
-          </div>
-        </div>
-
-        {/* FAQ Section - Mobile Optimized */}
-        <div className="mobile-container-padding">
-          <h2 className="section-title text-center mobile-text-center mb-6 sm:mb-8">Frequently Asked Questions</h2>
-          <div className="mobile-grid-2 gap-4 sm:gap-6 lg:gap-8">
-            <div className="mobile-card">
-              <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-dark-base">Is this a recurring subscription?</h3>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                No. All our plans are one-time payments. You pay once and get access for the specified duration (1 year for Basic/Standard, lifetime for Premium).
-              </p>
-            </div>
-            <div className="mobile-card">
-              <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-dark-base">Can I upgrade my plan later?</h3>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                Yes! You can upgrade to a higher tier plan at any time. You'll only pay the difference between your current plan and the new one.
-              </p>
-            </div>
-            <div className="mobile-card">
-              <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-dark-base">What happens when my access expires?</h3>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                For Basic and Standard plans, your access will expire after 1 year. You can purchase a new plan to regain access. Premium plans offer lifetime access.
-              </p>
-            </div>
-            <div className="mobile-card">
-              <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-dark-base">What payment methods do you accept?</h3>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                We accept payments via PayPal and Tap Payment (for local KWD payments).
-              </p>
-            </div>
-          </div>
-        </div>
-      </Container>
+      </div>
     </div>
   );
 }

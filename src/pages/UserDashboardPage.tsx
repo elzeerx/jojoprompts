@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ export default function UserDashboardPage() {
           <CardContent className="text-center py-12">
             <p className="text-gray-600">Please log in to access your dashboard.</p>
             <Button asChild className="mt-4">
-              <Link to="/login">Log In</Link>
+              <Link to="/pricing">View Plans</Link>
             </Button>
           </CardContent>
         </Card>

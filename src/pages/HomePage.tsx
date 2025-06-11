@@ -1,66 +1,144 @@
 
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { PricingSection } from "@/components/pricing/PricingSection";
-import { HeroSection } from "@/components/sections/HeroSection";
-import { FeatureHighlights } from "@/components/sections/FeatureHighlights";
-import { CategoryShowcase } from "@/components/sections/CategoryShowcase";
-import { useAuth } from "@/contexts/AuthContext";
-import { Container } from "@/components/ui/container";
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowRight, Sparkles, Zap, Star, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const isMobile = useIsMobile();
-
   return (
-    <main className="min-h-screen bg-gradient-to-br from-soft-bg via-warm-gold/10 to-muted-teal/20">
+    <div className="min-h-screen bg-gradient-to-br from-soft-bg via-warm-gold/10 to-muted-teal/20">
       {/* Hero Section */}
-      <HeroSection />
-
-      {/* Feature Highlights */}
-      <FeatureHighlights />
-      
-      {/* Category Showcase */}
-      <CategoryShowcase />
-      
-      {/* Pricing Preview (only shown if user is not logged in) */}
-      {!user && (
-        <section id="pricing" className="mobile-section-padding bg-white/10 backdrop-blur-sm">
-          <Container>
-            <div className="text-center mb-8 sm:mb-12 mobile-container-padding">
-              <h2 className="section-title mobile-text-center">
-                Get Started with a Plan That Fits Your Needs
-              </h2>
-              <p className="section-subtitle mobile-text-center">
-                Choose from our range of plans designed to give you access to premium AI prompts that enhance your creativity and productivity
-              </p>
+      <section className="mobile-container-padding py-16 lg:py-24">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="flex justify-center mb-6">
+            <div className="rounded-full bg-warm-gold/10 p-4 border-2 border-warm-gold/20">
+              <Sparkles className="h-12 w-12 text-warm-gold" />
             </div>
-            <PricingSection />
-          </Container>
-        </section>
-      )}
-
-      {/* Final Call To Action */}
-      <section className="mobile-section-padding bg-dark-base/30 text-white backdrop-blur-sm">
-        <Container className="text-center mobile-container-padding">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 mobile-text-center">
-            Ready to Enhance Your AI Experience?
-          </h2>
-          <p className="text-base sm:text-lg mb-6 sm:mb-8 max-w-2xl mx-auto opacity-90 mobile-text-center">
-            Join JojoPrompts today and unlock a world of curated, premium AI prompts designed to elevate your projects
+          </div>
+          
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-dark-base">
+            Premium AI Prompts for
+            <span className="block bg-gradient-to-r from-warm-gold to-muted-teal bg-clip-text text-transparent">
+              Creative Excellence
+            </span>
+          </h1>
+          
+          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
+            Unlock the full potential of AI with our curated collection of professional prompts for ChatGPT, Midjourney, and more.
           </p>
-          <Button 
-            asChild 
-            size={isMobile ? "default" : "lg"}
-            className="mobile-button-primary bg-warm-gold hover:bg-warm-gold/90 text-white px-6 sm:px-8 py-3 sm:py-6 font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-          >
-            <Link to={user ? "/prompts" : "/pricing"}>
-              {user ? "Browse Prompts" : "Get Started Now"}
-            </Link>
-          </Button>
-        </Container>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button asChild size="lg" className="mobile-button-primary">
+              <Link to="/prompts" className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Browse Prompts
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+            </Button>
+            
+            <Button asChild variant="outline" size="lg" className="mobile-button-secondary">
+              <Link to="/pricing">
+                View Pricing
+              </Link>
+            </Button>
+          </div>
+        </div>
       </section>
-    </main>
+
+      {/* Features Section */}
+      <section className="mobile-container-padding py-16">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-dark-base">
+              Why Choose JojoPrompts?
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Join thousands of creators who trust our premium prompt collection
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card className="text-center border-2 border-warm-gold/20 bg-warm-gold/5">
+              <CardHeader>
+                <div className="flex justify-center mb-4">
+                  <div className="rounded-full bg-warm-gold/10 p-3">
+                    <Star className="h-8 w-8 text-warm-gold" />
+                  </div>
+                </div>
+                <CardTitle className="text-xl text-dark-base">Premium Quality</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Every prompt is carefully crafted and tested by AI experts to ensure optimal results.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="text-center border-2 border-muted-teal/20 bg-muted-teal/5">
+              <CardHeader>
+                <div className="flex justify-center mb-4">
+                  <div className="rounded-full bg-muted-teal/10 p-3">
+                    <Zap className="h-8 w-8 text-muted-teal" />
+                  </div>
+                </div>
+                <CardTitle className="text-xl text-dark-base">One-Time Payment</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Pay once and get lifetime access to our entire prompt library with regular updates.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="text-center border-2 border-warm-gold/20 bg-warm-gold/5">
+              <CardHeader>
+                <div className="flex justify-center mb-4">
+                  <div className="rounded-full bg-warm-gold/10 p-3">
+                    <Users className="h-8 w-8 text-warm-gold" />
+                  </div>
+                </div>
+                <CardTitle className="text-xl text-dark-base">Community Driven</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Join a community of creators and get support, tips, and new prompt suggestions.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="mobile-container-padding py-16">
+        <div className="max-w-4xl mx-auto text-center">
+          <Card className="border-2 border-warm-gold/30 bg-gradient-to-r from-warm-gold/10 to-muted-teal/10">
+            <CardHeader>
+              <CardTitle className="text-2xl md:text-3xl text-dark-base">
+                Ready to Transform Your AI Experience?
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-lg text-muted-foreground">
+                Get instant access to hundreds of premium AI prompts and start creating amazing content today.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button asChild size="lg" className="mobile-button-primary">
+                  <Link to="/pricing" className="flex items-center gap-2">
+                    Get Started Now
+                    <ArrowRight className="h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="mobile-button-secondary">
+                  <Link to="/about">
+                    Learn More
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+    </div>
   );
 }
