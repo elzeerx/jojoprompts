@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -15,16 +16,13 @@ interface PaymentRecord {
   id: string;
   user_id: string;
   amount_usd: number;
-  amount_kwd: number;
   payment_method: string;
   payment_id: string | null;
   status: string;
   created_at: string;
   discount_code_id: string | null;
   discount_amount_usd: number | null;
-  discount_amount_kwd: number | null;
   original_amount_usd: number | null;
-  original_amount_kwd: number | null;
   subscription?: {
     plan_name: string;
   };
@@ -51,7 +49,16 @@ export default function PurchaseHistoryManagement() {
       let query = supabase
         .from("payment_history")
         .select(`
-          *,
+          id,
+          user_id,
+          amount_usd,
+          payment_method,
+          payment_id,
+          status,
+          created_at,
+          discount_code_id,
+          discount_amount_usd,
+          original_amount_usd,
           user_subscriptions!inner(
             subscription_plans(name)
           ),
@@ -98,10 +105,6 @@ export default function PurchaseHistoryManagement() {
 
       const enrichedPayments = data?.map(payment => ({
         ...payment,
-        // Ensure KWD amounts have default values if missing
-        amount_kwd: payment.amount_kwd || 0,
-        discount_amount_kwd: payment.discount_amount_kwd || 0,
-        original_amount_kwd: payment.original_amount_kwd || 0,
         user_email: userEmailMap.get(payment.user_id) || 'Unknown',
         subscription: {
           plan_name: payment.user_subscriptions?.subscription_plans?.name || 'Unknown Plan'
@@ -143,13 +146,11 @@ export default function PurchaseHistoryManagement() {
       Email: payment.user_email,
       Plan: payment.subscription?.plan_name,
       'Amount USD': payment.amount_usd,
-      'Amount KWD': payment.amount_kwd,
       'Payment Method': payment.payment_method,
       'Payment ID': payment.payment_id,
       Status: payment.status,
       'Discount Code': payment.discount_code?.code || '',
       'Discount Amount USD': payment.discount_amount_usd || 0,
-      'Discount Amount KWD': payment.discount_amount_kwd || 0,
     }));
     
     const csv = [

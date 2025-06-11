@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +28,6 @@ interface Payment {
   id: string;
   created_at: string;
   amount_usd: number;
-  amount_kwd: number;
   payment_method: string;
   status: string;
 }
@@ -82,22 +82,16 @@ export default function SubscriptionDashboard() {
           setActiveSubscription(subData as any);
         }
         
-        // Fetch payment history - ensure we get amount_kwd with a default value
+        // Fetch payment history - only USD fields
         const { data: paymentData, error: paymentError } = await supabase
           .from('payment_history')
-          .select('id, created_at, amount_usd, amount_kwd, payment_method, status')
+          .select('id, created_at, amount_usd, payment_method, status')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
         
         if (paymentError) throw paymentError;
         
-        // Ensure amount_kwd has a default value if missing
-        const paymentsWithKwd = (paymentData || []).map(payment => ({
-          ...payment,
-          amount_kwd: payment.amount_kwd || 0
-        }));
-        
-        setPayments(paymentsWithKwd);
+        setPayments(paymentData || []);
       } catch (err: any) {
         console.error('Error fetching subscription data:', err);
         setError(err.message || 'Failed to load subscription data');
@@ -290,7 +284,7 @@ export default function SubscriptionDashboard() {
                         </div>
                         <div className="text-right">
                           <p className="font-medium">
-                            ${payment.amount_usd} {payment.amount_kwd > 0 && `/ ${payment.amount_kwd} KWD`}
+                            ${payment.amount_usd}
                           </p>
                           <p className="text-sm capitalize text-muted-foreground">
                             {payment.payment_method}

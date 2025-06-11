@@ -42,12 +42,12 @@ export function TapPaymentButton({
 
       console.log('Initiating Tap payment:', { planId, userId, amount });
 
-      // Enhanced payload for Tap API
+      // Payment payload for Tap API - only USD
       const paymentPayload = {
         planId,
         userId,
         amount,
-        currency: 'USD' // Default to USD, can be made configurable
+        currency: 'USD'
       };
 
       const { data: paymentData, error } = await supabase.functions.invoke('create-tap-payment', {
@@ -75,7 +75,7 @@ export function TapPaymentButton({
       if (redirectUrl) {
         console.log('Redirecting to Tap payment page:', redirectUrl);
         
-        // Store enhanced payment info for verification
+        // Store payment info for verification - only USD
         const pendingPayment = {
           planId,
           userId,
@@ -164,7 +164,7 @@ export function TapPaymentButton({
         )}
       </Button>
       
-      {/* Enhanced security notice */}
+      {/* Security notice */}
       <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
         <Shield className="h-3 w-3" />
         <span>Secured by Tap Payment Gateway</span>

@@ -11,16 +11,13 @@ interface Payment {
   id: string;
   user_id: string;
   amount_usd: number;
-  amount_kwd: number;
   payment_method: string;
   payment_id: string | null;
   status: string;
   created_at: string;
   discount_code_id: string | null;
   discount_amount_usd: number | null;
-  discount_amount_kwd: number | null;
   original_amount_usd: number | null;
-  original_amount_kwd: number | null;
   subscription?: {
     plan_name: string;
   };
@@ -64,7 +61,7 @@ export function PurchaseHistoryTable({ payments, currentPage, totalPages, onPage
               <TableHead>Date</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Plan</TableHead>
-              <TableHead>Amount</TableHead>
+              <TableHead>Amount (USD)</TableHead>
               <TableHead>Discount</TableHead>
               <TableHead>Method</TableHead>
               <TableHead>Status</TableHead>
@@ -87,10 +84,7 @@ export function PurchaseHistoryTable({ payments, currentPage, totalPages, onPage
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <div className="space-y-1">
-                    <div className="font-medium">${payment.amount_usd}</div>
-                    <div className="text-sm text-muted-foreground">{payment.amount_kwd} KWD</div>
-                  </div>
+                  <div className="font-medium">${payment.amount_usd}</div>
                 </TableCell>
                 <TableCell>
                   {payment.discount_code ? (
@@ -99,7 +93,7 @@ export function PurchaseHistoryTable({ payments, currentPage, totalPages, onPage
                         {payment.discount_code.code}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        -${payment.discount_amount_usd} / -{payment.discount_amount_kwd} KWD
+                        -${payment.discount_amount_usd}
                       </div>
                     </div>
                   ) : (
