@@ -26,7 +26,7 @@ export function PaymentFlowTester() {
   const [testing, setTesting] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
 
-  const addResult = (step: string, status: 'pending' | 'success' | 'error', message: string) => {
+  const addResult = (step: string, status: TestResult['status'], message: string) => {
     const result: TestResult = {
       step,
       status,
@@ -40,8 +40,9 @@ export function PaymentFlowTester() {
     setTestResults(prev => {
       const updated = [...prev];
       if (updated.length > 0) {
-        updated[updated.length - 1] = {
-          ...updated[updated.length - 1],
+        const lastIndex = updated.length - 1;
+        updated[lastIndex] = {
+          ...updated[lastIndex],
           status,
           message
         };
@@ -135,7 +136,7 @@ export function PaymentFlowTester() {
         .from('payments_log')
         .select('*')
         .eq('user_id', user.id)
-        .eq('tap_charge_id', paymentData.id)
+        .eq('tap_charge', paymentData.id)
         .single();
 
       if (logError || !paymentLog) {
@@ -162,7 +163,7 @@ export function PaymentFlowTester() {
     }
   };
 
-  const getStatusIcon = (status: 'pending' | 'success' | 'error') => {
+  const getStatusIcon = (status: TestResult['status']) => {
     switch (status) {
       case 'pending':
         return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
