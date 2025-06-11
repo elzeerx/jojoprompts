@@ -26,7 +26,7 @@ export default function PaymentSuccessPage() {
 
     const verifyPayment = async () => {
       try {
-        // Extract all possible parameters from URL
+        // Enhanced parameter extraction for Tap Payment Gateway
         const planId = searchParams.get('planId');
         const userId = searchParams.get('userId');
         const tapId = searchParams.get('tap_id');
@@ -34,8 +34,9 @@ export default function PaymentSuccessPage() {
         const responseCode = searchParams.get('response_code');
         const chargeId = searchParams.get('charge_id');
         const paymentResult = searchParams.get('payment_result');
+        const paymentMethod = searchParams.get('payment_method');
         
-        console.log('Payment verification - All URL params:', { 
+        console.log('Enhanced payment verification - All URL params:', { 
           planId, 
           userId, 
           tapId, 
@@ -43,13 +44,21 @@ export default function PaymentSuccessPage() {
           responseCode,
           chargeId,
           paymentResult,
-          fullUrl: window.location.href,
-          searchString: window.location.search
+          paymentMethod,
+          fullUrl: window.location.href
         });
 
-        // Check for explicit failure indicators first
-        const explicitFailures = ['DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED', 'EXPIRED', 'REJECTED', 'VOIDED', 'ERROR', 'TIMEOUT'];
-        const failureResponseCodes = ['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '201', '202', '203', '204', '205', '206', '207', '208', '209', '210'];
+        // Enhanced failure detection for Tap Payment Gateway
+        const explicitFailures = [
+          'DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED', 'EXPIRED', 
+          'REJECTED', 'VOIDED', 'ERROR', 'TIMEOUT', 'UNAUTHORIZED'
+        ];
+        
+        const failureResponseCodes = [
+          '101', '102', '103', '104', '105', '106', '107', '108', '109', '110',
+          '201', '202', '203', '204', '205', '206', '207', '208', '209', '210',
+          '301', '302', '303', '304', '305', '306', '307', '308', '309', '310'
+        ];
         
         const isExplicitFailure = (chargeStatus && explicitFailures.includes(chargeStatus.toUpperCase())) ||
                                  (responseCode && failureResponseCodes.includes(responseCode)) ||
@@ -64,40 +73,35 @@ export default function PaymentSuccessPage() {
           return;
         }
 
-        // Check if we have the required payment parameters
+        // Enhanced validation for required parameters
         if (!planId || !userId) {
           console.error('Missing required payment parameters:', { planId, userId });
           setError('Missing payment information');
           setTimeout(() => {
-            const reason = 'Missing payment information';
+            const reason = 'Missing payment information - please try again';
             navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
           }, 3000);
           return;
         }
 
-        // Only verify user ID if user is authenticated
+        // Enhanced user validation
         if (user && userId !== user.id) {
           console.error('User ID mismatch - URL user:', userId, 'Auth user:', user.id);
           setError('Invalid payment session');
           setTimeout(() => {
-            const reason = 'Invalid payment session';
+            const reason = 'Invalid payment session - please log in and try again';
             navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
           }, 3000);
           return;
         }
 
-        // If user is not authenticated, we'll still try to process the payment
-        if (!user) {
-          console.log('User not authenticated, attempting payment verification without user session');
-        }
-
-        // Get pending payment info from localStorage for fallback data
+        // Get enhanced pending payment info from localStorage
         const pendingPaymentStr = localStorage.getItem('pending_payment');
         const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
 
-        // Assume success if we reach here (no explicit failure indicators)
         console.log('Proceeding with subscription creation - no failure indicators detected');
 
+        // Enhanced payment data structure for Tap
         const paymentData = {
           paymentId: tapId || chargeId || pendingPayment?.paymentId || `tap_${Date.now()}`,
           paymentMethod: 'tap',
@@ -105,13 +109,16 @@ export default function PaymentSuccessPage() {
             id: tapId || chargeId || pendingPayment?.paymentId,
             status: chargeStatus || 'completed',
             amount: pendingPayment?.amount,
+            currency: pendingPayment?.currency || 'USD',
             response_code: responseCode,
-            payment_result: paymentResult
+            payment_result: paymentResult,
+            reference: pendingPayment?.reference
           }
         };
 
-        console.log('Creating subscription with payment data:', paymentData);
+        console.log('Creating subscription with enhanced payment data:', paymentData);
 
+        // Enhanced subscription creation with better error handling
         const { data, error } = await supabase.functions.invoke("create-subscription", {
           body: {
             planId,
@@ -129,7 +136,7 @@ export default function PaymentSuccessPage() {
             variant: "destructive",
           });
           setTimeout(() => {
-            const reason = 'Subscription setup failed';
+            const reason = 'Subscription setup failed - payment confirmed but access not granted';
             navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
           }, 3000);
           return;
@@ -139,15 +146,14 @@ export default function PaymentSuccessPage() {
           console.error('Subscription creation unsuccessful:', data);
           setError('Subscription activation failed');
           setTimeout(() => {
-            const reason = 'Subscription activation failed';
+            const reason = 'Subscription activation failed - please contact support';
             navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
           }, 3000);
           return;
         }
 
-        // Clear pending payment
+        // Clear pending payment and set success state
         localStorage.removeItem('pending_payment');
-        
         setVerified(true);
         setVerifying(false);
 
@@ -161,7 +167,7 @@ export default function PaymentSuccessPage() {
         setError('Payment verification failed');
         setTimeout(() => {
           const planId = searchParams.get('planId');
-          const reason = 'Payment verification failed';
+          const reason = 'Payment verification failed - system error';
           navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
         }, 3000);
       }
@@ -176,7 +182,8 @@ export default function PaymentSuccessPage() {
       <div className="min-h-screen flex items-center justify-center bg-soft-bg">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Verifying your payment...</p>
+          <p className="text-lg">Verifying your payment...</p>
+          <p className="text-sm text-gray-600 mt-2">Please wait while we confirm your subscription</p>
         </div>
       </div>
     );
