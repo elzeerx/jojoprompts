@@ -15,6 +15,12 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentFailedPage from './pages/PaymentFailedPage';
 import PaymentHistoryPage from './pages/PaymentHistoryPage';
 import ContactPage from './pages/ContactPage';
+import AboutPage from './pages/AboutPage';
+import LoginPage from './pages/LoginPage';
+import FavoritesPage from './pages/FavoritesPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import NotFoundPage from './pages/NotFoundPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import PromptsManagement from './pages/admin/PromptsManagement';
 import PaymentHandler from "./pages/PaymentHandler";
@@ -55,8 +61,20 @@ function App() {
               <Route index element={<HomePage />} />
               <Route path="pricing" element={<PricingPage />} />
               <Route path="contact" element={<ContactPage />} />
+              <Route path="about" element={<AboutPage />} />
+              <Route path="login" element={<LoginPage />} />
+              <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="terms-of-service" element={<TermsOfServicePage />} />
               <Route path="prompts" element={<PromptsPage />} />
               <Route path="payment-history" element={<PaymentHistoryPage />} />
+              <Route
+                path="favorites"
+                element={
+                  <ProtectedRoute>
+                    <FavoritesPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="dashboard"
                 element={
@@ -106,7 +124,8 @@ function App() {
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/failed" element={<PaymentFailedPage />} />
             
-            <Route path="*" element={<Navigate to="/" />} />
+            {/* Catch-all 404 route */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </AuthProvider>
       </QueryClientProvider>

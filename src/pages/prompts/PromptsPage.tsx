@@ -21,8 +21,10 @@ export default function PromptsPage() {
     reloadPrompts();
   }, []);
 
+  // Redirect unauthenticated users to pricing page instead of login
   if (!authLoading && !session) {
-    navigate("/login");
+    navigate("/pricing");
+    return null;
   }
 
   return (
