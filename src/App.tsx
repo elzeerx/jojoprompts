@@ -7,14 +7,20 @@ import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RootLayout } from './components/layout/RootLayout';
 import HomePage from './pages/HomePage';
+import AboutPage from './pages/AboutPage';
 import PricingPage from './pages/PricingPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import PromptsPage from './pages/PromptsPage';
+import FavoritesPage from './pages/FavoritesPage';
+import LoginPage from './pages/LoginPage';
 import CheckoutPage from './pages/CheckoutPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentFailedPage from './pages/PaymentFailedPage';
 import PaymentHistoryPage from './pages/PaymentHistoryPage';
 import ContactPage from './pages/ContactPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import NotFoundPage from './pages/NotFoundPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import PromptsManagement from './pages/admin/PromptsManagement';
 import PaymentHandler from "./pages/PaymentHandler";
@@ -53,10 +59,22 @@ function App() {
           <Routes>
             <Route path="/" element={<RootLayout />}>
               <Route index element={<HomePage />} />
+              <Route path="about" element={<AboutPage />} />
               <Route path="pricing" element={<PricingPage />} />
               <Route path="contact" element={<ContactPage />} />
               <Route path="prompts" element={<PromptsPage />} />
+              <Route path="login" element={<LoginPage />} />
+              <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="terms-of-service" element={<TermsOfServicePage />} />
               <Route path="payment-history" element={<PaymentHistoryPage />} />
+              <Route
+                path="favorites"
+                element={
+                  <ProtectedRoute>
+                    <FavoritesPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="dashboard"
                 element={
@@ -106,7 +124,8 @@ function App() {
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/failed" element={<PaymentFailedPage />} />
             
-            <Route path="*" element={<Navigate to="/" />} />
+            {/* Catch-all 404 route */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </AuthProvider>
       </QueryClientProvider>
