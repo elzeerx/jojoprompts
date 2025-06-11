@@ -20,6 +20,13 @@ interface PlanCardProps {
 export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
   const { name, description, price_usd, features, excluded_features, is_lifetime } = plan;
   
+  const handleButtonClick = (e: React.MouseEvent) => {
+    console.log("[PLAN_CARD] Button clicked for plan:", plan.id);
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect();
+  };
+  
   return (
     <Card className={`flex flex-col h-full transition-all ${
       isSelected 
@@ -64,7 +71,8 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
       
       <CardFooter className="pt-4 px-4 py-4">
         <Button
-          onClick={onSelect}
+          type="button"
+          onClick={handleButtonClick}
           className="w-full"
           variant={isSelected ? "default" : "outline"}
         >

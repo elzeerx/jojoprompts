@@ -43,10 +43,19 @@ export function PricingSection() {
 
   // Handle selecting a plan - always navigate to checkout
   const handleSelectPlan = (planId: string) => {
-    setSelectedPlanId(planId);
+    console.log("[PRICING] Plan button clicked, planId:", planId);
     
-    // Always navigate to checkout regardless of authentication status
-    navigate(`/checkout?plan_id=${planId}`);
+    try {
+      setSelectedPlanId(planId);
+      const checkoutUrl = `/checkout?plan_id=${planId}`;
+      console.log("[PRICING] Navigating to:", checkoutUrl);
+      
+      // Always navigate to checkout regardless of authentication status
+      navigate(checkoutUrl);
+      console.log("[PRICING] Navigation completed");
+    } catch (error) {
+      console.error("[PRICING] Navigation error:", error);
+    }
   };
 
   if (loading) {

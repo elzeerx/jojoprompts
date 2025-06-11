@@ -2,7 +2,7 @@
 import React from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PricingPlan {
@@ -24,6 +24,22 @@ interface PricingCardProps {
 
 export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    console.log("[PRICING_CARD] Button clicked for plan:", plan.id);
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      const checkoutUrl = `/checkout?plan_id=${plan.id}`;
+      console.log("[PRICING_CARD] Navigating to:", checkoutUrl);
+      navigate(checkoutUrl);
+      console.log("[PRICING_CARD] Navigation completed");
+    } catch (error) {
+      console.error("[PRICING_CARD] Navigation error:", error);
+    }
+  };
 
   return (
     <div className={`pricing-card flex flex-col h-full mobile-optimize-rendering ${
@@ -67,7 +83,8 @@ export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
       {/* CTA Button */}
       <div className="p-4 sm:p-6 mt-auto">
         <Button 
-          asChild
+          type="button"
+          onClick={handleButtonClick}
           size={isMobile ? "default" : "lg"}
           className={`mobile-button-primary ${
             plan.isPopular 
@@ -75,10 +92,7 @@ export function PricingCard({ plan, isLoggedIn = false }: PricingCardProps) {
               : 'bg-dark-base hover:bg-dark-base/90'
           }`}
         >
-          {/* Always go to checkout regardless of authentication status */}
-          <Link to={`/checkout?plan_id=${plan.id}`}>
-            {plan.ctaText}
-          </Link>
+          {plan.ctaText}
         </Button>
       </div>
     </div>
