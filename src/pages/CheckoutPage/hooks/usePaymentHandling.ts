@@ -1,7 +1,6 @@
 
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logInfo, logWarn, logError, logDebug } from '@/utils/secureLogging';
 
@@ -29,74 +28,37 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
     try {
       logInfo("Processing PayPal payment success", "payment", { 
         paymentMethod: paymentData.paymentMethod || 'paypal',
-        planId: selectedPlan.id 
+        planId: selectedPlan.id,
+        paymentId: paymentData.paymentId,
+        status: paymentData.status
       }, user.id);
       
-      // For PayPal, we need to redirect to the callback page for verification
-      if (paymentData.paymentMethod === 'paypal') {
-        console.log('Redirecting to PayPal callback page for verification...');
-        
-        const callbackParams = new URLSearchParams({
-          success: 'true',
-          plan_id: selectedPlan.id,
-          user_id: user.id,
-          token: paymentData.orderId, // PayPal order ID
-          payment_id: paymentData.paymentId || paymentData.orderId
+      console.log('Payment success received:', paymentData);
+
+      // Since the capture function already handled subscription creation,
+      // we just need to show success and redirect
+      if (paymentData.status === 'COMPLETED') {
+        logInfo("Payment completed successfully", "payment", { 
+          paymentId: paymentData.paymentId 
+        }, user.id);
+
+        toast({
+          title: "Payment Successful!",
+          description: "Your subscription has been activated successfully.",
         });
+
+        // Redirect to success page
+        navigate("/payment-success");
+      } else {
+        logWarn("Payment not completed", "payment", { 
+          status: paymentData.status 
+        }, user.id);
         
-        navigate(`/payment-callback?${callbackParams.toString()}`);
-        return;
+        throw new Error(`Payment status is ${paymentData.status}, expected COMPLETED`);
       }
-
-      // For other payment methods, process directly
-      const standardizedPaymentData = {
-        paymentId: paymentData.paymentId || paymentData.payment_id || paymentData.id,
-        paymentMethod: paymentData.paymentMethod || 'paypal',
-        details: {
-          id: paymentData.paymentId || paymentData.id,
-          orderId: paymentData.orderId,
-          status: paymentData.status,
-          amount: paymentData.amount || paymentData.details?.amount
-        }
-      };
-
-      const requestPayload = {
-        planId: selectedPlan.id,
-        userId: user.id,
-        paymentData: standardizedPaymentData
-      };
-
-      logDebug("Sending request to create-subscription", "payment", { planId: selectedPlan.id }, user.id);
-      console.log("Calling create-subscription edge function with payload:", requestPayload);
-      
-      const { data, error } = await supabase.functions.invoke("create-subscription", {
-        body: requestPayload
-      });
-
-      console.log("create-subscription response:", { data, error });
-      logDebug("Supabase function response received", "payment", { success: !!data?.success }, user.id);
-
-      if (error) {
-        logError("Supabase function error", "payment", { error: error.message }, user.id);
-        throw new Error(`Payment processing failed: ${error.message || 'Unknown error'}`);
-      }
-
-      if (!data || !data.success) {
-        logError("Function returned unsuccessful response", "payment", { dataExists: !!data, data }, user.id);
-        throw new Error(data?.error || "Payment processing was unsuccessful");
-      }
-
-      logInfo("Plan access created successfully", "payment", undefined, user.id);
-
-      toast({
-        title: "Payment Successful!",
-        description: "Your plan access has been activated successfully.",
-      });
-
-      navigate("/payment-success");
 
     } catch (error: any) {
-      logError("Error creating plan access", "payment", { 
+      logError("Error processing payment success", "payment", { 
         error: error.message,
         errorType: error.name 
       }, user?.id);
@@ -105,15 +67,11 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       
-      let userMessage = "There was an issue processing your payment. Please try again.";
-      if (errorMessage.includes("timeout") || errorMessage.includes("timed out")) {
-        userMessage = "Payment processing is taking longer than expected. Please check your account or contact support.";
-      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
-        userMessage = "Network connection issue. Please check your internet connection and try again.";
+      let userMessage = "There was an issue processing your payment. Please contact support.";
+      if (errorMessage.includes("COMPLETED")) {
+        userMessage = "Payment received but subscription setup is pending. Please contact support if you don't see your subscription activated shortly.";
       } else if (errorMessage.includes("authentication")) {
         userMessage = "Authentication error. Please refresh the page and try again.";
-      } else if (errorMessage.includes("unsuccessful")) {
-        userMessage = "Payment was received but subscription setup failed. Please contact support.";
       }
       
       toast({
@@ -139,6 +97,8 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       errorMessage = "Payment processing timed out. Please try again.";
     } else if (error?.message?.includes("cancelled")) {
       errorMessage = "Payment was cancelled. You can try again when ready.";
+    } else if (error?.message?.includes("capture")) {
+      errorMessage = "Payment approval succeeded but capture failed. Please contact support.";
     } else if (error?.message?.includes("PayPal")) {
       errorMessage = "PayPal service error. Please try again or contact support.";
     }

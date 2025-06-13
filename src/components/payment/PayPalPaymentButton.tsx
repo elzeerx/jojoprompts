@@ -148,17 +148,41 @@ export function PayPalPaymentButton({
 
         onApprove: async (data: any) => {
           try {
-            console.log('PayPal payment approved:', data);
+            console.log('PayPal payment approved, capturing payment...', data);
             
-            // Call success handler with payment data
+            // Capture the payment using our edge function
+            const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-paypal-payment', {
+              body: {
+                orderId: data.orderID,
+                planId,
+                userId
+              }
+            });
+
+            console.log('Capture response:', { captureData, captureError });
+
+            if (captureError) {
+              console.error('Error capturing payment:', captureError);
+              throw new Error(captureError.message || 'Failed to capture payment');
+            }
+
+            if (!captureData || !captureData.success) {
+              console.error('Payment capture failed:', captureData);
+              throw new Error(captureData?.error || 'Payment capture was unsuccessful');
+            }
+
+            console.log('Payment captured successfully:', captureData);
+
+            // Call success handler with captured payment data
             onSuccess({
               paymentMethod: 'paypal',
-              paymentId: data.paymentID || data.orderID,
+              paymentId: captureData.captureId,
               orderId: data.orderID,
-              status: 'APPROVED',
+              status: captureData.status,
+              payerEmail: captureData.payerEmail,
               details: {
-                id: data.paymentID || data.orderID,
-                status: 'APPROVED',
+                id: captureData.captureId,
+                status: captureData.status,
                 amount: amount
               }
             });

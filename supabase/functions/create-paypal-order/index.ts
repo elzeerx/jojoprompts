@@ -5,7 +5,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
 const PAYPAL_CLIENT_ID = Deno.env.get("PAYPAL_CLIENT_ID");
 const PAYPAL_CLIENT_SECRET = Deno.env.get("PAYPAL_CLIENT_SECRET");
 const PAYPAL_ENVIRONMENT = Deno.env.get("PAYPAL_ENVIRONMENT") || "sandbox";
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://jojoprompts.lovable.app";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -37,7 +36,6 @@ async function getPayPalAccessToken(): Promise<string> {
   console.log('API URL:', getPayPalApiUrl());
   console.log('Client ID length:', PAYPAL_CLIENT_ID.length);
   
-  // Create proper Basic Auth header
   const credentials = `${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`;
   const encodedCredentials = btoa(credentials);
   
@@ -116,7 +114,7 @@ serve(async (req: Request) => {
     // Get PayPal access token
     const accessToken = await getPayPalAccessToken();
 
-    // Create PayPal order with proper return URLs
+    // Create PayPal order for JavaScript SDK integration
     const orderPayload = {
       intent: "CAPTURE",
       purchase_units: [{
@@ -127,14 +125,7 @@ serve(async (req: Request) => {
         description: `${plan.name} - JojoPrompts Subscription`,
         custom_id: `${userId}_${planId}`,
         invoice_id: `jojo_${planId}_${userId}_${Date.now()}`
-      }],
-      application_context: {
-        return_url: `${FRONTEND_URL}/payment-callback?success=true&plan_id=${planId}&user_id=${userId}`,
-        cancel_url: `${FRONTEND_URL}/payment-callback?success=false&plan_id=${planId}&user_id=${userId}`,
-        brand_name: "JojoPrompts",
-        user_action: "PAY_NOW",
-        shipping_preference: "NO_SHIPPING"
-      }
+      }]
     };
 
     console.log('PayPal order payload:', JSON.stringify(orderPayload, null, 2));
@@ -183,26 +174,10 @@ serve(async (req: Request) => {
       console.error("Failed to save payment record:", insertError);
     }
 
-    // Find approval URL
-    const approvalUrl = paypalData.links?.find(link => link.rel === 'approve')?.href;
-    
-    if (!approvalUrl) {
-      console.error("No approval URL found in PayPal response");
-      return new Response(JSON.stringify({ 
-        error: "Payment initialization failed",
-        details: "No approval URL received from PayPal"
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 502
-      });
-    }
-
-    console.log("PayPal order approval URL:", approvalUrl);
-
+    // Return order ID for JavaScript SDK
     return new Response(JSON.stringify({ 
       id: paypalData.id,
       status: paypalData.status,
-      url: approvalUrl,
       success: true
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
