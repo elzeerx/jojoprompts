@@ -60,10 +60,22 @@ serve(async (req: Request) => {
       });
     }
 
+    // Fetch user email from Supabase Auth
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user_id);
+
+    if (authError || !authUser.user) {
+      console.error("Failed to fetch user email:", authError);
+      return new Response(JSON.stringify({ error: "Could not fetch user email" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
     const firstName = profile?.first_name || 'Customer';
     const lastName = profile?.last_name || 'User';
+    const userEmail = authUser.user.email || '';
 
-    console.log("User profile data:", { firstName, lastName });
+    console.log("User profile data:", { firstName, lastName, email: userEmail });
 
     // Get origin from request headers for redirect URL
     const origin = req.headers.get('origin') || 'https://jojoprompts.lovable.app';
@@ -80,7 +92,8 @@ serve(async (req: Request) => {
       customer: {
         first_name: firstName,
         last_name: lastName,
-        name: `${firstName} ${lastName}`
+        name: `${firstName} ${lastName}`,
+        email: userEmail
       }
     };
 
