@@ -42,91 +42,58 @@ export function TapPaymentButton({
 
       console.log('Initiating Tap payment:', { planId, userId, amount });
 
-      // Payment payload for Tap API - only USD
-      const paymentPayload = {
+      // Call the create-tap-charge edge function
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const res = await supabase.functions.invoke('create-tap-charge', {
+        body: { 
+          user_id: userData.user?.id || userId, 
+          amount 
+        }
+      });
+
+      if (res.error) {
+        console.error('Tap payment creation error:', res.error);
+        throw new Error(res.error.message || 'Failed to initialize payment');
+      }
+
+      if (!res.data || !res.data.url) {
+        throw new Error('No payment URL received from gateway');
+      }
+
+      console.log('Tap payment response received:', res.data);
+      
+      // Store payment info for verification
+      const pendingPayment = {
         planId,
         userId,
         amount,
-        currency: 'USD'
+        currency: 'USD',
+        timestamp: Date.now()
       };
-
-      const { data: paymentData, error } = await supabase.functions.invoke('create-tap-payment', {
-        body: paymentPayload
+      
+      localStorage.setItem('pending_payment', JSON.stringify(pendingPayment));
+      
+      // Show final confirmation before redirect
+      toast({
+        title: "Redirecting to Payment",
+        description: "You will be redirected to complete your secure payment.",
       });
-
-      if (error) {
-        console.error('Tap payment creation error:', error);
-        throw new Error(error.message || 'Failed to initialize payment');
-      }
-
-      if (!paymentData) {
-        throw new Error('No payment data received from gateway');
-      }
-
-      console.log('Tap payment response received:', paymentData);
-
-      // Enhanced redirect URL detection
-      const redirectUrl = 
-        paymentData.transaction?.url || 
-        paymentData.redirect?.url || 
-        paymentData.url ||
-        paymentData.redirect_url;
-
-      if (redirectUrl) {
-        console.log('Redirecting to Tap payment page:', redirectUrl);
-        
-        // Store payment info for verification - only USD
-        const pendingPayment = {
-          planId,
-          userId,
-          paymentId: paymentData.id,
-          amount,
-          currency: 'USD',
-          timestamp: Date.now(),
-          reference: paymentData.reference?.transaction,
-          status: paymentData.status
-        };
-        
-        localStorage.setItem('pending_payment', JSON.stringify(pendingPayment));
-        
-        // Show final confirmation before redirect
-        toast({
-          title: "Redirecting to Payment",
-          description: "You will be redirected to complete your secure payment.",
-        });
-        
-        // Small delay for better UX
-        setTimeout(() => {
-          window.location.href = redirectUrl;
-        }, 1000);
-        
-      } else {
-        console.error('No redirect URL found in response:', paymentData);
-        
-        // Enhanced error handling
-        if (paymentData.id) {
-          throw new Error('Payment was created but no redirect URL provided. Please contact support with reference: ' + paymentData.id);
-        } else {
-          throw new Error('No payment URL received from Tap Payment Gateway');
-        }
-      }
+      
+      // Small delay for better UX
+      setTimeout(() => {
+        window.location.href = res.data.url;
+      }, 1000);
 
     } catch (error: any) {
       console.error('Payment initialization error:', error);
       
       let errorMessage = 'Failed to initialize payment. Please try again.';
       
-      // Enhanced error message mapping
       if (error.message?.includes('network') || error.message?.includes('fetch')) {
         errorMessage = 'Network error. Please check your connection and try again.';
       } else if (error.message?.includes('authentication') || error.message?.includes('unauthorized')) {
         errorMessage = 'Authentication error. Please refresh the page and try again.';
-      } else if (error.message?.includes('contact support')) {
-        errorMessage = error.message;
-      } else if (error.message?.includes('Invalid amount')) {
-        errorMessage = 'Invalid payment amount. Please contact support.';
-      } else if (error.message?.includes('Unsupported currency')) {
-        errorMessage = 'Payment currency not supported. Please contact support.';
       } else if (error.message?.includes('Payment service not')) {
         errorMessage = 'Payment service temporarily unavailable. Please try again later.';
       }
