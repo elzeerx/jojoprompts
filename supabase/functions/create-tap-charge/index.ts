@@ -80,14 +80,19 @@ serve(async (req: Request) => {
     // Get origin from request headers for redirect URL
     const origin = req.headers.get('origin') || 'https://jojoprompts.lovable.app';
 
+    // Create a unique reference for tracking
+    const transactionRef = crypto.randomUUID();
+
     const body = {
       amount,
       currency: 'USD',
       threeDSecure: true,
       customer_initiated: true,
       description: 'JojoPrompts Basic Plan',
-      reference: { transaction: crypto.randomUUID() },
-      redirect: { url: `${origin}/payment/callback` },
+      reference: { transaction: transactionRef },
+      redirect: { 
+        url: `${origin}/payment/callback?tap_id={tap_id}&reference=${transactionRef}&user_id=${user_id}` 
+      },
       source: { id: 'src_all' }, // card & local wallets
       customer: {
         first_name: firstName,
@@ -101,7 +106,8 @@ serve(async (req: Request) => {
       amount, 
       user_id, 
       redirect_url: body.redirect.url,
-      customer: body.customer
+      customer: body.customer,
+      reference: transactionRef
     });
 
     const tapRes = await fetch('https://api.tap.company/v2/charges', {
@@ -125,11 +131,11 @@ serve(async (req: Request) => {
     const tapData = await tapRes.json();
     console.log("Tap charge created:", { id: tapData.id, status: tapData.status });
 
-    // Save INITIATED payment row
+    // Save INITIATED payment row with proper reference
     const { error: insertError } = await supabase.from('payments').insert({
       user_id,
       tap_charge_id: tapData.id,
-      tap_reference: tapData.reference?.transaction,
+      tap_reference: transactionRef,
       amount,
       status: tapData.status // INITIATED
     });

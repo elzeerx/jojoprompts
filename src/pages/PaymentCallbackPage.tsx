@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, AlertTriangle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 export default function PaymentCallbackPage() {
   const navigate = useNavigate();
@@ -10,21 +9,40 @@ export default function PaymentCallbackPage() {
   const [status, setStatus] = useState<string>('checking');
   const [error, setError] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
-  const MAX_POLLS = 30; // Maximum 60 seconds of polling
+  const MAX_POLLS = 20; // Reduced to 40 seconds max
 
   useEffect(() => {
-    const tapId = searchParams.get('tap_id');
-    const tapReference = searchParams.get('tap_reference');
-    const reference = searchParams.get('reference');
-    
-    // Get reference parameter (could be tap_reference or reference)
-    const ref = tapReference || reference;
-    
-    console.log('Payment callback parameters:', { tapId, tapReference, reference, ref });
+    // Log all available parameters for debugging
+    const allParams = {};
+    searchParams.forEach((value, key) => {
+      allParams[key] = value;
+    });
+    console.log('Payment callback - All URL parameters:', allParams);
+    console.log('Payment callback - Full URL:', window.location.href);
 
-    if (!ref && !tapId) {
-      setError('Missing payment reference parameters');
-      setTimeout(() => navigate('/payment-failed?reason=Missing payment reference'), 3000);
+    // Try to get payment identifier from various possible parameter names
+    const tapId = searchParams.get('tap_id') || 
+                  searchParams.get('id') || 
+                  searchParams.get('charge_id') || 
+                  searchParams.get('chg_id');
+    
+    const reference = searchParams.get('reference') || 
+                     searchParams.get('tap_reference') || 
+                     searchParams.get('ref');
+    
+    console.log('Payment callback extracted parameters:', { 
+      tapId, 
+      reference,
+      originalParams: allParams 
+    });
+
+    if (!tapId && !reference) {
+      console.error('No payment identifier found in URL parameters');
+      setError('Missing payment information in callback URL');
+      setTimeout(() => {
+        const planId = searchParams.get('planId') || searchParams.get('plan_id');
+        navigate(`/payment-failed?planId=${planId || ''}&reason=Missing payment reference`);
+      }, 3000);
       return;
     }
 
@@ -42,49 +60,45 @@ export default function PaymentCallbackPage() {
       try {
         // Build query parameters for the verify-tap function
         const params = new URLSearchParams();
-        if (ref) params.append('reference', ref);
+        if (reference) params.append('reference', reference);
         if (tapId) params.append('tap_id', tapId);
         
-        console.log(`Polling attempt ${currentPollCount + 1}/${MAX_POLLS} - Calling verify-tap function with params:`, params.toString());
+        console.log(`Polling attempt ${currentPollCount + 1}/${MAX_POLLS} - Calling verify-tap with params:`, params.toString());
 
-        // Call the verify-tap edge function using URL parameters only
-        const functionUrl = `verify-tap?${params.toString()}`;
-        const { data, error } = await supabase.functions.invoke(functionUrl);
-
-        console.log('Function response:', { data, error, attempt: currentPollCount + 1 });
-
-        if (error || !data) {
-          console.log('Function invoke failed, trying direct fetch as fallback:', error);
-          
-          const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
-          const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4";
-          
-          const apiUrl = `${SUPABASE_URL}/functions/v1/verify-tap?${params.toString()}`;
-          const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Direct API call failed:', errorText);
-            throw new Error(`API call failed: ${response.status}`);
+        // Use direct HTTP GET request to the verify-tap function
+        const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4";
+        
+        const apiUrl = `${SUPABASE_URL}/functions/v1/verify-tap?${params.toString()}`;
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
           }
+        });
 
-          const result = await response.json();
-          handlePaymentStatus(result.status, currentPollCount);
-        } else {
-          handlePaymentStatus(data.status, currentPollCount);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Verify-tap API call failed:', { 
+            status: response.status, 
+            statusText: response.statusText,
+            error: errorText 
+          });
+          throw new Error(`API call failed: ${response.status} - ${errorText}`);
         }
+
+        const result = await response.json();
+        console.log('Verify-tap response:', result, 'Poll count:', currentPollCount + 1);
+        
+        handlePaymentStatus(result.status, currentPollCount);
+
       } catch (error: any) {
         console.error('Payment verification error:', error);
         setError(error.message);
         setTimeout(() => {
           const planId = searchParams.get('planId') || searchParams.get('plan_id');
-          navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification failed`);
+          navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification failed: ${error.message}`);
         }, 3000);
       }
     };
@@ -96,6 +110,7 @@ export default function PaymentCallbackPage() {
 
       if (paymentStatus === 'CAPTURED') {
         // Payment successful
+        console.log('Payment captured successfully, redirecting to success page');
         const planId = searchParams.get('planId') || searchParams.get('plan_id');
         const userId = searchParams.get('userId') || searchParams.get('user_id');
         
@@ -103,27 +118,29 @@ export default function PaymentCallbackPage() {
         if (planId) successParams.append('planId', planId);
         if (userId) successParams.append('userId', userId);
         if (tapId) successParams.append('tap_id', tapId);
-        if (ref) successParams.append('reference', ref);
+        if (reference) successParams.append('reference', reference);
         
         navigate(`/payment-success?${successParams.toString()}`);
       } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
         // Payment failed
+        console.log('Payment failed with status:', paymentStatus);
         const planId = searchParams.get('planId') || searchParams.get('plan_id');
         const failedParams = new URLSearchParams();
         if (planId) failedParams.append('planId', planId);
         failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
+        failedParams.append('status', paymentStatus);
         if (tapId) failedParams.append('tap_id', tapId);
         
         navigate(`/payment-failed?${failedParams.toString()}`);
       } else {
-        // Continue polling for pending statuses, but with exponential backoff
-        const delay = Math.min(2000 + (currentPollCount * 500), 5000); // 2s to 5s delay
-        console.log(`Payment still ${paymentStatus}, polling again in ${delay}ms...`);
+        // Continue polling for pending statuses
+        const delay = Math.min(2000 + (currentPollCount * 200), 4000); // 2s to 4s delay
+        console.log(`Payment status: ${paymentStatus}, polling again in ${delay}ms...`);
         setTimeout(() => poll(currentPollCount + 1), delay);
       }
     };
 
-    // Start polling
+    // Start polling immediately
     poll(0);
   }, [navigate, searchParams]);
 
