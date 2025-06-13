@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
 
+const TAP_SECRET_KEY = Deno.env.get("TAP_SECRET_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -38,9 +39,18 @@ serve(async (req: Request) => {
       });
     }
 
+    if (!TAP_SECRET_KEY) {
+      console.error("TAP_SECRET_KEY not configured");
+      return new Response(JSON.stringify({ error: "Payment service not configured" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 503
+      });
+    }
+
+    // First, get the payment record from our database
     let query = supabase
       .from('payments')
-      .select('status, user_id, tap_charge_id, tap_reference');
+      .select('id, status, user_id, tap_charge_id, tap_reference');
 
     if (reference) {
       query = query.eq('tap_reference', reference);
@@ -48,26 +58,89 @@ serve(async (req: Request) => {
       query = query.eq('tap_charge_id', tap_id);
     }
 
-    const { data, error } = await query.single();
+    const { data: paymentRecord, error: dbError } = await query.single();
 
-    if (error) {
-      console.error('Payment lookup error:', error);
+    if (dbError) {
+      console.error('Payment lookup error:', dbError);
       return new Response(JSON.stringify({ error: "Payment not found" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 404
       });
     }
 
-    console.log('Found payment record:', { 
-      status: data.status, 
-      userId: data.user_id,
-      tapChargeId: data.tap_charge_id 
+    const chargeId = paymentRecord.tap_charge_id || tap_id;
+    
+    console.log('Found payment record, fetching status from Tap API:', { 
+      chargeId,
+      currentStatus: paymentRecord.status 
     });
 
+    // Call Tap API to get real-time status
+    const tapResponse = await fetch(`https://api.tap.company/v2/charges/${chargeId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${TAP_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!tapResponse.ok) {
+      console.error('Tap API error:', { status: tapResponse.status });
+      // Fall back to database status if Tap API fails
+      return new Response(JSON.stringify({ 
+        status: paymentRecord.status,
+        user_id: paymentRecord.user_id,
+        tap_charge_id: paymentRecord.tap_charge_id,
+        source: 'database_fallback'
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200
+      });
+    }
+
+    const tapData = await tapResponse.json();
+    console.log('Tap API response:', { 
+      id: tapData.id, 
+      status: tapData.status,
+      previousStatus: paymentRecord.status 
+    });
+
+    // Update our database with the latest status from Tap
+    if (tapData.status && tapData.status !== paymentRecord.status) {
+      console.log('Updating payment status:', { 
+        from: paymentRecord.status, 
+        to: tapData.status 
+      });
+      
+      const { error: updateError } = await supabase
+        .from('payments')
+        .update({ status: tapData.status })
+        .eq('id', paymentRecord.id);
+
+      if (updateError) {
+        console.error('Failed to update payment status:', updateError);
+      }
+
+      // If payment is captured, upgrade user profile
+      if (tapData.status === 'CAPTURED') {
+        console.log('Payment captured, upgrading user profile:', paymentRecord.user_id);
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ membership_tier: 'basic' })
+          .eq('id', paymentRecord.user_id);
+
+        if (profileError) {
+          console.error('Failed to upgrade user profile:', profileError);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ 
-      status: data.status,
-      user_id: data.user_id,
-      tap_charge_id: data.tap_charge_id
+      status: tapData.status || paymentRecord.status,
+      user_id: paymentRecord.user_id,
+      tap_charge_id: paymentRecord.tap_charge_id,
+      source: 'tap_api'
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200

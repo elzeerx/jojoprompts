@@ -9,6 +9,8 @@ export default function PaymentCallbackPage() {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<string>('checking');
   const [error, setError] = useState<string | null>(null);
+  const [pollCount, setPollCount] = useState(0);
+  const MAX_POLLS = 30; // Maximum 60 seconds of polling
 
   useEffect(() => {
     const tapId = searchParams.get('tap_id');
@@ -26,24 +28,33 @@ export default function PaymentCallbackPage() {
       return;
     }
 
-    const poll = async () => {
+    const poll = async (currentPollCount: number = 0) => {
+      if (currentPollCount >= MAX_POLLS) {
+        console.log('Maximum polling attempts reached');
+        setError('Payment verification timeout');
+        setTimeout(() => {
+          const planId = searchParams.get('planId') || searchParams.get('plan_id');
+          navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification timeout`);
+        }, 3000);
+        return;
+      }
+
       try {
         // Build query parameters for the verify-tap function
         const params = new URLSearchParams();
         if (ref) params.append('reference', ref);
         if (tapId) params.append('tap_id', tapId);
         
-        console.log('Calling verify-tap function with params:', params.toString());
+        console.log(`Polling attempt ${currentPollCount + 1}/${MAX_POLLS} - Calling verify-tap function with params:`, params.toString());
 
         // Call the verify-tap edge function using URL parameters only
         const functionUrl = `verify-tap?${params.toString()}`;
         const { data, error } = await supabase.functions.invoke(functionUrl);
 
-        console.log('Function response:', { data, error });
+        console.log('Function response:', { data, error, attempt: currentPollCount + 1 });
 
-        // If the function call fails, try direct fetch as fallback
         if (error || !data) {
-          console.log('Function invoke failed, trying direct fetch:', error);
+          console.log('Function invoke failed, trying direct fetch as fallback:', error);
           
           const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
           const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4";
@@ -64,65 +75,9 @@ export default function PaymentCallbackPage() {
           }
 
           const result = await response.json();
-          const paymentStatus = result.status;
-          
-          console.log('Payment status from direct API:', paymentStatus);
-          setStatus(paymentStatus);
-
-          if (paymentStatus === 'CAPTURED') {
-            // Get current URL parameters to pass to success page
-            const planId = searchParams.get('planId') || searchParams.get('plan_id');
-            const userId = searchParams.get('userId') || searchParams.get('user_id');
-            
-            const successParams = new URLSearchParams();
-            if (planId) successParams.append('planId', planId);
-            if (userId) successParams.append('userId', userId);
-            if (tapId) successParams.append('tap_id', tapId);
-            if (ref) successParams.append('reference', ref);
-            
-            navigate(`/payment-success?${successParams.toString()}`);
-          } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
-            const planId = searchParams.get('planId') || searchParams.get('plan_id');
-            const failedParams = new URLSearchParams();
-            if (planId) failedParams.append('planId', planId);
-            failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
-            if (tapId) failedParams.append('tap_id', tapId);
-            
-            navigate(`/payment-failed?${failedParams.toString()}`);
-          } else {
-            // Continue polling for pending statuses
-            console.log('Payment still pending, polling again in 2 seconds...');
-            setTimeout(poll, 2000);
-          }
+          handlePaymentStatus(result.status, currentPollCount);
         } else {
-          // Handle successful function call
-          const paymentStatus = data.status;
-          console.log('Payment status from function:', paymentStatus);
-          setStatus(paymentStatus);
-
-          if (paymentStatus === 'CAPTURED') {
-            const planId = searchParams.get('planId') || searchParams.get('plan_id');
-            const userId = searchParams.get('userId') || searchParams.get('user_id');
-            
-            const successParams = new URLSearchParams();
-            if (planId) successParams.append('planId', planId);
-            if (userId) successParams.append('userId', userId);
-            if (tapId) successParams.append('tap_id', tapId);
-            if (ref) successParams.append('reference', ref);
-            
-            navigate(`/payment-success?${successParams.toString()}`);
-          } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
-            const planId = searchParams.get('planId') || searchParams.get('plan_id');
-            const failedParams = new URLSearchParams();
-            if (planId) failedParams.append('planId', planId);
-            failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
-            if (tapId) failedParams.append('tap_id', tapId);
-            
-            navigate(`/payment-failed?${failedParams.toString()}`);
-          } else {
-            console.log('Payment still pending, polling again in 2 seconds...');
-            setTimeout(poll, 2000);
-          }
+          handlePaymentStatus(data.status, currentPollCount);
         }
       } catch (error: any) {
         console.error('Payment verification error:', error);
@@ -134,8 +89,42 @@ export default function PaymentCallbackPage() {
       }
     };
 
+    const handlePaymentStatus = (paymentStatus: string, currentPollCount: number) => {
+      console.log('Processing payment status:', paymentStatus, 'Poll count:', currentPollCount + 1);
+      setStatus(paymentStatus);
+      setPollCount(currentPollCount + 1);
+
+      if (paymentStatus === 'CAPTURED') {
+        // Payment successful
+        const planId = searchParams.get('planId') || searchParams.get('plan_id');
+        const userId = searchParams.get('userId') || searchParams.get('user_id');
+        
+        const successParams = new URLSearchParams();
+        if (planId) successParams.append('planId', planId);
+        if (userId) successParams.append('userId', userId);
+        if (tapId) successParams.append('tap_id', tapId);
+        if (ref) successParams.append('reference', ref);
+        
+        navigate(`/payment-success?${successParams.toString()}`);
+      } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
+        // Payment failed
+        const planId = searchParams.get('planId') || searchParams.get('plan_id');
+        const failedParams = new URLSearchParams();
+        if (planId) failedParams.append('planId', planId);
+        failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
+        if (tapId) failedParams.append('tap_id', tapId);
+        
+        navigate(`/payment-failed?${failedParams.toString()}`);
+      } else {
+        // Continue polling for pending statuses, but with exponential backoff
+        const delay = Math.min(2000 + (currentPollCount * 500), 5000); // 2s to 5s delay
+        console.log(`Payment still ${paymentStatus}, polling again in ${delay}ms...`);
+        setTimeout(() => poll(currentPollCount + 1), delay);
+      }
+    };
+
     // Start polling
-    poll();
+    poll(0);
   }, [navigate, searchParams]);
 
   if (error) {
@@ -161,7 +150,8 @@ export default function PaymentCallbackPage() {
         </p>
         <div className="text-sm text-gray-500">
           <p>Status: {status === 'checking' ? 'Checking payment status' : status}</p>
-          <p className="mt-2">This may take a few moments</p>
+          <p className="mt-2">Verification attempt {pollCount} of {MAX_POLLS}</p>
+          <p className="mt-1">This may take a few moments</p>
         </div>
       </div>
     </div>

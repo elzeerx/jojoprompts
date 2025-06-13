@@ -61,7 +61,8 @@ serve(async (req: Request) => {
     
     console.log("Webhook received:", { 
       hasSignature: !!signature,
-      bodyLength: body.length 
+      bodyLength: body.length,
+      timestamp: new Date().toISOString()
     });
 
     // Verify webhook signature (optional in test mode)
@@ -77,8 +78,24 @@ serve(async (req: Request) => {
     console.log("Processing webhook event:", { 
       type: event.type, 
       id: event.id, 
-      status: event.status 
+      status: event.status,
+      timestamp: new Date().toISOString()
     });
+
+    // Log webhook event for debugging
+    const { error: logError } = await supabase
+      .from('payments_log')
+      .insert({
+        tap_charge: event.id,
+        status: event.status || event.type,
+        user_id: '00000000-0000-0000-0000-000000000000', // Will be updated below
+        payload: event,
+        logged_at: new Date().toISOString()
+      });
+
+    if (logError) {
+      console.error("Failed to log webhook event:", logError);
+    }
 
     // Get payment record
     const { data: payment, error: paymentError } = await supabase
@@ -97,8 +114,10 @@ serve(async (req: Request) => {
 
     console.log("Found payment:", { userId: payment.user_id, currentStatus: payment.status });
 
-    // Handle different event types
-    if (event.type === 'CAPTURED') {
+    // Handle different event types - using both status and type fields
+    const eventStatus = event.status || event.type;
+    
+    if (eventStatus === 'CAPTURED') {
       console.log("Processing CAPTURED event for charge:", event.id);
       
       // Update payment status
@@ -128,13 +147,13 @@ serve(async (req: Request) => {
         userId: payment.user_id 
       });
 
-    } else if (['FAILED', 'CANCELLED', 'DECLINED'].includes(event.type)) {
-      console.log("Processing failure event:", { type: event.type, chargeId: event.id });
+    } else if (['FAILED', 'CANCELLED', 'DECLINED', 'VOIDED', 'ERROR'].includes(eventStatus)) {
+      console.log("Processing failure event:", { type: eventStatus, chargeId: event.id });
       
       // Update payment status to failed
       const { error: updateError } = await supabase
         .from('payments')
-        .update({ status: event.type })
+        .update({ status: eventStatus })
         .eq('tap_charge_id', event.id);
 
       if (updateError) {
@@ -144,16 +163,16 @@ serve(async (req: Request) => {
 
       console.log("Payment status updated to failure:", { 
         chargeId: event.id, 
-        status: event.type 
+        status: eventStatus 
       });
 
     } else {
-      console.log("Updating payment status for event:", { type: event.type, chargeId: event.id });
+      console.log("Updating payment status for event:", { type: eventStatus, chargeId: event.id });
       
       // Update payment status for other events (INITIATED, PENDING, etc.)
       const { error: updateError } = await supabase
         .from('payments')
-        .update({ status: event.type })
+        .update({ status: eventStatus })
         .eq('tap_charge_id', event.id);
 
       if (updateError) {
@@ -163,7 +182,7 @@ serve(async (req: Request) => {
     }
 
     // Always respond with 200 OK to Tap
-    return new Response(JSON.stringify({ received: true }), {
+    return new Response(JSON.stringify({ received: true, processed: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200
     });
@@ -171,8 +190,12 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error("Webhook processing error:", error);
     
-    // Still return 200 to prevent Tap from retrying
-    return new Response(JSON.stringify({ error: "Webhook processing failed" }), {
+    // Still return 200 to prevent Tap from retrying, but log the error
+    return new Response(JSON.stringify({ 
+      received: true, 
+      processed: false, 
+      error: "Webhook processing failed" 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200
     });
