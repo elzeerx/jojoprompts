@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PayPalPaymentButton } from "./PayPalPaymentButton";
-import { Shield, DollarSign } from "lucide-react";
+import { Shield, DollarSign, AlertCircle } from "lucide-react";
 
 interface SimplePaymentSelectionProps {
   amount: number;
@@ -22,14 +22,19 @@ export function SimplePaymentSelection({
   onError
 }: SimplePaymentSelectionProps) {
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handlePaymentSuccess = (paymentData: any) => {
+    console.log('Payment success in SimplePaymentSelection:', paymentData);
     setProcessing(true);
+    setError(null);
     onSuccess(paymentData);
   };
 
   const handlePaymentError = (error: any) => {
+    console.error('Payment error in SimplePaymentSelection:', error);
     setProcessing(false);
+    setError(error?.message || 'Payment failed');
     onError(error);
   };
 
@@ -57,6 +62,19 @@ export function SimplePaymentSelection({
             </div>
           </div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-red-800">
+                <p className="font-medium">Payment Error</p>
+                <p>{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Payment Method */}
         <div className="space-y-4">

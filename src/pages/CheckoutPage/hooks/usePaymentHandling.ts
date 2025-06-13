@@ -32,7 +32,23 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
         planId: selectedPlan.id 
       }, user.id);
       
-      // Standardize PayPal payment data structure
+      // For PayPal, we need to redirect to the callback page for verification
+      if (paymentData.paymentMethod === 'paypal') {
+        console.log('Redirecting to PayPal callback page for verification...');
+        
+        const callbackParams = new URLSearchParams({
+          success: 'true',
+          plan_id: selectedPlan.id,
+          user_id: user.id,
+          token: paymentData.orderId, // PayPal order ID
+          payment_id: paymentData.paymentId || paymentData.orderId
+        });
+        
+        navigate(`/payment-callback?${callbackParams.toString()}`);
+        return;
+      }
+
+      // For other payment methods, process directly
       const standardizedPaymentData = {
         paymentId: paymentData.paymentId || paymentData.payment_id || paymentData.id,
         paymentMethod: paymentData.paymentMethod || 'paypal',
@@ -51,18 +67,11 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       };
 
       logDebug("Sending request to create-subscription", "payment", { planId: selectedPlan.id }, user.id);
-
-      // Enhanced timeout and retry logic
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Subscription creation timed out after 30 seconds")), 30000);
-      });
-
-      const functionPromise = supabase.functions.invoke("create-subscription", {
+      console.log("Calling create-subscription edge function with payload:", requestPayload);
+      
+      const { data, error } = await supabase.functions.invoke("create-subscription", {
         body: requestPayload
       });
-
-      console.log("Calling create-subscription edge function with payload:", requestPayload);
-      const { data, error } = await Promise.race([functionPromise, timeoutPromise]) as any;
 
       console.log("create-subscription response:", { data, error });
       logDebug("Supabase function response received", "payment", { success: !!data?.success }, user.id);
@@ -96,7 +105,6 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       
-      // Provide more specific error messages
       let userMessage = "There was an issue processing your payment. Please try again.";
       if (errorMessage.includes("timeout") || errorMessage.includes("timed out")) {
         userMessage = "Payment processing is taking longer than expected. Please check your account or contact support.";
@@ -124,7 +132,6 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
     logError("PayPal payment error occurred", "payment", { error: error.message || error }, user?.id);
     setProcessing(false);
     
-    // More specific error handling for PayPal
     let errorMessage = "There was an issue processing your PayPal payment. Please try again.";
     if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
       errorMessage = "Network error. Please check your connection and try again.";

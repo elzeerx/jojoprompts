@@ -34,6 +34,7 @@ export function PayPalPaymentButton({
   const [isProcessing, setIsProcessing] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Get PayPal client ID
   useEffect(() => {
@@ -44,7 +45,7 @@ export function PayPalPaymentButton({
         
         if (error) {
           console.error('Failed to get PayPal client ID:', error);
-          onError(new Error('Failed to initialize PayPal'));
+          setError('Failed to initialize PayPal');
           return;
         }
         
@@ -52,16 +53,16 @@ export function PayPalPaymentButton({
         setClientId(data.clientId);
       } catch (error) {
         console.error('Error getting PayPal client ID:', error);
-        onError(error);
+        setError('Failed to initialize PayPal');
       }
     };
 
     getPayPalClientId();
-  }, [onError]);
+  }, []);
 
   // Load PayPal SDK
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId || error) return;
 
     const loadPayPalScript = () => {
       if (window.paypal) {
@@ -81,7 +82,7 @@ export function PayPalPaymentButton({
       };
       script.onerror = () => {
         console.error('Failed to load PayPal SDK');
-        onError(new Error('Failed to load PayPal SDK'));
+        setError('Failed to load PayPal SDK');
         setIsLoading(false);
       };
       
@@ -89,11 +90,11 @@ export function PayPalPaymentButton({
     };
 
     loadPayPalScript();
-  }, [clientId, onError]);
+  }, [clientId, error]);
 
   // Initialize PayPal buttons
   useEffect(() => {
-    if (!scriptLoaded || !window.paypal || !paypalRef.current || disabled) {
+    if (!scriptLoaded || !window.paypal || !paypalRef.current || disabled || error) {
       return;
     }
 
@@ -123,17 +124,19 @@ export function PayPalPaymentButton({
               }
             });
 
+            console.log('Create order response:', { data, error });
+
             if (error) {
               console.error('Error creating PayPal order:', error);
               throw new Error(error.message || 'Failed to create PayPal order');
             }
 
-            if (!data || !data.id) {
-              console.error('No order ID returned:', data);
-              throw new Error('Invalid order response from server');
+            if (!data || !data.success || !data.id) {
+              console.error('Invalid order response:', data);
+              throw new Error(data?.error || 'Invalid order response from server');
             }
 
-            console.log('PayPal order created:', data.id);
+            console.log('PayPal order created successfully:', data.id);
             return data.id;
           } catch (error) {
             console.error('Error in createOrder:', error);
@@ -147,30 +150,15 @@ export function PayPalPaymentButton({
           try {
             console.log('PayPal payment approved:', data);
             
-            // Verify and capture the payment
-            const { data: verificationData, error } = await supabase.functions.invoke('verify-paypal-payment', {
-              body: {
-                orderId: data.orderID,
-                paymentId: data.paymentID
-              }
-            });
-
-            if (error) {
-              console.error('Error verifying PayPal payment:', error);
-              throw new Error(error.message || 'Payment verification failed');
-            }
-
-            console.log('PayPal payment verified:', verificationData);
-
             // Call success handler with payment data
             onSuccess({
               paymentMethod: 'paypal',
-              paymentId: data.paymentID,
+              paymentId: data.paymentID || data.orderID,
               orderId: data.orderID,
-              status: verificationData.status,
+              status: 'APPROVED',
               details: {
-                id: data.paymentID,
-                status: verificationData.status,
+                id: data.paymentID || data.orderID,
+                status: 'APPROVED',
                 amount: amount
               }
             });
@@ -197,9 +185,24 @@ export function PayPalPaymentButton({
 
     } catch (error) {
       console.error('Error initializing PayPal buttons:', error);
-      onError(error);
+      setError('Failed to initialize PayPal buttons');
     }
-  }, [scriptLoaded, disabled, amount, planId, userId, onSuccess, onError]);
+  }, [scriptLoaded, disabled, amount, planId, userId, onSuccess, onError, error]);
+
+  if (error) {
+    return (
+      <div className="w-full p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-800 text-sm">{error}</p>
+        <Button 
+          variant="outline" 
+          className="mt-2 w-full" 
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
