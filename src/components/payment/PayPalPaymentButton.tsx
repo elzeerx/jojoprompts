@@ -39,6 +39,7 @@ export function PayPalPaymentButton({
   useEffect(() => {
     const getPayPalClientId = async () => {
       try {
+        console.log('Getting PayPal client ID...');
         const { data, error } = await supabase.functions.invoke('get-paypal-client-id');
         
         if (error) {
@@ -47,6 +48,7 @@ export function PayPalPaymentButton({
           return;
         }
         
+        console.log('PayPal client ID received');
         setClientId(data.clientId);
       } catch (error) {
         console.error('Error getting PayPal client ID:', error);
@@ -63,14 +65,17 @@ export function PayPalPaymentButton({
 
     const loadPayPalScript = () => {
       if (window.paypal) {
+        console.log('PayPal SDK already loaded');
         setScriptLoaded(true);
         setIsLoading(false);
         return;
       }
 
+      console.log('Loading PayPal SDK with client ID:', clientId);
       const script = document.createElement('script');
       script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&components=buttons`;
       script.onload = () => {
+        console.log('PayPal SDK loaded successfully');
         setScriptLoaded(true);
         setIsLoading(false);
       };
@@ -92,6 +97,7 @@ export function PayPalPaymentButton({
       return;
     }
 
+    console.log('Initializing PayPal buttons...');
     // Clear any existing buttons
     paypalRef.current.innerHTML = '';
 
@@ -107,7 +113,7 @@ export function PayPalPaymentButton({
         createOrder: async () => {
           try {
             setIsProcessing(true);
-            console.log('Creating PayPal order...');
+            console.log('Creating PayPal order via edge function...');
             
             const { data, error } = await supabase.functions.invoke('create-paypal-order', {
               body: {
@@ -120,6 +126,11 @@ export function PayPalPaymentButton({
             if (error) {
               console.error('Error creating PayPal order:', error);
               throw new Error(error.message || 'Failed to create PayPal order');
+            }
+
+            if (!data || !data.id) {
+              console.error('No order ID returned:', data);
+              throw new Error('Invalid order response from server');
             }
 
             console.log('PayPal order created:', data.id);
