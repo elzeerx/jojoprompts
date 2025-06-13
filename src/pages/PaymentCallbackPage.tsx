@@ -28,55 +28,97 @@ export default function PaymentCallbackPage() {
 
     const poll = async () => {
       try {
-        // Build query parameters
+        // Build query parameters for the verify-tap function
         const params = new URLSearchParams();
         if (ref) params.append('reference', ref);
         if (tapId) params.append('tap_id', tapId);
         
+        console.log('Calling verify-tap function with params:', params.toString());
+
+        // Call the verify-tap edge function using supabase.functions.invoke
         const { data, error } = await supabase.functions.invoke('verify-tap', {
-          body: {},
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          method: 'GET'
         });
 
-        // Fallback to direct fetch if supabase.functions.invoke doesn't work as expected
-        const res = await fetch(`https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/verify-tap?${params.toString()}`);
-        const result = await res.json();
-
-        if (!res.ok) {
-          throw new Error(result.error || 'Failed to verify payment');
-        }
-
-        const paymentStatus = result.status;
-        console.log('Payment status:', paymentStatus);
-        
-        setStatus(paymentStatus);
-
-        if (paymentStatus === 'CAPTURED') {
-          // Get current URL parameters to pass to success page
-          const planId = searchParams.get('planId') || searchParams.get('plan_id');
-          const userId = searchParams.get('userId') || searchParams.get('user_id');
+        // If the function call fails, try direct API call as fallback
+        if (error || !data) {
+          console.log('Function invoke failed, trying direct API call:', error);
           
-          const successParams = new URLSearchParams();
-          if (planId) successParams.append('planId', planId);
-          if (userId) successParams.append('userId', userId);
-          if (tapId) successParams.append('tap_id', tapId);
-          if (ref) successParams.append('reference', ref);
+          const apiUrl = `${supabase.supabaseUrl}/functions/v1/verify-tap?${params.toString()}`;
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${supabase.supabaseKey}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Direct API call failed:', errorText);
+            throw new Error(`API call failed: ${response.status}`);
+          }
+
+          const result = await response.json();
+          const paymentStatus = result.status;
           
-          navigate(`/payment-success?${successParams.toString()}`);
-        } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
-          const planId = searchParams.get('planId') || searchParams.get('plan_id');
-          const failedParams = new URLSearchParams();
-          if (planId) failedParams.append('planId', planId);
-          failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
-          if (tapId) failedParams.append('tap_id', tapId);
-          
-          navigate(`/payment-failed?${failedParams.toString()}`);
+          console.log('Payment status from direct API:', paymentStatus);
+          setStatus(paymentStatus);
+
+          if (paymentStatus === 'CAPTURED') {
+            // Get current URL parameters to pass to success page
+            const planId = searchParams.get('planId') || searchParams.get('plan_id');
+            const userId = searchParams.get('userId') || searchParams.get('user_id');
+            
+            const successParams = new URLSearchParams();
+            if (planId) successParams.append('planId', planId);
+            if (userId) successParams.append('userId', userId);
+            if (tapId) successParams.append('tap_id', tapId);
+            if (ref) successParams.append('reference', ref);
+            
+            navigate(`/payment-success?${successParams.toString()}`);
+          } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
+            const planId = searchParams.get('planId') || searchParams.get('plan_id');
+            const failedParams = new URLSearchParams();
+            if (planId) failedParams.append('planId', planId);
+            failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
+            if (tapId) failedParams.append('tap_id', tapId);
+            
+            navigate(`/payment-failed?${failedParams.toString()}`);
+          } else {
+            // Continue polling for pending statuses
+            console.log('Payment still pending, polling again in 2 seconds...');
+            setTimeout(poll, 2000);
+          }
         } else {
-          // Continue polling for pending statuses
-          console.log('Payment still pending, polling again in 2 seconds...');
-          setTimeout(poll, 2000);
+          // Handle successful function call
+          const paymentStatus = data.status;
+          console.log('Payment status from function:', paymentStatus);
+          setStatus(paymentStatus);
+
+          if (paymentStatus === 'CAPTURED') {
+            const planId = searchParams.get('planId') || searchParams.get('plan_id');
+            const userId = searchParams.get('userId') || searchParams.get('user_id');
+            
+            const successParams = new URLSearchParams();
+            if (planId) successParams.append('planId', planId);
+            if (userId) successParams.append('userId', userId);
+            if (tapId) successParams.append('tap_id', tapId);
+            if (ref) successParams.append('reference', ref);
+            
+            navigate(`/payment-success?${successParams.toString()}`);
+          } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
+            const planId = searchParams.get('planId') || searchParams.get('plan_id');
+            const failedParams = new URLSearchParams();
+            if (planId) failedParams.append('planId', planId);
+            failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
+            if (tapId) failedParams.append('tap_id', tapId);
+            
+            navigate(`/payment-failed?${failedParams.toString()}`);
+          } else {
+            console.log('Payment still pending, polling again in 2 seconds...');
+            setTimeout(poll, 2000);
+          }
         }
       } catch (error: any) {
         console.error('Payment verification error:', error);

@@ -29,6 +29,8 @@ serve(async (req: Request) => {
     const reference = url.searchParams.get('reference');
     const tap_id = url.searchParams.get('tap_id');
 
+    console.log('Verify payment request:', { reference, tap_id });
+
     if (!reference && !tap_id) {
       return new Response(JSON.stringify({ error: "Missing reference or tap_id parameter" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -38,7 +40,7 @@ serve(async (req: Request) => {
 
     let query = supabase
       .from('payments')
-      .select('status, user_id');
+      .select('status, user_id, tap_charge_id, tap_reference');
 
     if (reference) {
       query = query.eq('tap_reference', reference);
@@ -56,7 +58,17 @@ serve(async (req: Request) => {
       });
     }
 
-    return new Response(JSON.stringify({ status: data.status }), {
+    console.log('Found payment record:', { 
+      status: data.status, 
+      userId: data.user_id,
+      tapChargeId: data.tap_charge_id 
+    });
+
+    return new Response(JSON.stringify({ 
+      status: data.status,
+      user_id: data.user_id,
+      tap_charge_id: data.tap_charge_id
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200
     });
