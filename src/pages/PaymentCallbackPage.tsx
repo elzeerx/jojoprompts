@@ -35,11 +35,9 @@ export default function PaymentCallbackPage() {
         
         console.log('Calling verify-tap function with params:', params.toString());
 
-        // Call the verify-tap edge function using supabase.functions.invoke
-        const { data, error } = await supabase.functions.invoke('verify-tap', {
-          method: 'GET',
-          body: Object.fromEntries(params)
-        });
+        // Call the verify-tap edge function using URL parameters only
+        const functionUrl = `verify-tap?${params.toString()}`;
+        const { data, error } = await supabase.functions.invoke(functionUrl);
 
         console.log('Function response:', { data, error });
 
