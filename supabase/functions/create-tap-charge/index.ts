@@ -43,6 +43,28 @@ serve(async (req: Request) => {
       });
     }
 
+    console.log("Fetching user profile for:", user_id);
+
+    // Fetch user profile data for customer information
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', user_id)
+      .single();
+
+    if (profileError) {
+      console.error("Failed to fetch user profile:", profileError);
+      return new Response(JSON.stringify({ error: "Could not fetch user profile" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
+    const firstName = profile?.first_name || 'Customer';
+    const lastName = profile?.last_name || 'User';
+
+    console.log("User profile data:", { firstName, lastName });
+
     // Get origin from request headers for redirect URL
     const origin = req.headers.get('origin') || 'https://jojoprompts.lovable.app';
 
@@ -54,10 +76,20 @@ serve(async (req: Request) => {
       description: 'JojoPrompts Basic Plan',
       reference: { transaction: crypto.randomUUID() },
       redirect: { url: `${origin}/payment/callback` },
-      source: { id: 'src_all' } // card & local wallets
+      source: { id: 'src_all' }, // card & local wallets
+      customer: {
+        first_name: firstName,
+        last_name: lastName,
+        name: `${firstName} ${lastName}`
+      }
     };
 
-    console.log("Creating Tap charge:", { amount, user_id, redirect_url: body.redirect.url });
+    console.log("Creating Tap charge:", { 
+      amount, 
+      user_id, 
+      redirect_url: body.redirect.url,
+      customer: body.customer
+    });
 
     const tapRes = await fetch('https://api.tap.company/v2/charges', {
       method: 'POST',
