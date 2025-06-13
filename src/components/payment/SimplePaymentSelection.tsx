@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TapPaymentButton } from "./TapPaymentButton";
+import { PayPalPaymentButton } from "./PayPalPaymentButton";
 import { Shield, DollarSign } from "lucide-react";
 
 interface SimplePaymentSelectionProps {
@@ -61,13 +61,13 @@ export function SimplePaymentSelection({
         {/* Payment Method */}
         <div className="space-y-4">
           <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Pay with Tap</h3>
+            <h3 className="text-lg font-semibold mb-2">Pay with PayPal</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Secure payment processing powered by Tap Payment Gateway
+              Secure payment processing powered by PayPal
             </p>
           </div>
 
-          <TapPaymentButton
+          <PayPalPaymentButton
             amount={amount}
             planName={planName}
             planId={planId}
@@ -83,7 +83,7 @@ export function SimplePaymentSelection({
           <Shield className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
           <div className="text-xs text-blue-800">
             <p className="font-medium mb-1">Secure Payment</p>
-            <p>Your payment is processed securely through Tap Payment Gateway with industry-standard encryption.</p>
+            <p>Your payment is processed securely through PayPal with industry-standard encryption and buyer protection.</p>
           </div>
         </div>
 

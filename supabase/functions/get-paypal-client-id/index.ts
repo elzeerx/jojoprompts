@@ -12,20 +12,20 @@ serve(async (req: Request) => {
   }
 
   try {
-    const tapPk = Deno.env.get("TAP_PK");
+    const paypalClientId = Deno.env.get("PAYPAL_CLIENT_ID");
     
-    if (!tapPk) {
-      return new Response(JSON.stringify({ error: "Tap public key not configured" }), {
+    if (!paypalClientId) {
+      return new Response(JSON.stringify({ error: "PayPal client ID not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ tapPk }), {
+    return new Response(JSON.stringify({ clientId: paypalClientId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: "Failed to get Tap public key" }), {
+    return new Response(JSON.stringify({ error: "Failed to get PayPal client ID" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

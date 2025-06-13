@@ -27,19 +27,20 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
     setProcessing(true);
     
     try {
-      logInfo("Processing payment success", "payment", { 
-        paymentMethod: paymentData.paymentMethod || (paymentData.source ? 'tap' : 'paypal'),
+      logInfo("Processing PayPal payment success", "payment", { 
+        paymentMethod: paymentData.paymentMethod || 'paypal',
         planId: selectedPlan.id 
       }, user.id);
       
-      // Standardize payment data structure
+      // Standardize PayPal payment data structure
       const standardizedPaymentData = {
         paymentId: paymentData.paymentId || paymentData.payment_id || paymentData.id,
-        paymentMethod: paymentData.paymentMethod || (paymentData.source ? 'tap' : 'paypal'),
+        paymentMethod: paymentData.paymentMethod || 'paypal',
         details: {
-          id: paymentData.id || paymentData.paymentId,
+          id: paymentData.paymentId || paymentData.id,
+          orderId: paymentData.orderId,
           status: paymentData.status,
-          amount: paymentData.amount
+          amount: paymentData.amount || paymentData.details?.amount
         }
       };
 
@@ -119,18 +120,20 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
   }, [processing, selectedPlan, user, navigate, setProcessing]);
 
   const handlePaymentError = useCallback((error: any) => {
-    console.error("Payment error occurred:", error);
-    logError("Payment error occurred", "payment", { error: error.message || error }, user?.id);
+    console.error("PayPal payment error occurred:", error);
+    logError("PayPal payment error occurred", "payment", { error: error.message || error }, user?.id);
     setProcessing(false);
     
-    // More specific error handling
-    let errorMessage = "There was an issue processing your payment. Please try again.";
+    // More specific error handling for PayPal
+    let errorMessage = "There was an issue processing your PayPal payment. Please try again.";
     if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
       errorMessage = "Network error. Please check your connection and try again.";
     } else if (error?.message?.includes("timeout")) {
       errorMessage = "Payment processing timed out. Please try again.";
-    } else if (error?.message?.includes("script")) {
-      errorMessage = "Payment interface failed to load. Please refresh the page and try again.";
+    } else if (error?.message?.includes("cancelled")) {
+      errorMessage = "Payment was cancelled. You can try again when ready.";
+    } else if (error?.message?.includes("PayPal")) {
+      errorMessage = "PayPal service error. Please try again or contact support.";
     }
     
     toast({

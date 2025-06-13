@@ -9,7 +9,7 @@ export default function PaymentCallbackPage() {
   const [status, setStatus] = useState<string>('checking');
   const [error, setError] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
-  const MAX_POLLS = 20; // Reduced to 40 seconds max
+  const MAX_POLLS = 20; // 40 seconds max
 
   useEffect(() => {
     // Log all available parameters for debugging
@@ -20,27 +20,39 @@ export default function PaymentCallbackPage() {
     console.log('Payment callback - All URL parameters:', allParams);
     console.log('Payment callback - Full URL:', window.location.href);
 
-    // Try to get payment identifier from various possible parameter names
-    const tapId = searchParams.get('tap_id') || 
-                  searchParams.get('id') || 
-                  searchParams.get('charge_id') || 
-                  searchParams.get('chg_id');
-    
-    const reference = searchParams.get('reference') || 
-                     searchParams.get('tap_reference') || 
-                     searchParams.get('ref');
-    
-    console.log('Payment callback extracted parameters:', { 
-      tapId, 
-      reference,
+    // Check if this is a PayPal success/cancel callback
+    const success = searchParams.get('success');
+    const paymentId = searchParams.get('paymentId') || searchParams.get('payment_id');
+    const payerId = searchParams.get('PayerID') || searchParams.get('payer_id');
+    const orderId = searchParams.get('token') || searchParams.get('order_id');
+    const planId = searchParams.get('plan_id');
+    const userId = searchParams.get('user_id');
+
+    console.log('PayPal callback extracted parameters:', { 
+      success,
+      paymentId, 
+      payerId,
+      orderId,
+      planId,
+      userId,
       originalParams: allParams 
     });
 
-    if (!tapId && !reference) {
-      console.error('No payment identifier found in URL parameters');
+    // Handle PayPal cancel
+    if (success === 'false') {
+      console.log('PayPal payment cancelled');
+      setError('Payment was cancelled');
+      setTimeout(() => {
+        navigate(`/payment-failed?planId=${planId || ''}&reason=Payment cancelled`);
+      }, 3000);
+      return;
+    }
+
+    // Check for required PayPal parameters
+    if (!orderId && !paymentId) {
+      console.error('No PayPal payment identifier found in URL parameters');
       setError('Missing payment information in callback URL');
       setTimeout(() => {
-        const planId = searchParams.get('planId') || searchParams.get('plan_id');
         navigate(`/payment-failed?planId=${planId || ''}&reason=Missing payment reference`);
       }, 3000);
       return;
@@ -51,25 +63,24 @@ export default function PaymentCallbackPage() {
         console.log('Maximum polling attempts reached');
         setError('Payment verification timeout');
         setTimeout(() => {
-          const planId = searchParams.get('planId') || searchParams.get('plan_id');
           navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification timeout`);
         }, 3000);
         return;
       }
 
       try {
-        // Build query parameters for the verify-tap function
+        // Build query parameters for the verify-paypal-payment function
         const params = new URLSearchParams();
-        if (reference) params.append('reference', reference);
-        if (tapId) params.append('tap_id', tapId);
+        if (orderId) params.append('order_id', orderId);
+        if (paymentId) params.append('payment_id', paymentId);
         
-        console.log(`Polling attempt ${currentPollCount + 1}/${MAX_POLLS} - Calling verify-tap with params:`, params.toString());
+        console.log(`Polling attempt ${currentPollCount + 1}/${MAX_POLLS} - Calling verify-paypal-payment with params:`, params.toString());
 
-        // Use direct HTTP GET request to the verify-tap function
+        // Use direct HTTP GET request to the verify-paypal-payment function
         const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4";
         
-        const apiUrl = `${SUPABASE_URL}/functions/v1/verify-tap?${params.toString()}`;
+        const apiUrl = `${SUPABASE_URL}/functions/v1/verify-paypal-payment?${params.toString()}`;
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
@@ -80,7 +91,7 @@ export default function PaymentCallbackPage() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('Verify-tap API call failed:', { 
+          console.error('Verify-paypal-payment API call failed:', { 
             status: response.status, 
             statusText: response.statusText,
             error: errorText 
@@ -89,7 +100,7 @@ export default function PaymentCallbackPage() {
         }
 
         const result = await response.json();
-        console.log('Verify-tap response:', result, 'Poll count:', currentPollCount + 1);
+        console.log('Verify-paypal-payment response:', result, 'Poll count:', currentPollCount + 1);
         
         handlePaymentStatus(result.status, currentPollCount);
 
@@ -97,7 +108,6 @@ export default function PaymentCallbackPage() {
         console.error('Payment verification error:', error);
         setError(error.message);
         setTimeout(() => {
-          const planId = searchParams.get('planId') || searchParams.get('plan_id');
           navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification failed: ${error.message}`);
         }, 3000);
       }
@@ -108,28 +118,25 @@ export default function PaymentCallbackPage() {
       setStatus(paymentStatus);
       setPollCount(currentPollCount + 1);
 
-      if (paymentStatus === 'CAPTURED') {
+      if (paymentStatus === 'COMPLETED') {
         // Payment successful
-        console.log('Payment captured successfully, redirecting to success page');
-        const planId = searchParams.get('planId') || searchParams.get('plan_id');
-        const userId = searchParams.get('userId') || searchParams.get('user_id');
+        console.log('Payment completed successfully, redirecting to success page');
         
         const successParams = new URLSearchParams();
         if (planId) successParams.append('planId', planId);
         if (userId) successParams.append('userId', userId);
-        if (tapId) successParams.append('tap_id', tapId);
-        if (reference) successParams.append('reference', reference);
+        if (paymentId) successParams.append('payment_id', paymentId);
+        if (orderId) successParams.append('order_id', orderId);
         
         navigate(`/payment-success?${successParams.toString()}`);
       } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
         // Payment failed
         console.log('Payment failed with status:', paymentStatus);
-        const planId = searchParams.get('planId') || searchParams.get('plan_id');
         const failedParams = new URLSearchParams();
         if (planId) failedParams.append('planId', planId);
         failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
         failedParams.append('status', paymentStatus);
-        if (tapId) failedParams.append('tap_id', tapId);
+        if (paymentId) failedParams.append('payment_id', paymentId);
         
         navigate(`/payment-failed?${failedParams.toString()}`);
       } else {
@@ -163,7 +170,7 @@ export default function PaymentCallbackPage() {
         <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
         <h2 className="text-xl font-semibold mb-2">Processing Your Payment</h2>
         <p className="text-gray-600 mb-4">
-          Please wait while we verify your payment with Tap...
+          Please wait while we verify your payment with PayPal...
         </p>
         <div className="text-sm text-gray-500">
           <p>Status: {status === 'checking' ? 'Checking payment status' : status}</p>

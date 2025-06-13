@@ -2,85 +2,39 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
 
-// Construct Supabase client
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  console.error("Missing Supabase configuration");
+}
+
+const supabase = createClient(supabaseUrl!, supabaseServiceRoleKey!);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info, apikey",
-  "Access-Control-Max-Age": "86400",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req: Request) => {
-  console.log(`Received ${req.method} request to create-subscription`);
-
-  // Handle CORS preflight request
   if (req.method === "OPTIONS") {
-    console.log("Handling CORS preflight request");
-    return new Response(null, {
-      headers: corsHeaders,
-      status: 200
-    });
-  }
-
-  // Only allow POST requests
-  if (req.method !== "POST") {
-    console.log(`Method ${req.method} not allowed`);
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 405
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Parse the request body
-    const requestBody = await req.text();
-    console.log("Raw request body:", requestBody);
+    const { planId, userId, paymentData } = await req.json();
+    
+    console.log("Creating subscription:", { planId, userId, paymentMethod: paymentData?.paymentMethod });
 
-    let parsedBody;
-    try {
-      parsedBody = JSON.parse(requestBody);
-    } catch (parseError) {
-      console.error("Failed to parse JSON:", parseError);
+    if (!planId || !userId || !paymentData) {
+      console.error("Missing required fields:", { planId: !!planId, userId: !!userId, paymentData: !!paymentData });
       return new Response(
-        JSON.stringify({ error: "Invalid JSON in request body" }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-          status: 400 
-        }
-      );
-    }
-
-    const { userId, planId, paymentData } = parsedBody;
-    console.log("Parsed request data:", { userId, planId, paymentData: paymentData ? "present" : "missing" });
-
-    // Basic validation
-    if (!userId || !planId || !paymentData) {
-      console.error("Missing required fields:", { userId: !!userId, planId: !!planId, paymentData: !!paymentData });
-      return new Response(
-        JSON.stringify({ 
-          error: "Missing required fields",
-          details: {
-            userId: !userId ? "missing" : "present",
-            planId: !planId ? "missing" : "present", 
-            paymentData: !paymentData ? "missing" : "present"
-          }
-        }),
+        JSON.stringify({ success: false, error: "Missing required fields" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    // Extract payment information from standardized data
-    const paymentMethod = paymentData.paymentMethod || 'unknown';
-    const paymentId = paymentData.paymentId || paymentData.payment_id || null;
-
-    console.log("Processing subscription for:", { userId, planId, paymentMethod, paymentId });
-
     // Get plan details
-    console.log("Fetching plan details...");
     const { data: plan, error: planError } = await supabase
       .from("subscription_plans")
       .select("*")
@@ -88,112 +42,101 @@ serve(async (req: Request) => {
       .single();
 
     if (planError || !plan) {
-      console.error("Plan error:", planError);
+      console.error("Plan not found:", planError);
       return new Response(
-        JSON.stringify({ error: "Invalid plan ID", details: planError?.message }),
+        JSON.stringify({ success: false, error: "Plan not found" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+      );
+    }
+
+    // Check if user already has an active subscription
+    const { data: existingSubscription } = await supabase
+      .from("user_subscriptions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .single();
+
+    if (existingSubscription) {
+      console.log("User already has active subscription");
+      return new Response(
+        JSON.stringify({ success: false, error: "User already has an active subscription" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    console.log("Plan found:", { planName: plan.name, price: plan.price_usd, isLifetime: plan.is_lifetime });
-
-    // Calculate end date for non-lifetime plans
+    // Calculate end date
     let endDate = null;
     if (!plan.is_lifetime && plan.duration_days) {
-      const date = new Date();
-      date.setDate(date.getDate() + plan.duration_days);
-      endDate = date.toISOString();
-      console.log("Calculated end date:", endDate);
+      endDate = new Date();
+      endDate.setDate(endDate.getDate() + plan.duration_days);
     }
 
-    // Create the subscription
-    console.log("Creating subscription record...");
+    // Create subscription record
     const { data: subscription, error: subscriptionError } = await supabase
       .from("user_subscriptions")
       .insert({
         user_id: userId,
         plan_id: planId,
-        payment_method: paymentMethod,
-        payment_id: paymentId,
-        end_date: endDate,
-        status: "active"
+        status: "active",
+        start_date: new Date().toISOString(),
+        end_date: endDate?.toISOString(),
+        payment_method: paymentData.paymentMethod || 'paypal',
+        payment_id: paymentData.details?.id || paymentData.paymentId
       })
       .select()
       .single();
 
     if (subscriptionError) {
-      console.error("Subscription creation error:", subscriptionError);
+      console.error("Failed to create subscription:", subscriptionError);
       return new Response(
-        JSON.stringify({ 
-          error: "Failed to create subscription",
-          details: subscriptionError.message 
-        }),
+        JSON.stringify({ success: false, error: "Failed to create subscription" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
-    console.log("Subscription created successfully:", subscription.id);
+    // Update user profile membership tier
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ membership_tier: "basic" })
+      .eq("id", userId);
+
+    if (profileError) {
+      console.error("Failed to update user profile:", profileError);
+    }
 
     // Create payment history record
-    console.log("Creating payment history record...");
-    const { error: paymentError } = await supabase
+    const { error: paymentHistoryError } = await supabase
       .from("payment_history")
       .insert({
         user_id: userId,
         subscription_id: subscription.id,
         amount_usd: plan.price_usd,
-        amount_kwd: plan.price_kwd,
-        payment_method: paymentMethod,
-        payment_id: paymentId,
+        payment_method: paymentData.paymentMethod || 'paypal',
+        payment_id: paymentData.details?.id || paymentData.paymentId,
         status: "completed"
       });
 
-    if (paymentError) {
-      console.error("Payment history error:", paymentError);
-      // We don't fail the whole transaction for this, just log it
-    } else {
-      console.log("Payment history created successfully");
+    if (paymentHistoryError) {
+      console.error("Failed to create payment history:", paymentHistoryError);
     }
 
-    const successResponse = {
-      success: true,
-      message: "Subscription created successfully",
-      subscription: {
-        id: subscription.id,
-        status: subscription.status,
-        plan_name: plan.name
-      }
-    };
+    console.log("Subscription created successfully:", subscription.id);
 
-    console.log("Returning success response:", successResponse);
-
-    return new Response(
-      JSON.stringify(successResponse),
-      { 
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json"
-        },
-        status: 200
-      }
-    );
-  } catch (error) {
-    console.error("Unexpected error in create-subscription:", error);
-    console.error("Error stack:", error.stack);
-    
     return new Response(
       JSON.stringify({ 
-        error: "Internal server error",
-        details: error.message || "Unknown error occurred",
-        timestamp: new Date().toISOString()
+        success: true, 
+        subscription: subscription,
+        message: "Subscription created successfully"
       }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json"
-        }, 
-        status: 500 
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
+    console.error("Error in create-subscription:", error);
+    return new Response(
+      JSON.stringify({ success: false, error: "Internal server error" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
 });

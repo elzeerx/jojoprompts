@@ -299,9 +299,10 @@ export type Database = {
           created_at: string | null
           currency: string | null
           id: string
+          paypal_order_id: string | null
+          paypal_payer_id: string | null
+          paypal_payment_id: string | null
           status: string | null
-          tap_charge_id: string | null
-          tap_reference: string | null
           user_id: string
         }
         Insert: {
@@ -309,9 +310,10 @@ export type Database = {
           created_at?: string | null
           currency?: string | null
           id?: string
+          paypal_order_id?: string | null
+          paypal_payer_id?: string | null
+          paypal_payment_id?: string | null
           status?: string | null
-          tap_charge_id?: string | null
-          tap_reference?: string | null
           user_id: string
         }
         Update: {
@@ -319,9 +321,10 @@ export type Database = {
           created_at?: string | null
           currency?: string | null
           id?: string
+          paypal_order_id?: string | null
+          paypal_payer_id?: string | null
+          paypal_payment_id?: string | null
           status?: string | null
-          tap_charge_id?: string | null
-          tap_reference?: string | null
           user_id?: string
         }
         Relationships: []
@@ -331,24 +334,24 @@ export type Database = {
           id: number
           logged_at: string | null
           payload: Json | null
+          paypal_payment_id: string | null
           status: string | null
-          tap_charge: string | null
           user_id: string
         }
         Insert: {
           id?: number
           logged_at?: string | null
           payload?: Json | null
+          paypal_payment_id?: string | null
           status?: string | null
-          tap_charge?: string | null
           user_id: string
         }
         Update: {
           id?: number
           logged_at?: string | null
           payload?: Json | null
+          paypal_payment_id?: string | null
           status?: string | null
-          tap_charge?: string | null
           user_id?: string
         }
         Relationships: []
@@ -523,22 +526,22 @@ export type Database = {
         Row: {
           created_at: string | null
           current_period_end: string | null
+          paypal_payment_id: string | null
           status: string
-          tap_charge: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
           current_period_end?: string | null
+          paypal_payment_id?: string | null
           status?: string
-          tap_charge?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
           current_period_end?: string | null
+          paypal_payment_id?: string | null
           status?: string
-          tap_charge?: string | null
           user_id?: string
         }
         Relationships: []
