@@ -24,41 +24,72 @@ function getPayPalApiUrl(): string {
     : 'https://api-m.sandbox.paypal.com';
 }
 
-// Get PayPal access token
+// Enhanced PayPal access token function with better error handling
 async function getPayPalAccessToken(): Promise<string> {
-  console.log('Getting PayPal access token...');
-  console.log('PayPal Environment:', PAYPAL_ENVIRONMENT);
-  console.log('PayPal API URL:', getPayPalApiUrl());
-  console.log('Client ID exists:', !!PAYPAL_CLIENT_ID);
-  console.log('Client Secret exists:', !!PAYPAL_CLIENT_SECRET);
+  console.log('=== PayPal Authentication Debug ===');
+  console.log('Environment:', PAYPAL_ENVIRONMENT);
+  console.log('API URL:', getPayPalApiUrl());
+  console.log('Client ID provided:', !!PAYPAL_CLIENT_ID);
+  console.log('Client Secret provided:', !!PAYPAL_CLIENT_SECRET);
   
   if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
-    throw new Error('PayPal credentials not configured');
+    const missingCredentials = [];
+    if (!PAYPAL_CLIENT_ID) missingCredentials.push('PAYPAL_CLIENT_ID');
+    if (!PAYPAL_CLIENT_SECRET) missingCredentials.push('PAYPAL_CLIENT_SECRET');
+    throw new Error(`Missing PayPal credentials: ${missingCredentials.join(', ')}`);
   }
 
-  const auth = btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`);
-  
-  const response = await fetch(`${getPayPalApiUrl()}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${auth}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept': 'application/json'
-    },
-    body: 'grant_type=client_credentials'
+  // Log credential format (safely)
+  console.log('Client ID format check:', {
+    length: PAYPAL_CLIENT_ID.length,
+    startsWithA: PAYPAL_CLIENT_ID.startsWith('A'),
+    hasCorrectStructure: /^A[A-Za-z0-9_-]+$/.test(PAYPAL_CLIENT_ID)
   });
 
-  console.log('PayPal token response status:', response.status);
+  const auth = btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`);
+  console.log('Authorization header created successfully');
   
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('PayPal token request failed:', errorText);
-    throw new Error(`Failed to get PayPal access token: ${response.status} - ${errorText}`);
-  }
+  try {
+    const response = await fetch(`${getPayPalApiUrl()}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      },
+      body: 'grant_type=client_credentials'
+    });
 
-  const data = await response.json();
-  console.log('PayPal access token obtained successfully');
-  return data.access_token;
+    console.log('PayPal auth response status:', response.status);
+    console.log('PayPal auth response headers:', Object.fromEntries(response.headers.entries()));
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('PayPal authentication failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+
+      // Parse error response if it's JSON
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(errorText);
+        console.error('Parsed error details:', errorDetails);
+      } catch (e) {
+        console.error('Error response is not JSON:', errorText);
+      }
+
+      throw new Error(`PayPal authentication failed: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('PayPal access token obtained successfully');
+    return data.access_token;
+  } catch (error) {
+    console.error('Error in PayPal authentication:', error);
+    throw error;
+  }
 }
 
 serve(async (req: Request) => {
@@ -74,15 +105,8 @@ serve(async (req: Request) => {
   }
 
   try {
-    console.log('Create PayPal order request received');
-
-    if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
-      console.error("PayPal credentials not configured");
-      return new Response(JSON.stringify({ error: "Payment service not configured" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 503
-      });
-    }
+    console.log('=== Create PayPal Order Request ===');
+    console.log('Timestamp:', new Date().toISOString());
 
     const { planId, userId, amount } = await req.json();
     console.log('Request payload:', { planId, userId, amount });
@@ -124,9 +148,9 @@ serve(async (req: Request) => {
       });
     }
 
-    console.log("Creating PayPal order:", { amount, planId, userId });
+    console.log("=== Starting PayPal Order Creation ===");
 
-    // Get PayPal access token
+    // Get PayPal access token with enhanced error handling
     const accessToken = await getPayPalAccessToken();
 
     // Create PayPal order
@@ -165,7 +189,11 @@ serve(async (req: Request) => {
 
     if (!paypalResponse.ok) {
       const errorText = await paypalResponse.text();
-      console.error("PayPal API error:", { status: paypalResponse.status, error: errorText });
+      console.error("PayPal order creation failed:", { 
+        status: paypalResponse.status, 
+        statusText: paypalResponse.statusText,
+        error: errorText 
+      });
       return new Response(JSON.stringify({ error: "Payment gateway error" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 502
@@ -173,7 +201,7 @@ serve(async (req: Request) => {
     }
 
     const paypalData = await paypalResponse.json();
-    console.log("PayPal order created:", { id: paypalData.id, status: paypalData.status });
+    console.log("PayPal order created successfully:", { id: paypalData.id, status: paypalData.status });
 
     // Save payment record
     const { error: insertError } = await supabase.from('payments').insert({
@@ -202,8 +230,14 @@ serve(async (req: Request) => {
     });
 
   } catch (error) {
-    console.error("Payment creation error:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
+    console.error("=== Payment Creation Error ===");
+    console.error("Error details:", error);
+    console.error("Error stack:", error.stack);
+    
+    return new Response(JSON.stringify({ 
+      error: "Internal server error",
+      details: error.message 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500
     });

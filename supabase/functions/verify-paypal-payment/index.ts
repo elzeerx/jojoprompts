@@ -48,11 +48,20 @@ serve(async (req: Request) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const orderId = url.searchParams.get('order_id');
-    const paymentId = url.searchParams.get('payment_id');
+    let orderId, paymentId;
 
-    console.log('Verify PayPal payment request:', { orderId, paymentId });
+    // Handle both GET and POST methods
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      orderId = url.searchParams.get('order_id');
+      paymentId = url.searchParams.get('payment_id');
+    } else if (req.method === "POST") {
+      const body = await req.json();
+      orderId = body.orderId;
+      paymentId = body.paymentId;
+    }
+
+    console.log('Verify PayPal payment request:', { orderId, paymentId, method: req.method });
 
     if (!orderId && !paymentId) {
       return new Response(JSON.stringify({ error: "Missing order_id or payment_id parameter" }), {
