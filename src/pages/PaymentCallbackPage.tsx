@@ -37,18 +37,24 @@ export default function PaymentCallbackPage() {
 
         // Call the verify-tap edge function using supabase.functions.invoke
         const { data, error } = await supabase.functions.invoke('verify-tap', {
-          method: 'GET'
+          method: 'GET',
+          body: Object.fromEntries(params)
         });
 
-        // If the function call fails, try direct API call as fallback
+        console.log('Function response:', { data, error });
+
+        // If the function call fails, try direct fetch as fallback
         if (error || !data) {
-          console.log('Function invoke failed, trying direct API call:', error);
+          console.log('Function invoke failed, trying direct fetch:', error);
           
-          const apiUrl = `${supabase.supabaseUrl}/functions/v1/verify-tap?${params.toString()}`;
+          const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
+          const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4";
+          
+          const apiUrl = `${SUPABASE_URL}/functions/v1/verify-tap?${params.toString()}`;
           const response = await fetch(apiUrl, {
             method: 'GET',
             headers: {
-              'Authorization': `Bearer ${supabase.supabaseKey}`,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json'
             }
           });
