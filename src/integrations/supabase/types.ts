@@ -293,6 +293,39 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          status: string | null
+          tap_charge_id: string | null
+          tap_reference: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          status?: string | null
+          tap_charge_id?: string | null
+          tap_reference?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          status?: string | null
+          tap_charge_id?: string | null
+          tap_reference?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments_log: {
         Row: {
           id: number
@@ -326,6 +359,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          membership_tier: string | null
           role: string
         }
         Insert: {
@@ -333,6 +367,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          membership_tier?: string | null
           role?: string
         }
         Update: {
@@ -340,6 +375,7 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string
+          membership_tier?: string | null
           role?: string
         }
         Relationships: []
