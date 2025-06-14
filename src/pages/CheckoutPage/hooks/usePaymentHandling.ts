@@ -2,24 +2,40 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { logInfo, logWarn, logError, logDebug } from '@/utils/secureLogging';
+import { logInfo, logWarn, logError } from '@/utils/secureLogging';
 
 export function usePaymentHandling(user: any, selectedPlan: any, processing: boolean, setProcessing: any) {
   const navigate = useNavigate();
 
   const handlePaymentSuccess = useCallback(async (paymentData: any) => {
+    console.log('[Payment] Success handler called with:', paymentData);
+    
     if (processing) {
       logWarn("Payment already processing, ignoring duplicate call", "payment", undefined, user?.id);
       return;
     }
     
     if (!user?.id) {
+      console.error('[Payment] User not authenticated during payment success');
       logError("User not authenticated during payment success", "payment");
       toast({
         title: "Authentication Error",
         description: "Please refresh the page and try again.",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Validate payment data more thoroughly
+    if (!paymentData) {
+      console.error('[Payment] No payment data received');
+      onError(new Error('No payment data received'));
+      return;
+    }
+
+    if (!paymentData.paymentId && !paymentData.details?.id) {
+      console.error('[Payment] Missing payment ID in success data:', paymentData);
+      onError(new Error('Payment ID missing from success response'));
       return;
     }
     
@@ -29,17 +45,20 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       logInfo("Processing PayPal payment success", "payment", { 
         paymentMethod: paymentData.paymentMethod || 'paypal',
         planId: selectedPlan.id,
-        paymentId: paymentData.paymentId,
-        status: paymentData.status
+        paymentId: paymentData.paymentId || paymentData.details?.id,
+        status: paymentData.status,
+        orderId: paymentData.orderId
       }, user.id);
       
-      console.log('Payment success received:', paymentData);
+      console.log('[Payment] Payment processing successful, navigating to success page');
 
       // Since the capture function already handled subscription creation,
       // we just need to show success and redirect
-      if (paymentData.status === 'COMPLETED') {
+      const paymentStatus = paymentData.status || paymentData.details?.status;
+      
+      if (paymentStatus === 'COMPLETED' || paymentStatus === 'completed') {
         logInfo("Payment completed successfully", "payment", { 
-          paymentId: paymentData.paymentId 
+          paymentId: paymentData.paymentId || paymentData.details?.id 
         }, user.id);
 
         toast({
@@ -47,23 +66,48 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
           description: "Your subscription has been activated successfully.",
         });
 
-        // Redirect to success page
-        navigate("/payment-success");
+        // Navigate to success page with payment details
+        const successParams = new URLSearchParams({
+          planId: selectedPlan.id,
+          userId: user.id,
+          paymentId: paymentData.paymentId || paymentData.details?.id,
+          status: 'completed'
+        });
+        
+        console.log('[Payment] Redirecting to success page with params:', successParams.toString());
+        navigate(`/payment-success?${successParams.toString()}`);
       } else {
+        console.warn('[Payment] Payment status not completed:', paymentStatus);
         logWarn("Payment not completed", "payment", { 
-          status: paymentData.status 
+          status: paymentStatus 
         }, user.id);
         
-        throw new Error(`Payment status is ${paymentData.status}, expected COMPLETED`);
+        // Still consider it successful if we have a payment ID
+        if (paymentData.paymentId || paymentData.details?.id) {
+          toast({
+            title: "Payment Received",
+            description: "Your payment has been received and is being processed.",
+          });
+          
+          const successParams = new URLSearchParams({
+            planId: selectedPlan.id,
+            userId: user.id,
+            paymentId: paymentData.paymentId || paymentData.details?.id,
+            status: 'processing'
+          });
+          
+          navigate(`/payment-success?${successParams.toString()}`);
+        } else {
+          throw new Error(`Payment status is ${paymentStatus}, expected COMPLETED`);
+        }
       }
 
     } catch (error: any) {
+      console.error('[Payment] Error processing payment success:', error);
       logError("Error processing payment success", "payment", { 
         error: error.message,
         errorType: error.name 
       }, user?.id);
-      
-      console.error("Payment processing error:", error);
       
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       
@@ -86,7 +130,7 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
   }, [processing, selectedPlan, user, navigate, setProcessing]);
 
   const handlePaymentError = useCallback((error: any) => {
-    console.error("PayPal payment error occurred:", error);
+    console.error("[Payment] PayPal payment error occurred:", error);
     logError("PayPal payment error occurred", "payment", { error: error.message || error }, user?.id);
     setProcessing(false);
     
@@ -108,7 +152,16 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       description: errorMessage,
       variant: "destructive",
     });
-  }, [user?.id, setProcessing]);
+
+    // Navigate to failure page with proper error information
+    const failureParams = new URLSearchParams({
+      planId: selectedPlan?.id || '',
+      reason: errorMessage
+    });
+    
+    console.log('[Payment] Redirecting to failure page with params:', failureParams.toString());
+    navigate(`/payment-failed?${failureParams.toString()}`);
+  }, [user?.id, setProcessing, selectedPlan, navigate]);
 
   return {
     handlePaymentSuccess,

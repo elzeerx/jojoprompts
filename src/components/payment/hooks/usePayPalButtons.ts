@@ -42,16 +42,20 @@ export function usePayPalButtons({
       
       createOrder: async () => {
         try {
+          console.log('[PayPal] Creating order:', { planId, userId, amount });
           setIsProcessing(true);
           
           const { data, error } = await supabase.functions.invoke('create-paypal-order', {
             body: { planId, userId, amount }
           });
 
+          console.log('[PayPal] Create order response:', { data, error });
+
           if (error || !data?.success) {
             throw new Error(error?.message || 'Failed to create payment order');
           }
 
+          console.log('[PayPal] Order created successfully:', data.id);
           return data.id;
         } catch (error) {
           console.error('[PayPal] Create order error:', error);
@@ -63,6 +67,8 @@ export function usePayPalButtons({
 
       onApprove: async (data: any) => {
         try {
+          console.log('[PayPal] Payment approved, capturing:', data.orderID);
+          
           const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-paypal-payment', {
             body: {
               orderId: data.orderID,
@@ -71,24 +77,44 @@ export function usePayPalButtons({
             }
           });
 
-          if (captureError || !captureData?.success) {
-            throw new Error(captureError?.message || 'Payment processing failed');
+          console.log('[PayPal] Capture response:', { captureData, captureError });
+
+          if (captureError) {
+            console.error('[PayPal] Capture error:', captureError);
+            throw new Error(captureError.message || 'Payment processing failed');
           }
+
+          if (!captureData || !captureData.success) {
+            console.error('[PayPal] Capture unsuccessful:', captureData);
+            throw new Error('Payment processing failed');
+          }
+
+          console.log('[PayPal] Payment captured successfully:', {
+            status: captureData.status,
+            captureId: captureData.captureId
+          });
 
           setIsProcessing(false);
 
-          onSuccess({
+          // Create proper success payload that matches what handlePaymentSuccess expects
+          const successPayload = {
             paymentMethod: 'paypal',
             paymentId: captureData.captureId,
             orderId: data.orderID,
-            status: captureData.status,
+            status: captureData.status || 'COMPLETED',
             payerEmail: captureData.payerEmail,
+            planId: planId,
+            userId: userId,
             details: {
               id: captureData.captureId,
-              status: captureData.status,
-              amount: amount
+              status: captureData.status || 'COMPLETED',
+              amount: amount,
+              orderId: data.orderID
             }
-          });
+          };
+
+          console.log('[PayPal] Calling onSuccess with payload:', successPayload);
+          onSuccess(successPayload);
 
         } catch (error) {
           console.error('[PayPal] Payment approval error:', error);
@@ -98,6 +124,7 @@ export function usePayPalButtons({
       },
 
       onCancel: () => {
+        console.log('[PayPal] Payment cancelled by user');
         setIsProcessing(false);
         onError(new Error('Payment was cancelled by user'));
       },
