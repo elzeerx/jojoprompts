@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +24,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
 
   const signupForm = useForm<CheckoutSignupFormValues>({
     resolver: zodResolver(checkoutSignupSchema),
+    mode: "onSubmit", // Only validate on submit, not while typing
     defaultValues: {
       email: "",
       password: "",
@@ -36,10 +36,20 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    mode: "onSubmit", // Only validate on submit, not while typing
     defaultValues: {
       email: "",
       password: "",
     },
+  });
+
+  // Add debugging for form state
+  logDebug("Form state", "auth", { 
+    isLogin, 
+    signupErrors: Object.keys(signupForm.formState.errors), 
+    loginErrors: Object.keys(loginForm.formState.errors),
+    signupIsValid: signupForm.formState.isValid,
+    loginIsValid: loginForm.formState.isValid
   });
 
   const handleGoogleAuth = async () => {
@@ -151,6 +161,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
 
   const handleLogin = async (values: LoginFormValues) => {
     logInfo("Starting login process from checkout", "auth");
+    logDebug("Login form values", "auth", { email: values.email, hasPassword: !!values.password });
     setIsLoading(true);
 
     try {
@@ -358,7 +369,12 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="name@example.com" {...field} />
+                      <Input 
+                        type="email" 
+                        placeholder="name@example.com" 
+                        {...field}
+                        autoComplete="email"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -371,7 +387,11 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input 
+                        type="password" 
+                        {...field}
+                        autoComplete="current-password"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -395,7 +415,12 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
           <Button
             variant="link"
             className="p-0 text-sm"
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => {
+              setIsLogin(!isLogin);
+              // Clear form errors when switching modes
+              signupForm.clearErrors();
+              loginForm.clearErrors();
+            }}
             disabled={isLoading || isGoogleLoading}
           >
             {isLogin
