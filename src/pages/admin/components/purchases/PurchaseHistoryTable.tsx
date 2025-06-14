@@ -7,7 +7,8 @@ import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { useState } from "react";
 import { PurchaseDetailsDialog } from "./PurchaseDetailsDialog";
 
-interface Transaction {
+// Remove 'Payment' interface and use only TransactionRecord, which matches backend
+interface TransactionRecord {
   id: string;
   user_id: string;
   amount_usd: number;
@@ -20,7 +21,7 @@ interface Transaction {
 }
 
 interface PurchaseHistoryTableProps {
-  payments: Transaction[];
+  payments: TransactionRecord[];
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -39,8 +40,13 @@ const getStatusColor = (status: string) => {
   }
 };
 
-export function PurchaseHistoryTable({ payments, currentPage, totalPages, onPageChange }: PurchaseHistoryTableProps) {
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+export function PurchaseHistoryTable({
+  payments,
+  currentPage,
+  totalPages,
+  onPageChange,
+}: PurchaseHistoryTableProps) {
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
 
   return (
     <>
