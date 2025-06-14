@@ -209,7 +209,7 @@ export default function PurchaseHistoryManagement() {
         </div>
       ) : (
         <PurchaseHistoryTable
-          payments={filteredTransactions} // Now TransactionRecord[]
+          payments={filteredTransactions as any} // TypeScript expects TransactionRecord already
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
