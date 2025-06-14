@@ -78,6 +78,16 @@ export function SimplePayPalButton({
       createOrder: async () => {
         try {
           setIsProcessing(true);
+          
+          // Store payment context for redirect return
+          const paymentContext = {
+            planId,
+            userId,
+            amount,
+            timestamp: Date.now()
+          };
+          localStorage.setItem('pending_payment', JSON.stringify(paymentContext));
+          
           const { data, error } = await supabase.functions.invoke('process-paypal-payment', {
             body: { 
               action: 'create',
@@ -91,9 +101,11 @@ export function SimplePayPalButton({
             throw new Error(error?.message || 'Failed to create payment order');
           }
 
+          console.log('PayPal order created:', data.orderId);
           return data.orderId;
         } catch (error) {
           setIsProcessing(false);
+          localStorage.removeItem('pending_payment');
           onError(error);
           throw error;
         }
@@ -101,40 +113,54 @@ export function SimplePayPalButton({
 
       onApprove: async (data: any) => {
         try {
-          const { data: captureData, error } = await supabase.functions.invoke('process-paypal-payment', {
-            body: {
-              action: 'capture',
-              orderId: data.orderID,
-              planId,
-              userId
-            }
-          });
-
-          if (error || !captureData.success) {
-            throw new Error(error?.message || 'Payment processing failed');
-          }
-
-          setIsProcessing(false);
+          console.log('PayPal payment approved, redirecting to PayPal...');
           
-          toast({
-            title: "Payment Successful!",
-            description: "Your subscription has been activated.",
-          });
+          // Get the approval URL and redirect to PayPal
+          const approvalUrl = data.links?.find((link: any) => link.rel === 'approve')?.href;
+          
+          if (approvalUrl) {
+            // Redirect to PayPal for payment completion
+            window.location.href = approvalUrl;
+          } else {
+            // Fallback: try to capture the payment directly
+            const { data: captureData, error } = await supabase.functions.invoke('process-paypal-payment', {
+              body: {
+                action: 'capture',
+                orderId: data.orderID,
+                planId,
+                userId
+              }
+            });
 
-          onSuccess({
-            paymentId: captureData.paymentId,
-            transactionId: captureData.transactionId,
-            status: captureData.status
-          });
+            if (error || !captureData.success) {
+              throw new Error(error?.message || 'Payment processing failed');
+            }
+
+            setIsProcessing(false);
+            localStorage.removeItem('pending_payment');
+            
+            toast({
+              title: "Payment Successful!",
+              description: "Your subscription has been activated.",
+            });
+
+            onSuccess({
+              paymentId: captureData.paymentId,
+              transactionId: captureData.transactionId,
+              status: captureData.status
+            });
+          }
 
         } catch (error) {
           setIsProcessing(false);
+          localStorage.removeItem('pending_payment');
           onError(error);
         }
       },
 
       onCancel: () => {
         setIsProcessing(false);
+        localStorage.removeItem('pending_payment');
         toast({
           title: "Payment Cancelled",
           description: "You can try again when ready.",
@@ -143,6 +169,7 @@ export function SimplePayPalButton({
 
       onError: (err: any) => {
         setIsProcessing(false);
+        localStorage.removeItem('pending_payment');
         onError(err);
       }
     }).render(paypalRef.current);
@@ -161,7 +188,7 @@ export function SimplePayPalButton({
     return (
       <div className="flex items-center justify-center py-8 bg-blue-50 border border-blue-200 rounded-lg">
         <Loader2 className="h-6 w-6 animate-spin mr-2 text-blue-600" />
-        <span className="text-blue-700 font-medium">Processing your payment...</span>
+        <span className="text-blue-700 font-medium">Redirecting to PayPal...</span>
       </div>
     );
   }
@@ -170,7 +197,7 @@ export function SimplePayPalButton({
     <div className="w-full">
       <div ref={paypalRef} className="min-h-[50px]" />
       <p className="text-xs text-gray-500 text-center mt-2">
-        🔒 Secure payment powered by PayPal
+        🔒 You will be redirected to PayPal to complete your payment securely
       </p>
     </div>
   );

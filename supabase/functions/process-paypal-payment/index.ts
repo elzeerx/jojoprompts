@@ -42,7 +42,10 @@ serve(async (req) => {
     const accessToken = tokenData.access_token
 
     if (action === 'create') {
-      // Create PayPal order
+      // Get the current site URL for return URLs
+      const siteUrl = Deno.env.get('SUPABASE_URL')?.replace('/supabase', '') || 'http://localhost:3000'
+      
+      // Create PayPal order with redirect URLs
       const orderResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders`, {
         method: 'POST',
         headers: {
@@ -57,13 +60,22 @@ serve(async (req) => {
               value: amount.toString()
             },
             description: `Subscription Plan Purchase`
-          }]
+          }],
+          application_context: {
+            return_url: `${siteUrl}/payment-callback?success=true&plan_id=${planId}&user_id=${userId}`,
+            cancel_url: `${siteUrl}/payment-callback?success=false&plan_id=${planId}&user_id=${userId}`,
+            user_action: 'PAY_NOW',
+            payment_method: {
+              payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED'
+            }
+          }
         })
       })
 
       const orderData = await orderResponse.json()
       
       if (!orderResponse.ok) {
+        console.error('PayPal order creation failed:', orderData)
         throw new Error(`PayPal order creation failed: ${orderData.message}`)
       }
 
@@ -83,9 +95,16 @@ serve(async (req) => {
         throw new Error('Failed to create transaction record')
       }
 
+      console.log('PayPal order created successfully:', {
+        orderId: orderData.id,
+        status: orderData.status,
+        links: orderData.links
+      })
+
       return new Response(JSON.stringify({
         success: true,
-        orderId: orderData.id
+        orderId: orderData.id,
+        approvalUrl: orderData.links?.find((link: any) => link.rel === 'approve')?.href
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -104,11 +123,18 @@ serve(async (req) => {
       const captureData = await captureResponse.json()
       
       if (!captureResponse.ok) {
+        console.error('PayPal capture failed:', captureData)
         throw new Error(`PayPal capture failed: ${captureData.message}`)
       }
 
       const paymentId = captureData.purchase_units[0]?.payments?.captures[0]?.id
       const paymentStatus = captureData.status
+
+      console.log('PayPal payment captured:', {
+        orderId,
+        paymentId,
+        status: paymentStatus
+      })
 
       // Update transaction record
       const { data: transaction, error: updateError } = await supabaseClient
