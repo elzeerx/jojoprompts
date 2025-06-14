@@ -150,13 +150,6 @@ export type Database = {
             referencedRelation: "discount_codes"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "discount_code_usage_payment_history_id_fkey"
-            columns: ["payment_history_id"]
-            isOneToOne: false
-            referencedRelation: "payment_history"
-            referencedColumns: ["id"]
-          },
         ]
       }
       discount_codes: {
@@ -226,135 +219,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      payment_history: {
-        Row: {
-          amount_kwd: number | null
-          amount_usd: number
-          created_at: string | null
-          discount_amount_kwd: number | null
-          discount_amount_usd: number | null
-          discount_code_id: string | null
-          id: string
-          original_amount_kwd: number | null
-          original_amount_usd: number | null
-          payment_id: string | null
-          payment_method: string
-          status: string
-          subscription_id: string | null
-          user_id: string
-        }
-        Insert: {
-          amount_kwd?: number | null
-          amount_usd: number
-          created_at?: string | null
-          discount_amount_kwd?: number | null
-          discount_amount_usd?: number | null
-          discount_code_id?: string | null
-          id?: string
-          original_amount_kwd?: number | null
-          original_amount_usd?: number | null
-          payment_id?: string | null
-          payment_method: string
-          status: string
-          subscription_id?: string | null
-          user_id: string
-        }
-        Update: {
-          amount_kwd?: number | null
-          amount_usd?: number
-          created_at?: string | null
-          discount_amount_kwd?: number | null
-          discount_amount_usd?: number | null
-          discount_code_id?: string | null
-          id?: string
-          original_amount_kwd?: number | null
-          original_amount_usd?: number | null
-          payment_id?: string | null
-          payment_method?: string
-          status?: string
-          subscription_id?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_history_discount_code_id_fkey"
-            columns: ["discount_code_id"]
-            isOneToOne: false
-            referencedRelation: "discount_codes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payment_history_subscription_id_fkey"
-            columns: ["subscription_id"]
-            isOneToOne: false
-            referencedRelation: "user_subscriptions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payments: {
-        Row: {
-          amount: number | null
-          created_at: string | null
-          currency: string | null
-          id: string
-          paypal_order_id: string | null
-          paypal_payer_id: string | null
-          paypal_payment_id: string | null
-          status: string | null
-          user_id: string
-        }
-        Insert: {
-          amount?: number | null
-          created_at?: string | null
-          currency?: string | null
-          id?: string
-          paypal_order_id?: string | null
-          paypal_payer_id?: string | null
-          paypal_payment_id?: string | null
-          status?: string | null
-          user_id: string
-        }
-        Update: {
-          amount?: number | null
-          created_at?: string | null
-          currency?: string | null
-          id?: string
-          paypal_order_id?: string | null
-          paypal_payer_id?: string | null
-          paypal_payment_id?: string | null
-          status?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      payments_log: {
-        Row: {
-          id: number
-          logged_at: string | null
-          payload: Json | null
-          paypal_payment_id: string | null
-          status: string | null
-          user_id: string
-        }
-        Insert: {
-          id?: number
-          logged_at?: string | null
-          payload?: Json | null
-          paypal_payment_id?: string | null
-          status?: string | null
-          user_id: string
-        }
-        Update: {
-          id?: number
-          logged_at?: string | null
-          payload?: Json | null
-          paypal_payment_id?: string | null
-          status?: string | null
-          user_id?: string
-        }
-        Relationships: []
       }
       profiles: {
         Row: {
@@ -522,29 +386,52 @@ export type Database = {
         }
         Relationships: []
       }
-      subscriptions: {
+      transactions: {
         Row: {
-          created_at: string | null
-          current_period_end: string | null
+          amount_usd: number
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          paypal_order_id: string | null
           paypal_payment_id: string | null
+          plan_id: string
           status: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
-          current_period_end?: string | null
+          amount_usd: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          paypal_order_id?: string | null
           paypal_payment_id?: string | null
+          plan_id: string
           status?: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
-          current_period_end?: string | null
+          amount_usd?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          paypal_order_id?: string | null
           paypal_payment_id?: string | null
+          plan_id?: string
           status?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transactions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_subscriptions: {
         Row: {
@@ -556,6 +443,7 @@ export type Database = {
           plan_id: string
           start_date: string
           status: string
+          transaction_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -568,6 +456,7 @@ export type Database = {
           plan_id: string
           start_date?: string
           status?: string
+          transaction_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -580,6 +469,7 @@ export type Database = {
           plan_id?: string
           start_date?: string
           status?: string
+          transaction_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -589,6 +479,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
         ]
