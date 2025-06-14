@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Lock, Shield, UserPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { CheckoutSignupFormValues, checkoutSignupSchema } from "@/components/auth/validation";
+import { CheckoutSignupFormValues, checkoutSignupSchema, LoginFormValues, loginSchema } from "@/components/auth/validation";
 import { logInfo, logWarn, logError, logDebug } from "@/utils/secureLogging";
 
 interface CheckoutSignupFormProps {
@@ -33,7 +34,8 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
     },
   });
 
-  const loginForm = useForm<{ email: string; password: string }>({
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
@@ -68,7 +70,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
       } else {
         logInfo("Google OAuth initiated successfully", "auth");
       }
-    } catch (error) {
+    } catch (error: any) {
       logError("Google authentication error", "auth", { error: error.message });
       toast({
         variant: "destructive",
@@ -95,6 +97,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
             first_name: values.firstName,
             last_name: values.lastName,
           },
+          emailRedirectTo: `${window.location.origin}/`,
         },
       });
 
@@ -134,7 +137,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
         });
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       logError("Signup error", "auth", { error: error.message });
       toast({
         variant: "destructive",
@@ -146,11 +149,13 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
     setIsLoading(false);
   };
 
-  const handleLogin = async (values: { email: string; password: string }) => {
-    logInfo("Starting login process", "auth");
+  const handleLogin = async (values: LoginFormValues) => {
+    logInfo("Starting login process from checkout", "auth");
     setIsLoading(true);
 
     try {
+      logDebug("Attempting to sign in user", "auth", { email: values.email });
+      
       const { error, data } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
@@ -171,7 +176,7 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
         });
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       logError("Login error", "auth", { error: error.message });
       toast({
         variant: "destructive",
