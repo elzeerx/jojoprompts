@@ -23,7 +23,7 @@ function getPayPalApiUrl(): string {
 }
 
 async function getPayPalAccessToken(): Promise<string> {
-  console.log('Getting PayPal access token...');
+  console.log('=== Getting PayPal Access Token ===');
   
   if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
     throw new Error('PayPal credentials not configured');
@@ -83,7 +83,9 @@ serve(async (req: Request) => {
     const accessToken = await getPayPalAccessToken();
 
     // Capture the PayPal order
-    console.log('Capturing PayPal order:', orderId);
+    console.log('=== Capturing PayPal Order ===');
+    console.log('Order ID:', orderId);
+    
     const captureResponse = await fetch(`${getPayPalApiUrl()}/v2/checkout/orders/${orderId}/capture`, {
       method: 'POST',
       headers: {
@@ -103,7 +105,8 @@ serve(async (req: Request) => {
       });
       return new Response(JSON.stringify({ 
         error: "Payment capture failed",
-        details: `PayPal capture error: ${captureResponse.status}`
+        details: `PayPal capture error: ${captureResponse.status}`,
+        success: false
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 502
@@ -111,7 +114,9 @@ serve(async (req: Request) => {
     }
 
     const captureData = await captureResponse.json();
-    console.log("PayPal capture successful:", { id: captureData.id, status: captureData.status });
+    console.log("=== PayPal Capture Success ===");
+    console.log("Capture ID:", captureData.purchase_units?.[0]?.payments?.captures?.[0]?.id);
+    console.log("Status:", captureData.status);
 
     // Extract payment information
     const captureId = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.id;
@@ -132,11 +137,14 @@ serve(async (req: Request) => {
 
     if (updateError) {
       console.error("Failed to update payment record:", updateError);
+    } else {
+      console.log("Payment record updated successfully");
     }
 
     // If payment is completed, create subscription
     if (paymentStatus === 'COMPLETED') {
-      console.log('Payment completed, creating subscription for user:', userId);
+      console.log('=== Creating User Subscription ===');
+      console.log('User ID:', userId, 'Plan ID:', planId);
       
       // Get plan details
       const { data: plan, error: planError } = await supabase
@@ -156,8 +164,10 @@ serve(async (req: Request) => {
         });
       }
 
+      console.log("Plan found:", plan.name);
+
       // Create user subscription
-      const expiresAt = plan.is_lifetime ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year from now
+      const expiresAt = plan.is_lifetime ? null : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
       
       const { error: subscriptionError } = await supabase
         .from('user_subscriptions')
@@ -165,7 +175,10 @@ serve(async (req: Request) => {
           user_id: userId,
           plan_id: planId,
           status: 'active',
-          expires_at: expiresAt,
+          start_date: new Date().toISOString(),
+          end_date: expiresAt?.toISOString(),
+          payment_method: 'paypal',
+          payment_id: captureId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
@@ -181,22 +194,29 @@ serve(async (req: Request) => {
         });
       }
 
+      console.log("Subscription created successfully");
+
       // Update user profile
+      const membershipTier = plan.is_lifetime ? 'lifetime' : 'premium';
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
-          membership_tier: plan.is_lifetime ? 'lifetime' : 'premium',
+          membership_tier: membershipTier,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
 
       if (profileError) {
         console.error("Failed to update user profile:", profileError);
+      } else {
+        console.log("User profile updated to:", membershipTier);
       }
 
-      console.log('Subscription created successfully for user:', userId);
+      console.log('=== Subscription Setup Complete ===');
     }
 
+    console.log('=== Payment Capture Complete ===');
+    
     return new Response(JSON.stringify({ 
       success: true,
       status: paymentStatus,

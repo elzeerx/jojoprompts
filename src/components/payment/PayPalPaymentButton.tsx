@@ -74,7 +74,7 @@ export function PayPalPaymentButton({
 
       console.log('Loading PayPal SDK with client ID:', clientId);
       const script = document.createElement('script');
-      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&components=buttons`;
+      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&components=buttons&intent=capture`;
       script.onload = () => {
         console.log('PayPal SDK loaded successfully');
         setScriptLoaded(true);
@@ -103,18 +103,19 @@ export function PayPalPaymentButton({
     paypalRef.current.innerHTML = '';
 
     try {
-      window.paypal.Buttons({
+      const buttons = window.paypal.Buttons({
         style: {
           color: 'gold',
           shape: 'rect',
           label: 'pay',
-          height: 50
+          height: 50,
+          layout: 'vertical'
         },
         
         createOrder: async () => {
           try {
+            console.log('=== PayPal createOrder started ===');
             setIsProcessing(true);
-            console.log('Creating PayPal order via edge function...');
             
             const { data, error } = await supabase.functions.invoke('create-paypal-order', {
               body: {
@@ -148,9 +149,9 @@ export function PayPalPaymentButton({
 
         onApprove: async (data: any) => {
           try {
+            console.log('=== PayPal onApprove started ===');
             console.log('PayPal payment approved, capturing payment...', data);
             
-            // Capture the payment using our edge function
             const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-paypal-payment', {
               body: {
                 orderId: data.orderID,
@@ -172,8 +173,8 @@ export function PayPalPaymentButton({
             }
 
             console.log('Payment captured successfully:', captureData);
+            setIsProcessing(false);
 
-            // Call success handler with captured payment data
             onSuccess({
               paymentMethod: 'paypal',
               paymentId: captureData.captureId,
@@ -205,7 +206,13 @@ export function PayPalPaymentButton({
           setIsProcessing(false);
           onError(err);
         }
-      }).render(paypalRef.current);
+      });
+
+      // Render the buttons with error handling
+      buttons.render(paypalRef.current).catch((err: any) => {
+        console.error('Error rendering PayPal buttons:', err);
+        setError('Failed to render PayPal buttons');
+      });
 
     } catch (error) {
       console.error('Error initializing PayPal buttons:', error);
@@ -247,10 +254,10 @@ export function PayPalPaymentButton({
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full relative">
       <div ref={paypalRef} className="min-h-[50px]" />
       {disabled && (
-        <div className="absolute inset-0 bg-gray-200 bg-opacity-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-gray-200 bg-opacity-50 flex items-center justify-center rounded">
           <span className="text-gray-600">Payment processing...</span>
         </div>
       )}
