@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +26,6 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
   const signupForm = useForm<CheckoutSignupFormValues>({
     resolver: zodResolver(checkoutSignupSchema),
     mode: "onSubmit",
-    reValidateMode: "onSubmit", // Only revalidate on submit
     defaultValues: {
       email: "",
       password: "",
@@ -38,38 +38,10 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     mode: "onSubmit",
-    reValidateMode: "onSubmit", // Only revalidate on submit
     defaultValues: {
       email: "",
       password: "",
     },
-  });
-
-  // Enhanced debugging for form state
-  const signupFormValues = signupForm.watch();
-  const loginFormValues = loginForm.watch();
-  
-  logDebug("Form state debug", "auth", { 
-    isLogin,
-    signupValues: {
-      email: signupFormValues.email?.length || 0,
-      password: signupFormValues.password?.length || 0,
-      confirmPassword: signupFormValues.confirmPassword?.length || 0,
-      firstName: signupFormValues.firstName?.length || 0,
-      lastName: signupFormValues.lastName?.length || 0,
-    },
-    loginValues: {
-      email: loginFormValues.email?.length || 0,
-      password: loginFormValues.password?.length || 0,
-    },
-    signupErrors: Object.keys(signupForm.formState.errors),
-    loginErrors: Object.keys(loginForm.formState.errors),
-    signupTouched: Object.keys(signupForm.formState.touchedFields),
-    loginTouched: Object.keys(loginForm.formState.touchedFields),
-    signupIsValid: signupForm.formState.isValid,
-    loginIsValid: loginForm.formState.isValid,
-    signupIsSubmitted: signupForm.formState.isSubmitted,
-    loginIsSubmitted: loginForm.formState.isSubmitted,
   });
 
   const handleGoogleAuth = async () => {
@@ -448,11 +420,9 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
             className="p-0 text-sm"
             onClick={() => {
               setIsLogin(!isLogin);
-              // Clear form errors and reset forms when switching modes
+              // Clear form errors when switching modes
               signupForm.clearErrors();
               loginForm.clearErrors();
-              signupForm.reset();
-              loginForm.reset();
             }}
             disabled={isLoading || isGoogleLoading}
           >
