@@ -35,24 +35,30 @@ export function PayPalPaymentButton({
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+
+  const addDebugInfo = (info: string) => {
+    console.log(`[PayPal Debug] ${info}`);
+    setDebugInfo(prev => [...prev, `${new Date().toISOString()}: ${info}`]);
+  };
 
   // Get PayPal client ID
   useEffect(() => {
     const getPayPalClientId = async () => {
       try {
-        console.log('Getting PayPal client ID...');
+        addDebugInfo('Fetching PayPal client ID...');
         const { data, error } = await supabase.functions.invoke('get-paypal-client-id');
         
         if (error) {
-          console.error('Failed to get PayPal client ID:', error);
+          addDebugInfo(`Failed to get PayPal client ID: ${error.message}`);
           setError('Failed to initialize PayPal');
           return;
         }
         
-        console.log('PayPal client ID received');
+        addDebugInfo(`PayPal client ID received: ${data.clientId ? 'Yes' : 'No'}`);
         setClientId(data.clientId);
       } catch (error) {
-        console.error('Error getting PayPal client ID:', error);
+        addDebugInfo(`Error getting PayPal client ID: ${error}`);
         setError('Failed to initialize PayPal');
       }
     };
@@ -66,22 +72,39 @@ export function PayPalPaymentButton({
 
     const loadPayPalScript = () => {
       if (window.paypal) {
-        console.log('PayPal SDK already loaded');
+        addDebugInfo('PayPal SDK already loaded');
         setScriptLoaded(true);
         setIsLoading(false);
         return;
       }
 
-      console.log('Loading PayPal SDK with client ID:', clientId);
+      addDebugInfo(`Loading PayPal SDK with client ID: ${clientId.substring(0, 20)}...`);
+      
+      // Remove any existing PayPal scripts
+      const existingScript = document.querySelector('script[src*="paypal.com/sdk"]');
+      if (existingScript) {
+        existingScript.remove();
+        addDebugInfo('Removed existing PayPal script');
+      }
+
       const script = document.createElement('script');
-      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&components=buttons&intent=capture`;
+      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&components=buttons&intent=capture&disable-funding=credit,card`;
+      script.async = true;
+      
       script.onload = () => {
-        console.log('PayPal SDK loaded successfully');
-        setScriptLoaded(true);
-        setIsLoading(false);
+        addDebugInfo('PayPal SDK loaded successfully');
+        if (window.paypal) {
+          addDebugInfo('PayPal object is available');
+          setScriptLoaded(true);
+          setIsLoading(false);
+        } else {
+          addDebugInfo('PayPal object not available after script load');
+          setError('PayPal SDK failed to initialize');
+        }
       };
-      script.onerror = () => {
-        console.error('Failed to load PayPal SDK');
+      
+      script.onerror = (e) => {
+        addDebugInfo(`Failed to load PayPal SDK: ${e}`);
         setError('Failed to load PayPal SDK');
         setIsLoading(false);
       };
@@ -95,52 +118,57 @@ export function PayPalPaymentButton({
   // Initialize PayPal buttons
   useEffect(() => {
     if (!scriptLoaded || !window.paypal || !paypalRef.current || disabled || error) {
+      addDebugInfo(`Button init skipped: scriptLoaded=${scriptLoaded}, paypal=${!!window.paypal}, ref=${!!paypalRef.current}, disabled=${disabled}, error=${!!error}`);
       return;
     }
 
-    console.log('Initializing PayPal buttons...');
+    addDebugInfo('Initializing PayPal buttons...');
+    
     // Clear any existing buttons
-    paypalRef.current.innerHTML = '';
+    if (paypalRef.current) {
+      paypalRef.current.innerHTML = '';
+    }
 
     try {
       const buttons = window.paypal.Buttons({
         style: {
           color: 'gold',
           shape: 'rect',
-          label: 'pay',
+          label: 'paypal',
           height: 50,
-          layout: 'vertical'
+          layout: 'vertical',
+          tagline: false
         },
         
         createOrder: async () => {
           try {
-            console.log('=== PayPal createOrder started ===');
+            addDebugInfo('=== PayPal createOrder started ===');
             setIsProcessing(true);
             
             const { data, error } = await supabase.functions.invoke('create-paypal-order', {
               body: {
                 planId,
-                userId,
+                userId,  
                 amount
               }
             });
 
-            console.log('Create order response:', { data, error });
+            addDebugInfo(`Create order response: ${JSON.stringify({ success: data?.success, error: error?.message })}`);
 
             if (error) {
-              console.error('Error creating PayPal order:', error);
+              addDebugInfo(`Error creating PayPal order: ${error.message}`);
               throw new Error(error.message || 'Failed to create PayPal order');
             }
 
             if (!data || !data.success || !data.id) {
-              console.error('Invalid order response:', data);
+              addDebugInfo(`Invalid order response: ${JSON.stringify(data)}`);
               throw new Error(data?.error || 'Invalid order response from server');
             }
 
-            console.log('PayPal order created successfully:', data.id);
+            addDebugInfo(`PayPal order created successfully: ${data.id}`);
             return data.id;
           } catch (error) {
-            console.error('Error in createOrder:', error);
+            addDebugInfo(`Error in createOrder: ${error}`);
             setIsProcessing(false);
             onError(error);
             throw error;
@@ -149,8 +177,8 @@ export function PayPalPaymentButton({
 
         onApprove: async (data: any) => {
           try {
-            console.log('=== PayPal onApprove started ===');
-            console.log('PayPal payment approved, capturing payment...', data);
+            addDebugInfo('=== PayPal onApprove started ===');
+            addDebugInfo(`Approval data: ${JSON.stringify(data)}`);
             
             const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-paypal-payment', {
               body: {
@@ -160,19 +188,19 @@ export function PayPalPaymentButton({
               }
             });
 
-            console.log('Capture response:', { captureData, captureError });
+            addDebugInfo(`Capture response: ${JSON.stringify({ success: captureData?.success, error: captureError?.message })}`);
 
             if (captureError) {
-              console.error('Error capturing payment:', captureError);
+              addDebugInfo(`Error capturing payment: ${captureError.message}`);
               throw new Error(captureError.message || 'Failed to capture payment');
             }
 
             if (!captureData || !captureData.success) {
-              console.error('Payment capture failed:', captureData);
+              addDebugInfo(`Payment capture failed: ${JSON.stringify(captureData)}`);
               throw new Error(captureData?.error || 'Payment capture was unsuccessful');
             }
 
-            console.log('Payment captured successfully:', captureData);
+            addDebugInfo('Payment captured successfully');
             setIsProcessing(false);
 
             onSuccess({
@@ -189,33 +217,35 @@ export function PayPalPaymentButton({
             });
 
           } catch (error) {
-            console.error('Error in onApprove:', error);
+            addDebugInfo(`Error in onApprove: ${error}`);
             setIsProcessing(false);
             onError(error);
           }
         },
 
         onCancel: (data: any) => {
-          console.log('PayPal payment cancelled:', data);
+          addDebugInfo(`PayPal payment cancelled: ${JSON.stringify(data)}`);
           setIsProcessing(false);
           onError(new Error('Payment was cancelled'));
         },
 
         onError: (err: any) => {
-          console.error('PayPal payment error:', err);
+          addDebugInfo(`PayPal payment error: ${JSON.stringify(err)}`);
           setIsProcessing(false);
           onError(err);
         }
       });
 
       // Render the buttons with error handling
-      buttons.render(paypalRef.current).catch((err: any) => {
-        console.error('Error rendering PayPal buttons:', err);
+      buttons.render(paypalRef.current).then(() => {
+        addDebugInfo('PayPal buttons rendered successfully');
+      }).catch((err: any) => {
+        addDebugInfo(`Error rendering PayPal buttons: ${JSON.stringify(err)}`);
         setError('Failed to render PayPal buttons');
       });
 
     } catch (error) {
-      console.error('Error initializing PayPal buttons:', error);
+      addDebugInfo(`Error initializing PayPal buttons: ${error}`);
       setError('Failed to initialize PayPal buttons');
     }
   }, [scriptLoaded, disabled, amount, planId, userId, onSuccess, onError, error]);
@@ -223,7 +253,15 @@ export function PayPalPaymentButton({
   if (error) {
     return (
       <div className="w-full p-4 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-800 text-sm">{error}</p>
+        <p className="text-red-800 text-sm mb-2">{error}</p>
+        <details className="mb-2">
+          <summary className="text-xs text-red-600 cursor-pointer">Debug Info</summary>
+          <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto">
+            {debugInfo.map((info, i) => (
+              <div key={i}>{info}</div>
+            ))}
+          </div>
+        </details>
         <Button 
           variant="outline" 
           className="mt-2 w-full" 
@@ -237,19 +275,39 @@ export function PayPalPaymentButton({
 
   if (isLoading) {
     return (
-      <Button disabled className="w-full">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Loading PayPal...
-      </Button>
+      <div className="w-full">
+        <Button disabled className="w-full">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Loading PayPal...
+        </Button>
+        <details className="mt-2">
+          <summary className="text-xs text-gray-600 cursor-pointer">Debug Info</summary>
+          <div className="mt-2 text-xs text-gray-600 max-h-32 overflow-y-auto">
+            {debugInfo.map((info, i) => (
+              <div key={i}>{info}</div>
+            ))}
+          </div>
+        </details>
+      </div>
     );
   }
 
   if (isProcessing) {
     return (
-      <Button disabled className="w-full">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Processing Payment...
-      </Button>
+      <div className="w-full">
+        <Button disabled className="w-full">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Processing Payment...
+        </Button>
+        <details className="mt-2">
+          <summary className="text-xs text-gray-600 cursor-pointer">Debug Info</summary>
+          <div className="mt-2 text-xs text-gray-600 max-h-32 overflow-y-auto">
+            {debugInfo.map((info, i) => (
+              <div key={i}>{info}</div>
+            ))}
+          </div>
+        </details>
+      </div>
     );
   }
 
@@ -261,6 +319,14 @@ export function PayPalPaymentButton({
           <span className="text-gray-600">Payment processing...</span>
         </div>
       )}
+      <details className="mt-2">
+        <summary className="text-xs text-gray-600 cursor-pointer">Debug Info</summary>
+        <div className="mt-2 text-xs text-gray-600 max-h-32 overflow-y-auto">
+          {debugInfo.map((info, i) => (
+            <div key={i}>{info}</div>
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
