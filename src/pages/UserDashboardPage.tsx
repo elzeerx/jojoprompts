@@ -15,11 +15,18 @@ import { Check, X } from 'lucide-react';
 import { Container } from "@/components/ui/container";
 import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 
+interface Transaction {
+  id: string;
+  created_at: string;
+  amount_usd: number;
+  status: string;
+}
+
 export default function UserDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const [activeSubscription, setActiveSubscription] = useState<any>(null);
   const [subscriptionPlan, setSubscriptionPlan] = useState<any>(null);
-  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [firstName, setFirstName] = useState('');
@@ -67,16 +74,16 @@ export default function UserDashboardPage() {
         setSubscriptionPlan(subscriptionData.plan_id);
       }
 
-      // Get payment history
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payment_history')
-        .select('*')
+      // Get transaction history
+      const { data: transactionData, error: transactionError } = await supabase
+        .from('transactions')
+        .select('id, created_at, amount_usd, status')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
-      if (paymentsError) throw paymentsError;
+      if (transactionError) throw transactionError;
       
-      setPaymentHistory(paymentsData || []);
+      setTransactions(transactionData || []);
     } catch (error) {
       console.error('Error fetching subscription data:', error);
       toast({
@@ -353,7 +360,7 @@ export default function UserDashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
-                {paymentHistory.length === 0 ? (
+                {transactions.length === 0 ? (
                   <div className="text-center py-6 sm:py-8">
                     <h3 className="text-lg font-medium mb-2">No payment records found</h3>
                     <p className="text-muted-foreground text-sm sm:text-base">
@@ -365,28 +372,25 @@ export default function UserDashboardPage() {
                     {/* Mobile-optimized payment cards */}
                     {isMobile ? (
                       <div className="space-y-3">
-                        {paymentHistory.map((payment) => (
-                          <div key={payment.id} className="p-4 border rounded-lg bg-white/50">
+                        {transactions.map((transaction) => (
+                          <div key={transaction.id} className="p-4 border rounded-lg bg-white/50">
                             <div className="flex justify-between items-start mb-2">
                               <div>
                                 <p className="font-medium text-sm">
-                                  ${payment.amount_usd} ({payment.amount_kwd} KWD)
+                                  ${transaction.amount_usd}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {new Date(payment.created_at).toLocaleDateString()}
+                                  {new Date(transaction.created_at).toLocaleDateString()}
                                 </p>
                               </div>
                               <span className={`px-2 py-1 rounded-full text-xs ${
-                                payment.status === 'completed' 
+                                transaction.status === 'completed' 
                                   ? 'bg-green-100 text-green-800' 
                                   : 'bg-yellow-100 text-yellow-800'
                               }`}>
-                                {payment.status}
+                                {transaction.status}
                               </span>
                             </div>
-                            <p className="text-xs text-muted-foreground capitalize">
-                              via {payment.payment_method}
-                            </p>
                           </div>
                         ))}
                       </div>
@@ -398,27 +402,25 @@ export default function UserDashboardPage() {
                             <tr className="bg-muted text-muted-foreground text-left">
                               <th className="p-3">Date</th>
                               <th className="p-3">Amount</th>
-                              <th className="p-3">Payment Method</th>
                               <th className="p-3">Status</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {paymentHistory.map((payment) => (
-                              <tr key={payment.id} className="border-b">
+                            {transactions.map((transaction) => (
+                              <tr key={transaction.id} className="border-b">
                                 <td className="p-3">
-                                  {new Date(payment.created_at).toLocaleDateString()}
+                                  {new Date(transaction.created_at).toLocaleDateString()}
                                 </td>
                                 <td className="p-3">
-                                  ${payment.amount_usd} ({payment.amount_kwd} KWD)
+                                  ${transaction.amount_usd}
                                 </td>
-                                <td className="p-3 capitalize">{payment.payment_method}</td>
                                 <td className="p-3">
                                   <span className={`px-2 py-1 rounded-full text-xs ${
-                                    payment.status === 'completed' 
+                                    transaction.status === 'completed' 
                                       ? 'bg-green-100 text-green-800' 
                                       : 'bg-yellow-100 text-yellow-800'
                                   }`}>
-                                    {payment.status}
+                                    {transaction.status}
                                   </span>
                                 </td>
                               </tr>

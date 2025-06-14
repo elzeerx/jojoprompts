@@ -12,67 +12,46 @@ import { PurchaseHistoryTable } from "./PurchaseHistoryTable";
 import { PurchaseHistoryStats } from "./PurchaseHistoryStats";
 import { DateRange } from "react-day-picker";
 
-interface PaymentRecord {
+interface TransactionRecord {
   id: string;
   user_id: string;
   amount_usd: number;
-  payment_method: string;
-  payment_id: string | null;
   status: string;
   created_at: string;
-  discount_code_id: string | null;
-  discount_amount_usd: number | null;
-  original_amount_usd: number | null;
-  subscription?: {
-    plan_name: string;
+  plan?: {
+    name: string;
   };
   user_email?: string;
-  discount_code?: {
-    code: string;
-  };
 }
 
 export default function PurchaseHistoryManagement() {
-  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 20;
 
-  const fetchPayments = async () => {
+  const fetchTransactions = async () => {
     setLoading(true);
     try {
       let query = supabase
-        .from("payment_history")
+        .from("transactions")
         .select(`
           id,
           user_id,
           amount_usd,
-          payment_method,
-          payment_id,
           status,
           created_at,
-          discount_code_id,
-          discount_amount_usd,
-          original_amount_usd,
-          user_subscriptions!inner(
-            subscription_plans(name)
-          ),
-          discount_codes(code)
+          plan_id(name)
         `)
         .order("created_at", { ascending: false });
 
       // Apply filters
       if (statusFilter !== "all") {
         query = query.eq("status", statusFilter);
-      }
-      
-      if (paymentMethodFilter !== "all") {
-        query = query.eq("payment_method", paymentMethodFilter);
       }
 
       if (dateRange?.from) {
@@ -92,8 +71,8 @@ export default function PurchaseHistoryManagement() {
 
       if (error) throw error;
 
-      // Get user emails for the payments
-      const userIds = [...new Set(data?.map(p => p.user_id) || [])];
+      // Get user emails for the transactions
+      const userIds = [...new Set(data?.map(t => t.user_id) || [])];
       const { data: userData } = await supabase.auth.admin.listUsers();
       
       const userEmailMap = new Map();
@@ -103,21 +82,21 @@ export default function PurchaseHistoryManagement() {
         });
       }
 
-      const enrichedPayments = data?.map(payment => ({
-        ...payment,
-        user_email: userEmailMap.get(payment.user_id) || 'Unknown',
-        subscription: {
-          plan_name: payment.user_subscriptions?.subscription_plans?.name || 'Unknown Plan'
+      const enrichedTransactions = data?.map(transaction => ({
+        ...transaction,
+        user_email: userEmailMap.get(transaction.user_id) || 'Unknown',
+        plan: {
+          name: transaction.plan_id?.name || 'Unknown Plan'
         }
       })) || [];
 
-      setPayments(enrichedPayments);
+      setTransactions(enrichedTransactions);
       setTotalPages(Math.ceil((count || 0) / itemsPerPage));
     } catch (error) {
-      console.error("Error fetching payments:", error);
+      console.error("Error fetching transactions:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch payment history",
+        description: "Failed to fetch transaction history",
         variant: "destructive",
       });
     } finally {
@@ -126,31 +105,25 @@ export default function PurchaseHistoryManagement() {
   };
 
   useEffect(() => {
-    fetchPayments();
-  }, [currentPage, statusFilter, paymentMethodFilter, dateRange]);
+    fetchTransactions();
+  }, [currentPage, statusFilter, dateRange]);
 
-  const filteredPayments = payments.filter(payment => {
+  const filteredTransactions = transactions.filter(transaction => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
     return (
-      payment.user_email?.toLowerCase().includes(searchLower) ||
-      payment.payment_id?.toLowerCase().includes(searchLower) ||
-      payment.subscription?.plan_name?.toLowerCase().includes(searchLower) ||
-      payment.discount_code?.code?.toLowerCase().includes(searchLower)
+      transaction.user_email?.toLowerCase().includes(searchLower) ||
+      transaction.plan?.name?.toLowerCase().includes(searchLower)
     );
   });
 
   const exportToCSV = () => {
-    const csvData = filteredPayments.map(payment => ({
-      Date: new Date(payment.created_at).toLocaleDateString(),
-      Email: payment.user_email,
-      Plan: payment.subscription?.plan_name,
-      'Amount USD': payment.amount_usd,
-      'Payment Method': payment.payment_method,
-      'Payment ID': payment.payment_id,
-      Status: payment.status,
-      'Discount Code': payment.discount_code?.code || '',
-      'Discount Amount USD': payment.discount_amount_usd || 0,
+    const csvData = filteredTransactions.map(transaction => ({
+      Date: new Date(transaction.created_at).toLocaleDateString(),
+      Email: transaction.user_email,
+      Plan: transaction.plan?.name,
+      'Amount USD': transaction.amount_usd,
+      Status: transaction.status,
     }));
     
     const csv = [
@@ -162,7 +135,7 @@ export default function PurchaseHistoryManagement() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `payment_history_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `transaction_history_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -171,8 +144,8 @@ export default function PurchaseHistoryManagement() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-dark-base">Purchase History</h2>
-          <p className="text-muted-foreground">View and analyze all user purchases</p>
+          <h2 className="text-2xl font-bold text-dark-base">Transaction History</h2>
+          <p className="text-muted-foreground">View and analyze all user transactions</p>
         </div>
         <Button onClick={exportToCSV} className="bg-warm-gold hover:bg-warm-gold/90">
           <Download className="mr-2 h-4 w-4" />
@@ -180,7 +153,7 @@ export default function PurchaseHistoryManagement() {
         </Button>
       </div>
 
-      <PurchaseHistoryStats payments={filteredPayments} />
+      <PurchaseHistoryStats payments={filteredTransactions} />
 
       <Card className="border-warm-gold/20">
         <CardHeader>
@@ -190,13 +163,13 @@ export default function PurchaseHistoryManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by email, payment ID..."
+                  placeholder="Search by email, plan..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -215,22 +188,6 @@ export default function PurchaseHistoryManagement() {
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
-                  <SelectItem value="refunded">Refunded</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Payment Method</label>
-              <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Methods</SelectItem>
-                  <SelectItem value="paypal">PayPal</SelectItem>
-                  <SelectItem value="tap">Tap Payments</SelectItem>
-                  <SelectItem value="stripe">Stripe</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -253,7 +210,7 @@ export default function PurchaseHistoryManagement() {
         </div>
       ) : (
         <PurchaseHistoryTable
-          payments={filteredPayments}
+          payments={filteredTransactions}
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}

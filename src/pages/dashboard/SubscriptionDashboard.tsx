@@ -24,11 +24,10 @@ interface Subscription {
   };
 }
 
-interface Payment {
+interface Transaction {
   id: string;
   created_at: string;
   amount_usd: number;
-  payment_method: string;
   status: string;
 }
 
@@ -36,7 +35,7 @@ export default function SubscriptionDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -82,16 +81,16 @@ export default function SubscriptionDashboard() {
           setActiveSubscription(subData as any);
         }
         
-        // Fetch payment history - only USD fields
-        const { data: paymentData, error: paymentError } = await supabase
-          .from('payment_history')
-          .select('id, created_at, amount_usd, payment_method, status')
+        // Fetch transaction history
+        const { data: transactionData, error: transactionError } = await supabase
+          .from('transactions')
+          .select('id, created_at, amount_usd, status')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
         
-        if (paymentError) throw paymentError;
+        if (transactionError) throw transactionError;
         
-        setPayments(paymentData || []);
+        setTransactions(transactionData || []);
       } catch (err: any) {
         console.error('Error fetching subscription data:', err);
         setError(err.message || 'Failed to load subscription data');
@@ -108,12 +107,12 @@ export default function SubscriptionDashboard() {
     fetchSubscriptionData();
   }, [user, navigate, authLoading]);
   
-  const generateInvoice = (payment: Payment) => {
+  const generateInvoice = (transaction: Transaction) => {
     // This is a placeholder - in a real application, you'd generate 
     // and download an actual invoice PDF
     toast({
       title: "Invoice Downloaded",
-      description: `Invoice #${payment.id.slice(0, 8)} has been downloaded.`,
+      description: `Invoice #${transaction.id.slice(0, 8)} has been downloaded.`,
     });
   };
   
@@ -265,37 +264,37 @@ export default function SubscriptionDashboard() {
             </CardHeader>
             
             <CardContent>
-              {payments.length === 0 ? (
+              {transactions.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   No payment records found.
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {payments.map((payment, index) => (
-                    <div key={payment.id}>
+                  {transactions.map((transaction, index) => (
+                    <div key={transaction.id}>
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">
-                            Payment #{payment.id.slice(0, 8)}
+                            Payment #{transaction.id.slice(0, 8)}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {format(new Date(payment.created_at), 'PPP')}
+                            {format(new Date(transaction.created_at), 'PPP')}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="font-medium">
-                            ${payment.amount_usd}
+                            ${transaction.amount_usd}
                           </p>
                           <p className="text-sm capitalize text-muted-foreground">
-                            {payment.payment_method}
+                            {transaction.status}
                           </p>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => generateInvoice(payment)}>
+                        <Button variant="ghost" size="icon" onClick={() => generateInvoice(transaction)}>
                           <Download className="h-5 w-5" />
                         </Button>
                       </div>
                       
-                      {index < payments.length - 1 && <Separator className="my-4" />}
+                      {index < transactions.length - 1 && <Separator className="my-4" />}
                     </div>
                   ))}
                 </div>

@@ -153,14 +153,14 @@ export function useUserManagement() {
       const { error: opError } = await operation;
       if (opError) throw opError;
       
-      // Add to payment history - only USD amount
+      // Add to transaction history
       await supabase
-        .from('payment_history')
+        .from('transactions')
         .insert({
           user_id: userId,
-          payment_method: 'admin_assigned',
-          status: 'completed',
-          amount_usd: planData.price_usd
+          plan_id: planId,
+          amount_usd: planData.price_usd,
+          status: 'completed'
         });
       
       toast({
