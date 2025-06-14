@@ -24,7 +24,8 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
 
   const signupForm = useForm<CheckoutSignupFormValues>({
     resolver: zodResolver(checkoutSignupSchema),
-    mode: "onSubmit", // Only validate on submit, not while typing
+    mode: "onSubmit",
+    reValidateMode: "onSubmit", // Only revalidate on submit
     defaultValues: {
       email: "",
       password: "",
@@ -36,20 +37,39 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    mode: "onSubmit", // Only validate on submit, not while typing
+    mode: "onSubmit",
+    reValidateMode: "onSubmit", // Only revalidate on submit
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  // Add debugging for form state
-  logDebug("Form state", "auth", { 
-    isLogin, 
-    signupErrors: Object.keys(signupForm.formState.errors), 
+  // Enhanced debugging for form state
+  const signupFormValues = signupForm.watch();
+  const loginFormValues = loginForm.watch();
+  
+  logDebug("Form state debug", "auth", { 
+    isLogin,
+    signupValues: {
+      email: signupFormValues.email?.length || 0,
+      password: signupFormValues.password?.length || 0,
+      confirmPassword: signupFormValues.confirmPassword?.length || 0,
+      firstName: signupFormValues.firstName?.length || 0,
+      lastName: signupFormValues.lastName?.length || 0,
+    },
+    loginValues: {
+      email: loginFormValues.email?.length || 0,
+      password: loginFormValues.password?.length || 0,
+    },
+    signupErrors: Object.keys(signupForm.formState.errors),
     loginErrors: Object.keys(loginForm.formState.errors),
+    signupTouched: Object.keys(signupForm.formState.touchedFields),
+    loginTouched: Object.keys(loginForm.formState.touchedFields),
     signupIsValid: signupForm.formState.isValid,
-    loginIsValid: loginForm.formState.isValid
+    loginIsValid: loginForm.formState.isValid,
+    signupIsSubmitted: signupForm.formState.isSubmitted,
+    loginIsSubmitted: loginForm.formState.isSubmitted,
   });
 
   const handleGoogleAuth = async () => {
@@ -94,6 +114,13 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
 
   const handleSignup = async (values: CheckoutSignupFormValues) => {
     logInfo("Starting signup process", "auth");
+    logDebug("Signup form submission", "auth", { 
+      email: values.email, 
+      hasPassword: !!values.password,
+      hasConfirmPassword: !!values.confirmPassword,
+      firstName: values.firstName,
+      lastName: values.lastName 
+    });
     setIsLoading(true);
 
     try {
@@ -161,7 +188,11 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
 
   const handleLogin = async (values: LoginFormValues) => {
     logInfo("Starting login process from checkout", "auth");
-    logDebug("Login form values", "auth", { email: values.email, hasPassword: !!values.password });
+    logDebug("Login form submission", "auth", { 
+      email: values.email, 
+      hasPassword: !!values.password,
+      passwordLength: values.password?.length || 0
+    });
     setIsLoading(true);
 
     try {
@@ -417,9 +448,11 @@ export function CheckoutSignupForm({ onSuccess, planName, planPrice }: CheckoutS
             className="p-0 text-sm"
             onClick={() => {
               setIsLogin(!isLogin);
-              // Clear form errors when switching modes
+              // Clear form errors and reset forms when switching modes
               signupForm.clearErrors();
               loginForm.clearErrors();
+              signupForm.reset();
+              loginForm.reset();
             }}
             disabled={isLoading || isGoogleLoading}
           >
