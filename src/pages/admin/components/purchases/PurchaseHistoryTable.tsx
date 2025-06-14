@@ -1,4 +1,3 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +6,7 @@ import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { useState } from "react";
 import { PurchaseDetailsDialog } from "./PurchaseDetailsDialog";
 
-// Remove 'Payment' interface and use only TransactionRecord, which matches backend
+// Only use TransactionRecord, which matches backend
 interface TransactionRecord {
   id: string;
   user_id: string;

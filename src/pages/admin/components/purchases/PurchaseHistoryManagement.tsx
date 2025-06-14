@@ -209,7 +209,7 @@ export default function PurchaseHistoryManagement() {
         </div>
       ) : (
         <PurchaseHistoryTable
-          payments={filteredTransactions}
+          payments={filteredTransactions} // Now TransactionRecord[]
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
