@@ -29,36 +29,48 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
     // Validate payment data more thoroughly
     if (!paymentData) {
       console.error('[Payment] No payment data received');
-      onError(new Error('No payment data received'));
+      logError("No payment data received in success handler", "payment", undefined, user?.id);
+      toast({
+        title: "Payment Processing Error",
+        description: "No payment data received. Please contact support.",
+        variant: "destructive",
+      });
       return;
     }
 
-    if (!paymentData.paymentId && !paymentData.details?.id) {
+    if (!paymentData.paymentId && !paymentData.details?.id && !paymentData.captureId) {
       console.error('[Payment] Missing payment ID in success data:', paymentData);
-      onError(new Error('Payment ID missing from success response'));
+      logError("Payment ID missing from success response", "payment", { paymentData }, user?.id);
+      toast({
+        title: "Payment Processing Error", 
+        description: "Payment ID missing from response. Please contact support.",
+        variant: "destructive",
+      });
       return;
     }
     
     setProcessing(true);
     
     try {
+      // Extract payment ID from various possible locations
+      const paymentId = paymentData.paymentId || paymentData.details?.id || paymentData.captureId;
+      
       logInfo("Processing PayPal payment success", "payment", { 
         paymentMethod: paymentData.paymentMethod || 'paypal',
         planId: selectedPlan.id,
-        paymentId: paymentData.paymentId || paymentData.details?.id,
+        paymentId: paymentId,
         status: paymentData.status,
         orderId: paymentData.orderId
       }, user.id);
       
       console.log('[Payment] Payment processing successful, navigating to success page');
 
-      // Since the capture function already handled subscription creation,
-      // we just need to show success and redirect
-      const paymentStatus = paymentData.status || paymentData.details?.status;
+      // Check payment status - be more flexible with status values
+      const paymentStatus = paymentData.status || paymentData.details?.status || 'COMPLETED';
       
-      if (paymentStatus === 'COMPLETED' || paymentStatus === 'completed') {
+      if (paymentStatus === 'COMPLETED' || paymentStatus === 'completed' || paymentStatus === 'APPROVED' || paymentData.success) {
         logInfo("Payment completed successfully", "payment", { 
-          paymentId: paymentData.paymentId || paymentData.details?.id 
+          paymentId: paymentId 
         }, user.id);
 
         toast({
@@ -70,7 +82,7 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
         const successParams = new URLSearchParams({
           planId: selectedPlan.id,
           userId: user.id,
-          paymentId: paymentData.paymentId || paymentData.details?.id,
+          paymentId: paymentId,
           status: 'completed'
         });
         
@@ -83,7 +95,7 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
         }, user.id);
         
         // Still consider it successful if we have a payment ID
-        if (paymentData.paymentId || paymentData.details?.id) {
+        if (paymentId) {
           toast({
             title: "Payment Received",
             description: "Your payment has been received and is being processed.",
@@ -92,7 +104,7 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
           const successParams = new URLSearchParams({
             planId: selectedPlan.id,
             userId: user.id,
-            paymentId: paymentData.paymentId || paymentData.details?.id,
+            paymentId: paymentId,
             status: 'processing'
           });
           
