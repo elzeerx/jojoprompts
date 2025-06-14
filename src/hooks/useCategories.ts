@@ -116,9 +116,12 @@ export function useCategories() {
   useEffect(() => {
     fetchCategories();
 
+    // Create a unique channel name to avoid conflicts
+    const channelName = `categories-changes-${Math.random().toString(36).substr(2, 9)}`;
+    
     // Set up real-time subscription for categories
     const channel = supabase
-      .channel('categories-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -135,6 +138,7 @@ export function useCategories() {
       .subscribe();
 
     return () => {
+      // Properly cleanup the channel
       supabase.removeChannel(channel);
     };
   }, []);
