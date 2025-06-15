@@ -1,8 +1,8 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { logError } from "@/utils/secureLogging";
 
 export default function PaymentCallbackPage() {
   const navigate = useNavigate();
@@ -10,6 +10,7 @@ export default function PaymentCallbackPage() {
   const [status, setStatus] = useState<string>('checking');
   const [error, setError] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const MAX_POLLS = 20; // 40 seconds max
 
   useEffect(() => {
@@ -22,25 +23,25 @@ export default function PaymentCallbackPage() {
     console.log('Payment callback - Full URL:', window.location.href);
 
     const success = searchParams.get('success');
-    // PayPal returns payment/order information in these fields
     const paymentId = searchParams.get('paymentId') || searchParams.get('payment_id');
     const payerId = searchParams.get('PayerID') || searchParams.get('payer_id');
     const orderId = searchParams.get('token') || searchParams.get('order_id');
     const planId = searchParams.get('plan_id');
     const userId = searchParams.get('user_id');
 
-    console.log('PayPal callback extracted parameters:', { 
-      success,
-      paymentId, 
+    const debugObject = {
+      rawParams: allParams,
+      paymentId,
       payerId,
       orderId,
       planId,
       userId,
-      originalParams: allParams 
-    });
+      url: window.location.href
+    };
+    setDebugInfo(debugObject);
 
     if (success === 'false') {
-      console.log('PayPal payment cancelled');
+      logError('PayPal payment cancelled', 'PaymentCallbackPage', { debugObject });
       setError('Payment was cancelled');
       setTimeout(() => {
         navigate(`/payment-failed?planId=${planId || ''}&reason=Payment cancelled`);
@@ -49,7 +50,7 @@ export default function PaymentCallbackPage() {
     }
 
     if (!orderId && !paymentId) {
-      console.error('No PayPal payment identifier found in URL parameters');
+      logError('No PayPal payment identifier found in URL parameters', 'PaymentCallbackPage', { debugObject });
       setError('Missing payment information in callback URL');
       setTimeout(() => {
         navigate(`/payment-failed?planId=${planId || ''}&reason=Missing payment reference`);
@@ -61,10 +62,8 @@ export default function PaymentCallbackPage() {
 
     const doCaptureIfNeeded = async (): Promise<{captured: boolean, paymentId?: string}> => {
       if (!orderId) {
-        // If only paymentId is present, PayPal payment already captured, skip
         return { captured: false, paymentId };
       }
-      // Call process-paypal-payment edge function with action: 'capture'
       try {
         const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
           body: {
@@ -74,15 +73,14 @@ export default function PaymentCallbackPage() {
             planId,
           },
         });
-
-        console.log('PayPal capture (supabase invoke) result:', { data, error });
-
         if (error || !data?.success) {
+          logError('PayPal capture failed', 'PaymentCallbackPage', { data, error, orderId, userId, planId });
           throw new Error(error?.message || data?.error || "PayPal capture failed");
         }
         didCapture = true;
         return { captured: true, paymentId: data.paymentId };
       } catch (err: any) {
+        logError('Payment capture failed', 'PaymentCallbackPage', { details: err, debugObject });
         setError('Payment capture failed: ' + (err.message || err));
         setTimeout(() => {
           navigate(`/payment-failed?planId=${planId || ''}&reason=Payment capture failed: ${(err.message || err)}`);
@@ -93,6 +91,7 @@ export default function PaymentCallbackPage() {
 
     const poll = async (currentPollCount: number = 0, paymentIdArg?: string) => {
       if (currentPollCount >= MAX_POLLS) {
+        logError('Payment verification timeout', 'PaymentCallbackPage', { paymentId, orderId, debugObject });
         setError('Payment verification timeout');
         setTimeout(() => {
           navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification timeout`);
@@ -104,9 +103,8 @@ export default function PaymentCallbackPage() {
         if (orderId) args['order_id'] = orderId;
         if (paymentIdArg || paymentId) args['payment_id'] = paymentIdArg || paymentId!;
         const { data, error } = await supabase.functions.invoke("verify-paypal-payment", {
-          body: args, // Even though the edge fn expects GET, supabase.functions.invoke only POSTs
+          body: args,
         });
-        // Workaround: since the edge function expects GET, we need to fallback to fetch
         let result = data;
         if (!data && (orderId || paymentIdArg || paymentId)) {
           const params = new URLSearchParams();
@@ -115,21 +113,18 @@ export default function PaymentCallbackPage() {
           const apiUrl = `https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/verify-paypal-payment?${params.toString()}`;
           const response = await fetch(apiUrl, {
             method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
           });
           if (!response.ok) {
             const errorText = await response.text();
+            logError('API call failed in verify-paypal-payment fallback', 'PaymentCallbackPage', { status: response.status, errorText, debugObject });
             throw new Error(`API call failed: ${response.status} - ${errorText}`);
           }
           result = await response.json();
         }
-
-        console.log('Verify-paypal-payment response:', result, 'Poll count:', currentPollCount + 1);
         handlePaymentStatus(result?.status, currentPollCount, paymentIdArg || paymentId);
-
       } catch (error: any) {
+        logError('Payment verification failed', 'PaymentCallbackPage', { error, paymentId, orderId, debugObject });
         setError(error.message);
         setTimeout(() => {
           navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification failed: ${error.message}`);
@@ -142,7 +137,6 @@ export default function PaymentCallbackPage() {
       setPollCount(currentPollCount + 1);
 
       if (paymentStatus === 'COMPLETED') {
-        // Payment successful
         const successParams = new URLSearchParams();
         if (planId) successParams.append('planId', planId);
         if (userId) successParams.append('userId', userId);
@@ -157,17 +151,20 @@ export default function PaymentCallbackPage() {
         failedParams.append('status', paymentStatus);
         if (paymentIdForSuccessParam) failedParams.append('payment_id', paymentIdForSuccessParam);
 
+        logError('Payment flow failed', 'PaymentCallbackPage', { paymentStatus, debugObject });
         navigate(`/payment-failed?${failedParams.toString()}`);
       } else {
         const delay = Math.min(2000 + (currentPollCount * 200), 4000);
         setTimeout(() => poll(currentPollCount + 1, paymentIdForSuccessParam), delay);
+
+        if (currentPollCount + 1 === MAX_POLLS - 2) {
+          logError('Payment polling nearly timed out', 'PaymentCallbackPage', { paymentStatus, attempt: currentPollCount + 1, debugObject });
+        }
       }
     };
 
-    // ----------- Full Payment Callback Logic -----------
     if (success === 'true') {
       (async () => {
-        // Step 1: Capture the payment (if needed)
         let paymentIdAfterCapture = paymentId;
         try {
           const captureResult = await doCaptureIfNeeded();
@@ -175,7 +172,6 @@ export default function PaymentCallbackPage() {
         } catch (err) {
           return;
         }
-        // Step 2: Start verifying
         poll(0, paymentIdAfterCapture);
       })();
     } else {
@@ -192,6 +188,12 @@ export default function PaymentCallbackPage() {
           <h2 className="text-xl font-semibold mb-2">Payment Verification Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <p className="text-sm text-gray-500">Redirecting to payment failed page...</p>
+          {process.env.NODE_ENV === "development" && debugInfo && (
+            <details className="text-left text-xs bg-gray-100 rounded-md p-3 mt-6 overflow-x-auto">
+              <summary className="text-xs font-medium cursor-pointer">Debug info</summary>
+              <pre className="whitespace-pre-wrap">{JSON.stringify(debugInfo, null, 2)}</pre>
+            </details>
+          )}
         </div>
       </div>
     );
@@ -210,8 +212,13 @@ export default function PaymentCallbackPage() {
           <p className="mt-2">Verification attempt {pollCount} of {MAX_POLLS}</p>
           <p className="mt-1">This may take a few moments</p>
         </div>
+        {process.env.NODE_ENV === "development" && debugInfo && (
+          <details className="text-left text-xs bg-gray-100 rounded-md p-3 mt-6 overflow-x-auto">
+            <summary className="text-xs font-medium cursor-pointer">Debug info</summary>
+            <pre className="whitespace-pre-wrap">{JSON.stringify(debugInfo, null, 2)}</pre>
+          </details>
+        )}
       </div>
     </div>
   );
 }
-
