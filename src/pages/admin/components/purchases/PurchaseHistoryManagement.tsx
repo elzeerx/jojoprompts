@@ -10,18 +10,7 @@ import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
 import { PurchaseHistoryTable } from "./PurchaseHistoryTable";
 import { PurchaseHistoryStats } from "./PurchaseHistoryStats";
 import { DateRange } from "react-day-picker";
-
-interface TransactionRecord {
-  id: string;
-  user_id: string;
-  amount_usd: number;
-  status: string;
-  created_at: string;
-  plan?: {
-    name: string;
-  };
-  user_email?: string;
-}
+import { TransactionRecord } from "@/types/transaction";
 
 export default function PurchaseHistoryManagement() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
@@ -81,13 +70,17 @@ export default function PurchaseHistoryManagement() {
         });
       }
 
-      const enrichedTransactions = data?.map(transaction => ({
-        ...transaction,
+      const enrichedTransactions: TransactionRecord[] = (data?.map(transaction => ({
+        id: transaction.id,
+        user_id: transaction.user_id,
+        amount_usd: transaction.amount_usd,
+        status: transaction.status,
+        created_at: transaction.created_at,
         user_email: userEmailMap.get(transaction.user_id) || 'Unknown',
         plan: {
           name: transaction.plan_id?.name || 'Unknown Plan'
         }
-      })) || [];
+      })) || []);
 
       setTransactions(enrichedTransactions);
       setTotalPages(Math.ceil((count || 0) / itemsPerPage));
