@@ -1,12 +1,14 @@
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 import { normalizePaymentParams } from "./helpers/normalizePaymentParams";
 import { gotoFailedPage } from "./helpers/gotoFailedPage";
-import { retrySessionFetch } from "./helpers/retrySessionFetch";
+import { recoverSession } from "./helpers/useSessionRecovery";
+import { verifyPayPalPayment } from "./helpers/paymentVerifier";
+import { activateSubscription } from "./helpers/subscriptionActivator";
+import { handleVerificationError } from "./helpers/paymentErrorHandler";
 
 interface PaymentSuccessVerificationConfig {
   params: ReturnType<typeof import('./usePaymentSuccessParams').usePaymentSuccessParams>;
@@ -25,45 +27,29 @@ export function usePaymentSuccessVerification({
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { planId, userId, token, payerId, allParams } = normalizePaymentParams(params);
+    const { planId, userId, token, payerId } = normalizePaymentParams(params);
 
-    // Enhanced logs for debugging
-    console.log("[PaymentSuccessVerification] params normalized:", { planId, userId, token, payerId, allParams });
     setVerifying(true);
 
-    const verifyAndActivate = async () => {
-      // Try to get session (with retries if session is undefined)
-      let sessionData;
-      let activeUser = user;
-      try {
-        // 1st attempt: direct from context, fallback to supabase.getSession
-        sessionData = await supabase.auth.getSession();
-        if (sessionData.data?.session?.user) {
-          activeUser = sessionData.data.session.user;
-        }
-        // If still no user, try retrySessionFetch for more robustness
-        if (!activeUser) {
-          const recovered = await retrySessionFetch();
-          if (recovered?.user) {
-            activeUser = recovered.user;
-            console.log("[PaymentSuccessVerification] Session recovered via retry.");
-          }
-        }
-      } catch (error) {
-        console.warn("[PaymentSuccessVerification] Failed to fetch session", error);
-      }
+    async function processPayment() {
+      // Session restoration
+      const { user: activeUser, session } = await recoverSession(user);
 
       if (!planId || !userId || !token) {
-        setError('Missing payment information');
-        setVerifying(false);
-        gotoFailedPage(navigate, planId, 'Missing payment information - please try again', 1500, userId);
+        handleVerificationError({
+          errorTitle: "Missing Info",
+          errorMsg: "Missing payment information",
+          toastMsg: "Missing payment information - please try again",
+          navigate, planId, userId, setError, setVerifying,
+        });
         return;
       }
 
-      // Fallback: no session/user, check DB activations
+      // Fallback: No session
       if (!activeUser) {
+        // Check for existing subscription in DB
         try {
-          const { data: sub } = await supabase
+          const { data: sub } = await window.supabase
             .from("user_subscriptions")
             .select("id,status,plan_id,user_id,created_at")
             .eq("user_id", userId)
@@ -85,143 +71,101 @@ export function usePaymentSuccessVerification({
             return;
           }
 
-          setError(
-            'You must be logged in to complete your payment (session expired/lost). If you already paid, please log back in to unlock access.'
-          );
-          setVerifying(false);
-          toast({
-            title: "Authentication Required (Session Lost)",
-            description: "Your payment was likely successful! Please log in to access premium content.",
-            variant: "destructive",
+          handleVerificationError({
+            errorTitle: "Authentication Required (Session Lost)",
+            errorMsg: "You must be logged in to complete your payment (session expired/lost). If you already paid, please log back in to unlock access.",
+            toastMsg: "Your payment was likely successful! Please log in to access premium content.",
+            navigate, planId, userId, setError, setVerifying,
           });
-          gotoFailedPage(navigate, planId, "No authentication session", 2000, userId);
-          return;
         } catch (e) {
-          setError('Payment session timeout or invalid. Please try again.');
-          setVerifying(false);
-          gotoFailedPage(navigate, planId, "No authentication session", 2000, userId);
-          return;
+          handleVerificationError({
+            errorTitle: "Session Lost",
+            errorMsg: "Payment session timeout or invalid. Please try again.",
+            navigate, planId, userId, setError, setVerifying,
+          });
         }
-      }
-
-      if (userId !== activeUser.id) {
-        setError('Payment session does not match your account. Please sign in with the account used for checkout.');
-        setVerifying(false);
-        toast({
-          title: "User Authentication Mismatch",
-          description: "Payment made with a different account. Log in with your checkout email to unlock access.",
-          variant: "destructive",
-        });
-        gotoFailedPage(navigate, planId, 'Invalid payment session - user mismatch', 2000, userId);
         return;
       }
 
-      try {
-        const { data: verify, error: verifyError } = await supabase.functions.invoke("verify-paypal-payment", {
-          headers: {
-            "Content-Type": "application/json",
-            ...(sessionData.data?.session?.access_token ? { Authorization: `Bearer ${sessionData.data.session.access_token}` } : {}),
-          },
-          body: {
-            order_id: token,
-            payer_id: payerId,
-          }
+      if (userId !== activeUser.id) {
+        handleVerificationError({
+          errorTitle: "User Authentication Mismatch",
+          errorMsg: "Payment session does not match your account. Please sign in with the account used for checkout.",
+          toastMsg: "Payment made with a different account. Log in with your checkout email to unlock access.",
+          navigate, planId, userId, setError, setVerifying,
         });
-
-        if (verifyError?.status === 401 || verifyError?.message?.toLowerCase().includes("authorization")) {
-          setError('Authentication expired. Please log in again to complete your payment.');
-          setVerifying(false);
-          toast({
-            title: "Session Expired",
-            description: "Please log in again to verify your payment.",
-            variant: "destructive",
-          });
-          gotoFailedPage(navigate, planId, 'Authentication expired', 1000, userId);
-          return;
-        }
-
-        if (verifyError || !verify || !(verify.status === "COMPLETED")) {
-          setError('Unable to verify payment completion.');
-          setVerifying(false);
-          toast({
-            title: "Payment Verification Error",
-            description: verifyError?.message || "Your PayPal payment could not be verified. Please contact support.",
-            variant: "destructive",
-          });
-          gotoFailedPage(navigate, planId, 'PayPal payment could not be verified - please contact support', 2000, userId);
-          return;
-        }
-
-        const paypal_payment_id =
-          verify.paymentId ||
-          verify.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
-          verify.paypal?.id ||
-          verify?.paypal_payment_id ||
-          undefined;
-
-        if (!paypal_payment_id) {
-          setError('Unable to determine PayPal payment ID.');
-          setVerifying(false);
-          toast({
-            title: "Payment Error",
-            description: "We could not confirm your PayPal payment. Please contact support.",
-            variant: "destructive",
-          });
-          gotoFailedPage(navigate, planId, 'Could not confirm PayPal payment - missing payment ID', 2000, userId);
-          return;
-        }
-
-        const { data: create, error: createError } = await supabase.functions.invoke("create-subscription", {
-          headers: {
-            "Content-Type": "application/json",
-            ...(sessionData.data?.session?.access_token ? { Authorization: `Bearer ${sessionData.data.session.access_token}` } : {}),
-          },
-          body: {
-            planId,
-            userId,
-            paymentData: {
-              paymentMethod: "paypal",
-              paymentId: paypal_payment_id,
-              details: verify.paypal
-            }
-          }
-        });
-
-        if (createError || !create || !create.success) {
-          setError('Subscription activation failed');
-          setVerifying(false);
-          toast({
-            title: "Subscription Error",
-            description: "Your payment was successful, but we were unable to activate your subscription. Please contact support.",
-            variant: "destructive",
-          });
-          gotoFailedPage(navigate, planId, 'Subscription activation failed after successful payment', 2000, userId);
-          return;
-        }
-
-        setVerified(true);
-        setVerifying(false);
-        toast({
-          title: "Payment Successful!",
-          description: "Your subscription has been activated successfully. Redirecting to Prompts.",
-        });
-        setTimeout(() => {
-          navigate("/prompts");
-        }, 1800);
-
-      } catch (error: any) {
-        setError('Payment verification failed');
-        setVerifying(false);
-        toast({
-          title: "Payment Verification Error",
-          description: "There was a system error during payment verification.",
-          variant: "destructive",
-        });
-        gotoFailedPage(navigate, planId, 'Payment verification failed - system error', 2000, userId);
+        return;
       }
-    };
 
-    verifyAndActivate();
+      // Step 1: Verify payment
+      const { data: verify, error: verifyError } = await verifyPayPalPayment(token, payerId, session?.access_token);
+
+      if (verifyError?.status === 401 || verifyError?.message?.toLowerCase().includes("authorization")) {
+        handleVerificationError({
+          errorTitle: "Session Expired",
+          errorMsg: "Authentication expired. Please log in again to complete your payment.",
+          navigate, planId, userId, setError, setVerifying,
+        });
+        return;
+      }
+
+      if (verifyError || !verify || !(verify.status === "COMPLETED")) {
+        handleVerificationError({
+          errorTitle: "Payment Verification Error",
+          errorMsg: "Unable to verify payment completion.",
+          toastMsg: verifyError?.message || "Your PayPal payment could not be verified. Please contact support.",
+          navigate, planId, userId, setError, setVerifying,
+        });
+        return;
+      }
+
+      const paypal_payment_id =
+        verify.paymentId ||
+        verify.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
+        verify.paypal?.id ||
+        verify?.paypal_payment_id || undefined;
+      if (!paypal_payment_id) {
+        handleVerificationError({
+          errorTitle: "Payment Error",
+          errorMsg: "Unable to determine PayPal payment ID.",
+          toastMsg: "We could not confirm your PayPal payment. Please contact support.",
+          navigate, planId, userId, setError, setVerifying,
+        });
+        return;
+      }
+
+      // Step 2: Activate subscription
+      const { data: create, error: createError } = await activateSubscription({
+        planId,
+        userId,
+        paymentMethod: "paypal",
+        paymentId: paypal_payment_id,
+        paymentDetails: verify.paypal,
+        accessToken: session?.access_token,
+      });
+
+      if (createError || !create || !create.success) {
+        handleVerificationError({
+          errorTitle: "Subscription Error",
+          errorMsg: "Subscription activation failed",
+          toastMsg: "Your payment was successful, but we were unable to activate your subscription. Please contact support.",
+          navigate, planId, userId, setError, setVerifying,
+        });
+        return;
+      }
+
+      setVerified(true);
+      setVerifying(false);
+      toast({
+        title: "Payment Successful!",
+        description: "Your subscription has been activated successfully. Redirecting to Prompts.",
+      });
+      setTimeout(() => {
+        navigate("/prompts");
+      }, 1800);
+    }
+
+    processPayment();
     // eslint-disable-next-line
   }, [user, navigate, params]);
 }
