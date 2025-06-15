@@ -9,6 +9,7 @@ import { recoverSession } from "./helpers/useSessionRecovery";
 import { verifyPayPalPayment } from "./helpers/paymentVerifier";
 import { activateSubscription } from "./helpers/subscriptionActivator";
 import { handleVerificationError } from "./helpers/paymentErrorHandler";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PaymentSuccessVerificationConfig {
   params: ReturnType<typeof import('./usePaymentSuccessParams').usePaymentSuccessParams>;
@@ -49,7 +50,7 @@ export function usePaymentSuccessVerification({
       if (!activeUser) {
         // Check for existing subscription in DB
         try {
-          const { data: sub } = await window.supabase
+          const { data: sub } = await supabase
             .from("user_subscriptions")
             .select("id,status,plan_id,user_id,created_at")
             .eq("user_id", userId)
@@ -169,3 +170,4 @@ export function usePaymentSuccessVerification({
     // eslint-disable-next-line
   }, [user, navigate, params]);
 }
+
