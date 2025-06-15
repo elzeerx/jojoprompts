@@ -13,6 +13,7 @@ export default function PaymentSuccessPage() {
 
   const params = usePaymentSuccessParams();
 
+  // Set verifying to true initially for extra safety on fast navigation
   usePaymentSuccessVerification({
     params,
     setVerifying,
@@ -35,3 +36,4 @@ export default function PaymentSuccessPage() {
 
   return <PaymentSuccessCard />;
 }
+

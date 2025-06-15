@@ -28,7 +28,32 @@ export function usePaymentSuccessVerification({
   const navigate = useNavigate();
 
   useEffect(() => {
-    const verifyPaypalPayment = async () => {
+    // Start by trying a session refresh, since a SPA may have an old/null session after PayPal redirect
+    const refreshSessionAndVerify = async () => {
+      setVerifying(true);
+
+      // Always attempt to refresh session before verifying payment
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      let activeUser = user;
+      if (sessionData.session?.user) {
+        activeUser = sessionData.session.user;
+      }
+
+      // 1. Session must exist
+      if (!activeUser) {
+        setError('You must be logged in to complete your payment. Please sign in and try again.');
+        setVerifying(false);
+        toast({
+          title: "Authentication Error",
+          description: "Your login session could not be restored. Please log in again to complete your payment.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          navigate("/login"); // Could redirect to a custom "login and finish payment" page if desired
+        }, 3000);
+        return;
+      }
+
       try {
         const { planId, userId, token, payerId } = params;
 
@@ -41,10 +66,17 @@ export function usePaymentSuccessVerification({
           return;
         }
 
-        if (user && userId !== user.id) {
-          setError('Invalid payment session');
+        // 2. User in session must match the payment userId (security)
+        if (userId !== activeUser.id) {
+          setError('Payment session does not match your account. Please sign in with the account you used for checkout.');
+          setVerifying(false);
+          toast({
+            title: "User Authentication Mismatch",
+            description: "The payment was made with a different account. Please log in with the correct email and try again.",
+            variant: "destructive",
+          });
           setTimeout(() => {
-            const reason = 'Invalid payment session - please log in and try again';
+            const reason = 'Invalid payment session - user mismatch';
             navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
           }, 3000);
           return;
@@ -53,7 +85,8 @@ export function usePaymentSuccessVerification({
         // Step 1: Verify and capture the PayPal order
         const { data: verify, error: verifyError } = await supabase.functions.invoke("verify-paypal-payment", {
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            // Optionally, send the JWT if needed for edge authentication (currently not required on this function)
           },
           body: {
             order_id: token,
@@ -96,7 +129,12 @@ export function usePaymentSuccessVerification({
           return;
         }
 
+        // Step 3: Pass the active user's access_token (JWT) to create-subscription for future-proofing
         const { data: create, error: createError } = await supabase.functions.invoke("create-subscription", {
+          headers: {
+            "Content-Type": "application/json",
+            // Optionally, add Authorization: Bearer <token> header if needed on backend
+          },
           body: {
             planId,
             userId,
@@ -140,7 +178,8 @@ export function usePaymentSuccessVerification({
       }
     };
 
-    verifyPaypalPayment();
+    refreshSessionAndVerify();
     // eslint-disable-next-line
   }, [user, navigate, params]);
 }
+
