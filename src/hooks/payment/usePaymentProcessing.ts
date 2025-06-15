@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,7 +24,13 @@ const PROCESSING_STATES = {
 };
 
 export function usePaymentProcessing({
-  success, paymentId, orderId, planId, userId, debugObject, hasSessionIndependentData
+  success,
+  paymentId,
+  orderId,
+  planId,
+  userId,
+  debugObject,
+  hasSessionIndependentData
 }: UsePaymentProcessingArgs) {
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>(PROCESSING_STATES.CHECKING);
@@ -34,7 +39,7 @@ export function usePaymentProcessing({
   const [finalPaymentId, setFinalPaymentId] = useState<string | undefined>(paymentId);
   const [sessionRestorationAttempted, setSessionRestorationAttempted] = useState(false);
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
-  const MAX_POLLS = 30; // Reduced from 35 for faster timeout
+  const MAX_POLLS = 10; // Reduced from 35 for faster timeout
 
   // Enhanced authentication state management
   const [currentUser, setCurrentUser] = useState<any>(null);

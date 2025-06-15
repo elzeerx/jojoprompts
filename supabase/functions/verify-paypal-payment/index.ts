@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getPayPalConfig } from "./paypalConfig.ts";
 import { fetchPayPalAccessToken } from "./paypalToken.ts";
@@ -244,6 +243,7 @@ serve(async (req: Request) => {
     console.log(`[${requestId}] Phase 4: Database updates`);
     let finalTransaction = localTx;
     let subscription = null;
+    let subscriptionCreated: boolean = false; // <-- new flag
 
     if (payPalStatus === PAYMENT_STATES.COMPLETED) {
       // Update transaction if needed
@@ -270,11 +270,12 @@ serve(async (req: Request) => {
         
         if (subscriptionResult.data) {
           subscription = subscriptionResult.data;
-          console.log(`[${requestId}] Subscription ensured:`, subscription.id);
+          // Set subscriptionCreated to true ONLY if this is a new sub, not an existing
+          subscriptionCreated = !!(subscriptionResult.data?.created_at && subscriptionResult.data?.created_at === subscriptionResult.data?.updated_at);
+          console.log(`[${requestId}] Subscription ensured:`, subscription.id, "JustCreated?", subscriptionCreated);
         } else if (subscriptionResult.error) {
+          subscriptionCreated = false;
           console.error(`[${requestId}] Failed to ensure subscription:`, subscriptionResult.error);
-          // Don't fail the entire verification if subscription creation fails
-          // The payment is still successful
         }
       }
     }
@@ -288,7 +289,8 @@ serve(async (req: Request) => {
       justCaptured: txJustCaptured, 
       paymentId: paymentIdAfterCapture,
       success: isSuccess,
-      hasSubscription: !!subscription
+      hasSubscription: !!subscription,
+      subscriptionCreated
     });
 
     // Consistent response format with enhanced data
@@ -300,6 +302,7 @@ serve(async (req: Request) => {
       paypal: payPalRawResponse,
       transaction: finalTransaction,
       subscription: subscription,
+      subscriptionCreated,
       source: txJustCaptured ? "just_captured" : "existing",
       requestId,
       timestamp: new Date().toISOString()

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [recoveredOrphaned, setRecoveredOrphaned] = useState(false);
 
   // Helper function to fetch user profile safely
   const fetchUserProfile = async (currentUser: User) => {
@@ -93,6 +93,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               fetchUserProfile(currentUser).finally(() => {
                 if (mounted) setLoading(false);
               });
+              // Run orphan recovery after login, once per session
+              if (!recoveredOrphaned) {
+                supabase.functions.invoke("recover-orphaned-payments", {
+                  body: { userId: currentUser.id }
+                }).then((res) => {
+                  if (res.data?.success) {
+                    console.debug(
+                      `[AuthContext] Ran orphaned payment recovery for user ${currentUser.id}:`,
+                      "Recovered:", res.data?.recovered, res.data?.errors?.length ? res.data.errors : ""
+                    );
+                    setRecoveredOrphaned(true);
+                  } else {
+                    console.warn("[AuthContext] Recovery function error:", res.data?.error);
+                  }
+                }).catch(e => {
+                  console.warn("[AuthContext] Recovery invoke failed:", e);
+                });
+              }
             }
           }, 0);
         } else {
@@ -121,6 +139,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (initialUser) {
         fetchUserProfile(initialUser).finally(() => {
           if (mounted) setLoading(false);
+
+          // Run orphan recovery on initial session load too, if not already triggered
+          if (!recoveredOrphaned) {
+            supabase.functions.invoke("recover-orphaned-payments", {
+              body: { userId: initialUser.id }
+            }).then((res) => {
+              if (res.data?.success) {
+                console.debug(
+                  `[AuthContext] Ran orphaned payment recovery for user ${initialUser.id}:`,
+                  "Recovered:", res.data?.recovered, res.data?.errors?.length ? res.data.errors : ""
+                );
+                setRecoveredOrphaned(true);
+              } else {
+                console.warn("[AuthContext] Recovery function error:", res.data?.error);
+              }
+            }).catch(e => {
+              console.warn("[AuthContext] Recovery invoke failed:", e);
+            });
+          }
         });
       } else {
         setLoading(false);
