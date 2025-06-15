@@ -36,7 +36,9 @@ export function EnhancedLoginForm({ onSuccess, onSwitchToSignup }: EnhancedLogin
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit((values) => onSubmit(values, form.reset))}
+        onSubmit={form.handleSubmit((values) => 
+          onSubmit(values as LoginFormValues, form.reset)
+        )}
         className="space-y-4"
       >
         {rateLimitError && <RateLimitAlert message={rateLimitError} />}
