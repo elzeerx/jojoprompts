@@ -3,25 +3,24 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SecurityEnforcer } from "@/utils/enhancedSecurity";
-import type { LoginFormValues } from "../hooks/useLoginForm"; // updated import
+import type { LoginFormValues } from "../hooks/useLoginForm";
 
 export function useLoginSubmission(onSuccess?: () => void) {
   const [isLoading, setIsLoading] = useState(false);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
 
-  async function onSubmit(values: LoginFormValues, reset: () => void) { // use explicit type
+  // Returns a Promise<boolean>: true if login succeeded.
+  async function onSubmit(values: LoginFormValues): Promise<boolean> {
     setRateLimitError(null);
 
-    // Rate limiting
     const rateLimitCheck = SecurityEnforcer.checkAuthRateLimit('login', values.email);
     if (!rateLimitCheck.allowed) {
       const message = `Too many login attempts. Please try again in ${rateLimitCheck.retryAfter} seconds.`;
       setRateLimitError(message);
       SecurityEnforcer.logAuthAttempt('login', values.email, false, 'Rate limited');
-      return;
+      return false;
     }
 
-    // Validation
     const validation = SecurityEnforcer.validateUserInput(values);
 
     if (!validation.isValid) {
@@ -30,7 +29,7 @@ export function useLoginSubmission(onSuccess?: () => void) {
         title: "Invalid Input",
         description: validation.errors.join(', ')
       });
-      return;
+      return false;
     }
 
     setIsLoading(true);
@@ -51,15 +50,16 @@ export function useLoginSubmission(onSuccess?: () => void) {
           title: "Login Failed",
           description: error.message,
         });
+        return false;
       } else {
         SecurityEnforcer.logAuthAttempt('login', values.email, true);
         toast({
           title: "Welcome back!",
           description: "You have been logged in successfully.",
         });
-        reset();
         SecurityEnforcer.secureClearSensitiveData(values);
         onSuccess?.();
+        return true;
       }
     } catch (error: any) {
       SecurityEnforcer.logAuthAttempt('login', values.email, false, error.message);
@@ -68,6 +68,7 @@ export function useLoginSubmission(onSuccess?: () => void) {
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
       });
+      return false;
     } finally {
       setIsLoading(false);
     }

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,18 @@ export function EnhancedLoginForm({ onSuccess, onSwitchToSignup }: EnhancedLogin
   const form = useLoginForm();
   const { isLoading, rateLimitError, onSubmit, setRateLimitError } = useLoginSubmission(onSuccess);
 
+  // Handler ensures reset happens on successful submit.
+  async function handleSubmit(values: LoginFormValues) {
+    const success = await onSubmit(values);
+    if (success) {
+      form.reset();
+    }
+  }
+
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(
-          onSubmit // No need for extra checks, type safety is handled with zod
-        )}
+        onSubmit={form.handleSubmit(handleSubmit)}
         className="space-y-4"
       >
         {rateLimitError && <RateLimitAlert message={rateLimitError} />}
