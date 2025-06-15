@@ -55,8 +55,9 @@ export function usePaymentSuccessVerification({
           headers: {
             "Content-Type": "application/json"
           },
-          query: {
-            order_id: token // PayPal order_id is the "token" param
+          body: {
+            order_id: token,
+            payer_id: payerId,
           }
         });
 
@@ -99,7 +100,11 @@ export function usePaymentSuccessVerification({
           body: {
             planId,
             userId,
-            paypal_payment_id
+            paymentData: {
+              paymentMethod: "paypal",
+              paymentId: paypal_payment_id,
+              details: verify.paypal
+            }
           }
         });
 
@@ -139,4 +144,3 @@ export function usePaymentSuccessVerification({
     // eslint-disable-next-line
   }, [user, navigate, params]);
 }
-
