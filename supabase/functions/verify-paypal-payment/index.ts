@@ -31,17 +31,28 @@ serve(async (req: Request) => {
       });
     }
 
+    // ---- Phase 1: Improved Parameter Extraction & Validation ----
     const params = await getAllParams(req);
-    const orderId = params.order_id || params.token || params.orderId;
-    const paymentId = params.payment_id || params.paymentId;
-    const planId = params.plan_id || params.planId;
-    const userId = params.user_id || params.userId;
+    // Unify parameter recognition logic
+    const orderId = params.order_id || params.token || params.orderId || params.ORDER_ID || params.TOKEN;
+    const paymentId = params.payment_id || params.paymentId || params.PAYMENT_ID;
+    const planId = params.plan_id || params.planId || params.PLAN_ID;
+    const userId = params.user_id || params.userId || params.USER_ID;
 
-    logger(`Payment verification params:`, { orderId, paymentId, planId, userId });
+    // Preserve original params for debugging
+    const debugParams = { ...params, orderId, paymentId, planId, userId };
+    logger(`Payment verification params:`, debugParams);
 
     if (!orderId && !paymentId) {
-      return new Response(JSON.stringify({ 
+      logger(`Missing both orderId and paymentId. Params:`, debugParams);
+      return new Response(JSON.stringify({
         error: "No order_id or payment_id supplied.",
+        errorTips: [
+          "Please ensure you are returning to the site via the correct PayPal redirect.",
+          "If you used a mobile browser or closed the tab, re-authenticate and try again.",
+          "Contact support with this Request ID for help."
+        ],
+        allParams: debugParams,
         status: PAYMENT_STATES.ERROR,
         success: false,
         requestId
@@ -271,7 +282,8 @@ serve(async (req: Request) => {
       subscriptionCreated,
       source: txJustCaptured ? "just_captured" : "existing",
       requestId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      allParams: debugParams
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -281,6 +293,11 @@ serve(async (req: Request) => {
     logger(`verify-paypal-payment FATAL ERROR:`, error);
     return new Response(JSON.stringify({ 
       error: error.message,
+      errorTips: [
+        "If your payment succeeded, please try logging out and back in.",
+        "If you see this repeatedly, contact support with the Request ID below.",
+        "You may also try a different browser if the problem persists."
+      ],
       status: PAYMENT_STATES.ERROR,
       success: false,
       requestId,

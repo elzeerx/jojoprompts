@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -101,6 +100,7 @@ export function usePaymentSuccessVerification({
       // Step 1: Verify payment
       const { data: verify, error: verifyError } = await verifyPayPalPayment(token, payerId, session?.access_token);
 
+      // ---- IMPROVED ERROR DIAGNOSTICS FOR PAYPAL EDGE FUNCTION ----
       if (verifyError?.status === 401 || verifyError?.message?.toLowerCase().includes("authorization")) {
         handleVerificationError({
           errorTitle: "Session Expired",
@@ -110,11 +110,23 @@ export function usePaymentSuccessVerification({
         return;
       }
 
+      // If PayPal edge function returned error with errorTips or requestId, surface it
       if (verifyError || !verify || !(verify.status === "COMPLETED")) {
+        let tips: string[] = [];
+        let diagnosticText: string = "";
+        if (verify?.errorTips) tips = verify.errorTips;
+        if (verify?.requestId) diagnosticText += `Request ID: ${verify.requestId}\n`;
+        if (verify?.allParams) diagnosticText += `Parameters: ${JSON.stringify(verify.allParams)}\n`;
+        if (verify?.error) diagnosticText += `Details: ${verify.error}\n`;
+
         handleVerificationError({
           errorTitle: "Payment Verification Error",
-          errorMsg: "Unable to verify payment completion.",
-          toastMsg: verifyError?.message || "Your PayPal payment could not be verified. Please contact support.",
+          errorMsg: (
+            "Unable to verify payment completion. " +
+            (tips.length ? "\n" + tips.join("\n") : "") +
+            (diagnosticText ? "\n---\n" + diagnosticText : "")
+          ),
+          toastMsg: verifyError?.message || verify?.error || "Your PayPal payment could not be verified. Please contact support.",
           navigate, planId, userId, setError, setVerifying,
         });
         return;
@@ -170,4 +182,3 @@ export function usePaymentSuccessVerification({
     // eslint-disable-next-line
   }, [user, navigate, params]);
 }
-
