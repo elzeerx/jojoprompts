@@ -1,5 +1,6 @@
 
-import { Table, TableHeader, TableRow, TableHead, Card } from "@/components/ui/table";
+import { Table, TableHeader, TableRow, TableHead } from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
 import { PurchaseHistoryTableBody } from "./PurchaseHistoryTableBody";
 import { PurchaseHistoryPagination } from "./PurchaseHistoryPagination";
 import { TransactionRecord } from "@/types/transaction";

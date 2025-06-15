@@ -41,7 +41,7 @@ export default function PurchaseHistoryManagement() {
       <Card className="border-warm-gold/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+            {/* Removed the Filter icon as it's not available */}
             Filters
           </CardTitle>
         </CardHeader>
