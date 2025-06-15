@@ -45,8 +45,10 @@ serve(async (req) => {
       const rawFrontendUrl = Deno.env.get('FRONTEND_URL');
       let siteUrl = rawFrontendUrl;
       if (!siteUrl) {
-        siteUrl = (Deno.env.get('SUPABASE_URL')?.replace('/supabase', '') ?? '').replace(/\/+$/, '');
+        siteUrl = (Deno.env.get('SUPABASE_URL')?.replace('/supabase', '') ?? '');
       }
+      // Always remove trailing slashes from siteUrl to avoid URL issues
+      siteUrl = siteUrl.replace(/\/+$/, '');
 
       // Make sure callback path matches the frontend route (should be /payment/callback)
       const returnUrl = `${siteUrl}/payment/callback?success=true&plan_id=${planId}&user_id=${userId}`;
