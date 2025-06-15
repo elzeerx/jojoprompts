@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -31,8 +32,8 @@ export function Header() {
       // If logged in, send to /prompts
       navigate("/prompts");
     } else {
-      // Not logged in, send to home
-      navigate("/home");
+      // Not logged in, send to the main page
+      navigate("/");
     }
   };
 
