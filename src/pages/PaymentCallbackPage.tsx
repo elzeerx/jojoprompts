@@ -1,6 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function PaymentCallbackPage() {
   const navigate = useNavigate();
@@ -55,8 +57,6 @@ export default function PaymentCallbackPage() {
       return;
     }
 
-    // --------- CRITICAL STEP: PayPal CAPTURE before polling ---------
-
     let didCapture = false;
 
     const doCaptureIfNeeded = async (): Promise<{captured: boolean, paymentId?: string}> => {
@@ -66,34 +66,22 @@ export default function PaymentCallbackPage() {
       }
       // Call process-paypal-payment edge function with action: 'capture'
       try {
-        // The edge function expects: action, orderId, userId, planId
-        const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4";
-        const captureUrl = `${SUPABASE_URL}/functions/v1/process-paypal-payment`;
-        const response = await fetch(captureUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
+          body: {
             action: 'capture',
             orderId,
             userId,
             planId,
-          }),
+          },
         });
 
-        const result = await response.json();
-        console.log('PayPal capture response:', result);
+        console.log('PayPal capture (supabase invoke) result:', { data, error });
 
-        if (result.success && result.paymentId) {
-          didCapture = true;
-          // After capture, update paymentId for verification
-          return { captured: true, paymentId: result.paymentId };
-        } else {
-          throw new Error(result.error || "PayPal capture failed");
+        if (error || !data?.success) {
+          throw new Error(error?.message || data?.error || "PayPal capture failed");
         }
+        didCapture = true;
+        return { captured: true, paymentId: data.paymentId };
       } catch (err: any) {
         setError('Payment capture failed: ' + (err.message || err));
         setTimeout(() => {
@@ -111,31 +99,35 @@ export default function PaymentCallbackPage() {
         }, 3000);
         return;
       }
-
       try {
-        const params = new URLSearchParams();
-        if (orderId) params.append('order_id', orderId);
-        if (paymentIdArg || paymentId) params.append('payment_id', paymentIdArg || paymentId!);
-
-        const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4";
-        const apiUrl = `${SUPABASE_URL}/functions/v1/verify-paypal-payment?${params.toString()}`;
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json'
-          }
+        const args: Record<string, string> = {};
+        if (orderId) args['order_id'] = orderId;
+        if (paymentIdArg || paymentId) args['payment_id'] = paymentIdArg || paymentId!;
+        const { data, error } = await supabase.functions.invoke("verify-paypal-payment", {
+          body: args, // Even though the edge fn expects GET, supabase.functions.invoke only POSTs
         });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`API call failed: ${response.status} - ${errorText}`);
+        // Workaround: since the edge function expects GET, we need to fallback to fetch
+        let result = data;
+        if (!data && (orderId || paymentIdArg || paymentId)) {
+          const params = new URLSearchParams();
+          if (orderId) params.append('order_id', orderId);
+          if (paymentIdArg || paymentId) params.append('payment_id', paymentIdArg || paymentId!);
+          const apiUrl = `https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/verify-paypal-payment?${params.toString()}`;
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API call failed: ${response.status} - ${errorText}`);
+          }
+          result = await response.json();
         }
-        const result = await response.json();
-        console.log('Verify-paypal-payment response:', result, 'Poll count:', currentPollCount + 1);
 
-        handlePaymentStatus(result.status, currentPollCount, paymentIdArg || paymentId);
+        console.log('Verify-paypal-payment response:', result, 'Poll count:', currentPollCount + 1);
+        handlePaymentStatus(result?.status, currentPollCount, paymentIdArg || paymentId);
 
       } catch (error: any) {
         setError(error.message);
@@ -173,24 +165,20 @@ export default function PaymentCallbackPage() {
     };
 
     // ----------- Full Payment Callback Logic -----------
-    // If not a PayPal return, skip
     if (success === 'true') {
       (async () => {
         // Step 1: Capture the payment (if needed)
         let paymentIdAfterCapture = paymentId;
         try {
           const captureResult = await doCaptureIfNeeded();
-          // On capture, PayPal may provide paymentId (use this if present)
           if (captureResult.paymentId) paymentIdAfterCapture = captureResult.paymentId;
         } catch (err) {
-          // doCaptureIfNeeded already handles error and navigation
           return;
         }
         // Step 2: Start verifying
         poll(0, paymentIdAfterCapture);
       })();
     } else {
-      // Any other legacy/broken callback will just poll
       poll(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,3 +214,4 @@ export default function PaymentCallbackPage() {
     </div>
   );
 }
+
