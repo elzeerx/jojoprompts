@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
 
@@ -42,9 +41,17 @@ serve(async (req) => {
     const accessToken = tokenData.access_token
 
     if (action === 'create') {
-      // Get the current site URL for return URLs
-      const siteUrl = Deno.env.get('SUPABASE_URL')?.replace('/supabase', '') || 'http://localhost:3000'
-      
+      // Use custom FRONTEND_URL secret if available, otherwise fallback to Supabase URL without /supabase
+      const rawFrontendUrl = Deno.env.get('FRONTEND_URL');
+      let siteUrl = rawFrontendUrl;
+      if (!siteUrl) {
+        siteUrl = (Deno.env.get('SUPABASE_URL')?.replace('/supabase', '') ?? '').replace(/\/+$/, '');
+      }
+
+      // Make sure callback path matches the frontend route (should be /payment/callback)
+      const returnUrl = `${siteUrl}/payment/callback?success=true&plan_id=${planId}&user_id=${userId}`;
+      const cancelUrl = `${siteUrl}/payment/callback?success=false&plan_id=${planId}&user_id=${userId}`;
+
       // Create PayPal order with redirect URLs
       const orderResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders`, {
         method: 'POST',
@@ -62,8 +69,8 @@ serve(async (req) => {
             description: `Subscription Plan Purchase`
           }],
           application_context: {
-            return_url: `${siteUrl}/payment-callback?success=true&plan_id=${planId}&user_id=${userId}`,
-            cancel_url: `${siteUrl}/payment-callback?success=false&plan_id=${planId}&user_id=${userId}`,
+            return_url: returnUrl,
+            cancel_url: cancelUrl,
             user_action: 'PAY_NOW',
             payment_method: {
               payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED'
