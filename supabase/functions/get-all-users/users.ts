@@ -1,4 +1,3 @@
-
 import { corsHeaders } from './cors.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -86,7 +85,20 @@ export async function deleteUser(supabase: ReturnType<typeof createClient>, user
     }
     console.log(`Successfully deleted payment history for ${userId}`);
 
-    // Step 2: Delete user subscriptions (now safe after payment history is gone)
+    // Step 2: Delete transactions (prevents FK errors on user_subscriptions/user deletes)
+    console.log(`Deleting transactions for user ${userId}`);
+    const { error: transactionsError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('user_id', userId);
+
+    if (transactionsError) {
+      console.error(`Error deleting transactions for ${userId}:`, transactionsError);
+      throw new Error(`Error deleting transactions: ${transactionsError.message}`);
+    }
+    console.log(`Successfully deleted transactions for ${userId}`);
+
+    // Step 3: Delete user subscriptions (now safe after payments and transactions gone)
     console.log(`Deleting user subscriptions for user ${userId}`);
     const { error: subscriptionsError } = await supabase
       .from('user_subscriptions')
@@ -99,7 +111,7 @@ export async function deleteUser(supabase: ReturnType<typeof createClient>, user
     }
     console.log(`Successfully deleted user subscriptions for ${userId}`);
 
-    // Step 3: Delete favorites
+    // Step 4: Delete favorites
     console.log(`Deleting favorites for user ${userId}`);
     const { error: favoritesError } = await supabase
       .from('favorites')
@@ -112,7 +124,7 @@ export async function deleteUser(supabase: ReturnType<typeof createClient>, user
     }
     console.log(`Successfully deleted favorites for ${userId}`);
 
-    // Step 4: Delete prompts created by the user
+    // Step 5: Delete prompts created by the user
     console.log(`Deleting prompts for user ${userId}`);
     const { error: promptsError } = await supabase
       .from('prompts')
@@ -125,7 +137,7 @@ export async function deleteUser(supabase: ReturnType<typeof createClient>, user
     }
     console.log(`Successfully deleted prompts for ${userId}`);
 
-    // Step 5: Delete discount code usage
+    // Step 6: Delete discount code usage
     console.log(`Deleting discount code usage for user ${userId}`);
     const { error: discountUsageError } = await supabase
       .from('discount_code_usage')
@@ -138,7 +150,7 @@ export async function deleteUser(supabase: ReturnType<typeof createClient>, user
     }
     console.log(`Successfully deleted discount code usage for ${userId}`);
 
-    // Step 6: Delete user profile
+    // Step 7: Delete user profile
     console.log(`Deleting user profile for user ${userId}`);
     const { error: profileError } = await supabase
       .from('profiles')
@@ -151,7 +163,7 @@ export async function deleteUser(supabase: ReturnType<typeof createClient>, user
     }
     console.log(`Successfully deleted user profile for ${userId}`);
 
-    // Step 7: Finally delete the user from Auth
+    // Step 8: Finally delete the user from Auth
     console.log(`Deleting user from Auth: ${userId}`);
     const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
 
