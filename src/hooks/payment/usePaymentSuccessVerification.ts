@@ -5,6 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
+/**
+ * Hook to handle post-payment success verification flow for PayPal payments.
+ * 1. First verifies/captures the PayPal payment via edge function (verify-paypal-payment)
+ * 2. Then calls the subscriptions edge function (create-subscription) with PayPal details
+ * 3. Handles errors accordingly and updates verification state
+ */
 interface PaymentSuccessVerificationConfig {
   params: ReturnType<typeof import('./usePaymentSuccessParams').usePaymentSuccessParams>;
   setVerifying: (b: boolean) => void;
@@ -22,34 +28,11 @@ export function usePaymentSuccessVerification({
   const navigate = useNavigate();
 
   useEffect(() => {
-    const verifyPayment = async () => {
+    const verifyPaypalPayment = async () => {
       try {
-        const { planId, userId, tapId, chargeStatus, responseCode, chargeId, paymentResult, allParams, paymentMethod } = params;
+        const { planId, userId, token, payerId } = params;
 
-        // Failure detection logic
-        const explicitFailures = [
-          'DECLINED', 'FAILED', 'CANCELLED', 'ABANDONED', 'EXPIRED',
-          'REJECTED', 'VOIDED', 'ERROR', 'TIMEOUT', 'UNAUTHORIZED'
-        ];
-        const failureResponseCodes = [
-          '101', '102', '103', '104', '105', '106', '107', '108', '109', '110',
-          '201', '202', '203', '204', '205', '206', '207', '208', '209', '210',
-          '301', '302', '303', '304', '305', '306', '307', '308', '309', '310'
-        ];
-        const isExplicitFailure =
-          (chargeStatus && explicitFailures.includes(chargeStatus.toUpperCase())) ||
-          (responseCode && failureResponseCodes.includes(responseCode)) ||
-          paymentResult === 'failed' || paymentResult === 'error';
-
-        if (isExplicitFailure) {
-          const reason = chargeStatus ? `Payment ${chargeStatus.toLowerCase()}` :
-            responseCode ? `Payment declined (Code: ${responseCode})` :
-            'Payment was not completed successfully';
-          navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
-          return;
-        }
-
-        if (!planId || !userId) {
+        if (!planId || !userId || !token) {
           setError('Missing payment information');
           setTimeout(() => {
             const reason = 'Missing payment information - please try again';
@@ -67,55 +50,73 @@ export function usePaymentSuccessVerification({
           return;
         }
 
-        const pendingPaymentStr = localStorage.getItem('pending_payment');
-        const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
-
-        const paymentData = {
-          paymentId: tapId || chargeId || pendingPayment?.paymentId || `tap_${Date.now()}`,
-          paymentMethod: 'tap',
-          details: {
-            id: tapId || chargeId || pendingPayment?.paymentId,
-            status: chargeStatus || 'completed',
-            amount: pendingPayment?.amount,
-            currency: pendingPayment?.currency || 'USD',
-            response_code: responseCode,
-            payment_result: paymentResult,
-            reference: pendingPayment?.reference
-          }
-        };
-
-        const { data, error } = await supabase.functions.invoke("create-subscription", {
-          body: {
-            planId,
-            userId,
-            paymentData
+        // Step 1: Verify and capture the PayPal order
+        const { data: verify, error: verifyError } = await supabase.functions.invoke("verify-paypal-payment", {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          query: {
+            order_id: token // PayPal order_id is the "token" param
           }
         });
 
-        if (error) {
-          setError('Subscription setup failed');
+        if (verifyError || !verify || !(verify.status === "COMPLETED")) {
+          setError('Unable to verify payment completion.');
           toast({
-            title: "Subscription Error",
-            description: "Payment was successful but subscription setup failed. Please contact support.",
+            title: "Payment Verification Error",
+            description: verifyError?.message || "Your PayPal payment could not be verified. Please contact support.",
             variant: "destructive",
           });
           setTimeout(() => {
-            const reason = 'Subscription setup failed - payment confirmed but access not granted';
-            navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
+            const reason = 'PayPal payment could not be verified - please contact support';
+            navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
           }, 3000);
           return;
         }
 
-        if (!data || !data.success) {
-          setError('Subscription activation failed');
+        // Step 2: Now call create-subscription (passing new-style PayPal info)
+        const paypal_payment_id =
+          verify.paymentId ||
+          verify.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
+          verify.paypal?.id ||
+          undefined;
+
+        if (!paypal_payment_id) {
+          setError('Unable to determine PayPal payment ID.');
+          toast({
+            title: "Payment Error",
+            description: "We could not confirm your PayPal payment. Please contact support.",
+            variant: "destructive",
+          });
           setTimeout(() => {
-            const reason = 'Subscription activation failed - please contact support';
+            const reason = 'Could not confirm PayPal payment - missing payment ID';
+            navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
+          }, 3000);
+          return;
+        }
+
+        const { data: create, error: createError } = await supabase.functions.invoke("create-subscription", {
+          body: {
+            planId,
+            userId,
+            paypal_payment_id
+          }
+        });
+
+        if (createError || !create || !create.success) {
+          setError('Subscription activation failed');
+          toast({
+            title: "Subscription Error",
+            description: "Your payment was successful, but we were unable to activate your subscription. Please contact support.",
+            variant: "destructive",
+          });
+          setTimeout(() => {
+            const reason = 'Subscription activation failed after successful payment';
             navigate(`/payment-failed?planId=${planId}&reason=${encodeURIComponent(reason)}`);
           }, 3000);
           return;
         }
 
-        localStorage.removeItem('pending_payment');
         setVerified(true);
         setVerifying(false);
 
@@ -124,7 +125,7 @@ export function usePaymentSuccessVerification({
           description: "Your subscription has been activated successfully.",
         });
 
-      } catch (error) {
+      } catch (error: any) {
         setError('Payment verification failed');
         setTimeout(() => {
           const planId = params.planId;
@@ -134,7 +135,8 @@ export function usePaymentSuccessVerification({
       }
     };
 
-    verifyPayment();
+    verifyPaypalPayment();
     // eslint-disable-next-line
   }, [user, navigate, params]);
 }
+

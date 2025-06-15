@@ -504,7 +504,11 @@ export type Database = {
         Returns: Json
       }
       create_subscription: {
-        Args: { p_user_id: string; p_plan_id: string; p_tap_id: string }
+        Args: {
+          p_user_id: string
+          p_plan_id: string
+          p_paypal_payment_id: string
+        }
         Returns: Json
       }
       has_role: {

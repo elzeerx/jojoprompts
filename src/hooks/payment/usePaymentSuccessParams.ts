@@ -10,15 +10,14 @@ export function usePaymentSuccessParams() {
     searchParams.forEach((value, key) => {
       allParams[key] = value;
     });
+    // Extract PayPal params only
+    const token = searchParams.get("token") || searchParams.get("orderId") || searchParams.get("order_id");
+    const payerId = searchParams.get("PayerID") || searchParams.get("payer_id");
     return {
-      planId: searchParams.get('planId'),
-      userId: searchParams.get('userId'),
-      tapId: searchParams.get('tap_id'),
-      chargeStatus: searchParams.get('status'),
-      responseCode: searchParams.get('response_code'),
-      chargeId: searchParams.get('charge_id'),
-      paymentResult: searchParams.get('payment_result'),
-      paymentMethod: searchParams.get('payment_method'),
+      planId: searchParams.get("planId"),
+      userId: searchParams.get("userId"),
+      token,
+      payerId,
       allParams,
     };
   }, [searchParams]);
