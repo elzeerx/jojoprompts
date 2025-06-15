@@ -33,13 +33,14 @@ serve(async (req: Request) => {
 
     // ---- Phase 1: Improved Parameter Extraction & Validation ----
     const params = await getAllParams(req);
-    // Unify parameter recognition logic
+
+    // Unified extraction for all payment params (beyond basic)
     const orderId = params.order_id || params.token || params.orderId || params.ORDER_ID || params.TOKEN;
     const paymentId = params.payment_id || params.paymentId || params.PAYMENT_ID;
     const planId = params.plan_id || params.planId || params.PLAN_ID;
     const userId = params.user_id || params.userId || params.USER_ID;
 
-    // Preserve original params for debugging
+    // --- Preserve every param for later diagnostics ---
     const debugParams = { ...params, orderId, paymentId, planId, userId };
     logger(`Payment verification params:`, debugParams);
 
@@ -62,10 +63,10 @@ serve(async (req: Request) => {
       });
     }
 
-    // PHASE 1: DATABASE-FIRST VERIFICATION - Check existing state
+    // --- PHASE 1: DATABASE-FIRST VERIFICATION ---
     let localTx = await databaseFirstVerification(supabaseClient, params, logger);
-    
-    // If we have user/plan context but no transaction, try to find orphaned completed transactions
+
+    // --- Aggressive DB fallback: if API fails, still check for completed tx/subscription
     if (!localTx && userId && planId) {
       logger(`Looking for orphaned transactions for user ${userId}, plan ${planId}`);
       const recoveryResult = await findAndRecoverOrphanedTransactions(supabaseClient, { user_id: userId, plan_id: planId });
@@ -79,7 +80,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // Check if subscription already exists for this transaction
+    // --- Fallback: If user/plan found and sub is already active, trust it
     if (localTx?.user_id && localTx?.plan_id) {
       const { data: existingSubscription } = await supabaseClient
         .from("user_subscriptions")
@@ -101,7 +102,9 @@ serve(async (req: Request) => {
           transaction: localTx,
           subscription: existingSubscription[0],
           source: "existing_subscription",
-          requestId
+          requestId,
+          timestamp: new Date().toISOString(),
+          allParams: debugParams
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }

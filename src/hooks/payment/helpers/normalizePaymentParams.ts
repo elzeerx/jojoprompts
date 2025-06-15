@@ -1,17 +1,21 @@
 
+// Stronger extraction for all possible PayPal return/callback params styles
 export function normalizePaymentParams(params: Record<string, any>) {
-  const extractParam = (key: string) =>
-    params[key] ||
-    params[key.toLowerCase()] ||
-    params[key.replace("_", "")] ||
-    params[
-      key.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase())
-    ];
+  function getAny(keys: string[]) {
+    for (const k of keys) {
+      if (params[k]) return params[k];
+      if (params[k.toLowerCase()]) return params[k.toLowerCase()];
+      if (params[k.toUpperCase()]) return params[k.toUpperCase()];
+    }
+    return undefined;
+  }
+
   return {
-    planId: extractParam("planId") || extractParam("plan_id"),
-    userId: extractParam("userId") || extractParam("user_id"),
-    token: params.token,
-    payerId: params.payerId,
-    allParams: params.allParams,
+    planId: getAny(['planId', 'plan_id', 'PLAN_ID']),
+    userId: getAny(['userId', 'user_id', 'USER_ID']),
+    // PayPal order ID is sometimes called token, orderId, order_id, etc
+    token: getAny(['token', 'orderId', 'order_id', 'ORDER_ID']),
+    payerId: getAny(['PayerID', 'payer_id', 'PAYERID']),
+    allParams: params,
   };
 }

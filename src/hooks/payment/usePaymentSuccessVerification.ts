@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,13 +28,17 @@ export function usePaymentSuccessVerification({
   const navigate = useNavigate();
 
   useEffect(() => {
+    // --- EXTRA DEBUG LOGS FOR EDGE FUNCTION INVOCATION ---
+    console.log("[PayPal] usePaymentSuccessVerification params:", params);
+
     const { planId, userId, token, payerId } = normalizePaymentParams(params);
 
     setVerifying(true);
 
     async function processPayment() {
-      // Session restoration
+      // Session restoration (extra logging)
       const { user: activeUser, session } = await recoverSession(user);
+      console.log("[PayPal] Session recovery result", { activeUser, session, planId, userId, token, payerId });
 
       if (!planId || !userId || !token) {
         handleVerificationError({
@@ -45,9 +50,8 @@ export function usePaymentSuccessVerification({
         return;
       }
 
-      // Fallback: No session
+      // Fallback: No session: check DB for completed transaction/subscription
       if (!activeUser) {
-        // Check for existing subscription in DB
         try {
           const { data: sub } = await supabase
             .from("user_subscriptions")
@@ -87,6 +91,7 @@ export function usePaymentSuccessVerification({
         return;
       }
 
+      // --- Mismatch between params and current user
       if (userId !== activeUser.id) {
         handleVerificationError({
           errorTitle: "User Authentication Mismatch",
@@ -97,10 +102,12 @@ export function usePaymentSuccessVerification({
         return;
       }
 
-      // Step 1: Verify payment
+      // --- Step 1: Attempt PayPal API verification (frontend logs...)
+      console.log("[PayPal] Attempting verifyPayPalPayment function invoke with:", { token, payerId, accessToken: session?.access_token });
       const { data: verify, error: verifyError } = await verifyPayPalPayment(token, payerId, session?.access_token);
+      console.log("[PayPal] verifyPayPalPayment response:", { verify, verifyError });
 
-      // ---- IMPROVED ERROR DIAGNOSTICS FOR PAYPAL EDGE FUNCTION ----
+      // --- Handle session expired (401s)
       if (verifyError?.status === 401 || verifyError?.message?.toLowerCase().includes("authorization")) {
         handleVerificationError({
           errorTitle: "Session Expired",
@@ -110,14 +117,45 @@ export function usePaymentSuccessVerification({
         return;
       }
 
-      // If PayPal edge function returned error with errorTips or requestId, surface it
-      if (verifyError || !verify || !(verify.status === "COMPLETED")) {
+      // --- SURFACED ERROR DETAILS FROM EDGE ---
+      if (
+        verifyError ||
+        !verify ||
+        !(verify.status === "COMPLETED")
+      ) {
         let tips: string[] = [];
         let diagnosticText: string = "";
         if (verify?.errorTips) tips = verify.errorTips;
         if (verify?.requestId) diagnosticText += `Request ID: ${verify.requestId}\n`;
         if (verify?.allParams) diagnosticText += `Parameters: ${JSON.stringify(verify.allParams)}\n`;
         if (verify?.error) diagnosticText += `Details: ${verify.error}\n`;
+
+        // --- Fallback: Try DB if verifyPayPalPayment fails ---
+        try {
+          const { data: localSub } = await supabase
+            .from("user_subscriptions")
+            .select("id,status,plan_id,user_id,created_at")
+            .eq("user_id", userId)
+            .eq("plan_id", planId)
+            .eq("status", "active")
+            .order("created_at", { ascending: false })
+            .maybeSingle();
+
+          if (localSub && localSub.status === "active") {
+            setVerified(true);
+            setVerifying(false);
+            toast({
+              title: "Payment Success (Fallback)",
+              description: "Payment could not be verified via PayPal, but your subscription is active. Redirecting to Prompts.",
+            });
+            setTimeout(() => {
+              navigate("/prompts");
+            }, 1800);
+            return;
+          }
+        } catch (err) {
+          // Silent, proceed to normal error
+        }
 
         handleVerificationError({
           errorTitle: "Payment Verification Error",
@@ -132,6 +170,7 @@ export function usePaymentSuccessVerification({
         return;
       }
 
+      // --- Build payment ID, surface in logs
       const paypal_payment_id =
         verify.paymentId ||
         verify.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
@@ -147,7 +186,7 @@ export function usePaymentSuccessVerification({
         return;
       }
 
-      // Step 2: Activate subscription
+      // Step 2: Activate subscription (regular flow)
       const { data: create, error: createError } = await activateSubscription({
         planId,
         userId,
@@ -179,6 +218,5 @@ export function usePaymentSuccessVerification({
     }
 
     processPayment();
-    // eslint-disable-next-line
   }, [user, navigate, params]);
 }
