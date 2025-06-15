@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +21,6 @@ export function usePaymentProcessing({
   const [error, setError] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
   const [finalPaymentId, setFinalPaymentId] = useState<string | undefined>(paymentId);
-  // Increased polling limits for edge case stuck transactions
   const MAX_POLLS = 35;
 
   const handlePaymentStatus = useCallback((paymentStatus: string, currentPollCount: number, paymentIdForSuccessParam?: string) => {
@@ -66,36 +66,7 @@ export function usePaymentProcessing({
       return;
     }
 
-    let didCapture = false;
-
-    const doCaptureIfNeeded = async (): Promise<{captured: boolean, paymentId?: string}> => {
-      if (!orderId) return { captured: false, paymentId };
-      try {
-        const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
-          body: {
-            action: 'capture',
-            orderId,
-            userId,
-            planId,
-          },
-        });
-        if (error || !data?.success) {
-          logError('PayPal capture failed', 'PaymentCallbackPage', { data, error, orderId, userId, planId });
-          throw new Error(error?.message || data?.error || "PayPal capture failed");
-        }
-        didCapture = true;
-        setFinalPaymentId(data.paymentId);
-        return { captured: true, paymentId: data.paymentId };
-      } catch (err: any) {
-        logError('Payment capture failed', 'PaymentCallbackPage', { details: err, debugObject });
-        setError('Payment capture failed: ' + (err.message || err));
-        setTimeout(() => {
-          navigate(`/payment-failed?planId=${planId || ''}&reason=Payment capture failed: ${(err.message || err)}`);
-        }, 4000);
-        throw err;
-      }
-    };
-
+    // Safeguard: only use clean polling with POST, no GET fallback.
     const poll = async (currentPollCount: number = 0, paymentIdArg?: string) => {
       if (currentPollCount >= MAX_POLLS) {
         logError('Payment verification timeout', 'PaymentCallbackPage', { paymentId, orderId, debugObject });
@@ -109,61 +80,53 @@ export function usePaymentProcessing({
         const args: Record<string, string> = {};
         if (orderId) args['order_id'] = orderId;
         if (paymentIdArg || paymentId) args['payment_id'] = paymentIdArg || paymentId!;
+
+        // Always POST to verify-paypal-payment using supabase.functions.invoke
         const { data, error } = await supabase.functions.invoke("verify-paypal-payment", {
           body: args,
         });
         let result = data;
-        if (!data && (orderId || paymentIdArg || paymentId)) {
-          // fallback to GET if needed
-          const params = new URLSearchParams();
-          if (orderId) params.append('order_id', orderId);
-          if (paymentIdArg || paymentId) params.append('payment_id', paymentIdArg || paymentId!);
-          const apiUrl = `https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/verify-paypal-payment?${params.toString()}`;
-          const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-          });
-          if (!response.ok) {
-            const errorText = await response.text();
-            logError('API call failed in verify-paypal-payment fallback', 'PaymentCallbackPage', { status: response.status, errorText, debugObject });
-            throw new Error(`API call failed: ${response.status} - ${errorText}`);
-          }
-          result = await response.json();
-        }
 
-        // If status is APPROVED, trigger capture using process-paypal-payment
-        if (result?.status === "APPROVED" && orderId && currentPollCount < MAX_POLLS) {
-          // Try to capture
-          try {
-            await doCaptureIfNeeded();
-          } catch (err) { /* doCapture logs and handles error */ }
-          // Immediately poll again to get updated status
-          setTimeout(() => poll(currentPollCount + 1, paymentIdArg), 1000);
+        // Harden against missing/strange responses
+        if (!result || !result.status) {
+          setError('Could not verify payment status with PayPal.');
+          logError("Unable to determine payment status", "PaymentCallbackPage", { debugObject, result });
+          setTimeout(() => {
+            navigate(`/payment-failed?planId=${planId || ''}&reason=Unable to determine payment status`);
+          }, 3500);
           return;
         }
 
-        handlePaymentStatus(result?.status, currentPollCount, paymentIdArg || paymentId);
+        // If status is APPROVED and not yet captured
+        if (result.status === "APPROVED" && orderId && currentPollCount < MAX_POLLS) {
+          setTimeout(() => poll(currentPollCount + 1, paymentIdArg), 1500);
+          return;
+        }
+
+        // Robust paymentId extraction on polling responses as well
+        const paymentIdOut =
+          result.paymentId ||
+          result.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
+          result.paypal?.id ||
+          result.paypal_payment_id ||
+          paymentIdArg ||
+          paymentId ||
+          undefined;
+
+        setFinalPaymentId(paymentIdOut);
+
+        handlePaymentStatus(result.status, currentPollCount, paymentIdOut);
       } catch (error: any) {
         logError('Payment verification failed', 'PaymentCallbackPage', { error, paymentId, orderId, debugObject });
-        setError(error.message);
+        setError(error.message || "Payment verification failed");
         setTimeout(() => {
-          navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification failed: ${error.message}`);
+          navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification failed: ${error.message || "unknown error"}`);
         }, 3000);
       }
     };
 
     if (success === 'true') {
-      (async () => {
-        let paymentIdAfterCapture = paymentId;
-        try {
-          // If "doCaptureIfNeeded" throws, don't keep polling, just fail
-          const captureResult = await doCaptureIfNeeded();
-          if (captureResult.paymentId) paymentIdAfterCapture = captureResult.paymentId;
-        } catch (err) {
-          return;
-        }
-        poll(0, paymentIdAfterCapture);
-      })();
+      poll(0, paymentId);
     } else {
       poll(0);
     }
