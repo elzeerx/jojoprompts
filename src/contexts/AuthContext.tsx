@@ -1,129 +1,29 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-
-interface AuthContextType {
-  session: Session | null;
-  user: User | null;
-  userRole: string | null;
-  isAdmin: boolean;
-  isJadmin: boolean;
-  isPrompter: boolean;
-  canDeleteUsers: boolean;
-  canCancelSubscriptions: boolean;
-  canManagePrompts: boolean;
-  loading: boolean;
-  signOut: () => Promise<void>;
-}
+import { AuthContextType } from './authTypes';
+import { fetchUserProfile } from './profileService';
+import { setupAuthState } from './authStateManager';
+import { runOrphanedPaymentRecovery } from './orphanedPaymentRecovery';
+import { computeRolePermissions } from './rolePermissions';
+import { debug } from './authDebugger';
+import { supabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const debug = (msg: string, extra = {}) => 
-  console.log("[AUTH]", msg, extra);
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const [recoveredOrphaned, setRecoveredOrphaned] = useState(false);
 
-  // Helper function to fetch user profile safely
-  const fetchUserProfile = async (currentUser: User) => {
-    try {
-      debug("Fetching profile for user", { userId: currentUser.id, email: currentUser.email });
-      
-      // Special case for nawaf@elzeer.com - always admin
-      if (currentUser.email === 'nawaf@elzeer.com') {
-        debug("Special admin case: nawaf@elzeer.com detected - setting admin role");
-        setUserRole("admin");
-        return;
-      }
-      
-      // Using maybeSingle instead of single to avoid errors when profile doesn't exist
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', currentUser.id)
-        .maybeSingle();
-      
-      if (error) {
-        console.error("[AUTH] Error fetching profile:", error);
-        throw error;
-      }
-      
-      // Set role with a fallback to "user" if the profile doesn't exist or role is null
-      const role = profile?.role || "user";
-      debug("Profile fetched", { profile, role, userEmail: currentUser.email });
-      setUserRole(role);
-    } catch (error) {
-      console.error("[AUTH] Error fetching profile:", error);
-      setUserRole("user"); // Default to user role on error
-      toast({
-        title: "Warning",
-        description: "Could not load user profile data. Some features may be limited.",
-        variant: "destructive"
-      });
-    }
-  };
-
   useEffect(() => {
-    let mounted = true;
-    
-    debug("Setting up auth state listener");
-    
-    // Setup auth state change listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        if (!mounted) return;
-        
-        debug("Auth state changed", { event, sessionExists: !!currentSession, userEmail: currentSession?.user?.email });
-        
-        setSession(currentSession);
-        const currentUser = currentSession?.user ?? null;
-        setUser(currentUser);
-        
-        if (currentUser) {
-          // Use setTimeout to avoid potential deadlocks with Supabase auth
-          setTimeout(() => {
-            if (mounted) {
-              fetchUserProfile(currentUser).finally(() => {
-                if (mounted) setLoading(false);
-              });
-              // Run orphan recovery after login, once per session
-              if (!recoveredOrphaned) {
-                supabase.functions.invoke("recover-orphaned-payments", {
-                  body: { userId: currentUser.id }
-                }).then((res) => {
-                  if (res.data?.success) {
-                    console.debug(
-                      `[AuthContext] Ran orphaned payment recovery for user ${currentUser.id}:`,
-                      "Recovered:", res.data?.recovered, res.data?.errors?.length ? res.data.errors : ""
-                    );
-                    setRecoveredOrphaned(true);
-                  } else {
-                    console.warn("[AuthContext] Recovery function error:", res.data?.error);
-                  }
-                }).catch(e => {
-                  console.warn("[AuthContext] Recovery invoke failed:", e);
-                });
-              }
-            }
-          }, 0);
-        } else {
-          setUserRole(null);
-          if (mounted) setLoading(false);
-        }
-      }
-    );
-
-    // Then check for existing session
+    // Setup auth state and recovery logic
+    const cleanup = setupAuthState({ setSession, setUser, setUserRole, setLoading, setRecoveredOrphaned });
+    // Check existing session for initial recovery logic
     supabase.auth.getSession().then(({ data: { session: initialSession }, error }) => {
-      if (!mounted) return;
-      
       if (error) {
         console.error("[AUTH] Error getting initial session:", error);
         setLoading(false);
@@ -137,51 +37,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(initialUser);
       
       if (initialUser) {
-        fetchUserProfile(initialUser).finally(() => {
-          if (mounted) setLoading(false);
+        fetchUserProfile(initialUser, setUserRole).finally(() => {
+          setLoading(false);
 
           // Run orphan recovery on initial session load too, if not already triggered
-          if (!recoveredOrphaned) {
-            supabase.functions.invoke("recover-orphaned-payments", {
-              body: { userId: initialUser.id }
-            }).then((res) => {
-              if (res.data?.success) {
-                console.debug(
-                  `[AuthContext] Ran orphaned payment recovery for user ${initialUser.id}:`,
-                  "Recovered:", res.data?.recovered, res.data?.errors?.length ? res.data.errors : ""
-                );
-                setRecoveredOrphaned(true);
-              } else {
-                console.warn("[AuthContext] Recovery function error:", res.data?.error);
-              }
-            }).catch(e => {
-              console.warn("[AuthContext] Recovery invoke failed:", e);
-            });
-          }
+          runOrphanedPaymentRecovery(initialUser, recoveredOrphaned, setRecoveredOrphaned);
         });
       } else {
         setLoading(false);
       }
     });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-      debug("Auth context cleanup");
-    };
+    return cleanup;
   }, []);
 
   const signOut = async () => {
     try {
       debug("Starting logout process");
       setLoading(true);
-      
-      // Clear local state first
       setSession(null);
       setUser(null);
       setUserRole(null);
-      
-      // Then sign out from Supabase
+      // Sign out logic as before
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("[AUTH] Sign out error:", error);
@@ -196,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "You have been successfully logged out.",
       });
     } catch (error) {
+      // ... keep existing code (error logic) ...
       console.error("[AUTH] Sign out error:", error);
       toast({
         title: "Error",
@@ -207,39 +84,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Computed properties for role-based access
-  const isAdmin = userRole === 'admin';
-  const isJadmin = userRole === 'jadmin';
-  const isPrompter = userRole === 'prompter';
-  const canDeleteUsers = isAdmin; // Only full admins can delete users
-  const canCancelSubscriptions = isAdmin; // Only full admins can cancel subscriptions
-  const canManagePrompts = isAdmin || isJadmin || isPrompter;
+  // Role/permission calculation
+  const permissions = computeRolePermissions(userRole);
 
   const contextValue = {
     session,
     user,
     userRole,
-    isAdmin,
-    isJadmin,
-    isPrompter,
-    canDeleteUsers,
-    canCancelSubscriptions,
-    canManagePrompts,
+    ...permissions,
     loading,
     signOut
   };
 
-  debug("Auth context render", { 
-    userEmail: user?.email, 
-    userRole, 
-    isAdmin, 
-    isJadmin, 
-    isPrompter,
-    canDeleteUsers,
-    canCancelSubscriptions,
-    canManagePrompts,
-    loading 
-  });
+  debug("Auth context render", { ...contextValue });
 
   return (
     <AuthContext.Provider value={contextValue}>
