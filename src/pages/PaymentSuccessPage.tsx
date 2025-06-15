@@ -13,7 +13,6 @@ export default function PaymentSuccessPage() {
 
   const params = usePaymentSuccessParams();
 
-  // Set verifying to true initially for extra safety on fast navigation
   usePaymentSuccessVerification({
     params,
     setVerifying,
@@ -26,14 +25,28 @@ export default function PaymentSuccessPage() {
   }
 
   if (error) {
+    // Enhanced: If error is about authentication/session, prompt user to log in
+    if (error.toLowerCase().includes("login") || error.toLowerCase().includes("authentication")) {
+      return (
+        <div>
+          <PaymentSuccessError error={error} />
+          <div className="py-6 text-center">
+            <p className="mb-2 text-sm text-muted-foreground">
+              If you already paid but were logged out, please log back in to access premium content or try <a href="/prompts" className="underline">here</a>.
+            </p>
+            <a href="/login" className="inline-block mt-2 px-5 py-2 rounded bg-blue-500 text-white font-medium">
+              Log In Again
+            </a>
+          </div>
+        </div>
+      );
+    }
     return <PaymentSuccessError error={error} />;
   }
 
   if (!verified) {
-    // Fallback: show loader instead of error, for a better UX as in original
     return <PaymentSuccessLoader />;
   }
 
   return <PaymentSuccessCard />;
 }
-

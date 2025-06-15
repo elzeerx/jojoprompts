@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,38 +31,67 @@ export function usePaymentSuccessVerification({
       }, delayMs);
     }
 
-    // Core payment verification logic, with session refresh and error handling
+    // Better: fallback to DB check if no session user
     const verifyAndActivate = async () => {
       setVerifying(true);
 
-      // Refresh the session for best reliability after PayPal redirect
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       let activeUser = user;
       if (sessionData.session?.user) {
         activeUser = sessionData.session.user;
       }
 
-      const { planId, userId, token, payerId } = params;
+      const { planId, userId, token, payerId, paymentId } = params;
 
-      // 1. Must have a current user
-      if (!activeUser) {
-        setError('You must be logged in to complete your payment. Please sign in and try again.');
-        setVerifying(false);
-        toast({
-          title: "Authentication Error",
-          description: "Your login session could not be restored. Please log in again to complete your payment.",
-          variant: "destructive",
-        });
-        gotoFailedPage(planId, "No authentication session");
-        return;
-      }
-
-      // 2. Core payment details required
-      if (!planId || !userId || !token) {
+      // 1. Core payment details required
+      if (!planId || !userId || !(token || paymentId)) {
         setError('Missing payment information');
         setVerifying(false);
         gotoFailedPage(planId, 'Missing payment information - please try again', 1500);
         return;
+      }
+
+      // 2. Try normal session flow; fallback to DB state if no session
+      if (!activeUser) {
+        // Fallback: check DB for a completed subscription for userId and planId
+        try {
+          // DB fallback: is there an active subscription for this plan & user?
+          const { data: sub, error: subError } = await supabase
+            .from("user_subscriptions")
+            .select("id,status,plan_id,user_id,created_at")
+            .eq("user_id", userId)
+            .eq("plan_id", planId)
+            .eq("status", "active")
+            .order("created_at", { ascending: false })
+            .maybeSingle();
+
+          if (sub && sub.status === "active") {
+            // Show payment as successful
+            setVerified(true);
+            setVerifying(false);
+            toast({
+              title: "Payment Successful!",
+              description: "Your subscription is now active. You may need to login, but your payment has been captured.",
+            });
+            setTimeout(() => navigate("/prompts"), 1800);
+            return;
+          }
+
+          setError('You must be logged in to complete your payment. Please sign in and try again.');
+          setVerifying(false);
+          toast({
+            title: "Authentication Error",
+            description: "Your login could not be restored, but your payment may have succeeded. Please log in.",
+            variant: "destructive",
+          });
+          gotoFailedPage(planId, "No authentication session");
+          return;
+        } catch (e) {
+          setError('Payment session timeout or invalid. Please try again.');
+          setVerifying(false);
+          gotoFailedPage(planId, "No authentication session");
+          return;
+        }
       }
 
       // 3. User session must match userId in params
