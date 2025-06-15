@@ -84,8 +84,30 @@ export function usePaymentProcessing({
     try {
       const finalUserId = contextUserId || currentUser?.id || userId;
       const finalPlanId = contextPlanId || planId;
-      
+
       if (!finalUserId || !finalPlanId) {
+        if (orderId) {
+          const { data, error } = await supabase.functions.invoke('get-transaction-by-order', {
+            body: { orderId }
+          });
+          if (!error && data) {
+            const { transaction, subscription } = data as any;
+            if (subscription) {
+              return { hasSubscription: true, transaction, subscription };
+            }
+            if (transaction && transaction.status === 'completed') {
+              return {
+                hasSubscription: true,
+                transaction,
+                subscription: {
+                  transaction_id: transaction.id,
+                  payment_id: transaction.paypal_payment_id,
+                  user_id: transaction.user_id
+                }
+              };
+            }
+          }
+        }
         return { hasSubscription: false, transaction: null, subscription: null };
       }
 
@@ -136,11 +158,21 @@ export function usePaymentProcessing({
     }
     
     return { hasSubscription: false, transaction: null, subscription: null };
-  }, [currentUser?.id, userId, planId]);
+  }, [currentUser?.id, userId, planId, orderId]);
 
   // Enhanced transaction recovery with order matching
   const findTransactionByOrder = useCallback(async (orderIdToFind: string) => {
     try {
+      if (!currentUser) {
+        const { data, error } = await supabase.functions.invoke('get-transaction-by-order', {
+          body: { orderId: orderIdToFind }
+        });
+        if (!error && data && (data as any).transaction) {
+          return (data as any).transaction;
+        }
+        return null;
+      }
+
       const { data: transactions, error } = await supabase
         .from("transactions")
         .select("user_id, plan_id, paypal_payment_id, status, created_at, id")
@@ -160,7 +192,7 @@ export function usePaymentProcessing({
       console.error(`[PaymentProcessing] Error finding transaction by order:`, error);
       return null;
     }
-  }, []);
+  }, [currentUser]);
 
   // Enhanced session restoration with intelligent retry
   const attemptSessionRestoration = useCallback(async (transactionUserId?: string) => {
