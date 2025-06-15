@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { logError } from "@/utils/secureLogging";
@@ -40,6 +40,14 @@ export function usePaymentProcessing({
   const [sessionRestorationAttempted, setSessionRestorationAttempted] = useState(false);
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
   const MAX_POLLS = 10; // Reduced from 35 for faster timeout
+
+  // ---- ADDED: Track timeouts to clear them when done ----
+  const timeoutsRef = useRef<number[]>([]);
+  const completeRef = useRef(false);
+  const cleanPendingTimeouts = () => {
+    timeoutsRef.current.forEach(id => clearTimeout(id));
+    timeoutsRef.current = [];
+  };
 
   // Enhanced authentication state management
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -250,31 +258,32 @@ export function usePaymentProcessing({
 
   // Enhanced status handling with proper state management
   const handlePaymentStatus = useCallback((paymentStatus: string, currentPollCount: number, paymentIdForSuccess?: string, contextUserId?: string, contextPlanId?: string) => {
-    if (isProcessingComplete) {
+    if (completeRef.current || isProcessingComplete) {
       console.log(`[PaymentProcessing] Processing already complete, ignoring status:`, paymentStatus);
       return;
     }
-
     setStatus(paymentStatus);
     setPollCount(currentPollCount + 1);
+    completeRef.current = true; // Mark as finished
+    cleanPendingTimeouts();     // Prevent any queued redirects
 
     const finalUserId = contextUserId || currentUser?.id || userId;
     const finalPlanId = contextPlanId || planId;
 
     if (paymentStatus === PROCESSING_STATES.COMPLETED) {
       setIsProcessingComplete(true);
-      
+
       const successParams = new URLSearchParams();
       if (finalPlanId) successParams.append('planId', finalPlanId);
       if (finalUserId) successParams.append('userId', finalUserId);
       if (paymentIdForSuccess) successParams.append('payment_id', paymentIdForSuccess);
       if (orderId) successParams.append('order_id', orderId);
-      
+
       console.log(`[PaymentProcessing] Redirecting to success page:`, successParams.toString());
       navigate(`/payment-success?${successParams.toString()}`);
     } else if ([PROCESSING_STATES.FAILED, PROCESSING_STATES.CANCELLED, 'DECLINED', 'VOIDED'].includes(paymentStatus)) {
       setIsProcessingComplete(true);
-      
+
       const failedParams = new URLSearchParams();
       if (finalPlanId) failedParams.append('planId', finalPlanId);
       failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
@@ -289,13 +298,17 @@ export function usePaymentProcessing({
   useEffect(() => {
     if (isLoadingAuth || isProcessingComplete) return;
 
+    // Clean pending timeouts if effect re-runs
+    cleanPendingTimeouts();
+
     // Handle cancelled payments immediately
     if (success === 'false') {
       logError('PayPal payment cancelled', 'PaymentCallbackPage', { debugObject });
       setError('Payment was cancelled');
-      setTimeout(() => {
+      const timeoutId = window.setTimeout(() => {
         navigate(`/payment-failed?planId=${planId || ''}&reason=Payment cancelled`);
       }, 2000);
+      timeoutsRef.current.push(timeoutId);
       return;
     }
 
@@ -303,16 +316,18 @@ export function usePaymentProcessing({
     if (!orderId && !paymentId) {
       logError('No PayPal payment identifier found in URL parameters', 'PaymentCallbackPage', { debugObject });
       setError('Missing payment information in callback URL');
-      setTimeout(() => {
+      const timeoutId = window.setTimeout(() => {
         navigate(`/payment-failed?planId=${planId || ''}&reason=Missing payment reference`);
       }, 2000);
+      timeoutsRef.current.push(timeoutId);
       return;
     }
 
-    // Enhanced polling logic with database-first strategy
+    // Polling logic with timeout cleanup
     const poll = async (currentPollCount: number = 0, paymentIdArg?: string, contextUserId?: string, contextPlanId?: string) => {
-      if (isProcessingComplete) {
+      if (completeRef.current || isProcessingComplete) {
         console.log(`[PaymentProcessing] Processing complete, stopping poll`);
+        cleanPendingTimeouts();
         return;
       }
 
@@ -327,86 +342,76 @@ export function usePaymentProcessing({
 
         logError('Payment verification timeout', 'PaymentCallbackPage', { paymentId, orderId, debugObject });
         setError('Payment verification timeout. Please contact support if your payment was successful.');
-        setTimeout(() => {
+        const timeoutId = window.setTimeout(() => {
           navigate(`/payment-failed?planId=${contextPlanId || planId || ''}&reason=Payment verification timeout`);
         }, 2000);
+        timeoutsRef.current.push(timeoutId);
         return;
       }
 
       try {
-        // PRIORITY 1: Database-first verification before API calls
-        console.log(`[PaymentProcessing] Poll ${currentPollCount + 1}/${MAX_POLLS}: Database check first`);
+        // Database-first verification
         const { hasSubscription, subscription } = await checkDatabaseFirst(contextUserId, contextPlanId);
         if (hasSubscription) {
-          console.log(`[PaymentProcessing] Found subscription in database, treating as success`);
           setStatus(PROCESSING_STATES.COMPLETED);
           setFinalPaymentId(subscription?.payment_id || paymentIdArg || paymentId || undefined);
           handlePaymentStatus(PROCESSING_STATES.COMPLETED, currentPollCount, subscription?.payment_id || paymentIdArg || paymentId || undefined, contextUserId || subscription?.user_id, contextPlanId);
           return;
         }
 
-        // PRIORITY 2: Session-independent context recovery
+        // Context recovery
         let currentUserId = contextUserId || currentUser?.id || userId;
         let currentPlanId = contextPlanId || planId;
 
         if ((!currentUserId || !currentPlanId) && orderId) {
-          console.log(`[PaymentProcessing] Missing context, attempting transaction lookup...`);
           const transaction = await findTransactionByOrder(orderId);
           if (transaction) {
             currentUserId = transaction.user_id;
             currentPlanId = transaction.plan_id;
-            console.log(`[PaymentProcessing] Recovered context from transaction:`, { currentUserId, currentPlanId });
-            
-            // Attempt session restoration with known user ID
             await attemptSessionRestoration(currentUserId);
           }
         }
 
-        // PRIORITY 3: PayPal API verification
+        // PayPal API verification
         const args: Record<string, string> = {};
         if (orderId) args['order_id'] = orderId;
         if (paymentIdArg || paymentId) args['payment_id'] = paymentIdArg || paymentId!;
         if (currentUserId) args['user_id'] = currentUserId;
         if (currentPlanId) args['plan_id'] = currentPlanId;
 
-        console.log(`[PaymentProcessing] PayPal API verification:`, args);
-
         const { data, error } = await supabase.functions.invoke("verify-paypal-payment", {
           body: args,
         });
 
         if (!data || data.status === "ERROR" || error) {
-          console.log(`[PaymentProcessing] API verification failed, but database check already performed`);
-          
           // Continue polling for transient issues with exponential backoff
           if (currentPollCount < MAX_POLLS - 5) {
             const delay = Math.min(2000 * Math.pow(1.5, Math.floor(currentPollCount / 5)), 10000);
-            console.log(`[PaymentProcessing] Retrying in ${delay}ms (attempt ${currentPollCount + 1})`);
-            setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), delay);
+            const timeoutId = window.setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), delay);
+            timeoutsRef.current.push(timeoutId);
             return;
           } else {
-            console.error(`[PaymentProcessing] Multiple verification failures and no subscription found`);
             setError('Unable to verify payment status. Please contact support if your payment was successful.');
             logError("Payment verification failed after multiple attempts", "PaymentCallbackPage", { debugObject, result: data, currentPollCount });
-            setTimeout(() => {
+            const timeoutId = window.setTimeout(() => {
               navigate(`/payment-failed?planId=${currentPlanId || ''}&reason=Payment verification failed`);
             }, 2000);
+            timeoutsRef.current.push(timeoutId);
             return;
           }
         }
 
-        // Handle specific PayPal statuses with proper state management
         if (data.status === "UNKNOWN") {
-          console.log(`[PaymentProcessing] Unknown status, continuing to poll...`);
           if (currentPollCount < MAX_POLLS - 5) {
-            setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 2000);
+            const timeoutId = window.setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 2000);
+            timeoutsRef.current.push(timeoutId);
             return;
           }
         }
 
         if (data.status === "APPROVED" && orderId && currentPollCount < MAX_POLLS) {
-          console.log(`[PaymentProcessing] Payment approved but not captured, continuing to poll...`);
-          setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 1500);
+          const timeoutId = window.setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 1500);
+          timeoutsRef.current.push(timeoutId);
           return;
         }
 
@@ -414,23 +419,12 @@ export function usePaymentProcessing({
         const paymentIdOut = data.paymentId || data.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id || data.paypal?.id || data.paypal_payment_id || paymentIdArg || paymentId || undefined;
         setFinalPaymentId(paymentIdOut);
 
-        console.log(`[PaymentProcessing] Final verification result:`, {
-          status: data.status,
-          paymentId: paymentIdOut,
-          userId: currentUserId,
-          planId: currentPlanId,
-          hasSubscription: !!data.subscription
-        });
-
         handlePaymentStatus(data.status, currentPollCount, paymentIdOut, currentUserId, currentPlanId);
 
       } catch (error: any) {
-        console.error(`[PaymentProcessing] Payment verification error:`, error);
-        
         // Always check for subscription even on errors (database resilience)
         const { hasSubscription, subscription } = await checkDatabaseFirst(contextUserId, contextPlanId);
         if (hasSubscription) {
-          console.log(`[PaymentProcessing] Found subscription despite verification error, treating as success`);
           setStatus(PROCESSING_STATES.COMPLETED);
           setFinalPaymentId(subscription?.payment_id || paymentId || undefined);
           handlePaymentStatus(PROCESSING_STATES.COMPLETED, currentPollCount, subscription?.payment_id || paymentId || undefined, contextUserId || subscription?.user_id, contextPlanId);
@@ -439,29 +433,31 @@ export function usePaymentProcessing({
 
         // Retry logic for transient errors
         if (currentPollCount >= 3) {
-          logError('Payment verification failed', 'PaymentCallbackPage', { error, paymentId, orderId, debugObject });
           setError('Payment verification failed. Please contact support if your payment was successful.');
-          setTimeout(() => {
+          logError('Payment verification failed', 'PaymentCallbackPage', { error, paymentId, orderId, debugObject });
+          const timeoutId = window.setTimeout(() => {
             navigate(`/payment-failed?planId=${contextPlanId || planId || ''}&reason=Payment verification failed`);
           }, 2000);
+          timeoutsRef.current.push(timeoutId);
         } else {
-          console.log(`[PaymentProcessing] Retrying after error (attempt ${currentPollCount + 1})`);
-          setTimeout(() => poll(currentPollCount + 1, paymentIdArg, contextUserId, contextPlanId), 2000);
+          const timeoutId = window.setTimeout(() => poll(currentPollCount + 1, paymentIdArg, contextUserId, contextPlanId), 2000);
+          timeoutsRef.current.push(timeoutId);
         }
       }
     };
 
     // Start processing with session-independent data
     if (success === 'true' || hasSessionIndependentData) {
-      console.log(`[PaymentProcessing] Starting payment verification...`, { 
-        hasSession: !!currentUser, 
-        hasIndependentData: hasSessionIndependentData,
-        authLoading: isLoadingAuth
-      });
       poll(0, paymentId, currentUser?.id || userId, planId);
     } else {
       poll(0, undefined, currentUser?.id || userId, planId);
     }
+
+    // CLEANUP: cancel all pending timeouts on unmount or rerun
+    return () => {
+      completeRef.current = false;
+      cleanPendingTimeouts();
+    };
   }, [success, paymentId, orderId, planId, userId, debugObject, navigate, handlePaymentStatus, checkDatabaseFirst, findTransactionByOrder, currentUser, isLoadingAuth, hasSessionIndependentData, attemptSessionRestoration, isProcessingComplete]);
 
   return { status, error, pollCount, MAX_POLLS, finalPaymentId };
