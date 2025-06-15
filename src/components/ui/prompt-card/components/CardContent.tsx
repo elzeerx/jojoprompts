@@ -1,8 +1,7 @@
-
 import React from "react";
 import { ImageWrapper } from "@/components/ui/prompt-card/ImageWrapper";
 import { Workflow } from "lucide-react";
-import { getMediaTypeIcon } from "../utils/categoryUtils";
+import { getMediaTypeIcon } from "../utils/categoryUtils.tsx";
 
 export function CardContent({
   title,

@@ -1,8 +1,7 @@
-
 import React from "react";
 import { Heart, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getCategoryBadgeStyle } from "../utils/categoryUtils";
+import { getCategoryBadgeStyle } from "../utils/categoryUtils.tsx";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function CardHeader({ 

@@ -6,7 +6,7 @@ import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 
 import { useFavoriteLogic } from "./prompt-card/hooks/useFavoriteLogic";
 import { useImageLoading } from "./prompt-card/hooks/useImageLoading";
-import { getCategoryBadgeStyle } from "./prompt-card/utils/categoryUtils";
+import { getCategoryBadgeStyle } from "./prompt-card/utils/categoryUtils.tsx";
 import { LockedOverlay } from "@/components/ui/prompt-card/components/LockedOverlay";
 import { CardHeader } from "@/components/ui/prompt-card/components/CardHeader";
 import { CardContent } from "@/components/ui/prompt-card/components/CardContent";
