@@ -6,11 +6,8 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { normalizePaymentParams } from "./helpers/normalizePaymentParams";
 import { gotoFailedPage } from "./helpers/gotoFailedPage";
+import { retrySessionFetch } from "./helpers/retrySessionFetch";
 
-/**
- * Payment verification and redirection flow.
- * - Handles PayPal callback, verifies/captures payment, creates subscription, redirects to /prompts on success.
- */
 interface PaymentSuccessVerificationConfig {
   params: ReturnType<typeof import('./usePaymentSuccessParams').usePaymentSuccessParams>;
   setVerifying: (b: boolean) => void;
@@ -28,22 +25,34 @@ export function usePaymentSuccessVerification({
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Normalize parameter extraction
     const { planId, userId, token, payerId, allParams } = normalizePaymentParams(params);
 
-    // Debug
-    console.log("PaymentSuccessVerification params normalized:", { planId, userId, token, payerId, allParams });
-
+    // Enhanced logs for debugging
+    console.log("[PaymentSuccessVerification] params normalized:", { planId, userId, token, payerId, allParams });
     setVerifying(true);
 
     const verifyAndActivate = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
+      // Try to get session (with retries if session is undefined)
+      let sessionData;
       let activeUser = user;
-      if (sessionData.session?.user) {
-        activeUser = sessionData.session.user;
+      try {
+        // 1st attempt: direct from context, fallback to supabase.getSession
+        sessionData = await supabase.auth.getSession();
+        if (sessionData.data?.session?.user) {
+          activeUser = sessionData.data.session.user;
+        }
+        // If still no user, try retrySessionFetch for more robustness
+        if (!activeUser) {
+          const recovered = await retrySessionFetch();
+          if (recovered?.user) {
+            activeUser = recovered.user;
+            console.log("[PaymentSuccessVerification] Session recovered via retry.");
+          }
+        }
+      } catch (error) {
+        console.warn("[PaymentSuccessVerification] Failed to fetch session", error);
       }
 
-      // Core payment details required
       if (!planId || !userId || !token) {
         setError('Missing payment information');
         setVerifying(false);
@@ -51,7 +60,7 @@ export function usePaymentSuccessVerification({
         return;
       }
 
-      // Database fallback: No active session/user
+      // Fallback: no session/user, check DB activations
       if (!activeUser) {
         try {
           const { data: sub } = await supabase
@@ -77,12 +86,12 @@ export function usePaymentSuccessVerification({
           }
 
           setError(
-            'You must be logged in to complete your payment. If you already paid, please log back in to unlock access.'
+            'You must be logged in to complete your payment (session expired/lost). If you already paid, please log back in to unlock access.'
           );
           setVerifying(false);
           toast({
-            title: "Authentication Required",
-            description: "Please log in to unlock your access. Your payment was likely successful!",
+            title: "Authentication Required (Session Lost)",
+            description: "Your payment was likely successful! Please log in to access premium content.",
             variant: "destructive",
           });
           gotoFailedPage(navigate, planId, "No authentication session", 2000, userId);
@@ -95,13 +104,12 @@ export function usePaymentSuccessVerification({
         }
       }
 
-      // Session mismatch (user id mismatch)
       if (userId !== activeUser.id) {
         setError('Payment session does not match your account. Please sign in with the account used for checkout.');
         setVerifying(false);
         toast({
           title: "User Authentication Mismatch",
-          description: "Payment made with different account. Log in with your checkout email to unlock access.",
+          description: "Payment made with a different account. Log in with your checkout email to unlock access.",
           variant: "destructive",
         });
         gotoFailedPage(navigate, planId, 'Invalid payment session - user mismatch', 2000, userId);
@@ -112,7 +120,7 @@ export function usePaymentSuccessVerification({
         const { data: verify, error: verifyError } = await supabase.functions.invoke("verify-paypal-payment", {
           headers: {
             "Content-Type": "application/json",
-            ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+            ...(sessionData.data?.session?.access_token ? { Authorization: `Bearer ${sessionData.data.session.access_token}` } : {}),
           },
           body: {
             order_id: token,
@@ -166,7 +174,7 @@ export function usePaymentSuccessVerification({
         const { data: create, error: createError } = await supabase.functions.invoke("create-subscription", {
           headers: {
             "Content-Type": "application/json",
-            ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+            ...(sessionData.data?.session?.access_token ? { Authorization: `Bearer ${sessionData.data.session.access_token}` } : {}),
           },
           body: {
             planId,
