@@ -72,12 +72,21 @@ export async function listUsers(supabase: ReturnType<typeof createClient>, admin
 export async function deleteUser(supabase: ReturnType<typeof createClient>, userId: string, adminId: string) {
   console.log(`Admin ${adminId} is attempting to delete user ${userId}`);
   try {
-    // Ordered deletion to avoid FK errors
+    // Deletion order respects all foreign keys and covers all major user data
+    // 1. Collections and related data
+    await safeDelete(supabase, 'collection_prompts', 'collection_id', userId); // In case collections are referenced
+    await safeDelete(supabase, 'collections', 'user_id', userId);
+    // 2. Prompt shared and usage logs
+    await safeDelete(supabase, 'prompt_shares', 'shared_by', userId);
+    await safeDelete(supabase, 'prompt_usage_history', 'user_id', userId);
+    // 3. Subscription and transaction history (subscriptions before transactions to avoid FK error)
+    await safeDelete(supabase, 'user_subscriptions', 'user_id', userId); // This must come BEFORE transactions!
     await safeDelete(supabase, 'transactions', 'user_id', userId);
-    await safeDelete(supabase, 'user_subscriptions', 'user_id', userId);
+    // 4. App logic-related tables
     await safeDelete(supabase, 'favorites', 'user_id', userId);
     await safeDelete(supabase, 'prompts', 'user_id', userId);
     await safeDelete(supabase, 'discount_code_usage', 'user_id', userId);
+    // 5. User's profile (removes via FK from auth.users)
     await safeDelete(supabase, 'profiles', 'id', userId);
 
     logStep('Deleting user from Auth', userId);
@@ -91,7 +100,8 @@ export async function deleteUser(supabase: ReturnType<typeof createClient>, user
     logStep('User deleted successfully', userId);
     return { success: true, message: 'User deleted successfully' };
   } catch (error) {
-    console.error(`Error in deleteUser:`, error);
+    // Improved error logging to indicate which step failed
+    console.error(`[deleteUser] Error when deleting user ${userId}:`, error);
     throw error;
   }
 }
