@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, AlertTriangle } from "lucide-react";
@@ -13,15 +12,15 @@ export default function PaymentCallbackPage() {
 
   useEffect(() => {
     // Log all available parameters for debugging
-    const allParams = {};
+    const allParams: Record<string, string> = {};
     searchParams.forEach((value, key) => {
       allParams[key] = value;
     });
     console.log('Payment callback - All URL parameters:', allParams);
     console.log('Payment callback - Full URL:', window.location.href);
 
-    // Check if this is a PayPal success/cancel callback
     const success = searchParams.get('success');
+    // PayPal returns payment/order information in these fields
     const paymentId = searchParams.get('paymentId') || searchParams.get('payment_id');
     const payerId = searchParams.get('PayerID') || searchParams.get('payer_id');
     const orderId = searchParams.get('token') || searchParams.get('order_id');
@@ -38,7 +37,6 @@ export default function PaymentCallbackPage() {
       originalParams: allParams 
     });
 
-    // Handle PayPal cancel
     if (success === 'false') {
       console.log('PayPal payment cancelled');
       setError('Payment was cancelled');
@@ -48,7 +46,6 @@ export default function PaymentCallbackPage() {
       return;
     }
 
-    // Check for required PayPal parameters
     if (!orderId && !paymentId) {
       console.error('No PayPal payment identifier found in URL parameters');
       setError('Missing payment information in callback URL');
@@ -58,9 +55,56 @@ export default function PaymentCallbackPage() {
       return;
     }
 
-    const poll = async (currentPollCount: number = 0) => {
+    // --------- CRITICAL STEP: PayPal CAPTURE before polling ---------
+
+    let didCapture = false;
+
+    const doCaptureIfNeeded = async (): Promise<{captured: boolean, paymentId?: string}> => {
+      if (!orderId) {
+        // If only paymentId is present, PayPal payment already captured, skip
+        return { captured: false, paymentId };
+      }
+      // Call process-paypal-payment edge function with action: 'capture'
+      try {
+        // The edge function expects: action, orderId, userId, planId
+        const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4";
+        const captureUrl = `${SUPABASE_URL}/functions/v1/process-paypal-payment`;
+        const response = await fetch(captureUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'capture',
+            orderId,
+            userId,
+            planId,
+          }),
+        });
+
+        const result = await response.json();
+        console.log('PayPal capture response:', result);
+
+        if (result.success && result.paymentId) {
+          didCapture = true;
+          // After capture, update paymentId for verification
+          return { captured: true, paymentId: result.paymentId };
+        } else {
+          throw new Error(result.error || "PayPal capture failed");
+        }
+      } catch (err: any) {
+        setError('Payment capture failed: ' + (err.message || err));
+        setTimeout(() => {
+          navigate(`/payment-failed?planId=${planId || ''}&reason=Payment capture failed: ${(err.message || err)}`);
+        }, 4000);
+        throw err;
+      }
+    };
+
+    const poll = async (currentPollCount: number = 0, paymentIdArg?: string) => {
       if (currentPollCount >= MAX_POLLS) {
-        console.log('Maximum polling attempts reached');
         setError('Payment verification timeout');
         setTimeout(() => {
           navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification timeout`);
@@ -69,17 +113,12 @@ export default function PaymentCallbackPage() {
       }
 
       try {
-        // Build query parameters for the verify-paypal-payment function
         const params = new URLSearchParams();
         if (orderId) params.append('order_id', orderId);
-        if (paymentId) params.append('payment_id', paymentId);
-        
-        console.log(`Polling attempt ${currentPollCount + 1}/${MAX_POLLS} - Calling verify-paypal-payment with params:`, params.toString());
+        if (paymentIdArg || paymentId) params.append('payment_id', paymentIdArg || paymentId!);
 
-        // Use direct HTTP GET request to the verify-paypal-payment function
         const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4";
-        
         const apiUrl = `${SUPABASE_URL}/functions/v1/verify-paypal-payment?${params.toString()}`;
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -91,21 +130,14 @@ export default function PaymentCallbackPage() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('Verify-paypal-payment API call failed:', { 
-            status: response.status, 
-            statusText: response.statusText,
-            error: errorText 
-          });
           throw new Error(`API call failed: ${response.status} - ${errorText}`);
         }
-
         const result = await response.json();
         console.log('Verify-paypal-payment response:', result, 'Poll count:', currentPollCount + 1);
-        
-        handlePaymentStatus(result.status, currentPollCount);
+
+        handlePaymentStatus(result.status, currentPollCount, paymentIdArg || paymentId);
 
       } catch (error: any) {
-        console.error('Payment verification error:', error);
         setError(error.message);
         setTimeout(() => {
           navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification failed: ${error.message}`);
@@ -113,42 +145,55 @@ export default function PaymentCallbackPage() {
       }
     };
 
-    const handlePaymentStatus = (paymentStatus: string, currentPollCount: number) => {
-      console.log('Processing payment status:', paymentStatus, 'Poll count:', currentPollCount + 1);
+    const handlePaymentStatus = (paymentStatus: string, currentPollCount: number, paymentIdForSuccessParam?: string) => {
       setStatus(paymentStatus);
       setPollCount(currentPollCount + 1);
 
       if (paymentStatus === 'COMPLETED') {
         // Payment successful
-        console.log('Payment completed successfully, redirecting to success page');
-        
         const successParams = new URLSearchParams();
         if (planId) successParams.append('planId', planId);
         if (userId) successParams.append('userId', userId);
-        if (paymentId) successParams.append('payment_id', paymentId);
+        if (paymentIdForSuccessParam) successParams.append('payment_id', paymentIdForSuccessParam);
         if (orderId) successParams.append('order_id', orderId);
-        
+
         navigate(`/payment-success?${successParams.toString()}`);
       } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
-        // Payment failed
-        console.log('Payment failed with status:', paymentStatus);
         const failedParams = new URLSearchParams();
         if (planId) failedParams.append('planId', planId);
         failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
         failedParams.append('status', paymentStatus);
-        if (paymentId) failedParams.append('payment_id', paymentId);
-        
+        if (paymentIdForSuccessParam) failedParams.append('payment_id', paymentIdForSuccessParam);
+
         navigate(`/payment-failed?${failedParams.toString()}`);
       } else {
-        // Continue polling for pending statuses
-        const delay = Math.min(2000 + (currentPollCount * 200), 4000); // 2s to 4s delay
-        console.log(`Payment status: ${paymentStatus}, polling again in ${delay}ms...`);
-        setTimeout(() => poll(currentPollCount + 1), delay);
+        const delay = Math.min(2000 + (currentPollCount * 200), 4000);
+        setTimeout(() => poll(currentPollCount + 1, paymentIdForSuccessParam), delay);
       }
     };
 
-    // Start polling immediately
-    poll(0);
+    // ----------- Full Payment Callback Logic -----------
+    // If not a PayPal return, skip
+    if (success === 'true') {
+      (async () => {
+        // Step 1: Capture the payment (if needed)
+        let paymentIdAfterCapture = paymentId;
+        try {
+          const captureResult = await doCaptureIfNeeded();
+          // On capture, PayPal may provide paymentId (use this if present)
+          if (captureResult.paymentId) paymentIdAfterCapture = captureResult.paymentId;
+        } catch (err) {
+          // doCaptureIfNeeded already handles error and navigation
+          return;
+        }
+        // Step 2: Start verifying
+        poll(0, paymentIdAfterCapture);
+      })();
+    } else {
+      // Any other legacy/broken callback will just poll
+      poll(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, searchParams]);
 
   if (error) {
