@@ -11,24 +11,63 @@ interface UsePaymentProcessingArgs {
   planId: string | null;
   userId: string | null;
   debugObject: any;
+  hasSessionIndependentData: boolean;
 }
 
 export function usePaymentProcessing({
-  success, paymentId, orderId, planId, userId, debugObject
+  success, paymentId, orderId, planId, userId, debugObject, hasSessionIndependentData
 }: UsePaymentProcessingArgs) {
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>('checking');
   const [error, setError] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
   const [finalPaymentId, setFinalPaymentId] = useState<string | undefined>(paymentId);
+  const [sessionRestorationAttempted, setSessionRestorationAttempted] = useState(false);
   const MAX_POLLS = 35;
 
-  // Enhanced transaction recovery with better matching
+  // SESSION-INDEPENDENT: Check current authentication state
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+  useEffect(() => {
+    // Check current auth state
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUser(user);
+        console.log('Current auth state:', { user: !!user, userId: user?.id });
+      } catch (error) {
+        console.error('Error checking auth state:', error);
+      } finally {
+        setIsLoadingAuth(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', { event, hasSession: !!session });
+      setCurrentUser(session?.user || null);
+      
+      if (event === 'SIGNED_IN' && session?.user && !sessionRestorationAttempted) {
+        console.log('Session restored after payment, retrying verification...');
+        setSessionRestorationAttempted(true);
+        // Restart verification process with restored session
+        setStatus('checking');
+        setPollCount(0);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [sessionRestorationAttempted]);
+
+  // Enhanced transaction recovery that works without session
   const findTransactionByOrder = useCallback(async (orderIdToFind: string) => {
     try {
       const { data: transactions, error } = await supabase
         .from("transactions")
-        .select("user_id, plan_id, paypal_payment_id, status, created_at")
+        .select("user_id, plan_id, paypal_payment_id, status, created_at, id")
         .eq("paypal_order_id", orderIdToFind)
         .order("created_at", { ascending: false })
         .limit(1);
@@ -47,9 +86,9 @@ export function usePaymentProcessing({
     }
   }, []);
 
-  // Enhanced subscription check with comprehensive verification
+  // Enhanced subscription check that works session-independently
   const checkForActiveSubscription = useCallback(async (userIdToCheck?: string, planIdToCheck?: string) => {
-    const finalUserId = userIdToCheck || userId;
+    const finalUserId = userIdToCheck || currentUser?.id || userId;
     const finalPlanId = planIdToCheck || planId;
     
     if (!finalUserId || !finalPlanId) {
@@ -61,7 +100,7 @@ export function usePaymentProcessing({
       // Check for active subscription
       const { data: subscription, error: subError } = await supabase
         .from("user_subscriptions")
-        .select("id, payment_id, created_at, transaction_id")
+        .select("id, payment_id, created_at, transaction_id, user_id")
         .eq("user_id", finalUserId)
         .eq("plan_id", finalPlanId)
         .eq("status", "active")
@@ -73,21 +112,21 @@ export function usePaymentProcessing({
         return { hasSubscription: true, subscription: subscription[0] };
       }
 
-      // Also check for recent completed transactions (last 10 minutes)
-      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      // Check for recent completed transactions (last 15 minutes)
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
       const { data: recentTransaction, error: txError } = await supabase
         .from("transactions")
-        .select("id, paypal_payment_id, status")
+        .select("id, paypal_payment_id, status, user_id")
         .eq("user_id", finalUserId)
         .eq("plan_id", finalPlanId)
         .eq("status", "completed")
-        .gte("created_at", tenMinutesAgo)
+        .gte("created_at", fifteenMinutesAgo)
         .order("created_at", { ascending: false })
         .limit(1);
 
       if (recentTransaction && recentTransaction.length > 0 && !txError) {
         console.log('Found recent completed transaction:', recentTransaction[0]);
-        return { hasSubscription: true, subscription: { transaction_id: recentTransaction[0].id, payment_id: recentTransaction[0].paypal_payment_id } };
+        return { hasSubscription: true, subscription: { transaction_id: recentTransaction[0].id, payment_id: recentTransaction[0].paypal_payment_id, user_id: recentTransaction[0].user_id } };
       }
 
     } catch (error) {
@@ -95,13 +134,13 @@ export function usePaymentProcessing({
     }
     
     return { hasSubscription: false, subscription: null };
-  }, [userId, planId]);
+  }, [currentUser?.id, userId, planId]);
 
   const handlePaymentStatus = useCallback((paymentStatus: string, currentPollCount: number, paymentIdForSuccessParam?: string, contextUserId?: string, contextPlanId?: string) => {
     setStatus(paymentStatus);
     setPollCount(currentPollCount + 1);
 
-    const finalUserId = contextUserId || userId;
+    const finalUserId = contextUserId || currentUser?.id || userId;
     const finalPlanId = contextPlanId || planId;
 
     if (paymentStatus === 'COMPLETED') {
@@ -110,6 +149,8 @@ export function usePaymentProcessing({
       if (finalUserId) successParams.append('userId', finalUserId);
       if (paymentIdForSuccessParam) successParams.append('payment_id', paymentIdForSuccessParam);
       if (orderId) successParams.append('order_id', orderId);
+      
+      console.log('Redirecting to success page:', successParams.toString());
       navigate(`/payment-success?${successParams.toString()}`);
     } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED'].includes(paymentStatus)) {
       const failedParams = new URLSearchParams();
@@ -121,9 +162,40 @@ export function usePaymentProcessing({
       logError('Payment flow failed', 'PaymentCallbackPage', { paymentStatus, debugObject });
       navigate(`/payment-failed?${failedParams.toString()}`);
     }
-  }, [planId, userId, orderId, navigate]);
+  }, [planId, currentUser?.id, userId, orderId, navigate, debugObject]);
+
+  // SESSION-INDEPENDENT: Attempt to restore session or proceed without it
+  const attemptSessionRestoration = useCallback(async (transactionUserId?: string) => {
+    if (currentUser || sessionRestorationAttempted) return false;
+
+    console.log('Attempting session restoration...');
+    setSessionRestorationAttempted(true);
+
+    try {
+      // Check if there's a stored session that can be restored
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (session?.user) {
+        console.log('Session restored successfully');
+        setCurrentUser(session.user);
+        return true;
+      }
+
+      // If we know the user ID from transaction, we can proceed without session
+      if (transactionUserId) {
+        console.log('Proceeding with transaction user ID:', transactionUserId);
+        return true;
+      }
+
+    } catch (error) {
+      console.error('Error during session restoration:', error);
+    }
+
+    return false;
+  }, [currentUser, sessionRestorationAttempted]);
 
   useEffect(() => {
+    if (isLoadingAuth) return; // Wait for auth check to complete
+
     if (success === 'false') {
       logError('PayPal payment cancelled', 'PaymentCallbackPage', { debugObject });
       setError('Payment was cancelled');
@@ -148,7 +220,7 @@ export function usePaymentProcessing({
         const { hasSubscription, subscription } = await checkForActiveSubscription(contextUserId, contextPlanId);
         if (hasSubscription) {
           console.log('Found subscription on final timeout check, treating as success');
-          handlePaymentStatus('COMPLETED', currentPollCount, subscription?.payment_id || paymentIdArg || paymentId || undefined, contextUserId, contextPlanId);
+          handlePaymentStatus('COMPLETED', currentPollCount, subscription?.payment_id || paymentIdArg || paymentId || undefined, contextUserId || subscription?.user_id, contextPlanId);
           return;
         }
 
@@ -172,10 +244,10 @@ export function usePaymentProcessing({
         });
 
         let result = data;
-        let currentUserId = contextUserId || userId;
+        let currentUserId = contextUserId || currentUser?.id || userId;
         let currentPlanId = contextPlanId || planId;
 
-        // Try to recover user context if missing
+        // SESSION-INDEPENDENT: Try to recover user context if missing
         if ((!currentUserId || !currentPlanId) && orderId) {
           console.log('Missing user context, attempting transaction lookup...');
           const transaction = await findTransactionByOrder(orderId);
@@ -183,57 +255,46 @@ export function usePaymentProcessing({
             currentUserId = transaction.user_id;
             currentPlanId = transaction.plan_id;
             console.log('Recovered user context from transaction:', { currentUserId, currentPlanId });
+            
+            // Attempt session restoration with known user ID
+            await attemptSessionRestoration(currentUserId);
           }
         }
 
-        // ENHANCED: Handle verification responses more intelligently
+        // PRIORITY 1: Always check database state first
+        console.log('Checking database state before processing PayPal response...');
+        const { hasSubscription, subscription } = await checkForActiveSubscription(currentUserId, currentPlanId);
+        if (hasSubscription) {
+          console.log('Found active subscription in database, treating as success');
+          setStatus('COMPLETED');
+          setFinalPaymentId(subscription?.payment_id || paymentIdArg || paymentId || undefined);
+          handlePaymentStatus('COMPLETED', currentPollCount, subscription?.payment_id || paymentIdArg || paymentId || undefined, currentUserId || subscription?.user_id, currentPlanId);
+          return;
+        }
+
+        // PRIORITY 2: Handle verification responses
         if (!result || result.status === "ERROR" || error) {
-          console.log('Verification returned error or unclear status, checking subscription fallback...');
+          console.log('Verification returned error, but database check already performed');
           
-          // Always check for subscription before considering it an error
-          const { hasSubscription, subscription } = await checkForActiveSubscription(currentUserId, currentPlanId);
-          if (hasSubscription) {
-            console.log('Found active subscription despite verification issues, treating as success');
-            setStatus('COMPLETED');
-            setFinalPaymentId(subscription?.payment_id || paymentIdArg || paymentId || undefined);
-
-            const successParams = new URLSearchParams();
-            if (currentPlanId) successParams.append('planId', currentPlanId);
-            if (currentUserId) successParams.append('userId', currentUserId);
-            if (subscription?.payment_id) successParams.append('payment_id', subscription.payment_id);
-            if (orderId) successParams.append('order_id', orderId);
-            navigate(`/payment-success?${successParams.toString()}`);
+          // Continue polling for transient issues, but with more lenient conditions
+          if (currentPollCount < MAX_POLLS - 5) {
+            console.log('Continuing to poll for transient verification issues...', { attempt: currentPollCount + 1 });
+            setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 2000);
             return;
-          }
-
-          // Only treat as error after multiple attempts and no subscription found
-          if (currentPollCount >= 5) {
+          } else {
             console.error('Multiple verification failures and no subscription found');
-            setError('Unable to verify payment status. Please contact support.');
+            setError('Unable to verify payment status. Please contact support if your payment was successful.');
             logError("Payment verification failed after multiple attempts", "PaymentCallbackPage", { debugObject, result, currentPollCount });
             setTimeout(() => {
               navigate(`/payment-failed?planId=${currentPlanId || ''}&reason=Payment verification failed`);
             }, 3000);
             return;
-          } else {
-            // Continue polling for transient issues
-            console.log('Verification failed, continuing to poll...', { attempt: currentPollCount + 1 });
-            setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 2000);
-            return;
           }
         }
 
-        // Handle UNKNOWN status by checking for subscription
+        // Handle specific PayPal statuses
         if (result.status === "UNKNOWN") {
-          console.log('Unknown status received, checking for subscription...');
-          const { hasSubscription, subscription } = await checkForActiveSubscription(currentUserId, currentPlanId);
-          if (hasSubscription) {
-            console.log('Found subscription despite unknown status, treating as success');
-            handlePaymentStatus('COMPLETED', currentPollCount, subscription?.payment_id || paymentIdArg || paymentId || undefined, currentUserId, currentPlanId);
-            return;
-          }
-          
-          // Continue polling for unknown status
+          console.log('Unknown status received, database check already performed, continuing to poll...');
           if (currentPollCount < MAX_POLLS - 5) {
             setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 2000);
             return;
@@ -277,16 +338,11 @@ export function usePaymentProcessing({
           console.log('Found subscription despite verification error, treating as success');
           setStatus('COMPLETED');
           setFinalPaymentId(subscription?.payment_id || paymentId || undefined);
-          const successParams = new URLSearchParams();
-          if (contextPlanId || planId) successParams.append('planId', contextPlanId || planId!);
-          if (contextUserId || userId) successParams.append('userId', contextUserId || userId!);
-          if (subscription?.payment_id) successParams.append('payment_id', subscription.payment_id);
-          if (orderId) successParams.append('order_id', orderId);
-          navigate(`/payment-success?${successParams.toString()}`);
+          handlePaymentStatus('COMPLETED', currentPollCount, subscription?.payment_id || paymentId || undefined, contextUserId || subscription?.user_id, contextPlanId);
           return;
         }
 
-        // Only set error after checking for subscription
+        // Only set error after checking for subscription and multiple attempts
         if (currentPollCount >= 3) {
           logError('Payment verification failed', 'PaymentCallbackPage', { error, paymentId, orderId, debugObject });
           setError('Payment verification failed. Please contact support if your payment was successful.');
@@ -300,12 +356,18 @@ export function usePaymentProcessing({
       }
     };
 
-    if (success === 'true') {
-      poll(0, paymentId, userId, planId);
+    // SESSION-INDEPENDENT: Start verification process
+    if (success === 'true' || hasSessionIndependentData) {
+      console.log('Starting payment verification...', { 
+        hasSession: !!currentUser, 
+        hasIndependentData: hasSessionIndependentData,
+        authLoading: isLoadingAuth
+      });
+      poll(0, paymentId, currentUser?.id || userId, planId);
     } else {
-      poll(0, undefined, userId, planId);
+      poll(0, undefined, currentUser?.id || userId, planId);
     }
-  }, [success, paymentId, orderId, planId, userId, debugObject, navigate, handlePaymentStatus, checkForActiveSubscription, findTransactionByOrder]); 
+  }, [success, paymentId, orderId, planId, userId, debugObject, navigate, handlePaymentStatus, checkForActiveSubscription, findTransactionByOrder, currentUser, isLoadingAuth, hasSessionIndependentData, attemptSessionRestoration]);
 
   return { status, error, pollCount, MAX_POLLS, finalPaymentId };
 }

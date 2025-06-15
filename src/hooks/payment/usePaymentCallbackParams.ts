@@ -29,11 +29,11 @@ export function usePaymentCallbackParams() {
                     searchParams.get('order_id') || 
                     searchParams.get('orderId');
     
-    // FIXED: Direct parameter extraction with localStorage fallback
+    // Direct parameter extraction with localStorage fallback
     let planId = searchParams.get('plan_id') || searchParams.get('planId');
     let userId = searchParams.get('user_id') || searchParams.get('userId');
 
-    // ENHANCED: Fallback to localStorage if parameters are missing
+    // ENHANCED: Comprehensive fallback to localStorage if parameters are missing
     if (!planId || !userId) {
       try {
         const pendingPayment = localStorage.getItem('pending_payment');
@@ -43,21 +43,14 @@ export function usePaymentCallbackParams() {
           
           if (!planId && parsed.planId) planId = parsed.planId;
           if (!userId && parsed.userId) userId = parsed.userId;
-          
-          // Clear the stored payment after retrieval
-          localStorage.removeItem('pending_payment');
         }
       } catch (error) {
         console.error('Error retrieving payment context from localStorage:', error);
       }
     }
 
-    // ENHANCED: Try to extract from order custom data if still missing
-    if ((!planId || !userId) && orderId) {
-      console.log('Attempting to extract user context from order ID pattern...');
-      // If our order creation includes custom patterns, we could extract here
-      // This is a backup mechanism for edge cases
-    }
+    // SESSION-INDEPENDENT: Set flag to indicate if we have enough info to proceed without session
+    const hasSessionIndependentData = !!(orderId && (planId || userId));
 
     const debugObject = {
       rawParams: allParams,
@@ -70,11 +63,22 @@ export function usePaymentCallbackParams() {
         userId
       },
       url: window.location.href,
-      hasLocalStorageFallback: !!(searchParams.get('plan_id') || searchParams.get('user_id')) ? false : !!(planId || userId)
+      hasLocalStorageFallback: !!(searchParams.get('plan_id') || searchParams.get('user_id')) ? false : !!(planId || userId),
+      hasSessionIndependentData,
+      canProceedWithoutSession: hasSessionIndependentData
     };
 
     console.log('Payment callback parameters extracted:', debugObject);
 
-    return { success, paymentId, payerId, orderId, planId, userId, debugObject };
+    return { 
+      success, 
+      paymentId, 
+      payerId, 
+      orderId, 
+      planId, 
+      userId, 
+      debugObject,
+      hasSessionIndependentData
+    };
   }, [searchParams]);
 }

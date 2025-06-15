@@ -5,7 +5,16 @@ import { PaymentProcessingError } from "@/components/payment/PaymentProcessingEr
 import { PaymentProcessingLoader } from "@/components/payment/PaymentProcessingLoader";
 
 export default function PaymentCallbackPage() {
-  const { success, paymentId, payerId, orderId, planId, userId, debugObject } = usePaymentCallbackParams();
+  const { 
+    success, 
+    paymentId, 
+    payerId, 
+    orderId, 
+    planId, 
+    userId, 
+    debugObject,
+    hasSessionIndependentData
+  } = usePaymentCallbackParams();
 
   const {
     status,
@@ -18,7 +27,8 @@ export default function PaymentCallbackPage() {
     orderId,
     planId,
     userId,
-    debugObject
+    debugObject,
+    hasSessionIndependentData
   });
 
   if (error) {

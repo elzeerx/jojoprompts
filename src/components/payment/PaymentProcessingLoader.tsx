@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock, RefreshCw } from "lucide-react";
 
 interface PaymentProcessingLoaderProps {
   status: string;
@@ -22,7 +22,7 @@ export function PaymentProcessingLoader({
           return {
             icon: <Clock className="h-8 w-8 text-orange-600" />,
             title: "Verifying Payment Status",
-            message: "This is taking longer than usual. We're checking your payment status with PayPal..."
+            message: "This is taking longer than usual. We're checking your payment status with PayPal and our database..."
           };
         }
         return {
@@ -32,7 +32,7 @@ export function PaymentProcessingLoader({
         };
       case 'APPROVED':
         return {
-          icon: <Loader2 className="h-8 w-8 animate-spin text-orange-600" />,
+          icon: <RefreshCw className="h-8 w-8 animate-spin text-orange-600" />,
           title: "Processing Payment",
           message: "Your payment has been approved and is being processed..."
         };
@@ -94,11 +94,21 @@ export function PaymentProcessingLoader({
               <strong>Payment verification is taking longer than usual.</strong>
             </p>
             <p className="text-sm text-blue-600">
-              This can happen during high traffic periods or PayPal processing delays. 
-              We're actively checking your payment status and will redirect you once confirmed.
+              We're checking both PayPal and our database to ensure your payment is properly recorded. 
+              This can happen during high traffic periods or temporary service delays.
             </p>
             <p className="text-xs text-blue-500 mt-2">
-              Please don't close this page - we'll keep trying.
+              Please don't close this page - we'll keep trying and redirect you once confirmed.
+            </p>
+          </div>
+        )}
+
+        {/* Session restoration info */}
+        {pollCount > 5 && status === 'checking' && !debugInfo?.hasSessionIndependentData && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+            <p className="text-sm text-yellow-700">
+              <strong>Restoring your session...</strong><br />
+              We're working to restore your login session after the PayPal redirect.
             </p>
           </div>
         )}
@@ -108,7 +118,7 @@ export function PaymentProcessingLoader({
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
             <p className="text-sm text-orange-700">
               <strong>Still verifying your payment...</strong><br />
-              If your payment was successful, you'll be redirected shortly. 
+              If your PayPal payment was successful, your account will be updated shortly. 
               If this continues, please contact support with your order details.
             </p>
           </div>
