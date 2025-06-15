@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,22 +23,11 @@ export function EnhancedLoginForm({ onSuccess, onSwitchToSignup }: EnhancedLogin
   const form = useLoginForm();
   const { isLoading, rateLimitError, onSubmit, setRateLimitError } = useLoginSubmission(onSuccess);
 
-  // Make sure values are of type LoginFormValues, which has required fields
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(
-          (values: LoginFormValues) => {
-            // Defensive runtime check, though zod+react-hook-form should enforce types
-            if (!values.email || !values.password) {
-              toast({
-                variant: "destructive",
-                title: "Both email and password are required.",
-              });
-              return;
-            }
-            onSubmit(values, form.reset);
-          }
+          onSubmit // No need for extra checks, type safety is handled with zod
         )}
         className="space-y-4"
       >

@@ -3,12 +3,13 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SecurityEnforcer } from "@/utils/enhancedSecurity";
+import type { LoginFormValues } from "../hooks/useLoginForm"; // updated import
 
 export function useLoginSubmission(onSuccess?: () => void) {
   const [isLoading, setIsLoading] = useState(false);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
 
-  async function onSubmit(values: { email: string; password: string }, reset: () => void) {
+  async function onSubmit(values: LoginFormValues, reset: () => void) { // use explicit type
     setRateLimitError(null);
 
     // Rate limiting
