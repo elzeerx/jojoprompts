@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,9 @@ import { type PromptRow } from "@/types";
 import { DialogForm } from "./components/DialogForm";
 import { usePromptForm } from "./hooks/usePromptForm";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePromptSubmission } from "./hooks/usePromptSubmission";
+import { uploadFiles } from "./hooks/useFileUpload";
+import { getCategoryColor } from "./utils/categoryUtils";
 
 interface PromptDialogProps {
   open: boolean;
@@ -33,7 +35,6 @@ interface PromptMetadata {
 }
 
 export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, promptType, category }: PromptDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [currentFiles, setCurrentFiles] = useState<File[]>([]);
   const [workflowFiles, setWorkflowFiles] = useState<File[]>([]);
@@ -74,188 +75,11 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     }
   }, [open]);
 
-  const uploadFiles = async (files: File[], bucket?: string): Promise<string[]> => {
-    const uploadedPaths: string[] = [];
-    
-    for (const file of files) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      
-      let targetBucket = bucket;
-      if (!targetBucket) {
-        if (file.type.startsWith('video/')) targetBucket = VIDEO_BUCKET;
-        else if (file.type.startsWith('audio/')) targetBucket = AUDIO_BUCKET;
-        else targetBucket = IMAGE_BUCKET;
-      }
-
-      const { error: uploadError } = await supabase.storage
-        .from(targetBucket)
-        .upload(fileName, file);
-        
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
-      }
-      
-      uploadedPaths.push(fileName);
-    }
-    
-    return uploadedPaths;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    console.log("PromptDialog - Starting form submission with data:", formData);
-    console.log("PromptDialog - Form metadata before processing:", formData.metadata);
-    console.log("PromptDialog - Current workflow files to upload:", workflowFiles);
-    
-    if (!validateForm()) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      let imagePath = formData.imagePath;
-      const metadata = formData.metadata as PromptMetadata;
-      let mediaFiles = metadata?.media_files || [];
-      let workflowFilesData = metadata?.workflow_files || [];
-      
-      // Upload legacy single file if exists
-      if (currentFile) {
-        const fileExt = currentFile.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from(IMAGE_BUCKET)
-          .upload(fileName, currentFile);
-          
-        if (uploadError) throw uploadError;
-        imagePath = fileName;
-      }
-
-      // Upload multiple media files
-      if (currentFiles.length > 0) {
-        const uploadedPaths = await uploadFiles(currentFiles);
-        
-        const updatedMediaFiles = mediaFiles.map((media: any, index: number) => {
-          if (media.file && uploadedPaths[index]) {
-            return {
-              type: media.type,
-              path: uploadedPaths[index],
-              name: media.name
-            };
-          }
-          return {
-            type: media.type,
-            path: media.path,
-            name: media.name
-          };
-        });
-        
-        mediaFiles = updatedMediaFiles;
-      } else {
-        mediaFiles = mediaFiles.map((media: any) => ({
-          type: media.type,
-          path: media.path,
-          name: media.name
-        }));
-      }
-
-      // Upload workflow files
-      if (workflowFiles.length > 0) {
-        console.log("PromptDialog - Uploading workflow files:", workflowFiles);
-        const uploadedWorkflowPaths = await uploadFiles(workflowFiles, FILE_BUCKET);
-
-        const newWorkflowFiles = workflowFiles.map((file, index) => {
-          const fileExt = file.name.split('.').pop()?.toLowerCase() as 'json' | 'zip';
-          return {
-            type: fileExt,
-            path: uploadedWorkflowPaths[index],
-            name: file.name
-          };
-        });
-
-        const existingFiles = Array.isArray(workflowFilesData) ? workflowFilesData.filter((wf: any) => wf.path) : [];
-        workflowFilesData = [...existingFiles, ...newWorkflowFiles];
-        console.log("PromptDialog - Final workflow files data:", workflowFilesData);
-      } else {
-        workflowFilesData = Array.isArray(workflowFilesData) ? workflowFilesData.map((wf: any) => ({
-          type: wf.type,
-          path: wf.path,
-          name: wf.name
-        })) : [];
-      }
-
-      const cleanMetadata = JSON.parse(JSON.stringify({
-        category: metadata?.category || 'ChatGPT',
-        tags: metadata?.tags || [],
-        style: metadata?.style || '',
-        target_model: metadata?.target_model || '',
-        use_case: metadata?.use_case || '',
-        media_files: mediaFiles,
-        workflow_files: workflowFilesData,
-        workflow_steps: metadata?.workflow_steps || []
-      }));
-
-      console.log("PromptDialog - Clean metadata prepared for saving:", cleanMetadata);
-
-      const promptData = {
-        title: formData.title,
-        prompt_text: formData.promptText,
-        prompt_type: formData.promptType,
-        image_path: imagePath,
-        default_image_path: formData.defaultImagePath,
-        metadata: cleanMetadata,
-        user_id: user?.id || ""
-      };
-
-      console.log("PromptDialog - Final prompt data being saved:", promptData);
-
-      if (editingPrompt) {
-        const { data, error } = await supabase
-          .from("prompts")
-          .update(promptData)
-          .eq("id", editingPrompt.id)
-          .select();
-          
-        if (error) throw error;
-        
-        console.log("PromptDialog - Updated prompt data returned:", data);
-        
-        toast({
-          title: "Success",
-          description: "Prompt updated successfully"
-        });
-      } else {
-        const { data, error } = await supabase
-          .from("prompts")
-          .insert(promptData)
-          .select();
-          
-        if (error) throw error;
-        
-        console.log("PromptDialog - Inserted prompt data returned:", data);
-        
-        toast({
-          title: "Success", 
-          description: "Prompt created successfully"
-        });
-      }
-      
-      console.log("PromptDialog - Calling onSuccess to refresh data");
-      onSuccess();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("PromptDialog - Error saving prompt:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save prompt",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const { isSubmitting, handleSubmit } = usePromptSubmission({
+    onSuccess,
+    onOpenChange,
+    editingPrompt,
+  });
 
   // Get category color
   const getCategoryColor = (category: string) => {
@@ -294,7 +118,19 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         {/* Scrollable Content */}
         <ScrollArea className="flex-1 px-6">
           <div className="py-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form
+              onSubmit={e =>
+                handleSubmit(
+                  e,
+                  formData,
+                  validateForm,
+                  currentFile,
+                  currentFiles,
+                  workflowFiles
+                )
+              }
+              className="space-y-6"
+            >
               <div className="bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200">
                 <DialogForm
                   formData={formData}
