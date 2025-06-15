@@ -1,7 +1,5 @@
+
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,18 +9,11 @@ import { Loader2, Lock, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { SecurityEnforcer } from "@/utils/enhancedSecurity";
 import { InputValidator } from "@/utils/inputValidation";
-import { useLoginForm } from "./hooks/useLoginForm";
+import { useLoginForm, LoginFormValues } from "./hooks/useLoginForm";
 import { useLoginSubmission } from "./hooks/useLoginSubmission";
 import { RateLimitAlert } from "./components/RateLimitAlert";
 import { LoginFields } from "./components/LoginFields";
 import { LoginButton } from "./components/LoginButton";
-
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
 
 interface EnhancedLoginFormProps {
   onSuccess?: () => void;
@@ -36,8 +27,8 @@ export function EnhancedLoginForm({ onSuccess, onSwitchToSignup }: EnhancedLogin
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit((values) => 
-          onSubmit(values as LoginFormValues, form.reset)
+        onSubmit={form.handleSubmit((values: LoginFormValues) => 
+          onSubmit(values, form.reset)
         )}
         className="space-y-4"
       >
