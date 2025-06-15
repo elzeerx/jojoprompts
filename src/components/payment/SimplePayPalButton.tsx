@@ -24,6 +24,8 @@ export function SimplePayPalButton({
   const handlePayPalRedirect = async () => {
     setIsProcessing(true);
     try {
+      console.log('Initiating PayPal checkout:', { amount, planId, userId });
+
       // Create the PayPal order via Supabase Edge Function
       const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
         body: {
@@ -38,14 +40,35 @@ export function SimplePayPalButton({
         throw new Error(error?.message || data?.error || "Failed to initiate PayPal checkout.");
       }
 
-      // Store payment context in localStorage to match callback handling
+      console.log('PayPal order created:', {
+        orderId: data.orderId,
+        approvalUrl: data.approvalUrl
+      });
+
+      // ENHANCED: Store comprehensive payment context in localStorage for callback recovery
+      const paymentContext = {
+        planId,
+        userId,
+        amount,
+        orderId: data.orderId,
+        timestamp: Date.now(),
+        approvalUrl: data.approvalUrl
+      };
+
       localStorage.setItem(
         "pending_payment",
-        JSON.stringify({ planId, userId, amount, timestamp: Date.now() })
+        JSON.stringify(paymentContext)
       );
 
+      console.log('Stored payment context in localStorage:', paymentContext);
+
+      // ENHANCED: Add a small delay to ensure localStorage is written
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Redirect to PayPal
       window.location.href = data.approvalUrl;
     } catch (err: any) {
+      console.error('PayPal checkout initiation failed:', err);
       setIsProcessing(false);
       onError(err);
       toast({

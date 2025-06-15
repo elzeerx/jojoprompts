@@ -22,8 +22,12 @@ serve(async (req) => {
 
     if (action === 'create') {
       const siteUrl = getSiteUrl();
-      const returnUrl = `${siteUrl}/payment/callback?success=true&plan_id=${planId}&user_id=${userId}`;
-      const cancelUrl = `${siteUrl}/payment/callback?success=false&plan_id=${planId}&user_id=${userId}`;
+      
+      // FIXED: Include planId and userId in both return and cancel URLs with proper encoding
+      const returnUrl = `${siteUrl}/payment/callback?success=true&plan_id=${encodeURIComponent(planId)}&user_id=${encodeURIComponent(userId)}`;
+      const cancelUrl = `${siteUrl}/payment/callback?success=false&plan_id=${encodeURIComponent(planId)}&user_id=${encodeURIComponent(userId)}`;
+
+      console.log('Creating PayPal order with URLs:', { returnUrl, cancelUrl, planId, userId });
 
       const orderRes = await fetch(`${baseUrl}/v2/checkout/orders`, {
         method: 'POST',
@@ -38,7 +42,10 @@ serve(async (req) => {
               currency_code: 'USD',
               value: amount.toString()
             },
-            description: `Subscription Plan Purchase`
+            description: `Subscription Plan Purchase`,
+            // ENHANCED: Add custom data that will persist through PayPal redirect
+            custom_id: `${userId}:${planId}:${Date.now()}`,
+            invoice_id: `inv_${userId}_${planId}_${Date.now()}`
           }],
           application_context: {
             return_url: returnUrl,
@@ -57,6 +64,7 @@ serve(async (req) => {
         throw new Error(`PayPal order creation failed: ${orderData.message}`);
       }
 
+      // Enhanced transaction record with better metadata
       const { error: dbError } = await insertTransaction(supabaseClient, {
         userId,
         planId,
@@ -72,7 +80,9 @@ serve(async (req) => {
       console.log('PayPal order created successfully:', {
         orderId: orderData.id,
         status: orderData.status,
-        links: orderData.links
+        customId: `${userId}:${planId}:${Date.now()}`,
+        returnUrl,
+        cancelUrl
       });
 
       return new Response(JSON.stringify({
