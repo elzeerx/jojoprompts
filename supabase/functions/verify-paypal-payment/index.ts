@@ -1,5 +1,4 @@
 
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 
@@ -31,37 +30,39 @@ serve(async (req: Request) => {
       });
     }
 
-    // Find transaction in database, using PayPal order/payment id
-    const { data, error } = await supabaseClient.from("transactions")
-      .select("*")
-      .or([
-        orderId ? `paypal_order_id.eq.${orderId}` : '',
-        paymentId ? `paypal_payment_id.eq.${paymentId}` : ''
-      ].filter(Boolean).join(",")) // Compose query dynamically
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+    // Improved: Build query correctly whether one or both ids are present
+    let query = supabaseClient.from("transactions").select("*").order("created_at", { ascending: false }).limit(1);
+    if (orderId && paymentId) {
+      query = query.or(`paypal_order_id.eq.${orderId},paypal_payment_id.eq.${paymentId}`);
+    } else if (orderId) {
+      query = query.eq("paypal_order_id", orderId);
+    } else if (paymentId) {
+      query = query.eq("paypal_payment_id", paymentId);
+    }
+
+    let { data, error } = await query.single();
 
     if (error || !data) {
+      console.error("verify-paypal-payment ERROR: ", error, { orderId, paymentId });
       return new Response(JSON.stringify({ error: "Transaction not found." }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    // Return status to frontend
+    // Return status to frontend (UPPERCASE for consistency)
     return new Response(JSON.stringify({
-      status: data.status?.toUpperCase() || "UNKNOWN",
+      status: (data.status || "UNKNOWN").toUpperCase(),
       transaction: data
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 
   } catch (error) {
+    console.error("verify-paypal-payment FATAL: ", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });
-

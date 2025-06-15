@@ -1,5 +1,5 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getPayPalConfig } from './paypalConfig.ts';
 import { fetchPayPalAccessToken } from './paypalToken.ts';
 import { getSiteUrl } from './siteUrl.ts';
@@ -65,7 +65,7 @@ serve(async (req) => {
       });
 
       if (dbError) {
-        console.error('Database error:', dbError);
+        console.error('Database error (insert transaction):', dbError);
         throw new Error('Failed to create transaction record');
       }
 
@@ -85,6 +85,14 @@ serve(async (req) => {
     }
 
     if (action === 'capture') {
+      if (!orderId || !userId || !planId) {
+        console.error('Missing required fields for capture:', { orderId, userId, planId });
+        return new Response(JSON.stringify({ success: false, error: 'Missing required fields for capture.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       const captureRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}/capture`, {
         method: 'POST',
         headers: {
@@ -95,16 +103,24 @@ serve(async (req) => {
 
       const captureData = await captureRes.json();
       if (!captureRes.ok) {
-        console.error('PayPal capture failed:', captureData);
+        console.error('PayPal capture failed:', { orderId, captureData });
         throw new Error(`PayPal capture failed: ${captureData.message}`);
       }
 
-      const paymentId = captureData.purchase_units[0]?.payments?.captures[0]?.id;
+      const paymentId = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.id;
       const paymentStatus = captureData.status;
+
+      if (!paymentId) {
+        console.error('PayPal capture: paymentId missing in response', { orderId, captureData });
+        throw new Error('PayPal capture did not return a paymentId.');
+      }
+
       console.log('PayPal payment captured:', {
         orderId,
         paymentId,
-        status: paymentStatus
+        status: paymentStatus,
+        userId,
+        planId
       });
 
       const { data: transaction, error: updateError } = await updateTransactionOnCapture(supabaseClient, {
@@ -113,9 +129,9 @@ serve(async (req) => {
         paymentStatus
       });
 
-      if (updateError) {
-        console.error('Transaction update error:', updateError);
-        throw new Error('Failed to update transaction');
+      if (updateError || !transaction) {
+        console.error('Transaction update error (on capture):', updateError, { orderId, paymentId });
+        throw new Error('Failed to update transaction after capture');
       }
 
       if (paymentStatus === 'COMPLETED') {
@@ -127,8 +143,8 @@ serve(async (req) => {
         });
 
         if (subscriptionError) {
-          console.error('Subscription creation error:', subscriptionError);
-          // Do not throw here - payment was successful, just log the error
+          console.error('Subscription creation error after capture:', subscriptionError);
+          // Payment was successful - just log subscription error, don't abort
         }
       }
 
