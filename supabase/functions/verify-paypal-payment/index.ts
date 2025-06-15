@@ -45,7 +45,6 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Accept order_id OR payment_id params
     const url = new URL(req.url);
     const orderId = url.searchParams.get("order_id") || url.searchParams.get("orderId");
     const paymentId = url.searchParams.get("payment_id") || url.searchParams.get("paymentId");
@@ -66,7 +65,7 @@ serve(async (req: Request) => {
     } else if (paymentId) {
       query = query.eq("paypal_payment_id", paymentId);
     }
-    let { data: localTx, error: txError } = await query.single();
+    let { data: localTx, error: txError } = await query.maybeSingle();
 
     // === CRITICAL STEP: Call PayPal API to fetch real order/payment status ===
 
@@ -85,6 +84,7 @@ serve(async (req: Request) => {
 
     let payPalStatus: string | null = null;
     let payPalRawResponse: any = null;
+    let txJustCaptured = false;
 
     if (orderIdToUse) {
       // Get PayPal order info
@@ -98,15 +98,59 @@ serve(async (req: Request) => {
       const orderData = await orderRes.json();
       payPalRawResponse = orderData;
 
-      // Order status: CREATED, APPROVED, COMPLETED, VOIDED, etc.
-      payPalStatus = orderData.status || null;
+      payPalStatus = orderData.status || null; // PayPal order status: CREATED, APPROVED, COMPLETED, VOIDED
 
-      // If completed and has captures, get payment capture info
-      if (payPalStatus === "COMPLETED" && orderData.purchase_units?.[0]?.payments?.captures?.[0]?.status) {
+      // === If approved, immediately trigger capture ===
+      if (payPalStatus === "APPROVED") {
+        // Run the capture endpoint and examine the result
+        const captureRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderIdToUse}/capture`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        const captureData = await captureRes.json();
+        payPalRawResponse.capture = captureData;
+        if (captureData.status === "COMPLETED" || captureData.purchase_units?.[0]?.payments?.captures?.[0]?.status === "COMPLETED") {
+          payPalStatus = "COMPLETED";
+          txJustCaptured = true;
+
+          // update local transaction with paymentId/status
+          let paymentCaptureObj = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+          let paymentIdAfterCapture = paymentCaptureObj?.id || null;
+          // If we have localTxn, update
+          if (localTx && paymentIdAfterCapture) {
+            await supabaseClient.from('transactions')
+              .update({
+                paypal_payment_id: paymentIdAfterCapture,
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+                error_message: null
+              })
+              .eq('id', localTx.id);
+            // On completed, create user subscription
+            if (localTx.user_id && localTx.plan_id) {
+              await supabaseClient.from('user_subscriptions').insert({
+                user_id: localTx.user_id,
+                plan_id: localTx.plan_id,
+                payment_method: 'paypal',
+                payment_id: paymentIdAfterCapture,
+                transaction_id: localTx.id,
+                status: 'active',
+                end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+              });
+            }
+          }
+        } else {
+          payPalStatus = captureData.status || "FAILED";
+        }
+      } else if (payPalStatus === "COMPLETED" && orderData.purchase_units?.[0]?.payments?.captures?.[0]?.status) {
+        // Already completed, double-confirm status is COMPLETED
         payPalStatus = orderData.purchase_units[0].payments.captures[0].status;
       }
     } else if (paymentIdToUse) {
-      // Lookup payment directly (most cases orderId is preferred)
+      // Lookup payment directly
       const paymentRes = await fetch(`${baseUrl}/v2/payments/captures/${paymentIdToUse}`, {
         method: 'GET',
         headers: {
@@ -126,18 +170,41 @@ serve(async (req: Request) => {
     }
 
     // === Optionally update local DB if status changed ===
-    if (localTx) {
-      // Only update if local DB doesn't match PayPal
-      if (localTx.status?.toUpperCase() !== payPalStatus.toUpperCase()) {
-        await supabaseClient.from('transactions')
-          .update({ status: payPalStatus.toLowerCase(), completed_at: new Date().toISOString() })
-          .eq('id', localTx.id);
+    if (localTx && payPalStatus && localTx.status?.toUpperCase() !== payPalStatus.toUpperCase()) {
+      await supabaseClient.from('transactions')
+        .update({
+          status: payPalStatus.toLowerCase(),
+          completed_at: ['COMPLETED', 'completed'].includes(payPalStatus) ? new Date().toISOString() : null,
+          error_message: !['COMPLETED', 'completed'].includes(payPalStatus) ? `PayPal returned status: ${payPalStatus}` : null
+        })
+        .eq('id', localTx.id);
+      // On completed, create user subscription (if not already exists)
+      if (payPalStatus === "COMPLETED" && localTx.user_id && localTx.plan_id) {
+        // Only insert if not already a subscription
+        const { data: subs, error: subErr } = await supabaseClient.from('user_subscriptions')
+          .select('*')
+          .eq('user_id', localTx.user_id)
+          .eq('plan_id', localTx.plan_id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (!subs || subs.length === 0) {
+          await supabaseClient.from('user_subscriptions').insert({
+            user_id: localTx.user_id,
+            plan_id: localTx.plan_id,
+            payment_method: 'paypal',
+            payment_id: localTx.paypal_payment_id,
+            transaction_id: localTx.id,
+            status: 'active',
+            end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+          });
+        }
       }
     }
 
     // Return status to frontend (UPPERCASE for consistency)
     return new Response(JSON.stringify({
       status: payPalStatus.toUpperCase(),
+      justCaptured: txJustCaptured,
       paypal: payPalRawResponse,
       transaction: localTx
     }), {

@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,7 +46,6 @@ export function usePaymentProcessing({
   // eslint-disable-next-line
   }, [planId, userId, orderId, navigate]);
 
-  // Payment capture and poll logic
   useEffect(() => {
     if (success === 'false') {
       logError('PayPal payment cancelled', 'PaymentCallbackPage', { debugObject });
@@ -131,6 +129,18 @@ export function usePaymentProcessing({
           }
           result = await response.json();
         }
+
+        // If status is APPROVED, trigger capture using process-paypal-payment
+        if (result?.status === "APPROVED" && orderId && currentPollCount < MAX_POLLS) {
+          // Try to capture
+          try {
+            await doCaptureIfNeeded();
+          } catch (err) { /* doCapture logs and handles error */ }
+          // Immediately poll again to get updated status
+          setTimeout(() => poll(currentPollCount + 1, paymentIdArg), 1000);
+          return;
+        }
+
         handlePaymentStatus(result?.status, currentPollCount, paymentIdArg || paymentId);
       } catch (error: any) {
         logError('Payment verification failed', 'PaymentCallbackPage', { error, paymentId, orderId, debugObject });
@@ -145,6 +155,7 @@ export function usePaymentProcessing({
       (async () => {
         let paymentIdAfterCapture = paymentId;
         try {
+          // If "doCaptureIfNeeded" throws, don't keep polling, just fail
           const captureResult = await doCaptureIfNeeded();
           if (captureResult.paymentId) paymentIdAfterCapture = captureResult.paymentId;
         } catch (err) {
