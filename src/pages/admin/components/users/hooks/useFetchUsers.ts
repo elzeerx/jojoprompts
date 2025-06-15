@@ -2,26 +2,51 @@
 import { useState, useEffect, useCallback } from "react";
 import { UserProfile } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 export function useFetchUsers() {
   const [users, setUsers] = useState<(UserProfile & { subscription?: { plan_name: string } | null })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { session, loading: authLoading } = useAuth();
+
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Fetch users through the edge function
+
+      if (!session?.access_token) {
+        setError("No admin session token; please log in or refresh.");
+        return;
+      }
+
+      // Fetch users through the edge function, always send Authorization header
       const { data: usersFunctionData, error: usersError } = await supabase.functions.invoke(
         "get-all-users",
         {
-          body: { action: "getAll" }
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: { action: "list" }
         }
       );
 
-      if (usersError) throw usersError;
+      if (usersError) {
+        // Handle unauthorized/forbidden with a helpful toast
+        if (usersError.status === 401 || usersError.status === 403) {
+          toast({
+            title: "Admin authentication failed",
+            description: "You are not authorized. Please log out and log in as an admin.",
+            variant: "destructive"
+          });
+          setError(usersError.message || "Unauthorized. Only admins can access this section.");
+          return;
+        }
+        throw usersError;
+      }
 
       // Enhancement: Get user subscriptions
       const { data: subscriptions, error: subscriptionsError } = await supabase
@@ -42,16 +67,26 @@ export function useFetchUsers() {
 
       setUsers(usersWithSubscriptions || []);
     } catch (error: any) {
+      // If auth error, prompt and refresh session
+      if (error?.message?.includes("token") || error?.message?.includes("auth")) {
+        toast({
+          title: "Session expired",
+          description: "Please log out and log in again as admin.",
+          variant: "destructive"
+        });
+      }
       console.error("Error fetching users:", error);
       setError(error.message || "Failed to fetch users");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session?.access_token]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    if (!authLoading) {
+      fetchUsers();
+    }
+  }, [fetchUsers, authLoading]);
 
   return { users, loading, error, fetchUsers };
 }

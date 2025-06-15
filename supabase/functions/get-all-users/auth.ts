@@ -6,17 +6,22 @@ interface AuthContext {
   userId: string;
 }
 
+/**
+ * Auth logic for the admin functions:
+ * 1. Validate the bearer token (user JWT) with the anon key (not service role).
+ * 2. If user is found, create a new supabase client with the service role for admin DB & admin API calls.
+ */
 export async function verifyAdmin(req: Request): Promise<AuthContext> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') as string;
 
+  // Extract JWT
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
     console.error('Missing Authorization header');
     throw new Error('Unauthorized - Missing authorization header');
   }
-
   const token = authHeader.split(' ')[1];
   if (!token) {
     console.error('Invalid Authorization header format');
@@ -24,25 +29,27 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
   }
 
   try {
-    console.log(`Attempting to validate token: ${token.substring(0, 10)}...`);
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
+    // Validate user token with anon key! Not with service role.
+    const anonClient = createClient(supabaseUrl, anonKey);
+    console.log(`Validating user JWT via anon client...`);
+    const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
+
     if (userError || !user) {
-      console.error('Error validating token:', userError);
+      console.error('Error validating token via anon client:', userError);
       throw new Error(`Unauthorized - Invalid token: ${userError?.message || 'User not found'}`);
     }
 
-    console.log(`User ${user.id} is attempting to access admin functionality`);
+    // Now role check using profiles table via service role
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .maybeSingle();
 
     if (profileError) {
-      console.error('Error fetching user profile:', profileError);
+      console.error('Error fetching user profile in admin context:', profileError);
       throw new Error(`Error fetching user profile: ${profileError.message}`);
     }
 
@@ -51,8 +58,10 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
       throw new Error('Forbidden - Admin role required');
     }
 
-    console.log(`Admin user ${user.id} authenticated successfully`);
-    return { supabase, userId: user.id };
+    // Success: use service role for all further DB operations
+    console.log(`Authenticated request as ADMIN user ${user.id}, access granted`);
+    return { supabase: serviceClient, userId: user.id };
+
   } catch (error) {
     console.error('Authentication error:', error);
     throw error;
