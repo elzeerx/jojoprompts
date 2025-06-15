@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 
@@ -74,6 +73,7 @@ serve(async (req: Request) => {
     try {
       accessToken = await fetchPayPalAccessToken(baseUrl, clientId, clientSecret);
     } catch (err) {
+      console.log("PayPal access token fetch failed:", err);
       return new Response(JSON.stringify({ error: "Failed to get PayPal access token." }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -85,6 +85,7 @@ serve(async (req: Request) => {
     let payPalStatus: string | null = null;
     let payPalRawResponse: any = null;
     let txJustCaptured = false;
+    let paymentIdAfterCapture: string | null = null;
 
     if (orderIdToUse) {
       // Get PayPal order info
@@ -98,11 +99,10 @@ serve(async (req: Request) => {
       const orderData = await orderRes.json();
       payPalRawResponse = orderData;
 
-      payPalStatus = orderData.status || null; // PayPal order status: CREATED, APPROVED, COMPLETED, VOIDED
+      payPalStatus = orderData.status || null;
 
-      // === If approved, immediately trigger capture ===
+      // If status is APPROVED, we MUST trigger a capture
       if (payPalStatus === "APPROVED") {
-        // Run the capture endpoint and examine the result
         const captureRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderIdToUse}/capture`, {
           method: 'POST',
           headers: {
@@ -112,14 +112,13 @@ serve(async (req: Request) => {
         });
         const captureData = await captureRes.json();
         payPalRawResponse.capture = captureData;
-        if (captureData.status === "COMPLETED" || captureData.purchase_units?.[0]?.payments?.captures?.[0]?.status === "COMPLETED") {
-          payPalStatus = "COMPLETED";
-          txJustCaptured = true;
+        payPalStatus = captureData.status || payPalStatus;
+        let paymentCaptureObj = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+        paymentIdAfterCapture = paymentCaptureObj?.id || null;
 
-          // update local transaction with paymentId/status
-          let paymentCaptureObj = captureData.purchase_units?.[0]?.payments?.captures?.[0];
-          let paymentIdAfterCapture = paymentCaptureObj?.id || null;
-          // If we have localTxn, update
+        if (payPalStatus === "COMPLETED" || paymentCaptureObj?.status === "COMPLETED") {
+          txJustCaptured = true;
+          // Always update DB so that paypal_payment_id is set after capture
           if (localTx && paymentIdAfterCapture) {
             await supabaseClient.from('transactions')
               .update({
@@ -129,7 +128,7 @@ serve(async (req: Request) => {
                 error_message: null
               })
               .eq('id', localTx.id);
-            // On completed, create user subscription
+            // Create subscription
             if (localTx.user_id && localTx.plan_id) {
               await supabaseClient.from('user_subscriptions').insert({
                 user_id: localTx.user_id,
@@ -142,12 +141,41 @@ serve(async (req: Request) => {
               });
             }
           }
-        } else {
-          payPalStatus = captureData.status || "FAILED";
         }
       } else if (payPalStatus === "COMPLETED" && orderData.purchase_units?.[0]?.payments?.captures?.[0]?.status) {
-        // Already completed, double-confirm status is COMPLETED
+        paymentIdAfterCapture = orderData.purchase_units[0].payments.captures[0].id || null;
         payPalStatus = orderData.purchase_units[0].payments.captures[0].status;
+        // Always set DB paymentId and completed status if needed
+        if (localTx && paymentIdAfterCapture && (localTx.status !== "completed" || !localTx.paypal_payment_id)) {
+          await supabaseClient.from('transactions')
+            .update({
+              paypal_payment_id: paymentIdAfterCapture,
+              status: 'completed',
+              completed_at: new Date().toISOString(),
+              error_message: null
+            }).eq('id', localTx.id);
+          // Create subscription if missing
+          if (localTx.user_id && localTx.plan_id) {
+            // Only insert if not already a subscription
+            const { data: subs } = await supabaseClient.from('user_subscriptions')
+              .select('*')
+              .eq('user_id', localTx.user_id)
+              .eq('plan_id', localTx.plan_id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            if (!subs || subs.length === 0) {
+              await supabaseClient.from('user_subscriptions').insert({
+                user_id: localTx.user_id,
+                plan_id: localTx.plan_id,
+                payment_method: 'paypal',
+                payment_id: paymentIdAfterCapture,
+                transaction_id: localTx.id,
+                status: 'active',
+                end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+              });
+            }
+          }
+        }
       }
     } else if (paymentIdToUse) {
       // Lookup payment directly
@@ -161,6 +189,7 @@ serve(async (req: Request) => {
       const paymentData = await paymentRes.json();
       payPalRawResponse = paymentData;
       payPalStatus = paymentData.status || null;
+      paymentIdAfterCapture = paymentData.id || null;
     }
 
     if (!payPalStatus) {
@@ -169,19 +198,18 @@ serve(async (req: Request) => {
       });
     }
 
-    // === Optionally update local DB if status changed ===
-    if (localTx && payPalStatus && localTx.status?.toUpperCase() !== payPalStatus.toUpperCase()) {
+    // If DB status is 'approved' but PayPal is 'COMPLETED', fix DB!
+    if (localTx && payPalStatus && (["COMPLETED", "completed"].includes(payPalStatus)) && (localTx.status?.toUpperCase() !== payPalStatus.toUpperCase() || !localTx.paypal_payment_id)) {
       await supabaseClient.from('transactions')
         .update({
-          status: payPalStatus.toLowerCase(),
-          completed_at: ['COMPLETED', 'completed'].includes(payPalStatus) ? new Date().toISOString() : null,
-          error_message: !['COMPLETED', 'completed'].includes(payPalStatus) ? `PayPal returned status: ${payPalStatus}` : null
-        })
-        .eq('id', localTx.id);
-      // On completed, create user subscription (if not already exists)
-      if (payPalStatus === "COMPLETED" && localTx.user_id && localTx.plan_id) {
-        // Only insert if not already a subscription
-        const { data: subs, error: subErr } = await supabaseClient.from('user_subscriptions')
+          paypal_payment_id: paymentIdAfterCapture,
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          error_message: null
+        }).eq('id', localTx.id);
+      // Create subscription if missing
+      if (localTx.user_id && localTx.plan_id) {
+        const { data: subs } = await supabaseClient.from('user_subscriptions')
           .select('*')
           .eq('user_id', localTx.user_id)
           .eq('plan_id', localTx.plan_id)
@@ -192,7 +220,7 @@ serve(async (req: Request) => {
             user_id: localTx.user_id,
             plan_id: localTx.plan_id,
             payment_method: 'paypal',
-            payment_id: localTx.paypal_payment_id,
+            payment_id: paymentIdAfterCapture,
             transaction_id: localTx.id,
             status: 'active',
             end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
@@ -201,10 +229,10 @@ serve(async (req: Request) => {
       }
     }
 
-    // Return status to frontend (UPPERCASE for consistency)
     return new Response(JSON.stringify({
-      status: payPalStatus.toUpperCase(),
+      status: payPalStatus?.toUpperCase?.() || payPalStatus,
       justCaptured: txJustCaptured,
+      paymentId: paymentIdAfterCapture,
       paypal: payPalRawResponse,
       transaction: localTx
     }), {

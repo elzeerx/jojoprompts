@@ -20,7 +20,8 @@ export function usePaymentProcessing({
   const [error, setError] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
   const [finalPaymentId, setFinalPaymentId] = useState<string | undefined>(paymentId);
-  const MAX_POLLS = 20;
+  // Increased polling limits for edge case stuck transactions
+  const MAX_POLLS = 35;
 
   const handlePaymentStatus = useCallback((paymentStatus: string, currentPollCount: number, paymentIdForSuccessParam?: string) => {
     setStatus(paymentStatus);
@@ -98,7 +99,7 @@ export function usePaymentProcessing({
     const poll = async (currentPollCount: number = 0, paymentIdArg?: string) => {
       if (currentPollCount >= MAX_POLLS) {
         logError('Payment verification timeout', 'PaymentCallbackPage', { paymentId, orderId, debugObject });
-        setError('Payment verification timeout');
+        setError('Payment verification timeout (PayPal sometimes needs several minutes to confirm). Please contact support with your order ID.');
         setTimeout(() => {
           navigate(`/payment-failed?planId=${planId || ''}&reason=Payment verification timeout`);
         }, 3000);
