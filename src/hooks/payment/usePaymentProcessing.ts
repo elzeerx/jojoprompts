@@ -23,6 +23,22 @@ export function usePaymentProcessing({
   const [finalPaymentId, setFinalPaymentId] = useState<string | undefined>(paymentId);
   const MAX_POLLS = 35;
 
+  // --- NEW: Helper to fallback check for active subscription if verification returns UNKNOWN ---
+  const fallbackCheckSubscription = useCallback(async () => {
+    if (userId && planId) {
+      // We must check if an active subscription exists for this user and plan
+      const { data, error } = await supabase
+        .from("user_subscriptions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("plan_id", planId)
+        .eq("status", "active")
+        .maybeSingle();
+      return !!(data && !error);
+    }
+    return false;
+  }, [userId, planId]);
+
   const handlePaymentStatus = useCallback((paymentStatus: string, currentPollCount: number, paymentIdForSuccessParam?: string) => {
     setStatus(paymentStatus);
     setPollCount(currentPollCount + 1);
@@ -66,7 +82,6 @@ export function usePaymentProcessing({
       return;
     }
 
-    // Improved: Always POST with both orderId and paymentId if either is available
     const poll = async (currentPollCount: number = 0, paymentIdArg?: string) => {
       if (currentPollCount >= MAX_POLLS) {
         logError('Payment verification timeout', 'PaymentCallbackPage', { paymentId, orderId, debugObject });
@@ -81,15 +96,31 @@ export function usePaymentProcessing({
         if (orderId) args['order_id'] = orderId;
         if (paymentIdArg || paymentId) args['payment_id'] = paymentIdArg || paymentId!;
 
-        // Use POST to verify-paypal-payment, backend now robustly handles body & query params
         const { data, error } = await supabase.functions.invoke("verify-paypal-payment", {
           body: args,
         });
 
         let result = data;
 
-        // Harden against missing/strange responses
-        if (!result || !result.status) {
+        // --- Fallback improvement: handle error/UNKNOWN status better ---
+        if (!result || !result.status || result.status === "UNKNOWN") {
+          // Fallback: if backend returns "UNKNOWN" (like after successful payment but capture takes time or fails verification), check for existing active subscription
+          const hasSub = await fallbackCheckSubscription();
+          if (hasSub) {
+            // Treat as successful
+            setStatus('COMPLETED');
+            setFinalPaymentId(paymentIdArg || paymentId || undefined);
+
+            // Compose success params as usual
+            const successParams = new URLSearchParams();
+            if (planId) successParams.append('planId', planId);
+            if (userId) successParams.append('userId', userId);
+            if (paymentIdArg || paymentId) successParams.append('payment_id', paymentIdArg || paymentId!);
+            if (orderId) successParams.append('order_id', orderId);
+            navigate(`/payment-success?${successParams.toString()}`);
+            return;
+          }
+
           setError('Could not verify payment status with PayPal.');
           logError("Unable to determine payment status", "PaymentCallbackPage", { debugObject, result });
           setTimeout(() => {
@@ -117,7 +148,22 @@ export function usePaymentProcessing({
         setFinalPaymentId(paymentIdOut);
 
         handlePaymentStatus(result.status, currentPollCount, paymentIdOut);
+
       } catch (error: any) {
+        // Fallback: if verification error, but user has an active sub, treat as successful.
+        const hasSub = await fallbackCheckSubscription();
+        if (hasSub) {
+          setStatus('COMPLETED');
+          setFinalPaymentId(paymentId || undefined);
+          const successParams = new URLSearchParams();
+          if (planId) successParams.append('planId', planId);
+          if (userId) successParams.append('userId', userId);
+          if (paymentId) successParams.append('payment_id', paymentId!);
+          if (orderId) successParams.append('order_id', orderId);
+          navigate(`/payment-success?${successParams.toString()}`);
+          return;
+        }
+
         logError('Payment verification failed', 'PaymentCallbackPage', { error, paymentId, orderId, debugObject });
         setError(error.message || "Payment verification failed");
         setTimeout(() => {
@@ -132,7 +178,7 @@ export function usePaymentProcessing({
       poll(0);
     }
     // eslint-disable-next-line
-  }, [success, paymentId, orderId, planId, userId, debugObject, navigate, handlePaymentStatus]); 
+  }, [success, paymentId, orderId, planId, userId, debugObject, navigate, handlePaymentStatus, fallbackCheckSubscription]); 
 
   return { status, error, pollCount, MAX_POLLS, finalPaymentId };
 }
