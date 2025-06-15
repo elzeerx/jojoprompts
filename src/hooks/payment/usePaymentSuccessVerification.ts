@@ -65,12 +65,14 @@ export function usePaymentSuccessVerification({
           setVerified(true);
           setVerifying(false);
           toast({
-            title: "Payment Successful!",
-            description: "Your subscription is now active.",
+            title: "Payment successful!",
+            description: "Your subscription is now active. You can access your premium features.",
           });
+          // Do NOT call setError for a success, just clear any previous error
+          setError(null);
           setTimeout(() => {
-            setError("Payment complete! You can now access your plan/features.");
-          }, 2000);
+            navigate("/prompts");
+          }, 1800);
           return;
         }
       } catch (subCheckErr) {
@@ -121,9 +123,10 @@ export function usePaymentSuccessVerification({
             setVerified(true);
             setVerifying(false);
             toast({
-              title: "Payment Success (Fallback)",
-              description: "Payment could not be verified via PayPal, but your subscription is active. Redirecting to Prompts.",
+              title: "Payment successful!",
+              description: "Payment could not be verified via PayPal, but your subscription is active. Redirecting to your plan.",
             });
+            setError(null);
             setTimeout(() => {
               navigate("/prompts");
             }, 1800);
@@ -185,9 +188,10 @@ export function usePaymentSuccessVerification({
       setVerified(true);
       setVerifying(false);
       toast({
-        title: "Payment Successful!",
-        description: "Your subscription has been activated successfully. Redirecting to Prompts.",
+        title: "Payment successful!",
+        description: "Your subscription has been activated successfully. Redirecting you now.",
       });
+      setError(null);
       setTimeout(() => {
         navigate("/prompts");
       }, 1800);
