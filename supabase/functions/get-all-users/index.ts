@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { corsHeaders, handleCors } from './cors.ts';
 import { verifyAdmin } from './auth.ts';
@@ -10,8 +9,40 @@ serve(async (req) => {
     const corsResponse = handleCors(req);
     if (corsResponse) return corsResponse;
 
-    // Verify admin access and get Supabase client
-    const { supabase, userId } = await verifyAdmin(req);
+    // 🚩: Defensive handling of auth errors: always return 401/403 with clear error if thrown by verifyAdmin, 
+    // not just generic 500.
+    let supabase, userId;
+    try {
+      ({ supabase, userId } = await verifyAdmin(req));
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("Unauthorized")) {
+        return new Response(JSON.stringify({
+          error: "Unauthorized: Invalid token or authentication required",
+          message: err?.message,
+        }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (msg.includes("Forbidden")) {
+        return new Response(JSON.stringify({
+          error: "Forbidden: Admin role required",
+          message: err?.message,
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      // If not an expected "access" error, bubble up as server error
+      return new Response(JSON.stringify({
+        error: 'Server error',
+        message: err?.message || 'Unexpected error occurred',
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Parse the request body safely
     let requestData = { action: "list" };
@@ -51,12 +82,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Edge function error:', error);
+    // Always bubble up actual server faults only here.
     return new Response(JSON.stringify({
       error: 'Server error',
       message: error.message || 'An unexpected error occurred',
     }), {
-      status: error.message?.includes('Unauthorized') ? 401 : 
-             error.message?.includes('Forbidden') ? 403 : 500,
+      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

@@ -38,7 +38,7 @@ serve(async (req: Request) => {
     } catch (err) {
       console.log("PayPal access token fetch failed:", err);
       return new Response(JSON.stringify({ error: "Failed to get PayPal access token." }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
@@ -115,8 +115,13 @@ serve(async (req: Request) => {
     }
 
     if (!payPalStatus) {
-      return new Response(JSON.stringify({ error: "Could not determine PayPal payment status.", paypal: payPalRawResponse }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      // Return error as 200 so frontend can handle it kindly and not confuse payment state with real function error
+      return new Response(JSON.stringify({ 
+        error: "Could not determine PayPal payment status.",
+        paypal: payPalRawResponse,
+        status: "UNKNOWN"
+      }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
@@ -133,6 +138,7 @@ serve(async (req: Request) => {
       }
     }
 
+    // Return 200 for ALL verified payment paths, even if not COMPLETED, allow app to decide what to do.
     return new Response(JSON.stringify({
       status: payPalStatus?.toUpperCase?.() || payPalStatus,
       justCaptured: txJustCaptured,
@@ -140,10 +146,12 @@ serve(async (req: Request) => {
       paypal: payPalRawResponse,
       transaction: localTx
     }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   } catch (error) {
     console.error("verify-paypal-payment FATAL: ", error);
+    // If PayPal is unreachable or code fails, only then return 500
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
