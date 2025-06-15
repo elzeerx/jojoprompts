@@ -9,11 +9,27 @@ export function makeSupabaseClient() {
 }
 
 // Enhanced transaction fetching with multiple fallback strategies
-export async function getTransaction(supabaseClient: any, { orderId, paymentId }: { orderId?: string, paymentId?: string }) {
-  let query = supabaseClient.from("transactions").select("*").order("created_at", { ascending: false });
-  
+/**
+ * Fetch a transaction by PayPal identifiers.
+ *
+ * When both an order ID and a payment ID are supplied the query requires
+ * that **both** values match the same row.  Previously the function used an
+ * `.or()` filter which allowed a row to match if either value was found.  The
+ * new behaviour avoids accidentally returning the wrong transaction when one of
+ * the IDs has been reused or is stale.
+ */
+export async function getTransaction(
+  supabaseClient: any,
+  { orderId, paymentId }: { orderId?: string; paymentId?: string },
+) {
+  let query =
+    supabaseClient.from("transactions").select("*").order("created_at", {
+      ascending: false,
+    });
+
   if (orderId && paymentId) {
-    query = query.or(`paypal_order_id.eq.${orderId},paypal_payment_id.eq.${paymentId}`);
+    // Require both PayPal identifiers to match the same transaction
+    query = query.eq("paypal_order_id", orderId).eq("paypal_payment_id", paymentId);
   } else if (orderId) {
     query = query.eq("paypal_order_id", orderId);
   } else if (paymentId) {
