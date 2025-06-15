@@ -101,7 +101,7 @@ export default function PricingPage() {
             <div className="mobile-card">
               <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-dark-base">What payment methods do you accept?</h3>
               <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                We accept payments via PayPal and Tap Payment (for local KWD payments).
+                We accept payments via <strong>PayPal</strong>.
               </p>
             </div>
           </div>

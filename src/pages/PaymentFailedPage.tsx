@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -23,44 +22,41 @@ export default function PaymentFailedPage() {
   const planId = searchParams.get('planId');
   const userId = searchParams.get('userId');
   const reason = searchParams.get('reason') || 'Payment was not completed';
-  const tapId = searchParams.get('tap_id');
-  const chargeStatus = searchParams.get('status');
-  const responseCode = searchParams.get('response_code');
   
   // Enhanced error categorization for better user experience
   const getErrorDetails = () => {
     const lowerReason = reason.toLowerCase();
     
-    if (lowerReason.includes('declined') || responseCode === '101') {
+    if (lowerReason.includes('declined')) {
       return {
         title: "Card Declined",
         message: "Your payment method was declined by your bank.",
         suggestions: [
           "Check your card details and try again",
           "Contact your bank to ensure the card is active",
-          "Try a different payment method"
+          "Try a different card or PayPal account"
         ]
       };
     }
     
-    if (lowerReason.includes('insufficient') || responseCode === '102') {
+    if (lowerReason.includes('insufficient')) {
       return {
         title: "Insufficient Funds",
         message: "Your payment method has insufficient funds.",
         suggestions: [
           "Check your account balance",
-          "Try a different payment method",
+          "Try a different card or PayPal account",
           "Contact your bank for assistance"
         ]
       };
     }
     
-    if (lowerReason.includes('expired') || responseCode === '103') {
+    if (lowerReason.includes('expired')) {
       return {
         title: "Card Expired",
         message: "Your payment method has expired.",
         suggestions: [
-          "Update your card information",
+          "Update your card or PayPal account",
           "Use a different payment method",
           "Contact your bank for a new card"
         ]
@@ -110,9 +106,6 @@ export default function PaymentFailedPage() {
     planId,
     userId,
     reason,
-    tapId,
-    chargeStatus,
-    responseCode,
     errorDetails
   });
   
@@ -146,18 +139,6 @@ export default function PaymentFailedPage() {
                   </ul>
                 </div>
               </div>
-              
-              {/* Technical details for debugging */}
-              {(chargeStatus || responseCode) && (
-                <div className="mt-3 pt-3 border-t border-red-200">
-                  <p className="text-xs text-red-600">
-                    Technical details: 
-                    {chargeStatus && ` Status: ${chargeStatus}`}
-                    {responseCode && ` Code: ${responseCode}`}
-                    {tapId && ` ID: ${tapId}`}
-                  </p>
-                </div>
-              )}
             </div>
             
             <div className="border-t pt-4 sm:pt-6">
