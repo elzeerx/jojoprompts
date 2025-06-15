@@ -25,39 +25,48 @@ export function usePaymentSuccessVerification({
   const navigate = useNavigate();
 
   useEffect(() => {
-    function gotoFailedPage(planId: string | null | undefined, reason: string, delayMs: number = 2000) {
+    function gotoFailedPage(planId: string | null | undefined, reason: string, delayMs: number = 2000, userId?: string) {
       setTimeout(() => {
-        navigate(`/payment-failed?planId=${planId || ''}&reason=${encodeURIComponent(reason)}`);
+        // Add both planId and userId to failed page (for checkout recovery)
+        let url = `/payment-failed?reason=${encodeURIComponent(reason)}`;
+        if (planId) url += `&planId=${planId}`;
+        if (userId) url += `&userId=${userId}`;
+        navigate(url);
       }, delayMs);
     }
 
-    // Better: fallback to DB check if no session user
-    const verifyAndActivate = async () => {
-      setVerifying(true);
+    // Normalize parameter extraction (support planId/plan_id and userId/user_id)
+    const extractParam = (key: string) => params[key] || params[key.toLowerCase()] || params[key.replace("_", "")] || params[key.replace(/[A-Z]/g, m => "_" + m.toLowerCase())];
+    const planId = extractParam("planId") || extractParam("plan_id");
+    const userId = extractParam("userId") || extractParam("user_id");
+    const token = params.token;
+    const payerId = params.payerId;
 
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    // Debug
+    console.log("PaymentSuccessVerification params normalized:", { planId, userId, token, payerId, allParams: params.allParams });
+
+    setVerifying(true);
+
+    const verifyAndActivate = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
       let activeUser = user;
       if (sessionData.session?.user) {
         activeUser = sessionData.session.user;
       }
 
-      // Removed "paymentId" from destructuring, since it's not in params.
-      const { planId, userId, token, payerId } = params;
-
-      // 1. Core payment details required (removed paymentId from logic)
+      // Core payment details required
       if (!planId || !userId || !token) {
         setError('Missing payment information');
         setVerifying(false);
-        gotoFailedPage(planId, 'Missing payment information - please try again', 1500);
+        gotoFailedPage(planId, 'Missing payment information - please try again', 1500, userId);
         return;
       }
 
-      // 2. Try normal session flow; fallback to DB state if no session
+      // Database fallback: No active session/user
       if (!activeUser) {
-        // Fallback: check DB for a completed subscription for userId and planId
         try {
           // DB fallback: is there an active subscription for this plan & user?
-          const { data: sub, error: subError } = await supabase
+          const { data: sub } = await supabase
             .from("user_subscriptions")
             .select("id,status,plan_id,user_id,created_at")
             .eq("user_id", userId)
@@ -67,56 +76,61 @@ export function usePaymentSuccessVerification({
             .maybeSingle();
 
           if (sub && sub.status === "active") {
-            // Show payment as successful
             setVerified(true);
             setVerifying(false);
             toast({
               title: "Payment Successful!",
-              description: "Your subscription is now active. You may need to login, but your payment has been captured.",
+              description: "Your subscription is now active. Please log in to access your content.",
             });
-            setTimeout(() => navigate("/prompts"), 1800);
+            // Instead of redirect, prompt login
+            setTimeout(() => {
+              setError("Payment complete. Please log in to unlock your plan."); // Triggers login options on UI
+            }, 1500);
             return;
           }
 
-          setError('You must be logged in to complete your payment. Please sign in and try again.');
+          // No subscription: prompt login recovery with guidance
+          setError(
+            'You must be logged in to complete your payment. If you already paid, please log back in to unlock access.'
+          );
           setVerifying(false);
           toast({
-            title: "Authentication Error",
-            description: "Your login could not be restored, but your payment may have succeeded. Please log in.",
+            title: "Authentication Required",
+            description: "Please log in to unlock your access. Your payment was likely successful!",
             variant: "destructive",
           });
-          gotoFailedPage(planId, "No authentication session");
+          gotoFailedPage(planId, "No authentication session", 2000, userId);
           return;
         } catch (e) {
           setError('Payment session timeout or invalid. Please try again.');
           setVerifying(false);
-          gotoFailedPage(planId, "No authentication session");
+          gotoFailedPage(planId, "No authentication session", 2000, userId);
           return;
         }
       }
 
-      // 3. User session must match userId in params
+      // Session mismatch (user id mismatch)
       if (userId !== activeUser.id) {
-        setError('Payment session does not match your account. Please sign in with the account you used for checkout.');
+        setError('Payment session does not match your account. Please sign in with the account used for checkout.');
         setVerifying(false);
         toast({
           title: "User Authentication Mismatch",
-          description: "The payment was made with a different account. Please log in with the correct email and try again.",
+          description: "Payment made with different account. Log in with your checkout email to unlock access.",
           variant: "destructive",
         });
-        gotoFailedPage(planId, 'Invalid payment session - user mismatch', 1500);
+        gotoFailedPage(planId, 'Invalid payment session - user mismatch', 2000, userId);
         return;
       }
 
+      // --- Step 1: Verify/capture order with PayPal via edge function ---
       try {
-        // --- Step 1: Verify/capture order with PayPal via edge function ---
         const { data: verify, error: verifyError } = await supabase.functions.invoke("verify-paypal-payment", {
           headers: {
             "Content-Type": "application/json",
             ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
           },
           body: {
-            order_id: token, // token is order_id from PayPal return
+            order_id: token,
             payer_id: payerId,
           }
         });
@@ -129,7 +143,7 @@ export function usePaymentSuccessVerification({
             description: "Please log in again to verify your payment.",
             variant: "destructive",
           });
-          gotoFailedPage(planId, 'Authentication expired', 1000);
+          gotoFailedPage(planId, 'Authentication expired', 1000, userId);
           return;
         }
 
@@ -141,11 +155,10 @@ export function usePaymentSuccessVerification({
             description: verifyError?.message || "Your PayPal payment could not be verified. Please contact support.",
             variant: "destructive",
           });
-          gotoFailedPage(planId, 'PayPal payment could not be verified - please contact support');
+          gotoFailedPage(planId, 'PayPal payment could not be verified - please contact support', 2000, userId);
           return;
         }
 
-        // --- Step 2: Extract PayPal paymentId robustly ---
         const paypal_payment_id =
           verify.paymentId ||
           verify.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
@@ -161,7 +174,7 @@ export function usePaymentSuccessVerification({
             description: "We could not confirm your PayPal payment. Please contact support.",
             variant: "destructive",
           });
-          gotoFailedPage(planId, 'Could not confirm PayPal payment - missing payment ID');
+          gotoFailedPage(planId, 'Could not confirm PayPal payment - missing payment ID', 2000, userId);
           return;
         }
 
@@ -190,7 +203,7 @@ export function usePaymentSuccessVerification({
             description: "Your payment was successful, but we were unable to activate your subscription. Please contact support.",
             variant: "destructive",
           });
-          gotoFailedPage(planId, 'Subscription activation failed after successful payment');
+          gotoFailedPage(planId, 'Subscription activation failed after successful payment', 2000, userId);
           return;
         }
 
@@ -212,7 +225,7 @@ export function usePaymentSuccessVerification({
           description: "There was a system error during payment verification.",
           variant: "destructive",
         });
-        gotoFailedPage(params.planId, 'Payment verification failed - system error');
+        gotoFailedPage(planId, 'Payment verification failed - system error', 2000, userId);
       }
     };
 
