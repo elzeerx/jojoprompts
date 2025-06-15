@@ -41,10 +41,11 @@ export function usePaymentSuccessVerification({
         activeUser = sessionData.session.user;
       }
 
-      const { planId, userId, token, payerId, paymentId } = params;
+      // Removed "paymentId" from destructuring, since it's not in params.
+      const { planId, userId, token, payerId } = params;
 
-      // 1. Core payment details required
-      if (!planId || !userId || !(token || paymentId)) {
+      // 1. Core payment details required (removed paymentId from logic)
+      if (!planId || !userId || !token) {
         setError('Missing payment information');
         setVerifying(false);
         gotoFailedPage(planId, 'Missing payment information - please try again', 1500);
