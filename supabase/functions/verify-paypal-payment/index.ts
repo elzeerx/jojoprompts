@@ -1,9 +1,24 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getPayPalConfig } from "./paypalConfig.ts";
 import { fetchPayPalAccessToken } from "./paypalToken.ts";
 import { makeSupabaseClient, getTransaction, updateTransactionCompleted, insertUserSubscriptionIfMissing } from "./dbOperations.ts";
 import { fetchPaypalOrder, capturePaypalOrder, fetchPaypalPaymentCapture } from "./paypalApi.ts";
+
+// Utility: get params from both URL and POST body
+async function getAllParams(req: Request): Promise<{[k: string]: any}> {
+  const url = new URL(req.url);
+  let params: any = {};
+  url.searchParams.forEach((v, k) => { params[k] = v; });
+  try {
+    if (req.method === 'POST' && req.headers.get('content-type')?.includes('application/json')) {
+      const body = await req.json();
+      if (body && typeof body === "object") {
+        params = { ...params, ...body };
+      }
+    }
+  } catch {}
+  return params;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,17 +31,6 @@ serve(async (req: Request) => {
   }
   try {
     const supabaseClient = makeSupabaseClient();
-    const url = new URL(req.url);
-    const orderId = url.searchParams.get("order_id") || url.searchParams.get("orderId");
-    const paymentId = url.searchParams.get("payment_id") || url.searchParams.get("paymentId");
-
-    if (!orderId && !paymentId) {
-      return new Response(JSON.stringify({ error: "No order_id or payment_id supplied." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
     const { clientId, clientSecret, baseUrl } = getPayPalConfig();
     let accessToken: string;
     try {
@@ -35,6 +39,17 @@ serve(async (req: Request) => {
       console.log("PayPal access token fetch failed:", err);
       return new Response(JSON.stringify({ error: "Failed to get PayPal access token." }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const params = await getAllParams(req);
+    const orderId = params.order_id || params.token || params.orderId;
+    const paymentId = params.payment_id || params.paymentId;
+
+    if (!orderId && !paymentId) {
+      return new Response(JSON.stringify({ error: "No order_id or payment_id supplied." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
@@ -48,12 +63,12 @@ serve(async (req: Request) => {
     let paymentIdAfterCapture: string | null = null;
 
     if (orderIdToUse) {
-      // Fetch PayPal order
+      // Always fetch the latest PayPal order data
       const { data: orderData } = await fetchPaypalOrder(baseUrl, accessToken, orderIdToUse);
       payPalRawResponse = orderData;
       payPalStatus = orderData.status || null;
 
-      // If status is APPROVED, capture payment
+      // If status is APPROVED, capture the payment
       if (payPalStatus === "APPROVED") {
         const { data: captureData } = await capturePaypalOrder(baseUrl, accessToken, orderIdToUse);
         payPalRawResponse.capture = captureData;

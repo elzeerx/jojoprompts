@@ -66,7 +66,7 @@ export function usePaymentProcessing({
       return;
     }
 
-    // Safeguard: only use clean polling with POST, no GET fallback.
+    // Improved: Always POST with both orderId and paymentId if either is available
     const poll = async (currentPollCount: number = 0, paymentIdArg?: string) => {
       if (currentPollCount >= MAX_POLLS) {
         logError('Payment verification timeout', 'PaymentCallbackPage', { paymentId, orderId, debugObject });
@@ -81,10 +81,11 @@ export function usePaymentProcessing({
         if (orderId) args['order_id'] = orderId;
         if (paymentIdArg || paymentId) args['payment_id'] = paymentIdArg || paymentId!;
 
-        // Always POST to verify-paypal-payment using supabase.functions.invoke
+        // Use POST to verify-paypal-payment, backend now robustly handles body & query params
         const { data, error } = await supabase.functions.invoke("verify-paypal-payment", {
           body: args,
         });
+
         let result = data;
 
         // Harden against missing/strange responses
@@ -97,13 +98,13 @@ export function usePaymentProcessing({
           return;
         }
 
-        // If status is APPROVED and not yet captured
+        // If status is APPROVED and not yet captured, poll again (should be soon captured)
         if (result.status === "APPROVED" && orderId && currentPollCount < MAX_POLLS) {
-          setTimeout(() => poll(currentPollCount + 1, paymentIdArg), 1500);
+          setTimeout(() => poll(currentPollCount + 1, paymentIdArg), 1800);
           return;
         }
 
-        // Robust paymentId extraction on polling responses as well
+        // Robust paymentId extraction after backend refactor
         const paymentIdOut =
           result.paymentId ||
           result.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
@@ -135,3 +136,4 @@ export function usePaymentProcessing({
 
   return { status, error, pollCount, MAX_POLLS, finalPaymentId };
 }
+// ...end of file...
