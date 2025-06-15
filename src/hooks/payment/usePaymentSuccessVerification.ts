@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,7 +35,6 @@ export function usePaymentSuccessVerification({
     setVerifying(true);
 
     async function processPayment() {
-      // Session restoration (extra logging)
       const { user: activeUser, session } = await recoverSession(user);
       console.log("[PayPal] Session recovery result", { activeUser, session, planId, userId, token, payerId });
 
@@ -50,56 +48,34 @@ export function usePaymentSuccessVerification({
         return;
       }
 
-      // Fallback: No session: check DB for completed transaction/subscription
-      if (!activeUser) {
-        try {
-          const { data: sub } = await supabase
-            .from("user_subscriptions")
-            .select("id,status,plan_id,user_id,created_at")
-            .eq("user_id", userId)
-            .eq("plan_id", planId)
-            .eq("status", "active")
-            .order("created_at", { ascending: false })
-            .maybeSingle();
+      // --- PHASE 1: Database-Fallback-first verification (critical fix)
+      try {
+        // Check if valid subscription already exists (skip verification if so)
+        const { data: sub } = await supabase
+          .from("user_subscriptions")
+          .select("id,status,plan_id,user_id,created_at,payment_id")
+          .eq("user_id", userId)
+          .eq("plan_id", planId)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .maybeSingle();
 
-          if (sub && sub.status === "active") {
-            setVerified(true);
-            setVerifying(false);
-            toast({
-              title: "Payment Successful!",
-              description: "Your subscription is now active. Please log in to access your content.",
-            });
-            setTimeout(() => {
-              setError("Payment complete. Please log in to unlock your plan.");
-            }, 1500);
-            return;
-          }
-
-          handleVerificationError({
-            errorTitle: "Authentication Required (Session Lost)",
-            errorMsg: "You must be logged in to complete your payment (session expired/lost). If you already paid, please log back in to unlock access.",
-            toastMsg: "Your payment was likely successful! Please log in to access premium content.",
-            navigate, planId, userId, setError, setVerifying,
+        if (sub && sub.status === "active") {
+          console.log("[PayPal] Direct DB SUBSCRIPTION SUCCESSFALLBACK!!", sub);
+          setVerified(true);
+          setVerifying(false);
+          toast({
+            title: "Payment Successful!",
+            description: "Your subscription is now active.",
           });
-        } catch (e) {
-          handleVerificationError({
-            errorTitle: "Session Lost",
-            errorMsg: "Payment session timeout or invalid. Please try again.",
-            navigate, planId, userId, setError, setVerifying,
-          });
+          setTimeout(() => {
+            setError("Payment complete! You can now access your plan/features.");
+          }, 2000);
+          return;
         }
-        return;
-      }
-
-      // --- Mismatch between params and current user
-      if (userId !== activeUser.id) {
-        handleVerificationError({
-          errorTitle: "User Authentication Mismatch",
-          errorMsg: "Payment session does not match your account. Please sign in with the account used for checkout.",
-          toastMsg: "Payment made with a different account. Log in with your checkout email to unlock access.",
-          navigate, planId, userId, setError, setVerifying,
-        });
-        return;
+      } catch (subCheckErr) {
+        console.warn("[PayPal] Subscription DB fallback check failed", subCheckErr);
+        // Continue on to full PayPal verification flow
       }
 
       // --- Step 1: Attempt PayPal API verification (frontend logs...)
