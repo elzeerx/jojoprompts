@@ -45,6 +45,22 @@ export function SimplePayPalButton({
         approvalUrl: data.approvalUrl
       });
 
+      // Backup current auth session tokens in case PayPal redirects clear them
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.access_token && currentSession?.refresh_token) {
+          localStorage.setItem(
+            'payPalSessionBackup',
+            JSON.stringify({
+              access_token: currentSession.access_token,
+              refresh_token: currentSession.refresh_token
+            })
+          );
+        }
+      } catch (backupError) {
+        console.error('Error backing up auth session for PayPal redirect:', backupError);
+      }
+
       // ENHANCED: Store comprehensive payment context in localStorage for callback recovery
       const paymentContext = {
         planId,
