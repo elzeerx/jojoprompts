@@ -212,6 +212,29 @@ export function usePaymentProcessing({
         return true;
       }
 
+      // Attempt restoration from localStorage backup created before PayPal redirection
+      const backupRaw = localStorage.getItem('payPalSessionBackup');
+      if (backupRaw) {
+        try {
+          const tokens = JSON.parse(backupRaw);
+          if (tokens?.access_token && tokens?.refresh_token) {
+            const { data: restored, error: restoreError } = await supabase.auth.setSession({
+              access_token: tokens.access_token,
+              refresh_token: tokens.refresh_token
+            });
+            if (!restoreError && restored.session?.user) {
+              console.log('[PaymentProcessing] Session restored from backup');
+              setCurrentUser(restored.session.user);
+              localStorage.removeItem('payPalSessionBackup');
+              return true;
+            }
+          }
+        } catch (parseError) {
+          console.error('[PaymentProcessing] Failed to restore session backup:', parseError);
+          localStorage.removeItem('payPalSessionBackup');
+        }
+      }
+
       // If we know the user ID from transaction, we can proceed without session
       if (transactionUserId) {
         console.log(`[PaymentProcessing] Proceeding with transaction user ID:`, transactionUserId);
