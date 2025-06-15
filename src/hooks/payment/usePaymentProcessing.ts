@@ -23,12 +23,12 @@ export function usePaymentProcessing({
   const [finalPaymentId, setFinalPaymentId] = useState<string | undefined>(paymentId);
   const MAX_POLLS = 35;
 
-  // ENHANCED: Intelligent transaction recovery when user context is missing
+  // Enhanced transaction recovery with better matching
   const findTransactionByOrder = useCallback(async (orderIdToFind: string) => {
     try {
       const { data: transactions, error } = await supabase
         .from("transactions")
-        .select("user_id, plan_id, paypal_payment_id, status")
+        .select("user_id, plan_id, paypal_payment_id, status, created_at")
         .eq("paypal_order_id", orderIdToFind)
         .order("created_at", { ascending: false })
         .limit(1);
@@ -47,30 +47,53 @@ export function usePaymentProcessing({
     }
   }, []);
 
-  // ENHANCED: Fallback subscription check with better error handling
-  const fallbackCheckSubscription = useCallback(async (userIdToCheck?: string, planIdToCheck?: string) => {
+  // Enhanced subscription check with comprehensive verification
+  const checkForActiveSubscription = useCallback(async (userIdToCheck?: string, planIdToCheck?: string) => {
     const finalUserId = userIdToCheck || userId;
     const finalPlanId = planIdToCheck || planId;
     
-    if (finalUserId && finalPlanId) {
-      try {
-        const { data, error } = await supabase
-          .from("user_subscriptions")
-          .select("id, payment_id, created_at")
-          .eq("user_id", finalUserId)
-          .eq("plan_id", finalPlanId)
-          .eq("status", "active")
-          .order("created_at", { ascending: false })
-          .limit(1);
-        
-        if (data && data.length > 0 && !error) {
-          console.log('Found active subscription:', data[0]);
-          return { hasSubscription: true, subscription: data[0] };
-        }
-      } catch (error) {
-        console.error('Error checking subscription:', error);
-      }
+    if (!finalUserId || !finalPlanId) {
+      console.log('Missing userId or planId for subscription check:', { finalUserId, finalPlanId });
+      return { hasSubscription: false, subscription: null };
     }
+
+    try {
+      // Check for active subscription
+      const { data: subscription, error: subError } = await supabase
+        .from("user_subscriptions")
+        .select("id, payment_id, created_at, transaction_id")
+        .eq("user_id", finalUserId)
+        .eq("plan_id", finalPlanId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      
+      if (subscription && subscription.length > 0 && !subError) {
+        console.log('Found active subscription:', subscription[0]);
+        return { hasSubscription: true, subscription: subscription[0] };
+      }
+
+      // Also check for recent completed transactions (last 10 minutes)
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data: recentTransaction, error: txError } = await supabase
+        .from("transactions")
+        .select("id, paypal_payment_id, status")
+        .eq("user_id", finalUserId)
+        .eq("plan_id", finalPlanId)
+        .eq("status", "completed")
+        .gte("created_at", tenMinutesAgo)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (recentTransaction && recentTransaction.length > 0 && !txError) {
+        console.log('Found recent completed transaction:', recentTransaction[0]);
+        return { hasSubscription: true, subscription: { transaction_id: recentTransaction[0].id, payment_id: recentTransaction[0].paypal_payment_id } };
+      }
+
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+    }
+    
     return { hasSubscription: false, subscription: null };
   }, [userId, planId]);
 
@@ -88,7 +111,7 @@ export function usePaymentProcessing({
       if (paymentIdForSuccessParam) successParams.append('payment_id', paymentIdForSuccessParam);
       if (orderId) successParams.append('order_id', orderId);
       navigate(`/payment-success?${successParams.toString()}`);
-    } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED', 'ERROR'].includes(paymentStatus)) {
+    } else if (['FAILED', 'DECLINED', 'CANCELLED', 'VOIDED'].includes(paymentStatus)) {
       const failedParams = new URLSearchParams();
       if (finalPlanId) failedParams.append('planId', finalPlanId);
       failedParams.append('reason', `Payment ${paymentStatus.toLowerCase()}`);
@@ -121,16 +144,16 @@ export function usePaymentProcessing({
 
     const poll = async (currentPollCount: number = 0, paymentIdArg?: string, contextUserId?: string, contextPlanId?: string) => {
       if (currentPollCount >= MAX_POLLS) {
-        // ENHANCED: Final attempt with subscription check before timeout
-        const { hasSubscription } = await fallbackCheckSubscription(contextUserId, contextPlanId);
+        // Final subscription check before timeout
+        const { hasSubscription, subscription } = await checkForActiveSubscription(contextUserId, contextPlanId);
         if (hasSubscription) {
           console.log('Found subscription on final timeout check, treating as success');
-          handlePaymentStatus('COMPLETED', currentPollCount, paymentIdArg || paymentId || undefined, contextUserId, contextPlanId);
+          handlePaymentStatus('COMPLETED', currentPollCount, subscription?.payment_id || paymentIdArg || paymentId || undefined, contextUserId, contextPlanId);
           return;
         }
 
         logError('Payment verification timeout', 'PaymentCallbackPage', { paymentId, orderId, debugObject });
-        setError('Payment verification timeout (PayPal sometimes needs several minutes to confirm). Please contact support with your order ID.');
+        setError('Payment verification timeout. Please contact support if your payment was successful.');
         setTimeout(() => {
           navigate(`/payment-failed?planId=${contextPlanId || planId || ''}&reason=Payment verification timeout`);
         }, 3000);
@@ -152,7 +175,7 @@ export function usePaymentProcessing({
         let currentUserId = contextUserId || userId;
         let currentPlanId = contextPlanId || planId;
 
-        // ENHANCED: Handle missing user context by looking up transaction
+        // Try to recover user context if missing
         if ((!currentUserId || !currentPlanId) && orderId) {
           console.log('Missing user context, attempting transaction lookup...');
           const transaction = await findTransactionByOrder(orderId);
@@ -163,11 +186,12 @@ export function usePaymentProcessing({
           }
         }
 
-        // ENHANCED: Better handling of verification responses
-        if (!result || !result.status || result.status === "UNKNOWN" || error) {
-          console.log('Verification returned unclear status, checking for subscription fallback...');
+        // ENHANCED: Handle verification responses more intelligently
+        if (!result || result.status === "ERROR" || error) {
+          console.log('Verification returned error or unclear status, checking subscription fallback...');
           
-          const { hasSubscription, subscription } = await fallbackCheckSubscription(currentUserId, currentPlanId);
+          // Always check for subscription before considering it an error
+          const { hasSubscription, subscription } = await checkForActiveSubscription(currentUserId, currentPlanId);
           if (hasSubscription) {
             console.log('Found active subscription despite verification issues, treating as success');
             setStatus('COMPLETED');
@@ -182,30 +206,48 @@ export function usePaymentProcessing({
             return;
           }
 
-          // Only set error if we've tried multiple times and found no subscription
-          if (currentPollCount >= 3) {
-            setError('Could not verify payment status with PayPal.');
-            logError("Unable to determine payment status after multiple attempts", "PaymentCallbackPage", { debugObject, result, currentPollCount });
+          // Only treat as error after multiple attempts and no subscription found
+          if (currentPollCount >= 5) {
+            console.error('Multiple verification failures and no subscription found');
+            setError('Unable to verify payment status. Please contact support.');
+            logError("Payment verification failed after multiple attempts", "PaymentCallbackPage", { debugObject, result, currentPollCount });
             setTimeout(() => {
-              navigate(`/payment-failed?planId=${currentPlanId || ''}&reason=Unable to determine payment status`);
-            }, 3500);
+              navigate(`/payment-failed?planId=${currentPlanId || ''}&reason=Payment verification failed`);
+            }, 3000);
             return;
           } else {
             // Continue polling for transient issues
-            console.log('Verification unclear, continuing to poll...');
+            console.log('Verification failed, continuing to poll...', { attempt: currentPollCount + 1 });
             setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 2000);
             return;
           }
         }
 
-        // If status is APPROVED and not yet captured, poll again
+        // Handle UNKNOWN status by checking for subscription
+        if (result.status === "UNKNOWN") {
+          console.log('Unknown status received, checking for subscription...');
+          const { hasSubscription, subscription } = await checkForActiveSubscription(currentUserId, currentPlanId);
+          if (hasSubscription) {
+            console.log('Found subscription despite unknown status, treating as success');
+            handlePaymentStatus('COMPLETED', currentPollCount, subscription?.payment_id || paymentIdArg || paymentId || undefined, currentUserId, currentPlanId);
+            return;
+          }
+          
+          // Continue polling for unknown status
+          if (currentPollCount < MAX_POLLS - 5) {
+            setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 2000);
+            return;
+          }
+        }
+
+        // If status is APPROVED and not yet captured, continue polling
         if (result.status === "APPROVED" && orderId && currentPollCount < MAX_POLLS) {
           console.log('Payment approved but not captured, continuing to poll...');
           setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 1800);
           return;
         }
 
-        // Enhanced paymentId extraction
+        // Extract payment ID from response
         const paymentIdOut =
           result.paymentId ||
           result.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
@@ -217,7 +259,7 @@ export function usePaymentProcessing({
 
         setFinalPaymentId(paymentIdOut);
 
-        console.log('Payment verification successful:', {
+        console.log('Payment verification result:', {
           status: result.status,
           paymentId: paymentIdOut,
           userId: currentUserId,
@@ -229,8 +271,8 @@ export function usePaymentProcessing({
       } catch (error: any) {
         console.error('Payment verification error:', error);
         
-        // ENHANCED: Fallback check even on errors
-        const { hasSubscription, subscription } = await fallbackCheckSubscription(contextUserId, contextPlanId);
+        // Always check for subscription even on errors
+        const { hasSubscription, subscription } = await checkForActiveSubscription(contextUserId, contextPlanId);
         if (hasSubscription) {
           console.log('Found subscription despite verification error, treating as success');
           setStatus('COMPLETED');
@@ -244,11 +286,17 @@ export function usePaymentProcessing({
           return;
         }
 
-        logError('Payment verification failed', 'PaymentCallbackPage', { error, paymentId, orderId, debugObject });
-        setError(error.message || "Payment verification failed");
-        setTimeout(() => {
-          navigate(`/payment-failed?planId=${contextPlanId || planId || ''}&reason=Payment verification failed: ${error.message || "unknown error"}`);
-        }, 3000);
+        // Only set error after checking for subscription
+        if (currentPollCount >= 3) {
+          logError('Payment verification failed', 'PaymentCallbackPage', { error, paymentId, orderId, debugObject });
+          setError('Payment verification failed. Please contact support if your payment was successful.');
+          setTimeout(() => {
+            navigate(`/payment-failed?planId=${contextPlanId || planId || ''}&reason=Payment verification failed`);
+          }, 3000);
+        } else {
+          // Retry on transient errors
+          setTimeout(() => poll(currentPollCount + 1, paymentIdArg, contextUserId, contextPlanId), 2000);
+        }
       }
     };
 
@@ -257,7 +305,7 @@ export function usePaymentProcessing({
     } else {
       poll(0, undefined, userId, planId);
     }
-  }, [success, paymentId, orderId, planId, userId, debugObject, navigate, handlePaymentStatus, fallbackCheckSubscription, findTransactionByOrder]); 
+  }, [success, paymentId, orderId, planId, userId, debugObject, navigate, handlePaymentStatus, checkForActiveSubscription, findTransactionByOrder]); 
 
   return { status, error, pollCount, MAX_POLLS, finalPaymentId };
 }

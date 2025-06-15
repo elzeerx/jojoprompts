@@ -30,6 +30,7 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  
   try {
     const supabaseClient = makeSupabaseClient();
     const { clientId, clientSecret, baseUrl } = getPayPalConfig();
@@ -43,7 +44,7 @@ serve(async (req: Request) => {
         error: "Failed to get PayPal access token.",
         status: "ERROR"
       }), {
-        status: 200, // Return 200 so frontend can handle gracefully
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
@@ -65,7 +66,6 @@ serve(async (req: Request) => {
     }
 
     let { data: localTx } = await getTransaction(supabaseClient, { orderId, paymentId });
-
     let orderIdToUse = orderId || localTx?.paypal_order_id;
     let paymentIdToUse = paymentId || localTx?.paypal_payment_id;
     let payPalStatus: string | null = null;
@@ -80,59 +80,95 @@ serve(async (req: Request) => {
       localTxStatus: localTx?.status 
     });
 
-    if (orderIdToUse) {
-      // Always fetch the latest PayPal order data
-      const { data: orderData, ok: orderOk } = await fetchPaypalOrder(baseUrl, accessToken, orderIdToUse);
-      
-      if (!orderOk) {
-        console.error('Failed to fetch PayPal order:', orderData);
-        return new Response(JSON.stringify({ 
-          error: "Failed to fetch PayPal order details.",
-          status: "ERROR",
-          paypal: orderData
+    // Enhanced: Check for existing subscription before doing PayPal verification
+    if (localTx?.user_id && localTx?.plan_id) {
+      const { data: existingSubscription } = await supabaseClient
+        .from("user_subscriptions")
+        .select("id, payment_id")
+        .eq("user_id", localTx.user_id)
+        .eq("plan_id", localTx.plan_id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (existingSubscription && existingSubscription.length > 0) {
+        console.log('Found existing active subscription, returning success:', existingSubscription[0]);
+        return new Response(JSON.stringify({
+          status: "COMPLETED",
+          justCaptured: false,
+          paymentId: existingSubscription[0].payment_id,
+          paypal: { status: "COMPLETED" },
+          transaction: localTx
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
+    }
 
-      payPalRawResponse = orderData;
-      payPalStatus = orderData.status || null;
+    if (orderIdToUse) {
+      // Fetch the latest PayPal order data
+      const { data: orderData, ok: orderOk } = await fetchPaypalOrder(baseUrl, accessToken, orderIdToUse);
+      
+      if (!orderOk) {
+        console.error('Failed to fetch PayPal order:', orderData);
+        // Don't return error immediately, try fallback checks
+        payPalStatus = "UNKNOWN";
+        payPalRawResponse = { error: "Failed to fetch order", details: orderData };
+      } else {
+        payPalRawResponse = orderData;
+        payPalStatus = orderData.status || null;
 
-      console.log('PayPal order status:', { orderId: orderIdToUse, status: payPalStatus });
+        console.log('PayPal order status:', { orderId: orderIdToUse, status: payPalStatus });
 
-      // If status is APPROVED, capture the payment
-      if (payPalStatus === "APPROVED") {
-        console.log('Order is approved, attempting capture...');
-        const { data: captureData, ok: captureOk } = await capturePaypalOrder(baseUrl, accessToken, orderIdToUse);
-        
-        if (!captureOk) {
-          console.error('PayPal capture failed:', captureData);
-          return new Response(JSON.stringify({ 
-            error: "Failed to capture PayPal payment.",
-            status: "FAILED",
-            paypal: captureData
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
-        }
+        // If status is APPROVED, capture the payment
+        if (payPalStatus === "APPROVED") {
+          console.log('Order is approved, attempting capture...');
+          const { data: captureData, ok: captureOk } = await capturePaypalOrder(baseUrl, accessToken, orderIdToUse);
+          
+          if (!captureOk) {
+            console.error('PayPal capture failed:', captureData);
+            // Don't fail immediately, could be already captured
+            payPalStatus = "CAPTURE_FAILED";
+            payPalRawResponse.capture_error = captureData;
+          } else {
+            payPalRawResponse.capture = captureData;
+            payPalStatus = captureData.status || payPalStatus;
+            let paymentCaptureObj = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+            paymentIdAfterCapture = paymentCaptureObj?.id || null;
 
-        payPalRawResponse.capture = captureData;
-        payPalStatus = captureData.status || payPalStatus;
-        let paymentCaptureObj = captureData.purchase_units?.[0]?.payments?.captures?.[0];
-        paymentIdAfterCapture = paymentCaptureObj?.id || null;
+            console.log('Capture result:', { 
+              captureStatus: payPalStatus, 
+              paymentCaptureStatus: paymentCaptureObj?.status,
+              paymentIdAfterCapture 
+            });
 
-        console.log('Capture result:', { 
-          captureStatus: payPalStatus, 
-          paymentCaptureStatus: paymentCaptureObj?.status,
-          paymentIdAfterCapture 
-        });
-
-        if (payPalStatus === "COMPLETED" || paymentCaptureObj?.status === "COMPLETED") {
-          txJustCaptured = true;
-          if (localTx && paymentIdAfterCapture) {
-            console.log('Updating transaction as completed:', { txId: localTx.id, paymentId: paymentIdAfterCapture });
+            if (payPalStatus === "COMPLETED" || paymentCaptureObj?.status === "COMPLETED") {
+              txJustCaptured = true;
+              if (localTx && paymentIdAfterCapture) {
+                console.log('Updating transaction as completed:', { txId: localTx.id, paymentId: paymentIdAfterCapture });
+                await updateTransactionCompleted(supabaseClient, { id: localTx.id, paypal_payment_id: paymentIdAfterCapture });
+                if (localTx.user_id && localTx.plan_id) {
+                  await insertUserSubscriptionIfMissing(supabaseClient, {
+                    user_id: localTx.user_id,
+                    plan_id: localTx.plan_id,
+                    payment_id: paymentIdAfterCapture,
+                    transaction_id: localTx.id,
+                  });
+                }
+              }
+            }
+          }
+        } else if (payPalStatus === "COMPLETED" && orderData.purchase_units?.[0]?.payments?.captures?.[0]) {
+          paymentIdAfterCapture = orderData.purchase_units[0].payments.captures[0].id || null;
+          const captureStatus = orderData.purchase_units[0].payments.captures[0].status;
+          payPalStatus = captureStatus;
+          
+          console.log('Order already completed:', { paymentIdAfterCapture, captureStatus });
+          
+          // Update DB if needed
+          if (localTx && paymentIdAfterCapture && (localTx.status !== "completed" || !localTx.paypal_payment_id)) {
+            console.log('Updating existing transaction:', { txId: localTx.id, paymentId: paymentIdAfterCapture });
             await updateTransactionCompleted(supabaseClient, { id: localTx.id, paypal_payment_id: paymentIdAfterCapture });
             if (localTx.user_id && localTx.plan_id) {
               await insertUserSubscriptionIfMissing(supabaseClient, {
@@ -144,26 +180,6 @@ serve(async (req: Request) => {
             }
           }
         }
-      } else if (payPalStatus === "COMPLETED" && orderData.purchase_units?.[0]?.payments?.captures?.[0]?.status) {
-        paymentIdAfterCapture = orderData.purchase_units[0].payments.captures[0].id || null;
-        const captureStatus = orderData.purchase_units[0].payments.captures[0].status;
-        payPalStatus = captureStatus;
-        
-        console.log('Order already completed:', { paymentIdAfterCapture, captureStatus });
-        
-        // Update DB if needed
-        if (localTx && paymentIdAfterCapture && (localTx.status !== "completed" || !localTx.paypal_payment_id)) {
-          console.log('Updating existing transaction:', { txId: localTx.id, paymentId: paymentIdAfterCapture });
-          await updateTransactionCompleted(supabaseClient, { id: localTx.id, paypal_payment_id: paymentIdAfterCapture });
-          if (localTx.user_id && localTx.plan_id) {
-            await insertUserSubscriptionIfMissing(supabaseClient, {
-              user_id: localTx.user_id,
-              plan_id: localTx.plan_id,
-              payment_id: paymentIdAfterCapture,
-              transaction_id: localTx.id,
-            });
-          }
-        }
       }
     } else if (paymentIdToUse) {
       // Lookup payment directly
@@ -172,34 +188,43 @@ serve(async (req: Request) => {
       
       if (!paymentOk) {
         console.error('Failed to fetch PayPal payment:', paymentData);
-        return new Response(JSON.stringify({ 
-          error: "Failed to fetch PayPal payment details.",
-          status: "ERROR",
-          paypal: paymentData
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        payPalStatus = "UNKNOWN";
+        payPalRawResponse = { error: "Failed to fetch payment", details: paymentData };
+      } else {
+        payPalRawResponse = paymentData;
+        payPalStatus = paymentData.status || null;
+        paymentIdAfterCapture = paymentData.id || null;
+        
+        console.log('Direct payment lookup result:', { status: payPalStatus, paymentId: paymentIdAfterCapture });
       }
-
-      payPalRawResponse = paymentData;
-      payPalStatus = paymentData.status || null;
-      paymentIdAfterCapture = paymentData.id || null;
-      
-      console.log('Direct payment lookup result:', { status: payPalStatus, paymentId: paymentIdAfterCapture });
     }
 
-    // ENHANCED: More specific error handling and status determination
-    if (!payPalStatus) {
-      console.error('Could not determine PayPal payment status');
-      return new Response(JSON.stringify({ 
-        error: "Could not determine PayPal payment status.",
-        paypal: payPalRawResponse,
-        status: "UNKNOWN"
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+    // Enhanced: Final verification and fallback handling
+    if (!payPalStatus || payPalStatus === "UNKNOWN" || payPalStatus === "CAPTURE_FAILED") {
+      console.log('PayPal verification unclear, checking database for completed transaction...');
+      
+      // Check if we have a completed transaction in our database
+      if (localTx && localTx.status === "completed" && localTx.paypal_payment_id) {
+        console.log('Found completed transaction in database, treating as success');
+        payPalStatus = "COMPLETED";
+        paymentIdAfterCapture = localTx.paypal_payment_id;
+      } else if (localTx?.user_id && localTx?.plan_id) {
+        // Check if user has an active subscription for this plan
+        const { data: subscription } = await supabaseClient
+          .from("user_subscriptions")
+          .select("payment_id")
+          .eq("user_id", localTx.user_id)
+          .eq("plan_id", localTx.plan_id)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (subscription && subscription.length > 0) {
+          console.log('Found active subscription, treating as completed');
+          payPalStatus = "COMPLETED";
+          paymentIdAfterCapture = subscription[0].payment_id;
+        }
+      }
     }
 
     // Final DB update for completed payments
@@ -216,14 +241,14 @@ serve(async (req: Request) => {
       }
     }
 
-    const finalStatus = payPalStatus?.toUpperCase?.() || payPalStatus;
+    const finalStatus = payPalStatus?.toUpperCase?.() || payPalStatus || "UNKNOWN";
     console.log('Payment verification complete:', { 
       finalStatus, 
       justCaptured: txJustCaptured, 
       paymentId: paymentIdAfterCapture 
     });
 
-    // ENHANCED: Always return 200 for successful verification attempts
+    // Always return 200 for successful API calls
     return new Response(JSON.stringify({
       status: finalStatus,
       justCaptured: txJustCaptured,
@@ -234,14 +259,14 @@ serve(async (req: Request) => {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
+    
   } catch (error) {
     console.error("verify-paypal-payment FATAL ERROR:", error);
-    // Only return 500 for actual server failures
     return new Response(JSON.stringify({ 
       error: error.message,
       status: "ERROR"
     }), {
-      status: 200, // Return 200 so frontend can handle gracefully
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }

@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
 
 interface PaymentProcessingLoaderProps {
   status: string;
@@ -18,6 +18,13 @@ export function PaymentProcessingLoader({
   const getStatusDisplay = () => {
     switch (status) {
       case 'checking':
+        if (pollCount > 15) {
+          return {
+            icon: <Clock className="h-8 w-8 text-orange-600" />,
+            title: "Verifying Payment Status",
+            message: "This is taking longer than usual. We're checking your payment status with PayPal..."
+          };
+        }
         return {
           icon: <Loader2 className="h-8 w-8 animate-spin text-blue-600" />,
           title: "Verifying Your Payment",
@@ -80,12 +87,29 @@ export function PaymentProcessingLoader({
           </div>
         )}
 
-        {/* Additional context for long waits */}
+        {/* Enhanced messaging for long waits */}
         {pollCount > 10 && status === 'checking' && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-            <p className="text-sm text-blue-700">
-              PayPal verification is taking longer than usual. This can happen during high traffic periods.
+            <p className="text-sm text-blue-700 mb-2">
+              <strong>Payment verification is taking longer than usual.</strong>
+            </p>
+            <p className="text-sm text-blue-600">
+              This can happen during high traffic periods or PayPal processing delays. 
+              We're actively checking your payment status and will redirect you once confirmed.
+            </p>
+            <p className="text-xs text-blue-500 mt-2">
               Please don't close this page - we'll keep trying.
+            </p>
+          </div>
+        )}
+
+        {/* Warning for very long waits */}
+        {pollCount > 25 && status === 'checking' && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
+            <p className="text-sm text-orange-700">
+              <strong>Still verifying your payment...</strong><br />
+              If your payment was successful, you'll be redirected shortly. 
+              If this continues, please contact support with your order details.
             </p>
           </div>
         )}
