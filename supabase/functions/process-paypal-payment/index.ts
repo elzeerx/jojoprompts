@@ -1,3 +1,43 @@
+
+// Helper to get PayPal API base URL and credentials
+function getPayPalConfig() {
+  const clientId = Deno.env.get('PAYPAL_CLIENT_ID');
+  const clientSecret = Deno.env.get('PAYPAL_CLIENT_SECRET');
+  const env = Deno.env.get('PAYPAL_ENVIRONMENT') || 'sandbox';
+  const baseUrl = env === 'production'
+    ? 'https://api-m.paypal.com'
+    : 'https://api-m.sandbox.paypal.com';
+  return { clientId, clientSecret, baseUrl };
+}
+
+// Helper to get PayPal access token
+async function fetchPayPalAccessToken(baseUrl: string, clientId: string, clientSecret: string): Promise<string> {
+  const res = await fetch(`${baseUrl}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`
+    },
+    body: 'grant_type=client_credentials'
+  });
+  const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    throw new Error(`Failed to get PayPal access token: ${data.error_description || res.statusText}`);
+  }
+  return data.access_token as string;
+}
+
+// Helper to get site URL
+function getSiteUrl() {
+  const rawFrontendUrl = Deno.env.get('FRONTEND_URL');
+  let siteUrl = rawFrontendUrl;
+  if (!siteUrl) {
+    siteUrl = (Deno.env.get('SUPABASE_URL')?.replace('/supabase', '') ?? '');
+  }
+  // Remove trailing slashes
+  return siteUrl.replace(/\/+$/, '');
+}
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
 
@@ -13,49 +53,21 @@ serve(async (req) => {
 
   try {
     const { action, orderId, planId, userId, amount } = await req.json()
-    
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const paypalClientId = Deno.env.get('PAYPAL_CLIENT_ID')
-    const paypalClientSecret = Deno.env.get('PAYPAL_CLIENT_SECRET')
-    const paypalEnvironment = Deno.env.get('PAYPAL_ENVIRONMENT') || 'sandbox'
-    
-    const paypalBaseUrl = paypalEnvironment === 'production' 
-      ? 'https://api-m.paypal.com' 
-      : 'https://api-m.sandbox.paypal.com'
-
-    // Get PayPal access token
-    const tokenResponse = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${btoa(`${paypalClientId}:${paypalClientSecret}`)}`
-      },
-      body: 'grant_type=client_credentials'
-    })
-
-    const tokenData = await tokenResponse.json()
-    const accessToken = tokenData.access_token
+    const { clientId, clientSecret, baseUrl } = getPayPalConfig()
+    const accessToken = await fetchPayPalAccessToken(baseUrl, clientId, clientSecret)
 
     if (action === 'create') {
-      // Use custom FRONTEND_URL secret if available, otherwise fallback to Supabase URL without /supabase
-      const rawFrontendUrl = Deno.env.get('FRONTEND_URL');
-      let siteUrl = rawFrontendUrl;
-      if (!siteUrl) {
-        siteUrl = (Deno.env.get('SUPABASE_URL')?.replace('/supabase', '') ?? '');
-      }
-      // Always remove trailing slashes from siteUrl to avoid URL issues
-      siteUrl = siteUrl.replace(/\/+$/, '');
+      const siteUrl = getSiteUrl()
+      const returnUrl = `${siteUrl}/payment/callback?success=true&plan_id=${planId}&user_id=${userId}`
+      const cancelUrl = `${siteUrl}/payment/callback?success=false&plan_id=${planId}&user_id=${userId}`
 
-      // Make sure callback path matches the frontend route (should be /payment/callback)
-      const returnUrl = `${siteUrl}/payment/callback?success=true&plan_id=${planId}&user_id=${userId}`;
-      const cancelUrl = `${siteUrl}/payment/callback?success=false&plan_id=${planId}&user_id=${userId}`;
-
-      // Create PayPal order with redirect URLs
-      const orderResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders`, {
+      const orderRes = await fetch(`${baseUrl}/v2/checkout/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,16 +91,15 @@ serve(async (req) => {
             }
           }
         })
-      })
+      });
 
-      const orderData = await orderResponse.json()
-      
-      if (!orderResponse.ok) {
+      const orderData = await orderRes.json()
+
+      if (!orderRes.ok) {
         console.error('PayPal order creation failed:', orderData)
         throw new Error(`PayPal order creation failed: ${orderData.message}`)
       }
 
-      // Create transaction record
       const { error: dbError } = await supabaseClient
         .from('transactions')
         .insert({
@@ -108,7 +119,7 @@ serve(async (req) => {
         orderId: orderData.id,
         status: orderData.status,
         links: orderData.links
-      })
+      });
 
       return new Response(JSON.stringify({
         success: true,
@@ -120,18 +131,17 @@ serve(async (req) => {
     }
 
     if (action === 'capture') {
-      // Capture PayPal payment
-      const captureResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders/${orderId}/capture`, {
+      const captureRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}/capture`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         }
-      })
+      });
 
-      const captureData = await captureResponse.json()
-      
-      if (!captureResponse.ok) {
+      const captureData = await captureRes.json()
+
+      if (!captureRes.ok) {
         console.error('PayPal capture failed:', captureData)
         throw new Error(`PayPal capture failed: ${captureData.message}`)
       }
@@ -145,7 +155,6 @@ serve(async (req) => {
         status: paymentStatus
       })
 
-      // Update transaction record
       const { data: transaction, error: updateError } = await supabaseClient
         .from('transactions')
         .update({
@@ -163,7 +172,6 @@ serve(async (req) => {
         throw new Error('Failed to update transaction')
       }
 
-      // Create subscription if payment completed
       if (paymentStatus === 'COMPLETED') {
         const { error: subscriptionError } = await supabaseClient
           .from('user_subscriptions')
@@ -174,12 +182,12 @@ serve(async (req) => {
             payment_id: paymentId,
             transaction_id: transaction.id,
             status: 'active',
-            end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
+            end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
           })
 
         if (subscriptionError) {
           console.error('Subscription creation error:', subscriptionError)
-          // Don't throw here - payment was successful, just log the error
+          // Do not throw here - payment was successful, just log the error
         }
       }
 
@@ -206,3 +214,4 @@ serve(async (req) => {
     })
   }
 })
+
