@@ -15,11 +15,18 @@ export function normalizePaymentParams(params: Record<string, any>) {
     return undefined;
   }
 
-  return {
+  const normalized = {
     planId: getAny(['planId', 'plan_id', 'PLAN_ID']),
     userId: getAny(['userId', 'user_id', 'USER_ID']),
     token: getAny(['token', 'orderId', 'order_id', 'ORDER_ID']),
     payerId: getAny(['PayerID', 'payer_id', 'PAYERID']),
     allParams: params,
   };
+
+  console.log('Normalized payment params:', {
+    input: params,
+    normalized: normalized
+  });
+
+  return normalized;
 }

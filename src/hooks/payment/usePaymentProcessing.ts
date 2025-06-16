@@ -38,6 +38,31 @@ export function usePaymentProcessing({
   // Status handler
   const handlePaymentStatus = usePaymentStatusHandler({ planId, userId, orderId, debugObject });
 
+  // Helper function to map camelCase to snake_case parameters for backend
+  const mapParametersForBackend = useCallback((params: Record<string, string>) => {
+    const mappedParams: Record<string, string> = {};
+    
+    // Map camelCase to snake_case for backend compatibility
+    if (params.orderId) mappedParams['order_id'] = params.orderId;
+    if (params.paymentId) mappedParams['payment_id'] = params.paymentId;
+    if (params.userId) mappedParams['user_id'] = params.userId;
+    if (params.planId) mappedParams['plan_id'] = params.planId;
+    
+    // Also include original parameters for backwards compatibility
+    Object.keys(params).forEach(key => {
+      if (!mappedParams[key]) {
+        mappedParams[key] = params[key];
+      }
+    });
+
+    console.log('Parameter mapping for backend:', {
+      original: params,
+      mapped: mappedParams
+    });
+
+    return mappedParams;
+  }, []);
+
   // Auth load effect
   useEffect(() => {
     const checkAuth = async () => {
@@ -73,6 +98,7 @@ export function usePaymentProcessing({
     }
 
     if (!orderId && !paymentId) {
+      console.error('Missing payment information:', { orderId, paymentId, debugObject });
       setError('Missing payment information in callback URL');
       const timeoutId = window.setTimeout(() => {
         handlePaymentStatus(PROCESSING_STATES.FAILED);
@@ -124,14 +150,21 @@ export function usePaymentProcessing({
           }
         }
 
-        const args: Record<string, string> = {};
-        if (orderId) args['order_id'] = orderId;
-        if (paymentIdArg || paymentId) args['payment_id'] = paymentIdArg || paymentId!;
-        if (currentUserId) args['user_id'] = currentUserId;
-        if (currentPlanId) args['plan_id'] = currentPlanId;
+        // Prepare parameters with proper snake_case mapping for backend
+        const originalParams: Record<string, string> = {};
+        if (orderId) originalParams['orderId'] = orderId;
+        if (paymentIdArg || paymentId) originalParams['paymentId'] = paymentIdArg || paymentId!;
+        if (currentUserId) originalParams['userId'] = currentUserId;
+        if (currentPlanId) originalParams['planId'] = currentPlanId;
 
-        const { data, error } = await supabase.functions.invoke("verify-paypal-payment", { body: args });
+        const backendParams = mapParametersForBackend(originalParams);
+
+        console.log('Calling verify-paypal-payment with parameters:', backendParams);
+
+        const { data, error } = await supabase.functions.invoke("verify-paypal-payment", { body: backendParams });
+        
         if (!data || data.status === "ERROR" || error) {
+          console.error('Payment verification error:', { data, error, params: backendParams });
           if (currentPollCount < MAX_POLLS - 5) {
             const delay = Math.min(2000 * Math.pow(1.5, Math.floor(currentPollCount / 5)), 10000);
             const timeoutId = window.setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), delay);
@@ -167,6 +200,7 @@ export function usePaymentProcessing({
         handlePaymentStatus(data.status, paymentIdOut, currentUserId, currentPlanId);
 
       } catch (error: any) {
+        console.error('Payment verification exception:', error);
         const { hasSubscription, subscription } = await checkDatabaseFirst({ userId: contextUserId || currentUser?.id || userId, planId: contextPlanId || planId, orderId });
         if (hasSubscription) {
           setStatus(PROCESSING_STATES.COMPLETED);
@@ -199,7 +233,7 @@ export function usePaymentProcessing({
       completeRef.current = false;
       clean();
     };
-  }, [success, paymentId, orderId, planId, userId, debugObject, handlePaymentStatus, currentUser, isLoadingAuth, hasSessionIndependentData, isProcessingComplete]);
+  }, [success, paymentId, orderId, planId, userId, debugObject, handlePaymentStatus, currentUser, isLoadingAuth, hasSessionIndependentData, isProcessingComplete, mapParametersForBackend]);
 
   return { status, error, pollCount, MAX_POLLS, finalPaymentId };
 }
