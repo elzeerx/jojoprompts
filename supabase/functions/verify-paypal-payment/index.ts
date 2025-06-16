@@ -34,20 +34,13 @@ serve(async (req: Request) => {
     // ---- Phase 1: Improved Parameter Extraction & Validation ----
     const params = await getAllParams(req);
 
-    // --- STRONGER: Unified parameter extraction covering all callback styles
-    function extract(keys: string[]) {
-      for (const k of keys) {
-        if (params[k]) return params[k];
-        if (params[k.toLowerCase()]) return params[k.toLowerCase()];
-        if (params[k.toUpperCase()]) return params[k.toUpperCase()];
-      }
-      return undefined;
-    }
-    const orderId = extract(["order_id", "token", "orderId", "ORDER_ID", "TOKEN"]);
-    const paymentId = extract(["payment_id", "paymentId", "PAYMENT_ID"]);
-    const planId = extract(["plan_id", "planId", "PLAN_ID"]);
-    const userId = extract(["user_id", "userId", "USER_ID"]);
+    // Unified extraction for all payment params (beyond basic)
+    const orderId = params.order_id || params.token || params.orderId || params.ORDER_ID || params.TOKEN;
+    const paymentId = params.payment_id || params.paymentId || params.PAYMENT_ID;
+    const planId = params.plan_id || params.planId || params.PLAN_ID;
+    const userId = params.user_id || params.userId || params.USER_ID;
 
+    // --- Preserve every param for later diagnostics ---
     const debugParams = { ...params, orderId, paymentId, planId, userId };
     logger(`Payment verification params:`, debugParams);
 
@@ -70,11 +63,25 @@ serve(async (req: Request) => {
       });
     }
 
-    // **** PHASE 1: DATABASE-FIRST VERIFICATION (Critical improvement) ****
-    let localTx = await databaseFirstVerification(supabaseClient, { orderId, paymentId, planId, userId }, logger);
+    // --- PHASE 1: DATABASE-FIRST VERIFICATION ---
+    let localTx = await databaseFirstVerification(supabaseClient, params, logger);
 
-    // --- Fallback: If a completed transaction and active subscription exist, surface as success (SKIP PayPal API) ---
-    if (localTx?.status === "completed" && localTx?.user_id && localTx?.plan_id) {
+    // --- Aggressive DB fallback: if API fails, still check for completed tx/subscription
+    if (!localTx && userId && planId) {
+      logger(`Looking for orphaned transactions for user ${userId}, plan ${planId}`);
+      const recoveryResult = await findAndRecoverOrphanedTransactions(supabaseClient, { user_id: userId, plan_id: planId });
+      if (recoveryResult.recovered > 0) {
+        // Re-fetch transaction after recovery
+        const { data: recoveredTx } = await getTransaction(supabaseClient, { orderId, paymentId });
+        if (recoveredTx) {
+          localTx = recoveredTx;
+          logger(`Recovered orphaned transaction:`, recoveredTx.id);
+        }
+      }
+    }
+
+    // --- Fallback: If user/plan found and sub is already active, trust it
+    if (localTx?.user_id && localTx?.plan_id) {
       const { data: existingSubscription } = await supabaseClient
         .from("user_subscriptions")
         .select("id, payment_id, status, created_at, transaction_id")
@@ -82,19 +89,19 @@ serve(async (req: Request) => {
         .eq("plan_id", localTx.plan_id)
         .eq("status", "active")
         .order("created_at", { ascending: false })
-        .maybeSingle();
-      if (existingSubscription && existingSubscription.status === "active") {
-        logger("SUCCESS: Database shows already-completed transaction and active subscription. Skipping PayPal API.");
+        .limit(1);
+
+      if (existingSubscription && existingSubscription.length > 0) {
+        logger(`Found existing active subscription:`, existingSubscription[0]);
         return new Response(JSON.stringify({
           status: PAYMENT_STATES.COMPLETED,
           success: true,
           justCaptured: false,
-          paymentId: existingSubscription.payment_id,
-          paypal: { status: "COMPLETED" }, // FAKE a PayPal object for UI flow
+          paymentId: existingSubscription[0].payment_id,
+          paypal: { status: "COMPLETED" },
           transaction: localTx,
-          subscription: existingSubscription,
-          subscriptionCreated: false,
-          source: "database_fallback",
+          subscription: existingSubscription[0],
+          source: "existing_subscription",
           requestId,
           timestamp: new Date().toISOString(),
           allParams: debugParams
@@ -105,7 +112,6 @@ serve(async (req: Request) => {
       }
     }
 
-    // --- If not found, proceed with legacy PayPal API remote verification
     // PHASE 2: PAYPAL API VERIFICATION
     logger(`Phase 2: PayPal API verification`);
     let orderIdToUse = orderId || localTx?.paypal_order_id;
