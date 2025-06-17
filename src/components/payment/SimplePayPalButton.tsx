@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, ArrowRight } from 'lucide-react';
+import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
 
 interface SimplePayPalButtonProps {
   amount: number;
@@ -45,21 +46,8 @@ export function SimplePayPalButton({
         approvalUrl: data.approvalUrl
       });
 
-      // Backup current auth session tokens in case PayPal redirects clear them
-      try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (currentSession?.access_token && currentSession?.refresh_token) {
-          localStorage.setItem(
-            'payPalSessionBackup',
-            JSON.stringify({
-              access_token: currentSession.access_token,
-              refresh_token: currentSession.refresh_token
-            })
-          );
-        }
-      } catch (backupError) {
-        console.error('Error backing up auth session for PayPal redirect:', backupError);
-      }
+      // Enhanced session backup before PayPal redirect
+      await SessionManager.backupSession(userId, planId, data.orderId);
 
       // ENHANCED: Store comprehensive payment context in localStorage for callback recovery
       const paymentContext = {
