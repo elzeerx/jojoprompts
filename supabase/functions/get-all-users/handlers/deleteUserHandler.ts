@@ -2,15 +2,23 @@
 import { corsHeaders } from "../cors.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
+import { deleteUser } from "../userDeletion.ts";
 
 export async function handleDeleteUser(supabase: any, adminId: string, req: Request) {
   try {
-    const url = new URL(req.url);
-    const userId = url.searchParams.get('userId');
+    // Extract userId from request body for DELETE requests
+    const requestBody = await req.json();
+    const userId = requestBody.userId;
     
-    if (!userId || !ParameterValidator.SCHEMAS.USER_UPDATE.userId) {
+    // Validate userId parameter
+    const validation = ParameterValidator.validateParameters(
+      { userId },
+      { userId: ParameterValidator.SCHEMAS.USER_UPDATE.userId }
+    );
+    
+    if (!validation.isValid) {
       return new Response(
-        JSON.stringify({ error: 'Valid user ID required' }), 
+        JSON.stringify({ error: validation.errors.join(', ') }), 
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -70,19 +78,8 @@ export async function handleDeleteUser(supabase: any, adminId: string, req: Requ
       ip_address: req.headers.get('x-forwarded-for') || 'unknown'
     });
 
-    // Delete user from auth system
-    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
-
-    if (authDeleteError) {
-      console.error('Error deleting user from auth system:', authDeleteError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to delete user', details: authDeleteError.message }), 
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+    // Use the comprehensive deleteUser function from userDeletion.ts
+    const deletionResult = await deleteUser(supabase, userId, adminId);
 
     // Log successful user deletion
     await logSecurityEvent(supabase, {
@@ -92,10 +89,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, req: Requ
     });
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'User deleted successfully'
-      }), 
+      JSON.stringify(deletionResult), 
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -105,7 +99,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, req: Requ
   } catch (error) {
     console.error('Error in handleDeleteUser:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to delete user' }), 
+      JSON.stringify({ error: 'Failed to delete user', details: error.message }), 
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

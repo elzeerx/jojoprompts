@@ -217,17 +217,22 @@ export function useUserManagement() {
     setProcessingUserId(userId);
     
     try {
-      const { error } = await supabase.functions.invoke(
+      const { data, error } = await supabase.functions.invoke(
         "get-all-users",
         {
+          method: 'DELETE',
           body: {
-            action: 'delete',
             userId
           }
         }
       );
       
       if (error) throw error;
+      
+      // Check if the response indicates an error
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
       
       toast({
         title: "User deleted",
