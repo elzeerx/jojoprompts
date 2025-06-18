@@ -114,7 +114,9 @@ serve(async (req) => {
           );
         }
 
-        return await handleDeleteUser(supabase, userId, req);
+        // Parse the request body for DELETE requests
+        const requestBody = await req.json();
+        return await handleDeleteUser(supabase, userId, requestBody);
 
       default:
         return new Response(
