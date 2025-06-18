@@ -50,15 +50,17 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
         params.append('search', search);
       }
 
-      // Fetch users through the edge function using GET request with pagination parameters
+      // Create the function URL with query parameters
+      const functionUrl = `get-all-users?${params.toString()}`;
+
+      // Fetch users through the edge function using GET request with pagination parameters in URL
       const { data: usersFunctionData, error: usersError } = await supabase.functions.invoke(
-        "get-all-users",
+        functionUrl,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
           },
-          method: "GET",
-          body: JSON.stringify({ params: params.toString() })
+          method: "GET"
         }
       );
 
