@@ -2,12 +2,18 @@
 import { corsHeaders } from "../cors.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
+import { handleDeleteUser } from "./deleteUserHandler.ts";
 
 export async function handleCreateUser(supabase: any, adminId: string, req: Request) {
   try {
     const body = await req.json();
     
-    // Validate request parameters
+    // Handle delete action within POST requests
+    if (body.action === 'delete') {
+      return await handleDeleteUser(supabase, adminId, req);
+    }
+    
+    // Validate request parameters for user creation
     const validation = ParameterValidator.validateParameters(body, ParameterValidator.SCHEMAS.USER_CREATE);
     if (!validation.isValid) {
       return new Response(

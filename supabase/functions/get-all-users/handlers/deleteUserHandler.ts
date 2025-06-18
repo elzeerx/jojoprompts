@@ -6,7 +6,7 @@ import { deleteUser } from "../userDeletion.ts";
 
 export async function handleDeleteUser(supabase: any, adminId: string, req: Request) {
   try {
-    // Extract userId from request body for DELETE requests
+    // Extract userId from request body (now coming from POST with action)
     const requestBody = await req.json();
     const userId = requestBody.userId;
     

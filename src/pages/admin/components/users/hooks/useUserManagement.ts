@@ -220,8 +220,8 @@ export function useUserManagement() {
       const { data, error } = await supabase.functions.invoke(
         "get-all-users",
         {
-          method: 'DELETE',
           body: {
+            action: 'delete',
             userId
           }
         }
