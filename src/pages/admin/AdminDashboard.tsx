@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Container } from "@/components/ui/container";
@@ -7,8 +8,9 @@ import UsersManagement from "./components/users/UsersManagement";
 import PurchaseHistoryManagement from "./components/purchases/PurchaseHistoryManagement";
 import DiscountCodesManagement from "./components/discount-codes/DiscountCodesManagement";
 import { CategoriesManagement } from "./components/categories/CategoriesManagement";
+import { SecurityMonitoringDashboard } from "@/components/security/SecurityMonitoringDashboard";
 import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
-import { BarChart3, FileText, Tags, Users, CreditCard, Percent } from "lucide-react";
+import { BarChart3, FileText, Tags, Users, CreditCard, Percent, Shield } from "lucide-react";
 import { useAdminTabs } from "./hooks/useAdminTabs";
 import { MobileTabsList } from "./components/navigation/MobileTabsList";
 import { DesktopTabsList } from "./components/navigation/DesktopTabsList";
@@ -17,6 +19,17 @@ export default function AdminDashboard() {
   const { adminTabs, activeTab, setActiveTab } = useAdminTabs();
   const isMobile = useIsMobile();
   const isSmallMobile = useIsSmallMobile();
+
+  // Add security tab to existing tabs
+  const enhancedTabs = [
+    ...adminTabs,
+    {
+      id: "security",
+      label: "Security",
+      icon: Shield,
+      shortLabel: "Sec"
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-soft-bg/30">
@@ -33,9 +46,9 @@ export default function AdminDashboard() {
           {/* Mobile-first tab navigation */}
           <div className="mb-4 sm:mb-6">
             {isMobile ? (
-              <MobileTabsList tabs={adminTabs} isSmallMobile={isSmallMobile} />
+              <MobileTabsList tabs={enhancedTabs} isSmallMobile={isSmallMobile} />
             ) : (
-              <DesktopTabsList tabs={adminTabs} />
+              <DesktopTabsList tabs={enhancedTabs} />
             )}
           </div>
 
@@ -58,6 +71,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="discounts" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
               <DiscountCodesManagement />
+            </TabsContent>
+            <TabsContent value="security" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
+              <SecurityMonitoringDashboard />
             </TabsContent>
           </div>
         </Tabs>

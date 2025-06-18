@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          target_resource: string
+          timestamp: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          target_resource: string
+          timestamp?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          target_resource?: string
+          timestamp?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           bg_gradient: string
@@ -347,6 +377,36 @@ export type Database = {
           prompt_type?: string
           title?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      security_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

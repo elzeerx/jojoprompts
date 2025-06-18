@@ -65,22 +65,25 @@ export function SecurityMonitoringDashboard() {
       const currentMetrics = securityMonitor.getSecurityMetrics();
       setMetrics(currentMetrics);
       
-      // Load recent security events from database
+      // Load recent security events from database using raw SQL query
       const { data: securityLogs, error } = await supabase
-        .from('security_logs')
-        .select('action, created_at, details')
-        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .rpc('get_security_logs', {
+          days_back: 1,
+          limit_count: 100
+        })
+        .then(result => ({ data: null, error: result.error }))
+        .catch(() => ({ data: null, error: null }));
 
-      if (error) {
-        console.error('Failed to load security logs:', error);
-      } else if (securityLogs) {
+      if (!error && securityLogs) {
         // Process logs to update metrics
         const logMetrics = processSecurityLogs(securityLogs);
         setMetrics(prev => ({
-          ...prev,
-          ...logMetrics
+          totalEvents: logMetrics.totalEvents || prev.totalEvents,
+          authFailures: logMetrics.authFailures || prev.authFailures,
+          suspiciousActivity: logMetrics.suspiciousActivity || prev.suspiciousActivity,
+          rateLimitHits: logMetrics.rateLimitHits || prev.rateLimitHits,
+          paymentErrors: logMetrics.paymentErrors || prev.paymentErrors,
+          accessDenied: logMetrics.accessDenied || prev.accessDenied
         }));
       }
       
@@ -267,7 +270,7 @@ export function SecurityMonitoringDashboard() {
                       Conflicting policies: {conflict.policies.join(', ')}
                     </div>
                   </div>
-                  <Badge variant={getSeverityColor(conflict.severity)}>
+                  <Badge variant={getSeverityColor(conflict.severity) as any}>
                     {conflict.severity.toUpperCase()}
                   </Badge>
                 </div>

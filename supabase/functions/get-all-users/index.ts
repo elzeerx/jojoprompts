@@ -1,478 +1,608 @@
-
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { corsHeaders, handleCors } from './cors.ts';
-import { verifyAdmin, validateAdminRequest, hasPermission } from './auth.ts';
-import { listUsers, deleteUser, updateUser, createUser } from './users.ts';
-
-// Enhanced parameter validation schemas
-const VALIDATION_SCHEMAS = {
-  delete: {
-    userId: { required: true, type: 'uuid' as const }
-  },
-  update: {
-    userId: { required: true, type: 'uuid' as const },
-    userData: { required: true, type: 'object' as const }
-  },
-  create: {
-    userData: { required: true, type: 'object' as const }
-  }
-};
-
-// Enhanced error response helper with security considerations
-function createErrorResponse(
-  message: string, 
-  status: number, 
-  code?: string,
-  details?: Record<string, any>
-): Response {
-  // Sanitize error details to prevent information leakage
-  const sanitizedDetails = details ? sanitizeErrorDetails(details) : {};
-  
-  const errorBody = {
-    error: message,
-    code: code || `ERROR_${status}`,
-    timestamp: new Date().toISOString(),
-    ...(Object.keys(sanitizedDetails).length > 0 ? { details: sanitizedDetails } : {})
-  };
-
-  return new Response(JSON.stringify(errorBody), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-
-// Sanitize error details to prevent sensitive information exposure
-function sanitizeErrorDetails(details: Record<string, any>): Record<string, any> {
-  const sanitized: Record<string, any> = {};
-  const allowedFields = ['action', 'reason', 'field', 'operation'];
-  
-  for (const [key, value] of Object.entries(details)) {
-    if (allowedFields.includes(key)) {
-      if (typeof value === 'string') {
-        // Remove potentially sensitive information
-        sanitized[key] = value
-          .replace(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi, '[UUID]')
-          .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
-          .substring(0, 100); // Limit length
-      } else {
-        sanitized[key] = value;
-      }
-    }
-  }
-  
-  return sanitized;
-}
-
-// Enhanced request body parser with comprehensive validation
-async function parseRequestBody(req: Request): Promise<any> {
-  try {
-    const contentType = req.headers.get('content-type');
-    
-    if (!contentType?.includes('application/json')) {
-      return { action: "list" }; // Default action
-    }
-
-    const body = await req.text();
-    if (!body || body.trim().length === 0) {
-      return { action: "list" };
-    }
-
-    // Check body size limit
-    if (body.length > 100000) { // 100KB limit
-      throw new Error('Request body too large');
-    }
-
-    const parsed = JSON.parse(body);
-    
-    // Enhanced body structure validation
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new Error('Request body must be a valid JSON object');
-    }
-
-    // Validate and sanitize action field
-    if (parsed.action && typeof parsed.action === 'string') {
-      parsed.action = parsed.action.toLowerCase().trim();
-      
-      // Validate allowed actions with enhanced security
-      const allowedActions = ['list', 'delete', 'update', 'create'];
-      if (!allowedActions.includes(parsed.action)) {
-        console.warn('Invalid action attempted:', parsed.action);
-        parsed.action = 'list'; // Default to safe action
-      }
-    } else {
-      parsed.action = 'list';
-    }
-
-    // Enhanced UUID validation
-    if (parsed.userId) {
-      if (typeof parsed.userId !== 'string') {
-        throw new Error('User ID must be a string');
-      }
-      
-      parsed.userId = parsed.userId.trim();
-      
-      // Strict UUID validation
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parsed.userId)) {
-        throw new Error('Invalid user ID format - must be a valid UUID');
-      }
-    }
-
-    // Enhanced user data validation
-    if (parsed.userData) {
-      if (typeof parsed.userData !== 'object' || Array.isArray(parsed.userData)) {
-        throw new Error('User data must be a valid object');
-      }
-      
-      // Validate user data fields
-      const userDataResult = validateUserData(parsed.userData);
-      if (!userDataResult.isValid) {
-        throw new Error(`Invalid user data: ${userDataResult.errors.join(', ')}`);
-      }
-      
-      parsed.userData = userDataResult.sanitizedData;
-    }
-
-    return parsed;
-  } catch (error: any) {
-    console.error('Error parsing request body:', {
-      error: error.message,
-      bodyLength: req.headers.get('content-length'),
-      contentType: req.headers.get('content-type')
-    });
-    throw new Error(`Invalid request body: ${error.message}`);
-  }
-}
-
-// Validate user data with comprehensive security checks
-function validateUserData(userData: any): { 
-  isValid: boolean; 
-  errors: string[]; 
-  sanitizedData: any 
-} {
-  const errors: string[] = [];
-  const sanitizedData: any = {};
-  
-  // Define allowed fields and their validation rules
-  const allowedFields = {
-    email: { type: 'string', maxLength: 320, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
-    firstName: { type: 'string', maxLength: 50, minLength: 1 },
-    lastName: { type: 'string', maxLength: 50, minLength: 1 },
-    role: { type: 'string', allowedValues: ['user', 'admin', 'jadmin', 'prompter'] }
-  };
-  
-  // Check for unexpected fields
-  for (const field of Object.keys(userData)) {
-    if (!allowedFields[field as keyof typeof allowedFields]) {
-      errors.push(`Unexpected field: ${field}`);
-    }
-  }
-  
-  // Validate allowed fields
-  for (const [field, rules] of Object.entries(allowedFields)) {
-    const value = userData[field];
-    
-    if (value !== undefined && value !== null) {
-      // Type validation
-      if (typeof value !== rules.type) {
-        errors.push(`Field ${field} must be a ${rules.type}`);
-        continue;
-      }
-      
-      if (rules.type === 'string') {
-        const strValue = value as string;
-        
-        // Length validation
-        if (rules.minLength && strValue.length < rules.minLength) {
-          errors.push(`Field ${field} must be at least ${rules.minLength} characters`);
-        }
-        if (rules.maxLength && strValue.length > rules.maxLength) {
-          errors.push(`Field ${field} must be at most ${rules.maxLength} characters`);
-        }
-        
-        // Pattern validation
-        if (rules.pattern && !rules.pattern.test(strValue)) {
-          errors.push(`Field ${field} has invalid format`);
-        }
-        
-        // Allowed values validation
-        if (rules.allowedValues && !rules.allowedValues.includes(strValue)) {
-          errors.push(`Field ${field} must be one of: ${rules.allowedValues.join(', ')}`);
-        }
-        
-        // Security validation - check for malicious content
-        if (containsMaliciousContent(strValue)) {
-          errors.push(`Field ${field} contains invalid content`);
-        }
-        
-        // Sanitize the value if no errors
-        if (errors.length === 0) {
-          sanitizedData[field] = strValue.trim();
-        }
-      } else {
-        sanitizedData[field] = value;
-      }
-    }
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors,
-    sanitizedData
-  };
-}
-
-// Check for malicious content in strings
-function containsMaliciousContent(input: string): boolean {
-  const maliciousPatterns = [
-    /<script[^>]*>/i,
-    /javascript:/i,
-    /on\w+\s*=/i,
-    /(union|select|insert|delete|update|drop|create|alter)\s+/i,
-    /[<>'"]/g.test(input) && input.includes('=')
-  ];
-  
-  return maliciousPatterns.some(pattern => {
-    if (pattern instanceof RegExp) {
-      return pattern.test(input);
-    }
-    return false;
-  });
-}
+import { serve } from "https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
+import { corsHeaders } from "./cors.ts";
+import { verifyAdmin, validateAdminRequest, hasPermission } from "./auth.ts";
+import { ParameterValidator } from "../shared/parameterValidator.ts";
+import { logSecurityEvent, logAdminAction } from "../shared/securityLogger.ts";
 
 serve(async (req) => {
-  const startTime = Date.now();
-  const requestId = crypto.randomUUID();
-  
-  console.log(`[${requestId}] Admin request started:`, {
-    method: req.method,
-    url: req.url,
-    userAgent: req.headers.get('user-agent')?.substring(0, 100),
-    timestamp: new Date().toISOString()
-  });
-  
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
-    // Handle CORS preflight request
-    const corsResponse = handleCors(req);
-    if (corsResponse) {
-      console.log(`[${requestId}] CORS preflight handled`);
-      return corsResponse;
-    }
-
-    // Enhanced request validation with security focus
-    const requestValidation = validateAdminRequest(req);
-    if (!requestValidation.isValid) {
-      console.error(`[${requestId}] Request validation failed:`, requestValidation.error);
-      return createErrorResponse(
-        'Invalid request format',
-        400,
-        'INVALID_REQUEST',
-        { reason: requestValidation.error }
-      );
-    }
-
-    // Enhanced authentication with comprehensive security checks
-    let authContext;
-    try {
-      authContext = await verifyAdmin(req);
-      console.log(`[${requestId}] Authentication successful for user:`, authContext.userId);
-    } catch (authError: any) {
-      const message = authError?.message || 'Authentication failed';
-      
-      console.error(`[${requestId}] Authentication failed:`, {
-        error: message,
-        timestamp: new Date().toISOString()
-      });
-      
-      if (message.includes('Unauthorized')) {
-        return createErrorResponse(
-          'Authentication required',
-          401,
-          'UNAUTHORIZED',
-          { reason: 'Invalid or missing authentication credentials' }
-        );
-      }
-      
-      if (message.includes('Forbidden')) {
-        return createErrorResponse(
-          'Access denied',
-          403,
-          'FORBIDDEN',
-          { reason: 'Administrative privileges required' }
-        );
-      }
-      
-      // Generic server error for unexpected auth failures
-      return createErrorResponse(
-        'Authentication service error',
-        500,
-        'AUTH_ERROR'
-      );
-    }
-
-    const { supabase, userId, permissions } = authContext;
-
-    // Enhanced request body parsing with validation
-    let requestData;
-    try {
-      requestData = await parseRequestBody(req);
-      console.log(`[${requestId}] Request parsed successfully:`, { action: requestData.action });
-    } catch (parseError: any) {
-      console.error(`[${requestId}] Request parsing failed:`, parseError.message);
-      return createErrorResponse(
-        'Invalid request format',
-        400,
-        'PARSE_ERROR',
-        { reason: parseError.message }
-      );
-    }
-
-    const { action } = requestData;
-    let response;
-
-    // Enhanced action handling with permission checks
-    try {
-      switch (action) {
-        case 'delete':
-          // Check delete permission
-          if (!hasPermission(permissions, 'user:delete')) {
-            console.warn(`[${requestId}] Insufficient permissions for delete action`);
-            return createErrorResponse(
-              'Insufficient permissions',
-              403,
-              'PERMISSION_DENIED',
-              { action: 'delete', required: 'user:delete' }
-            );
-          }
-          
-          if (!requestData.userId) {
-            return createErrorResponse(
-              'User ID required for delete operation',
-              400,
-              'MISSING_USER_ID'
-            );
-          }
-          response = await deleteUser(supabase, requestData.userId, userId);
-          break;
-          
-        case 'update':
-          // Check update permission
-          if (!hasPermission(permissions, 'user:write')) {
-            console.warn(`[${requestId}] Insufficient permissions for update action`);
-            return createErrorResponse(
-              'Insufficient permissions',
-              403,
-              'PERMISSION_DENIED',
-              { action: 'update', required: 'user:write' }
-            );
-          }
-          
-          if (!requestData.userId) {
-            return createErrorResponse(
-              'User ID required for update operation',
-              400,
-              'MISSING_USER_ID'
-            );
-          }
-          if (!requestData.userData || typeof requestData.userData !== 'object') {
-            return createErrorResponse(
-              'User data required for update operation',
-              400,
-              'MISSING_USER_DATA'
-            );
-          }
-          response = await updateUser(supabase, requestData.userId, requestData.userData, userId);
-          break;
-          
-        case 'create':
-          // Check create permission
-          if (!hasPermission(permissions, 'user:write')) {
-            console.warn(`[${requestId}] Insufficient permissions for create action`);
-            return createErrorResponse(
-              'Insufficient permissions',
-              403,
-              'PERMISSION_DENIED',
-              { action: 'create', required: 'user:write' }
-            );
-          }
-          
-          if (!requestData.userData || typeof requestData.userData !== 'object') {
-            return createErrorResponse(
-              'User data required for create operation',
-              400,
-              'MISSING_USER_DATA'
-            );
-          }
-          response = await createUser(supabase, requestData.userData, userId);
-          break;
-          
-        default: // 'list' is the default action
-          // Check read permission
-          if (!hasPermission(permissions, 'user:read')) {
-            console.warn(`[${requestId}] Insufficient permissions for list action`);
-            return createErrorResponse(
-              'Insufficient permissions',
-              403,
-              'PERMISSION_DENIED',
-              { action: 'list', required: 'user:read' }
-            );
-          }
-          
-          response = await listUsers(supabase, userId);
-      }
-
-      // Log successful operation
-      const duration = Date.now() - startTime;
-      console.log(`[${requestId}] Admin operation completed:`, {
-        action,
-        userId,
-        duration: `${duration}ms`,
-        success: true
-      });
-
-      return new Response(JSON.stringify({
-        success: true,
-        data: response,
-        timestamp: new Date().toISOString(),
-        duration: `${duration}ms`,
-        requestId
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-
-    } catch (operationError: any) {
-      console.error(`[${requestId}] Operation '${action}' failed:`, {
-        error: operationError.message,
-        stack: operationError.stack?.substring(0, 500),
-        userId,
-        action
-      });
-      
-      return createErrorResponse(
-        'Operation failed',
-        500,
-        'OPERATION_ERROR',
+    // Enhanced request validation
+    const validation = validateAdminRequest(req);
+    if (!validation.isValid) {
+      console.error('Request validation failed:', validation.error);
+      return new Response(
+        JSON.stringify({ error: validation.error }), 
         { 
-          action,
-          reason: operationError.message?.substring(0, 100) // Limit error message length
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
 
+    // Enhanced admin authentication with comprehensive security
+    const authContext = await verifyAdmin(req);
+    const { supabase, userId, userRole, permissions } = authContext;
+
+    // Log successful admin access
+    await logSecurityEvent(supabase, {
+      user_id: userId,
+      action: 'admin_function_accessed',
+      details: { 
+        function: 'get-all-users',
+        method: req.method,
+        role: userRole
+      },
+      ip_address: req.headers.get('x-forwarded-for') || 'unknown',
+      user_agent: req.headers.get('user-agent')?.substring(0, 200)
+    });
+
+    // Handle different HTTP methods with enhanced security
+    switch (req.method) {
+      case 'GET':
+        // Verify read permissions
+        if (!hasPermission(permissions, 'user:read')) {
+          await logSecurityEvent(supabase, {
+            user_id: userId,
+            action: 'permission_denied',
+            details: { required_permission: 'user:read', function: 'get-all-users' }
+          });
+          
+          return new Response(
+            JSON.stringify({ error: 'Insufficient permissions for user read operations' }), 
+            { 
+              status: 403, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+
+        return await handleGetUsers(supabase, userId, req);
+
+      case 'POST':
+        // Verify write permissions
+        if (!hasPermission(permissions, 'user:write')) {
+          await logSecurityEvent(supabase, {
+            user_id: userId,
+            action: 'permission_denied',
+            details: { required_permission: 'user:write', function: 'get-all-users' }
+          });
+
+          return new Response(
+            JSON.stringify({ error: 'Insufficient permissions for user write operations' }), 
+            { 
+              status: 403, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+
+        return await handleCreateUser(supabase, userId, req);
+
+      case 'PUT':
+        // Verify write permissions
+        if (!hasPermission(permissions, 'user:write')) {
+          return new Response(
+            JSON.stringify({ error: 'Insufficient permissions for user update operations' }), 
+            { 
+              status: 403, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+
+        return await handleUpdateUser(supabase, userId, req);
+
+      case 'DELETE':
+        // Verify delete permissions
+        if (!hasPermission(permissions, 'user:delete')) {
+          return new Response(
+            JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
+            { 
+              status: 403, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+
+        return await handleDeleteUser(supabase, userId, req);
+
+      default:
+        return new Response(
+          JSON.stringify({ error: 'Method not allowed' }), 
+          { 
+            status: 405, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+    }
+
   } catch (error: any) {
-    const duration = Date.now() - startTime;
-    console.error(`[${requestId}] Unhandled error in admin function:`, {
-      error: error.message,
+    console.error('Critical error in get-all-users function:', {
+      message: error.message,
       stack: error.stack?.substring(0, 500),
-      duration: `${duration}ms`,
       timestamp: new Date().toISOString()
     });
-    
-    return createErrorResponse(
-      'Internal server error',
-      500,
-      'INTERNAL_ERROR',
-      { requestId }
+
+    // Try to log the error if we have a supabase client
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
+      
+      if (supabaseUrl && serviceRoleKey) {
+        const errorClient = createClient(supabaseUrl, serviceRoleKey);
+        await logSecurityEvent(errorClient, {
+          action: 'function_error',
+          details: { 
+            function: 'get-all-users',
+            error: error.message,
+            method: req.method
+          },
+          ip_address: req.headers.get('x-forwarded-for') || 'unknown'
+        });
+      }
+    } catch (logError) {
+      console.warn('Failed to log error event:', logError);
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error',
+        message: 'An unexpected error occurred' 
+      }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
 });
+
+async function handleGetUsers(supabase: any, adminId: string, req: Request) {
+  try {
+    const url = new URL(req.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '10'), 100);
+    const search = url.searchParams.get('search') || '';
+    
+    // Validate pagination parameters
+    if (page < 1 || limit < 1) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid pagination parameters' }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log the user list access
+    await logAdminAction(supabase, adminId, 'list_users', 'users', {
+      page,
+      limit,
+      search_query: search ? 'provided' : 'none'
+    });
+
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
+    
+    // Build query with search functionality
+    let query = supabase
+      .from('profiles')
+      .select('id, first_name, last_name, role, created_at, membership_tier', { count: 'exact' });
+    
+    // Add search filter if provided
+    if (search) {
+      query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+    }
+    
+    // Add pagination
+    query = query.range(offset, offset + limit - 1).order('created_at', { ascending: false });
+    
+    // Execute query
+    const { data: users, error, count } = await query;
+    
+    if (error) {
+      console.error('Database error when fetching users:', error);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch users from database' }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Get user emails from auth.users table
+    const userIds = users.map((user: any) => user.id);
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers({
+      perPage: userIds.length,
+      page: 1
+    });
+    
+    // Merge profile data with email from auth
+    const enrichedUsers = users.map((user: any) => {
+      const authUser = authUsers?.users?.find((au: any) => au.id === user.id);
+      return {
+        ...user,
+        email: authUser?.email || 'unknown',
+        emailConfirmed: !!authUser?.email_confirmed_at
+      };
+    });
+    
+    return new Response(
+      JSON.stringify({ 
+        users: enrichedUsers, 
+        total: count || enrichedUsers.length, 
+        page, 
+        limit,
+        totalPages: count ? Math.ceil(count / limit) : 1
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+    
+  } catch (error) {
+    console.error('Error in handleGetUsers:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch users' }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+async function handleCreateUser(supabase: any, adminId: string, req: Request) {
+  try {
+    const body = await req.json();
+    
+    // Validate request parameters
+    const validation = ParameterValidator.validateParameters(body, ParameterValidator.SCHEMAS.USER_CREATE);
+    if (!validation.isValid) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid parameters', details: validation.errors }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log the user creation attempt
+    await logAdminAction(supabase, adminId, 'create_user', 'users', {
+      email: validation.sanitizedData.email
+    });
+
+    // Create user in auth system
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: validation.sanitizedData.email,
+      email_confirm: true,
+      user_metadata: {
+        first_name: validation.sanitizedData.firstName,
+        last_name: validation.sanitizedData.lastName
+      },
+      app_metadata: {
+        role: validation.sanitizedData.role || 'user'
+      }
+    });
+
+    if (authError) {
+      console.error('Error creating user in auth system:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create user', details: authError.message }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Create profile record
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        first_name: validation.sanitizedData.firstName,
+        last_name: validation.sanitizedData.lastName,
+        role: validation.sanitizedData.role || 'user'
+      })
+      .select()
+      .single();
+
+    if (profileError) {
+      console.error('Error creating user profile:', profileError);
+      
+      // Attempt to clean up auth user if profile creation fails
+      try {
+        await supabase.auth.admin.deleteUser(authData.user.id);
+      } catch (cleanupError) {
+        console.error('Failed to clean up auth user after profile creation error:', cleanupError);
+      }
+      
+      return new Response(
+        JSON.stringify({ error: 'Failed to create user profile', details: profileError.message }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log successful user creation
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'user_created',
+      details: { 
+        created_user_id: authData.user.id,
+        role: validation.sanitizedData.role || 'user'
+      }
+    });
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'User created successfully',
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
+          firstName: validation.sanitizedData.firstName,
+          lastName: validation.sanitizedData.lastName,
+          role: validation.sanitizedData.role || 'user'
+        }
+      }), 
+      { 
+        status: 201, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+    
+  } catch (error) {
+    console.error('Error in handleCreateUser:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to create user' }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+async function handleUpdateUser(supabase: any, adminId: string, req: Request) {
+  try {
+    const body = await req.json();
+    
+    // Validate request parameters
+    const validation = ParameterValidator.validateParameters(body, ParameterValidator.SCHEMAS.USER_UPDATE);
+    if (!validation.isValid) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid parameters', details: validation.errors }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const userId = validation.sanitizedData.userId;
+    
+    // Check if user exists
+    const { data: existingUser, error: userCheckError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    if (userCheckError || !existingUser) {
+      return new Response(
+        JSON.stringify({ error: 'User not found' }), 
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log the user update attempt
+    await logAdminAction(supabase, adminId, 'update_user', 'users', {
+      target_user_id: userId,
+      updated_fields: Object.keys(validation.sanitizedData).filter(k => k !== 'userId')
+    });
+
+    // Prepare profile updates
+    const profileUpdates: Record<string, any> = {};
+    if (validation.sanitizedData.firstName) profileUpdates.first_name = validation.sanitizedData.firstName;
+    if (validation.sanitizedData.lastName) profileUpdates.last_name = validation.sanitizedData.lastName;
+    if (validation.sanitizedData.role) profileUpdates.role = validation.sanitizedData.role;
+
+    // Update profile if there are changes
+    if (Object.keys(profileUpdates).length > 0) {
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', userId);
+
+      if (profileUpdateError) {
+        console.error('Error updating user profile:', profileUpdateError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update user profile', details: profileUpdateError.message }), 
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    // Update email if provided
+    if (validation.sanitizedData.email) {
+      const { error: emailUpdateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { email: validation.sanitizedData.email }
+      );
+
+      if (emailUpdateError) {
+        console.error('Error updating user email:', emailUpdateError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update user email', details: emailUpdateError.message }), 
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    // Log successful user update
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'user_updated',
+      details: { 
+        target_user_id: userId,
+        updated_fields: Object.keys(validation.sanitizedData).filter(k => k !== 'userId')
+      }
+    });
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'User updated successfully',
+        updatedFields: Object.keys(validation.sanitizedData).filter(k => k !== 'userId')
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+    
+  } catch (error) {
+    console.error('Error in handleUpdateUser:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to update user' }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+async function handleDeleteUser(supabase: any, adminId: string, req: Request) {
+  try {
+    const url = new URL(req.url);
+    const userId = url.searchParams.get('userId');
+    
+    if (!userId || !ParameterValidator.isValidUUID(userId)) {
+      return new Response(
+        JSON.stringify({ error: 'Valid user ID required' }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Check if user exists
+    const { data: existingUser, error: userCheckError } = await supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    if (userCheckError || !existingUser) {
+      return new Response(
+        JSON.stringify({ error: 'User not found' }), 
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Prevent deleting other admins as a safety measure
+    if (existingUser.role === 'admin' && adminId !== userId) {
+      // Log the attempt to delete another admin
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'admin_deletion_attempt',
+        details: { 
+          target_admin_id: userId,
+          severity: 'high'
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ error: 'Cannot delete another administrator' }), 
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log the user deletion attempt (critical action)
+    await logAdminAction(supabase, adminId, 'delete_user', 'users', {
+      target_user_id: userId,
+      severity: 'critical'
+    });
+
+    // Additional security check for user deletion
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'critical_user_deletion_attempt',
+      details: { target_user_id: userId },
+      ip_address: req.headers.get('x-forwarded-for') || 'unknown'
+    });
+
+    // Delete user from auth system
+    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
+
+    if (authDeleteError) {
+      console.error('Error deleting user from auth system:', authDeleteError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to delete user', details: authDeleteError.message }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log successful user deletion
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'user_deleted',
+      details: { target_user_id: userId }
+    });
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'User deleted successfully'
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+    
+  } catch (error) {
+    console.error('Error in handleDeleteUser:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to delete user' }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
