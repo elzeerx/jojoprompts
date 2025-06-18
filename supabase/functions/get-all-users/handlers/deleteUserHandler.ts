@@ -1,13 +1,11 @@
-
 import { corsHeaders } from "../cors.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
 import { deleteUser } from "../userDeletion.ts";
 
-export async function handleDeleteUser(supabase: any, adminId: string, req: Request) {
+export async function handleDeleteUser(supabase: any, adminId: string, requestBody: any) {
   try {
-    // Extract userId from request body (now coming from POST with action)
-    const requestBody = await req.json();
+    // Extract userId from the already-parsed request body
     const userId = requestBody.userId;
     
     // Validate userId parameter
@@ -75,7 +73,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, req: Requ
       user_id: adminId,
       action: 'critical_user_deletion_attempt',
       details: { target_user_id: userId },
-      ip_address: req.headers.get('x-forwarded-for') || 'unknown'
+      ip_address: requestBody.headers.get('x-forwarded-for') || 'unknown'
     });
 
     // Use the comprehensive deleteUser function from userDeletion.ts

@@ -10,7 +10,7 @@ export async function handleCreateUser(supabase: any, adminId: string, req: Requ
     
     // Handle delete action within POST requests
     if (body.action === 'delete') {
-      return await handleDeleteUser(supabase, adminId, req);
+      return await handleDeleteUser(supabase, adminId, body);
     }
     
     // Validate request parameters for user creation
