@@ -22,15 +22,14 @@ export function useFetchUsers() {
         return;
       }
 
-      // Fetch users through the edge function, always send Authorization header
+      // Fetch users through the edge function using GET request
       const { data: usersFunctionData, error: usersError } = await supabase.functions.invoke(
         "get-all-users",
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
           },
-          body: { action: "list" }
+          method: "GET"
         }
       );
 
