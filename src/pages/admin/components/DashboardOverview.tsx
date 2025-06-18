@@ -106,7 +106,7 @@ export default function DashboardOverview() {
             console.error("Error fetching users from edge function:", usersError);
           } else {
             console.log("Users response from edge function:", allUsers);
-            usersCount = Array.isArray(allUsers?.users) ? allUsers.users.length : 0;
+            usersCount = allUsers?.total || 0;
           }
         } catch (err) {
           console.error("Failed to call get-all-users edge function:", err);
