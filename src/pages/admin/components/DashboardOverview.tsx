@@ -98,7 +98,7 @@ export default function DashboardOverview() {
               headers: {
                 Authorization: `Bearer ${session.access_token}`,
               },
-              body: { action: "list" }
+              method: "GET"
             }
           );
           
