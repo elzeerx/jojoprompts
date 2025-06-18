@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { PROCESSING_STATES } from "./constants/paymentProcessingConstants";
 import { checkDatabaseFirst } from "./utils/databaseVerification";
@@ -169,7 +170,40 @@ export function usePaymentProcessing({
         return;
       }
 
-      // Phase 2: If database verification is inconclusive, proceed with PayPal API verification
+      // Phase 2: Check if this is a discount-based payment (no PayPal verification needed)
+      const { hasSubscription, subscription } = await checkDatabaseFirst({ 
+        userId: currentUser?.id || userId, 
+        planId, 
+        orderId 
+      });
+      
+      if (hasSubscription && subscription) {
+        // Check if this is a discount-based payment
+        const isDiscountPayment = subscription.payment_method === 'discount_100_percent' || 
+                                 (subscription.payment_id && subscription.payment_id.startsWith('discount_'));
+        
+        if (isDiscountPayment) {
+          console.log('Discount-based payment detected, redirecting to success');
+          setStatus(PROCESSING_STATES.COMPLETED);
+          setFinalPaymentId(subscription.payment_id);
+          setIsProcessingComplete(true);
+          
+          EnhancedPaymentNavigator.navigateBasedOnPaymentState({
+            navigate,
+            userId: currentUser?.id || userId,
+            planId,
+            orderId,
+            paymentId: subscription.payment_id
+          }, {
+            isSuccessful: true,
+            hasActiveSubscription: true,
+            needsAuthentication: false
+          });
+          return;
+        }
+      }
+
+      // Phase 3: If not discount payment and database verification is inconclusive, proceed with PayPal API verification
       if (!orderId && !paymentId) {
         console.error('Missing payment information:', { orderId, paymentId, debugObject });
         setError('Missing payment information in callback URL');

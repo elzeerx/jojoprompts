@@ -89,18 +89,26 @@ serve(async (req) => {
         // Don't throw error as the main transaction succeeded
       }
 
-      // Increment discount usage count
-      const { error: incrementError } = await supabaseClient
+      // Increment discount usage count - fixed SQL update
+      const { data: currentDiscount, error: fetchError } = await supabaseClient
         .from('discount_codes')
-        .update({ 
-          times_used: supabaseClient.raw('times_used + 1'),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', appliedDiscount.id);
+        .select('times_used')
+        .eq('id', appliedDiscount.id)
+        .single();
 
-      if (incrementError) {
-        console.error('Failed to increment discount usage:', incrementError);
-        // Don't throw error as the main transaction succeeded
+      if (!fetchError && currentDiscount) {
+        const { error: incrementError } = await supabaseClient
+          .from('discount_codes')
+          .update({ 
+            times_used: currentDiscount.times_used + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', appliedDiscount.id);
+
+        if (incrementError) {
+          console.error('Failed to increment discount usage:', incrementError);
+          // Don't throw error as the main transaction succeeded
+        }
       }
 
       return new Response(JSON.stringify({

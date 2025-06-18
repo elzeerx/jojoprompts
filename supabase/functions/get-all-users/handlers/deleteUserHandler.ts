@@ -1,3 +1,4 @@
+
 import { corsHeaders } from "../cors.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
@@ -68,12 +69,11 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       severity: 'critical'
     });
 
-    // Additional security check for user deletion
+    // Additional security check for user deletion (without IP address)
     await logSecurityEvent(supabase, {
       user_id: adminId,
       action: 'critical_user_deletion_attempt',
-      details: { target_user_id: userId },
-      ip_address: requestBody.headers.get('x-forwarded-for') || 'unknown'
+      details: { target_user_id: userId }
     });
 
     // Use the comprehensive deleteUser function from userDeletion.ts

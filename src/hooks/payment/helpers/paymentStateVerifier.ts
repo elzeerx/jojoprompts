@@ -24,7 +24,7 @@ export class PaymentStateVerifier {
       if (userId && planId) {
         const { data: subscription } = await supabase
           .from("user_subscriptions")
-          .select("id, status, payment_id, transaction_id, created_at")
+          .select("id, status, payment_id, transaction_id, created_at, payment_method")
           .eq("user_id", userId)
           .eq("plan_id", planId)
           .eq("status", "active")
@@ -33,6 +33,10 @@ export class PaymentStateVerifier {
 
         if (subscription) {
           console.log('Found active subscription, payment was successful');
+          // Check if this is a discount-based payment
+          const isDiscountPayment = subscription.payment_method === 'discount_100_percent' || 
+                                   (subscription.payment_id && subscription.payment_id.startsWith('discount_'));
+          
           return {
             isSuccessful: true,
             hasActiveSubscription: true,
@@ -58,7 +62,7 @@ export class PaymentStateVerifier {
             // Check if subscription was created for this transaction
             const { data: sub } = await supabase
               .from("user_subscriptions")
-              .select("id, status, payment_id")
+              .select("id, status, payment_id, payment_method")
               .eq("user_id", transaction.user_id)
               .eq("plan_id", transaction.plan_id)
               .eq("status", "active")
@@ -84,7 +88,43 @@ export class PaymentStateVerifier {
         }
       }
 
-      // Phase 3: If no definitive state found, return uncertain
+      // Phase 3: Check for discount-based transactions without order ID
+      if (userId && planId) {
+        const { data: discountTransaction } = await supabase
+          .from("transactions")
+          .select("id, status, paypal_payment_id, created_at")
+          .eq("user_id", userId)
+          .eq("plan_id", planId)
+          .eq("status", "completed")
+          .is("paypal_order_id", null) // Discount transactions don't have PayPal order IDs
+          .order("created_at", { ascending: false })
+          .maybeSingle();
+
+        if (discountTransaction && discountTransaction.paypal_payment_id?.startsWith('discount_')) {
+          // Check if subscription exists for this discount transaction
+          const { data: sub } = await supabase
+            .from("user_subscriptions")
+            .select("id, status, payment_id, payment_method")
+            .eq("user_id", userId)
+            .eq("plan_id", planId)
+            .eq("status", "active")
+            .eq("transaction_id", discountTransaction.id)
+            .maybeSingle();
+
+          if (sub) {
+            console.log('Found discount-based subscription, payment was successful');
+            return {
+              isSuccessful: true,
+              hasActiveSubscription: true,
+              subscription: sub,
+              transaction: discountTransaction,
+              needsAuthentication: false
+            };
+          }
+        }
+      }
+
+      // Phase 4: If no definitive state found, return uncertain
       return {
         isSuccessful: false,
         hasActiveSubscription: false,

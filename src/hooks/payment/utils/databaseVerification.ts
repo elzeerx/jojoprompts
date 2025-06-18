@@ -40,10 +40,10 @@ export async function checkDatabaseFirst({
     return { hasSubscription: false, transaction: null, subscription: null };
   }
 
-  // Check subscriptions
+  // Check subscriptions - including discount-based payments
   const { data: sub, error: subErr } = await supabase
     .from("user_subscriptions")
-    .select("id, payment_id, created_at, transaction_id, user_id, status")
+    .select("id, payment_id, created_at, transaction_id, user_id, status, payment_method")
     .eq("user_id", userId)
     .eq("plan_id", planId)
     .eq("status", "active")
@@ -51,6 +51,7 @@ export async function checkDatabaseFirst({
     .limit(1);
 
   if (sub && sub.length) {
+    // Found active subscription - could be PayPal or discount-based
     return { hasSubscription: true, subscription: sub[0], transaction: null };
   }
 
