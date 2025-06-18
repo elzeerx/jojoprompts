@@ -57,7 +57,8 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
           headers: {
             Authorization: `Bearer ${session.access_token}`,
           },
-          method: "GET"
+          method: "GET",
+          body: JSON.stringify({ params: params.toString() })
         }
       );
 
