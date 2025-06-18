@@ -93,7 +93,7 @@ serve(async (req) => {
       const { error: incrementError } = await supabaseClient
         .from('discount_codes')
         .update({ 
-          times_used: supabaseClient.sql`times_used + 1`,
+          times_used: supabaseClient.raw('times_used + 1'),
           updated_at: new Date().toISOString()
         })
         .eq('id', appliedDiscount.id);
@@ -107,7 +107,9 @@ serve(async (req) => {
         success: true,
         transactionId: transaction.id,
         subscriptionId: subscription.id,
+        paymentId: transaction.paypal_payment_id, // Include paymentId for success handler
         paymentMethod: 'discount_100_percent',
+        status: 'COMPLETED', // Include status for success handler
         message: 'Subscription activated successfully with 100% discount'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
