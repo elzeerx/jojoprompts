@@ -8,6 +8,7 @@ import { Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Prompt } from "@/types";
 import { Container } from "@/components/ui/container";
+import { getSubscriptionTier, isCategoryLocked } from "@/utils/subscription";
 
 export default function ChatGPTPromptsPage() {
   const { user, session } = useAuth();
@@ -15,6 +16,7 @@ export default function ChatGPTPromptsPage() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [userTier, setUserTier] = useState<string>('none');
   const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
@@ -39,8 +41,9 @@ export default function ChatGPTPromptsPage() {
         
         if (isUserAdmin) {
           setHasAccess(true);
+          setUserTier('ultimate');
         } else {
-          // Check if user has access to ChatGPT prompts
+          // Check user's subscription
           const { data: subscriptions, error } = await supabase
             .from("user_subscriptions")
             .select("plan_id, subscription_plans:plan_id(name, features)")
@@ -52,8 +55,17 @@ export default function ChatGPTPromptsPage() {
             console.error("Error checking subscription:", error);
           }
           
-          // Check if the user has any active subscription since all plans have access to ChatGPT prompts
-          setHasAccess(!!subscriptions);
+          let tier = 'none';
+          if (subscriptions?.subscription_plans) {
+            const planName = subscriptions.subscription_plans.name;
+            tier = getSubscriptionTier(planName);
+          }
+          
+          setUserTier(tier);
+          
+          // Check if user has access to ChatGPT prompts (basic plan requirement)
+          const hasAccess = !isCategoryLocked('basic', tier, isUserAdmin);
+          setHasAccess(hasAccess);
         }
         
         // Fetch ChatGPT prompts regardless of access (we'll filter display later)
@@ -139,7 +151,11 @@ export default function ChatGPTPromptsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {prompts.map((prompt) => (
-            <PromptCard key={prompt.id} prompt={prompt} />
+            <PromptCard 
+              key={prompt.id} 
+              prompt={prompt}
+              isLocked={false}
+            />
           ))}
         </div>
       )}

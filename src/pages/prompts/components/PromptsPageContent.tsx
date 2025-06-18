@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +37,8 @@ export function PromptsPageContent({
   // Get active categories from database
   const { categories: dbCategories, loading: categoriesLoading } = useCategories();
   const activeCategories = dbCategories.filter(cat => cat.is_active);
-  const activeCategoryNames = activeCategories.map(cat => cat.name);
 
-  console.log("PromptsPageContent - Active categories:", activeCategoryNames);
+  console.log("PromptsPageContent - Active categories:", activeCategories);
   console.log("PromptsPageContent - Total prompts:", prompts.length);
 
   // Fetch user subscription and admin status
@@ -73,19 +73,16 @@ export function PromptsPageContent({
   // Helper function to check if a prompt category matches an active category
   const isPromptCategoryActive = (promptCategory: string | undefined) => {
     if (!promptCategory) return false;
-    if (activeCategoryNames.length === 0) return true; // If no active categories, show all
+    if (activeCategories.length === 0) return true; // If no active categories, show all
     
-    // Exact match
-    if (activeCategoryNames.includes(promptCategory)) return true;
-    
-    // Flexible matching for common variations
-    const normalizedPromptCategory = promptCategory.toLowerCase().trim();
-    return activeCategoryNames.some(activeCategory => {
-      const normalizedActiveCategory = activeCategory.toLowerCase().trim();
+    // Check if the prompt's category matches any active category
+    return activeCategories.some(activeCategory => {
+      const normalizedPromptCategory = promptCategory.toLowerCase().trim();
+      const normalizedActiveCategory = activeCategory.name.toLowerCase().trim();
       
-      // Check if they're variations of the same category
-      // e.g., "ChatGPT" matches "ChatGPT Prompts"
-      return normalizedPromptCategory.includes(normalizedActiveCategory) || 
+      // Exact match or partial match
+      return normalizedPromptCategory === normalizedActiveCategory ||
+             normalizedPromptCategory.includes(normalizedActiveCategory) ||
              normalizedActiveCategory.includes(normalizedPromptCategory) ||
              normalizedPromptCategory.replace(/\s+prompts?$/i, '') === normalizedActiveCategory.replace(/\s+prompts?$/i, '');
     });
@@ -114,11 +111,12 @@ export function PromptsPageContent({
     
     // Selected category filtering
     const matchesCategory = selectedCategory === "all" || 
-      isPromptCategoryActive(prompt.metadata?.category) && (
-        prompt.metadata?.category?.toLowerCase() === selectedCategory.toLowerCase() ||
-        // Handle variations like "ChatGPT" vs "ChatGPT Prompts"
-        prompt.metadata?.category?.toLowerCase().replace(/\s+prompts?$/i, '') === selectedCategory.toLowerCase().replace(/\s+prompts?$/i, '')
-      );
+      activeCategories.some(activeCategory => {
+        if (selectedCategory.toLowerCase() === activeCategory.name.toLowerCase()) {
+          return isPromptCategoryActive(prompt.metadata?.category);
+        }
+        return false;
+      });
     
     const result = matchesSearch && matchesCategory;
     console.log(`Prompt "${prompt.title}" - Search: ${matchesSearch}, Category: ${matchesCategory}, Final: ${result}`);
@@ -134,9 +132,22 @@ export function PromptsPageContent({
     
     const planName = userSubscription?.subscription_plans?.name;
     const userTier = getSubscriptionTier(planName);
-    const category = prompt.metadata?.category;
     
-    return isCategoryLocked(category, userTier, isAdmin);
+    // Find the matching active category for this prompt
+    const promptCategory = prompt.metadata?.category;
+    const matchingCategory = activeCategories.find(cat => {
+      const normalizedPromptCategory = promptCategory?.toLowerCase().trim() || '';
+      const normalizedCategoryName = cat.name.toLowerCase().trim();
+      
+      return normalizedPromptCategory === normalizedCategoryName ||
+             normalizedPromptCategory.includes(normalizedCategoryName) ||
+             normalizedCategoryName.includes(normalizedPromptCategory) ||
+             normalizedPromptCategory.replace(/\s+prompts?$/i, '') === normalizedCategoryName.replace(/\s+prompts?$/i, '');
+    });
+    
+    // Use the database category's required_plan field
+    const requiredPlan = matchingCategory?.required_plan;
+    return isCategoryLocked(requiredPlan, userTier, isAdmin);
   };
 
   const handleUpgradeClick = () => {
@@ -173,13 +184,13 @@ export function PromptsPageContent({
               >
                 All Categories
               </TabsTrigger>
-              {activeCategoryNames.map(category => (
+              {activeCategories.map(category => (
                 <TabsTrigger 
-                  key={category} 
-                  value={category.toLowerCase()} 
+                  key={category.id} 
+                  value={category.name.toLowerCase()} 
                   className="mobile-tab data-[state=active]:bg-warm-gold/10 data-[state=active]:text-warm-gold px-3 py-2 text-dark-base rounded-lg border-b-2 border-transparent data-[state=active]:border-warm-gold whitespace-nowrap text-sm sm:text-base"
                 >
-                  {category}
+                  {category.name}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -191,8 +202,9 @@ export function PromptsPageContent({
           <div className="mb-4 p-4 bg-gray-100 rounded text-sm">
             <div>Total prompts: {prompts.length}</div>
             <div>Filtered prompts: {filteredPrompts.length}</div>
-            <div>Active categories: {activeCategoryNames.join(', ')}</div>
+            <div>Active categories: {activeCategories.map(cat => cat.name).join(', ')}</div>
             <div>Selected category: {selectedCategory}</div>
+            <div>User tier: {getSubscriptionTier(userSubscription?.subscription_plans?.name)}</div>
           </div>
         )}
 
@@ -214,11 +226,11 @@ export function PromptsPageContent({
         ) : filteredPrompts.length === 0 ? (
           <div className="text-center py-16 px-4">
             <p className="text-muted-foreground mb-6 text-base sm:text-lg">
-              {activeCategoryNames.length === 0 
+              {activeCategories.length === 0 
                 ? "No active categories found. Please contact an administrator."
                 : prompts.length === 0
                 ? "No prompts found in the database."
-                : `No prompts found matching your criteria. Found ${prompts.length} total prompts, but none match the active categories: ${activeCategoryNames.join(', ')}`
+                : `No prompts found matching your criteria. Found ${prompts.length} total prompts, but none match the active categories: ${activeCategories.map(cat => cat.name).join(', ')}`
               }
             </p>
             {prompts.length > 0 && (

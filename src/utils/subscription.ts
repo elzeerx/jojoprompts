@@ -8,7 +8,7 @@ export function getSubscriptionTier(planName: string | null | undefined): string
   if (name.includes('basic')) return 'basic';
   if (name.includes('standard')) return 'standard';
   if (name.includes('premium')) return 'premium';
-  if (name.includes('ultimate') || name.includes('lifetime')) return 'lifetime';
+  if (name.includes('ultimate')) return 'ultimate';
   
   return 'none';
 }
@@ -27,7 +27,7 @@ export function isPromptLocked(
     basic: ['text'], // Only ChatGPT prompts
     standard: ['text', 'image'], // ChatGPT + Midjourney
     premium: ['text', 'image', 'workflow'], // All prompt types
-    lifetime: ['text', 'image', 'workflow'] // All prompt types (lifetime access)
+    ultimate: ['text', 'image', 'workflow'] // All prompt types + special requests
   };
   
   const userAccess = accessLevels[userTier as keyof typeof accessLevels] || [];
@@ -37,33 +37,28 @@ export function isPromptLocked(
 }
 
 export function isCategoryLocked(
-  category: string | null | undefined,
+  categoryRequiredPlan: string | null | undefined,
   userTier: string,
   isAdmin: boolean = false
 ): boolean {
   // Admins have access to everything
   if (isAdmin) return false;
   
-  if (!category) return true; // Lock if no category is defined
+  if (!categoryRequiredPlan) return false; // If no plan required, it's free
   
-  const categoryLower = category.toLowerCase();
-  
-  // Define category access for each tier
-  const categoryAccess = {
-    none: [],
-    basic: ['chatgpt'], // Only ChatGPT prompts
-    standard: ['chatgpt', 'midjourney'], // ChatGPT + Midjourney
-    premium: ['chatgpt', 'midjourney', 'n8n', 'workflow'], // All categories
-    lifetime: ['chatgpt', 'midjourney', 'n8n', 'workflow'] // All categories
+  // Define tier hierarchy (higher tiers include lower tier access)
+  const tierHierarchy = {
+    'basic': 1,
+    'standard': 2,
+    'premium': 3,
+    'ultimate': 4
   };
   
-  const userAccess = categoryAccess[userTier as keyof typeof categoryAccess] || [];
+  const userTierLevel = tierHierarchy[userTier as keyof typeof tierHierarchy] || 0;
+  const requiredTierLevel = tierHierarchy[categoryRequiredPlan.toLowerCase() as keyof typeof tierHierarchy] || 0;
   
-  // Check if any of the user's accessible categories match the prompt's category
-  return !userAccess.some(accessibleCategory => 
-    categoryLower.includes(accessibleCategory) || 
-    accessibleCategory.includes(categoryLower)
-  );
+  // User has access if their tier level is >= required tier level
+  return userTierLevel < requiredTierLevel;
 }
 
 export function hasFeatureAccess(
@@ -80,7 +75,7 @@ export function hasFeatureAccess(
     basic: ['basic_prompts'],
     standard: ['basic_prompts', 'midjourney_prompts'],
     premium: ['basic_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features'],
-    lifetime: ['basic_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features']
+    ultimate: ['basic_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features', 'special_requests']
   };
   
   const userFeatures = featureAccess[userTier as keyof typeof featureAccess] || [];

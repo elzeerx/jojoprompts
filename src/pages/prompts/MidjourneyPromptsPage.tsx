@@ -8,7 +8,7 @@ import { Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Prompt } from "@/types";
 import { Container } from "@/components/ui/container";
-import { getSubscriptionTier, isPromptLocked } from "@/utils/subscription";
+import { getSubscriptionTier, isCategoryLocked } from "@/utils/subscription";
 
 export default function MidjourneyPromptsPage() {
   const { user, session } = useAuth();
@@ -41,7 +41,7 @@ export default function MidjourneyPromptsPage() {
         
         if (isUserAdmin) {
           setHasAccess(true);
-          setUserTier('lifetime');
+          setUserTier('ultimate');
         } else {
           // Check user's subscription
           const { data: subscriptions, error } = await supabase
@@ -63,8 +63,8 @@ export default function MidjourneyPromptsPage() {
           
           setUserTier(tier);
           
-          // Check if user has access to Midjourney prompts
-          const hasAccess = !isPromptLocked('image', tier, isUserAdmin);
+          // Check if user has access to Midjourney prompts (standard plan requirement)
+          const hasAccess = !isCategoryLocked('standard', tier, isUserAdmin);
           setHasAccess(hasAccess);
         }
         
