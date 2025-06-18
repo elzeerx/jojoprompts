@@ -26,12 +26,15 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
       return;
     }
 
-    if (!paymentData?.paymentId) {
-      console.error('[Payment] No payment ID received');
-      logError("No payment ID received in success handler", "payment", undefined, user?.id);
+    // Handle both regular PayPal payments and discount payments
+    const paymentId = paymentData?.paymentId || paymentData?.transactionId || paymentData?.paymentMethod;
+    
+    if (!paymentId) {
+      console.error('[Payment] No payment identifier received');
+      logError("No payment identifier received in success handler", "payment", undefined, user?.id);
       toast({
         title: "Payment Processing Error",
-        description: "Payment ID missing. Please contact support.",
+        description: "Payment identifier missing. Please contact support.",
         variant: "destructive",
       });
       return;
@@ -41,20 +44,26 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
     
     try {
       logInfo("Payment completed successfully", "payment", { 
-        paymentId: paymentData.paymentId,
+        paymentId: paymentId,
         transactionId: paymentData.transactionId,
-        planId: selectedPlan.id
+        planId: selectedPlan.id,
+        paymentMethod: paymentData.paymentMethod
       }, user.id);
 
       console.log('[Payment] Navigating to success page');
 
-      // Navigate to success page
+      // Navigate to success page with proper parameters
       const successParams = new URLSearchParams({
         planId: selectedPlan.id,
         userId: user.id,
-        paymentId: paymentData.paymentId,
+        paymentId: paymentId,
         status: 'completed'
       });
+      
+      // Add additional parameters for discount payments
+      if (paymentData.paymentMethod === 'discount_100_percent') {
+        successParams.append('method', 'discount');
+      }
       
       navigate(`/payment-success?${successParams.toString()}`);
 
