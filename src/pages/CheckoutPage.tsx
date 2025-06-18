@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,11 @@ export default function CheckoutPage() {
     error,
     setError,
     showAuthForm,
-    setShowAuthForm
+    setShowAuthForm,
+    appliedDiscount,
+    setAppliedDiscount,
+    calculateDiscountedPrice,
+    getDiscountAmount
   } = useCheckoutState();
 
   // Log the current state for debugging (with sanitized data)
@@ -42,7 +47,8 @@ export default function CheckoutPage() {
     showAuthForm, 
     planId,
     authCallback,
-    selectedPlanName: selectedPlan?.name 
+    selectedPlanName: selectedPlan?.name,
+    hasDiscount: !!appliedDiscount
   }, user?.id);
 
   usePlanFetching(planId, user, setSelectedPlan, setError, setLoading);
@@ -62,6 +68,19 @@ export default function CheckoutPage() {
     processing,
     setProcessing
   );
+
+  const handleDiscountApplied = (discount: {
+    id: string;
+    code: string;
+    discount_type: string;
+    discount_value: number;
+  }) => {
+    setAppliedDiscount(discount);
+  };
+
+  const handleDiscountRemoved = () => {
+    setAppliedDiscount(null);
+  };
 
   if (loading || authLoading) {
     return (
@@ -90,7 +109,8 @@ export default function CheckoutPage() {
     );
   }
 
-  const price = selectedPlan.price_usd;
+  const originalPrice = selectedPlan.price_usd;
+  const finalPrice = calculateDiscountedPrice(originalPrice);
   const features = Array.isArray(selectedPlan.features) ? selectedPlan.features : [];
   const planName = selectedPlan.name || "Access Plan";
   const isLifetime = selectedPlan.is_lifetime;
@@ -114,12 +134,18 @@ export default function CheckoutPage() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Plan Summary */}
+          {/* Plan Summary with Discount */}
           <PlanSummaryCard
             selectedPlan={selectedPlan}
-            price={price}
+            price={originalPrice}
             features={features}
             isLifetime={isLifetime}
+            appliedDiscount={appliedDiscount}
+            onDiscountApplied={handleDiscountApplied}
+            onDiscountRemoved={handleDiscountRemoved}
+            calculateDiscountedPrice={calculateDiscountedPrice}
+            getDiscountAmount={getDiscountAmount}
+            processing={processing}
           />
 
           {/* Authentication Form or Payment Methods */}
@@ -127,18 +153,19 @@ export default function CheckoutPage() {
             <CheckoutSignupForm
               onSuccess={handleAuthSuccess}
               planName={planName}
-              planPrice={price}
+              planPrice={finalPrice}
             />
           ) : (
             <PaymentErrorBoundary>
               <PaymentMethodsCard
                 processing={processing}
-                price={price}
+                price={finalPrice}
                 planName={planName}
                 planId={selectedPlan.id}
                 userId={user?.id || ''}
                 handlePaymentSuccess={handlePaymentSuccess}
                 handlePaymentError={handlePaymentError}
+                appliedDiscount={appliedDiscount}
               />
             </PaymentErrorBoundary>
           )}

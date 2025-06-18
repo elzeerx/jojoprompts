@@ -2,15 +2,46 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Crown, Check } from "lucide-react";
+import { DiscountCodeInput } from "@/components/checkout/DiscountCodeInput";
 
 interface PlanSummaryCardProps {
   selectedPlan: any;
   price: number;
   features: string[];
   isLifetime: boolean;
+  appliedDiscount?: {
+    id: string;
+    code: string;
+    discount_type: string;
+    discount_value: number;
+  } | null;
+  onDiscountApplied: (discount: {
+    id: string;
+    code: string;
+    discount_type: string;
+    discount_value: number;
+  }) => void;
+  onDiscountRemoved: () => void;
+  calculateDiscountedPrice: (price: number) => number;
+  getDiscountAmount: (price: number) => number;
+  processing?: boolean;
 }
 
-export function PlanSummaryCard({ selectedPlan, price, features, isLifetime }: PlanSummaryCardProps) {
+export function PlanSummaryCard({ 
+  selectedPlan, 
+  price, 
+  features, 
+  isLifetime,
+  appliedDiscount,
+  onDiscountApplied,
+  onDiscountRemoved,
+  calculateDiscountedPrice,
+  getDiscountAmount,
+  processing = false
+}: PlanSummaryCardProps) {
+  const discountAmount = getDiscountAmount(price);
+  const finalPrice = calculateDiscountedPrice(price);
+
   return (
     <Card className="h-fit">
       <CardHeader>
@@ -21,12 +52,24 @@ export function PlanSummaryCard({ selectedPlan, price, features, isLifetime }: P
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-center">
-          <div className="text-3xl font-bold text-warm-gold">
-            ${price}
-            {isLifetime ? (
-              <span className="text-lg text-muted-foreground"> one-time</span>
-            ) : (
-              <span className="text-lg text-muted-foreground"> for 1 year</span>
+          <div className="space-y-2">
+            {appliedDiscount && discountAmount > 0 && (
+              <div className="text-lg text-muted-foreground line-through">
+                ${price.toFixed(2)}
+              </div>
+            )}
+            <div className="text-3xl font-bold text-warm-gold">
+              ${finalPrice.toFixed(2)}
+              {isLifetime ? (
+                <span className="text-lg text-muted-foreground"> one-time</span>
+              ) : (
+                <span className="text-lg text-muted-foreground"> for 1 year</span>
+              )}
+            </div>
+            {appliedDiscount && discountAmount > 0 && (
+              <div className="text-sm text-green-600 font-medium">
+                You save ${discountAmount.toFixed(2)}!
+              </div>
             )}
           </div>
           <p className="text-muted-foreground mt-2">
@@ -49,6 +92,15 @@ export function PlanSummaryCard({ selectedPlan, price, features, isLifetime }: P
               </li>
             ))}
           </ul>
+        </div>
+
+        <div className="pt-4 border-t">
+          <DiscountCodeInput
+            onDiscountApplied={onDiscountApplied}
+            onDiscountRemoved={onDiscountRemoved}
+            appliedDiscount={appliedDiscount}
+            disabled={processing}
+          />
         </div>
       </CardContent>
     </Card>

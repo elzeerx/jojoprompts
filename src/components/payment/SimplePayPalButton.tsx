@@ -11,6 +11,12 @@ interface SimplePayPalButtonProps {
   userId: string;
   onSuccess: (data: any) => void;
   onError: (error: any) => void;
+  appliedDiscount?: {
+    id: string;
+    code: string;
+    discount_type: string;
+    discount_value: number;
+  } | null;
 }
 
 export function SimplePayPalButton({ 
@@ -18,14 +24,15 @@ export function SimplePayPalButton({
   planId, 
   userId, 
   onSuccess, 
-  onError 
+  onError,
+  appliedDiscount
 }: SimplePayPalButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handlePayPalRedirect = async () => {
     setIsProcessing(true);
     try {
-      console.log('Initiating PayPal checkout:', { amount, planId, userId });
+      console.log('Initiating PayPal checkout:', { amount, planId, userId, appliedDiscount });
 
       // Create the PayPal order via Supabase Edge Function
       const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
@@ -33,7 +40,8 @@ export function SimplePayPalButton({
           action: "create",
           planId,
           userId,
-          amount
+          amount,
+          appliedDiscount
         }
       });
 
@@ -56,7 +64,8 @@ export function SimplePayPalButton({
         amount,
         orderId: data.orderId,
         timestamp: Date.now(),
-        approvalUrl: data.approvalUrl
+        approvalUrl: data.approvalUrl,
+        appliedDiscount
       };
 
       localStorage.setItem(
@@ -69,7 +78,7 @@ export function SimplePayPalButton({
       // ENHANCED: Add a small delay to ensure localStorage is written
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Redirect to PayPal
+      //Redirect to PayPal
       window.location.href = data.approvalUrl;
     } catch (err: any) {
       console.error('PayPal checkout initiation failed:', err);
