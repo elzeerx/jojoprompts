@@ -15,8 +15,106 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
   try {
-    const { action, orderId, planId, userId, amount } = await req.json();
+    const { action, orderId, planId, userId, amount, appliedDiscount } = await req.json();
     const supabaseClient = makeSupabaseClient();
+
+    // Handle direct activation for 100% discounts
+    if (action === 'direct-activation') {
+      console.log('Processing direct activation for 100% discount:', { planId, userId, amount, appliedDiscount });
+
+      if (amount !== 0) {
+        throw new Error('Direct activation is only allowed for 100% discounts (amount must be $0)');
+      }
+
+      if (!appliedDiscount) {
+        throw new Error('Applied discount information is required for direct activation');
+      }
+
+      // Create completed transaction record
+      const { data: transaction, error: transactionError } = await supabaseClient
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          plan_id: planId,
+          amount_usd: 0,
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          paypal_order_id: null, // No PayPal order for direct activation
+          paypal_payment_id: `discount_${appliedDiscount.code}_${Date.now()}` // Unique identifier for discount payment
+        })
+        .select()
+        .single();
+
+      if (transactionError || !transaction) {
+        console.error('Failed to create transaction for direct activation:', transactionError);
+        throw new Error('Failed to create transaction record');
+      }
+
+      console.log('Created transaction for direct activation:', transaction);
+
+      // Create active subscription
+      const { data: subscription, error: subscriptionError } = await supabaseClient
+        .from('user_subscriptions')
+        .insert({
+          user_id: userId,
+          plan_id: planId,
+          payment_method: 'discount_100_percent',
+          payment_id: transaction.paypal_payment_id,
+          transaction_id: transaction.id,
+          status: 'active',
+          start_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
+        })
+        .select()
+        .single();
+
+      if (subscriptionError || !subscription) {
+        console.error('Failed to create subscription for direct activation:', subscriptionError);
+        throw new Error('Failed to create subscription');
+      }
+
+      console.log('Created subscription for direct activation:', subscription);
+
+      // Track discount usage
+      const { error: discountUsageError } = await supabaseClient
+        .from('discount_code_usage')
+        .insert({
+          discount_code_id: appliedDiscount.id,
+          user_id: userId,
+          used_at: new Date().toISOString()
+        });
+
+      if (discountUsageError) {
+        console.error('Failed to track discount usage:', discountUsageError);
+        // Don't throw error as the main transaction succeeded
+      }
+
+      // Increment discount usage count
+      const { error: incrementError } = await supabaseClient
+        .from('discount_codes')
+        .update({ 
+          times_used: supabaseClient.sql`times_used + 1`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', appliedDiscount.id);
+
+      if (incrementError) {
+        console.error('Failed to increment discount usage:', incrementError);
+        // Don't throw error as the main transaction succeeded
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        transactionId: transaction.id,
+        subscriptionId: subscription.id,
+        paymentMethod: 'discount_100_percent',
+        message: 'Subscription activated successfully with 100% discount'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Regular PayPal flow for non-100% discounts
     const { clientId, clientSecret, baseUrl } = getPayPalConfig();
     const accessToken = await fetchPayPalAccessToken(baseUrl, clientId, clientSecret);
 

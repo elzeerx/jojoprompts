@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, CheckCircle } from 'lucide-react';
 import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
 
 interface SimplePayPalButtonProps {
@@ -29,10 +29,80 @@ export function SimplePayPalButton({
 }: SimplePayPalButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Calculate final amount after discount
+  const calculateFinalAmount = () => {
+    if (!appliedDiscount) return amount;
+    
+    if (appliedDiscount.discount_type === 'percentage') {
+      const discountAmount = (amount * appliedDiscount.discount_value) / 100;
+      return Math.max(0, amount - discountAmount);
+    } else if (appliedDiscount.discount_type === 'fixed_amount') {
+      return Math.max(0, amount - appliedDiscount.discount_value);
+    }
+    
+    return amount;
+  };
+
+  const finalAmount = calculateFinalAmount();
+  const is100PercentDiscount = finalAmount === 0;
+
+  const handleDirectActivation = async () => {
+    setIsProcessing(true);
+    try {
+      console.log('Processing 100% discount - Direct activation:', { 
+        amount: finalAmount, 
+        planId, 
+        userId, 
+        appliedDiscount 
+      });
+
+      // Call direct activation for 100% discounts
+      const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
+        body: {
+          action: "direct-activation",
+          planId,
+          userId,
+          amount: finalAmount,
+          appliedDiscount
+        }
+      });
+
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || "Failed to activate subscription with discount.");
+      }
+
+      console.log('Direct activation successful:', data);
+
+      // Call onSuccess with the activation data
+      onSuccess({
+        status: 'COMPLETED',
+        transactionId: data.transactionId,
+        subscriptionId: data.subscriptionId,
+        paymentMethod: 'discount_100_percent'
+      });
+
+      toast({
+        title: "Success!",
+        description: "Your subscription has been activated with the discount!",
+        variant: "default"
+      });
+
+    } catch (err: any) {
+      console.error('Direct activation failed:', err);
+      setIsProcessing(false);
+      onError(err);
+      toast({
+        title: "Error",
+        description: err.message || "Subscription activation failed.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handlePayPalRedirect = async () => {
     setIsProcessing(true);
     try {
-      console.log('Initiating PayPal checkout:', { amount, planId, userId, appliedDiscount });
+      console.log('Initiating PayPal checkout:', { amount: finalAmount, planId, userId, appliedDiscount });
 
       // Create the PayPal order via Supabase Edge Function
       const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
@@ -40,7 +110,7 @@ export function SimplePayPalButton({
           action: "create",
           planId,
           userId,
-          amount,
+          amount: finalAmount, // Use final amount after discount
           appliedDiscount
         }
       });
@@ -61,7 +131,7 @@ export function SimplePayPalButton({
       const paymentContext = {
         planId,
         userId,
-        amount,
+        amount: finalAmount,
         orderId: data.orderId,
         timestamp: Date.now(),
         approvalUrl: data.approvalUrl,
@@ -92,11 +162,21 @@ export function SimplePayPalButton({
     }
   };
 
+  const handlePayment = () => {
+    if (is100PercentDiscount) {
+      handleDirectActivation();
+    } else {
+      handlePayPalRedirect();
+    }
+  };
+
   if (isProcessing) {
     return (
       <div className="flex items-center justify-center py-8 bg-blue-50 border border-blue-200 rounded-lg">
         <Loader2 className="h-6 w-6 animate-spin mr-2 text-blue-600" />
-        <span className="text-blue-700 font-medium">Redirecting to PayPal...</span>
+        <span className="text-blue-700 font-medium">
+          {is100PercentDiscount ? 'Activating subscription...' : 'Redirecting to PayPal...'}
+        </span>
       </div>
     );
   }
@@ -104,17 +184,34 @@ export function SimplePayPalButton({
   return (
     <div className="flex flex-col items-center w-full">
       <button
-        className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-6 py-3 rounded shadow flex items-center gap-2 w-full justify-center transition"
-        onClick={handlePayPalRedirect}
+        className={`font-semibold px-6 py-3 rounded shadow flex items-center gap-2 w-full justify-center transition ${
+          is100PercentDiscount 
+            ? 'bg-green-500 hover:bg-green-600 text-white' 
+            : 'bg-yellow-400 hover:bg-yellow-500 text-black'
+        }`}
+        onClick={handlePayment}
         disabled={isProcessing}
         type="button"
       >
-        <img src="https://www.paypalobjects.com/webstatic/icon/pp258.png" alt="PayPal" className="h-5 w-5 mr-2" />
-        Pay with PayPal
-        <ArrowRight className="w-4 h-4 ml-2" />
+        {is100PercentDiscount ? (
+          <>
+            <CheckCircle className="h-5 w-5 mr-2" />
+            Activate Subscription (Free!)
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </>
+        ) : (
+          <>
+            <img src="https://www.paypalobjects.com/webstatic/icon/pp258.png" alt="PayPal" className="h-5 w-5 mr-2" />
+            Pay ${finalAmount.toFixed(2)} with PayPal
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </>
+        )}
       </button>
       <p className="text-xs text-gray-500 text-center mt-2">
-        🔒 You will be redirected to PayPal to complete your payment securely
+        {is100PercentDiscount 
+          ? '🎉 Your discount covers the full amount - activate immediately!'
+          : '🔒 You will be redirected to PayPal to complete your payment securely'
+        }
       </p>
     </div>
   );
