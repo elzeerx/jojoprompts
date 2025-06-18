@@ -9,6 +9,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Shield, AlertTriangle, Activity, Users, Lock } from 'lucide-react';
 import { RLSPolicyAuditor } from '@/utils/security/rlsPolicyAuditor';
 import { securityMonitor } from '@/utils/monitoring';
+import { SecurityMetricsCards } from './components/SecurityMetricsCards';
+import { PolicyConflictsSection } from './components/PolicyConflictsSection';
+import { RecommendationsSection } from './components/RecommendationsSection';
+import { SecurityLoadingState } from './components/SecurityLoadingState';
 
 interface SecurityMetrics {
   totalEvents: number;
@@ -63,7 +67,17 @@ export function SecurityMonitoringDashboard() {
       
       // Load security metrics from monitoring system
       const currentMetrics = securityMonitor.getSecurityMetrics();
-      setMetrics(currentMetrics);
+      
+      // Ensure we have a proper SecurityMetrics object
+      const safeMetrics: SecurityMetrics = {
+        totalEvents: currentMetrics.totalEvents || 0,
+        authFailures: currentMetrics.authFailures || 0,
+        suspiciousActivity: currentMetrics.suspiciousActivity || 0,
+        rateLimitHits: currentMetrics.rateLimitHits || 0,
+        paymentErrors: currentMetrics.paymentErrors || 0,
+        accessDenied: currentMetrics.accessDenied || 0
+      };
+      setMetrics(safeMetrics);
       
       // Load recent security events from database
       const { data: securityLogs, error } = await supabase
@@ -139,15 +153,6 @@ export function SecurityMonitoringDashboard() {
     }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'destructive';
-      case 'high': return 'secondary';
-      case 'medium': return 'outline';
-      default: return 'outline';
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -167,148 +172,13 @@ export function SecurityMonitoringDashboard() {
         </Button>
       </div>
 
-      {/* Security Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Events (24h)</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalEvents}</div>
-            <p className="text-xs text-muted-foreground">
-              Security events logged
-            </p>
-          </CardContent>
-        </Card>
+      <SecurityMetricsCards metrics={metrics} />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Auth Failures</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{metrics.authFailures}</div>
-            <p className="text-xs text-muted-foreground">
-              Failed authentication attempts
-            </p>
-          </CardContent>
-        </Card>
+      <PolicyConflictsSection conflicts={policyConflicts} />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Suspicious Activity</CardTitle>
-            <Shield className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{metrics.suspiciousActivity}</div>
-            <p className="text-xs text-muted-foreground">
-              Potentially malicious events
-            </p>
-          </CardContent>
-        </Card>
+      <RecommendationsSection recommendations={recommendations} />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rate Limit Hits</CardTitle>
-            <Users className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{metrics.rateLimitHits}</div>
-            <p className="text-xs text-muted-foreground">
-              Rate limiting triggered
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Payment Errors</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{metrics.paymentErrors}</div>
-            <p className="text-xs text-muted-foreground">
-              Payment processing issues
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Access Denied</CardTitle>
-            <Lock className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{metrics.accessDenied}</div>
-            <p className="text-xs text-muted-foreground">
-              Unauthorized access attempts
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Policy Conflicts */}
-      {policyConflicts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-red-600">
-              Policy Conflicts Detected
-            </CardTitle>
-            <CardDescription>
-              The following RLS policy conflicts require immediate attention:
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {policyConflicts.map((conflict, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <div className="font-medium">{conflict.table} - {conflict.operation}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Conflicting policies: {conflict.policies.join(', ')}
-                    </div>
-                  </div>
-                  <Badge variant={getSeverityColor(conflict.severity) as any}>
-                    {conflict.severity.toUpperCase()}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recommendations */}
-      {recommendations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Security Recommendations</CardTitle>
-            <CardDescription>
-              Suggested improvements to enhance system security:
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {recommendations.map((recommendation, index) => (
-                <div key={index} className="flex items-start gap-2 p-2 bg-blue-50 rounded-lg">
-                  <Shield className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm text-blue-800">{recommendation}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {loading && (
-        <div className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-            <p className="text-sm text-muted-foreground">Loading security metrics...</p>
-          </div>
-        </div>
-      )}
+      {loading && <SecurityLoadingState />}
     </div>
   );
 }
