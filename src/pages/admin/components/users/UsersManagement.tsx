@@ -1,23 +1,23 @@
 
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useUserManagement } from "./hooks/useUserManagement";
 import { UsersHeader } from "./components/UsersHeader";
-import { UsersError } from "./components/UsersError";
 import { UsersTable } from "./UsersTable";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
 export default function UsersManagement() {
-  const [searchTerm, setSearchTerm] = useState("");
   const {
     users,
     loading,
     error,
+    total,
     currentPage,
     totalPages,
+    searchTerm,
     onPageChange,
+    onSearchChange,
     updatingUserId,
     fetchUsers,
     updateUser,
@@ -26,22 +26,11 @@ export default function UsersManagement() {
     deleteUser
   } = useUserManagement();
 
-  const filteredUsers = users.filter(user => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      user.email.toLowerCase().includes(searchLower) ||
-      user.role.toLowerCase().includes(searchLower) ||
-      (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
-      (user.last_name && user.last_name.toLowerCase().includes(searchLower)) ||
-      (user.subscription?.plan_name && user.subscription.plan_name.toLowerCase().includes(searchLower))
-    );
-  });
-
   return (
     <div className="space-y-6">
       <UsersHeader 
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
+        onSearchChange={onSearchChange}
         onUserCreated={fetchUsers}
       />
 
@@ -71,7 +60,7 @@ export default function UsersManagement() {
       ) : (
         <div className="rounded-md border border-warm-gold/20 overflow-visible bg-white/80 shadow-sm">
           <UsersTable 
-            users={filteredUsers}
+            users={users}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={onPageChange}
@@ -82,6 +71,13 @@ export default function UsersManagement() {
             onDeleteUser={deleteUser}
             onRefresh={fetchUsers}
           />
+          
+          {/* Show total count info */}
+          {total > 0 && (
+            <div className="px-4 py-3 border-t border-warm-gold/20 bg-gray-50/50 text-sm text-muted-foreground">
+              Showing {users.length} of {total} users total
+            </div>
+          )}
         </div>
       )}
     </div>

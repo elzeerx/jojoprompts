@@ -16,8 +16,15 @@ interface UserUpdateData {
 
 export function useUserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
   const pageSize = 10;
-  const { users, loading, error, fetchUsers } = useFetchUsers();
+  
+  const { users, loading, error, total, totalPages, fetchUsers } = useFetchUsers({
+    page: currentPage,
+    limit: pageSize,
+    search: searchTerm
+  });
+  
   const { updatingUserId, updateUserRole } = useUserRoleManagement();
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
 
@@ -242,21 +249,25 @@ export function useUserManagement() {
     }
   };
 
-  // Calculate pagination values
-  const totalPages = Math.ceil(users.length / pageSize);
-  const paginatedUsers = users.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleSearchChange = (search: string) => {
+    setSearchTerm(search);
+    setCurrentPage(1); // Reset to first page when searching
+  };
 
   return {
-    users: paginatedUsers,
-    allUsers: users,
+    users,
     loading,
     error,
+    total,
     currentPage,
     totalPages,
-    onPageChange: setCurrentPage,
+    searchTerm,
+    onPageChange: handlePageChange,
+    onSearchChange: handleSearchChange,
     updatingUserId: processingUserId || updatingUserId,
     fetchUsers,
     updateUser: handleUpdateUser,

@@ -5,10 +5,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
-export function useFetchUsers() {
+interface UseFetchUsersParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+interface UseFetchUsersReturn {
+  users: (UserProfile & { subscription?: { plan_name: string } | null })[];
+  loading: boolean;
+  error: string | null;
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  fetchUsers: () => void;
+}
+
+export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUsersParams = {}): UseFetchUsersReturn {
   const [users, setUsers] = useState<(UserProfile & { subscription?: { plan_name: string } | null })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const { session, loading: authLoading } = useAuth();
 
@@ -22,7 +40,17 @@ export function useFetchUsers() {
         return;
       }
 
-      // Fetch users through the edge function using GET request
+      // Build query parameters for server-side pagination
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      
+      if (search) {
+        params.append('search', search);
+      }
+
+      // Fetch users through the edge function using GET request with pagination parameters
       const { data: usersFunctionData, error: usersError } = await supabase.functions.invoke(
         "get-all-users",
         {
@@ -65,6 +93,8 @@ export function useFetchUsers() {
       });
 
       setUsers(usersWithSubscriptions || []);
+      setTotal(usersFunctionData.total || 0);
+      setTotalPages(usersFunctionData.totalPages || 0);
     } catch (error: any) {
       // If auth error, prompt and refresh session
       if (error?.message?.includes("token") || error?.message?.includes("auth")) {
@@ -79,7 +109,7 @@ export function useFetchUsers() {
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token]);
+  }, [session?.access_token, page, limit, search]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -87,5 +117,13 @@ export function useFetchUsers() {
     }
   }, [fetchUsers, authLoading]);
 
-  return { users, loading, error, fetchUsers };
+  return { 
+    users, 
+    loading, 
+    error, 
+    total,
+    totalPages,
+    currentPage: page,
+    fetchUsers 
+  };
 }

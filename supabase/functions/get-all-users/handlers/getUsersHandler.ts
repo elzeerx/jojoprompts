@@ -30,57 +30,87 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
     
-    // Build query with search functionality
-    let query = supabase
-      .from('profiles')
-      .select('id, first_name, last_name, role, created_at, membership_tier', { count: 'exact' });
+    // Get user emails from auth.users table with pagination
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers({
+      perPage: limit,
+      page: page
+    });
     
-    // Add search filter if provided
-    if (search) {
-      query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
-    }
-    
-    // Add pagination
-    query = query.range(offset, offset + limit - 1).order('created_at', { ascending: false });
-    
-    // Execute query
-    const { data: users, error, count } = await query;
-    
-    if (error) {
-      console.error('Database error when fetching users:', error);
+    if (authError) {
+      console.error('Error fetching auth users:', authError);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch users from database' }), 
+        JSON.stringify({ error: 'Failed to fetch users from auth' }), 
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
+
+    // Get total count of auth users for pagination info
+    const { data: allAuthUsers, error: countError } = await supabase.auth.admin.listUsers();
+    const totalUsers = allAuthUsers?.users?.length || 0;
+
+    // Get user IDs from auth response
+    let userIds = authUsers?.users?.map((user: any) => user.id) || [];
     
-    // Get user emails from auth.users table
-    const userIds = users.map((user: any) => user.id);
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers({
-      perPage: userIds.length,
-      page: 1
-    });
+    // Apply search filter on auth data if needed
+    let filteredAuthUsers = authUsers?.users || [];
+    if (search) {
+      filteredAuthUsers = authUsers?.users?.filter((user: any) => 
+        user.email?.toLowerCase().includes(search.toLowerCase())
+      ) || [];
+      userIds = filteredAuthUsers.map((user: any) => user.id);
+    }
+    
+    // If we have user IDs, get their profiles
+    let profiles = [];
+    if (userIds.length > 0) {
+      const { data: profilesData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, role, created_at, membership_tier')
+        .in('id', userIds);
+      
+      if (profileError) {
+        console.error('Database error when fetching profiles:', profileError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch user profiles' }), 
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      
+      profiles = profilesData || [];
+    }
     
     // Merge profile data with email from auth
-    const enrichedUsers = users.map((user: any) => {
-      const authUser = authUsers?.users?.find((au: any) => au.id === user.id);
+    const enrichedUsers = filteredAuthUsers.map((authUser: any) => {
+      const profile = profiles.find((p: any) => p.id === authUser.id);
       return {
-        ...user,
-        email: authUser?.email || 'unknown',
-        emailConfirmed: !!authUser?.email_confirmed_at
+        id: authUser.id,
+        email: authUser.email || 'unknown',
+        emailConfirmed: !!authUser.email_confirmed_at,
+        created_at: authUser.created_at,
+        last_sign_in_at: authUser.last_sign_in_at,
+        first_name: profile?.first_name || null,
+        last_name: profile?.last_name || null,
+        role: profile?.role || 'user',
+        membership_tier: profile?.membership_tier || 'free'
       };
     });
+    
+    // Calculate pagination info
+    const totalPages = Math.ceil(totalUsers / limit);
     
     return new Response(
       JSON.stringify({ 
         users: enrichedUsers, 
-        total: count || enrichedUsers.length, 
+        total: totalUsers, 
         page, 
         limit,
-        totalPages: count ? Math.ceil(count / limit) : 1
+        totalPages
       }), 
       { 
         status: 200, 
