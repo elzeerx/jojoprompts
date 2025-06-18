@@ -1,4 +1,3 @@
-
 // Enhanced input validation utilities with comprehensive security checks
 import { SecurityUtils } from './security';
 
@@ -58,19 +57,19 @@ export class InputValidator {
     return { isValid: true };
   }
 
-  // Enhanced password validation with comprehensive security checks
-  static validatePassword(password: string): { isValid: boolean; error?: string } {
+  // Enhanced password validation with comprehensive security checks and strength calculation
+  static validatePassword(password: string): { isValid: boolean; error?: string; strength: 'weak' | 'medium' | 'strong' } {
     if (!password || typeof password !== 'string') {
-      return { isValid: false, error: 'Password is required and must be a string' };
+      return { isValid: false, error: 'Password is required and must be a string', strength: 'weak' };
     }
 
     // Length checks
     if (password.length < 8) {
-      return { isValid: false, error: 'Password must be at least 8 characters long' };
+      return { isValid: false, error: 'Password must be at least 8 characters long', strength: 'weak' };
     }
 
     if (password.length > 128) { // Reasonable upper limit
-      return { isValid: false, error: 'Password is too long (max 128 characters)' };
+      return { isValid: false, error: 'Password is too long (max 128 characters)', strength: 'weak' };
     }
 
     // Character requirements
@@ -85,16 +84,35 @@ export class InputValidator {
     if (!hasNumbers) requirements.push('number');
     if (!hasSpecialChar) requirements.push('special character');
 
+    // Calculate strength based on criteria met
+    let strengthScore = 0;
+    if (hasLowerCase) strengthScore++;
+    if (hasUpperCase) strengthScore++;
+    if (hasNumbers) strengthScore++;
+    if (hasSpecialChar) strengthScore++;
+    if (password.length >= 12) strengthScore++;
+    if (password.length >= 16) strengthScore++;
+
+    let strength: 'weak' | 'medium' | 'strong';
+    if (strengthScore <= 2) {
+      strength = 'weak';
+    } else if (strengthScore <= 4) {
+      strength = 'medium';
+    } else {
+      strength = 'strong';
+    }
+
     if (requirements.length > 0) {
       return { 
         isValid: false, 
-        error: `Password must contain at least one: ${requirements.join(', ')}` 
+        error: `Password must contain at least one: ${requirements.join(', ')}`,
+        strength: 'weak'
       };
     }
 
     // Security checks
     if (SecurityUtils.containsXSS(password) || SecurityUtils.containsSQLInjection(password)) {
-      return { isValid: false, error: 'Password contains invalid characters' };
+      return { isValid: false, error: 'Password contains invalid characters', strength: 'weak' };
     }
 
     // Common password checks
@@ -104,15 +122,15 @@ export class InputValidator {
     ];
     
     if (commonPasswords.some(common => password.toLowerCase().includes(common))) {
-      return { isValid: false, error: 'Password is too common' };
+      return { isValid: false, error: 'Password is too common', strength: 'weak' };
     }
 
     // Check for repeated characters
     if (/(.)\1{3,}/.test(password)) {
-      return { isValid: false, error: 'Password cannot have more than 3 consecutive identical characters' };
+      return { isValid: false, error: 'Password cannot have more than 3 consecutive identical characters', strength: 'weak' };
     }
 
-    return { isValid: true };
+    return { isValid: true, strength };
   }
 
   // Enhanced UUID validation
