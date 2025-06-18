@@ -65,14 +65,13 @@ export function SecurityMonitoringDashboard() {
       const currentMetrics = securityMonitor.getSecurityMetrics();
       setMetrics(currentMetrics);
       
-      // Load recent security events from database using raw SQL query
+      // Load recent security events from database
       const { data: securityLogs, error } = await supabase
-        .rpc('get_security_logs', {
-          days_back: 1,
-          limit_count: 100
-        })
-        .then(result => ({ data: null, error: result.error }))
-        .catch(() => ({ data: null, error: null }));
+        .from('security_logs')
+        .select('action, created_at, details')
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (!error && securityLogs) {
         // Process logs to update metrics

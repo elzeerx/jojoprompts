@@ -20,14 +20,14 @@ export default function AdminDashboard() {
   const isMobile = useIsMobile();
   const isSmallMobile = useIsSmallMobile();
 
-  // Add security tab to existing tabs
+  // Add security tab to existing tabs with proper interface compliance
   const enhancedTabs = [
     ...adminTabs,
     {
       id: "security",
       label: "Security",
       icon: Shield,
-      shortLabel: "Sec"
+      mobileLabel: "Security"
     }
   ];
 

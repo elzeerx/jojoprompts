@@ -131,7 +131,7 @@ export class AdminAuthenticator {
     return permissions.includes(requiredPermission);
   }
 
-  // Audit admin actions using raw SQL to avoid type issues
+  // Audit admin actions using direct table insert
   static async auditAdminAction(
     userId: string,
     action: string,
@@ -139,45 +139,26 @@ export class AdminAuthenticator {
     metadata?: Record<string, any>
   ): Promise<void> {
     try {
-      // Use raw SQL query to insert audit log
-      const { error } = await supabase.rpc('log_admin_action', {
-        p_admin_user_id: userId,
-        p_action: action,
-        p_target_resource: targetResource,
-        p_metadata: metadata || {},
-        p_ip_address: 'client-side'
-      });
+      // Use direct table insert for audit logging
+      const { error } = await supabase
+        .from('admin_audit_log')
+        .insert({
+          admin_user_id: userId,
+          action,
+          target_resource: targetResource,
+          metadata: metadata || {},
+          timestamp: new Date().toISOString(),
+          ip_address: 'client-side'
+        });
 
       if (error) {
-        console.warn('Failed to log admin action via RPC, trying direct insert');
-        
-        // Fallback: try direct table access (will work once types are regenerated)
-        const { error: insertError } = await supabase
-          .from('admin_audit_log' as any)
-          .insert({
-            admin_user_id: userId,
-            action,
-            target_resource: targetResource,
-            metadata: metadata || {},
-            timestamp: new Date().toISOString(),
-            ip_address: 'client-side'
-          });
-
-        if (insertError) {
-          logError('Failed to audit admin action', 'admin_audit', {
-            error: insertError.message,
-            userId,
-            action
-          });
-        } else {
-          logInfo('Admin action audited', 'admin_audit', {
-            userId,
-            action,
-            targetResource
-          });
-        }
+        logError('Failed to audit admin action', 'admin_audit', {
+          error: error.message,
+          userId,
+          action
+        });
       } else {
-        logInfo('Admin action audited via RPC', 'admin_audit', {
+        logInfo('Admin action audited', 'admin_audit', {
           userId,
           action,
           targetResource
