@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +39,7 @@ export function PromptsPageContent({
 
   console.log("PromptsPageContent - Active categories:", activeCategories);
   console.log("PromptsPageContent - Total prompts:", prompts.length);
+  console.log("PromptsPageContent - Selected category:", selectedCategory);
 
   // Fetch user subscription and admin status
   useEffect(() => {
@@ -88,6 +88,21 @@ export function PromptsPageContent({
     });
   };
 
+  // Helper function to check if a prompt matches the selected category
+  const doesPromptMatchSelectedCategory = (promptCategory: string | undefined, selectedCat: string) => {
+    if (selectedCat === "all") return true;
+    if (!promptCategory) return false;
+    
+    const normalizedPromptCategory = promptCategory.toLowerCase().trim();
+    const normalizedSelectedCategory = selectedCat.toLowerCase().trim();
+    
+    // Direct comparison with the selected category
+    return normalizedPromptCategory === normalizedSelectedCategory ||
+           normalizedPromptCategory.includes(normalizedSelectedCategory) ||
+           normalizedSelectedCategory.includes(normalizedPromptCategory) ||
+           normalizedPromptCategory.replace(/\s+prompts?$/i, '') === normalizedSelectedCategory.replace(/\s+prompts?$/i, '');
+  };
+
   // Filter prompts based on search query and category
   const filteredPrompts = prompts.filter(prompt => {
     const promptCategory = prompt.metadata?.category;
@@ -109,14 +124,8 @@ export function PromptsPageContent({
       prompt.prompt_text.toLowerCase().includes(searchQuery.toLowerCase()) || 
       (prompt.metadata?.tags && prompt.metadata.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase())));
     
-    // Selected category filtering
-    const matchesCategory = selectedCategory === "all" || 
-      activeCategories.some(activeCategory => {
-        if (selectedCategory.toLowerCase() === activeCategory.name.toLowerCase()) {
-          return isPromptCategoryActive(prompt.metadata?.category);
-        }
-        return false;
-      });
+    // Selected category filtering - compare directly with selected category
+    const matchesCategory = doesPromptMatchSelectedCategory(promptCategory, selectedCategory);
     
     const result = matchesSearch && matchesCategory;
     console.log(`Prompt "${prompt.title}" - Search: ${matchesSearch}, Category: ${matchesCategory}, Final: ${result}`);
