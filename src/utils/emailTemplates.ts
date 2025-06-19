@@ -132,7 +132,7 @@ export const emailTemplates = {
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${Deno.env.get('SITE_URL') || 'https://promptlibrary.com'}/prompts" style="background: #c49d68; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+            <a href="https://promptlibrary.com/prompts" style="background: #c49d68; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
               Explore Prompts Now
             </a>
           </div>
@@ -147,7 +147,7 @@ export const emailTemplates = {
         </div>
       </div>
     `,
-    text: `Welcome to Prompt Library, ${data.name}!\n\nThank you for joining our community. Start exploring amazing AI prompts at ${Deno.env.get('SITE_URL') || 'https://promptlibrary.com'}/prompts\n\nHappy prompting!\nThe Prompt Library Team`
+    text: `Welcome to Prompt Library, ${data.name}!\n\nThank you for joining our community. Start exploring amazing AI prompts at https://promptlibrary.com/prompts\n\nHappy prompting!\nThe Prompt Library Team`
   }),
 
   // Password reset email
