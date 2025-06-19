@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { UserPlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useWelcomeEmail } from "@/hooks/useWelcomeEmail";
 
 interface CreateUserDialogProps {
   onUserCreated: () => void;
@@ -19,6 +19,7 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
   const [role, setRole] = useState("user");
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const { sendWelcomeEmail } = useWelcomeEmail();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,12 +62,13 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
 
       if (profileError) throw profileError;
       
-      // Send email notification manually if needed
-      await sendWelcomeEmail(email);
+      // Send welcome email
+      const userName = email.split('@')[0]; // Use email prefix as name fallback
+      await sendWelcomeEmail(userName, email);
       
       toast({
-        title: "User created",
-        description: `Successfully created user ${email}`,
+        title: "User created successfully! 🎉",
+        description: `Successfully created user ${email} and sent welcome email`,
       });
       
       setOpen(false);
@@ -84,27 +86,6 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const sendWelcomeEmail = async (userEmail: string) => {
-    try {
-      // Get the current origin with protocol
-      const origin = window.location.origin;
-      const loginUrl = `${origin}/login`;
-      
-      // Attempt to send a welcome email using Supabase Auth API
-      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-        redirectTo: loginUrl,
-      });
-      
-      if (error) {
-        console.warn("Could not send welcome email:", error.message);
-      } else {
-        console.log("Welcome email sent successfully");
-      }
-    } catch (err) {
-      console.warn("Failed to send welcome email:", err);
     }
   };
 

@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { Mail, MessageSquare, Phone, Clock } from 'lucide-react';
+import { Mail, MessageSquare, Clock, Loader2 } from 'lucide-react';
+import { emailService } from '@/utils/emailService';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -21,15 +22,51 @@ export default function ContactPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      // Send confirmation email to user
+      const confirmationResult = await emailService.sendContactConfirmation(
+        formData.name,
+        formData.email,
+        formData.subject,
+        formData.message
+      );
+
+      // Send notification email to admin
+      const adminResult = await emailService.sendContactAdminNotification(
+        formData.name,
+        formData.email,
+        formData.subject,
+        formData.message
+      );
+
+      if (confirmationResult.success) {
+        toast({
+          title: "Message Sent Successfully! 📧",
+          description: "Thank you for contacting us. We've sent you a confirmation email and will get back to you within 24 hours.",
+        });
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        toast({
+          title: "Message Received",
+          description: "Your message has been received. However, we couldn't send a confirmation email. We'll still get back to you soon!",
+          variant: "default",
+        });
+      }
+
+      if (!adminResult.success) {
+        console.warn('Admin notification email failed:', adminResult.error);
+      }
+
+    } catch (error: any) {
+      console.error('Contact form error:', error);
       toast({
-        title: "Message Sent",
-        description: "Thank you for contacting us. We'll get back to you within 24 hours.",
+        title: "Error Sending Message",
+        description: "There was a problem sending your message. Please try again or contact us directly.",
+        variant: "destructive",
       });
-      setFormData({ name: '', email: '', subject: '', message: '' });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -111,7 +148,14 @@ export default function ContactPage() {
               </div>
               
               <Button type="submit" disabled={isSubmitting} className="w-full mobile-button-primary">
-                {isSubmitting ? 'Sending...' : 'Send Message'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending Message...
+                  </>
+                ) : (
+                  'Send Message'
+                )}
               </Button>
             </form>
           </CardContent>
