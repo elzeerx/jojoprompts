@@ -577,6 +577,10 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_user_account: {
+        Args: { _user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: { _user_id: string; _role: string }
         Returns: boolean
