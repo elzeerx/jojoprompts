@@ -586,9 +586,7 @@ export type Database = {
         Returns: boolean
       }
       validate_discount_code: {
-        Args:
-          | { code_text: string }
-          | { code_text: string; plan_id_param?: string }
+        Args: { code_text: string; plan_id_param?: string }
         Returns: {
           id: string
           discount_type: string
