@@ -184,6 +184,8 @@ export type Database = {
       }
       discount_codes: {
         Row: {
+          applicable_plans: Json | null
+          applies_to_all_plans: boolean | null
           code: string
           created_at: string
           created_by: string
@@ -197,6 +199,8 @@ export type Database = {
           usage_limit: number | null
         }
         Insert: {
+          applicable_plans?: Json | null
+          applies_to_all_plans?: boolean | null
           code: string
           created_at?: string
           created_by: string
@@ -210,6 +214,8 @@ export type Database = {
           usage_limit?: number | null
         }
         Update: {
+          applicable_plans?: Json | null
+          applies_to_all_plans?: boolean | null
           code?: string
           created_at?: string
           created_by?: string
@@ -580,7 +586,9 @@ export type Database = {
         Returns: boolean
       }
       validate_discount_code: {
-        Args: { code_text: string }
+        Args:
+          | { code_text: string }
+          | { code_text: string; plan_id_param?: string }
         Returns: {
           id: string
           discount_type: string

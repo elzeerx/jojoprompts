@@ -60,8 +60,8 @@ export function usePaymentHandling(user: any, selectedPlan: any, processing: boo
         status: 'completed'
       });
       
-      // Add additional parameters for discount payments
-      if (paymentData.paymentMethod === 'discount_100_percent') {
+      // Add method parameter for discount payments
+      if (paymentData.paymentMethod === 'discount_100_percent' || paymentData.paymentMethod === 'discount') {
         successParams.append('method', 'discount');
       }
       

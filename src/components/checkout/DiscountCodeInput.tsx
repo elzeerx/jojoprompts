@@ -21,13 +21,15 @@ interface DiscountCodeInputProps {
     discount_value: number;
   } | null;
   disabled?: boolean;
+  planId?: string;
 }
 
 export function DiscountCodeInput({
   onDiscountApplied,
   onDiscountRemoved,
   appliedDiscount,
-  disabled = false
+  disabled = false,
+  planId
 }: DiscountCodeInputProps) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,8 +46,10 @@ export function DiscountCodeInput({
 
     setLoading(true);
     try {
+      // Call the updated function with plan validation
       const { data, error } = await supabase.rpc('validate_discount_code', {
-        code_text: code.trim().toUpperCase()
+        code_text: code.trim().toUpperCase(),
+        plan_id_param: planId || null
       });
 
       if (error) throw error;

@@ -19,6 +19,8 @@ interface DiscountCode {
   times_used: number;
   is_active: boolean;
   created_at: string;
+  applies_to_all_plans?: boolean;
+  applicable_plans?: string[];
 }
 
 interface DiscountCodesTableProps {
@@ -80,6 +82,17 @@ export function DiscountCodesTable({ discountCodes, onToggleActive, onRefresh }:
     return <span className="text-muted-foreground">{code.times_used}/{code.usage_limit}</span>;
   };
 
+  const getPlanScope = (code: DiscountCode) => {
+    if (code.applies_to_all_plans || code.applies_to_all_plans === undefined) {
+      return <Badge variant="outline" className="border-blue-400 text-blue-600">All Plans</Badge>;
+    }
+    
+    const planCount = code.applicable_plans?.length || 0;
+    return <Badge variant="outline" className="border-purple-400 text-purple-600">
+      {planCount} Plan{planCount !== 1 ? 's' : ''}
+    </Badge>;
+  };
+
   return (
     <>
       <Card className="border-warm-gold/20">
@@ -89,6 +102,7 @@ export function DiscountCodesTable({ discountCodes, onToggleActive, onRefresh }:
               <TableHead>Code</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Discount</TableHead>
+              <TableHead>Plan Scope</TableHead>
               <TableHead>Usage</TableHead>
               <TableHead>Expiration</TableHead>
               <TableHead>Status</TableHead>
@@ -118,6 +132,9 @@ export function DiscountCodesTable({ discountCodes, onToggleActive, onRefresh }:
                 </TableCell>
                 <TableCell>
                   <span className="font-medium">{getDiscountDisplay(code)}</span>
+                </TableCell>
+                <TableCell>
+                  {getPlanScope(code)}
                 </TableCell>
                 <TableCell>
                   {getUsageStatus(code)}

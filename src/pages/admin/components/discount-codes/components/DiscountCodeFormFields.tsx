@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon, Shuffle } from "lucide-react";
 import { format } from "date-fns";
+import { useSubscriptionPlans } from "../hooks/useSubscriptionPlans";
 
 interface FormData {
   code: string;
@@ -14,6 +16,8 @@ interface FormData {
   discount_value: string;
   expiration_date: Date | undefined;
   usage_limit: string;
+  applies_to_all_plans: boolean;
+  applicable_plans: string[];
 }
 
 interface DiscountCodeFormFieldsProps {
@@ -27,6 +31,25 @@ export function DiscountCodeFormFields({
   setFormData, 
   onGenerateRandomCode 
 }: DiscountCodeFormFieldsProps) {
+  const { plans, loading: plansLoading } = useSubscriptionPlans();
+
+  const handlePlanToggle = (planId: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      applicable_plans: checked 
+        ? [...prev.applicable_plans, planId]
+        : prev.applicable_plans.filter(id => id !== planId)
+    }));
+  };
+
+  const handleAllPlansToggle = (checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      applies_to_all_plans: checked,
+      applicable_plans: checked ? [] : prev.applicable_plans
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -87,6 +110,51 @@ export function DiscountCodeFormFields({
           step="0.01"
           className="text-base border-gray-300 focus:border-warm-gold focus:ring-warm-gold rounded-lg"
         />
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-base font-semibold text-gray-900">
+          Applicable Plans *
+        </Label>
+        
+        <div className="space-y-3">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="all-plans"
+              checked={formData.applies_to_all_plans}
+              onCheckedChange={handleAllPlansToggle}
+              className="border-warm-gold data-[state=checked]:bg-warm-gold"
+            />
+            <Label htmlFor="all-plans" className="text-sm font-medium">
+              Apply to all plans
+            </Label>
+          </div>
+
+          {!formData.applies_to_all_plans && (
+            <div className="space-y-2 pl-6">
+              <Label className="text-sm text-gray-600">Select specific plans:</Label>
+              {plansLoading ? (
+                <div className="text-sm text-gray-500">Loading plans...</div>
+              ) : (
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {plans.map((plan) => (
+                    <div key={plan.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`plan-${plan.id}`}
+                        checked={formData.applicable_plans.includes(plan.id)}
+                        onCheckedChange={(checked) => handlePlanToggle(plan.id, !!checked)}
+                        className="border-warm-gold data-[state=checked]:bg-warm-gold"
+                      />
+                      <Label htmlFor={`plan-${plan.id}`} className="text-sm">
+                        {plan.name} (${plan.price_usd})
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">

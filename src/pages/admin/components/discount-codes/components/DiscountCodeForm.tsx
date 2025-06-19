@@ -20,6 +20,8 @@ export function DiscountCodeForm({ onSuccess, onCancel }: DiscountCodeFormProps)
     discount_value: '',
     expiration_date: undefined as Date | undefined,
     usage_limit: '',
+    applies_to_all_plans: true,
+    applicable_plans: [] as string[],
   });
 
   const generateRandomCode = () => {
@@ -39,6 +41,15 @@ export function DiscountCodeForm({ onSuccess, onCancel }: DiscountCodeFormProps)
       toast({
         title: "Error",
         description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.applies_to_all_plans && formData.applicable_plans.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one plan or choose 'Apply to all plans'",
         variant: "destructive",
       });
       return;
@@ -73,6 +84,8 @@ export function DiscountCodeForm({ onSuccess, onCancel }: DiscountCodeFormProps)
           discount_value: discountValue,
           expiration_date: formData.expiration_date?.toISOString(),
           usage_limit: formData.usage_limit ? parseInt(formData.usage_limit) : null,
+          applies_to_all_plans: formData.applies_to_all_plans,
+          applicable_plans: formData.applies_to_all_plans ? [] : formData.applicable_plans,
           created_by: user.id,
         });
 
@@ -89,6 +102,8 @@ export function DiscountCodeForm({ onSuccess, onCancel }: DiscountCodeFormProps)
         discount_value: '',
         expiration_date: undefined,
         usage_limit: '',
+        applies_to_all_plans: true,
+        applicable_plans: [],
       });
 
       onSuccess();

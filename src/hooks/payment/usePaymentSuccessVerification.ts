@@ -1,202 +1,100 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
-import { normalizePaymentParams } from "./helpers/normalizePaymentParams";
-import { gotoFailedPage } from "./helpers/gotoFailedPage";
-import { recoverSession } from "./helpers/useSessionRecovery";
-import { verifyPayPalPayment } from "./helpers/paymentVerifier";
-import { activateSubscription } from "./helpers/subscriptionActivator";
-import { handleVerificationError } from "./helpers/paymentErrorHandler";
-import { supabase } from "@/integrations/supabase/client";
 
-interface PaymentSuccessVerificationConfig {
-  params: ReturnType<typeof import('./usePaymentSuccessParams').usePaymentSuccessParams>;
-  setVerifying: (b: boolean) => void;
-  setVerified: (b: boolean) => void;
-  setError: (s: string | null) => void;
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { logInfo, logError } from '@/utils/secureLogging';
+
+interface PaymentSuccessParams {
+  planId: string;
+  userId: string;
+  paymentId: string;
+  status: string;
+  method?: string;
 }
 
-export function usePaymentSuccessVerification({
-  params,
-  setVerifying,
-  setVerified,
-  setError,
-}: PaymentSuccessVerificationConfig) {
-  const { user } = useAuth();
+export function usePaymentSuccessVerification(params: PaymentSuccessParams) {
+  const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    // --- EXTRA DEBUG LOGS FOR EDGE FUNCTION INVOCATION ---
-    console.log("[PayPal] usePaymentSuccessVerification params:", params);
-
-    const { planId, userId, token, payerId } = normalizePaymentParams(params);
-
-    setVerifying(true);
-
-    async function processPayment() {
-      const { user: activeUser, session } = await recoverSession(user);
-      console.log("[PayPal] Session recovery result", { activeUser, session, planId, userId, token, payerId });
-
-      if (!planId || !userId || !token) {
-        handleVerificationError({
-          errorTitle: "Missing Info",
-          errorMsg: "Missing payment information",
-          toastMsg: "Missing payment information - please try again",
-          navigate, planId, userId, setError, setVerifying,
-        });
-        return;
-      }
-
-      // --- PHASE 1: Database-Fallback-first verification (critical fix)
+    const verifyPayment = async () => {
+      console.log('[Payment Verification] Starting verification with params:', params);
+      
       try {
-        // Check if valid subscription already exists (skip verification if so)
-        const { data: sub } = await supabase
-          .from("user_subscriptions")
-          .select("id,status,plan_id,user_id,created_at,payment_id")
-          .eq("user_id", userId)
-          .eq("plan_id", planId)
-          .eq("status", "active")
-          .order("created_at", { ascending: false })
-          .maybeSingle();
-
-        if (sub && sub.status === "active") {
-          console.log("[PayPal] Direct DB SUBSCRIPTION SUCCESSFALLBACK!!", sub);
-          setVerified(true);
-          setVerifying(false);
-          toast({
-            title: "Payment successful!",
-            description: "Your subscription is now active. You can access your premium features.",
-          });
-          // Do NOT call setError for a success, just clear any previous error
-          setError(null);
-          setTimeout(() => {
-            navigate("/prompts");
-          }, 1800);
+        // Skip PayPal verification for discount payments
+        if (params.method === 'discount') {
+          console.log('[Payment Verification] Discount payment detected, skipping PayPal verification');
+          logInfo("Discount payment verification skipped", "payment", { 
+            paymentId: params.paymentId,
+            planId: params.planId 
+          }, params.userId);
+          
+          setVerificationStatus('success');
           return;
         }
-      } catch (subCheckErr) {
-        console.warn("[PayPal] Subscription DB fallback check failed", subCheckErr);
-        // Continue on to full PayPal verification flow
-      }
 
-      // --- Step 1: Attempt PayPal API verification (frontend logs...)
-      console.log("[PayPal] Attempting verifyPayPalPayment function invoke with:", { token, payerId, accessToken: session?.access_token });
-      const { data: verify, error: verifyError } = await verifyPayPalPayment(token, payerId, session?.access_token);
-      console.log("[PayPal] verifyPayPalPayment response:", { verify, verifyError });
-
-      // --- Handle session expired (401s)
-      if (verifyError?.status === 401 || verifyError?.message?.toLowerCase().includes("authorization")) {
-        handleVerificationError({
-          errorTitle: "Session Expired",
-          errorMsg: "Authentication expired. Please log in again to complete your payment.",
-          navigate, planId, userId, setError, setVerifying,
-        });
-        return;
-      }
-
-      // --- SURFACED ERROR DETAILS FROM EDGE ---
-      if (
-        verifyError ||
-        !verify ||
-        !(verify.status === "COMPLETED")
-      ) {
-        let tips: string[] = [];
-        let diagnosticText: string = "";
-        if (verify?.errorTips) tips = verify.errorTips;
-        if (verify?.requestId) diagnosticText += `Request ID: ${verify.requestId}\n`;
-        if (verify?.allParams) diagnosticText += `Parameters: ${JSON.stringify(verify.allParams)}\n`;
-        if (verify?.error) diagnosticText += `Details: ${verify.error}\n`;
-
-        // --- Fallback: Try DB if verifyPayPalPayment fails ---
-        try {
-          const { data: localSub } = await supabase
-            .from("user_subscriptions")
-            .select("id,status,plan_id,user_id,created_at")
-            .eq("user_id", userId)
-            .eq("plan_id", planId)
-            .eq("status", "active")
-            .order("created_at", { ascending: false })
-            .maybeSingle();
-
-          if (localSub && localSub.status === "active") {
-            setVerified(true);
-            setVerifying(false);
-            toast({
-              title: "Payment successful!",
-              description: "Payment could not be verified via PayPal, but your subscription is active. Redirecting to your plan.",
-            });
-            setError(null);
-            setTimeout(() => {
-              navigate("/prompts");
-            }, 1800);
-            return;
+        // For regular PayPal payments, proceed with verification
+        console.log('[Payment Verification] Verifying PayPal payment:', params.paymentId);
+        
+        const { data, error } = await supabase.functions.invoke('verify-paypal-payment', {
+          body: {
+            paymentId: params.paymentId,
+            planId: params.planId,
+            userId: params.userId
           }
-        } catch (err) {
-          // Silent, proceed to normal error
+        });
+
+        if (error) {
+          console.error('[Payment Verification] Supabase function error:', error);
+          throw new Error(error.message || 'Payment verification failed');
         }
 
-        handleVerificationError({
-          errorTitle: "Payment Verification Error",
-          errorMsg: (
-            "Unable to verify payment completion. " +
-            (tips.length ? "\n" + tips.join("\n") : "") +
-            (diagnosticText ? "\n---\n" + diagnosticText : "")
-          ),
-          toastMsg: verifyError?.message || verify?.error || "Your PayPal payment could not be verified. Please contact support.",
-          navigate, planId, userId, setError, setVerifying,
+        if (!data?.success) {
+          console.error('[Payment Verification] Verification failed:', data);
+          throw new Error(data?.error || 'Payment verification failed');
+        }
+
+        console.log('[Payment Verification] Payment verified successfully');
+        logInfo("Payment verified successfully", "payment", { 
+          paymentId: params.paymentId,
+          planId: params.planId 
+        }, params.userId);
+        
+        setVerificationStatus('success');
+
+      } catch (error: any) {
+        console.error('[Payment Verification] Error:', error);
+        logError("Payment verification failed", "payment", { 
+          error: error.message,
+          paymentId: params.paymentId 
+        }, params.userId);
+        
+        setErrorMessage(error.message || 'Payment verification failed');
+        setVerificationStatus('error');
+        
+        // Navigate to failure page for verification errors
+        const failureParams = new URLSearchParams({
+          planId: params.planId,
+          reason: error.message || 'Payment verification failed'
         });
-        return;
+        
+        navigate(`/payment-failed?${failureParams.toString()}`);
       }
+    };
 
-      // --- Build payment ID, surface in logs
-      const paypal_payment_id =
-        verify.paymentId ||
-        verify.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id ||
-        verify.paypal?.id ||
-        verify?.paypal_payment_id || undefined;
-      if (!paypal_payment_id) {
-        handleVerificationError({
-          errorTitle: "Payment Error",
-          errorMsg: "Unable to determine PayPal payment ID.",
-          toastMsg: "We could not confirm your PayPal payment. Please contact support.",
-          navigate, planId, userId, setError, setVerifying,
-        });
-        return;
-      }
-
-      // Step 2: Activate subscription (regular flow)
-      const { data: create, error: createError } = await activateSubscription({
-        planId,
-        userId,
-        paymentMethod: "paypal",
-        paymentId: paypal_payment_id,
-        paymentDetails: verify.paypal,
-        accessToken: session?.access_token,
-      });
-
-      if (createError || !create || !create.success) {
-        handleVerificationError({
-          errorTitle: "Subscription Error",
-          errorMsg: "Subscription activation failed",
-          toastMsg: "Your payment was successful, but we were unable to activate your subscription. Please contact support.",
-          navigate, planId, userId, setError, setVerifying,
-        });
-        return;
-      }
-
-      setVerified(true);
-      setVerifying(false);
-      toast({
-        title: "Payment successful!",
-        description: "Your subscription has been activated successfully. Redirecting you now.",
-      });
-      setError(null);
-      setTimeout(() => {
-        navigate("/prompts");
-      }, 1800);
+    if (params.paymentId && params.planId && params.userId) {
+      verifyPayment();
+    } else {
+      console.error('[Payment Verification] Missing required parameters');
+      setErrorMessage('Missing payment information');
+      setVerificationStatus('error');
     }
+  }, [params, navigate]);
 
-    processPayment();
-  }, [user, navigate, params]);
+  return {
+    verificationStatus,
+    errorMessage
+  };
 }
