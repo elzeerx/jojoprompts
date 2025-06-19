@@ -35,12 +35,24 @@ async function sendSMTPEmail(to: string, subject: string, html: string, text?: s
     const textEncoder = new TextEncoder();
     const textDecoder = new TextDecoder();
 
-    // Helper function to send command and read response
+    // Helper function to send command and read response with timeout
     async function sendCommand(command: string): Promise<string> {
       await conn.write(textEncoder.encode(command + '\r\n'));
-      const buffer = new Uint8Array(1024);
-      const bytesRead = await conn.read(buffer);
-      const response = textDecoder.decode(buffer.subarray(0, bytesRead || 0));
+      
+      // Read with timeout
+      const buffer = new Uint8Array(4096);
+      const bytesRead = await Promise.race([
+        conn.read(buffer),
+        new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('SMTP timeout')), 10000)
+        )
+      ]);
+      
+      if (bytesRead === null) {
+        throw new Error('SMTP connection closed unexpectedly');
+      }
+      
+      const response = textDecoder.decode(buffer.subarray(0, bytesRead));
       console.log(`Command: ${command.trim()}, Response: ${response.trim()}`);
       return response;
     }
@@ -64,12 +76,23 @@ async function sendSMTPEmail(to: string, subject: string, html: string, text?: s
     // Upgrade to TLS
     const tlsConn = await Deno.startTls(conn, { hostname: smtpHost });
 
-    // Helper for TLS commands
+    // Helper for TLS commands with timeout
     async function sendTLSCommand(command: string): Promise<string> {
       await tlsConn.write(textEncoder.encode(command + '\r\n'));
-      const buffer = new Uint8Array(1024);
-      const bytesRead = await tlsConn.read(buffer);
-      const response = textDecoder.decode(buffer.subarray(0, bytesRead || 0));
+      
+      const buffer = new Uint8Array(4096);
+      const bytesRead = await Promise.race([
+        tlsConn.read(buffer),
+        new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('SMTP TLS timeout')), 10000)
+        )
+      ]);
+      
+      if (bytesRead === null) {
+        throw new Error('SMTP TLS connection closed unexpectedly');
+      }
+      
+      const response = textDecoder.decode(buffer.subarray(0, bytesRead));
       console.log(`TLS Command: ${command.trim()}, Response: ${response.trim()}`);
       return response;
     }
@@ -114,28 +137,63 @@ async function sendSMTPEmail(to: string, subject: string, html: string, text?: s
       throw new Error(`DATA failed: ${response}`);
     }
 
-    // Construct email message
-    const emailContent = [
+    // Generate message ID and date
+    const messageId = `<${Date.now()}.${Math.random().toString(36)}@promptlibrary.com>`;
+    const date = new Date().toUTCString();
+
+    // Construct proper email message with required headers
+    const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36)}`;
+    
+    const emailHeaders = [
       `From: ${fromEmail}`,
       `To: ${to}`,
       `Subject: ${subject}`,
+      `Date: ${date}`,
+      `Message-ID: ${messageId}`,
       'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=UTF-8',
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
       '',
-      html,
-      '.',
     ].join('\r\n');
 
-    response = await sendTLSCommand(emailContent);
-    if (!response.startsWith('250')) {
-      throw new Error(`Email send failed: ${response}`);
+    const textPart = [
+      `--${boundary}`,
+      'Content-Type: text/plain; charset=UTF-8',
+      'Content-Transfer-Encoding: 7bit',
+      '',
+      text || html.replace(/<[^>]*>/g, ''), // Strip HTML if no text provided
+      '',
+    ].join('\r\n');
+
+    const htmlPart = [
+      `--${boundary}`,
+      'Content-Type: text/html; charset=UTF-8',
+      'Content-Transfer-Encoding: 7bit',
+      '',
+      html,
+      '',
+      `--${boundary}--`,
+    ].join('\r\n');
+
+    const emailBody = emailHeaders + textPart + htmlPart;
+
+    // Send the email content
+    await tlsConn.write(textEncoder.encode(emailBody + '\r\n.\r\n'));
+
+    // Read final response
+    const finalBuffer = new Uint8Array(1024);
+    const finalBytesRead = await tlsConn.read(finalBuffer);
+    const finalResponse = textDecoder.decode(finalBuffer.subarray(0, finalBytesRead || 0));
+    console.log(`Email send response: ${finalResponse.trim()}`);
+
+    if (!finalResponse.startsWith('250')) {
+      throw new Error(`Email send failed: ${finalResponse}`);
     }
 
     await sendTLSCommand('QUIT');
     tlsConn.close();
 
     console.log(`Email sent successfully to ${to}`);
-    return { success: true, message: 'Email sent successfully' };
+    return { success: true, message: 'Email sent successfully', messageId };
 
   } catch (error) {
     console.error('SMTP Error:', error);
@@ -153,6 +211,12 @@ serve(async (req) => {
 
     if (!to || !subject || !html) {
       throw new Error('Missing required fields: to, subject, html');
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(to)) {
+      throw new Error('Invalid email address format');
     }
 
     const result = await sendSMTPEmail(to, subject, html, text);
