@@ -41,11 +41,12 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
 
   // Check for password reset token on mount
   useEffect(() => {
-    const token = searchParams.get('token');
+    const token = searchParams.get('access_token') || searchParams.get('token');
     const type = searchParams.get('type');
     
     if (token && type === 'recovery') {
       setHasResetToken(true);
+      setError(null);
     } else {
       setError("No password reset token found. Please request a password reset from the 'Forgot Password' tab.");
     }

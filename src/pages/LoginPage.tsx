@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { FileText, Sparkles } from "lucide-react";
@@ -20,10 +19,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     // Check for password reset token or tab parameter
-    const token = searchParams.get('token');
+    const token = searchParams.get('access_token') || searchParams.get('token');
     const type = searchParams.get('type');
     const tab = searchParams.get('tab');
 
+    // If we have a recovery token, always go to reset tab
     if (token && type === 'recovery') {
       setActiveTab("reset");
     } else if (tab) {
