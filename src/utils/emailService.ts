@@ -36,7 +36,7 @@ class EmailService {
     return this.sendEmail(email, template.subject, template.html, template.text);
   }
 
-  async sendContactAdminNotification(name: string, email: string, subject: string, message: string, adminEmail: string = 'admin@promptlibrary.com'): Promise<EmailServiceResponse> {
+  async sendContactAdminNotification(name: string, email: string, subject: string, message: string, adminEmail: string = 'info@jojoprompts.com'): Promise<EmailServiceResponse> {
     const template = emailTemplates.contactAdminNotification({ name, email, subject, message });
     return this.sendEmail(adminEmail, template.subject, template.html, template.text);
   }

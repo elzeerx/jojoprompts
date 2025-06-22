@@ -177,7 +177,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <p className="font-medium text-sm sm:text-base">Email Support</p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">support@promptlibrary.com</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">info@jojoprompts.com</p>
                 </div>
               </div>
               
