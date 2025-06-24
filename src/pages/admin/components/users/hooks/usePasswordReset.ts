@@ -7,7 +7,7 @@ export function usePasswordReset() {
     try {
       // Generate reset link using Supabase auth with proper redirect URL
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login?type=recovery&tab=reset`,
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       
       if (error) throw error;

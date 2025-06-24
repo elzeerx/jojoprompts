@@ -46,7 +46,7 @@ export function useUserActions() {
       SecurityEnforcer.logAuthAttempt('password_reset', email, false, 'Admin initiated');
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login?type=recovery&tab=reset`,
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       
       if (error) {

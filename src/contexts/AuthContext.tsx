@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { AuthContextType } from './authTypes';
 import { fetchUserProfile } from './profileService';
@@ -17,11 +18,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
   const [recoveredOrphaned, setRecoveredOrphaned] = useState(false);
+
+  // Check if this is a password reset request
+  const isPasswordReset = () => {
+    const urlParams = new URLSearchParams(location.search);
+    const type = urlParams.get('type');
+    const token = urlParams.get('access_token') || urlParams.get('token');
+    return type === 'recovery' && token;
+  };
 
   useEffect(() => {
     // Setup auth state and recovery logic
     const cleanup = setupAuthState({ setSession, setUser, setUserRole, setLoading, setRecoveredOrphaned });
+    
     // Check existing session for initial recovery logic
     supabase.auth.getSession().then(({ data: { session: initialSession }, error }) => {
       if (error) {
@@ -31,6 +42,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       debug("Initial session check", { sessionExists: !!initialSession, userEmail: initialSession?.user?.email });
+      
+      // If this is a password reset request, don't set session to prevent auto-signin
+      if (isPasswordReset()) {
+        debug("Password reset detected, not setting session");
+        setLoading(false);
+        return;
+      }
       
       setSession(initialSession);
       const initialUser = initialSession?.user ?? null;
@@ -48,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
     return cleanup;
-  }, []);
+  }, [location.search]);
 
   const signOut = async () => {
     try {
