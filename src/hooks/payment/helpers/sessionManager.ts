@@ -25,16 +25,18 @@ export class SessionManager {
         
         localStorage.setItem(this.BACKUP_KEY, JSON.stringify(backup));
         
-        // Also backup payment context
+        // Also backup payment context with enhanced data
         const context = {
           userId,
           planId,
           orderId,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          userEmail: session.user?.email || '',
+          sessionId: session.access_token.substring(0, 20) // First 20 chars for identification
         };
         localStorage.setItem(this.CONTEXT_KEY, JSON.stringify(context));
         
-        console.log('Session backed up successfully for PayPal flow');
+        console.log('Enhanced session backed up successfully for PayPal flow', { userId, planId, orderId });
         return true;
       }
     } catch (error) {
@@ -48,7 +50,8 @@ export class SessionManager {
       // First check if we already have a valid session
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       if (currentSession?.user) {
-        console.log('Valid session already exists');
+        console.log('Valid session already exists, cleaning up backup');
+        this.cleanup(); // Clean up since we have a valid session
         return { success: true, user: currentSession.user };
       }
 
@@ -60,31 +63,59 @@ export class SessionManager {
         const backup: SessionBackup = JSON.parse(backupData);
         const context = contextData ? JSON.parse(contextData) : null;
         
-        // Check if backup is not too old (30 minutes)
-        const isExpired = Date.now() - backup.timestamp > 30 * 60 * 1000;
+        // Check if backup is not too old (45 minutes - extended for PayPal flow)
+        const isExpired = Date.now() - backup.timestamp > 45 * 60 * 1000;
         if (isExpired) {
           console.log('Session backup expired, cleaning up');
           this.cleanup();
           return { success: false };
         }
 
-        // Attempt session restoration
-        const { data: restored, error } = await supabase.auth.setSession({
-          access_token: backup.access_token,
-          refresh_token: backup.refresh_token
+        console.log('Attempting session restoration from backup...', { 
+          userId: backup.user_id, 
+          age: Math.round((Date.now() - backup.timestamp) / 1000) + 's' 
         });
 
-        if (!error && restored.session?.user) {
-          console.log('Session restored successfully from backup');
-          this.cleanup(); // Clean up after successful restoration
-          return { 
-            success: true, 
-            user: restored.session.user,
-            context 
-          };
-        } else {
-          console.error('Failed to restore session:', error);
+        // Attempt session restoration with retry logic
+        let restoreAttempts = 0;
+        const maxAttempts = 3;
+        
+        while (restoreAttempts < maxAttempts) {
+          try {
+            const { data: restored, error } = await supabase.auth.setSession({
+              access_token: backup.access_token,
+              refresh_token: backup.refresh_token
+            });
+
+            if (!error && restored.session?.user) {
+              console.log('Session restored successfully from backup', { 
+                userId: restored.session.user.id, 
+                attempt: restoreAttempts + 1 
+              });
+              this.cleanup(); // Clean up after successful restoration
+              return { 
+                success: true, 
+                user: restored.session.user,
+                context 
+              };
+            } else {
+              console.warn(`Session restore attempt ${restoreAttempts + 1} failed:`, error);
+              restoreAttempts++;
+              if (restoreAttempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+              }
+            }
+          } catch (restoreError) {
+            console.error(`Session restore attempt ${restoreAttempts + 1} error:`, restoreError);
+            restoreAttempts++;
+            if (restoreAttempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
         }
+        
+        console.error('All session restore attempts failed');
+        this.cleanup();
       }
 
       return { success: false };
@@ -98,6 +129,7 @@ export class SessionManager {
   static cleanup() {
     localStorage.removeItem(this.BACKUP_KEY);
     localStorage.removeItem(this.CONTEXT_KEY);
+    console.log('Session backup cleanup completed');
   }
 
   static getPaymentContext() {
@@ -107,5 +139,9 @@ export class SessionManager {
     } catch {
       return null;
     }
+  }
+
+  static hasBackup(): boolean {
+    return !!localStorage.getItem(this.BACKUP_KEY);
   }
 }

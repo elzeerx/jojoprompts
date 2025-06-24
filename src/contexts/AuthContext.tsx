@@ -8,6 +8,7 @@ import { setupAuthState } from './authStateManager';
 import { runOrphanedPaymentRecovery } from './orphanedPaymentRecovery';
 import { computeRolePermissions } from './rolePermissions';
 import { debug } from './authDebugger';
+import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
 import { supabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,36 +36,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return urlParams.get('from_signup') === 'true';
   };
 
+  // Check if this is a payment callback
+  const isPaymentCallback = () => {
+    return location.pathname.includes('/payment') || 
+           location.search.includes('success=') ||
+           location.search.includes('payment_id=') ||
+           location.search.includes('order_id=');
+  };
+
   useEffect(() => {
-    // Setup auth state and recovery logic
-    const cleanup = setupAuthState({ setSession, setUser, setUserRole, setLoading, setRecoveredOrphaned });
-    
-    // Check existing session for initial recovery logic
-    supabase.auth.getSession().then(({ data: { session: initialSession }, error }) => {
-      if (error) {
-        console.error("[AUTH] Error getting initial session:", error);
-        setLoading(false);
-        return;
-      }
-      
-      debug("Initial session check", { sessionExists: !!initialSession, userEmail: initialSession?.user?.email });
-      
-      // If this is a password reset request, don't set session to prevent auto-signin
+    const initializeAuth = async () => {
+      // If this is a password reset, don't set session
       if (isPasswordReset()) {
         debug("Password reset detected, not setting session");
         setLoading(false);
         return;
       }
-      
-      setSession(initialSession);
-      const initialUser = initialSession?.user ?? null;
-      setUser(initialUser);
-      
-      if (initialUser) {
-        fetchUserProfile(initialUser, setUserRole).finally(() => {
-          setLoading(false);
 
-          // Check if this is from signup confirmation and redirect accordingly
+      // Enhanced session restoration for payment callbacks
+      if (isPaymentCallback() && SessionManager.hasBackup()) {
+        debug("Payment callback detected with session backup, attempting restoration");
+        
+        const restorationResult = await SessionManager.restoreSession();
+        if (restorationResult.success && restorationResult.user) {
+          debug("Session successfully restored from backup", { userId: restorationResult.user.id });
+          
+          setSession({ user: restorationResult.user });
+          setUser(restorationResult.user);
+          
+          await fetchUserProfile(restorationResult.user, setUserRole);
+          setLoading(false);
+          
+          // Run orphan recovery for restored session
+          runOrphanedPaymentRecovery(restorationResult.user, recoveredOrphaned, setRecoveredOrphaned);
+          return;
+        } else {
+          debug("Session restoration failed, falling back to normal auth check");
+        }
+      }
+
+      // Normal session check
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("[AUTH] Error getting initial session:", error);
+          setLoading(false);
+          return;
+        }
+        
+        debug("Initial session check", { sessionExists: !!initialSession, userEmail: initialSession?.user?.email });
+        
+        setSession(initialSession);
+        const initialUser = initialSession?.user ?? null;
+        setUser(initialUser);
+        
+        if (initialUser) {
+          await fetchUserProfile(initialUser, setUserRole);
+          
+          // Handle signup confirmation redirect
           if (isFromSignupConfirmation()) {
             const urlParams = new URLSearchParams(location.search);
             const planId = urlParams.get('plan_id');
@@ -76,20 +106,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 : "Your email is confirmed! Welcome to JoJo Prompts.",
             });
 
-            // If there's a plan_id, user should already be on checkout page
-            // If not, redirect to prompts page
             if (!planId && location.pathname !== '/prompts') {
               navigate('/prompts');
             }
           }
 
-          // Run orphan recovery on initial session load too, if not already triggered
+          // Run orphan recovery
           runOrphanedPaymentRecovery(initialUser, recoveredOrphaned, setRecoveredOrphaned);
-        });
-      } else {
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("[AUTH] Session initialization error:", error);
         setLoading(false);
       }
+    };
+
+    // Setup auth state changes
+    const cleanup = setupAuthState({ 
+      setSession, 
+      setUser, 
+      setUserRole, 
+      setLoading, 
+      setRecoveredOrphaned 
     });
+    
+    // Initialize auth
+    initializeAuth();
+    
     return cleanup;
   }, [location.search, location.pathname, navigate]);
 
@@ -97,10 +141,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       debug("Starting logout process");
       setLoading(true);
+      
+      // Clean up any payment session backups
+      SessionManager.cleanup();
+      
       setSession(null);
       setUser(null);
       setUserRole(null);
-      // Sign out logic as before
+      
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("[AUTH] Sign out error:", error);
@@ -115,7 +163,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "You have been successfully logged out.",
       });
     } catch (error) {
-      // ... keep existing code (error logic) ...
       console.error("[AUTH] Sign out error:", error);
       toast({
         title: "Error",

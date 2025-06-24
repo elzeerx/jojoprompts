@@ -56,7 +56,6 @@ export function SimplePayPalButton({
         appliedDiscount 
       });
 
-      // Call direct activation for 100% discounts
       const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
         body: {
           action: "direct-activation",
@@ -73,12 +72,11 @@ export function SimplePayPalButton({
 
       console.log('Direct activation successful:', data);
 
-      // Call onSuccess with the activation data - include paymentId for proper navigation
       onSuccess({
         status: 'COMPLETED',
         transactionId: data.transactionId,
         subscriptionId: data.subscriptionId,
-        paymentId: data.paymentId || data.paymentMethod, // Use paymentId from response
+        paymentId: data.paymentId || data.paymentMethod,
         paymentMethod: 'discount_100_percent'
       });
 
@@ -105,13 +103,18 @@ export function SimplePayPalButton({
     try {
       console.log('Initiating PayPal checkout:', { amount: finalAmount, planId, userId, appliedDiscount });
 
-      // Create the PayPal order via Supabase Edge Function
+      // Enhanced session backup before PayPal redirect
+      const backupSuccess = await SessionManager.backupSession(userId, planId);
+      if (!backupSuccess) {
+        console.warn('Session backup failed, but continuing with PayPal flow');
+      }
+
       const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
         body: {
           action: "create",
           planId,
           userId,
-          amount: finalAmount, // Use final amount after discount
+          amount: finalAmount,
           appliedDiscount
         }
       });
@@ -125,10 +128,7 @@ export function SimplePayPalButton({
         approvalUrl: data.approvalUrl
       });
 
-      // Enhanced session backup before PayPal redirect
-      await SessionManager.backupSession(userId, planId, data.orderId);
-
-      // ENHANCED: Store comprehensive payment context in localStorage for callback recovery
+      // Store comprehensive payment context for callback recovery
       const paymentContext = {
         planId,
         userId,
@@ -136,21 +136,20 @@ export function SimplePayPalButton({
         orderId: data.orderId,
         timestamp: Date.now(),
         approvalUrl: data.approvalUrl,
-        appliedDiscount
+        appliedDiscount,
+        sessionBackedUp: backupSuccess
       };
 
-      localStorage.setItem(
-        "pending_payment",
-        JSON.stringify(paymentContext)
-      );
+      localStorage.setItem("pending_payment", JSON.stringify(paymentContext));
+      console.log('Stored enhanced payment context:', paymentContext);
 
-      console.log('Stored payment context in localStorage:', paymentContext);
+      // Small delay to ensure localStorage is written
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-      // ENHANCED: Add a small delay to ensure localStorage is written
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      //Redirect to PayPal
+      // Redirect to PayPal
+      console.log('Redirecting to PayPal...');
       window.location.href = data.approvalUrl;
+      
     } catch (err: any) {
       console.error('PayPal checkout initiation failed:', err);
       setIsProcessing(false);
@@ -176,7 +175,7 @@ export function SimplePayPalButton({
       <div className="flex items-center justify-center py-8 bg-blue-50 border border-blue-200 rounded-lg">
         <Loader2 className="h-6 w-6 animate-spin mr-2 text-blue-600" />
         <span className="text-blue-700 font-medium">
-          {is100PercentDiscount ? 'Activating subscription...' : 'Redirecting to PayPal...'}
+          {is100PercentDiscount ? 'Activating subscription...' : 'Preparing PayPal checkout...'}
         </span>
       </div>
     );
