@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -44,7 +45,17 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // Step 1: Sign up the user
+      // Build redirect URL with plan context for email confirmation
+      let redirectUrl = `${window.location.origin}/prompts`;
+      
+      // If there's a plan selected, include it in the redirect URL
+      if (selectedPlan) {
+        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}&from_signup=true`;
+      } else if (fromCheckout) {
+        redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
+      }
+
+      // Step 1: Sign up the user with redirect URL for email confirmation
       const { data: signupData, error: signupError } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
@@ -53,6 +64,7 @@ export default function SignupPage() {
             first_name: values.firstName,
             last_name: values.lastName,
           },
+          emailRedirectTo: redirectUrl,
         },
       });
 
@@ -66,37 +78,17 @@ export default function SignupPage() {
         return;
       }
 
-      // Step 2: Automatically sign in the user
-      const { error: signinError } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
+      // Show success message with email confirmation instructions
+      toast({
+        title: "Account created! 📧",
+        description: selectedPlan 
+          ? "Please check your email and click the confirmation link to complete your subscription."
+          : "Please check your email and click the confirmation link to activate your account.",
       });
 
-      if (signinError) {
-        toast({
-          variant: "destructive",
-          title: "Account created but couldn't sign in automatically",
-          description: "Please proceed to login with your new credentials.",
-        });
-        navigate("/login");
-      } else {
-        // Successful signup and signin
-        toast({
-          title: "Welcome!",
-          description: (fromCheckout || selectedPlan) 
-            ? "Your account has been created. Please complete your subscription." 
-            : "Your account has been created and you're now logged in.",
-        });
-        
-        // If coming from plan selection or checkout, redirect to checkout
-        if (selectedPlan) {
-          navigate(`/checkout?plan=${selectedPlan}`);
-        } else if (fromCheckout) {
-          navigate("/checkout");
-        } else {
-          navigate("/prompts");
-        }
-      }
+      // Don't auto-login, let the user confirm their email first
+      // This ensures they go through the email confirmation flow
+      
     } catch (error) {
       console.error("Signup error:", error);
       toast({
@@ -113,10 +105,19 @@ export default function SignupPage() {
     setIsGoogleLoading(true);
 
     try {
+      // Build redirect URL for Google OAuth
+      let redirectUrl = `${window.location.origin}/prompts`;
+      
+      if (selectedPlan) {
+        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}&from_signup=true`;
+      } else if (fromCheckout) {
+        redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/prompts`,
+          redirectTo: redirectUrl,
         },
       });
 
@@ -158,7 +159,7 @@ export default function SignupPage() {
           {selectedPlan && (
             <div className="bg-green-50 border border-green-100 rounded-md p-3 mt-2">
               <p className="text-xs sm:text-sm text-green-800 text-center">
-                You're one step away from accessing premium prompts! Create your account to continue.
+                After creating your account, you'll receive a confirmation email. Click the link to proceed directly to checkout!
               </p>
             </div>
           )}
@@ -173,7 +174,7 @@ export default function SignupPage() {
         </CardHeader>
         
         <CardContent className="space-y-4 px-4 sm:px-6">
-          {/* Mobile-optimized Google Sign Up Button */}
+          {/* Google Sign Up Button */}
           <Button
             type="button"
             variant="outline"
@@ -271,7 +272,7 @@ export default function SignupPage() {
                     </FormControl>
                     <FormMessage />
                     <p className="text-xs text-muted-foreground">
-                      Must be at least 6 characters long
+                      Must be at least 8 characters long
                     </p>
                   </FormItem>
                 )}

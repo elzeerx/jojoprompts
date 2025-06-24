@@ -29,6 +29,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return type === 'recovery' && token;
   };
 
+  // Check if this is coming from signup email confirmation
+  const isFromSignupConfirmation = () => {
+    const urlParams = new URLSearchParams(location.search);
+    return urlParams.get('from_signup') === 'true';
+  };
+
   useEffect(() => {
     // Setup auth state and recovery logic
     const cleanup = setupAuthState({ setSession, setUser, setUserRole, setLoading, setRecoveredOrphaned });
@@ -58,6 +64,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchUserProfile(initialUser, setUserRole).finally(() => {
           setLoading(false);
 
+          // Check if this is from signup confirmation and redirect accordingly
+          if (isFromSignupConfirmation()) {
+            const urlParams = new URLSearchParams(location.search);
+            const planId = urlParams.get('plan_id');
+            
+            toast({
+              title: "Welcome! 🎉",
+              description: planId 
+                ? "Your email is confirmed! Complete your subscription below."
+                : "Your email is confirmed! Welcome to JoJo Prompts.",
+            });
+
+            // If there's a plan_id, user should already be on checkout page
+            // If not, redirect to prompts page
+            if (!planId && location.pathname !== '/prompts') {
+              navigate('/prompts');
+            }
+          }
+
           // Run orphan recovery on initial session load too, if not already triggered
           runOrphanedPaymentRecovery(initialUser, recoveredOrphaned, setRecoveredOrphaned);
         });
@@ -66,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
     return cleanup;
-  }, [location.search]);
+  }, [location.search, location.pathname, navigate]);
 
   const signOut = async () => {
     try {
