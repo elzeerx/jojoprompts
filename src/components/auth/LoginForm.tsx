@@ -16,12 +16,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { LoginFormValues, loginSchema } from "./validation";
+import { Loader2, Mail, Lock } from "lucide-react";
+import { LoginFormValues, MagicLinkFormValues, loginSchema, magicLinkSchema } from "./validation";
+
+type AuthMode = 'password' | 'magic-link';
 
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('password');
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -30,7 +34,7 @@ export function LoginForm() {
   const redirectTo = searchParams.get('redirect');
   const selectedPlan = searchParams.get('plan');
 
-  const form = useForm<LoginFormValues>({
+  const passwordForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
@@ -38,7 +42,14 @@ export function LoginForm() {
     },
   });
 
-  const onSubmit = async (values: LoginFormValues) => {
+  const magicLinkForm = useForm<MagicLinkFormValues>({
+    resolver: zodResolver(magicLinkSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const onPasswordSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
 
     try {
@@ -70,6 +81,52 @@ export function LoginForm() {
       }
     } catch (error) {
       console.error("Login error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+      });
+    }
+
+    setIsLoading(false);
+  };
+
+  const onMagicLinkSubmit = async (values: MagicLinkFormValues) => {
+    setIsLoading(true);
+
+    try {
+      // Build redirect URL based on current context
+      let redirectUrl = `${window.location.origin}/prompts`;
+      
+      // If we're on checkout page or have plan parameters, preserve that context
+      if (selectedPlan) {
+        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}`;
+      } else if (redirectTo) {
+        redirectUrl = `${window.location.origin}/${redirectTo}`;
+      }
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email: values.email,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message,
+        });
+      } else {
+        setMagicLinkSent(true);
+        toast({
+          title: "Magic link sent! ✨",
+          description: "Check your email for a secure login link.",
+        });
+      }
+    } catch (error) {
+      console.error("Magic link error:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -122,6 +179,30 @@ export function LoginForm() {
     setIsGoogleLoading(false);
   };
 
+  if (magicLinkSent) {
+    return (
+      <div className="space-y-4 text-center">
+        <div className="rounded-lg bg-green-50 p-4 border border-green-200">
+          <Mail className="h-12 w-12 text-green-600 mx-auto mb-2" />
+          <h3 className="text-lg font-medium text-green-900 mb-1">Magic link sent!</h3>
+          <p className="text-sm text-green-700">
+            We've sent a secure login link to your email. Click the link to sign in instantly.
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            setMagicLinkSent(false);
+            setAuthMode('password');
+          }}
+          className="w-full"
+        >
+          Back to login options
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Google Sign In Button */}
@@ -163,68 +244,141 @@ export function LoginForm() {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-2 text-muted-foreground">
-            Or continue with email
+            Or choose your login method
           </span>
         </div>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input
-                    type="email"
-                    placeholder="name@example.com"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      {/* Auth Mode Toggle */}
+      <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-lg">
+        <Button
+          type="button"
+          variant={authMode === 'password' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setAuthMode('password')}
+          className="h-9"
+        >
+          <Lock className="mr-2 h-4 w-4" />
+          Password
+        </Button>
+        <Button
+          type="button"
+          variant={authMode === 'magic-link' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setAuthMode('magic-link')}
+          className="h-9"
+        >
+          <Mail className="mr-2 h-4 w-4" />
+          Magic Link
+        </Button>
+      </div>
 
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input type="password" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      {/* Password Form */}
+      {authMode === 'password' && (
+        <Form {...passwordForm}>
+          <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+            <FormField
+              control={passwordForm.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="name@example.com"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              "Sign In"
-            )}
-          </Button>
-          
-          {selectedPlan && (
-            <div className="pt-2 text-center">
-              <p className="text-sm text-muted-foreground">
-                Don't have an account yet?{" "}
-                <Button variant="link" className="p-0" onClick={() => navigate(`/signup?plan=${selectedPlan}`)}>
-                  Sign up
-                </Button>
-              </p>
-            </div>
-          )}
-        </form>
-      </Form>
+            <FormField
+              control={passwordForm.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  <Lock className="mr-2 h-4 w-4" />
+                  Sign In
+                </>
+              )}
+            </Button>
+          </form>
+        </Form>
+      )}
+
+      {/* Magic Link Form */}
+      {authMode === 'magic-link' && (
+        <Form {...magicLinkForm}>
+          <form onSubmit={magicLinkForm.handleSubmit(onMagicLinkSubmit)} className="space-y-4">
+            <FormField
+              control={magicLinkForm.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="name@example.com"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending magic link...
+                </>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send Magic Link
+                </>
+              )}
+            </Button>
+
+            <p className="text-sm text-muted-foreground text-center">
+              We'll send you a secure link to sign in instantly without a password.
+            </p>
+          </form>
+        </Form>
+      )}
+      
+      {selectedPlan && (
+        <div className="pt-2 text-center">
+          <p className="text-sm text-muted-foreground">
+            Don't have an account yet?{" "}
+            <Button variant="link" className="p-0" onClick={() => navigate(`/signup?plan=${selectedPlan}`)}>
+              Sign up
+            </Button>
+          </p>
+        </div>
+      )}
     </div>
   );
 }

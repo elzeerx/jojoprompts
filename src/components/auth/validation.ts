@@ -13,6 +13,10 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export const magicLinkSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
 export const signupSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
@@ -51,6 +55,7 @@ export const resetPasswordSchema = z.object({
 
 // Type inference from schemas
 export type LoginFormValues = z.infer<typeof loginSchema>;
+export type MagicLinkFormValues = z.infer<typeof magicLinkSchema>;
 export type SignupFormValues = z.infer<typeof signupSchema>;
 export type CheckoutSignupFormValues = z.infer<typeof checkoutSignupSchema>;
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
