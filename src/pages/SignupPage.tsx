@@ -33,6 +33,7 @@ export default function SignupPage() {
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
+    mode: "onSubmit",
     defaultValues: {
       email: "",
       password: "",
@@ -41,7 +42,19 @@ export default function SignupPage() {
     },
   });
 
+  // Add debugging for form errors
+  useEffect(() => {
+    const subscription = form.watch(() => {
+      const errors = form.formState.errors;
+      if (Object.keys(errors).length > 0) {
+        console.log("Form validation errors:", errors);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   const handleSubmit = async (values: SignupFormValues) => {
+    console.log("Form submitted with values:", { ...values, password: "[REDACTED]" });
     setIsLoading(true);
 
     try {
@@ -54,6 +67,8 @@ export default function SignupPage() {
       } else if (fromCheckout) {
         redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
       }
+
+      console.log("Attempting signup with redirect URL:", redirectUrl);
 
       // Step 1: Sign up the user with redirect URL for email confirmation
       const { data: signupData, error: signupError } = await supabase.auth.signUp({
@@ -69,6 +84,7 @@ export default function SignupPage() {
       });
 
       if (signupError) {
+        console.error("Signup error:", signupError);
         toast({
           variant: "destructive",
           title: "Error",
@@ -77,6 +93,8 @@ export default function SignupPage() {
         setIsLoading(false);
         return;
       }
+
+      console.log("Signup successful:", signupData);
 
       // Show success message with email confirmation instructions
       toast({
@@ -99,6 +117,15 @@ export default function SignupPage() {
     }
 
     setIsLoading(false);
+  };
+
+  const handleFormError = (errors: any) => {
+    console.error("Form validation failed:", errors);
+    toast({
+      variant: "destructive",
+      title: "Validation Error",
+      description: "Please check the form fields and try again.",
+    });
   };
 
   const handleGoogleSignUp = async () => {
@@ -219,7 +246,10 @@ export default function SignupPage() {
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <form 
+              onSubmit={form.handleSubmit(handleSubmit, handleFormError)} 
+              className="space-y-4"
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <FormField
                   control={form.control}
