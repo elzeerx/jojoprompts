@@ -7,7 +7,6 @@ import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { RootLayout } from "@/components/layout/root-layout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import PaymentErrorBoundary from "@/components/subscription/PaymentErrorBoundary";
 
 // Page imports
 import Index from "@/pages/Index";
@@ -52,10 +51,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <AuthProvider>
-          <PaymentErrorBoundary>
-            <Router>
-              <RootLayout>
-                <Routes>
+          <Router>
+            <RootLayout>
+              <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<LoginPage />} />
@@ -136,10 +134,9 @@ function App() {
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </RootLayout>
-            </Router>
-          </PaymentErrorBoundary>
-          <Toaster />
-          <SonnerToaster />
+        </Router>
+        <Toaster />
+        <SonnerToaster />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
