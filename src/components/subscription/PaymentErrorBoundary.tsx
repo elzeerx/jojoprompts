@@ -12,7 +12,7 @@ interface State {
   error?: Error;
 }
 
-export class PaymentErrorBoundary extends Component<Props, State> {
+export default class PaymentErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
