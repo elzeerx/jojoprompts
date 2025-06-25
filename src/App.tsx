@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { RootLayout } from "./components/layout/root-layout";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SignupPage from "./pages/SignupPage";
 import PromptsPage from "./pages/PromptsPage";
 import ChatGPTPromptsPage from "./pages/prompts/ChatGPTPromptsPage";
@@ -44,6 +45,7 @@ function App() {
               <Route path="/" element={<RootLayout />}>
                 <Route index element={<Index />} />
                 <Route path="login" element={<LoginPage />} />
+                <Route path="reset-password" element={<ResetPasswordPage />} />
                 <Route path="signup" element={<SignupPage />} />
                 <Route path="prompts" element={<PromptsPage />} />
                 <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />

@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { FileText, Sparkles } from "lucide-react";
 import {
   Card,
@@ -8,31 +9,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LoginForm } from "@/components/auth/LoginForm";
-import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 
-export default function LoginPage() {
-  const [activeTab, setActiveTab] = useState<string>("login");
+export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for password reset token or tab parameter
+    // Check if this is a valid password reset request
     const token = searchParams.get('access_token') || searchParams.get('token');
     const type = searchParams.get('type');
-    const tab = searchParams.get('tab');
 
-    // If we have a recovery token, always go to reset tab
-    if (token && type === 'recovery') {
-      setActiveTab("reset");
-    } else if (tab) {
-      // Allow external navigation to specific tabs
-      if (['login', 'forgot', 'reset'].includes(tab)) {
-        setActiveTab(tab);
-      }
+    // If no valid reset token, redirect to login
+    if (!token || type !== 'recovery') {
+      navigate('/login?tab=forgot');
     }
-  }, [searchParams]);
+  }, [searchParams, navigate]);
+
+  const handleSuccess = () => {
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-[calc(100vh-9rem)] bg-gradient-to-br from-soft-bg via-white to-soft-bg overflow-hidden relative">
@@ -62,56 +58,16 @@ export default function LoginPage() {
                 </div>
               </div>
               <CardTitle className="text-2xl sm:text-3xl font-bold text-center text-dark-base bg-clip-text">
-                Welcome Back
+                Reset Your Password
               </CardTitle>
               <CardDescription className="text-center text-base sm:text-lg text-muted-foreground max-w-sm mx-auto leading-relaxed px-2 sm:px-0">
-                Access your premium AI prompts and continue your creative journey
+                Create a new password for your JoJo Prompts account
               </CardDescription>
             </CardHeader>
 
-            {/* Enhanced mobile-optimized tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <div className="px-4 sm:px-6">
-                <TabsList className="grid grid-cols-3 w-full bg-soft-bg/50 p-1 rounded-xl mobile-tabs">
-                  <TabsTrigger 
-                    value="login" 
-                    className="rounded-lg font-medium text-xs sm:text-sm transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-warm-gold mobile-tab touch-target"
-                  >
-                    Login
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="forgot"
-                    className="rounded-lg font-medium text-xs sm:text-sm transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-warm-gold mobile-tab touch-target"
-                  >
-                    Forgot
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="reset"
-                    className="rounded-lg font-medium text-xs sm:text-sm transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-warm-gold mobile-tab touch-target"
-                  >
-                    Reset
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <TabsContent value="login" className="mt-0">
-                <CardContent className="mobile-container-padding pt-6 sm:pt-8">
-                  <LoginForm />
-                </CardContent>
-              </TabsContent>
-
-              <TabsContent value="forgot" className="mt-0">
-                <CardContent className="mobile-container-padding pt-6 sm:pt-8">
-                  <ForgotPasswordForm />
-                </CardContent>
-              </TabsContent>
-
-              <TabsContent value="reset" className="mt-0">
-                <CardContent className="mobile-container-padding pt-6 sm:pt-8">
-                  <ResetPasswordForm onSuccess={() => setActiveTab("login")} />
-                </CardContent>
-              </TabsContent>
-            </Tabs>
+            <CardContent className="mobile-container-padding pt-6 sm:pt-8">
+              <ResetPasswordForm onSuccess={handleSuccess} />
+            </CardContent>
 
             {/* Premium footer with gradient */}
             <div className="h-2 bg-gradient-to-r from-warm-gold via-muted-teal to-warm-gold"></div>

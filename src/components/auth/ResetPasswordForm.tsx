@@ -41,11 +41,12 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
 
   // Check for password reset token on mount
   useEffect(() => {
-    const token = searchParams.get('token');
+    const token = searchParams.get('access_token') || searchParams.get('token');
     const type = searchParams.get('type');
     
     if (token && type === 'recovery') {
       setHasResetToken(true);
+      setError(null);
     } else {
       setError("No password reset token found. Please request a password reset from the 'Forgot Password' tab.");
     }
@@ -56,9 +57,19 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
     setError(null);
 
     try {
-      // Update the user's password
-      const { error } = await supabase.auth.updateUser({
-        password: values.password,
+      const token = searchParams.get('access_token') || searchParams.get('token');
+      
+      if (!token) {
+        throw new Error("No reset token found");
+      }
+
+      // Use verifyOtp for password reset instead of updateUser
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: 'recovery',
+        options: {
+          redirectTo: window.location.origin
+        }
       });
 
       if (error) {
@@ -68,18 +79,34 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
           title: "Error",
           description: error.message,
         });
-      } else {
-        // Sign out the user after successful password reset
-        await supabase.auth.signOut();
-        
-        toast({
-          title: "Password Updated",
-          description: "Your password has been successfully updated. Please log in with your new password.",
-        });
-        
-        // Redirect to login page
-        onSuccess();
+        return;
       }
+
+      // Now update the password using the authenticated session from verifyOtp
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: values.password,
+      });
+
+      if (updateError) {
+        setError(updateError.message);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: updateError.message,
+        });
+        return;
+      }
+
+      // Sign out the user after successful password reset
+      await supabase.auth.signOut();
+      
+      toast({
+        title: "Password Updated",
+        description: "Your password has been successfully updated. Please log in with your new password.",
+      });
+      
+      // Redirect to login page
+      onSuccess();
     } catch (error: any) {
       console.error("Password update error:", error);
       setError("An unexpected error occurred. Please try again.");

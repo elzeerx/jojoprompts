@@ -8,17 +8,37 @@ import { PaymentSuccessCard } from "@/components/payment/PaymentSuccessCard";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, LogIn } from "lucide-react";
+import { CheckCircle2, LogIn, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
+import { SessionManager } from "@/hooks/payment/helpers/sessionManager";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 export default function PaymentSuccessPage() {
   const [verifying, setVerifying] = useState(true);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
 
   const params = usePaymentSuccessParams();
   const authRequired = searchParams.get('auth_required') === 'true';
+
+  // Enhanced session restoration attempt on load
+  useEffect(() => {
+    const attemptSessionRecovery = async () => {
+      if (!user && !authLoading && SessionManager.hasBackup()) {
+        console.log('Attempting session recovery on payment success page');
+        const result = await SessionManager.restoreSession();
+        if (result.success) {
+          console.log('Session recovered successfully, refreshing page');
+          window.location.reload();
+        }
+      }
+    };
+
+    attemptSessionRecovery();
+  }, [user, authLoading]);
 
   usePaymentSuccessVerification({
     params,
@@ -27,7 +47,7 @@ export default function PaymentSuccessPage() {
     setError,
   });
 
-  // Special case: Payment successful but authentication required
+  // Enhanced auth required case
   if (authRequired && !verifying) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-soft-bg py-16">
@@ -69,7 +89,16 @@ export default function PaymentSuccessPage() {
                   </Link>
                 </Button>
                 
-                <Button variant="outline" asChild className="w-full">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+                
+                <Button variant="ghost" asChild className="w-full">
                   <Link to="/contact">Contact Support</Link>
                 </Button>
               </div>
@@ -85,18 +114,37 @@ export default function PaymentSuccessPage() {
   }
 
   if (error) {
-    // Enhanced: If error is about authentication/session, prompt user to log in
-    if (error.toLowerCase().includes("login") || error.toLowerCase().includes("authentication")) {
+    // Enhanced error handling with session recovery suggestion
+    if (error.toLowerCase().includes("login") || error.toLowerCase().includes("authentication") || !user) {
       return (
-        <div>
-          <PaymentSuccessError error={error} />
-          <div className="py-6 text-center">
-            <p className="mb-2 text-sm text-muted-foreground">
-              If you already paid but were logged out, please log back in to access premium content or try <a href="/prompts" className="underline">here</a>.
-            </p>
-            <a href="/login" className="inline-block mt-2 px-5 py-2 rounded bg-blue-500 text-white font-medium">
-              Log In Again
-            </a>
+        <div className="min-h-screen flex items-center justify-center bg-soft-bg py-16">
+          <div className="container mx-auto max-w-md px-4">
+            <PaymentSuccessError error={error} />
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-700 mb-3">
+                If your payment was successful but you were logged out, try these options:
+              </p>
+              <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh Page
+                </Button>
+                <Button asChild size="sm" className="w-full">
+                  <Link to="/login">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Log In Again
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild className="w-full">
+                  <Link to="/prompts">Go to Prompts</Link>
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       );
