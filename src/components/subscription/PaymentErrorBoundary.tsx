@@ -13,7 +13,7 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-class PaymentErrorBoundary extends React.Component<PaymentErrorBoundaryProps, ErrorBoundaryState> {
+export default class PaymentErrorBoundary extends React.Component<PaymentErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: PaymentErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -51,5 +51,3 @@ class PaymentErrorBoundary extends React.Component<PaymentErrorBoundaryProps, Er
     return this.props.children;
   }
 }
-
-export default PaymentErrorBoundary;
