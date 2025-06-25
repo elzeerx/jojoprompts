@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, User, LogOut, Settings, Heart, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { GlobalSearch } from "@/components/search/GlobalSearch";
+import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
 import { AdminNavigationButton } from "./AdminNavigationButton";
 import {
   DropdownMenu,
@@ -217,7 +217,7 @@ export function Header() {
       </div>
 
       {/* Global Search Modal */}
-      <GlobalSearch 
+      <GlobalSearchModal 
         isOpen={isSearchOpen} 
         onClose={() => setIsSearchOpen(false)} 
       />
