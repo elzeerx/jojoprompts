@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Container } from "@/components/ui/container";
@@ -250,6 +249,14 @@ export default function UserDashboardPage() {
                         <p>Expires: {formatDate(userSubscription.end_date)}</p>
                       )}
                     </div>
+                    {!userSubscription.subscription_plans.is_lifetime && (
+                      <div className="pt-4 border-t">
+                        <p className="text-sm text-muted-foreground mb-2">Want more features?</p>
+                        <Button variant="outline" asChild>
+                          <a href="/pricing">Upgrade Plan</a>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">

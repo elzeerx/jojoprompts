@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { emailTemplates } from "./emailTemplates";
 
@@ -108,6 +107,63 @@ class EmailService {
       paymentDate,
       paymentMethod,
       billingPeriod
+    });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
+
+  async sendSubscriptionStatusChange(
+    name: string, 
+    email: string, 
+    planName: string, 
+    statusChange: 'cancelled' | 'suspended' | 'reactivated' | 'expired',
+    effectiveDate: string,
+    reason?: string
+  ): Promise<EmailServiceResponse> {
+    const template = emailTemplates.subscriptionStatusChange({ 
+      name, 
+      email, 
+      planName, 
+      statusChange, 
+      effectiveDate, 
+      reason 
+    });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
+
+  async sendAccountUpgrade(
+    name: string,
+    email: string,
+    fromPlan: string,
+    toPlan: string,
+    upgradeDate: string,
+    newFeatures: string[]
+  ): Promise<EmailServiceResponse> {
+    const template = emailTemplates.accountUpgrade({
+      name,
+      email,
+      fromPlan,
+      toPlan,
+      upgradeDate,
+      newFeatures
+    });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
+
+  async sendRenewalReminder(
+    name: string,
+    email: string,
+    planName: string,
+    expirationDate: string,
+    daysUntilExpiration: number,
+    renewalUrl: string
+  ): Promise<EmailServiceResponse> {
+    const template = emailTemplates.renewalReminder({
+      name,
+      email,
+      planName,
+      expirationDate,
+      daysUntilExpiration,
+      renewalUrl
     });
     return this.sendEmail(email, template.subject, template.html, template.text);
   }
