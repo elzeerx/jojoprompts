@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,8 +15,6 @@ interface CreateUserDialogProps {
 
 export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
   const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
   const [loading, setLoading] = useState(false);
@@ -48,10 +45,6 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
         password,
         options: {
           emailRedirectTo: loginUrl,
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-          }
         }
       });
       
@@ -70,20 +63,8 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
       if (profileError) throw profileError;
       
       // Send welcome email
-      const userName = firstName && lastName ? `${firstName} ${lastName}`.trim() : email.split('@')[0];
-      console.log("Sending welcome email to new admin-created user:", email);
-      
-      try {
-        const emailResult = await sendWelcomeEmail(userName, email);
-        if (emailResult.success) {
-          console.log("Welcome email sent successfully to admin-created user");
-        } else {
-          console.warn("Welcome email failed for admin-created user:", emailResult.error);
-        }
-      } catch (emailError) {
-        console.error("Welcome email error for admin-created user:", emailError);
-        // Don't fail user creation if email fails
-      }
+      const userName = email.split('@')[0]; // Use email prefix as name fallback
+      await sendWelcomeEmail(userName, email);
       
       toast({
         title: "User created successfully! 🎉",
@@ -92,8 +73,6 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
       
       setOpen(false);
       setEmail("");
-      setFirstName("");
-      setLastName("");
       setPassword("");
       setRole("user");
       onUserCreated();
@@ -127,30 +106,6 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-white/40 p-6 rounded-xl border border-gray-200 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName" className="text-base font-medium">First Name</Label>
-                  <Input
-                    id="firstName"
-                    type="text"
-                    placeholder="John"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="h-12 text-base"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName" className="text-base font-medium">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    type="text"
-                    placeholder="Doe"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="h-12 text-base"
-                  />
-                </div>
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-base font-medium">Email</Label>
                 <Input

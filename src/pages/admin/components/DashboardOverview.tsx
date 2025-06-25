@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { FileText, Users, Activity, Loader2, AlertCircle } from "lucide-react";
+import { FileText, Users, Activity, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Card,
@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
 
 interface Stats {
   prompts: number;
@@ -36,267 +35,157 @@ export default function DashboardOverview() {
   });
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const { user, session, userRole } = useAuth();
+  const { user, session } = useAuth();
 
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY = 2000;
-
-  // Check admin access before proceeding
-  const hasAdminAccess = userRole === 'admin';
-
+  // Fetch initial data
   useEffect(() => {
-    if (!hasAdminAccess) {
-      setError("Admin access required to view dashboard statistics");
-      setLoading(false);
-      return;
-    }
-
-    if (!session?.access_token) {
-      setError("Authentication required. Please refresh the page and try again.");
-      setLoading(false);
-      return;
-    }
-
-    fetchDashboardData();
+    fetchStats();
+    fetchRecentActivity();
     
-    // Set up real-time listeners for data updates
+    // Set up real-time listeners
     const promptsChannel = supabase
-      .channel('dashboard-prompts-changes')
+      .channel('schema-db-changes-prompts')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'prompts' },
         () => {
-          console.log('Prompts data changed, refreshing stats');
-          fetchDashboardData();
+          console.log('Prompts table changed, refreshing stats');
+          fetchStats();
+          fetchRecentActivity();
         }
       )
       .subscribe();
       
     const profilesChannel = supabase
-      .channel('dashboard-profiles-changes')
+      .channel('schema-db-changes-profiles')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
         () => {
-          console.log('Profiles data changed, refreshing stats');
-          fetchDashboardData();
+          console.log('Profiles table changed, refreshing stats');
+          fetchStats();
         }
       )
       .subscribe();
       
+    // Cleanup function
     return () => {
       supabase.removeChannel(promptsChannel);
       supabase.removeChannel(profilesChannel);
     };
-  }, [session, hasAdminAccess]);
+  }, [session]);
 
-  const fetchDashboardData = async () => {
-    if (!hasAdminAccess) return;
-    
+  const fetchStats = async () => {
     try {
       setLoading(true);
-      setError(null);
       
-      console.log('Starting dashboard data fetch...');
+      // Fetch prompts count
+      const { data: prompts, error: promptsError } = await supabase
+        .from("prompts")
+        .select("id", { count: 'exact' });
       
-      // Fetch all data concurrently with individual error handling
-      const [statsResult, activityResult] = await Promise.allSettled([
-        fetchStats(),
-        fetchRecentActivity()
-      ]);
-
-      // Handle stats result
-      if (statsResult.status === 'fulfilled') {
-        setStats(statsResult.value);
+      if (promptsError) throw promptsError;
+      
+      // Fetch users count from the edge function that accesses auth.users
+      let usersCount = 0;
+      
+      if (session?.access_token) {
+        try {
+          console.log('Fetching users from edge function...');
+          const { data: allUsers, error: usersError } = await supabase.functions.invoke(
+            "get-all-users",
+            {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              method: "GET"
+            }
+          );
+          
+          if (usersError) {
+            console.error("Error fetching users from edge function:", usersError);
+          } else {
+            console.log("Users response from edge function:", allUsers);
+            usersCount = allUsers?.total || 0;
+          }
+        } catch (err) {
+          console.error("Failed to call get-all-users edge function:", err);
+        }
       } else {
-        console.error('Stats fetch failed:', statsResult.reason);
-        throw new Error(`Failed to fetch statistics: ${statsResult.reason.message}`);
+        console.log('No session access token available');
       }
-
-      // Handle activity result (non-critical)
-      if (activityResult.status === 'fulfilled') {
-        setRecentActivity(activityResult.value);
-      } else {
-        console.warn('Activity fetch failed:', activityResult.reason);
-        // Don't throw for activity failure, just log it
-        setRecentActivity([]);
-      }
-
-      console.log('Dashboard data fetch completed successfully');
-      setRetryCount(0); // Reset retry count on success
       
-    } catch (error: any) {
-      console.error("Dashboard data fetch error:", error);
-      const errorMessage = error.message || "Failed to fetch dashboard data";
-      setError(errorMessage);
+      console.log('Final users count:', usersCount);
       
-      // Show user-friendly toast
+      setStats({
+        prompts: prompts?.length ?? 0,
+        users: usersCount,
+        signups: usersCount, // Same as users count
+        aiRuns: 0 // placeholder for future AI run tracking
+      });
+      
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
       toast({
-        title: "Dashboard Loading Error",
-        description: errorMessage,
+        title: "Error loading dashboard data",
+        description: "Failed to fetch dashboard statistics.",
         variant: "destructive",
       });
-
-      // Implement retry logic for transient errors
-      if (retryCount < MAX_RETRIES && shouldRetry(error)) {
-        console.log(`Retrying dashboard fetch (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
-        setRetryCount(prev => prev + 1);
-        setTimeout(() => {
-          fetchDashboardData();
-        }, RETRY_DELAY * (retryCount + 1)); // Exponential backoff
-      }
-    } finally {
       setLoading(false);
     }
   };
 
-  const shouldRetry = (error: any): boolean => {
-    // Retry for network errors, timeouts, or temporary server issues
-    const retryableErrors = [
-      'fetch',
-      'network',
-      'timeout',
-      'connection',
-      'temporary',
-      '503',
-      '502',
-      '504'
-    ];
-    
-    const errorMessage = (error.message || '').toLowerCase();
-    return retryableErrors.some(keyword => errorMessage.includes(keyword));
-  };
-
-  const fetchStats = async (): Promise<Stats> => {
-    console.log('Fetching statistics...');
-    
+  const fetchRecentActivity = async () => {
     try {
-      // Use direct Supabase queries with proper timeout handling
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Query timeout')), 10000); // 10 second timeout
-      });
-
-      // Fetch prompts count
-      const promptsPromise = supabase
-        .from("prompts")
-        .select("*", { count: 'exact', head: true });
-      
-      const promptsResult = await Promise.race([promptsPromise, timeoutPromise]) as any;
-      
-      if (promptsResult.error) {
-        throw new Error(`Prompts query failed: ${promptsResult.error.message}`);
-      }
-
-      const promptsCount = promptsResult.count || 0;
-      console.log('Prompts count:', promptsCount);
-
-      // Fetch users count
-      const usersPromise = supabase
-        .from('profiles')
-        .select("*", { count: 'exact', head: true });
-      
-      const usersResult = await Promise.race([usersPromise, timeoutPromise]) as any;
-      
-      if (usersResult.error) {
-        throw new Error(`Users query failed: ${usersResult.error.message}`);
-      }
-
-      const usersCount = usersResult.count || 0;
-      console.log('Users count:', usersCount);
-      
-      const newStats = {
-        prompts: promptsCount,
-        users: usersCount,
-        signups: usersCount, // Same as users count for now
-        aiRuns: 0 // Placeholder for future implementation
-      };
-
-      console.log('Stats fetched successfully:', newStats);
-      return newStats;
-      
-    } catch (error: any) {
-      console.error("Error in fetchStats:", error);
-      throw error;
-    }
-  };
-
-  const fetchRecentActivity = async (): Promise<ActivityItem[]> => {
-    console.log('Fetching recent activity...');
-    
-    try {
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Activity query timeout')), 8000);
-      });
-
-      // Fetch recent prompts with user info
-      const activityPromise = supabase
+      // Fetch 5 most recent prompts
+      const { data: promptsData, error: promptsError } = await supabase
         .from("prompts")
         .select(`
           id,
           title,
           created_at,
-          user_id,
-          profiles!inner(first_name, last_name)
+          user_id
         `)
         .order('created_at', { ascending: false })
         .limit(5);
       
-      const activityResult = await Promise.race([activityPromise, timeoutPromise]) as any;
+      if (promptsError) throw promptsError;
       
-      if (activityResult.error) {
-        throw new Error(`Activity query failed: ${activityResult.error.message}`);
+      // Fetch user emails in a separate query
+      const userIds = promptsData.map(prompt => prompt.user_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, email:id")
+        .in("id", userIds);
+        
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
       }
       
-      const activityData = activityResult.data || [];
-      console.log('Activity data:', activityData);
+      // Create a map of user IDs to emails
+      const userEmailMap = new Map();
+      if (profilesData) {
+        profilesData.forEach(profile => {
+          userEmailMap.set(profile.id, profile.email);
+        });
+      }
       
       // Format the activity data
-      const formattedActivity: ActivityItem[] = activityData.map((item: any) => {
-        const userName = item.profiles?.first_name 
-          ? `${item.profiles.first_name} ${item.profiles.last_name || ''}`.trim()
-          : 'Unknown user';
-
-        return {
-          id: item.id,
-          description: `New prompt created: "${item.title}"`,
-          timestamp: item.created_at,
-          user_email: userName
-        };
-      });
+      const formattedActivity: ActivityItem[] = promptsData.map(item => ({
+        id: item.id,
+        description: `New prompt created: "${item.title}"`,
+        timestamp: item.created_at,
+        user_email: userEmailMap.get(item.user_id) || 'Unknown user'
+      }));
       
-      console.log('Activity formatted successfully:', formattedActivity);
-      return formattedActivity;
-    } catch (error: any) {
-      console.error("Error in fetchRecentActivity:", error);
-      throw error;
+      setRecentActivity(formattedActivity);
+    } catch (error) {
+      console.error("Error fetching recent activity:", error);
     }
   };
 
-  const handleRetry = () => {
-    setRetryCount(0);
-    fetchDashboardData();
-  };
-
-  if (!hasAdminAccess) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Access Denied</h3>
-              <p className="text-muted-foreground">
-                You need admin privileges to access the dashboard.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // Only show cards with real data
   const cards = [
     {
       title: "Total Prompts",
@@ -312,45 +201,6 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-              <div className="flex-1">
-                <h4 className="text-sm font-medium text-red-800 mb-1">
-                  Dashboard Loading Error
-                </h4>
-                <p className="text-sm text-red-700 mb-3">{error}</p>
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={handleRetry}
-                    disabled={loading}
-                    className="text-red-700 border-red-300 hover:bg-red-100"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Retrying...
-                      </>
-                    ) : (
-                      'Retry'
-                    )}
-                  </Button>
-                  {retryCount > 0 && (
-                    <span className="text-xs text-red-600 self-center">
-                      Attempt {retryCount}/{MAX_RETRIES}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
           <Card key={card.title} className="border-warm-gold/20 bg-white/95 shadow-sm hover:shadow-md transition-all">
@@ -364,9 +214,7 @@ export default function DashboardOverview() {
               <div className="text-2xl font-bold text-dark-base">
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin text-warm-gold" />
-                ) : (
-                  <span>{card.value}</span>
-                )}
+                ) : card.value === 0 ? "0" : card.value}
               </div>
             </CardContent>
           </Card>
@@ -381,9 +229,9 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex justify-center py-4">
+              <p className="text-muted-foreground flex justify-center py-4">
                 <Loader2 className="h-5 w-5 animate-spin text-warm-gold" />
-              </div>
+              </p>
             ) : recentActivity.length > 0 ? (
               <ul className="space-y-4">
                 {recentActivity.map((item) => (

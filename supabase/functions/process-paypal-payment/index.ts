@@ -10,129 +10,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to send subscription activation email
-async function sendSubscriptionActivationEmail(supabaseClient: any, userId: string, planId: string, paymentAmount: number, paymentMethod: string) {
-  try {
-    // Get user details
-    const { data: user, error: userError } = await supabaseClient.auth.admin.getUserById(userId);
-    if (userError || !user) {
-      console.error('Failed to get user for email:', userError);
-      return;
-    }
-
-    // Get plan details
-    const { data: plan, error: planError } = await supabaseClient
-      .from('subscription_plans')
-      .select('name, duration_days, is_lifetime')
-      .eq('id', planId)
-      .single();
-
-    if (planError || !plan) {
-      console.error('Failed to get plan for email:', planError);
-      return;
-    }
-
-    // Calculate subscription end date
-    const endDate = plan.is_lifetime 
-      ? new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000) // 100 years for lifetime
-      : new Date(Date.now() + (plan.duration_days || 365) * 24 * 60 * 60 * 1000);
-
-    // Get user name
-    const userName = user.user_metadata?.first_name 
-      ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
-      : user.email?.split('@')[0] || 'User';
-
-    // Send subscription activation email
-    const emailData = {
-      to: user.email,
-      subject: `Your ${plan.name} Subscription is Now Active! 🚀`,
-      html: generateSubscriptionActivationEmail({
-        name: userName,
-        email: user.email,
-        planName: plan.name,
-        subscriptionEndDate: endDate.toISOString(),
-        amount: paymentAmount,
-        paymentMethod: paymentMethod
-      })
-    };
-
-    const { error: emailError } = await supabaseClient.functions.invoke('send-email', {
-      body: emailData
-    });
-
-    if (emailError) {
-      console.error('Failed to send subscription activation email:', emailError);
-    } else {
-      console.log('Subscription activation email sent successfully to:', user.email);
-    }
-  } catch (error) {
-    console.error('Error sending subscription activation email:', error);
-  }
-}
-
-// Helper function to generate subscription activation email HTML
-function generateSubscriptionActivationEmail(data: {
-  name: string;
-  email: string;
-  planName: string;
-  subscriptionEndDate: string;
-  amount: number;
-  paymentMethod: string;
-}) {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
-        <h1 style="margin: 0; font-size: 32px;">Subscription Activated! 🚀</h1>
-        <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Your ${data.planName} is ready to use</p>
-      </div>
-      
-      <div style="background: #f8f9fa; padding: 40px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
-        <h2 style="color: #333; margin: 0 0 20px 0;">Hi ${data.name}! 🎉</h2>
-        
-        <p style="color: #666; line-height: 1.6; margin: 20px 0;">
-          Great news! Your ${data.planName} subscription has been successfully activated and is now ready to use.
-        </p>
-        
-        <div style="background: white; padding: 25px; border-radius: 8px; margin: 30px 0; border: 1px solid #dee2e6;">
-          <h3 style="color: #333; margin: 0 0 15px 0;">📋 Subscription Details</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr style="border-bottom: 1px solid #f0f0f0;">
-              <td style="padding: 10px 0; font-weight: bold; color: #666;">Plan:</td>
-              <td style="padding: 10px 0; text-align: right; color: #333;">${data.planName}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f0f0f0;">
-              <td style="padding: 10px 0; font-weight: bold; color: #666;">Amount Paid:</td>
-              <td style="padding: 10px 0; text-align: right; color: #333;">$${data.amount.toFixed(2)} USD</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f0f0f0;">
-              <td style="padding: 10px 0; font-weight: bold; color: #666;">Payment Method:</td>
-              <td style="padding: 10px 0; text-align: right; color: #333;">${data.paymentMethod}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px 0; font-weight: bold; color: #666;">Valid Until:</td>
-              <td style="padding: 10px 0; text-align: right; color: #333;">${new Date(data.subscriptionEndDate).toLocaleDateString()}</td>
-            </tr>
-          </table>
-        </div>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://jojoprompts.com/prompts" style="background: #28a745; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; margin-right: 10px;">
-            Explore Premium Content
-          </a>
-        </div>
-        
-        <p style="color: #666; text-align: center; margin: 30px 0; font-size: 14px;">
-          Questions? Reach out to us at info@jojoprompts.com
-        </p>
-      </div>
-      
-      <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
-        <p style="margin: 0;">Happy prompting!<br><strong>The JoJo Prompts Team</strong></p>
-      </div>
-    </div>
-  `;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -197,9 +74,6 @@ serve(async (req) => {
       }
 
       console.log('Created subscription for direct activation:', subscription);
-
-      // Send subscription activation email for discount activation
-      await sendSubscriptionActivationEmail(supabaseClient, userId, planId, 0, 'discount_100_percent');
 
       // Track discount usage
       const { error: discountUsageError } = await supabaseClient
@@ -389,9 +263,6 @@ serve(async (req) => {
         if (subscriptionError) {
           console.error('Subscription creation error after capture:', subscriptionError);
           // Payment was successful - just log subscription error, don't abort
-        } else {
-          // Send subscription activation email for successful PayPal payment
-          await sendSubscriptionActivationEmail(supabaseClient, userId, planId, transaction.amount_usd, 'PayPal');
         }
       }
 

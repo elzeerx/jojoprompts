@@ -42,7 +42,7 @@ serve(async (req) => {
     console.log(`Sending email to ${to} with subject: ${subject}`);
 
     const emailResponse = await resend.emails.send({
-      from: 'JoJo Prompts <info@jojoprompts.com>',
+      from: 'info@jojoprompts.com',
       to: [to],
       subject: subject,
       html: html,

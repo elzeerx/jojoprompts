@@ -4,45 +4,15 @@ import { BarChart3, FileText, Tags, Users, CreditCard, Percent } from "lucide-re
 export interface AdminTabConfig {
   id: string;
   label: string;
-  icon: any;
+  icon: React.ElementType;
   mobileLabel: string;
 }
 
-export const adminTabsConfig: AdminTabConfig[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    icon: BarChart3,
-    mobileLabel: "Overview"
-  },
-  {
-    id: "prompts",
-    label: "Prompts",
-    icon: FileText,
-    mobileLabel: "Prompts"
-  },
-  {
-    id: "categories",
-    label: "Categories",
-    icon: Tags,
-    mobileLabel: "Categories"
-  },
-  {
-    id: "users",
-    label: "Users",
-    icon: Users,
-    mobileLabel: "Users"
-  },
-  {
-    id: "purchases",
-    label: "Purchases",
-    icon: CreditCard,
-    mobileLabel: "Purchases"
-  },
-  {
-    id: "discounts",
-    label: "Discount Codes",
-    icon: Percent,
-    mobileLabel: "Discounts"
-  }
+export const adminTabs: AdminTabConfig[] = [
+  { id: "overview", label: "Overview", icon: BarChart3, mobileLabel: "Home" },
+  { id: "prompts", label: "Prompts", icon: FileText, mobileLabel: "Prompts" },
+  { id: "categories", label: "Categories", icon: Tags, mobileLabel: "Tags" },
+  { id: "users", label: "Users", icon: Users, mobileLabel: "Users" },
+  { id: "purchases", label: "Purchases", icon: CreditCard, mobileLabel: "Sales" },
+  { id: "discounts", label: "Discounts", icon: Percent, mobileLabel: "Codes" }
 ];

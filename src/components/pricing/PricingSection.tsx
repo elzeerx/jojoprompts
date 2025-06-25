@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useAuth } from "@/contexts/AuthContext";
 
 export function PricingSection() {
   const [plans, setPlans] = useState<any[]>([]);
@@ -13,7 +12,6 @@ export function PricingSection() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { user } = useAuth();
 
   // Fetch available plans
   useEffect(() => {
@@ -43,17 +41,12 @@ export function PricingSection() {
     fetchPlans();
   }, []);
 
-  // Handle selecting a plan
+  // Handle selecting a plan - always navigate to checkout
   const handleSelectPlan = (planId: string) => {
     setSelectedPlanId(planId);
     
-    if (user) {
-      // User is authenticated, go directly to checkout
-      navigate(`/checkout?plan_id=${planId}`);
-    } else {
-      // User is not authenticated, go to signup with plan context
-      navigate(`/signup?plan=${planId}`);
-    }
+    // Always navigate to checkout regardless of authentication status
+    navigate(`/checkout?plan_id=${planId}`);
   };
 
   if (loading) {

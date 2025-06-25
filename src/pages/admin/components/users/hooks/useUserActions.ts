@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -46,7 +47,7 @@ export function useUserActions() {
       SecurityEnforcer.logAuthAttempt('password_reset', email, false, 'Admin initiated');
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/login?tab=reset`,
       });
       
       if (error) {

@@ -93,10 +93,10 @@ export function Footer() {
               <li className="text-soft-bg/80 flex items-start">
                 <span className="mr-2 text-base">📧</span>
                 <a 
-                  href="mailto:info@jojoprompts.com" 
+                  href="mailto:support@jojoprompts.com" 
                   className="hover:text-warm-gold transition-colors text-sm sm:text-base break-all"
                 >
-                  info@jojoprompts.com
+                  support@jojoprompts.com
                 </a>
               </li>
               <li className="text-soft-bg/80 flex items-start">

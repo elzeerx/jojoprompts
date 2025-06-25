@@ -13,14 +13,13 @@ import { usePaymentHandling } from "./CheckoutPage/hooks/usePaymentHandling";
 import { CheckoutProgress } from "./CheckoutPage/components/CheckoutProgress";
 import { PlanSummaryCard } from "./CheckoutPage/components/PlanSummaryCard";
 import { PaymentMethodsCard } from "./CheckoutPage/components/PaymentMethodsCard";
-import PaymentErrorBoundary from "@/components/subscription/PaymentErrorBoundary";
+import { PaymentErrorBoundary } from "@/components/subscription/PaymentErrorBoundary";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const planId = searchParams.get("plan_id");
   const authCallback = searchParams.get("auth_callback");
-  const fromSignup = searchParams.get("from_signup") === "true";
   const { user, loading: authLoading } = useAuth();
 
   const {
@@ -48,7 +47,6 @@ export default function CheckoutPage() {
     showAuthForm, 
     planId,
     authCallback,
-    fromSignup,
     selectedPlanName: selectedPlan?.name,
     hasDiscount: !!appliedDiscount
   }, user?.id);
@@ -83,20 +81,6 @@ export default function CheckoutPage() {
   const handleDiscountRemoved = () => {
     setAppliedDiscount(null);
   };
-
-  // Override auth form visibility for users coming from signup
-  React.useEffect(() => {
-    if (!authLoading && !loading && selectedPlan) {
-      if (fromSignup && user) {
-        // User came from signup confirmation and is authenticated
-        setShowAuthForm(false);
-      } else if (!user) {
-        setShowAuthForm(true);
-      } else {
-        setShowAuthForm(false);
-      }
-    }
-  }, [user, authLoading, loading, selectedPlan, fromSignup, setShowAuthForm]);
 
   if (loading || authLoading) {
     return (
@@ -144,8 +128,6 @@ export default function CheckoutPage() {
           <p className="text-muted-foreground">
             {showAuthForm 
               ? `Create an account to purchase ${isLifetime ? "lifetime" : "1-year"} access to the ${selectedPlan.name} plan`
-              : fromSignup
-              ? `Welcome! Complete your purchase for ${isLifetime ? "lifetime" : "1-year"} access to the ${selectedPlan.name} plan`
               : `You're about to purchase ${isLifetime ? "lifetime" : "1-year"} access to the ${selectedPlan.name} plan`
             }
           </p>

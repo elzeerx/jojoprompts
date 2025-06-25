@@ -28,7 +28,6 @@ export function usePaymentProcessing({
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [restoredFromBackup, setRestoredFromBackup] = useState(false);
   const MAX_POLLS = 10;
   const navigate = useNavigate();
 
@@ -39,28 +38,14 @@ export function usePaymentProcessing({
   // Enhanced session and payment context recovery
   useEffect(() => {
     const initializePaymentFlow = async () => {
-      console.log('Initializing payment flow with enhanced session recovery');
+      console.log('Initializing payment flow with session recovery');
       
-      // Step 1: Check for existing session first
-      try {
-        const { data: { user: existingUser } } = await supabase.auth.getUser();
-        if (existingUser) {
-          console.log('User already authenticated:', existingUser.id);
-          setCurrentUser(existingUser);
-          setIsLoadingAuth(false);
-          return;
-        }
-      } catch (err) {
-        console.log('No existing session found, attempting restoration');
-      }
-
-      // Step 2: Attempt session restoration from backup
+      // Attempt session restoration first
       const sessionResult = await SessionManager.restoreSession();
       
       if (sessionResult.success && sessionResult.user) {
         setCurrentUser(sessionResult.user);
-        setRestoredFromBackup(true);
-        console.log('Session restored successfully from backup');
+        console.log('Session restored successfully');
         
         // If we have payment context from the restored session, use it
         if (sessionResult.context) {
@@ -75,7 +60,7 @@ export function usePaymentProcessing({
           );
 
           if (verificationResult.isSuccessful && verificationResult.hasActiveSubscription) {
-            console.log('Payment already successful based on restored context, redirecting to success');
+            console.log('Payment already successful, redirecting to success');
             setStatus(PROCESSING_STATES.COMPLETED);
             setIsProcessingComplete(true);
             
@@ -86,12 +71,17 @@ export function usePaymentProcessing({
               orderId: contextOrderId || orderId,
               paymentId
             }, verificationResult);
-            setIsLoadingAuth(false);
             return;
           }
         }
-      } else {
-        console.log('Session restoration failed or no backup found');
+      }
+      
+      // Fallback to regular auth check
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUser(user);
+      } catch (err) {
+        console.error('Auth check failed:', err);
       }
       
       setIsLoadingAuth(false);
@@ -99,13 +89,10 @@ export function usePaymentProcessing({
 
     initializePaymentFlow();
 
-    // Set up auth state listener for real-time updates
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session?.user?.id);
       setCurrentUser(session?.user || null);
-      
       if (event === 'SIGNED_IN' && session?.user && !isProcessingComplete) {
-        console.log('User signed in during payment processing, restarting verification');
         setStatus(PROCESSING_STATES.CHECKING);
         setPollCount(0);
       }
@@ -114,7 +101,7 @@ export function usePaymentProcessing({
     return () => subscription.unsubscribe();
   }, []);
 
-  // Helper function to map parameters correctly for backend
+  // Helper function to map camelCase to snake_case parameters for backend
   const mapParametersForBackend = useCallback((params: Record<string, string>) => {
     const mappedParams: Record<string, string> = {};
     
@@ -139,7 +126,7 @@ export function usePaymentProcessing({
     return mappedParams;
   }, []);
 
-  // Enhanced payment processing with better error handling
+  // Enhanced payment processing with database-first verification
   useEffect(() => {
     if (isLoadingAuth || isProcessingComplete) return;
     clean();
@@ -158,22 +145,10 @@ export function usePaymentProcessing({
     }
 
     const processPayment = async () => {
-      // Get current user context (could be from restored session or current session)
-      const effectiveUserId = currentUser?.id || userId;
-      
-      console.log('Processing payment with context:', {
-        effectiveUserId,
-        planId,
-        orderId,
-        paymentId,
-        restoredFromBackup,
-        hasSessionIndependentData
-      });
-
       // Phase 1: Database-first verification
       console.log('Starting database-first payment verification');
       const verificationResult = await PaymentStateVerifier.verifyPaymentState(
-        effectiveUserId,
+        currentUser?.id || userId,
         planId,
         orderId,
         paymentId
@@ -187,7 +162,7 @@ export function usePaymentProcessing({
         
         EnhancedPaymentNavigator.navigateBasedOnPaymentState({
           navigate,
-          userId: effectiveUserId,
+          userId: currentUser?.id || userId,
           planId,
           orderId,
           paymentId: verificationResult.subscription?.payment_id || paymentId
@@ -195,14 +170,15 @@ export function usePaymentProcessing({
         return;
       }
 
-      // Phase 2: Check for discount-based payment
+      // Phase 2: Check if this is a discount-based payment (no PayPal verification needed)
       const { hasSubscription, subscription } = await checkDatabaseFirst({ 
-        userId: effectiveUserId, 
+        userId: currentUser?.id || userId, 
         planId, 
         orderId 
       });
       
       if (hasSubscription && subscription) {
+        // Check if this is a discount-based payment
         const isDiscountPayment = subscription.payment_method === 'discount_100_percent' || 
                                  (subscription.payment_id && subscription.payment_id.startsWith('discount_'));
         
@@ -214,7 +190,7 @@ export function usePaymentProcessing({
           
           EnhancedPaymentNavigator.navigateBasedOnPaymentState({
             navigate,
-            userId: effectiveUserId,
+            userId: currentUser?.id || userId,
             planId,
             orderId,
             paymentId: subscription.payment_id
@@ -227,178 +203,225 @@ export function usePaymentProcessing({
         }
       }
 
-      // Phase 3: Handle missing payment information
+      // Phase 3: If not discount payment and database verification is inconclusive, proceed with PayPal API verification
       if (!orderId && !paymentId) {
         console.error('Missing payment information:', { orderId, paymentId, debugObject });
-        
-        // Check if we have backup context that might contain the missing info
-        const backupContext = SessionManager.getPaymentContext();
-        if (backupContext && (backupContext.orderId || backupContext.paymentId)) {
-          console.log('Found missing payment info in backup context:', backupContext);
-          // Retry with backup context data
-          await processPaymentWithContext(backupContext);
-          return;
-        }
-        
         setError('Missing payment information in callback URL');
         
         EnhancedPaymentNavigator.navigateBasedOnPaymentState({
-          navigate, 
-          userId: effectiveUserId, 
-          planId, 
-          orderId, 
-          paymentId
+          navigate, userId, planId, orderId, paymentId
         }, {
           isSuccessful: false,
           hasActiveSubscription: false,
-          needsAuthentication: !currentUser,
+          needsAuthentication: false,
           errorMessage: 'Missing payment information'
         });
         return;
       }
 
-      // Phase 4: PayPal API verification with enhanced parameter mapping
-      await processPaymentWithContext({
-        userId: effectiveUserId,
-        planId,
-        orderId,
-        paymentId
-      });
-    };
+      // Continue with existing polling logic but with enhanced error handling
+      const poll = async (currentPollCount: number = 0, paymentIdArg?: string, contextUserId?: string, contextPlanId?: string) => {
+        if (completeRef.current || isProcessingComplete) {
+          clean();
+          return;
+        }
 
-    const processPaymentWithContext = async (context: any) => {
-      const poll = async (currentPollCount: number = 0) => {
         if (currentPollCount >= MAX_POLLS) {
-          console.error('Max polling attempts reached');
-          setError('Payment verification timed out');
-          
-          // If we have a user but verification failed, this might be an auth issue with successful payment
-          if (currentUser) {
-            const params = new URLSearchParams();
-            params.append('auth_required', 'true');
-            if (planId) params.append('planId', planId);
-            params.append('reason', 'Payment verification timed out but user is authenticated');
-            navigate(`/payment-success?${params.toString()}`);
-          } else {
-            const params = new URLSearchParams();
-            if (planId) params.append('planId', planId);
-            params.append('reason', 'Payment verification timed out');
-            navigate(`/payment-failed?${params.toString()}`);
+          const { hasSubscription, subscription } = await checkDatabaseFirst({ userId: contextUserId || currentUser?.id || userId, planId: contextPlanId || planId, orderId });
+          if (hasSubscription) {
+            setStatus(PROCESSING_STATES.COMPLETED);
+            setFinalPaymentId(subscription?.payment_id || paymentIdArg || paymentId);
+            setIsProcessingComplete(true);
+            
+            EnhancedPaymentNavigator.navigateBasedOnPaymentState({
+              navigate,
+              userId: contextUserId || currentUser?.id || userId,
+              planId: contextPlanId || planId,
+              orderId,
+              paymentId: subscription?.payment_id || paymentIdArg || paymentId
+            }, {
+              isSuccessful: true,
+              hasActiveSubscription: true,
+              needsAuthentication: false
+            });
+            return;
           }
+          
+          setError('Payment verification timeout. Please contact support if your payment was successful.');
+          EnhancedPaymentNavigator.navigateBasedOnPaymentState({
+            navigate, userId: contextUserId, planId: contextPlanId, orderId, paymentId: paymentIdArg
+          }, {
+            isSuccessful: false,
+            hasActiveSubscription: false,
+            needsAuthentication: false,
+            errorMessage: 'Payment verification timeout'
+          });
           return;
         }
 
         try {
-          setStatus(PROCESSING_STATES.VERIFYING);
-          setPollCount(currentPollCount + 1);
-
-          // Prepare parameters with proper mapping
-          const verificationParams = mapParametersForBackend({
-            orderId: context.orderId || '',
-            paymentId: context.paymentId || '',
-            userId: context.userId || '',
-            planId: context.planId || ''
-          });
-
-          console.log(`Payment verification attempt ${currentPollCount + 1}:`, verificationParams);
-
-          const { data, error } = await supabase.functions.invoke('verify-paypal-payment', {
-            body: verificationParams
-          });
-
-          if (error) {
-            console.error('Payment verification error:', error);
-            throw error;
+          const { hasSubscription, subscription } = await checkDatabaseFirst({ userId: contextUserId || currentUser?.id || userId, planId: contextPlanId || planId, orderId });
+          if (hasSubscription) {
+            setStatus(PROCESSING_STATES.COMPLETED);
+            setFinalPaymentId(subscription?.payment_id || paymentIdArg || paymentId);
+            setIsProcessingComplete(true);
+            
+            EnhancedPaymentNavigator.navigateBasedOnPaymentState({
+              navigate,
+              userId: contextUserId || currentUser?.id || userId,
+              planId: contextPlanId || planId,
+              orderId,
+              paymentId: subscription?.payment_id || paymentIdArg || paymentId
+            }, {
+              isSuccessful: true,
+              hasActiveSubscription: true,
+              needsAuthentication: false
+            });
+            return;
           }
 
-          console.log('Payment verification response:', data);
+          let currentUserId = contextUserId || currentUser?.id || userId;
+          let currentPlanId = contextPlanId || planId;
 
-          if (data?.success && data?.status === 'COMPLETED') {
-            setStatus(PROCESSING_STATES.COMPLETED);
-            setFinalPaymentId(data.paymentId);
-            setIsProcessingComplete(true);
+          if ((!currentUserId || !currentPlanId) && orderId) {
+            const transaction = await findTransactionByOrder(orderId, currentUser);
+            if (transaction) {
+              currentUserId = transaction.user_id;
+              currentPlanId = transaction.plan_id;
+            }
+          }
 
-            const successParams = new URLSearchParams({
-              planId: context.planId,
-              userId: context.userId,
-              paymentId: data.paymentId,
-              status: 'completed'
-            });
+          // Prepare parameters with proper snake_case mapping for backend
+          const originalParams: Record<string, string> = {};
+          if (orderId) originalParams['orderId'] = orderId;
+          if (paymentIdArg || paymentId) originalParams['paymentId'] = paymentIdArg || paymentId!;
+          if (currentUserId) originalParams['userId'] = currentUserId;
+          if (currentPlanId) originalParams['planId'] = currentPlanId;
 
-            navigate(`/payment-success?${successParams.toString()}`);
-            return;
-          } else if (data?.status === 'ERROR' || data?.error) {
-            console.error('Payment verification failed:', data);
-            setError(data?.error || 'Payment verification failed');
-            
-            // Enhanced error handling - check if payment was successful but user needs to log in
-            if (data?.errorTips?.some((tip: string) => tip.toLowerCase().includes('login'))) {
-              const params = new URLSearchParams();
-              params.append('auth_required', 'true');
-              if (planId) params.append('planId', planId);
-              params.append('reason', 'Payment successful but authentication required');
-              navigate(`/payment-success?${params.toString()}`);
+          const backendParams = mapParametersForBackend(originalParams);
+
+          console.log('Calling verify-paypal-payment with parameters:', backendParams);
+
+          const { data, error } = await supabase.functions.invoke("verify-paypal-payment", { body: backendParams });
+          
+          if (!data || data.status === "ERROR" || error) {
+            console.error('Payment verification error:', { data, error, params: backendParams });
+            if (currentPollCount < MAX_POLLS - 5) {
+              const delay = Math.min(2000 * Math.pow(1.5, Math.floor(currentPollCount / 5)), 10000);
+              const timeoutId = window.setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), delay);
+              addTimeout(timeoutId);
+              return;
+            } else {
+              setError('Unable to verify payment status. Please contact support if your payment was successful.');
+              EnhancedPaymentNavigator.navigateBasedOnPaymentState({
+                navigate, userId: currentUserId, planId: currentPlanId, orderId, paymentId: paymentIdArg
+              }, {
+                isSuccessful: false,
+                hasActiveSubscription: false,
+                needsAuthentication: false,
+                errorMessage: 'Unable to verify payment status'
+              });
               return;
             }
-            
-            const params = new URLSearchParams();
-            if (planId) params.append('planId', planId);
-            params.append('reason', data?.error || 'Payment verification failed');
-            navigate(`/payment-failed?${params.toString()}`);
-            return;
-          } else {
-            // Payment still processing, continue polling
-            console.log(`Payment still processing, attempt ${currentPollCount + 1}/${MAX_POLLS}`);
-            const timeoutId = window.setTimeout(() => {
-              poll(currentPollCount + 1);
-            }, 3000);
-            addTimeout(timeoutId);
           }
-        } catch (error: any) {
-          console.error('Payment verification attempt failed:', error);
-          
-          if (currentPollCount < MAX_POLLS - 1) {
-            const timeoutId = window.setTimeout(() => {
-              poll(currentPollCount + 1);
-            }, 3000);
+
+          if (data.status === "UNKNOWN") {
+            if (currentPollCount < MAX_POLLS - 5) {
+              const timeoutId = window.setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 2000);
+              addTimeout(timeoutId);
+              return;
+            }
+          }
+
+          if (data.status === "APPROVED" && orderId && currentPollCount < MAX_POLLS) {
+            const timeoutId = window.setTimeout(() => poll(currentPollCount + 1, paymentIdArg, currentUserId, currentPlanId), 1500);
             addTimeout(timeoutId);
-          } else {
-            setError(error.message || 'Payment verification failed');
+            return;
+          }
+
+          const paymentIdOut = data.paymentId || data.paypal?.purchase_units?.[0]?.payments?.captures?.[0]?.id || data.paypal?.id || data.paypal_payment_id || paymentIdArg || paymentId || undefined;
+          setFinalPaymentId(paymentIdOut);
+
+          // Enhanced navigation based on payment status
+          if (data.status === PROCESSING_STATES.COMPLETED) {
+            setStatus(PROCESSING_STATES.COMPLETED);
+            setIsProcessingComplete(true);
             
-            const params = new URLSearchParams();
-            if (planId) params.append('planId', planId);
-            params.append('reason', error.message || 'Payment verification failed');
-            navigate(`/payment-failed?${params.toString()}`);
+            EnhancedPaymentNavigator.navigateBasedOnPaymentState({
+              navigate,
+              userId: currentUserId,
+              planId: currentPlanId,
+              orderId,
+              paymentId: paymentIdOut
+            }, {
+              isSuccessful: true,
+              hasActiveSubscription: true,
+              needsAuthentication: !currentUserId || !currentUser
+            });
+          } else {
+            EnhancedPaymentNavigator.navigateBasedOnPaymentState({
+              navigate, userId: currentUserId, planId: currentPlanId, orderId, paymentId: paymentIdOut
+            }, {
+              isSuccessful: false,
+              hasActiveSubscription: false,
+              needsAuthentication: false,
+              errorMessage: `Payment ${data.status.toLowerCase()}`
+            });
+          }
+
+        } catch (error: any) {
+          console.error('Payment verification exception:', error);
+          const { hasSubscription, subscription } = await checkDatabaseFirst({ userId: contextUserId || currentUser?.id || userId, planId: contextPlanId || planId, orderId });
+          if (hasSubscription) {
+            setStatus(PROCESSING_STATES.COMPLETED);
+            setFinalPaymentId(subscription?.payment_id || paymentId);
+            setIsProcessingComplete(true);
+            
+            EnhancedPaymentNavigator.navigateBasedOnPaymentState({
+              navigate,
+              userId: contextUserId || currentUser?.id || userId,
+              planId: contextPlanId || planId,
+              orderId,
+              paymentId: subscription?.payment_id || paymentId
+            }, {
+              isSuccessful: true,
+              hasActiveSubscription: true,
+              needsAuthentication: false
+            });
+            return;
+          }
+
+          if (currentPollCount >= 3) {
+            setError('Payment verification failed. Please contact support if your payment was successful.');
+            EnhancedPaymentNavigator.navigateBasedOnPaymentState({
+              navigate, userId: contextUserId, planId: contextPlanId, orderId, paymentId: paymentIdArg
+            }, {
+              isSuccessful: false,
+              hasActiveSubscription: false,
+              needsAuthentication: false,
+              errorMessage: 'Payment verification failed'
+            });
+          } else {
+            const timeoutId = window.setTimeout(() => poll(currentPollCount + 1, paymentIdArg, contextUserId, contextPlanId), 2000);
+            addTimeout(timeoutId);
           }
         }
       };
 
-      poll(0);
+      if (success === 'true' || hasSessionIndependentData) {
+        poll(0, paymentId, currentUser?.id || userId, planId);
+      } else {
+        poll(0, undefined, currentUser?.id || userId, planId);
+      }
     };
 
     processPayment();
 
     return () => {
+      completeRef.current = false;
       clean();
     };
-  }, [currentUser, isLoadingAuth, isProcessingComplete, success, orderId, paymentId, planId, userId, mapParametersForBackend, navigate, addTimeout, clean]);
+  }, [success, paymentId, orderId, planId, userId, debugObject, currentUser, isLoadingAuth, hasSessionIndependentData, isProcessingComplete, mapParametersForBackend, navigate]);
 
-  const handleStatusUpdate = usePaymentStatusHandler({
-    setStatus,
-    setError,
-    navigate,
-    planId,
-    userId: currentUser?.id || userId,
-    paymentId: finalPaymentId
-  });
-
-  return {
-    status,
-    error,
-    pollCount,
-    MAX_POLLS,
-    finalPaymentId,
-    currentUser,
-    restoredFromBackup
-  };
+  return { status, error, pollCount, MAX_POLLS, finalPaymentId };
 }
