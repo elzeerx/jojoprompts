@@ -20,8 +20,8 @@ export default function SignupPage() {
     isLoading,
     selectedPlan,
     fromCheckout,
-    handleSubmit,
-    handleFormError,
+    onSubmit,
+    onFormError,
   } = useSignupForm();
 
   const {
@@ -56,8 +56,8 @@ export default function SignupPage() {
             form={form}
             isLoading={isLoading}
             isGoogleLoading={isGoogleLoading}
-            onSubmit={handleSubmit}
-            onFormError={handleFormError}
+            onSubmit={onSubmit}
+            onFormError={onFormError}
           />
         </CardContent>
         

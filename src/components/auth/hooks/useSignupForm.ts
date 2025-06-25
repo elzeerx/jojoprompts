@@ -28,7 +28,7 @@ export function useSignupForm() {
     },
   });
 
-  const onSubmit = async (values: SignupFormValues) => {
+  const handleSubmit = async (values: SignupFormValues) => {
     setIsLoading(true);
 
     try {
@@ -108,7 +108,7 @@ export function useSignupForm() {
     }
   };
 
-  const onFormError = (errors: any) => {
+  const handleFormError = (errors: any) => {
     console.log("Form validation errors:", errors);
     const firstErrorField = Object.keys(errors)[0];
     const firstError = errors[firstErrorField];
@@ -125,7 +125,11 @@ export function useSignupForm() {
   return {
     form,
     isLoading,
-    onSubmit,
-    onFormError,
+    selectedPlan,
+    fromCheckout,
+    handleSubmit,
+    handleFormError,
+    onSubmit: handleSubmit,
+    onFormError: handleFormError,
   };
 }
