@@ -4,7 +4,7 @@ import { useMemo } from "react";
 
 export interface PaymentSuccessParams {
   planId: string | null;
-  userId: string | null;
+  userId: string | null;  
   paymentId?: string | null;
   orderId?: string | null;
   token?: string | null;

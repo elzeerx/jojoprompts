@@ -1,11 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { emailService } from '@/utils/emailService';
 
 export function usePaymentEmails() {
   const [isSending, setIsSending] = useState(false);
 
-  const sendPaymentConfirmation = async (
+  const sendPaymentConfirmation = useCallback(async (
     name: string, 
     email: string, 
     planName: string, 
@@ -25,9 +25,9 @@ export function usePaymentEmails() {
     } finally {
       setIsSending(false);
     }
-  };
+  }, []);
 
-  const sendPaymentFailed = async (
+  const sendPaymentFailed = useCallback(async (
     name: string, 
     email: string, 
     planName: string, 
@@ -47,9 +47,9 @@ export function usePaymentEmails() {
     } finally {
       setIsSending(false);
     }
-  };
+  }, []);
 
-  const sendSubscriptionCancelled = async (
+  const sendSubscriptionCancelled = useCallback(async (
     name: string, 
     email: string, 
     planName: string, 
@@ -68,7 +68,7 @@ export function usePaymentEmails() {
     } finally {
       setIsSending(false);
     }
-  };
+  }, []);
 
   return { 
     sendPaymentConfirmation, 
