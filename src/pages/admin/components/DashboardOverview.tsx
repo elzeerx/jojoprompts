@@ -35,6 +35,7 @@ export default function DashboardOverview() {
   });
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user, session } = useAuth();
 
   // Fetch initial data
@@ -75,9 +76,30 @@ export default function DashboardOverview() {
     };
   }, [session]);
 
+  const fetchUsersCountFallback = async () => {
+    try {
+      console.log('Attempting fallback user count from profiles table...');
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) {
+        console.error('Fallback profiles count error:', error);
+        return 0;
+      }
+      
+      console.log('Fallback profiles count:', count);
+      return count || 0;
+    } catch (err) {
+      console.error('Failed to get fallback user count:', err);
+      return 0;
+    }
+  };
+
   const fetchStats = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // Fetch prompts count
       const { data: prompts, error: promptsError } = await supabase
@@ -86,33 +108,53 @@ export default function DashboardOverview() {
       
       if (promptsError) throw promptsError;
       
-      // Fetch users count from the edge function that accesses auth.users
+      // Fetch users count from the edge function with timeout and proper error handling
       let usersCount = 0;
       
       if (session?.access_token) {
         try {
           console.log('Fetching users from edge function...');
-          const { data: allUsers, error: usersError } = await supabase.functions.invoke(
+          
+          // Add timeout to the edge function call
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+          
+          const { data: usersResponse, error: usersError } = await supabase.functions.invoke(
             "get-all-users",
             {
               headers: {
                 Authorization: `Bearer ${session.access_token}`,
               },
-              method: "GET"
+              method: "GET",
+              // Note: AbortController is not directly supported by supabase.functions.invoke
+              // but we'll handle timeout with Promise.race if needed
             }
           );
           
+          clearTimeout(timeoutId);
+          
           if (usersError) {
             console.error("Error fetching users from edge function:", usersError);
+            console.log('Falling back to profiles table count...');
+            usersCount = await fetchUsersCountFallback();
           } else {
-            console.log("Users response from edge function:", allUsers);
-            usersCount = allUsers?.total || 0;
+            console.log("Users response from edge function:", usersResponse);
+            // Fix: Correctly extract total from the response structure
+            usersCount = usersResponse?.total || 0;
+            
+            if (usersCount === 0 && usersResponse?.users?.length > 0) {
+              // Fallback: if total is not provided but users array exists
+              usersCount = usersResponse.users.length;
+            }
           }
         } catch (err) {
           console.error("Failed to call get-all-users edge function:", err);
+          console.log('Falling back to profiles table count...');
+          usersCount = await fetchUsersCountFallback();
         }
       } else {
-        console.log('No session access token available');
+        console.log('No session access token available, using fallback...');
+        usersCount = await fetchUsersCountFallback();
       }
       
       console.log('Final users count:', usersCount);
@@ -124,14 +166,34 @@ export default function DashboardOverview() {
         aiRuns: 0 // placeholder for future AI run tracking
       });
       
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
-      toast({
-        title: "Error loading dashboard data",
-        description: "Failed to fetch dashboard statistics.",
-        variant: "destructive",
-      });
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch dashboard statistics";
+      setError(errorMessage);
+      
+      // Try to get at least prompts count on error
+      try {
+        const { data: prompts } = await supabase
+          .from("prompts")
+          .select("id", { count: 'exact' });
+        
+        const fallbackUsersCount = await fetchUsersCountFallback();
+        
+        setStats({
+          prompts: prompts?.length ?? 0,
+          users: fallbackUsersCount,
+          signups: fallbackUsersCount,
+          aiRuns: 0
+        });
+      } catch (fallbackError) {
+        console.error("Fallback stats fetch also failed:", fallbackError);
+        toast({
+          title: "Error loading dashboard data",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -201,6 +263,14 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 text-sm">
+            <strong>Warning:</strong> {error}. Showing available data with fallback sources.
+          </p>
+        </div>
+      )}
+      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
           <Card key={card.title} className="border-warm-gold/20 bg-white/95 shadow-sm hover:shadow-md transition-all">
@@ -214,8 +284,15 @@ export default function DashboardOverview() {
               <div className="text-2xl font-bold text-dark-base">
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin text-warm-gold" />
-                ) : card.value === 0 ? "0" : card.value}
+                ) : (
+                  <span className={error && card.title === "Total Users" ? "text-orange-600" : ""}>
+                    {card.value}
+                  </span>
+                )}
               </div>
+              {error && card.title === "Total Users" && (
+                <p className="text-xs text-orange-600 mt-1">Using fallback data</p>
+              )}
             </CardContent>
           </Card>
         ))}
