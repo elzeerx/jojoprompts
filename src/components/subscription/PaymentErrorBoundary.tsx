@@ -1,24 +1,25 @@
 
-import React, { Component, ReactNode } from 'react';
+import React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 
-interface Props {
-  children: ReactNode;
+interface PaymentErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ComponentType<{ error: Error; resetError: () => void }>;
 }
 
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
 }
 
-class PaymentErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+class PaymentErrorBoundary extends React.Component<PaymentErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: PaymentErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
@@ -26,8 +27,17 @@ class PaymentErrorBoundary extends Component<Props, State> {
     console.error('Payment Error Boundary caught an error:', error, errorInfo);
   }
 
+  resetError = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
   render() {
     if (this.state.hasError) {
+      if (this.props.fallback) {
+        const FallbackComponent = this.props.fallback;
+        return <FallbackComponent error={this.state.error!} resetError={this.resetError} />;
+      }
+
       return (
         <Alert variant="destructive" className="m-4">
           <AlertTriangle className="h-4 w-4" />
