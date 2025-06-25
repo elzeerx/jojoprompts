@@ -12,6 +12,7 @@ import { CheckCircle2, LogIn, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SessionManager } from "@/hooks/payment/helpers/sessionManager";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePaymentEmails } from "@/hooks/usePaymentEmails";
 import { useEffect } from "react";
 
 export default function PaymentSuccessPage() {
@@ -20,6 +21,7 @@ export default function PaymentSuccessPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
+  const { sendPaymentConfirmation, sendInvoiceReceipt } = usePaymentEmails();
 
   const params = usePaymentSuccessParams();
   const authRequired = searchParams.get('auth_required') === 'true';
@@ -39,6 +41,58 @@ export default function PaymentSuccessPage() {
 
     attemptSessionRecovery();
   }, [user, authLoading]);
+
+  // Send payment confirmation emails when payment is verified
+  useEffect(() => {
+    const sendPaymentEmails = async () => {
+      if (verified && user && params.planId && params.paymentId) {
+        try {
+          // Get user name from metadata or email
+          const userName = user.user_metadata?.first_name 
+            ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
+            : user.email.split('@')[0];
+
+          // For demonstration, we'll use placeholder values
+          // In a real implementation, you'd fetch this data from your subscription/plan tables
+          const planName = "Premium Plan"; // This should come from your plan data
+          const amount = 29.99; // This should come from the transaction data
+          const paymentMethod = "PayPal"; // This should come from payment data
+          const currentDate = new Date().toLocaleDateString();
+          const invoiceNumber = `INV-${Date.now()}`;
+          const billingPeriod = "1 Year";
+
+          console.log('Sending payment confirmation and invoice emails...');
+
+          // Send payment confirmation email
+          await sendPaymentConfirmation(
+            userName,
+            user.email,
+            planName,
+            amount,
+            params.paymentId
+          );
+
+          // Send invoice receipt email
+          await sendInvoiceReceipt(
+            userName,
+            user.email,
+            invoiceNumber,
+            planName,
+            amount,
+            currentDate,
+            paymentMethod,
+            billingPeriod
+          );
+
+        } catch (error) {
+          console.error('Error sending payment emails:', error);
+          // Don't fail the success page if emails fail
+        }
+      }
+    };
+
+    sendPaymentEmails();
+  }, [verified, user, params, sendPaymentConfirmation, sendInvoiceReceipt]);
 
   usePaymentSuccessVerification({
     params,

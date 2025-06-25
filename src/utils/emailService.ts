@@ -50,6 +50,67 @@ class EmailService {
     const template = emailTemplates.passwordReset({ name, resetLink });
     return this.sendEmail(email, template.subject, template.html, template.text);
   }
+
+  async sendPaymentConfirmation(
+    name: string, 
+    email: string, 
+    planName: string, 
+    amount: number, 
+    paymentId: string, 
+    subscriptionEndDate?: string
+  ): Promise<EmailServiceResponse> {
+    const template = emailTemplates.paymentConfirmation({ 
+      name, 
+      email, 
+      planName, 
+      amount, 
+      paymentId, 
+      subscriptionEndDate 
+    });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
+
+  async sendSubscriptionActivation(
+    name: string,
+    email: string,
+    planName: string,
+    subscriptionEndDate: string,
+    amount: number,
+    paymentMethod: string
+  ): Promise<EmailServiceResponse> {
+    const template = emailTemplates.subscriptionActivation({
+      name,
+      email,
+      planName,
+      subscriptionEndDate,
+      amount,
+      paymentMethod
+    });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
+
+  async sendInvoiceReceipt(
+    name: string,
+    email: string,
+    invoiceNumber: string,
+    planName: string,
+    amount: number,
+    paymentDate: string,
+    paymentMethod: string,
+    billingPeriod: string
+  ): Promise<EmailServiceResponse> {
+    const template = emailTemplates.invoiceReceipt({
+      name,
+      email,
+      invoiceNumber,
+      planName,
+      amount,
+      paymentDate,
+      paymentMethod,
+      billingPeriod
+    });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
 }
 
 export const emailService = new EmailService();
