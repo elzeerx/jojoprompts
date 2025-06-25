@@ -1,265 +1,226 @@
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, User, LogOut, Settings, Heart, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { Menu, X, User, LogOut, Settings, Heart } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { GlobalSearch } from "@/components/search/GlobalSearch";
+import { AdminNavigationButton } from "./AdminNavigationButton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function Header() {
-  const { user, signOut, isAdmin } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { user, userRole, signOut } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      console.log("[HEADER] Starting logout process");
-      await signOut();
-      console.log("[HEADER] Logout completed");
-    } catch (error) {
-      console.error("[HEADER] Logout error:", error);
-    }
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
   };
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  // Handler for conditional logo navigation
-  const handleLogoClick = () => {
-    if (user) {
-      // If logged in, send to /prompts
-      navigate("/prompts");
+  const handleUserDashboard = () => {
+    if (userRole === 'admin') {
+      navigate('/admin');
+    } else if (userRole === 'prompter') {
+      navigate('/prompter-dashboard');
     } else {
-      // Not logged in, send to the main page
-      navigate("/");
+      navigate('/dashboard');
     }
   };
+
+  const navItems = [
+    { name: "Home", href: "/" },
+    { name: "Prompts", href: "/prompts" },
+    { name: "Pricing", href: "/pricing" },
+    { name: "About", href: "/about" },
+    { name: "Contact", href: "/contact" },
+  ];
 
   return (
-    <header className="bg-white/95 backdrop-blur-sm border-b border-warm-gold/20 sticky top-0 z-50">
-      <div className="container mx-auto">
-        <div className="flex items-center justify-between h-14 sm:h-16">
-          {/* Logo - Mobile optimized */}
-          <button
-            onClick={handleLogoClick}
-            className="flex items-center space-x-2 touch-manipulation focus:outline-none"
-            aria-label="JojoPrompts Home"
-            type="button"
-            tabIndex={0}
-            style={{ background: "none", border: "none", padding: 0, margin: 0 }}
-          >
-            <img
-              alt="JojoPrompts"
-              className="h-6 w-auto sm:h-8 transition-all duration-200"
-              src="/lovable-uploads/2207fac5-9e06-4da3-a1b4-da690a123a56.png"
-            />
-          </button>
+    <header className="sticky top-0 z-50 w-full border-b border-warm-gold/20 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <Sparkles className="h-8 w-8 text-warm-gold" />
+            <span className="text-xl font-bold text-dark-base">JoJo Prompts</span>
+          </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
-            <Link
-              to="/prompts"
-              className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
-            >
-              Prompts
-            </Link>
-            {!user && (
+          <nav className="hidden md:flex md:items-center md:space-x-8">
+            {navItems.map((item) => (
               <Link
-                to="/pricing"
-                className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+                key={item.name}
+                to={item.href}
+                className={`text-sm font-medium transition-colors hover:text-warm-gold ${
+                  location.pathname === item.href
+                    ? "text-warm-gold"
+                    : "text-gray-700"
+                }`}
               >
-                Pricing
+                {item.name}
               </Link>
-            )}
-            <Link
-              to="/about"
-              className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
-            >
-              About
-            </Link>
+            ))}
           </nav>
 
-          {/* Desktop Auth */}
-          <div className="hidden md:flex items-center space-x-3">
+          {/* Right side items */}
+          <div className="flex items-center space-x-4">
+            {/* Search Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSearchOpen(true)}
+              className="text-warm-gold hover:text-warm-gold/80 hover:bg-warm-gold/10"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+
+            {/* Admin Navigation - Only visible to admins */}
+            <AdminNavigationButton />
+
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="relative h-9 w-9 lg:h-10 lg:w-10 rounded-full hover:bg-warm-gold/10 transition-colors touch-manipulation"
-                  >
-                    <Avatar className="h-7 w-7 lg:h-8 lg:w-8">
-                      <AvatarFallback className="bg-warm-gold text-white font-medium text-sm">
-                        {user.email?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-60 lg:w-64 bg-white border border-warm-gold/20 shadow-lg rounded-lg p-2"
-                  align="end"
-                  forceMount
-                >
-                  <DropdownMenuItem
-                    onClick={() => navigate("/dashboard")}
-                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
-                  >
-                    <User className="mr-3 h-4 w-4 text-warm-gold" />
-                    <span className="text-dark-base font-medium">Dashboard</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => navigate("/favorites")}
-                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
-                  >
-                    <Heart className="mr-3 h-4 w-4 text-warm-gold" />
-                    <span className="text-dark-base font-medium">Favorites</span>
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <DropdownMenuItem
-                      onClick={() => navigate("/admin")}
-                      className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
-                    >
-                      <Settings className="mr-3 h-4 w-4 text-warm-gold" />
-                      <span className="text-dark-base font-medium">Admin</span>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator className="my-2 bg-warm-gold/20" />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
-                  >
-                    <LogOut className="mr-3 h-4 w-4 text-warm-gold" />
-                    <span className="text-dark-base font-medium">Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <div className="flex items-center space-x-2">
+              <>
+                {/* Favorites Link */}
                 <Button
                   variant="ghost"
-                  onClick={() => navigate("/login")}
-                  className="text-dark-base hover:text-warm-gold text-sm lg:text-base py-2 px-3 touch-manipulation"
+                  size="sm"
+                  onClick={() => navigate('/favorites')}
+                  className="hidden sm:flex text-warm-gold hover:text-warm-gold/80 hover:bg-warm-gold/10"
                 >
-                  Login
+                  <Heart className="h-4 w-4 mr-2" />
+                  Favorites
                 </Button>
-                <Button
-                  onClick={() => navigate("/pricing")}
-                  className="bg-warm-gold hover:bg-warm-gold/90 text-white text-sm lg:text-base py-2 px-3 lg:px-4 touch-manipulation"
-                >
-                  Get Started
-                </Button>
-              </div>
-            )}
-          </div>
 
-          {/* Mobile menu button - Enhanced touch target */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden touch-manipulation min-h-[44px] min-w-[44px] p-2"
-            onClick={toggleMobileMenu}
-          >
-            {isMobileMenuOpen ?
-              <X className="h-5 w-5 transition-transform duration-200" /> :
-              <Menu className="h-5 w-5 transition-transform duration-200" />
-            }
-          </Button>
-        </div>
-
-        {/* Mobile Navigation - Enhanced animations and touch targets */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden animate-slide-down bg-white/95 backdrop-blur-sm border-t border-warm-gold/20">
-            <nav className="py-3 space-y-1">
-              <Link
-                to="/prompts"
-                className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Prompts
-              </Link>
-              {!user && (
-                <Link
-                  to="/pricing"
-                  className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Pricing
-                </Link>
-              )}
-              <Link
-                to="/about"
-                className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                About
-              </Link>
-
-              {user ? (
-                <>
-                  <div className="border-t border-warm-gold/10 mt-2 pt-2">
-                    <Link
-                      to="/dashboard"
-                      className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      to="/favorites"
-                      className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Favorites
-                    </Link>
-                    {isAdmin && (
-                      <Link
-                        to="/admin"
-                        className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        Admin
-                      </Link>
-                    )}
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
-                    >
-                      Log out
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="border-t border-warm-gold/10 mt-2 pt-2 px-2 space-y-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      navigate("/login");
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full justify-start text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 touch-manipulation h-12"
-                  >
-                    Login
+                {/* User Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-warm-gold hover:text-warm-gold/80 hover:bg-warm-gold/10">
+                      <User className="h-4 w-4 mr-2" />
+                      Account
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={handleUserDashboard}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Dashboard</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/favorites')} className="sm:hidden">
+                      <Heart className="mr-2 h-4 w-4" />
+                      <span>Favorites</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <div className="hidden md:flex md:items-center md:space-x-4">
+                <Link to="/login">
+                  <Button variant="ghost" size="sm" className="text-warm-gold hover:text-warm-gold/80 hover:bg-warm-gold/10">
+                    Sign in
                   </Button>
-                  <Button
-                    onClick={() => {
-                      navigate("/pricing");
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full bg-warm-gold hover:bg-warm-gold/90 text-white touch-manipulation h-12"
-                  >
+                </Link>
+                <Link to="/signup">
+                  <Button size="sm" className="bg-warm-gold hover:bg-warm-gold/90 text-white">
                     Get Started
                   </Button>
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile menu button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden text-warm-gold"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <div className="md:hidden">
+            <div className="space-y-1 pb-3 pt-2">
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`block px-3 py-2 text-base font-medium transition-colors hover:text-warm-gold ${
+                    location.pathname === item.href
+                      ? "text-warm-gold"
+                      : "text-gray-700"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
+              
+              {user ? (
+                <div className="space-y-1 border-t border-gray-200 pt-4">
+                  <button
+                    onClick={handleUserDashboard}
+                    className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-warm-gold"
+                  >
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={() => navigate('/favorites')}
+                    className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-warm-gold"
+                  >
+                    Favorites
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-warm-gold"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-1 border-t border-gray-200 pt-4">
+                  <Link
+                    to="/login"
+                    className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-warm-gold"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="block px-3 py-2 text-base font-medium text-warm-gold"
+                  >
+                    Get Started
+                  </Link>
                 </div>
               )}
-            </nav>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Global Search Modal */}
+      <GlobalSearch 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+      />
     </header>
   );
 }
