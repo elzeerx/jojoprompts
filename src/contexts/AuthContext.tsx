@@ -8,6 +8,7 @@ import { runOrphanedPaymentRecovery } from './orphanedPaymentRecovery';
 import { computeRolePermissions } from './rolePermissions';
 import { debug } from './authDebugger';
 import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
+import { useWelcomeEmail } from '@/hooks/useWelcomeEmail';
 import { supabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [recoveredOrphaned, setRecoveredOrphaned] = useState(false);
+  const { sendWelcomeEmail } = useWelcomeEmail();
 
   // Check if this is a password reset request
   const isPasswordReset = () => {
@@ -94,10 +96,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (initialUser) {
           await fetchUserProfile(initialUser, setUserRole);
           
-          // Handle signup confirmation redirect
+          // Handle signup confirmation redirect and send welcome email
           if (isFromSignupConfirmation()) {
             const urlParams = new URLSearchParams(location.search);
             const planId = urlParams.get('plan_id');
+            
+            // Send welcome email on email confirmation
+            try {
+              const userName = initialUser.user_metadata?.first_name 
+                ? `${initialUser.user_metadata.first_name} ${initialUser.user_metadata.last_name || ''}`.trim()
+                : initialUser.email.split('@')[0];
+              
+              console.log("Sending welcome email on email confirmation to:", initialUser.email);
+              const emailResult = await sendWelcomeEmail(userName, initialUser.email);
+              
+              if (emailResult.success) {
+                console.log("Welcome email sent successfully on confirmation");
+              } else {
+                console.warn("Welcome email failed on confirmation:", emailResult.error);
+              }
+            } catch (emailError) {
+              console.error("Welcome email error on confirmation:", emailError);
+            }
             
             toast({
               title: "Welcome! 🎉",
@@ -136,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
     
     return cleanup;
-  }, [location.search, location.pathname, navigate, isLoggingOut]);
+  }, [location.search, location.pathname, navigate, isLoggingOut, sendWelcomeEmail]);
 
   const signOut = async () => {
     try {

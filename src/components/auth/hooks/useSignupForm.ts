@@ -5,12 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useWelcomeEmail } from "@/hooks/useWelcomeEmail";
 import { SignupFormValues, signupSchema } from "../validation";
 
 export function useSignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { sendWelcomeEmail } = useWelcomeEmail();
   
   const selectedPlan = searchParams.get('plan');
   const fromCheckout = searchParams.get('fromCheckout') === 'true';
@@ -79,6 +81,24 @@ export function useSignupForm() {
       }
 
       console.log("Signup successful:", signupData);
+
+      // Step 2: Send welcome email after successful signup
+      if (signupData.user) {
+        const fullName = `${values.firstName} ${values.lastName}`.trim();
+        console.log("Sending welcome email to:", values.email);
+        
+        try {
+          const emailResult = await sendWelcomeEmail(fullName, values.email);
+          if (emailResult.success) {
+            console.log("Welcome email sent successfully");
+          } else {
+            console.warn("Welcome email failed to send:", emailResult.error);
+          }
+        } catch (emailError) {
+          console.error("Welcome email error:", emailError);
+          // Don't fail the signup if email sending fails
+        }
+      }
 
       // Show success message with email confirmation instructions
       toast({
