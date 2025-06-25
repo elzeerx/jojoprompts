@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -18,6 +17,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [recoveredOrphaned, setRecoveredOrphaned] = useState(false);
@@ -128,48 +128,124 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser, 
       setUserRole, 
       setLoading, 
-      setRecoveredOrphaned 
+      setRecoveredOrphaned,
+      isLoggingOut: () => isLoggingOut
     });
     
     // Initialize auth
     initializeAuth();
     
     return cleanup;
-  }, [location.search, location.pathname, navigate]);
+  }, [location.search, location.pathname, navigate, isLoggingOut]);
 
   const signOut = async () => {
     try {
       debug("Starting logout process");
-      setLoading(true);
+      setIsLoggingOut(true);
+
+      // First, validate current session
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
       
-      // Clean up any payment session backups
+      if (sessionError) {
+        console.warn("[AUTH] Session validation error during logout:", sessionError);
+        // Continue with logout anyway
+      }
+
+      if (!currentSession) {
+        debug("No active session found, clearing local state only");
+        // Clean up local state even if no server session
+        SessionManager.cleanup();
+        setSession(null);
+        setUser(null);
+        setUserRole(null);
+        navigate('/login');
+        
+        toast({
+          title: "Logged out",
+          description: "You have been successfully logged out.",
+        });
+        return;
+      }
+
+      debug("Valid session found, proceeding with server logout", { userId: currentSession.user?.id });
+
+      // Attempt server logout with timeout
+      const logoutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Logout timeout')), 10000)
+      );
+
+      let logoutError = null;
+      try {
+        const { error } = await Promise.race([logoutPromise, timeoutPromise]) as any;
+        logoutError = error;
+      } catch (timeoutError) {
+        console.error("[AUTH] Logout timeout:", timeoutError);
+        logoutError = timeoutError;
+      }
+
+      if (logoutError) {
+        console.error("[AUTH] Server logout error:", logoutError);
+        
+        // Check if it's a connection issue vs auth issue
+        if (logoutError.message?.includes('connection') || logoutError.message?.includes('network')) {
+          // For connection issues, force local logout
+          debug("Connection issue detected, forcing local logout");
+        } else if (logoutError.message?.includes('session_not_found')) {
+          // Session already invalid on server, proceed with local cleanup
+          debug("Session not found on server, proceeding with local cleanup");
+        } else {
+          // Other errors - still try to clean up locally but show error
+          console.error("[AUTH] Unexpected logout error:", logoutError);
+          toast({
+            title: "Logout Issue",
+            description: "There was an issue signing out completely. Please try again if needed.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        debug("Server logout successful");
+      }
+
+      // Always clean up local state after server logout attempt
       SessionManager.cleanup();
       
+      // Clear any additional auth-related localStorage items
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('supabase') || key.includes('auth') || key.includes('session')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      // Clear local state
       setSession(null);
       setUser(null);
       setUserRole(null);
       
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("[AUTH] Sign out error:", error);
-        throw error;
-      }
-      
-      debug("Logout successful, navigating to login");
+      debug("Local state cleared, navigating to login");
       navigate('/login');
       
       toast({
         title: "Logged out",
         description: "You have been successfully logged out.",
       });
+
     } catch (error) {
-      console.error("[AUTH] Sign out error:", error);
+      console.error("[AUTH] Unexpected sign out error:", error);
+      
+      // Even on unexpected errors, try to clean up
+      SessionManager.cleanup();
+      setSession(null);
+      setUser(null);
+      setUserRole(null);
+      navigate('/login');
+      
       toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive"
+        title: "Logout Completed",
+        description: "You have been logged out. Please sign in again if needed.",
       });
     } finally {
+      setIsLoggingOut(false);
       setLoading(false);
     }
   };
@@ -186,7 +262,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut
   };
 
-  debug("Auth context render", { ...contextValue });
+  debug("Auth context render", { ...contextValue, isLoggingOut });
 
   return (
     <AuthContext.Provider value={contextValue}>

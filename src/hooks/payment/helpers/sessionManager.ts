@@ -126,10 +126,24 @@ export class SessionManager {
     }
   }
 
-  static cleanup() {
-    localStorage.removeItem(this.BACKUP_KEY);
-    localStorage.removeItem(this.CONTEXT_KEY);
-    console.log('Session backup cleanup completed');
+  static cleanup(force: boolean = false) {
+    try {
+      if (force) {
+        // Force cleanup - remove all auth-related items
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('paypal') || key.includes('session') || key.includes('auth')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } else {
+        // Normal cleanup
+        localStorage.removeItem(this.BACKUP_KEY);
+        localStorage.removeItem(this.CONTEXT_KEY);
+      }
+      console.log('Session backup cleanup completed', { force });
+    } catch (error) {
+      console.error('Error during session cleanup:', error);
+    }
   }
 
   static getPaymentContext() {
