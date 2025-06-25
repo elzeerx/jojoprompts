@@ -1,96 +1,101 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { SignupFormValues, signupSchema } from "../validation";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { signupSchema, type SignupFormValues } from "../validation";
+import { useWelcomeEmail } from "@/hooks/useWelcomeEmail";
 
 export function useSignupForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { sendWelcomeEmail } = useWelcomeEmail();
+
   const selectedPlan = searchParams.get('plan');
   const fromCheckout = searchParams.get('fromCheckout') === 'true';
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    mode: "onSubmit",
     defaultValues: {
-      email: "",
-      password: "",
       firstName: "",
       lastName: "",
+      email: "",
+      password: "",
     },
   });
 
-  // Add debugging for form errors
-  useEffect(() => {
-    const subscription = form.watch(() => {
-      const errors = form.formState.errors;
-      if (Object.keys(errors).length > 0) {
-        console.log("Form validation errors:", errors);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
-
-  const handleSubmit = async (values: SignupFormValues) => {
-    console.log("Form submitted with values:", { ...values, password: "[REDACTED]" });
+  const onSubmit = async (values: SignupFormValues) => {
     setIsLoading(true);
 
     try {
-      // Build redirect URL with plan context for email confirmation
-      let redirectUrl = `${window.location.origin}/prompts`;
+      let redirectUrl = `${window.location.origin}/prompts?from_signup=true`;
       
-      // If there's a plan selected, include it in the redirect URL
       if (selectedPlan) {
         redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}&from_signup=true`;
       } else if (fromCheckout) {
         redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
       }
 
-      console.log("Attempting signup with redirect URL:", redirectUrl);
-
-      // Step 1: Sign up the user with redirect URL for email confirmation
-      const { data: signupData, error: signupError } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             first_name: values.firstName,
             last_name: values.lastName,
           },
-          emailRedirectTo: redirectUrl,
         },
       });
 
-      if (signupError) {
-        console.error("Signup error:", signupError);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: signupError.message,
-        });
-        setIsLoading(false);
+      if (error) {
+        if (error.message.includes("already registered")) {
+          toast({
+            variant: "destructive",
+            title: "Account already exists",
+            description: "This email is already registered. Please sign in instead.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: error.message,
+          });
+        }
         return;
       }
 
-      console.log("Signup successful:", signupData);
+      if (data.user && !data.user.email_confirmed_at) {
+        // Send welcome email in the background (don't block the flow)
+        setTimeout(async () => {
+          await sendWelcomeEmail(values.firstName, values.email);
+        }, 1000);
 
-      // Show success message with email confirmation instructions
-      toast({
-        title: "Account created! 📧",
-        description: selectedPlan 
-          ? "Please check your email and click the confirmation link to complete your subscription."
-          : "Please check your email and click the confirmation link to activate your account.",
-      });
+        toast({
+          title: "Check your email! 📧",
+          description: "We've sent you a confirmation link to complete your registration.",
+        });
+      } else if (data.user) {
+        // User is already confirmed, send welcome email and proceed
+        setTimeout(async () => {
+          await sendWelcomeEmail(values.firstName, values.email);
+        }, 1000);
 
-      // Don't auto-login, let the user confirm their email first
-      // This ensures they go through the email confirmation flow
-      
+        toast({
+          title: "Welcome! 🎉",
+          description: "Your account has been created successfully.",
+        });
+        
+        if (selectedPlan) {
+          navigate(`/checkout?plan_id=${selectedPlan}`);
+        } else {
+          navigate('/prompts');
+        }
+      }
     } catch (error) {
       console.error("Signup error:", error);
       toast({
@@ -98,26 +103,29 @@ export function useSignupForm() {
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
-  const handleFormError = (errors: any) => {
-    console.error("Form validation failed:", errors);
-    toast({
-      variant: "destructive",
-      title: "Validation Error",
-      description: "Please check the form fields and try again.",
-    });
+  const onFormError = (errors: any) => {
+    console.log("Form validation errors:", errors);
+    const firstErrorField = Object.keys(errors)[0];
+    const firstError = errors[firstErrorField];
+    
+    if (firstError?.message) {
+      toast({
+        variant: "destructive",
+        title: "Invalid input",
+        description: firstError.message,
+      });
+    }
   };
 
   return {
     form,
     isLoading,
-    selectedPlan,
-    fromCheckout,
-    handleSubmit,
-    handleFormError,
+    onSubmit,
+    onFormError,
   };
 }

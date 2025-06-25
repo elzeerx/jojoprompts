@@ -99,6 +99,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const urlParams = new URLSearchParams(location.search);
             const planId = urlParams.get('plan_id');
             
+            // Send welcome email for newly confirmed users
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('first_name')
+              .eq('id', initialUser.id)
+              .single();
+            
+            if (profile?.first_name && initialUser.email) {
+              // Import and send welcome email
+              const { emailService } = await import('@/utils/emailService');
+              setTimeout(async () => {
+                await emailService.sendWelcomeEmail(profile.first_name, initialUser.email!);
+              }, 1000);
+            }
+            
             toast({
               title: "Welcome! 🎉",
               description: planId 

@@ -1,4 +1,3 @@
-
 interface EmailTemplate {
   subject: string;
   html: string;
@@ -20,6 +19,30 @@ interface WelcomeEmailData {
 interface PasswordResetEmailData {
   name: string;
   resetLink: string;
+}
+
+interface PaymentConfirmationEmailData {
+  name: string;
+  planName: string;
+  amount: number;
+  transactionId: string;
+}
+
+interface SubscriptionCancelledEmailData {
+  name: string;
+  planName: string;
+  endDate: string;
+}
+
+interface PaymentFailedEmailData {
+  name: string;
+  planName: string;
+  reason: string;
+  retryLink: string;
+}
+
+interface AccountDeletedEmailData {
+  name: string;
 }
 
 export const emailTemplates = {
@@ -197,5 +220,189 @@ export const emailTemplates = {
       </div>
     `,
     text: `Password Reset - JoJo Prompts\n\nHi ${data.name},\n\nWe received a request to reset your password. Click the link below to reset it:\n\n${data.resetLink}\n\nThis link will expire in 24 hours. If you didn't request this reset, please ignore this email.\n\nStay secure,\nThe JoJo Prompts Team`
+  }),
+
+  // NEW: Payment confirmation email
+  paymentConfirmation: (data: PaymentConfirmationEmailData): EmailTemplate => ({
+    subject: "Payment Confirmed - Welcome to Premium! 🎉",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 32px;">Payment Confirmed! 🎉</h1>
+          <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Welcome to JoJo Prompts Premium</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 40px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
+          <h2 style="color: #333; margin: 0 0 20px 0;">Hi ${data.name}! 👋</h2>
+          
+          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+            Your payment has been successfully processed! You now have access to all premium features.
+          </p>
+          
+          <div style="background: white; padding: 25px; border-radius: 8px; margin: 30px 0; border: 1px solid #dee2e6;">
+            <h3 style="color: #333; margin: 0 0 15px 0;">Payment Details</h3>
+            <p style="margin: 5px 0; color: #666;"><strong>Plan:</strong> ${data.planName}</p>
+            <p style="margin: 5px 0; color: #666;"><strong>Amount:</strong> $${data.amount.toFixed(2)} USD</p>
+            <p style="margin: 5px 0; color: #666;"><strong>Transaction ID:</strong> ${data.transactionId}</p>
+          </div>
+          
+          <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 20px; margin: 25px 0;">
+            <h3 style="color: #155724; margin: 0 0 10px 0;">🚀 You now have access to:</h3>
+            <ul style="color: #155724; margin: 0; padding-left: 20px;">
+              <li>Unlimited premium prompts</li>
+              <li>Advanced search and filtering</li>
+              <li>Priority customer support</li>
+              <li>Exclusive prompt collections</li>
+            </ul>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://jojoprompts.com/prompts" style="background: #28a745; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+              Start Using Premium Features
+            </a>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
+          <p style="margin: 0;">Thank you for your purchase!<br><strong>The JoJo Prompts Team</strong></p>
+        </div>
+      </div>
+    `,
+    text: `Payment Confirmed - JoJo Prompts\n\nHi ${data.name}!\n\nYour payment has been successfully processed!\n\nPlan: ${data.planName}\nAmount: $${data.amount.toFixed(2)} USD\nTransaction ID: ${data.transactionId}\n\nStart using your premium features at https://jojoprompts.com/prompts\n\nThank you!\nThe JoJo Prompts Team`
+  }),
+
+  // NEW: Subscription cancelled email
+  subscriptionCancelled: (data: SubscriptionCancelledEmailData): EmailTemplate => ({
+    subject: "Subscription Cancelled - JoJo Prompts",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #6c757d; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px;">Subscription Cancelled</h1>
+          <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">We're sorry to see you go</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 40px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
+          <h2 style="color: #333; margin: 0 0 20px 0;">Hi ${data.name},</h2>
+          
+          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+            Your subscription to ${data.planName} has been cancelled as requested.
+          </p>
+          
+          <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0; color: #856404;">
+              <strong>Important:</strong> You'll continue to have access to premium features until ${data.endDate}.
+            </p>
+          </div>
+          
+          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+            We'd love to have you back anytime! If you have any feedback about your experience or suggestions for improvement, please don't hesitate to reach out.
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="https://jojoprompts.com/pricing" style="background: #c49d68; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+              Reactivate Subscription
+            </a>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
+          <p style="margin: 0;">Thank you for being part of our community!<br><strong>The JoJo Prompts Team</strong></p>
+        </div>
+      </div>
+    `,
+    text: `Subscription Cancelled - JoJo Prompts\n\nHi ${data.name},\n\nYour subscription to ${data.planName} has been cancelled.\n\nYou'll continue to have access until ${data.endDate}.\n\nWe'd love to have you back! Visit https://jojoprompts.com/pricing to reactivate.\n\nThank you!\nThe JoJo Prompts Team`
+  }),
+
+  // NEW: Payment failed email
+  paymentFailed: (data: PaymentFailedEmailData): EmailTemplate => ({
+    subject: "Payment Issue - Action Required",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #dc3545; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px;">Payment Issue</h1>
+          <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Action required for your subscription</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 40px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
+          <h2 style="color: #333; margin: 0 0 20px 0;">Hi ${data.name},</h2>
+          
+          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+            We encountered an issue processing your payment for ${data.planName}.
+          </p>
+          
+          <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0; color: #721c24;">
+              <strong>Issue:</strong> ${data.reason}
+            </p>
+          </div>
+          
+          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+            Don't worry - your account is still active for now. Please update your payment information or try again to continue enjoying premium features.
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.retryLink}" style="background: #dc3545; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+              Update Payment Method
+            </a>
+          </div>
+          
+          <p style="color: #666; font-size: 14px; text-align: center; margin: 30px 0;">
+            Need help? Contact our support team at info@jojoprompts.com
+          </p>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
+          <p style="margin: 0;">We're here to help!<br><strong>The JoJo Prompts Team</strong></p>
+        </div>
+      </div>
+    `,
+    text: `Payment Issue - JoJo Prompts\n\nHi ${data.name},\n\nWe encountered an issue processing your payment for ${data.planName}.\n\nIssue: ${data.reason}\n\nPlease update your payment method: ${data.retryLink}\n\nNeed help? Contact us at info@jojoprompts.com\n\nThe JoJo Prompts Team`
+  }),
+
+  // NEW: Account deleted confirmation
+  accountDeleted: (data: AccountDeletedEmailData): EmailTemplate => ({
+    subject: "Account Deleted - JoJo Prompts",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #6c757d; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px;">Account Deleted</h1>
+          <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Your account has been permanently deleted</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 40px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
+          <h2 style="color: #333; margin: 0 0 20px 0;">Hi ${data.name},</h2>
+          
+          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+            Your JoJo Prompts account has been permanently deleted as requested. All your data, including:
+          </p>
+          
+          <ul style="color: #666; line-height: 1.6; margin: 20px 0; padding-left: 20px;">
+            <li>Personal information and profile</li>
+            <li>Saved prompts and collections</li>
+            <li>Subscription history</li>
+            <li>Usage data</li>
+          </ul>
+          
+          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+            has been permanently removed from our systems.
+          </p>
+          
+          <div style="background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 6px; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0; color: #0c5460;">
+              <strong>Note:</strong> This action cannot be undone. If you change your mind, you'll need to create a new account.
+            </p>
+          </div>
+          
+          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+            Thank you for being part of the JoJo Prompts community. If you have any feedback about your experience, we'd love to hear from you at info@jojoprompts.com.
+          </p>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
+          <p style="margin: 0;">Goodbye and best wishes!<br><strong>The JoJo Prompts Team</strong></p>
+        </div>
+      </div>
+    `,
+    text: `Account Deleted - JoJo Prompts\n\nHi ${data.name},\n\nYour JoJo Prompts account has been permanently deleted as requested.\n\nAll your data has been removed from our systems. This action cannot be undone.\n\nThank you for being part of our community!\n\nThe JoJo Prompts Team`
   })
 };

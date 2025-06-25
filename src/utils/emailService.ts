@@ -50,6 +50,27 @@ class EmailService {
     const template = emailTemplates.passwordReset({ name, resetLink });
     return this.sendEmail(email, template.subject, template.html, template.text);
   }
+
+  // NEW: Payment and subscription email methods
+  async sendPaymentConfirmation(name: string, email: string, planName: string, amount: number, transactionId: string): Promise<EmailServiceResponse> {
+    const template = emailTemplates.paymentConfirmation({ name, planName, amount, transactionId });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
+
+  async sendSubscriptionCancelled(name: string, email: string, planName: string, endDate: string): Promise<EmailServiceResponse> {
+    const template = emailTemplates.subscriptionCancelled({ name, planName, endDate });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
+
+  async sendPaymentFailed(name: string, email: string, planName: string, reason: string, retryLink: string): Promise<EmailServiceResponse> {
+    const template = emailTemplates.paymentFailed({ name, planName, reason, retryLink });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
+
+  async sendAccountDeleted(name: string, email: string): Promise<EmailServiceResponse> {
+    const template = emailTemplates.accountDeleted({ name });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
 }
 
 export const emailService = new EmailService();

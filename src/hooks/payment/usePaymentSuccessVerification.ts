@@ -1,18 +1,14 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { logInfo, logError } from '@/utils/secureLogging';
+import { PaymentSuccessParams } from './usePaymentSuccessParams';
+import { usePaymentEmails } from '@/hooks/usePaymentEmails';
 
-interface PaymentSuccessVerificationProps {
-  params: {
-    planId: string | null;
-    userId: string | null;
-    token: string | null;
-    payerId: string | null;
-    allParams: Record<string, string>;
-  };
+interface UsePaymentSuccessVerificationProps {
+  params: PaymentSuccessParams;
   setVerifying: (verifying: boolean) => void;
   setVerified: (verified: boolean) => void;
   setError: (error: string | null) => void;
@@ -22,96 +18,88 @@ export function usePaymentSuccessVerification({
   params,
   setVerifying,
   setVerified,
-  setError
-}: PaymentSuccessVerificationProps) {
+  setError,
+}: UsePaymentSuccessVerificationProps) {
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const { sendPaymentConfirmation } = usePaymentEmails();
 
   useEffect(() => {
     const verifyPayment = async () => {
-      console.log('[Payment Verification] Starting verification with params:', params);
-      
+      if (!params.paymentId && !params.orderId) {
+        setError('Missing payment information');
+        setVerifying(false);
+        return;
+      }
+
       try {
-        // Extract payment ID from various possible sources
-        const paymentId = params.allParams.paymentId || params.token || params.allParams.token;
-        const method = params.allParams.method;
+        setVerifying(true);
 
-        if (!paymentId) {
-          throw new Error('No payment ID found in URL parameters');
-        }
-
-        if (!params.planId || !params.userId) {
-          throw new Error('Missing required plan ID or user ID');
-        }
-
-        // Skip PayPal verification for discount payments
-        if (method === 'discount') {
-          console.log('[Payment Verification] Discount payment detected, skipping PayPal verification');
-          logInfo("Discount payment verification skipped", "payment", { 
-            paymentId: paymentId,
-            planId: params.planId 
-          }, params.userId);
-          
-          setVerified(true);
-          setVerifying(false);
-          return;
-        }
-
-        // For regular PayPal payments, proceed with verification
-        console.log('[Payment Verification] Verifying PayPal payment:', paymentId);
-        
+        // Verify the payment with the backend
         const { data, error } = await supabase.functions.invoke('verify-paypal-payment', {
           body: {
-            paymentId: paymentId,
+            paymentId: params.paymentId,
+            orderId: params.orderId,
             planId: params.planId,
-            userId: params.userId
+            userId: params.userId,
+            debugObject: params.debugObject
           }
         });
 
         if (error) {
-          console.error('[Payment Verification] Supabase function error:', error);
-          throw new Error(error.message || 'Payment verification failed');
+          console.error('Payment verification error:', error);
+          setError(`Payment verification failed: ${error.message}`);
+          setVerifying(false);
+          return;
         }
 
         if (!data?.success) {
-          console.error('[Payment Verification] Verification failed:', data);
-          throw new Error(data?.error || 'Payment verification failed');
+          console.error('Payment verification failed:', data);
+          setError(data?.error || 'Payment verification failed');
+          setVerifying(false);
+          return;
         }
 
-        console.log('[Payment Verification] Payment verified successfully');
-        logInfo("Payment verified successfully", "payment", { 
-          paymentId: paymentId,
-          planId: params.planId 
-        }, params.userId);
+        // Payment verified successfully
+        console.log('Payment verified successfully:', data);
         
+        // Send payment confirmation email
+        if (user && data.transaction && data.plan) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', user.id)
+            .single();
+
+          if (profile && user.email) {
+            const userName = `${profile.first_name} ${profile.last_name}`.trim();
+            setTimeout(async () => {
+              await sendPaymentConfirmation(
+                userName,
+                user.email!,
+                data.plan.name,
+                data.transaction.amount_usd,
+                data.transaction.id
+              );
+            }, 1000);
+          }
+        }
+
         setVerified(true);
         setVerifying(false);
 
-      } catch (error: any) {
-        console.error('[Payment Verification] Error:', error);
-        logError("Payment verification failed", "payment", { 
-          error: error.message,
-          paymentId: params.allParams.paymentId || params.token
-        }, params.userId);
-        
-        setError(error.message || 'Payment verification failed');
-        setVerifying(false);
-        
-        // Navigate to failure page for verification errors
-        const failureParams = new URLSearchParams({
-          planId: params.planId || '',
-          reason: error.message || 'Payment verification failed'
+        toast({
+          title: "Payment Successful! 🎉",
+          description: "Your subscription has been activated successfully.",
         });
-        
-        navigate(`/payment-failed?${failureParams.toString()}`);
+
+      } catch (error: any) {
+        console.error('Payment verification exception:', error);
+        setError(`Payment verification failed: ${error.message}`);
+        setVerifying(false);
       }
     };
 
-    if (params.planId && params.userId) {
-      verifyPayment();
-    } else {
-      console.error('[Payment Verification] Missing required parameters');
-      setError('Missing payment information');
-      setVerifying(false);
-    }
-  }, [params, navigate, setVerifying, setVerified, setError]);
+    verifyPayment();
+  }, [params, user, navigate, setVerifying, setVerified, setError, sendPaymentConfirmation]);
 }
