@@ -52,6 +52,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <img src="https://jojoprompts.com/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px;" />
           <h1 style="margin: 0; font-size: 28px;">Thank You, ${data.name}!</h1>
           <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">We've received your message</p>
         </div>
@@ -98,7 +99,8 @@ export const emailTemplates = {
     subject: `New Contact Form Submission from ${data.name}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+        <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+          <img src="https://jojoprompts.com/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 50px; margin-bottom: 10px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 24px;">🔔 New Contact Form Submission</h1>
         </div>
         
@@ -132,6 +134,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
+          <img src="https://jojoprompts.com/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
           <h1 style="margin: 0; font-size: 32px;">Welcome to JoJo Prompts!</h1>
           <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Your journey to better AI prompts starts here</p>
         </div>
@@ -179,6 +182,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #dc3545; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <img src="https://jojoprompts.com/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">🔒 Password Reset</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Reset your JoJo Prompts password</p>
         </div>
@@ -222,12 +226,13 @@ export const emailTemplates = {
     text: `Password Reset - JoJo Prompts\n\nHi ${data.name},\n\nWe received a request to reset your password. Click the link below to reset it:\n\n${data.resetLink}\n\nThis link will expire in 24 hours. If you didn't request this reset, please ignore this email.\n\nStay secure,\nThe JoJo Prompts Team`
   }),
 
-  // NEW: Payment confirmation email
+  // Payment confirmation email
   paymentConfirmation: (data: PaymentConfirmationEmailData): EmailTemplate => ({
     subject: "Payment Confirmed - Welcome to Premium! 🎉",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
+          <img src="https://jojoprompts.com/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
           <h1 style="margin: 0; font-size: 32px;">Payment Confirmed! 🎉</h1>
           <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Welcome to JoJo Prompts Premium</p>
         </div>
@@ -271,12 +276,13 @@ export const emailTemplates = {
     text: `Payment Confirmed - JoJo Prompts\n\nHi ${data.name}!\n\nYour payment has been successfully processed!\n\nPlan: ${data.planName}\nAmount: $${data.amount.toFixed(2)} USD\nTransaction ID: ${data.transactionId}\n\nStart using your premium features at https://jojoprompts.com/prompts\n\nThank you!\nThe JoJo Prompts Team`
   }),
 
-  // NEW: Subscription cancelled email
+  // Subscription cancelled email
   subscriptionCancelled: (data: SubscriptionCancelledEmailData): EmailTemplate => ({
     subject: "Subscription Cancelled - JoJo Prompts",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #6c757d; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <img src="https://jojoprompts.com/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">Subscription Cancelled</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">We're sorry to see you go</p>
         </div>
@@ -313,12 +319,13 @@ export const emailTemplates = {
     text: `Subscription Cancelled - JoJo Prompts\n\nHi ${data.name},\n\nYour subscription to ${data.planName} has been cancelled.\n\nYou'll continue to have access until ${data.endDate}.\n\nWe'd love to have you back! Visit https://jojoprompts.com/pricing to reactivate.\n\nThank you!\nThe JoJo Prompts Team`
   }),
 
-  // NEW: Payment failed email
+  // Payment failed email
   paymentFailed: (data: PaymentFailedEmailData): EmailTemplate => ({
     subject: "Payment Issue - Action Required",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #dc3545; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <img src="https://jojoprompts.com/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">Payment Issue</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Action required for your subscription</p>
         </div>
@@ -359,12 +366,13 @@ export const emailTemplates = {
     text: `Payment Issue - JoJo Prompts\n\nHi ${data.name},\n\nWe encountered an issue processing your payment for ${data.planName}.\n\nIssue: ${data.reason}\n\nPlease update your payment method: ${data.retryLink}\n\nNeed help? Contact us at info@jojoprompts.com\n\nThe JoJo Prompts Team`
   }),
 
-  // NEW: Account deleted confirmation
+  // Account deleted confirmation
   accountDeleted: (data: AccountDeletedEmailData): EmailTemplate => ({
     subject: "Account Deleted - JoJo Prompts",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #6c757d; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <img src="https://jojoprompts.com/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">Account Deleted</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Your account has been permanently deleted</p>
         </div>
