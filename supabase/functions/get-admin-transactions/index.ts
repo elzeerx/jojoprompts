@@ -60,7 +60,7 @@ serve(async (req) => {
 
     const offset = (page - 1) * limit
 
-    // Build the query
+    // Build the query using Supabase client
     let query = supabase
       .from('transactions')
       .select(`
@@ -69,8 +69,7 @@ serve(async (req) => {
         amount_usd,
         status,
         created_at,
-        subscription_plans!inner(name),
-        profiles!inner(first_name, last_name)
+        subscription_plans(name)
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
@@ -100,18 +99,44 @@ serve(async (req) => {
       )
     }
 
+    // Get user data for each transaction
+    const userIds = [...new Set(transactions?.map(t => t.user_id) || [])]
+    const { data: users } = await supabase.auth.admin.listUsers()
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name')
+      .in('id', userIds)
+
+    // Create user lookup maps
+    const userEmailMap = new Map()
+    const profileMap = new Map()
+
+    users?.users?.forEach(user => {
+      userEmailMap.set(user.id, user.email)
+    })
+
+    profiles?.forEach(profile => {
+      profileMap.set(profile.id, profile)
+    })
+
     // Format the response data
-    const formattedTransactions = transactions?.map(transaction => ({
-      id: transaction.id,
-      user_id: transaction.user_id,
-      amount_usd: transaction.amount_usd,
-      status: transaction.status,
-      created_at: transaction.created_at,
-      user_email: `${transaction.profiles.first_name} ${transaction.profiles.last_name}`.trim() || 'Unknown User',
-      plan: {
-        name: transaction.subscription_plans?.name || 'Unknown Plan'
+    const formattedTransactions = transactions?.map(transaction => {
+      const userEmail = userEmailMap.get(transaction.user_id)
+      const profile = profileMap.get(transaction.user_id)
+      const displayName = profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : ''
+      
+      return {
+        id: transaction.id,
+        user_id: transaction.user_id,
+        amount_usd: transaction.amount_usd,
+        status: transaction.status,
+        created_at: transaction.created_at,
+        user_email: userEmail || displayName || 'Unknown User',
+        plan: {
+          name: transaction.subscription_plans?.name || 'Unknown Plan'
+        }
       }
-    })) || []
+    }) || []
 
     return new Response(
       JSON.stringify({
