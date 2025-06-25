@@ -13,7 +13,7 @@ import { usePaymentHandling } from "./CheckoutPage/hooks/usePaymentHandling";
 import { CheckoutProgress } from "./CheckoutPage/components/CheckoutProgress";
 import { PlanSummaryCard } from "./CheckoutPage/components/PlanSummaryCard";
 import { PaymentMethodsCard } from "./CheckoutPage/components/PaymentMethodsCard";
-import { PaymentErrorBoundary } from "@/components/subscription/PaymentErrorBoundary";
+import PaymentErrorBoundary from "@/components/subscription/PaymentErrorBoundary";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();

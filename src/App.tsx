@@ -7,6 +7,7 @@ import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { RootLayout } from "@/components/layout/root-layout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import PaymentErrorBoundary from "@/components/subscription/PaymentErrorBoundary";
 
 // Page imports
 import Index from "@/pages/Index";
@@ -51,90 +52,92 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <AuthProvider>
-          <Router>
-            <RootLayout>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/prompts" element={<PromptsPage />} />
-                <Route path="/prompts/chatgpt" element={<ChatGPTPromptsPage />} />
-                <Route path="/prompts/midjourney" element={<MidjourneyPromptsPage />} />
-                <Route path="/prompts/workflows" element={<WorkflowPromptsPage />} />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                <Route path="/faq" element={<FAQPage />} />
-                <Route path="/privacy" element={<PrivacyPolicyPage />} />
-                <Route path="/terms" element={<TermsOfServicePage />} />
+          <PaymentErrorBoundary>
+            <Router>
+              <RootLayout>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup" element={<SignupPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route path="/prompts" element={<PromptsPage />} />
+                  <Route path="/prompts/chatgpt" element={<ChatGPTPromptsPage />} />
+                  <Route path="/prompts/midjourney" element={<MidjourneyPromptsPage />} />
+                  <Route path="/prompts/workflows" element={<WorkflowPromptsPage />} />
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/pricing" element={<PricingPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/faq" element={<FAQPage />} />
+                  <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                  <Route path="/terms" element={<TermsOfServicePage />} />
 
-                {/* Protected routes */}
-                <Route
-                  path="/favorites"
-                  element={
-                    <ProtectedRoute>
-                      <FavoritesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/checkout"
-                  element={
-                    <ProtectedRoute>
-                      <CheckoutPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <UserDashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/subscription-dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <SubscriptionDashboard />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Protected routes */}
+                  <Route
+                    path="/favorites"
+                    element={
+                      <ProtectedRoute>
+                        <FavoritesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/checkout"
+                    element={
+                      <ProtectedRoute>
+                        <CheckoutPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <UserDashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/subscription-dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <SubscriptionDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Admin-only routes */}
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute requireAdmin={true}>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Admin-only routes */}
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute requireAdmin={true}>
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Prompter dashboard route */}
-                <Route
-                  path="/prompter-dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <PrompterDashboard />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Prompter dashboard route */}
+                  <Route
+                    path="/prompter-dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <PrompterDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Payment routes */}
-                <Route path="/payment/success" element={<PaymentSuccessPage />} />
-                <Route path="/payment/failed" element={<PaymentFailedPage />} />
-                <Route path="/payment/callback" element={<PaymentCallbackPage />} />
+                  {/* Payment routes */}
+                  <Route path="/payment/success" element={<PaymentSuccessPage />} />
+                  <Route path="/payment/failed" element={<PaymentFailedPage />} />
+                  <Route path="/payment/callback" element={<PaymentCallbackPage />} />
 
-                {/* 404 route */}
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </RootLayout>
-          </Router>
+                  {/* 404 route */}
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </RootLayout>
+            </Router>
+          </PaymentErrorBoundary>
           <Toaster />
           <SonnerToaster />
         </AuthProvider>

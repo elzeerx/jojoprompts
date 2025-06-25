@@ -12,7 +12,7 @@ interface State {
   error?: Error;
 }
 
-export default class PaymentErrorBoundary extends Component<Props, State> {
+class PaymentErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -41,3 +41,5 @@ export default class PaymentErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+export default PaymentErrorBoundary;
