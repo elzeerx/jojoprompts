@@ -5,6 +5,18 @@ import { toast } from "@/hooks/use-toast";
 import { TransactionRecord } from "@/types/transaction";
 import { DateRange } from "react-day-picker";
 
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+interface AdminTransactionsResponse {
+  transactions: TransactionRecord[];
+  pagination: PaginationInfo;
+}
+
 export function usePurchaseHistory(itemsPerPage = 20) {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,60 +28,55 @@ export function usePurchaseHistory(itemsPerPage = 20) {
 
   useEffect(() => {
     fetchTransactions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, statusFilter, dateRange]);
 
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("transactions")
-        .select(`
-          id,
-          user_id,
-          amount_usd,
-          status,
-          created_at,
-          plan_id(name)
-        `)
-        .order("created_at", { ascending: false });
-
-      if (statusFilter !== "all") query = query.eq("status", statusFilter);
-      if (dateRange?.from) query = query.gte("created_at", dateRange.from.toISOString());
-      if (dateRange?.to) query = query.lte("created_at", dateRange.to.toISOString());
-
-      const from = (currentPage - 1) * itemsPerPage;
-      const to = from + itemsPerPage - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      const userIds = [...new Set(data?.map(t => t.user_id) || [])];
-      const { data: userData } = await supabase.auth.admin.listUsers();
-
-      const userEmailMap = new Map();
-      if (userData && Array.isArray(userData)) {
-        userData.forEach((user: any) => {
-          userEmailMap.set(user.id, user.email);
-        });
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("No active session");
       }
 
-      const enrichedTransactions: TransactionRecord[] = (data?.map(transaction => ({
-        id: transaction.id,
-        user_id: transaction.user_id,
-        amount_usd: transaction.amount_usd,
-        status: transaction.status,
-        created_at: transaction.created_at,
-        user_email: userEmailMap.get(transaction.user_id) || 'Unknown',
-        plan: {
-          name: transaction.plan_id?.name || 'Unknown Plan'
-        }
-      })) || []);
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+      });
 
-      setTransactions(enrichedTransactions);
-      setTotalPages(Math.max(1, Math.ceil((count || 0) / itemsPerPage)));
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+
+      if (dateRange?.from) {
+        params.append("dateFrom", dateRange.from.toISOString());
+      }
+
+      if (dateRange?.to) {
+        params.append("dateTo", dateRange.to.toISOString());
+      }
+
+      // Call the edge function with query parameters
+      const functionUrl = `${supabase.supabaseUrl}/functions/v1/get-admin-transactions?${params.toString()}`;
+      
+      const response = await fetch(functionUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch transactions');
+      }
+
+      const data = await response.json() as AdminTransactionsResponse;
+      setTransactions(data.transactions || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+
     } catch (error) {
       console.error("Error fetching transactions:", error);
       toast({
@@ -77,6 +84,8 @@ export function usePurchaseHistory(itemsPerPage = 20) {
         description: "Failed to fetch transaction history",
         variant: "destructive",
       });
+      setTransactions([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
