@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getPayPalConfig } from "./paypalConfig.ts";
 import { fetchPayPalAccessToken } from "./paypalToken.ts";
@@ -85,6 +86,14 @@ serve(async (req: Request) => {
         .maybeSingle();
       if (existingSubscription && existingSubscription.status === "active") {
         logger("SUCCESS: Database shows already-completed transaction and active subscription. Skipping PayPal API.");
+        
+        // Fetch plan data for email
+        const { data: planData } = await supabaseClient
+          .from("subscription_plans")
+          .select("name, price_usd")
+          .eq("id", localTx.plan_id)
+          .single();
+
         return new Response(JSON.stringify({
           status: PAYMENT_STATES.COMPLETED,
           success: true,
@@ -94,6 +103,7 @@ serve(async (req: Request) => {
           transaction: localTx,
           subscription: existingSubscription,
           subscriptionCreated: false,
+          plan: planData, // Include plan data for email
           source: "database_fallback",
           requestId,
           timestamp: new Date().toISOString(),
@@ -217,7 +227,8 @@ serve(async (req: Request) => {
     logger(`Phase 4: Database updates`);
     let finalTransaction = localTx;
     let subscription = null;
-    let subscriptionCreated: boolean = false; // <-- new flag
+    let subscriptionCreated: boolean = false;
+    let planData = null;
 
     if (payPalStatus === PAYMENT_STATES.COMPLETED) {
       // Update transaction if needed
@@ -229,6 +240,23 @@ serve(async (req: Request) => {
         });
         if (updateResult.data) {
           finalTransaction = updateResult.data;
+        }
+      }
+
+      // Fetch plan data for email
+      if (finalTransaction?.plan_id) {
+        logger(`Fetching plan data for email`);
+        const { data: plan, error: planError } = await supabaseClient
+          .from("subscription_plans")
+          .select("name, price_usd")
+          .eq("id", finalTransaction.plan_id)
+          .single();
+        
+        if (!planError && plan) {
+          planData = plan;
+          logger(`Plan data fetched:`, planData);
+        } else {
+          logger(`Failed to fetch plan data:`, planError);
         }
       }
 
@@ -264,10 +292,11 @@ serve(async (req: Request) => {
       paymentId: paymentIdAfterCapture,
       success: isSuccess,
       hasSubscription: !!subscription,
-      subscriptionCreated
+      subscriptionCreated,
+      hasPlanData: !!planData
     });
 
-    // Consistent response format with enhanced data
+    // Consistent response format with enhanced data including plan information
     return new Response(JSON.stringify({
       status: finalStatus,
       success: isSuccess,
@@ -277,6 +306,7 @@ serve(async (req: Request) => {
       transaction: finalTransaction,
       subscription: subscription,
       subscriptionCreated,
+      plan: planData, // Include plan data for email
       source: txJustCaptured ? "just_captured" : "existing",
       requestId,
       timestamp: new Date().toISOString(),
