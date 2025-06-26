@@ -14,6 +14,85 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Email sending helper function
+async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: string, userName: string, planName: string, amount: number, transactionId: string, logger: any) {
+  try {
+    logger(`[EMAIL] Attempting to send payment confirmation email to ${userEmail}`);
+    
+    const emailData = {
+      to: userEmail,
+      subject: "Payment Confirmed - Welcome to Premium! 🎉",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
+            <img src="https://jojoprompts.com/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
+            <h1 style="margin: 0; font-size: 32px;">Payment Confirmed! 🎉</h1>
+            <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Welcome to JoJo Prompts Premium</p>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 40px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
+            <h2 style="color: #333; margin: 0 0 20px 0;">Hi ${userName}! 👋</h2>
+            
+            <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+              Your payment has been successfully processed! You now have access to all premium features.
+            </p>
+            
+            <div style="background: white; padding: 25px; border-radius: 8px; margin: 30px 0; border: 1px solid #dee2e6;">
+              <h3 style="color: #333; margin: 0 0 15px 0;">Payment Details</h3>
+              <p style="margin: 5px 0; color: #666;"><strong>Plan:</strong> ${planName}</p>
+              <p style="margin: 5px 0; color: #666;"><strong>Amount:</strong> $${amount.toFixed(2)} USD</p>
+              <p style="margin: 5px 0; color: #666;"><strong>Transaction ID:</strong> ${transactionId}</p>
+            </div>
+            
+            <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 20px; margin: 25px 0;">
+              <h3 style="color: #155724; margin: 0 0 10px 0;">🚀 You now have access to:</h3>
+              <ul style="color: #155724; margin: 0; padding-left: 20px;">
+                <li>Unlimited premium prompts</li>
+                <li>Advanced search and filtering</li>
+                <li>Priority customer support</li>
+                <li>Exclusive prompt collections</li>
+              </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="https://jojoprompts.com/prompts" style="background: #28a745; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+                Start Using Premium Features
+              </a>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
+            <p style="margin: 0;">Thank you for your purchase!<br><strong>The JoJo Prompts Team</strong></p>
+          </div>
+        </div>
+      `,
+      text: `Payment Confirmed - JoJo Prompts\n\nHi ${userName}!\n\nYour payment has been successfully processed!\n\nPlan: ${planName}\nAmount: $${amount.toFixed(2)} USD\nTransaction ID: ${transactionId}\n\nStart using your premium features at https://jojoprompts.com/prompts\n\nThank you!\nThe JoJo Prompts Team`
+    };
+
+    logger(`[EMAIL] Sending email with data:`, emailData);
+
+    const { data: emailResponse, error: emailError } = await supabaseClient.functions.invoke('send-email', {
+      body: emailData
+    });
+
+    if (emailError) {
+      logger(`[EMAIL] Error sending email:`, emailError);
+      return { success: false, error: emailError.message };
+    }
+
+    if (!emailResponse?.success) {
+      logger(`[EMAIL] Email service returned failure:`, emailResponse);
+      return { success: false, error: emailResponse?.error || 'Email service failed' };
+    }
+
+    logger(`[EMAIL] Payment confirmation email sent successfully to ${userEmail}`);
+    return { success: true };
+  } catch (error: any) {
+    logger(`[EMAIL] Exception sending email:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -87,12 +166,45 @@ serve(async (req: Request) => {
       if (existingSubscription && existingSubscription.status === "active") {
         logger("SUCCESS: Database shows already-completed transaction and active subscription. Skipping PayPal API.");
         
-        // Fetch plan data for email
+        // Fetch plan data and user data for email
         const { data: planData } = await supabaseClient
           .from("subscription_plans")
           .select("name, price_usd")
           .eq("id", localTx.plan_id)
           .single();
+
+        const { data: userData } = await supabaseClient
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("id", localTx.user_id)
+          .single();
+
+        // Get user email
+        const { data: { user: authUser } } = await supabaseClient.auth.admin.getUserById(localTx.user_id);
+        
+        logger(`[EMAIL DEBUG] User data:`, userData);
+        logger(`[EMAIL DEBUG] Plan data:`, planData);
+        logger(`[EMAIL DEBUG] Auth user:`, authUser?.email);
+
+        // Send email if we have all required data
+        if (authUser?.email && planData && userData) {
+          const userName = `${userData.first_name} ${userData.last_name}`.trim() || 'Valued Customer';
+          const emailResult = await sendPaymentConfirmationEmail(
+            supabaseClient,
+            authUser.email,
+            userName,
+            planData.name || 'Premium Plan',
+            planData.price_usd || 0,
+            localTx.paypal_payment_id || localTx.id,
+            logger
+          );
+          
+          if (!emailResult.success) {
+            logger(`[EMAIL] Failed to send confirmation email:`, emailResult.error);
+          }
+        } else {
+          logger(`[EMAIL] Missing required data for email - Email: ${!!authUser?.email}, Plan: ${!!planData}, User: ${!!userData}`);
+        }
 
         return new Response(JSON.stringify({
           status: PAYMENT_STATES.COMPLETED,
@@ -280,9 +392,59 @@ serve(async (req: Request) => {
           logger(`Failed to ensure subscription:`, subscriptionResult.error);
         }
       }
+
+      // PHASE 5: SEND PAYMENT CONFIRMATION EMAIL
+      logger(`Phase 5: Sending payment confirmation email`);
+      
+      if (finalTransaction?.user_id && planData) {
+        try {
+          // Get user profile data
+          const { data: userData } = await supabaseClient
+            .from("profiles")
+            .select("first_name, last_name")
+            .eq("id", finalTransaction.user_id)
+            .single();
+
+          // Get user email
+          const { data: { user: authUser } } = await supabaseClient.auth.admin.getUserById(finalTransaction.user_id);
+          
+          logger(`[EMAIL DEBUG] Final transaction user_id:`, finalTransaction.user_id);
+          logger(`[EMAIL DEBUG] User profile data:`, userData);
+          logger(`[EMAIL DEBUG] Auth user email:`, authUser?.email);
+          logger(`[EMAIL DEBUG] Plan data:`, planData);
+
+          if (authUser?.email) {
+            const userName = userData ? `${userData.first_name} ${userData.last_name}`.trim() : 'Valued Customer';
+            
+            logger(`[EMAIL] Attempting to send payment confirmation email to ${authUser.email} for user ${userName}`);
+            
+            const emailResult = await sendPaymentConfirmationEmail(
+              supabaseClient,
+              authUser.email,
+              userName,
+              planData.name || 'Premium Plan',
+              planData.price_usd || 0,
+              finalTransaction.paypal_payment_id || finalTransaction.id,
+              logger
+            );
+            
+            if (emailResult.success) {
+              logger(`[EMAIL] Payment confirmation email sent successfully to ${authUser.email}`);
+            } else {
+              logger(`[EMAIL] Failed to send payment confirmation email:`, emailResult.error);
+            }
+          } else {
+            logger(`[EMAIL] No email address found for user ${finalTransaction.user_id}`);
+          }
+        } catch (emailError: any) {
+          logger(`[EMAIL] Exception while sending payment confirmation email:`, emailError);
+        }
+      } else {
+        logger(`[EMAIL] Missing required data for email - Transaction user_id: ${!!finalTransaction?.user_id}, Plan data: ${!!planData}`);
+      }
     }
 
-    // PHASE 5: RESPONSE FORMATION
+    // PHASE 6: RESPONSE FORMATION
     const finalStatus = payPalStatus || PAYMENT_STATES.UNKNOWN;
     const isSuccess = finalStatus === PAYMENT_STATES.COMPLETED;
     
