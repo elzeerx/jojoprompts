@@ -8,15 +8,37 @@ import { PAYMENT_STATES } from "./types.ts";
 import { getAllParams } from "./parameterExtractor.ts";
 import { databaseFirstVerification } from "./databaseVerification.ts";
 import { getTransaction, updateTransactionCompleted, insertUserSubscriptionIfMissing, findAndRecoverOrphanedTransactions } from "./dbOperations.ts";
+import { logEmailAttempt } from "./emailLogger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Email sending helper function
+// Email sending helper function with duplicate prevention
 async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: string, userName: string, planName: string, amount: number, transactionId: string, logger: any) {
   try {
+    logger(`[EMAIL] Checking for existing email log for transaction: ${transactionId}`);
+    
+    // Check if we've already sent an email for this transaction
+    const { data: existingLog, error: logCheckError } = await supabaseClient
+      .from('email_logs')
+      .select('id, success')
+      .eq('email_type', 'payment_confirmation')
+      .eq('email_address', userEmail)
+      .eq('error_message', transactionId) // Using error_message field to store transaction ID for duplicate detection
+      .eq('success', true)
+      .order('attempted_at', { ascending: false })
+      .limit(1);
+
+    if (logCheckError) {
+      logger(`[EMAIL] Error checking email logs:`, logCheckError);
+    } else if (existingLog && existingLog.length > 0) {
+      logger(`[EMAIL] Payment confirmation email already sent for transaction ${transactionId}, skipping duplicate`);
+      await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', true, `Duplicate prevented for transaction: ${transactionId}`);
+      return { success: true, skipped: true };
+    }
+
     logger(`[EMAIL] Attempting to send payment confirmation email to ${userEmail}`);
     
     const emailData = {
@@ -71,24 +93,32 @@ async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: stri
 
     logger(`[EMAIL] Sending email with data:`, emailData);
 
+    // Log email attempt before sending
+    await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, null, null);
+
     const { data: emailResponse, error: emailError } = await supabaseClient.functions.invoke('send-email', {
       body: emailData
     });
 
     if (emailError) {
       logger(`[EMAIL] Error sending email:`, emailError);
+      await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, emailError.message);
       return { success: false, error: emailError.message };
     }
 
     if (!emailResponse?.success) {
       logger(`[EMAIL] Email service returned failure:`, emailResponse);
+      await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, emailResponse?.error || 'Email service failed');
       return { success: false, error: emailResponse?.error || 'Email service failed' };
     }
 
     logger(`[EMAIL] Payment confirmation email sent successfully to ${userEmail}`);
+    // Log successful email with transaction ID in error_message field for duplicate detection
+    await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', true, transactionId);
     return { success: true };
   } catch (error: any) {
     logger(`[EMAIL] Exception sending email:`, error);
+    await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, error.message);
     return { success: false, error: error.message };
   }
 }
@@ -186,7 +216,7 @@ serve(async (req: Request) => {
         logger(`[EMAIL DEBUG] Plan data:`, planData);
         logger(`[EMAIL DEBUG] Auth user:`, authUser?.email);
 
-        // Send email if we have all required data
+        // Send email if we have all required data (with duplicate prevention)
         if (authUser?.email && planData && userData) {
           const userName = `${userData.first_name} ${userData.last_name}`.trim() || 'Valued Customer';
           const emailResult = await sendPaymentConfirmationEmail(
@@ -199,7 +229,7 @@ serve(async (req: Request) => {
             logger
           );
           
-          if (!emailResult.success) {
+          if (!emailResult.success && !emailResult.skipped) {
             logger(`[EMAIL] Failed to send confirmation email:`, emailResult.error);
           }
         } else {
@@ -393,10 +423,10 @@ serve(async (req: Request) => {
         }
       }
 
-      // PHASE 5: SEND PAYMENT CONFIRMATION EMAIL
-      logger(`Phase 5: Sending payment confirmation email`);
-      
-      if (finalTransaction?.user_id && planData) {
+      // PHASE 5: SEND PAYMENT CONFIRMATION EMAIL (Only for newly captured payments)
+      if (txJustCaptured && finalTransaction?.user_id && planData) {
+        logger(`Phase 5: Sending payment confirmation email for newly captured payment`);
+        
         try {
           // Get user profile data
           const { data: userData } = await supabaseClient
@@ -430,7 +460,7 @@ serve(async (req: Request) => {
             
             if (emailResult.success) {
               logger(`[EMAIL] Payment confirmation email sent successfully to ${authUser.email}`);
-            } else {
+            } else if (!emailResult.skipped) {
               logger(`[EMAIL] Failed to send payment confirmation email:`, emailResult.error);
             }
           } else {
@@ -440,7 +470,7 @@ serve(async (req: Request) => {
           logger(`[EMAIL] Exception while sending payment confirmation email:`, emailError);
         }
       } else {
-        logger(`[EMAIL] Missing required data for email - Transaction user_id: ${!!finalTransaction?.user_id}, Plan data: ${!!planData}`);
+        logger(`[EMAIL] Skipping email send - TxJustCaptured: ${txJustCaptured}, Has user_id: ${!!finalTransaction?.user_id}, Has plan data: ${!!planData}`);
       }
     }
 

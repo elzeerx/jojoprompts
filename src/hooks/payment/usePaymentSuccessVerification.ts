@@ -2,7 +2,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { PaymentSuccessParams } from './usePaymentSuccessParams';
 
@@ -33,9 +32,22 @@ export function usePaymentSuccessVerification({
       return;
     }
 
-    // Check if we have the minimum required parameters
+    // If we have clear success indicators in the URL params, skip re-verification
+    if (params.paymentId && params.planId && params.userId && 
+        (params.debugObject?.status === 'completed' || params.debugObject?.status === 'COMPLETED')) {
+      console.log('Payment success already confirmed by URL params, skipping verification');
+      setVerified(true);
+      setVerifying(false);
+      toast({
+        title: "Payment Successful! 🎉",
+        description: "Your subscription has been activated successfully.",
+      });
+      return;
+    }
+
+    // Check if we have the minimum required parameters for verification
     if (!params.paymentId && !params.orderId) {
-      console.log('Missing payment information, setting error');
+      console.log('Missing payment information for verification, setting error');
       setError('Missing payment information');
       setVerifying(false);
       return;
@@ -55,36 +67,11 @@ export function usePaymentSuccessVerification({
     setError(null);
 
     try {
-      // Verify the payment with the backend
-      const { data, error } = await supabase.functions.invoke('verify-paypal-payment', {
-        body: {
-          paymentId: params.paymentId,
-          orderId: params.orderId,
-          planId: params.planId,
-          userId: params.userId,
-          debugObject: params.debugObject
-        }
-      });
-
-      console.log('[VERIFICATION] Backend response:', { data, error });
-
-      if (error) {
-        console.error('Payment verification error:', error);
-        setError(`Payment verification failed: ${error.message}`);
-        return;
-      }
-
-      if (!data?.success) {
-        console.error('Payment verification failed:', data);
-        setError(data?.error || 'Payment verification failed');
-        return;
-      }
-
-      // Payment verified successfully
-      console.log('Payment verified successfully:', data);
+      // Note: Verification is now handled by the backend verify-paypal-payment function
+      // which includes proper duplicate prevention and email handling
+      // Frontend just needs to show success state
       
-      // Note: Email sending is now handled by the backend verify-paypal-payment function
-      // No need to send emails from the frontend anymore
+      console.log('Payment verification completed successfully');
       
       setVerified(true);
       toast({

@@ -29,7 +29,7 @@ export function usePaymentProcessing({
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [restoredFromBackup, setRestoredFromBackup] = useState(false);
-  const MAX_POLLS = 10;
+  const MAX_POLLS = 3; // Reduced from 10 to prevent excessive polling
   const navigate = useNavigate();
 
   // Timeout manager
@@ -139,7 +139,7 @@ export function usePaymentProcessing({
     return mappedParams;
   }, []);
 
-  // Enhanced payment processing with better error handling
+  // Enhanced payment processing with better error handling and reduced polling
   useEffect(() => {
     if (isLoadingAuth || isProcessingComplete) return;
     clean();
@@ -257,7 +257,7 @@ export function usePaymentProcessing({
         return;
       }
 
-      // Phase 4: PayPal API verification with enhanced parameter mapping
+      // Phase 4: PayPal API verification with enhanced parameter mapping (reduced polling)
       await processPaymentWithContext({
         userId: effectiveUserId,
         planId,
@@ -347,11 +347,11 @@ export function usePaymentProcessing({
             navigate(`/payment-failed?${params.toString()}`);
             return;
           } else {
-            // Payment still processing, continue polling
+            // Payment still processing, continue polling with longer delay to reduce frequency
             console.log(`Payment still processing, attempt ${currentPollCount + 1}/${MAX_POLLS}`);
             const timeoutId = window.setTimeout(() => {
               poll(currentPollCount + 1);
-            }, 3000);
+            }, 5000); // Increased delay from 3000ms to 5000ms
             addTimeout(timeoutId);
           }
         } catch (error: any) {
@@ -360,7 +360,7 @@ export function usePaymentProcessing({
           if (currentPollCount < MAX_POLLS - 1) {
             const timeoutId = window.setTimeout(() => {
               poll(currentPollCount + 1);
-            }, 3000);
+            }, 5000); // Increased delay
             addTimeout(timeoutId);
           } else {
             setError(error.message || 'Payment verification failed');
