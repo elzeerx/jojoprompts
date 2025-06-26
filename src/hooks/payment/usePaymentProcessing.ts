@@ -29,12 +29,13 @@ export function usePaymentProcessing({
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [restoredFromBackup, setRestoredFromBackup] = useState(false);
-  const MAX_POLLS = 3; // Reduced from 10 to prevent excessive polling
+  const MAX_POLLS = 2; // Reduced from 3 to minimize backend calls
   const navigate = useNavigate();
 
   // Timeout manager
   const { timeoutsRef, addTimeout, clean } = useTimeoutManager();
   const completeRef = useRef(false);
+  const verificationAttempted = useRef(false); // Track verification attempts
 
   // Enhanced session and payment context recovery
   useEffect(() => {
@@ -108,6 +109,7 @@ export function usePaymentProcessing({
         console.log('User signed in during payment processing, restarting verification');
         setStatus(PROCESSING_STATES.CHECKING);
         setPollCount(0);
+        verificationAttempted.current = false; // Reset verification flag
       }
     });
 
@@ -139,9 +141,9 @@ export function usePaymentProcessing({
     return mappedParams;
   }, []);
 
-  // Enhanced payment processing with better error handling and reduced polling
+  // Enhanced payment processing with better error handling and minimal backend calls
   useEffect(() => {
-    if (isLoadingAuth || isProcessingComplete) return;
+    if (isLoadingAuth || isProcessingComplete || verificationAttempted.current) return;
     clean();
 
     if (success === 'false') {
@@ -158,6 +160,13 @@ export function usePaymentProcessing({
     }
 
     const processPayment = async () => {
+      // Prevent duplicate processing
+      if (verificationAttempted.current) {
+        console.log('Payment verification already attempted, skipping duplicate');
+        return;
+      }
+      verificationAttempted.current = true;
+
       // Get current user context (could be from restored session or current session)
       const effectiveUserId = currentUser?.id || userId;
       
@@ -257,7 +266,7 @@ export function usePaymentProcessing({
         return;
       }
 
-      // Phase 4: PayPal API verification with enhanced parameter mapping (reduced polling)
+      // Phase 4: Single backend verification call (no polling)
       await processPaymentWithContext({
         userId: effectiveUserId,
         planId,
@@ -267,113 +276,85 @@ export function usePaymentProcessing({
     };
 
     const processPaymentWithContext = async (context: any) => {
-      const poll = async (currentPollCount: number = 0) => {
-        if (currentPollCount >= MAX_POLLS) {
-          console.error('Max polling attempts reached');
-          setError('Payment verification timed out');
+      try {
+        setStatus(PROCESSING_STATES.VERIFYING);
+        setPollCount(1); // Single attempt
+
+        // Prepare parameters with proper mapping
+        const verificationParams = mapParametersForBackend({
+          orderId: context.orderId || '',
+          paymentId: context.paymentId || '',
+          userId: context.userId || '',
+          planId: context.planId || ''
+        });
+
+        console.log(`Single payment verification attempt:`, verificationParams);
+
+        const { data, error } = await supabase.functions.invoke('verify-paypal-payment', {
+          body: verificationParams
+        });
+
+        if (error) {
+          console.error('Payment verification error:', error);
+          throw error;
+        }
+
+        console.log('Payment verification response:', data);
+
+        if (data?.success && data?.status === 'COMPLETED') {
+          setStatus(PROCESSING_STATES.COMPLETED);
+          setFinalPaymentId(data.paymentId);
+          setIsProcessingComplete(true);
+
+          const successParams = new URLSearchParams({
+            planId: context.planId,
+            userId: context.userId,
+            paymentId: data.paymentId,
+            status: 'completed',
+            source: 'payment_processing' // Add source flag to prevent dual verification
+          });
+
+          navigate(`/payment-success?${successParams.toString()}`);
+          return;
+        } else if (data?.status === 'ERROR' || data?.error) {
+          console.error('Payment verification failed:', data);
+          setError(data?.error || 'Payment verification failed');
           
-          // If we have a user but verification failed, this might be an auth issue with successful payment
-          if (currentUser) {
+          // Enhanced error handling - check if payment was successful but user needs to log in
+          if (data?.errorTips?.some((tip: string) => tip.toLowerCase().includes('login'))) {
             const params = new URLSearchParams();
             params.append('auth_required', 'true');
             if (planId) params.append('planId', planId);
-            params.append('reason', 'Payment verification timed out but user is authenticated');
+            params.append('reason', 'Payment successful but authentication required');
             navigate(`/payment-success?${params.toString()}`);
-          } else {
-            const params = new URLSearchParams();
-            if (planId) params.append('planId', planId);
-            params.append('reason', 'Payment verification timed out');
-            navigate(`/payment-failed?${params.toString()}`);
-          }
-          return;
-        }
-
-        try {
-          setStatus(PROCESSING_STATES.VERIFYING);
-          setPollCount(currentPollCount + 1);
-
-          // Prepare parameters with proper mapping
-          const verificationParams = mapParametersForBackend({
-            orderId: context.orderId || '',
-            paymentId: context.paymentId || '',
-            userId: context.userId || '',
-            planId: context.planId || ''
-          });
-
-          console.log(`Payment verification attempt ${currentPollCount + 1}:`, verificationParams);
-
-          const { data, error } = await supabase.functions.invoke('verify-paypal-payment', {
-            body: verificationParams
-          });
-
-          if (error) {
-            console.error('Payment verification error:', error);
-            throw error;
-          }
-
-          console.log('Payment verification response:', data);
-
-          if (data?.success && data?.status === 'COMPLETED') {
-            setStatus(PROCESSING_STATES.COMPLETED);
-            setFinalPaymentId(data.paymentId);
-            setIsProcessingComplete(true);
-
-            const successParams = new URLSearchParams({
-              planId: context.planId,
-              userId: context.userId,
-              paymentId: data.paymentId,
-              status: 'completed'
-            });
-
-            navigate(`/payment-success?${successParams.toString()}`);
             return;
-          } else if (data?.status === 'ERROR' || data?.error) {
-            console.error('Payment verification failed:', data);
-            setError(data?.error || 'Payment verification failed');
-            
-            // Enhanced error handling - check if payment was successful but user needs to log in
-            if (data?.errorTips?.some((tip: string) => tip.toLowerCase().includes('login'))) {
-              const params = new URLSearchParams();
-              params.append('auth_required', 'true');
-              if (planId) params.append('planId', planId);
-              params.append('reason', 'Payment successful but authentication required');
-              navigate(`/payment-success?${params.toString()}`);
-              return;
-            }
-            
-            const params = new URLSearchParams();
-            if (planId) params.append('planId', planId);
-            params.append('reason', data?.error || 'Payment verification failed');
-            navigate(`/payment-failed?${params.toString()}`);
-            return;
-          } else {
-            // Payment still processing, continue polling with longer delay to reduce frequency
-            console.log(`Payment still processing, attempt ${currentPollCount + 1}/${MAX_POLLS}`);
-            const timeoutId = window.setTimeout(() => {
-              poll(currentPollCount + 1);
-            }, 5000); // Increased delay from 3000ms to 5000ms
-            addTimeout(timeoutId);
           }
-        } catch (error: any) {
-          console.error('Payment verification attempt failed:', error);
           
-          if (currentPollCount < MAX_POLLS - 1) {
-            const timeoutId = window.setTimeout(() => {
-              poll(currentPollCount + 1);
-            }, 5000); // Increased delay
-            addTimeout(timeoutId);
-          } else {
-            setError(error.message || 'Payment verification failed');
-            
-            const params = new URLSearchParams();
-            if (planId) params.append('planId', planId);
-            params.append('reason', error.message || 'Payment verification failed');
-            navigate(`/payment-failed?${params.toString()}`);
-          }
+          const params = new URLSearchParams();
+          if (planId) params.append('planId', planId);
+          params.append('reason', data?.error || 'Payment verification failed');
+          navigate(`/payment-failed?${params.toString()}`);
+          return;
+        } else {
+          // Payment still processing - redirect to success with processing status
+          console.log(`Payment still processing, redirecting to success page`);
+          const successParams = new URLSearchParams({
+            planId: context.planId,
+            userId: context.userId,
+            paymentId: context.paymentId || '',
+            status: 'processing'
+          });
+          navigate(`/payment-success?${successParams.toString()}`);
         }
-      };
-
-      poll(0);
+      } catch (error: any) {
+        console.error('Payment verification attempt failed:', error);
+        setError(error.message || 'Payment verification failed');
+        
+        const params = new URLSearchParams();
+        if (planId) params.append('planId', planId);
+        params.append('reason', error.message || 'Payment verification failed');
+        navigate(`/payment-failed?${params.toString()}`);
+      }
     };
 
     processPayment();

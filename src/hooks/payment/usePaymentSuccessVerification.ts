@@ -53,6 +53,19 @@ export function usePaymentSuccessVerification({
       return;
     }
 
+    // Skip verification if payment processing is still handling this payment
+    // This prevents the dual call issue where both processing and success verification call the backend
+    if (params.debugObject?.source === 'payment_processing') {
+      console.log('Payment being handled by payment processing, skipping success verification');
+      setVerified(true);
+      setVerifying(false);
+      toast({
+        title: "Payment Successful! 🎉",
+        description: "Your subscription has been activated successfully.",
+      });
+      return;
+    }
+
     console.log('Starting payment verification with params:', {
       paymentId: params.paymentId,
       orderId: params.orderId,

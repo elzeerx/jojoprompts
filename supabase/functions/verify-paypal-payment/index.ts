@@ -15,15 +15,42 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Email sending helper function with duplicate prevention
+// In-memory request tracking to prevent duplicate processing
+const processingRequests = new Map<string, { timestamp: number, processing: boolean }>();
+const EMAIL_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown between emails
+
+// Cleanup old tracking entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of processingRequests.entries()) {
+    if (now - value.timestamp > EMAIL_COOLDOWN_MS) {
+      processingRequests.delete(key);
+    }
+  }
+}, 60 * 1000); // Cleanup every minute
+
+// Enhanced email sending helper function with comprehensive duplicate prevention
 async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: string, userName: string, planName: string, amount: number, transactionId: string, logger: any) {
   try {
+    // Create unique tracking key for this email
+    const emailTrackingKey = `${userEmail}:${transactionId}:payment_confirmation`;
+    
+    // Check in-memory tracking first (fastest check)
+    const existingRequest = processingRequests.get(emailTrackingKey);
+    if (existingRequest) {
+      logger(`[EMAIL] Email recently sent or processing for transaction: ${transactionId}, skipping duplicate`);
+      return { success: true, skipped: true, reason: 'in_memory_duplicate_prevention' };
+    }
+
+    // Mark as processing in memory
+    processingRequests.set(emailTrackingKey, { timestamp: Date.now(), processing: true });
+
     logger(`[EMAIL] Checking for existing email log for transaction: ${transactionId}`);
     
-    // Check if we've already sent an email for this transaction
+    // Check database for existing successful email
     const { data: existingLog, error: logCheckError } = await supabaseClient
       .from('email_logs')
-      .select('id, success')
+      .select('id, success, attempted_at')
       .eq('email_type', 'payment_confirmation')
       .eq('email_address', userEmail)
       .eq('error_message', transactionId) // Using error_message field to store transaction ID for duplicate detection
@@ -35,8 +62,10 @@ async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: stri
       logger(`[EMAIL] Error checking email logs:`, logCheckError);
     } else if (existingLog && existingLog.length > 0) {
       logger(`[EMAIL] Payment confirmation email already sent for transaction ${transactionId}, skipping duplicate`);
+      // Update memory tracking to mark as completed
+      processingRequests.set(emailTrackingKey, { timestamp: Date.now(), processing: false });
       await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', true, `Duplicate prevented for transaction: ${transactionId}`);
-      return { success: true, skipped: true };
+      return { success: true, skipped: true, reason: 'database_duplicate_prevention' };
     }
 
     logger(`[EMAIL] Attempting to send payment confirmation email to ${userEmail}`);
@@ -103,22 +132,31 @@ async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: stri
     if (emailError) {
       logger(`[EMAIL] Error sending email:`, emailError);
       await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, emailError.message);
+      // Mark as completed but failed in memory
+      processingRequests.set(emailTrackingKey, { timestamp: Date.now(), processing: false });
       return { success: false, error: emailError.message };
     }
 
     if (!emailResponse?.success) {
       logger(`[EMAIL] Email service returned failure:`, emailResponse);
       await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, emailResponse?.error || 'Email service failed');
+      // Mark as completed but failed in memory
+      processingRequests.set(emailTrackingKey, { timestamp: Date.now(), processing: false });
       return { success: false, error: emailResponse?.error || 'Email service failed' };
     }
 
     logger(`[EMAIL] Payment confirmation email sent successfully to ${userEmail}`);
     // Log successful email with transaction ID in error_message field for duplicate detection
     await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', true, transactionId);
+    // Mark as completed successfully in memory
+    processingRequests.set(emailTrackingKey, { timestamp: Date.now(), processing: false });
     return { success: true };
   } catch (error: any) {
     logger(`[EMAIL] Exception sending email:`, error);
     await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, error.message);
+    // Mark as completed but failed in memory
+    const emailTrackingKey = `${userEmail}:${transactionId}:payment_confirmation`;
+    processingRequests.set(emailTrackingKey, { timestamp: Date.now(), processing: false });
     return { success: false, error: error.message };
   }
 }
@@ -180,333 +218,371 @@ serve(async (req: Request) => {
       });
     }
 
-    // **** PHASE 1: DATABASE-FIRST VERIFICATION (Critical improvement) ****
-    let localTx = await databaseFirstVerification(supabaseClient, { orderId, paymentId, planId, userId }, logger);
-
-    // --- Fallback: If a completed transaction and active subscription exist, surface as success (SKIP PayPal API) ---
-    if (localTx?.status === "completed" && localTx?.user_id && localTx?.plan_id) {
-      const { data: existingSubscription } = await supabaseClient
-        .from("user_subscriptions")
-        .select("id, payment_id, status, created_at, transaction_id")
-        .eq("user_id", localTx.user_id)
-        .eq("plan_id", localTx.plan_id)
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .maybeSingle();
-      if (existingSubscription && existingSubscription.status === "active") {
-        logger("SUCCESS: Database shows already-completed transaction and active subscription. Skipping PayPal API.");
-        
-        // Fetch plan data and user data for email
-        const { data: planData } = await supabaseClient
-          .from("subscription_plans")
-          .select("name, price_usd")
-          .eq("id", localTx.plan_id)
-          .single();
-
-        const { data: userData } = await supabaseClient
-          .from("profiles")
-          .select("first_name, last_name")
-          .eq("id", localTx.user_id)
-          .single();
-
-        // Get user email
-        const { data: { user: authUser } } = await supabaseClient.auth.admin.getUserById(localTx.user_id);
-        
-        logger(`[EMAIL DEBUG] User data:`, userData);
-        logger(`[EMAIL DEBUG] Plan data:`, planData);
-        logger(`[EMAIL DEBUG] Auth user:`, authUser?.email);
-
-        // Send email if we have all required data (with duplicate prevention)
-        if (authUser?.email && planData && userData) {
-          const userName = `${userData.first_name} ${userData.last_name}`.trim() || 'Valued Customer';
-          const emailResult = await sendPaymentConfirmationEmail(
-            supabaseClient,
-            authUser.email,
-            userName,
-            planData.name || 'Premium Plan',
-            planData.price_usd || 0,
-            localTx.paypal_payment_id || localTx.id,
-            logger
-          );
-          
-          if (!emailResult.success && !emailResult.skipped) {
-            logger(`[EMAIL] Failed to send confirmation email:`, emailResult.error);
-          }
-        } else {
-          logger(`[EMAIL] Missing required data for email - Email: ${!!authUser?.email}, Plan: ${!!planData}, User: ${!!userData}`);
-        }
-
-        return new Response(JSON.stringify({
-          status: PAYMENT_STATES.COMPLETED,
-          success: true,
-          justCaptured: false,
-          paymentId: existingSubscription.payment_id,
-          paypal: { status: "COMPLETED" }, // FAKE a PayPal object for UI flow
-          transaction: localTx,
-          subscription: existingSubscription,
-          subscriptionCreated: false,
-          plan: planData, // Include plan data for email
-          source: "database_fallback",
-          requestId,
-          timestamp: new Date().toISOString(),
-          allParams: debugParams
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-    }
-
-    // --- If not found, proceed with legacy PayPal API remote verification
-    // PHASE 2: PAYPAL API VERIFICATION
-    logger(`Phase 2: PayPal API verification`);
-    let orderIdToUse = orderId || localTx?.paypal_order_id;
-    let paymentIdToUse = paymentId || localTx?.paypal_payment_id;
-    let payPalStatus: string | null = null;
-    let payPalRawResponse: any = null;
-    let txJustCaptured = false;
-    let paymentIdAfterCapture: string | null = null;
-
-    if (orderIdToUse) {
-      logger(`Fetching PayPal order:`, orderIdToUse);
-      const { data: orderData, ok: orderOk } = await fetchPaypalOrder(baseUrl, accessToken, orderIdToUse);
-      
-      if (!orderOk) {
-        logger(`Failed to fetch PayPal order:`, orderData);
-        payPalStatus = PAYMENT_STATES.ERROR;
-        payPalRawResponse = { error: "Failed to fetch order", details: orderData };
-      } else {
-        payPalRawResponse = orderData;
-        payPalStatus = orderData.status || PAYMENT_STATES.UNKNOWN;
-
-        logger(`PayPal order status:`, payPalStatus);
-
-        // Handle APPROVED status - attempt capture
-        if (payPalStatus === "APPROVED") {
-          logger(`Order approved, attempting capture...`);
-          const { data: captureData, ok: captureOk } = await capturePaypalOrder(baseUrl, accessToken, orderIdToUse);
-          
-          if (!captureOk) {
-            logger(`PayPal capture failed:`, captureData);
-            payPalStatus = PAYMENT_STATES.FAILED;
-            payPalRawResponse.capture_error = captureData;
-          } else {
-            payPalRawResponse.capture = captureData;
-            payPalStatus = captureData.status || payPalStatus;
-            let paymentCaptureObj = captureData.purchase_units?.[0]?.payments?.captures?.[0];
-            paymentIdAfterCapture = paymentCaptureObj?.id || null;
-
-            logger(`Capture result:`, { 
-              captureStatus: payPalStatus, 
-              paymentCaptureStatus: paymentCaptureObj?.status,
-              paymentIdAfterCapture 
-            });
-
-            if (payPalStatus === "COMPLETED" || paymentCaptureObj?.status === "COMPLETED") {
-              txJustCaptured = true;
-              payPalStatus = PAYMENT_STATES.COMPLETED;
-            }
-          }
-        } 
-        // Handle already COMPLETED status
-        else if (payPalStatus === "COMPLETED" && orderData.purchase_units?.[0]?.payments?.captures?.[0]) {
-          paymentIdAfterCapture = orderData.purchase_units[0].payments.captures[0].id || null;
-          const captureStatus = orderData.purchase_units[0].payments.captures[0].status;
-          payPalStatus = captureStatus === "COMPLETED" ? PAYMENT_STATES.COMPLETED : payPalStatus;
-          
-          logger(`Order already completed:`, { paymentIdAfterCapture, captureStatus });
-        }
-      }
-    } else if (paymentIdToUse) {
-      logger(`Looking up payment directly:`, paymentIdToUse);
-      const { data: paymentData, ok: paymentOk } = await fetchPaypalPaymentCapture(baseUrl, accessToken, paymentIdToUse);
-      
-      if (!paymentOk) {
-        logger(`Failed to fetch PayPal payment:`, paymentData);
-        payPalStatus = PAYMENT_STATES.ERROR;
-        payPalRawResponse = { error: "Failed to fetch payment", details: paymentData };
-      } else {
-        payPalRawResponse = paymentData;
-        payPalStatus = paymentData.status === "COMPLETED" ? PAYMENT_STATES.COMPLETED : paymentData.status || PAYMENT_STATES.UNKNOWN;
-        paymentIdAfterCapture = paymentData.id || null;
-        
-        logger(`Direct payment lookup result:`, { status: payPalStatus, paymentId: paymentIdAfterCapture });
-      }
-    }
-
-    // PHASE 3: DATABASE STATE RECONCILIATION
-    logger(`Phase 3: Database reconciliation`);
+    // Create tracking key for this specific payment verification request
+    const verificationTrackingKey = `verify:${orderId || paymentId}:${userId}:${planId}`;
     
-    // Enhanced fallback verification with database state priority
-    if (!payPalStatus || [PAYMENT_STATES.ERROR, PAYMENT_STATES.UNKNOWN].includes(payPalStatus)) {
-      logger(`PayPal verification unclear, checking database state...`);
-      
-      // Check if we have a completed transaction in our database
-      if (localTx && localTx.status === "completed" && localTx.paypal_payment_id) {
-        logger(`Found completed transaction in database, treating as success`);
-        payPalStatus = PAYMENT_STATES.COMPLETED;
-        paymentIdAfterCapture = localTx.paypal_payment_id;
-      } else if (localTx?.user_id && localTx?.plan_id) {
-        // Check if user has an active subscription for this plan
-        const { data: subscription } = await supabaseClient
+    // Check if this exact verification is already being processed
+    const existingVerification = processingRequests.get(verificationTrackingKey);
+    if (existingVerification && existingVerification.processing) {
+      logger(`[DUPLICATE] Payment verification already in progress for this request, returning cached response`);
+      return new Response(JSON.stringify({
+        status: PAYMENT_STATES.PROCESSING,
+        success: false,
+        message: "Payment verification already in progress",
+        requestId,
+        allParams: debugParams
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // Mark verification as processing
+    processingRequests.set(verificationTrackingKey, { timestamp: Date.now(), processing: true });
+
+    try {
+      // **** PHASE 1: DATABASE-FIRST VERIFICATION (Critical improvement) ****
+      let localTx = await databaseFirstVerification(supabaseClient, { orderId, paymentId, planId, userId }, logger);
+
+      // --- Fallback: If a completed transaction and active subscription exist, surface as success (SKIP PayPal API) ---
+      if (localTx?.status === "completed" && localTx?.user_id && localTx?.plan_id) {
+        const { data: existingSubscription } = await supabaseClient
           .from("user_subscriptions")
-          .select("payment_id, status, transaction_id")
+          .select("id, payment_id, status, created_at, transaction_id")
           .eq("user_id", localTx.user_id)
           .eq("plan_id", localTx.plan_id)
           .eq("status", "active")
           .order("created_at", { ascending: false })
-          .limit(1);
+          .maybeSingle();
+        if (existingSubscription && existingSubscription.status === "active") {
+          logger("SUCCESS: Database shows already-completed transaction and active subscription. Skipping PayPal API.");
+          
+          // Fetch plan data and user data for email (only if not already sent)
+          const { data: planData } = await supabaseClient
+            .from("subscription_plans")
+            .select("name, price_usd")
+            .eq("id", localTx.plan_id)
+            .single();
 
-        if (subscription && subscription.length > 0) {
-          logger(`Found active subscription, treating as completed`);
-          payPalStatus = PAYMENT_STATES.COMPLETED;
-          paymentIdAfterCapture = subscription[0].payment_id;
-        }
-      }
-    }
-
-    // PHASE 4: DATABASE UPDATE AND SUBSCRIPTION CREATION
-    logger(`Phase 4: Database updates`);
-    let finalTransaction = localTx;
-    let subscription = null;
-    let subscriptionCreated: boolean = false;
-    let planData = null;
-
-    if (payPalStatus === PAYMENT_STATES.COMPLETED) {
-      // Update transaction if needed
-      if (localTx && (localTx.status !== "completed" || !localTx.paypal_payment_id)) {
-        logger(`Updating transaction as completed`);
-        const updateResult = await updateTransactionCompleted(supabaseClient, { 
-          id: localTx.id, 
-          paypal_payment_id: paymentIdAfterCapture || paymentIdToUse || "" 
-        });
-        if (updateResult.data) {
-          finalTransaction = updateResult.data;
-        }
-      }
-
-      // Fetch plan data for email
-      if (finalTransaction?.plan_id) {
-        logger(`Fetching plan data for email`);
-        const { data: plan, error: planError } = await supabaseClient
-          .from("subscription_plans")
-          .select("name, price_usd")
-          .eq("id", finalTransaction.plan_id)
-          .single();
-        
-        if (!planError && plan) {
-          planData = plan;
-          logger(`Plan data fetched:`, planData);
-        } else {
-          logger(`Failed to fetch plan data:`, planError);
-        }
-      }
-
-      // Ensure subscription exists for completed payment
-      if (finalTransaction?.user_id && finalTransaction?.plan_id) {
-        logger(`Ensuring subscription exists`);
-        const subscriptionResult = await insertUserSubscriptionIfMissing(supabaseClient, {
-          user_id: finalTransaction.user_id,
-          plan_id: finalTransaction.plan_id,
-          payment_id: paymentIdAfterCapture || paymentIdToUse || "",
-          transaction_id: finalTransaction.id,
-        });
-        
-        if (subscriptionResult.data) {
-          subscription = subscriptionResult.data;
-          // Set subscriptionCreated to true ONLY if this is a new sub, not an existing
-          subscriptionCreated = !!(subscriptionResult.data?.created_at && subscriptionResult.data?.created_at === subscriptionResult.data?.updated_at);
-          logger(`Subscription ensured:`, subscription.id, "JustCreated?", subscriptionCreated);
-        } else if (subscriptionResult.error) {
-          subscriptionCreated = false;
-          logger(`Failed to ensure subscription:`, subscriptionResult.error);
-        }
-      }
-
-      // PHASE 5: SEND PAYMENT CONFIRMATION EMAIL (Only for newly captured payments)
-      if (txJustCaptured && finalTransaction?.user_id && planData) {
-        logger(`Phase 5: Sending payment confirmation email for newly captured payment`);
-        
-        try {
-          // Get user profile data
           const { data: userData } = await supabaseClient
             .from("profiles")
             .select("first_name, last_name")
-            .eq("id", finalTransaction.user_id)
+            .eq("id", localTx.user_id)
             .single();
 
           // Get user email
-          const { data: { user: authUser } } = await supabaseClient.auth.admin.getUserById(finalTransaction.user_id);
+          const { data: { user: authUser } } = await supabaseClient.auth.admin.getUserById(localTx.user_id);
           
-          logger(`[EMAIL DEBUG] Final transaction user_id:`, finalTransaction.user_id);
-          logger(`[EMAIL DEBUG] User profile data:`, userData);
-          logger(`[EMAIL DEBUG] Auth user email:`, authUser?.email);
+          logger(`[EMAIL DEBUG] User data:`, userData);
           logger(`[EMAIL DEBUG] Plan data:`, planData);
+          logger(`[EMAIL DEBUG] Auth user:`, authUser?.email);
 
-          if (authUser?.email) {
-            const userName = userData ? `${userData.first_name} ${userData.last_name}`.trim() : 'Valued Customer';
-            
-            logger(`[EMAIL] Attempting to send payment confirmation email to ${authUser.email} for user ${userName}`);
-            
+          // Send email if we have all required data (with comprehensive duplicate prevention)
+          if (authUser?.email && planData && userData) {
+            const userName = `${userData.first_name} ${userData.last_name}`.trim() || 'Valued Customer';
             const emailResult = await sendPaymentConfirmationEmail(
               supabaseClient,
               authUser.email,
               userName,
               planData.name || 'Premium Plan',
               planData.price_usd || 0,
-              finalTransaction.paypal_payment_id || finalTransaction.id,
+              localTx.paypal_payment_id || localTx.id,
               logger
             );
             
-            if (emailResult.success) {
-              logger(`[EMAIL] Payment confirmation email sent successfully to ${authUser.email}`);
-            } else if (!emailResult.skipped) {
-              logger(`[EMAIL] Failed to send payment confirmation email:`, emailResult.error);
+            if (!emailResult.success && !emailResult.skipped) {
+              logger(`[EMAIL] Failed to send confirmation email:`, emailResult.error);
+            } else if (emailResult.skipped) {
+              logger(`[EMAIL] Email sending skipped:`, emailResult.reason);
             }
           } else {
-            logger(`[EMAIL] No email address found for user ${finalTransaction.user_id}`);
+            logger(`[EMAIL] Missing required data for email - Email: ${!!authUser?.email}, Plan: ${!!planData}, User: ${!!userData}`);
           }
-        } catch (emailError: any) {
-          logger(`[EMAIL] Exception while sending payment confirmation email:`, emailError);
+
+          // Mark verification as completed
+          processingRequests.set(verificationTrackingKey, { timestamp: Date.now(), processing: false });
+
+          return new Response(JSON.stringify({
+            status: PAYMENT_STATES.COMPLETED,
+            success: true,
+            justCaptured: false,
+            paymentId: existingSubscription.payment_id,
+            paypal: { status: "COMPLETED" }, // FAKE a PayPal object for UI flow
+            transaction: localTx,
+            subscription: existingSubscription,
+            subscriptionCreated: false,
+            plan: planData, // Include plan data for email
+            source: "database_fallback",
+            requestId,
+            timestamp: new Date().toISOString(),
+            allParams: debugParams
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
         }
-      } else {
-        logger(`[EMAIL] Skipping email send - TxJustCaptured: ${txJustCaptured}, Has user_id: ${!!finalTransaction?.user_id}, Has plan data: ${!!planData}`);
       }
+
+      // --- If not found, proceed with legacy PayPal API remote verification
+      // PHASE 2: PAYPAL API VERIFICATION
+      logger(`Phase 2: PayPal API verification`);
+      let orderIdToUse = orderId || localTx?.paypal_order_id;
+      let paymentIdToUse = paymentId || localTx?.paypal_payment_id;
+      let payPalStatus: string | null = null;
+      let payPalRawResponse: any = null;
+      let txJustCaptured = false;
+      let paymentIdAfterCapture: string | null = null;
+
+      if (orderIdToUse) {
+        logger(`Fetching PayPal order:`, orderIdToUse);
+        const { data: orderData, ok: orderOk } = await fetchPaypalOrder(baseUrl, accessToken, orderIdToUse);
+        
+        if (!orderOk) {
+          logger(`Failed to fetch PayPal order:`, orderData);
+          payPalStatus = PAYMENT_STATES.ERROR;
+          payPalRawResponse = { error: "Failed to fetch order", details: orderData };
+        } else {
+          payPalRawResponse = orderData;
+          payPalStatus = orderData.status || PAYMENT_STATES.UNKNOWN;
+
+          logger(`PayPal order status:`, payPalStatus);
+
+          // Handle APPROVED status - attempt capture
+          if (payPalStatus === "APPROVED") {
+            logger(`Order approved, attempting capture...`);
+            const { data: captureData, ok: captureOk } = await capturePaypalOrder(baseUrl, accessToken, orderIdToUse);
+            
+            if (!captureOk) {
+              logger(`PayPal capture failed:`, captureData);
+              payPalStatus = PAYMENT_STATES.FAILED;
+              payPalRawResponse.capture_error = captureData;
+            } else {
+              payPalRawResponse.capture = captureData;
+              payPalStatus = captureData.status || payPalStatus;
+              let paymentCaptureObj = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+              paymentIdAfterCapture = paymentCaptureObj?.id || null;
+
+              logger(`Capture result:`, { 
+                captureStatus: payPalStatus, 
+                paymentCaptureStatus: paymentCaptureObj?.status,
+                paymentIdAfterCapture 
+              });
+
+              if (payPalStatus === "COMPLETED" || paymentCaptureObj?.status === "COMPLETED") {
+                txJustCaptured = true;
+                payPalStatus = PAYMENT_STATES.COMPLETED;
+              }
+            }
+          } 
+          // Handle already COMPLETED status
+          else if (payPalStatus === "COMPLETED" && orderData.purchase_units?.[0]?.payments?.captures?.[0]) {
+            paymentIdAfterCapture = orderData.purchase_units[0].payments.captures[0].id || null;
+            const captureStatus = orderData.purchase_units[0].payments.captures[0].status;
+            payPalStatus = captureStatus === "COMPLETED" ? PAYMENT_STATES.COMPLETED : payPalStatus;
+            
+            logger(`Order already completed:`, { paymentIdAfterCapture, captureStatus });
+          }
+        }
+      } else if (paymentIdToUse) {
+        logger(`Looking up payment directly:`, paymentIdToUse);
+        const { data: paymentData, ok: paymentOk } = await fetchPaypalPaymentCapture(baseUrl, accessToken, paymentIdToUse);
+        
+        if (!paymentOk) {
+          logger(`Failed to fetch PayPal payment:`, paymentData);
+          payPalStatus = PAYMENT_STATES.ERROR;
+          payPalRawResponse = { error: "Failed to fetch payment", details: paymentData };
+        } else {
+          payPalRawResponse = paymentData;
+          payPalStatus = paymentData.status === "COMPLETED" ? PAYMENT_STATES.COMPLETED : paymentData.status || PAYMENT_STATES.UNKNOWN;
+          paymentIdAfterCapture = paymentData.id || null;
+          
+          logger(`Direct payment lookup result:`, { status: payPalStatus, paymentId: paymentIdAfterCapture });
+        }
+      }
+
+      // PHASE 3: DATABASE STATE RECONCILIATION
+      logger(`Phase 3: Database reconciliation`);
+      
+      // Enhanced fallback verification with database state priority
+      if (!payPalStatus || [PAYMENT_STATES.ERROR, PAYMENT_STATES.UNKNOWN].includes(payPalStatus)) {
+        logger(`PayPal verification unclear, checking database state...`);
+        
+        // Check if we have a completed transaction in our database
+        if (localTx && localTx.status === "completed" && localTx.paypal_payment_id) {
+          logger(`Found completed transaction in database, treating as success`);
+          payPalStatus = PAYMENT_STATES.COMPLETED;
+          paymentIdAfterCapture = localTx.paypal_payment_id;
+        } else if (localTx?.user_id && localTx?.plan_id) {
+          // Check if user has an active subscription for this plan
+          const { data: subscription } = await supabaseClient
+            .from("user_subscriptions")
+            .select("payment_id, status, transaction_id")
+            .eq("user_id", localTx.user_id)
+            .eq("plan_id", localTx.plan_id)
+            .eq("status", "active")
+            .order("created_at", { ascending: false })
+            .limit(1);
+
+          if (subscription && subscription.length > 0) {
+            logger(`Found active subscription, treating as completed`);
+            payPalStatus = PAYMENT_STATES.COMPLETED;
+            paymentIdAfterCapture = subscription[0].payment_id;
+          }
+        }
+      }
+
+      // PHASE 4: DATABASE UPDATE AND SUBSCRIPTION CREATION
+      logger(`Phase 4: Database updates`);
+      let finalTransaction = localTx;
+      let subscription = null;
+      let subscriptionCreated: boolean = false;
+      let planData = null;
+
+      if (payPalStatus === PAYMENT_STATES.COMPLETED) {
+        // Update transaction if needed
+        if (localTx && (localTx.status !== "completed" || !localTx.paypal_payment_id)) {
+          logger(`Updating transaction as completed`);
+          const updateResult = await updateTransactionCompleted(supabaseClient, { 
+            id: localTx.id, 
+            paypal_payment_id: paymentIdAfterCapture || paymentIdToUse || "" 
+          });
+          if (updateResult.data) {
+            finalTransaction = updateResult.data;
+          }
+        }
+
+        // Fetch plan data for email
+        if (finalTransaction?.plan_id) {
+          logger(`Fetching plan data for email`);
+          const { data: plan, error: planError } = await supabaseClient
+            .from("subscription_plans")
+            .select("name, price_usd")
+            .eq("id", finalTransaction.plan_id)
+            .single();
+          
+          if (!planError && plan) {
+            planData = plan;
+            logger(`Plan data fetched:`, planData);
+          } else {
+            logger(`Failed to fetch plan data:`, planError);
+          }
+        }
+
+        // Ensure subscription exists for completed payment
+        if (finalTransaction?.user_id && finalTransaction?.plan_id) {
+          logger(`Ensuring subscription exists`);
+          const subscriptionResult = await insertUserSubscriptionIfMissing(supabaseClient, {
+            user_id: finalTransaction.user_id,
+            plan_id: finalTransaction.plan_id,
+            payment_id: paymentIdAfterCapture || paymentIdToUse || "",
+            transaction_id: finalTransaction.id,
+          });
+          
+          if (subscriptionResult.data) {
+            subscription = subscriptionResult.data;
+            // Set subscriptionCreated to true ONLY if this is a new sub, not an existing
+            subscriptionCreated = !!(subscriptionResult.data?.created_at && subscriptionResult.data?.created_at === subscriptionResult.data?.updated_at);
+            logger(`Subscription ensured:`, subscription.id, "JustCreated?", subscriptionCreated);
+          } else if (subscriptionResult.error) {
+            subscriptionCreated = false;
+            logger(`Failed to ensure subscription:`, subscriptionResult.error);
+          }
+        }
+
+        // PHASE 5: SEND PAYMENT CONFIRMATION EMAIL (Only for newly captured payments with robust duplicate prevention)
+        if (txJustCaptured && finalTransaction?.user_id && planData) {
+          logger(`Phase 5: Sending payment confirmation email for newly captured payment`);
+          
+          try {
+            // Get user profile data
+            const { data: userData } = await supabaseClient
+              .from("profiles")
+              .select("first_name, last_name")
+              .eq("id", finalTransaction.user_id)
+              .single();
+
+            // Get user email
+            const { data: { user: authUser } } = await supabaseClient.auth.admin.getUserById(finalTransaction.user_id);
+            
+            logger(`[EMAIL DEBUG] Final transaction user_id:`, finalTransaction.user_id);
+            logger(`[EMAIL DEBUG] User profile data:`, userData);
+            logger(`[EMAIL DEBUG] Auth user email:`, authUser?.email);
+            logger(`[EMAIL DEBUG] Plan data:`, planData);
+
+            if (authUser?.email) {
+              const userName = userData ? `${userData.first_name} ${userData.last_name}`.trim() : 'Valued Customer';
+              
+              logger(`[EMAIL] Attempting to send payment confirmation email to ${authUser.email} for user ${userName}`);
+              
+              const emailResult = await sendPaymentConfirmationEmail(
+                supabaseClient,
+                authUser.email,
+                userName,
+                planData.name || 'Premium Plan',
+                planData.price_usd || 0,
+                finalTransaction.paypal_payment_id || finalTransaction.id,
+                logger
+              );
+              
+              if (emailResult.success) {
+                logger(`[EMAIL] Payment confirmation email sent successfully to ${authUser.email}`);
+              } else if (!emailResult.skipped) {
+                logger(`[EMAIL] Failed to send payment confirmation email:`, emailResult.error);
+              } else {
+                logger(`[EMAIL] Email sending skipped:`, emailResult.reason);
+              }
+            } else {
+              logger(`[EMAIL] No email address found for user ${finalTransaction.user_id}`);
+            }
+          } catch (emailError: any) {
+            logger(`[EMAIL] Exception while sending payment confirmation email:`, emailError);
+          }
+        } else {
+          logger(`[EMAIL] Skipping email send - TxJustCaptured: ${txJustCaptured}, Has user_id: ${!!finalTransaction?.user_id}, Has plan data: ${!!planData}`);
+        }
+      }
+
+      // PHASE 6: RESPONSE FORMATION
+      const finalStatus = payPalStatus || PAYMENT_STATES.UNKNOWN;
+      const isSuccess = finalStatus === PAYMENT_STATES.COMPLETED;
+      
+      logger(`Payment verification complete:`, { 
+        finalStatus, 
+        justCaptured: txJustCaptured, 
+        paymentId: paymentIdAfterCapture,
+        success: isSuccess,
+        hasSubscription: !!subscription,
+        subscriptionCreated,
+        hasPlanData: !!planData
+      });
+
+      // Mark verification as completed
+      processingRequests.set(verificationTrackingKey, { timestamp: Date.now(), processing: false });
+
+      // Consistent response format with enhanced data including plan information
+      return new Response(JSON.stringify({
+        status: finalStatus,
+        success: isSuccess,
+        justCaptured: txJustCaptured,
+        paymentId: paymentIdAfterCapture || paymentIdToUse,
+        paypal: payPalRawResponse,
+        transaction: finalTransaction,
+        subscription: subscription,
+        subscriptionCreated,
+        plan: planData, // Include plan data for email
+        source: txJustCaptured ? "just_captured" : "existing",
+        requestId,
+        timestamp: new Date().toISOString(),
+        allParams: debugParams
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+
+    } finally {
+      // Ensure we always clean up the processing flag
+      processingRequests.set(verificationTrackingKey, { timestamp: Date.now(), processing: false });
     }
-
-    // PHASE 6: RESPONSE FORMATION
-    const finalStatus = payPalStatus || PAYMENT_STATES.UNKNOWN;
-    const isSuccess = finalStatus === PAYMENT_STATES.COMPLETED;
-    
-    logger(`Payment verification complete:`, { 
-      finalStatus, 
-      justCaptured: txJustCaptured, 
-      paymentId: paymentIdAfterCapture,
-      success: isSuccess,
-      hasSubscription: !!subscription,
-      subscriptionCreated,
-      hasPlanData: !!planData
-    });
-
-    // Consistent response format with enhanced data including plan information
-    return new Response(JSON.stringify({
-      status: finalStatus,
-      success: isSuccess,
-      justCaptured: txJustCaptured,
-      paymentId: paymentIdAfterCapture || paymentIdToUse,
-      paypal: payPalRawResponse,
-      transaction: finalTransaction,
-      subscription: subscription,
-      subscriptionCreated,
-      plan: planData, // Include plan data for email
-      source: txJustCaptured ? "just_captured" : "existing",
-      requestId,
-      timestamp: new Date().toISOString(),
-      allParams: debugParams
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
     
   } catch (error) {
     logger(`verify-paypal-payment FATAL ERROR:`, error);

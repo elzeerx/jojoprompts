@@ -230,6 +230,39 @@ export type Database = {
         }
         Relationships: []
       }
+      email_logs: {
+        Row: {
+          attempted_at: string | null
+          created_at: string | null
+          email_address: string
+          email_type: string
+          error_message: string | null
+          id: string
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          attempted_at?: string | null
+          created_at?: string | null
+          email_address: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          success?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          attempted_at?: string | null
+          created_at?: string | null
+          email_address?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string | null
