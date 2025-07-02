@@ -60,6 +60,12 @@ export function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
             <Link
+              to="/examples"
+              className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+            >
+              Examples
+            </Link>
+            <Link
               to="/prompts"
               className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
             >
@@ -181,6 +187,13 @@ export function Header() {
         {isMobileMenuOpen && (
           <div className="md:hidden animate-slide-down bg-white/95 backdrop-blur-sm border-t border-warm-gold/20">
             <nav className="py-3 space-y-1">
+              <Link
+                to="/examples"
+                className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Examples
+              </Link>
               <Link
                 to="/prompts"
                 className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"

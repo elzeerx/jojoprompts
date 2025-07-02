@@ -31,6 +31,7 @@ import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
+import ExamplesPage from "./pages/ExamplesPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ function App() {
                 <Route path="login" element={<LoginPage />} />
                 <Route path="reset-password" element={<ResetPasswordPage />} />
                 <Route path="signup" element={<SignupPage />} />
+                <Route path="examples" element={<ExamplesPage />} />
                 <Route path="prompts" element={<PromptsPage />} />
                 <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />
                 <Route path="prompts/midjourney" element={<MidjourneyPromptsPage />} />
