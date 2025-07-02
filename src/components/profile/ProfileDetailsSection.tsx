@@ -17,7 +17,6 @@ interface UserProfile {
   country?: string;
   phone_number?: string;
   social_links?: any;
-  timezone?: string;
 }
 
 interface ProfileDetailsSectionProps {
@@ -29,14 +28,13 @@ export function ProfileDetailsSection({ userProfile, onUpdate }: ProfileDetailsS
   const [bio, setBio] = useState(userProfile.bio || "");
   const [country, setCountry] = useState(userProfile.country || "");
   const [phoneNumber, setPhoneNumber] = useState(userProfile.phone_number || "");
-  const [timezone, setTimezone] = useState(userProfile.timezone || "");
   const [socialLinks, setSocialLinks] = useState(userProfile.social_links || {});
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleSocialLinkChange = (platform: string, url: string) => {
+  const handleSocialLinkChange = (platform: string, handle: string) => {
     setSocialLinks(prev => ({
       ...prev,
-      [platform]: url
+      [platform]: handle
     }));
   };
 
@@ -47,7 +45,6 @@ export function ProfileDetailsSection({ userProfile, onUpdate }: ProfileDetailsS
         bio,
         country,
         phone_number: phoneNumber,
-        timezone,
         social_links: socialLinks,
       });
     } finally {
@@ -59,7 +56,6 @@ export function ProfileDetailsSection({ userProfile, onUpdate }: ProfileDetailsS
     bio !== (userProfile.bio || "") ||
     country !== (userProfile.country || "") ||
     phoneNumber !== (userProfile.phone_number || "") ||
-    timezone !== (userProfile.timezone || "") ||
     JSON.stringify(socialLinks) !== JSON.stringify(userProfile.social_links || {});
 
   const getInitials = () => {
@@ -122,25 +118,14 @@ export function ProfileDetailsSection({ userProfile, onUpdate }: ProfileDetailsS
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                placeholder="Your country"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="timezone">Timezone</Label>
-              <Input
-                id="timezone"
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                placeholder="e.g., GMT+1, EST"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="country">Country</Label>
+            <Input
+              id="country"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              placeholder="Your country"
+            />
           </div>
           
           <div className="space-y-2">
@@ -168,14 +153,13 @@ export function ProfileDetailsSection({ userProfile, onUpdate }: ProfileDetailsS
             {['twitter', 'linkedin', 'github', 'website'].map((platform) => (
               <div key={platform} className="space-y-2">
                 <Label htmlFor={platform} className="capitalize">
-                  {platform}
+                  {platform === 'website' ? 'Website' : `${platform} Handle`}
                 </Label>
                 <Input
                   id={platform}
                   value={socialLinks[platform] || ""}
                   onChange={(e) => handleSocialLinkChange(platform, e.target.value)}
-                  placeholder={`Your ${platform} URL`}
-                  type="url"
+                  placeholder={platform === 'website' ? 'your-website.com' : `@your${platform}handle`}
                 />
               </div>
             ))}
