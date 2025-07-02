@@ -68,7 +68,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
     if (userIds.length > 0) {
       const { data: profilesData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, role, created_at, membership_tier')
+        .select('id, first_name, last_name, username, role, created_at')
         .in('id', userIds);
       
       if (profileError) {
@@ -97,7 +97,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
         first_name: profile?.first_name || null,
         last_name: profile?.last_name || null,
         role: profile?.role || 'user',
-        membership_tier: profile?.membership_tier || 'free'
+        username: profile?.username || ''
       };
     });
     

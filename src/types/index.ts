@@ -86,6 +86,7 @@ export interface UserProfile {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  username: string;
   created_at: string;
   role: string;
   last_sign_in_at: string | null;
