@@ -18,15 +18,21 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
     setIsLoading(true);
     setError(null);
     try {
+      console.log("Fetching prompts with profiles...");
       const { data, error } = await supabase
         .from("prompts")
         .select(`
           *,
-          profiles!inner(username)
+          profiles!fk_prompts_user_id(username)
         `)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase query error:", error);
+        throw error;
+      }
+      
+      console.log("Successfully fetched prompts:", data?.length || 0);
       
       const transformedData = (data ?? []).map((item) => {
         // Ensure metadata is always an object
