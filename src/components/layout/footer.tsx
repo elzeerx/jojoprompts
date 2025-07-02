@@ -102,7 +102,7 @@ export function Footer() {
               <li className="text-soft-bg/80 flex items-start">
                 <span className="mr-2 text-base">🔒</span>
                 <Link 
-                  to="/privacy-policy" 
+                  to="/privacy" 
                   className="hover:text-warm-gold transition-colors text-sm sm:text-base"
                 >
                   Privacy Policy
@@ -111,7 +111,7 @@ export function Footer() {
               <li className="text-soft-bg/80 flex items-start">
                 <span className="mr-2 text-base">📄</span>
                 <Link 
-                  to="/terms-of-service" 
+                  to="/terms" 
                   className="hover:text-warm-gold transition-colors text-sm sm:text-base"
                 >
                   Terms of Service
