@@ -20,7 +20,10 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
     try {
       const { data, error } = await supabase
         .from("prompts")
-        .select("*")
+        .select(`
+          *,
+          profiles(first_name, last_name)
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -35,6 +38,9 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         const metadataObj = metadata as Record<string, any>;
         const category = metadataObj.category || "";
 
+        const profile = item.profiles as any;
+        const uploaderName = profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '';
+        
         return {
           id: item.id,
           user_id: item.user_id,
@@ -45,6 +51,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
           image_url: null,
           prompt_type: item.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection',
           created_at: item.created_at || "",
+          uploader_name: uploaderName,
           metadata: {
             category: category,
             style: metadataObj.style ?? undefined,

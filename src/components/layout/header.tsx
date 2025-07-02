@@ -3,12 +3,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { Menu, X, User, LogOut, Settings, Heart } from "lucide-react";
+import { Menu, X, User, LogOut, Settings, Heart, Edit } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function Header() {
-  const { user, signOut, isAdmin } = useAuth();
+  const { user, signOut, isAdmin, isPrompter } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -116,6 +116,15 @@ export function Header() {
                     <Heart className="mr-3 h-4 w-4 text-warm-gold" />
                     <span className="text-dark-base font-medium">Favorites</span>
                   </DropdownMenuItem>
+                  {isPrompter && (
+                    <DropdownMenuItem
+                      onClick={() => navigate("/dashboard/prompter")}
+                      className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                    >
+                      <Edit className="mr-3 h-4 w-4 text-warm-gold" />
+                      <span className="text-dark-base font-medium">My Prompts</span>
+                    </DropdownMenuItem>
+                  )}
                   {isAdmin && (
                     <DropdownMenuItem
                       onClick={() => navigate("/admin")}
@@ -213,6 +222,15 @@ export function Header() {
                     >
                       Favorites
                     </Link>
+                    {isPrompter && (
+                      <Link
+                        to="/dashboard/prompter"
+                        className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        My Prompts
+                      </Link>
+                    )}
                     {isAdmin && (
                       <Link
                         to="/admin"

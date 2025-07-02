@@ -2,6 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { User } from "lucide-react";
 
 export function CardFooter({
   tags,
@@ -11,7 +12,8 @@ export function CardFooter({
   onEdit,
   onDelete,
   promptId,
-  isN8nWorkflow
+  isN8nWorkflow,
+  uploaderName
 }: {
   tags: string[];
   isSmallMobile: boolean;
@@ -21,6 +23,7 @@ export function CardFooter({
   onDelete?: (id: string) => void;
   promptId: string;
   isN8nWorkflow: boolean;
+  uploaderName?: string;
 }) {
   return (
     <>
@@ -41,6 +44,15 @@ export function CardFooter({
           )}
         </div>
       )}
+      
+      {/* Uploader info */}
+      {uploaderName && (
+        <div className="flex items-center gap-1 text-xs text-gray-500 mt-2">
+          <User className="h-3 w-3" />
+          <span>by {uploaderName}</span>
+        </div>
+      )}
+      
       {/* Action buttons */}
       <div className="mt-auto pt-2 space-y-2 flex-shrink-0">
         {!isLocked && (

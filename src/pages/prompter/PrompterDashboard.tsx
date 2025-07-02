@@ -3,12 +3,14 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, BarChart } from "lucide-react";
 import { AdminPromptCard } from "../admin/components/prompts/AdminPromptCard";
 import { PromptDialog } from "../admin/components/prompts/PromptDialog";
 import { type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PromptStatistics } from "@/components/statistics/PromptStatistics";
 
 export default function PrompterDashboard() {
   const { user, userRole, loading: authLoading } = useAuth();
@@ -124,8 +126,8 @@ export default function PrompterDashboard() {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-dark-base">My Prompts</h1>
-          <p className="text-muted-foreground">Create and manage your prompts</p>
+          <h1 className="text-3xl font-bold text-dark-base">Prompter Dashboard</h1>
+          <p className="text-muted-foreground">Create, manage, and track your prompts</p>
         </div>
         <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">
           <Plus className="mr-2 h-4 w-4" />
@@ -133,30 +135,46 @@ export default function PrompterDashboard() {
         </Button>
       </div>
       
-      {isLoading ? (
-        <div className="text-center py-8">
-          <div className="inline-block">
-            <Loader2 className="h-8 w-8 animate-spin text-warm-gold" />
-          </div>
-        </div>
-      ) : prompts.length === 0 ? (
-        <div className="text-center py-8 bg-soft-bg/30 rounded-xl border border-warm-gold/20 p-8">
-          <p className="text-muted-foreground mb-4">You haven't created any prompts yet</p>
-          <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">Create Your First Prompt</Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {prompts.map((prompt) => (
-            <AdminPromptCard
-              key={prompt.id}
-              prompt={prompt}
-              onEdit={handleEditPrompt}
-              onDelete={handleDeletePrompt}
-              initiallyFavorited={false}
-            />
-          ))}
-        </div>
-      )}
+      <Tabs defaultValue="prompts" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="prompts">My Prompts</TabsTrigger>
+          <TabsTrigger value="statistics">
+            <BarChart className="mr-2 h-4 w-4" />
+            Statistics
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="prompts" className="space-y-6">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block">
+                <Loader2 className="h-8 w-8 animate-spin text-warm-gold" />
+              </div>
+            </div>
+          ) : prompts.length === 0 ? (
+            <div className="text-center py-8 bg-soft-bg/30 rounded-xl border border-warm-gold/20 p-8">
+              <p className="text-muted-foreground mb-4">You haven't created any prompts yet</p>
+              <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">Create Your First Prompt</Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {prompts.map((prompt) => (
+                <AdminPromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  onEdit={handleEditPrompt}
+                  onDelete={handleDeletePrompt}
+                  initiallyFavorited={false}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="statistics" className="space-y-6">
+          <PromptStatistics userId={user?.id} isAdminView={false} />
+        </TabsContent>
+      </Tabs>
       
       <PromptDialog
         open={dialogOpen}
