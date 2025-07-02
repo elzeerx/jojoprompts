@@ -8,10 +8,113 @@ import { Sparkles, ArrowRight, Lock, Eye, Zap, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Prompt } from '@/types';
 import { useCategories } from '@/hooks/useCategories';
+import { ImageWrapper } from '@/components/ui/prompt-card/ImageWrapper';
+import { useImageLoading } from '@/components/ui/prompt-card/hooks/useImageLoading';
 
 interface ExamplePrompt extends Prompt {
   previewText: string;
   isLocked: boolean;
+}
+
+function ExampleCard({ prompt, index }: { prompt: ExamplePrompt; index: number }) {
+  const imageUrl = useImageLoading(prompt);
+
+  return (
+    <Card 
+      className="group bg-white hover:shadow-xl border border-gray-200 hover:border-warm-gold/30 transition-all duration-300 transform hover:-translate-y-2 animate-fade-in relative overflow-hidden"
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-lg font-semibold text-dark-base mb-2 group-hover:text-warm-gold transition-colors">
+              {prompt.title}
+            </CardTitle>
+            <div className="flex flex-wrap gap-2 mb-3">
+              <Badge variant="secondary" className="bg-warm-gold/10 text-warm-gold">
+                {prompt.prompt_type}
+              </Badge>
+              {prompt.metadata.category && (
+                <Badge variant="outline" className="border-muted-teal/30 text-muted-teal">
+                  {prompt.metadata.category}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 bg-warm-gold/10 px-2 py-1 rounded-full">
+            <Crown className="h-3 w-3 text-warm-gold" />
+            <span className="text-xs text-warm-gold font-medium">Premium</span>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        <div className="relative mb-4">
+          {/* Image Display */}
+          <div className="relative overflow-hidden rounded-xl bg-white/50">
+            <div className="aspect-video">
+              <ImageWrapper
+                src={imageUrl}
+                alt={prompt.title}
+                aspect={1}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              />
+            </div>
+            {/* Media files indicator */}
+            {prompt.metadata.media_files && prompt.metadata.media_files.length > 1 && (
+              <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+                +{prompt.metadata.media_files.length - 1} files
+              </div>
+            )}
+          </div>
+          
+          {/* Locked overlay */}
+          {prompt.isLocked && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-xl">
+              <div className="text-center">
+                <Lock className="h-6 w-6 text-warm-gold mx-auto mb-2" />
+                <p className="text-warm-gold font-medium text-sm">Premium Content</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Brief text preview */}
+        <div className="mb-4">
+          <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2">
+            {prompt.previewText}
+          </p>
+        </div>
+        
+        {/* Metadata */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+          <span>By Expert Creator</span>
+          {prompt.metadata.tags && prompt.metadata.tags.length > 0 && (
+            <div className="flex gap-1">
+              {prompt.metadata.tags.slice(0, 2).map((tag, tagIndex) => (
+                <span key={tagIndex} className="bg-gray-100 px-2 py-1 rounded">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* CTA Button */}
+        <Button 
+          asChild
+          variant="outline" 
+          className="w-full border-warm-gold/30 hover:border-warm-gold/50 text-warm-gold hover:bg-warm-gold/10 group-hover:shadow-md transition-all duration-300"
+        >
+          <Link to="/pricing" className="flex items-center justify-center gap-2">
+            <Zap className="h-4 w-4" />
+            Unlock This Prompt
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function ExamplesPage() {
@@ -165,84 +268,7 @@ export default function ExamplesPage() {
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {filteredPrompts.map((prompt, index) => (
-              <Card 
-                key={prompt.id} 
-                className="group bg-white hover:shadow-xl border border-gray-200 hover:border-warm-gold/30 transition-all duration-300 transform hover:-translate-y-2 animate-fade-in relative overflow-hidden"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg font-semibold text-dark-base mb-2 group-hover:text-warm-gold transition-colors">
-                        {prompt.title}
-                      </CardTitle>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <Badge variant="secondary" className="bg-warm-gold/10 text-warm-gold">
-                          {prompt.prompt_type}
-                        </Badge>
-                        {prompt.metadata.category && (
-                          <Badge variant="outline" className="border-muted-teal/30 text-muted-teal">
-                            {prompt.metadata.category}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 bg-warm-gold/10 px-2 py-1 rounded-full">
-                      <Crown className="h-3 w-3 text-warm-gold" />
-                      <span className="text-xs text-warm-gold font-medium">Premium</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <div className="relative">
-                    {/* Preview text with fade overlay */}
-                    <div className="relative">
-                      <p className="text-muted-foreground text-sm leading-relaxed mb-4">
-                        {prompt.previewText}
-                      </p>
-                      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent"></div>
-                    </div>
-                    
-                    {/* Locked overlay */}
-                    {prompt.isLocked && (
-                      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-lg">
-                        <div className="text-center">
-                          <Lock className="h-6 w-6 text-warm-gold mx-auto mb-2" />
-                          <p className="text-warm-gold font-medium text-sm">Premium Content</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Metadata */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
-                    <span>By Expert Creator</span>
-                    {prompt.metadata.tags && prompt.metadata.tags.length > 0 && (
-                      <div className="flex gap-1">
-                        {prompt.metadata.tags.slice(0, 2).map((tag, tagIndex) => (
-                          <span key={tagIndex} className="bg-gray-100 px-2 py-1 rounded">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* CTA Button */}
-                  <Button 
-                    asChild
-                    variant="outline" 
-                    className="w-full border-warm-gold/30 hover:border-warm-gold/50 text-warm-gold hover:bg-warm-gold/10 group-hover:shadow-md transition-all duration-300"
-                  >
-                    <Link to="/pricing" className="flex items-center justify-center gap-2">
-                      <Zap className="h-4 w-4" />
-                      Unlock This Prompt
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <ExampleCard key={prompt.id} prompt={prompt} index={index} />
             ))}
           </div>
         </Container>
