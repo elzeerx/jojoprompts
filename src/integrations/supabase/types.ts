@@ -46,6 +46,7 @@ export type Database = {
           description: string | null
           display_order: number
           features: Json
+          icon_image_path: string | null
           icon_name: string
           id: string
           image_path: string | null
@@ -61,6 +62,7 @@ export type Database = {
           description?: string | null
           display_order?: number
           features?: Json
+          icon_image_path?: string | null
           icon_name?: string
           id?: string
           image_path?: string | null
@@ -76,6 +78,7 @@ export type Database = {
           description?: string | null
           display_order?: number
           features?: Json
+          icon_image_path?: string | null
           icon_name?: string
           id?: string
           image_path?: string | null

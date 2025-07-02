@@ -266,7 +266,7 @@ export function CategoryDialog({
                     ) : (
                       <div className="space-y-2">
                         <ImageUpload
-                          value={formData.icon_image_path}
+                          value={formData.icon_image_path || ""}
                           onChange={(value) => setFormData(prev => ({ ...prev, icon_image_path: value }))}
                           label="Icon Image"
                           placeholder="Upload icon image or enter URL"
