@@ -63,7 +63,7 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-lg sm:text-xl font-semibold mt-0 mb-3 sm:mb-4 text-dark-base">6. Contact Us</h2>
           <p>
             If you have questions or comments about this Privacy Policy, please contact us at:<br />
-            <span className="font-medium text-warm-gold">Email: support@jojoprompts.com</span>
+            <span className="font-medium text-warm-gold">Email: info@jojoprompts.com</span>
           </p>
         </section>
       </div>
