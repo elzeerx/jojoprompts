@@ -49,7 +49,7 @@ export function CardFooter({
       {uploaderName && (
         <div className="flex items-center gap-1 text-xs text-gray-500 mt-2">
           <User className="h-3 w-3" />
-          <span>by {uploaderName}</span>
+          <span>by @{uploaderName}</span>
         </div>
       )}
       

@@ -22,7 +22,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         .from("prompts")
         .select(`
           *,
-          profiles!inner(first_name, last_name)
+          profiles!inner(username)
         `)
         .order("created_at", { ascending: false });
 
@@ -39,7 +39,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         const category = metadataObj.category || "";
 
         const profile = item.profiles as any;
-        const uploaderName = profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '';
+        const uploaderName = profile?.username || 'Unknown User';
         
         return {
           id: item.id,

@@ -38,7 +38,8 @@ export function useUserRoleManagement() {
             id: userId, 
             role: newRole,
             first_name: 'User', // Default first name for new profile
-            last_name: '' // Default empty last name for new profile
+            last_name: '', // Default empty last name for new profile
+            username: `user_${userId.substring(0, 8)}` // Generate username from user ID
           });
           
         if (insertError) {
