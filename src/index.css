@@ -263,6 +263,33 @@ body {
   }
 }
 
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes slide-x {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slide-y {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
 .animate-shimmer {
   animation: shimmer 2s infinite;
 }
@@ -289,6 +316,19 @@ body {
 
 .animate-fade-in-delayed {
   animation: fade-in-delayed 0.8s ease-out;
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease-in-out infinite;
+}
+
+.animate-slide-x {
+  animation: slide-x 15s linear infinite;
+}
+
+.animate-slide-y {
+  animation: slide-y 20s linear infinite;
 }
 
 /* Enhanced mobile-first custom classes */
@@ -334,6 +374,14 @@ body {
 
   .prompt-dialog {
     @apply max-w-[95vw] sm:max-w-4xl p-0 border-none bg-soft-bg rounded-2xl shadow-xl overflow-hidden;
+  }
+
+  /* Glassmorphism effects */
+  .glass-effect {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   /* Enhanced mobile touch targets */
