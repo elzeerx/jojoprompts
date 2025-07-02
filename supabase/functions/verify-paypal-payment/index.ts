@@ -47,14 +47,15 @@ async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: stri
 
     logger(`[EMAIL] Checking for existing email log for transaction: ${transactionId}`);
     
-    // Check database for existing successful email
+    // Check database for existing successful email using a proper approach
     const { data: existingLog, error: logCheckError } = await supabaseClient
       .from('email_logs')
       .select('id, success, attempted_at')
       .eq('email_type', 'payment_confirmation')
       .eq('email_address', userEmail)
-      .eq('error_message', transactionId) // Using error_message field to store transaction ID for duplicate detection
+      .ilike('error_message', `%${transactionId}%`) // Check if transaction ID is mentioned in error_message
       .eq('success', true)
+      .gte('attempted_at', new Date(Date.now() - EMAIL_COOLDOWN_MS).toISOString()) // Only check recent emails
       .order('attempted_at', { ascending: false })
       .limit(1);
 
@@ -280,20 +281,27 @@ serve(async (req: Request) => {
           // Send email if we have all required data (with comprehensive duplicate prevention)
           if (authUser?.email && planData && userData) {
             const userName = `${userData.first_name} ${userData.last_name}`.trim() || 'Valued Customer';
+            
+            // CRITICAL: Use consistent transaction ID for email duplicate detection
+            const transactionIdForEmail = localTx.paypal_payment_id || localTx.id;
+            logger(`[EMAIL] Attempting to send email for transaction: ${transactionIdForEmail}`);
+            
             const emailResult = await sendPaymentConfirmationEmail(
               supabaseClient,
               authUser.email,
               userName,
               planData.name || 'Premium Plan',
               planData.price_usd || 0,
-              localTx.paypal_payment_id || localTx.id,
+              transactionIdForEmail,
               logger
             );
             
             if (!emailResult.success && !emailResult.skipped) {
               logger(`[EMAIL] Failed to send confirmation email:`, emailResult.error);
             } else if (emailResult.skipped) {
-              logger(`[EMAIL] Email sending skipped:`, emailResult.reason);
+              logger(`[EMAIL] Email sending skipped - reason: ${emailResult.reason}`);
+            } else {
+              logger(`[EMAIL] Confirmation email sent successfully for transaction: ${transactionIdForEmail}`);
             }
           } else {
             logger(`[EMAIL] Missing required data for email - Email: ${!!authUser?.email}, Plan: ${!!planData}, User: ${!!userData}`);
