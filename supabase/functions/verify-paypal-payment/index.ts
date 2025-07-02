@@ -77,7 +77,7 @@ async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: stri
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
-            <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/default-prompt-images/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
+            <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
             <h1 style="margin: 0; font-size: 32px;">Payment Confirmed! 🎉</h1>
             <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Welcome to JoJo Prompts Premium</p>
           </div>
