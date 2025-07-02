@@ -12,6 +12,7 @@ import { User, CreditCard, Settings, Heart, BookOpen, AlertTriangle } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { DangerZone } from "@/components/account/DangerZone";
+import { ProfileSettings } from "@/components/profile/ProfileSettings";
 
 interface UserSubscription {
   id: string;
@@ -28,41 +29,17 @@ interface UserSubscription {
 
 export default function UserDashboardPage() {
   const { user, userRole } = useAuth();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [promptCount, setPromptCount] = useState(0);
 
   useEffect(() => {
     if (user) {
-      fetchUserProfile();
       fetchUserSubscription();
       fetchUserStats();
     }
   }, [user]);
 
-  const fetchUserProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user?.id)
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        setUserProfile(data);
-        setFirstName(data.first_name || "");
-        setLastName(data.last_name || "");
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-    }
-  };
 
   const fetchUserSubscription = async () => {
     try {
@@ -108,37 +85,6 @@ export default function UserDashboardPage() {
     }
   };
 
-  const updateProfile = async () => {
-    if (!user) return;
-
-    setIsUpdating(true);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          first_name: firstName,
-          last_name: lastName,
-        })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully.",
-      });
-
-      fetchUserProfile();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update profile",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -186,42 +132,7 @@ export default function UserDashboardPage() {
           </TabsList>
 
           <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input value={user.email || ""} disabled />
-                </div>
-                <div className="space-y-2">
-                  <Label>Role</Label>
-                  <Badge variant="secondary">{userRole || "user"}</Badge>
-                </div>
-                <Button onClick={updateProfile} disabled={isUpdating}>
-                  {isUpdating ? "Updating..." : "Update Profile"}
-                </Button>
-              </CardContent>
-            </Card>
+            <ProfileSettings />
           </TabsContent>
 
           <TabsContent value="subscription">
