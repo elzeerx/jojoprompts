@@ -22,7 +22,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         .from("prompts")
         .select(`
           *,
-          profiles(first_name, last_name)
+          profiles!inner(first_name, last_name)
         `)
         .order("created_at", { ascending: false });
 
