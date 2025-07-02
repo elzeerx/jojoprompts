@@ -111,7 +111,7 @@ export default function HomePage() {
               
               {!user && (
                 <p className="text-warm-gold/90 text-sm font-medium animate-pulse-gentle">
-                  🚀 Join 1,000+ creators getting better AI results
+                  🚀 Start getting better AI results today
                 </p>
               )}
             </div>

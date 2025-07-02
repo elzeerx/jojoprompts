@@ -96,7 +96,7 @@ export function FeatureHighlights() {
           </p>
           <div className="inline-flex items-center gap-2 text-warm-gold text-sm font-medium">
             <span>🚀</span>
-            <span>Join thousands getting better results today</span>
+            <span>Start getting professional results today</span>
           </div>
         </div>
       </div>

@@ -97,7 +97,7 @@ export function EnhancedHeroSection() {
             {/* Urgency indicator */}
             <div className="mt-6 text-center lg:text-left">
               <p className="text-warm-gold/90 text-sm font-medium animate-pulse-gentle">
-                🔥 Join thousands of creators getting better AI results today
+                🔥 Get professional AI prompts that actually work
               </p>
             </div>
           </div>

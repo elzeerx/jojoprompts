@@ -223,7 +223,7 @@ export default function ExamplesPage() {
               </div>
               <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-warm-gold/20">
                 <Sparkles className="h-4 w-4 text-warm-gold" />
-                <span>1000+ Premium prompts available</span>
+                <span>Premium prompts collection</span>
               </div>
             </div>
           </div>
@@ -274,14 +274,14 @@ export default function ExamplesPage() {
               </span>
             </h2>
             <p className="text-lg sm:text-xl mb-8 opacity-90">
-              Get instant access to 1000+ professional prompts, lifetime updates, and proven results.
+              Get instant access to our professional prompts collection, lifetime updates, and proven results.
             </p>
             
             {/* Benefits */}
             <div className="flex flex-wrap gap-4 justify-center mb-8 text-sm">
               <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/20">
                 <span className="text-green-400">✓</span>
-                <span>1000+ Premium Prompts</span>
+                <span>Premium Prompts Collection</span>
               </div>
               <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/20">
                 <span className="text-green-400">✓</span>
@@ -320,7 +320,7 @@ export default function ExamplesPage() {
             </div>
             
             <p className="text-warm-gold/90 text-sm font-medium mt-6 animate-pulse-gentle">
-              🚀 Join thousands of creators getting 10x better AI results
+              🚀 Start getting 10x better AI results today
             </p>
           </div>
         </Container>
