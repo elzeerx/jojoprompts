@@ -6,6 +6,7 @@ export interface Category {
   image_path: string | null;
   required_plan: string;
   icon_name: string;
+  icon_image_path?: string | null;
   features: string[];
   bg_gradient: string;
   link_path: string;
@@ -21,6 +22,7 @@ export interface CategoryFormData {
   image_path: string;
   required_plan: string;
   icon_name: string;
+  icon_image_path?: string;
   features: string[];
   bg_gradient: string;
   link_path: string;

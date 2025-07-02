@@ -23,6 +23,8 @@ import {
 import { Category, CategoryFormData } from "@/types/category";
 import { Badge } from "@/components/ui/badge";
 import { X, Plus } from "lucide-react";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { GradientSelector } from "@/components/ui/gradient-selector";
 
 interface CategoryDialogProps {
   open: boolean;
@@ -61,6 +63,7 @@ export function CategoryDialog({
     image_path: "",
     required_plan: "basic",
     icon_name: "Sparkles",
+    icon_image_path: "",
     features: [],
     bg_gradient: "from-warm-gold/20 via-warm-gold/10 to-transparent",
     link_path: "",
@@ -68,6 +71,7 @@ export function CategoryDialog({
   });
   const [newFeature, setNewFeature] = useState("");
   const [loading, setLoading] = useState(false);
+  const [iconType, setIconType] = useState<'lucide' | 'custom'>('lucide');
 
   useEffect(() => {
     if (category) {
@@ -77,11 +81,13 @@ export function CategoryDialog({
         image_path: category.image_path || "",
         required_plan: category.required_plan,
         icon_name: category.icon_name,
+        icon_image_path: (category as any).icon_image_path || "",
         features: category.features || [],
         bg_gradient: category.bg_gradient,
         link_path: category.link_path,
         is_active: category.is_active,
       });
+      setIconType((category as any).icon_image_path ? 'custom' : 'lucide');
     } else {
       setFormData({
         name: "",
@@ -89,11 +95,13 @@ export function CategoryDialog({
         image_path: "",
         required_plan: "basic",
         icon_name: "Sparkles",
+        icon_image_path: "",
         features: [],
         bg_gradient: "from-warm-gold/20 via-warm-gold/10 to-transparent",
         link_path: "",
         is_active: true,
       });
+      setIconType('lucide');
     }
   }, [category, open]);
 
@@ -186,17 +194,14 @@ export function CategoryDialog({
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="image_path">Image Path</Label>
-                    <Input
-                      id="image_path"
-                      value={formData.image_path}
-                      onChange={(e) => setFormData(prev => ({ ...prev, image_path: e.target.value }))}
-                      placeholder="/lovable-uploads/image.jpg"
-                    />
-                  </div>
+                  <ImageUpload
+                    value={formData.image_path}
+                    onChange={(value) => setFormData(prev => ({ ...prev, image_path: value }))}
+                    label="Category Image"
+                    placeholder="Enter image URL or upload an image"
+                  />
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Required Plan</Label>
                       <Select
@@ -217,42 +222,63 @@ export function CategoryDialog({
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Icon</Label>
+                      <Label>Icon Type</Label>
                       <Select
-                        value={formData.icon_name}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, icon_name: value }))}
+                        value={iconType}
+                        onValueChange={(value: 'lucide' | 'custom') => {
+                          setIconType(value);
+                          if (value === 'lucide') {
+                            setFormData(prev => ({ ...prev, icon_image_path: "" }));
+                          } else {
+                            setFormData(prev => ({ ...prev, icon_name: "" }));
+                          }
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {iconOptions.map(icon => (
-                            <SelectItem key={icon} value={icon}>
-                              {icon}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="lucide">Lucide Icon</SelectItem>
+                          <SelectItem value="custom">Custom Image</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Background Gradient</Label>
-                      <Select
-                        value={formData.bg_gradient}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, bg_gradient: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {gradientOptions.map((gradient, index) => (
-                            <SelectItem key={index} value={gradient}>
-                              Gradient {index + 1}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {iconType === 'lucide' ? (
+                      <div className="space-y-2">
+                        <Label>Lucide Icon</Label>
+                        <Select
+                          value={formData.icon_name}
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, icon_name: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {iconOptions.map(icon => (
+                              <SelectItem key={icon} value={icon}>
+                                {icon}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <ImageUpload
+                          value={formData.icon_image_path}
+                          onChange={(value) => setFormData(prev => ({ ...prev, icon_image_path: value }))}
+                          label="Icon Image"
+                          placeholder="Upload icon image or enter URL"
+                        />
+                      </div>
+                    )}
+
+                    <GradientSelector
+                      value={formData.bg_gradient}
+                      onChange={(value) => setFormData(prev => ({ ...prev, bg_gradient: value }))}
+                      label="Background Gradient"
+                    />
                   </div>
 
                   <div className="space-y-2">
