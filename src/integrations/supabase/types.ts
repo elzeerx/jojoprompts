@@ -297,6 +297,7 @@ export type Database = {
           last_name: string
           membership_tier: string | null
           role: string
+          username: string
         }
         Insert: {
           created_at?: string | null
@@ -305,6 +306,7 @@ export type Database = {
           last_name: string
           membership_tier?: string | null
           role?: string
+          username: string
         }
         Update: {
           created_at?: string | null
@@ -313,6 +315,7 @@ export type Database = {
           last_name?: string
           membership_tier?: string | null
           role?: string
+          username?: string
         }
         Relationships: []
       }
