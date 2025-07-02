@@ -95,19 +95,11 @@ export function CategoryShowcase() {
                         <img 
                           src={category.image_path} 
                           alt={category.name} 
-                          className={`w-full h-60 sm:h-72 lg:h-80 object-cover rounded-xl sm:rounded-2xl shadow-xl transition-all duration-500 ${!user ? "blur-sm" : ""} group-hover:shadow-2xl`} 
+                          className="w-full h-60 sm:h-72 lg:h-80 object-cover rounded-xl sm:rounded-2xl shadow-xl transition-all duration-500 group-hover:shadow-2xl" 
                         />
                       ) : (
                         <div className="w-full h-60 sm:h-72 lg:h-80 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl sm:rounded-2xl shadow-xl flex items-center justify-center">
                           <IconComponent className="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 text-gray-400" />
-                        </div>
-                      )}
-                      {!user && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl sm:rounded-2xl backdrop-blur-sm">
-                          <div className="text-center text-white animate-pulse">
-                            <Lock className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 mx-auto mb-2 sm:mb-3 opacity-80" />
-                            <p className="text-xs sm:text-sm font-medium">Subscribe to unlock</p>
-                          </div>
                         </div>
                       )}
                       {/* Plan Badge - Mobile optimized */}
