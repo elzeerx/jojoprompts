@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, Link, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ImageUploadProps {
   value?: string;
@@ -28,19 +29,32 @@ export function ImageUpload({
   const handleFileUpload = async (file: File) => {
     setUploading(true);
     try {
-      // Create a simple file path for now - in a real app you'd upload to storage
-      const fileName = `${Date.now()}-${file.name}`;
-      const filePath = `/lovable-uploads/${fileName}`;
+      // Create a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       
-      // For demo purposes, we'll just use the file path
-      // In a real implementation, you'd upload to Supabase storage
-      onChange(filePath);
+      // Upload to storage.bucket (the public bucket)
+      const { data, error } = await supabase.storage
+        .from('storage.bucket')
+        .upload(fileName, file);
+
+      if (error) {
+        throw error;
+      }
+
+      // Get the public URL for the uploaded file
+      const { data: { publicUrl } } = supabase.storage
+        .from('storage.bucket')
+        .getPublicUrl(fileName);
+      
+      onChange(publicUrl);
       
       toast({
         title: "Image uploaded",
         description: "Image has been uploaded successfully",
       });
     } catch (error) {
+      console.error('Upload error:', error);
       toast({
         title: "Upload failed",
         description: "Failed to upload image. Please try again.",
