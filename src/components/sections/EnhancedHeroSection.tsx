@@ -3,17 +3,19 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { ArrowRight, Sparkles, Zap, Shield, Clock } from "lucide-react";
-import { AnimatedBackground } from "./AnimatedBackground";
+
 import { useAuth } from "@/contexts/AuthContext";
 
 export function EnhancedHeroSection() {
   const { user } = useAuth();
 
   return (
-    <section className="pt-16 pb-12 sm:pt-20 sm:pb-16 md:pt-24 md:pb-20 relative overflow-hidden min-h-[85vh] sm:min-h-[90vh] flex items-center">
-      {/* Animated Background */}
-      <AnimatedBackground />
-      
+    <section 
+      className="pt-16 pb-12 sm:pt-20 sm:pb-16 md:pt-24 md:pb-20 relative overflow-hidden min-h-[85vh] sm:min-h-[90vh] flex items-center bg-cover bg-center"
+      style={{
+        backgroundImage: "url('/lovable-uploads/adc48b81-aea8-44bc-a53e-5aa9e7bcb323.png')",
+      }}
+    >
       {/* Dark overlay for better text readability */}
       <div className="absolute inset-0 bg-gradient-to-br from-dark-base/60 via-dark-base/40 to-transparent"></div>
       
