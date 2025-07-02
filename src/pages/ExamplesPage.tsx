@@ -18,6 +18,9 @@ interface ExamplePrompt extends Prompt {
 
 function ExampleCard({ prompt, index }: { prompt: ExamplePrompt; index: number }) {
   const imageUrl = useImageLoading(prompt);
+  
+  // Get first 3 words from prompt text
+  const firstThreeWords = prompt.prompt_text.split(' ').slice(0, 3).join(' ') + '...';
 
   return (
     <Card 
@@ -79,25 +82,11 @@ function ExampleCard({ prompt, index }: { prompt: ExamplePrompt; index: number }
           )}
         </div>
 
-        {/* Brief text preview */}
+        {/* Brief text preview - first 3 words */}
         <div className="mb-4">
-          <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2">
-            {prompt.previewText}
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            {firstThreeWords}
           </p>
-        </div>
-        
-        {/* Metadata */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
-          <span>By Expert Creator</span>
-          {prompt.metadata.tags && prompt.metadata.tags.length > 0 && (
-            <div className="flex gap-1">
-              {prompt.metadata.tags.slice(0, 2).map((tag, tagIndex) => (
-                <span key={tagIndex} className="bg-gray-100 px-2 py-1 rounded">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
         
         {/* CTA Button */}
