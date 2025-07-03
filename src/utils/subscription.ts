@@ -29,6 +29,17 @@ export function getSubscriptionTier(planName: string | null | undefined): string
   return 'none';
 }
 
+// New function to check feature access based on subscription plan features
+export function hasFeatureInPlan(features: string[] | any, featureName: string): boolean {
+  if (!features || !Array.isArray(features)) return false;
+  
+  // Check if the feature is explicitly listed in the plan features
+  return features.some(feature => 
+    typeof feature === 'string' && 
+    feature.toLowerCase().includes(featureName.toLowerCase())
+  );
+}
+
 export function isPromptLocked(
   promptType: string,
   userTier: string,

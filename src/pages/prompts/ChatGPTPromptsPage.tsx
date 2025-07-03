@@ -8,7 +8,7 @@ import { Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Prompt } from "@/types";
 import { Container } from "@/components/ui/container";
-import { getSubscriptionTier, isCategoryLocked } from "@/utils/subscription";
+import { getSubscriptionTier, hasFeatureInPlan } from "@/utils/subscription";
 
 export default function ChatGPTPromptsPage() {
   const { user, session } = useAuth();
@@ -56,15 +56,20 @@ export default function ChatGPTPromptsPage() {
           }
           
           let tier = 'none';
+          let hasAccess = false;
+          
           if (subscriptions?.subscription_plans) {
             const planName = subscriptions.subscription_plans.name;
+            const planFeatures = subscriptions.subscription_plans.features;
             tier = getSubscriptionTier(planName);
+            
+            console.log('ChatGPT access check:', { planName, planFeatures, tier });
+            
+            // Check if user's plan includes ChatGPT prompts feature
+            hasAccess = hasFeatureInPlan(planFeatures, 'ChatGPT prompts');
           }
           
           setUserTier(tier);
-          
-          // Check if user has access to ChatGPT prompts (basic plan requirement)
-          const hasAccess = !isCategoryLocked('basic', tier, isUserAdmin);
           setHasAccess(hasAccess);
         }
         
