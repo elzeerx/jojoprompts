@@ -19,8 +19,7 @@ export async function insertTransaction(supabaseClient: any, { userId, planId, p
       amount_usd: amount,
       status: 'pending',
       is_upgrade: isUpgrade || false,
-      upgrade_from_plan_id: upgradingFromPlanId || null,
-      prorate_amount: isUpgrade ? amount : 0
+      upgrade_from_plan_id: upgradingFromPlanId || null
     });
 }
 

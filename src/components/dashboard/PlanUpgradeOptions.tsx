@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,15 +14,6 @@ interface SubscriptionPlan {
   price_usd: number;
   is_lifetime: boolean;
   features: any;
-}
-
-interface UpgradeCost {
-  current_plan_price: number;
-  new_plan_price: number;
-  remaining_days: number;
-  remaining_value: number;
-  upgrade_cost: number;
-  savings: number;
 }
 
 interface UserSubscription {
@@ -42,7 +34,6 @@ interface PlanUpgradeOptionsProps {
 export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps) {
   const { user } = useAuth();
   const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
-  const [upgradeCosts, setUpgradeCosts] = useState<Record<string, UpgradeCost>>({});
   const [loading, setLoading] = useState(true);
   const [processingUpgrade, setProcessingUpgrade] = useState<string | null>(null);
 
@@ -67,22 +58,6 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
       ) || [];
 
       setAvailablePlans(higherTierPlans);
-
-      // Calculate upgrade costs for each plan
-      const costs: Record<string, UpgradeCost> = {};
-      for (const plan of higherTierPlans) {
-        const { data: costData } = await supabase
-          .rpc('calculate_upgrade_cost', {
-            current_plan_id: userSubscription.plan_id,
-            new_plan_id: plan.id,
-            current_subscription_end: userSubscription.end_date
-          });
-
-        if (costData && typeof costData === 'object' && !(costData as any).error) {
-          costs[plan.id] = costData as unknown as UpgradeCost;
-        }
-      }
-      setUpgradeCosts(costs);
     } catch (error) {
       console.error('Error fetching upgrade options:', error);
       toast({
@@ -95,11 +70,15 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
     }
   };
 
-  const handleUpgrade = async (planId: string) => {
-    console.log('handleUpgrade called with planId:', planId);
+  const calculateUpgradeCost = (targetPlanPrice: number) => {
+    const currentPlanPrice = userSubscription.subscription_plans.price_usd;
+    return targetPlanPrice - currentPlanPrice;
+  };
+
+  const handleUpgrade = async (planId: string, upgradeCost: number) => {
+    console.log('handleUpgrade called with planId:', planId, 'upgradeCost:', upgradeCost);
     console.log('user:', user);
     console.log('userSubscription:', userSubscription);
-    console.log('upgradeCosts:', upgradeCosts);
     
     if (!user) {
       console.log('No user found, returning early');
@@ -108,21 +87,14 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
     
     setProcessingUpgrade(planId);
     try {
-      const upgradeCost = upgradeCosts[planId];
-      console.log('upgradeCost for plan:', upgradeCost);
-      
-      if (!upgradeCost) {
-        throw new Error('Upgrade cost not calculated for this plan');
-      }
-      
-      if (upgradeCost.upgrade_cost <= 0) {
+      if (upgradeCost <= 0) {
         console.log('Free upgrade - calling handleFreeUpgrade');
         // Free upgrade - handle directly
         await handleFreeUpgrade(planId);
       } else {
-        console.log('Paid upgrade - calling handlePaidUpgrade with amount:', upgradeCost.upgrade_cost);
+        console.log('Paid upgrade - calling handlePaidUpgrade with amount:', upgradeCost);
         // Paid upgrade - redirect to payment
-        await handlePaidUpgrade(planId, upgradeCost.upgrade_cost);
+        await handlePaidUpgrade(planId, upgradeCost);
       }
     } catch (error) {
       console.error('Upgrade error:', error);
@@ -137,7 +109,7 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
   };
 
   const handleFreeUpgrade = async (planId: string) => {
-    // For free upgrades (when remaining value covers the difference)
+    // For free upgrades (when target plan price is same or lower - shouldn't happen with our filtering)
     const { error } = await supabase
       .from('user_subscriptions')
       .update({ 
@@ -218,7 +190,7 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
       </CardHeader>
       <CardContent className="space-y-4">
         {availablePlans.map((plan) => {
-          const cost = upgradeCosts[plan.id];
+          const upgradeCost = calculateUpgradeCost(plan.price_usd);
           const isProcessing = processingUpgrade === plan.id;
           
           return (
@@ -233,28 +205,24 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
                 <Badge variant="outline">Upgrade</Badge>
               </div>
               
-              {cost && (
-                <div className="text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span>Plan Price:</span>
-                    <span>${cost.new_plan_price}</span>
-                  </div>
-                  {cost.savings > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Credit from current plan:</span>
-                      <span>-${cost.savings.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-semibold border-t pt-1">
-                    <span>Upgrade Cost:</span>
-                    <span>${cost.upgrade_cost.toFixed(2)}</span>
-                  </div>
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span>Plan Price:</span>
+                  <span>${plan.price_usd}</span>
                 </div>
-              )}
+                <div className="flex justify-between">
+                  <span>Your Current Plan:</span>
+                  <span>${userSubscription.subscription_plans.price_usd}</span>
+                </div>
+                <div className="flex justify-between font-semibold border-t pt-1">
+                  <span>Upgrade Cost:</span>
+                  <span>${upgradeCost.toFixed(2)}</span>
+                </div>
+              </div>
               
               <Button 
-                onClick={() => handleUpgrade(plan.id)}
-                disabled={isProcessing || !cost}
+                onClick={() => handleUpgrade(plan.id, upgradeCost)}
+                disabled={isProcessing}
                 className="w-full"
                 variant="outline"
               >
@@ -264,7 +232,7 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
                     Processing...
                   </>
                 ) : (
-                  `Upgrade for $${cost?.upgrade_cost.toFixed(2) || '0.00'}`
+                  `Upgrade for $${upgradeCost.toFixed(2)}`
                 )}
               </Button>
             </div>

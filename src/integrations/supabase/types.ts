@@ -528,7 +528,6 @@ export type Database = {
           paypal_order_id: string | null
           paypal_payment_id: string | null
           plan_id: string
-          prorate_amount: number | null
           status: string
           upgrade_from_plan_id: string | null
           user_id: string
@@ -543,7 +542,6 @@ export type Database = {
           paypal_order_id?: string | null
           paypal_payment_id?: string | null
           plan_id: string
-          prorate_amount?: number | null
           status?: string
           upgrade_from_plan_id?: string | null
           user_id: string
@@ -558,7 +556,6 @@ export type Database = {
           paypal_order_id?: string | null
           paypal_payment_id?: string | null
           plan_id?: string
-          prorate_amount?: number | null
           status?: string
           upgrade_from_plan_id?: string | null
           user_id?: string
@@ -642,14 +639,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      calculate_upgrade_cost: {
-        Args: {
-          current_plan_id: string
-          new_plan_id: string
-          current_subscription_end: string
-        }
-        Returns: Json
-      }
       can_manage_prompts: {
         Args: { _user_id: string }
         Returns: boolean
