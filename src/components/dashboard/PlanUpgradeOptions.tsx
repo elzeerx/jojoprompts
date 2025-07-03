@@ -96,16 +96,31 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
   };
 
   const handleUpgrade = async (planId: string) => {
-    if (!user) return;
+    console.log('handleUpgrade called with planId:', planId);
+    console.log('user:', user);
+    console.log('userSubscription:', userSubscription);
+    console.log('upgradeCosts:', upgradeCosts);
+    
+    if (!user) {
+      console.log('No user found, returning early');
+      return;
+    }
     
     setProcessingUpgrade(planId);
     try {
       const upgradeCost = upgradeCosts[planId];
+      console.log('upgradeCost for plan:', upgradeCost);
+      
+      if (!upgradeCost) {
+        throw new Error('Upgrade cost not calculated for this plan');
+      }
       
       if (upgradeCost.upgrade_cost <= 0) {
+        console.log('Free upgrade - calling handleFreeUpgrade');
         // Free upgrade - handle directly
         await handleFreeUpgrade(planId);
       } else {
+        console.log('Paid upgrade - calling handlePaidUpgrade with amount:', upgradeCost.upgrade_cost);
         // Paid upgrade - redirect to payment
         await handlePaidUpgrade(planId, upgradeCost.upgrade_cost);
       }
