@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,13 +42,14 @@ export default function ChatGPTPromptsPage() {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
-          // Check user's subscription
+          // Get the most recent active subscription - FIXED QUERY
           const { data: subscriptions, error } = await supabase
             .from("user_subscriptions")
             .select("plan_id, subscription_plans:plan_id(name, features)")
             .eq("user_id", user.id)
             .eq("status", "active")
-            .maybeSingle();
+            .order("created_at", { ascending: false })
+            .limit(1);
           
           if (error && error.code !== "PGRST116") {
             console.error("Error checking subscription:", error);
@@ -58,15 +58,28 @@ export default function ChatGPTPromptsPage() {
           let tier = 'none';
           let hasAccess = false;
           
-          if (subscriptions?.subscription_plans) {
-            const planName = subscriptions.subscription_plans.name;
-            const planFeatures = subscriptions.subscription_plans.features;
+          console.log('Raw subscription data:', subscriptions);
+          
+          if (subscriptions && subscriptions.length > 0) {
+            const subscription = subscriptions[0];
+            const planName = subscription.subscription_plans?.name;
+            const planFeatures = subscription.subscription_plans?.features;
             tier = getSubscriptionTier(planName);
             
-            console.log('ChatGPT access check:', { planName, planFeatures, tier });
+            console.log('ChatGPT access check:', { 
+              planName, 
+              planFeatures, 
+              tier,
+              userId: user.id,
+              subscriptionCount: subscriptions.length
+            });
             
             // Check if user's plan includes ChatGPT prompts feature
             hasAccess = hasFeatureInPlan(planFeatures, 'ChatGPT prompts');
+            
+            console.log('ChatGPT access result:', { hasAccess, featureCheck: planFeatures });
+          } else {
+            console.log('No active subscriptions found for user:', user.id);
           }
           
           setUserTier(tier);
