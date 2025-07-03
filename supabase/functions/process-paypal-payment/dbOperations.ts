@@ -9,7 +9,7 @@ export function makeSupabaseClient() {
 }
 
 // Insert transaction
-export async function insertTransaction(supabaseClient: any, { userId, planId, paypalOrderId, amount }: any) {
+export async function insertTransaction(supabaseClient: any, { userId, planId, paypalOrderId, amount, isUpgrade, upgradingFromPlanId }: any) {
   return supabaseClient
     .from('transactions')
     .insert({
@@ -17,7 +17,10 @@ export async function insertTransaction(supabaseClient: any, { userId, planId, p
       plan_id: planId,
       paypal_order_id: paypalOrderId,
       amount_usd: amount,
-      status: 'pending'
+      status: 'pending',
+      is_upgrade: isUpgrade || false,
+      upgrade_from_plan_id: upgradingFromPlanId || null,
+      prorate_amount: isUpgrade ? amount : 0
     });
 }
 
@@ -47,6 +50,47 @@ export async function createUserSubscription(supabaseClient: any, { userId, plan
       payment_id: paymentId,
       transaction_id: transactionId,
       status: 'active',
+      end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+    });
+}
+
+// Handle subscription upgrade
+export async function upgradeUserSubscription(supabaseClient: any, { currentSubscriptionId, newPlanId, paymentId, transactionId }: any) {
+  // Cancel the current subscription
+  const { error: cancelError } = await supabaseClient
+    .from('user_subscriptions')
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', currentSubscriptionId);
+
+  if (cancelError) {
+    throw new Error(`Failed to cancel current subscription: ${cancelError.message}`);
+  }
+
+  // Get user ID from current subscription
+  const { data: currentSub, error: fetchError } = await supabaseClient
+    .from('user_subscriptions')
+    .select('user_id, plan_id')
+    .eq('id', currentSubscriptionId)
+    .single();
+
+  if (fetchError || !currentSub) {
+    throw new Error('Failed to fetch current subscription details');
+  }
+
+  // Create new subscription with upgraded plan
+  return supabaseClient
+    .from('user_subscriptions')
+    .insert({
+      user_id: currentSub.user_id,
+      plan_id: newPlanId,
+      payment_method: 'paypal',
+      payment_id: paymentId,
+      transaction_id: transactionId,
+      status: 'active',
+      start_date: new Date().toISOString(),
       end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
     });
 }

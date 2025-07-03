@@ -524,10 +524,13 @@ export type Database = {
           created_at: string
           error_message: string | null
           id: string
+          is_upgrade: boolean | null
           paypal_order_id: string | null
           paypal_payment_id: string | null
           plan_id: string
+          prorate_amount: number | null
           status: string
+          upgrade_from_plan_id: string | null
           user_id: string
         }
         Insert: {
@@ -536,10 +539,13 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           id?: string
+          is_upgrade?: boolean | null
           paypal_order_id?: string | null
           paypal_payment_id?: string | null
           plan_id: string
+          prorate_amount?: number | null
           status?: string
+          upgrade_from_plan_id?: string | null
           user_id: string
         }
         Update: {
@@ -548,16 +554,26 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           id?: string
+          is_upgrade?: boolean | null
           paypal_order_id?: string | null
           paypal_payment_id?: string | null
           plan_id?: string
+          prorate_amount?: number | null
           status?: string
+          upgrade_from_plan_id?: string | null
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "transactions_plan_id_fkey"
             columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_upgrade_from_plan_id_fkey"
+            columns: ["upgrade_from_plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
@@ -626,6 +642,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_upgrade_cost: {
+        Args: {
+          current_plan_id: string
+          new_plan_id: string
+          current_subscription_end: string
+        }
+        Returns: Json
+      }
       can_manage_prompts: {
         Args: { _user_id: string }
         Returns: boolean

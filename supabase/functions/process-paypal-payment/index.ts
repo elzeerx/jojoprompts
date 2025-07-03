@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getPayPalConfig } from './paypalConfig.ts';
 import { fetchPayPalAccessToken } from './paypalToken.ts';
 import { getSiteUrl } from './siteUrl.ts';
-import { makeSupabaseClient, insertTransaction, updateTransactionOnCapture, createUserSubscription } from './dbOperations.ts';
+import { makeSupabaseClient, insertTransaction, updateTransactionOnCapture, createUserSubscription, upgradeUserSubscription } from './dbOperations.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,7 +15,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
   try {
-    const { action, orderId, planId, userId, amount, appliedDiscount } = await req.json();
+    const { action, orderId, planId, userId, amount, appliedDiscount, isUpgrade, upgradingFromPlanId, currentSubscriptionId } = await req.json();
     const supabaseClient = makeSupabaseClient();
 
     // Handle direct activation for 100% discounts
@@ -173,12 +173,16 @@ serve(async (req) => {
       }
 
       // Enhanced transaction record with better metadata
-      const { error: dbError } = await insertTransaction(supabaseClient, {
+      const transactionData = {
         userId,
         planId,
         paypalOrderId: orderData.id,
-        amount
-      });
+        amount,
+        isUpgrade: isUpgrade || false,
+        upgradingFromPlanId: upgradingFromPlanId || null
+      };
+      
+      const { error: dbError } = await insertTransaction(supabaseClient, transactionData);
 
       if (dbError) {
         console.error('Database error (insert transaction):', dbError);
@@ -253,16 +257,33 @@ serve(async (req) => {
       }
 
       if (paymentStatus === 'COMPLETED') {
-        const { error: subscriptionError } = await createUserSubscription(supabaseClient, {
-          userId,
-          planId,
-          paymentId,
-          transactionId: transaction.id
-        });
+        // Check if this is an upgrade transaction
+        if (transaction.is_upgrade && currentSubscriptionId) {
+          console.log('Processing subscription upgrade:', { currentSubscriptionId, planId });
+          const { error: upgradeError } = await upgradeUserSubscription(supabaseClient, {
+            currentSubscriptionId,
+            newPlanId: planId,
+            paymentId,
+            transactionId: transaction.id
+          });
 
-        if (subscriptionError) {
-          console.error('Subscription creation error after capture:', subscriptionError);
-          // Payment was successful - just log subscription error, don't abort
+          if (upgradeError) {
+            console.error('Subscription upgrade error after capture:', upgradeError);
+            // Payment was successful - just log upgrade error, don't abort
+          }
+        } else {
+          // Regular new subscription
+          const { error: subscriptionError } = await createUserSubscription(supabaseClient, {
+            userId,
+            planId,
+            paymentId,
+            transactionId: transaction.id
+          });
+
+          if (subscriptionError) {
+            console.error('Subscription creation error after capture:', subscriptionError);
+            // Payment was successful - just log subscription error, don't abort
+          }
         }
       }
 

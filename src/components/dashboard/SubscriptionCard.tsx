@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard } from "lucide-react";
+import { CreditCard, ArrowUp } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { PlanUpgradeOptions } from "./PlanUpgradeOptions";
 
 interface UserSubscription {
   id: string;
@@ -36,25 +38,30 @@ export function SubscriptionCard({ userSubscription }: SubscriptionCardProps) {
       </CardHeader>
       <CardContent>
         {userSubscription ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">{userSubscription.subscription_plans.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  ${userSubscription.subscription_plans.price_usd} 
-                  {userSubscription.subscription_plans.is_lifetime ? " (Lifetime)" : " /year"}
-                </p>
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">{userSubscription.subscription_plans.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    ${userSubscription.subscription_plans.price_usd} 
+                    {userSubscription.subscription_plans.is_lifetime ? " (Lifetime)" : " /year"}
+                  </p>
+                </div>
+                <Badge variant="default" className="bg-green-100 text-green-800">
+                  Active
+                </Badge>
               </div>
-              <Badge variant="default" className="bg-green-100 text-green-800">
-                Active
-              </Badge>
+              <div className="text-sm text-muted-foreground">
+                <p>Started: {formatDate(userSubscription.start_date)}</p>
+                {userSubscription.end_date && (
+                  <p>Expires: {formatDate(userSubscription.end_date)}</p>
+                )}
+              </div>
             </div>
-            <div className="text-sm text-muted-foreground">
-              <p>Started: {formatDate(userSubscription.start_date)}</p>
-              {userSubscription.end_date && (
-                <p>Expires: {formatDate(userSubscription.end_date)}</p>
-              )}
-            </div>
+            
+            {/* Upgrade Options */}
+            <PlanUpgradeOptions userSubscription={userSubscription} />
           </div>
         ) : (
           <div className="text-center py-8">
