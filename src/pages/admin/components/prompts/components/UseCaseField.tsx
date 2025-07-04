@@ -46,37 +46,75 @@ export function UseCaseField({ value, onChange, promptText, disabled }: UseCaseF
       }
 
       console.log("UseCaseField - Session verified, calling edge function");
+      console.log("UseCaseField - Session details:", {
+        userId: session.user?.id?.substring(0, 8) + '***',
+        hasAccessToken: !!session.access_token,
+        tokenType: session.token_type
+      });
       
       const { data, error } = await supabase.functions.invoke('generate-use-case', {
-        body: { prompt_text: promptText }
+        body: { 
+          prompt_text: promptText.trim()
+        }
       });
+
+      console.log("UseCaseField - Edge function response:", { data, error });
 
       if (error) {
         console.error("UseCaseField - Edge function error:", error);
-        throw error;
+        
+        // Handle specific error types
+        if (error.message?.includes('Authentication') || error.message?.includes('401')) {
+          throw new Error("Authentication failed. Please refresh the page and try again.");
+        } else if (error.message?.includes('OpenAI') || error.message?.includes('502')) {
+          throw new Error("AI service temporarily unavailable. Please try again in a moment.");
+        } else if (error.message?.includes('400')) {
+          throw new Error("Invalid prompt text. Please check your input and try again.");
+        }
+        
+        throw new Error(error.message || "Unknown error occurred");
+      }
+
+      if (!data) {
+        console.error("UseCaseField - No data returned from edge function");
+        throw new Error("No response received from the service");
       }
 
       console.log("UseCaseField - Generated use case from edge function:", data);
 
       const useCase = data.use_case || "";
+      
+      if (!useCase.trim()) {
+        console.warn("UseCaseField - Empty use case generated");
+        toast({
+          title: "Generated empty use case",
+          description: "The AI couldn't determine a specific use case. Please try a more detailed prompt or enter manually.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       onChange(useCase);
 
       toast({
         title: "Use case generated!",
-        description: useCase ? `Generated: ${useCase.substring(0, 50)}...` : "Use case generated successfully",
+        description: `Generated: ${useCase}`,
       });
 
     } catch (error) {
       console.error("UseCaseField - Error generating use case:", error);
       
-      // Provide more specific error messages
+      // Provide user-friendly error messages
       let errorMessage = "Could not auto-generate use case. You can still fill it manually.";
-      if (error.message?.includes("Authentication")) {
+      
+      if (error.message?.includes("Authentication") || error.message?.includes("Session")) {
         errorMessage = "Authentication error. Please refresh the page and try again.";
-      } else if (error.message?.includes("Session")) {
-        errorMessage = "Session expired. Please refresh the page and log in again.";
-      } else if (error.message?.includes("OpenAI")) {
+      } else if (error.message?.includes("AI service") || error.message?.includes("OpenAI")) {
         errorMessage = "AI service temporarily unavailable. Please try again later.";
+      } else if (error.message?.includes("prompt text") || error.message?.includes("Invalid")) {
+        errorMessage = "Invalid prompt text. Please check your input and try again.";
+      } else if (error.message?.includes("network") || error.message?.includes("fetch")) {
+        errorMessage = "Network error. Please check your connection and try again.";
       }
       
       toast({
