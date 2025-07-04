@@ -27,14 +27,43 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
     setIsGenerating(true);
     
     try {
-      console.log("AutoGenerateButton - Calling generate-metadata function with prompt:", promptText);
+      console.log("AutoGenerateButton - Starting metadata generation");
+      console.log("AutoGenerateButton - User session check:", {
+        promptLength: promptText.length
+      });
+
+      // Verify we have a valid session before making the call
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("AutoGenerateButton - Session error:", sessionError);
+        throw new Error(`Session error: ${sessionError.message}`);
+      }
+      
+      if (!session) {
+        console.error("AutoGenerateButton - No active session found");
+        throw new Error("No active session found. Please log in again.");
+      }
+
+      console.log("AutoGenerateButton - Session verified, calling edge function");
+      console.log("AutoGenerateButton - Session details:", {
+        userId: session.user?.id?.substring(0, 8) + '***',
+        tokenType: session.token_type,
+        hasAccessToken: !!session.access_token
+      });
       
       const { data, error } = await supabase.functions.invoke('generate-metadata', {
         body: { prompt_text: promptText }
       });
 
       if (error) {
-        console.error("AutoGenerateButton - Error calling generate-metadata function:", error);
+        console.error("AutoGenerateButton - Edge function error:", error);
+        console.error("AutoGenerateButton - Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
@@ -58,9 +87,20 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
 
     } catch (error) {
       console.error("AutoGenerateButton - Error generating metadata:", error);
+      
+      // Provide more specific error messages
+      let errorMessage = "Could not auto-generate metadata. You can still fill it manually.";
+      if (error.message?.includes("Authentication")) {
+        errorMessage = "Authentication error. Please refresh the page and try again.";
+      } else if (error.message?.includes("Session")) {
+        errorMessage = "Session expired. Please refresh the page and log in again.";
+      } else if (error.message?.includes("OpenAI")) {
+        errorMessage = "AI service temporarily unavailable. Please try again later.";
+      }
+      
       toast({
         title: "Generation failed",
-        description: "Could not auto-generate metadata. You can still fill it manually.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
