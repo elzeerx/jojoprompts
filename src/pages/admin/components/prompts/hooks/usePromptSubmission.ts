@@ -142,9 +142,11 @@ export function usePromptSubmission({
       onSuccess();
       onOpenChange(false);
     } catch (error) {
+      console.error("usePromptSubmission - Error saving prompt:", error);
+      const errorMessage = error.message || "Failed to save prompt";
       toast({
         title: "Error",
-        description: "Failed to save prompt",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
