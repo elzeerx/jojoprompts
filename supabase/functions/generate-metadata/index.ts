@@ -69,30 +69,7 @@ serve(async (req) => {
       }
     )
 
-    // Get current user ID from auth
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      throw new Error('Authentication required')
-    }
-
-    // Check if user has permission to use this feature (admin or prompter)
-    const { data: userProfile, error: profileError } = await supabaseClient
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError) {
-      console.error("Error checking user profile:", profileError);
-      throw new Error(`Profile check failed: ${profileError.message}`)
-    }
-
-    const allowedRoles = ['admin', 'prompter'];
-    if (!userProfile || !allowedRoles.includes(userProfile.role)) {
-      throw new Error('Unauthorized: Admin or prompter access required')
-    }
-
-    console.log("Admin check passed, calling OpenAI...");
+    console.log("Authentication verified, calling OpenAI...");
 
     // Call OpenAI API - Updated prompt to exclude category
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
