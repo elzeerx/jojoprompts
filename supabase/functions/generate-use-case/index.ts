@@ -71,7 +71,7 @@ serve(async (req) => {
       }
     )
 
-    // Verify user authentication
+    // Verify user authentication  
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     console.log("User authentication check:", { 
       userExists: !!user, 
@@ -83,19 +83,6 @@ serve(async (req) => {
       console.error("Authentication failed:", userError?.message);
       throw new Error(`Authentication failed: ${userError?.message || 'No user found'}`)
     }
-
-    // Get user profile for logging
-    const { data: userProfile, error: profileError } = await supabaseClient
-      .from('profiles')
-      .select('role, username')
-      .eq('id', user.id)
-      .single();
-    
-    console.log("User profile check:", { 
-      role: userProfile?.role, 
-      username: userProfile?.username,
-      profileError: profileError?.message 
-    });
 
     console.log("Authentication verified, calling OpenAI...");
 
