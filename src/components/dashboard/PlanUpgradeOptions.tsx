@@ -110,15 +110,30 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
 
   const handleFreeUpgrade = async (planId: string) => {
     // For free upgrades (when target plan price is same or lower - shouldn't happen with our filtering)
-    const { error } = await supabase
+    // Cancel current subscription and create new one to maintain proper history
+    const { error: cancelError } = await supabase
       .from('user_subscriptions')
       .update({ 
-        plan_id: planId,
+        status: 'cancelled',
         updated_at: new Date().toISOString()
       })
       .eq('id', userSubscription.id);
 
-    if (error) throw error;
+    if (cancelError) throw cancelError;
+
+    // Create new subscription with upgraded plan
+    const { error: createError } = await supabase
+      .from('user_subscriptions')
+      .insert({
+        user_id: user?.id,
+        plan_id: planId,
+        payment_method: 'upgrade',
+        status: 'active',
+        start_date: new Date().toISOString(),
+        end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      });
+
+    if (createError) throw createError;
 
     toast({
       title: "Upgrade Successful",

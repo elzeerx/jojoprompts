@@ -55,20 +55,7 @@ export async function createUserSubscription(supabaseClient: any, { userId, plan
 
 // Handle subscription upgrade
 export async function upgradeUserSubscription(supabaseClient: any, { currentSubscriptionId, newPlanId, paymentId, transactionId }: any) {
-  // Cancel the current subscription
-  const { error: cancelError } = await supabaseClient
-    .from('user_subscriptions')
-    .update({
-      status: 'cancelled',
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', currentSubscriptionId);
-
-  if (cancelError) {
-    throw new Error(`Failed to cancel current subscription: ${cancelError.message}`);
-  }
-
-  // Get user ID from current subscription
+  // Get user ID from current subscription first
   const { data: currentSub, error: fetchError } = await supabaseClient
     .from('user_subscriptions')
     .select('user_id, plan_id')
@@ -77,6 +64,20 @@ export async function upgradeUserSubscription(supabaseClient: any, { currentSubs
 
   if (fetchError || !currentSub) {
     throw new Error('Failed to fetch current subscription details');
+  }
+
+  // Cancel ALL current active subscriptions for this user (safety measure)
+  const { error: cancelError } = await supabaseClient
+    .from('user_subscriptions')
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString()
+    })
+    .eq('user_id', currentSub.user_id)
+    .eq('status', 'active');
+
+  if (cancelError) {
+    throw new Error(`Failed to cancel current subscriptions: ${cancelError.message}`);
   }
 
   // Create new subscription with upgraded plan

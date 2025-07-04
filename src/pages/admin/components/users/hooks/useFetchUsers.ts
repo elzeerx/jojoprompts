@@ -78,20 +78,26 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
         throw usersError;
       }
 
-      // Enhancement: Get user subscriptions
+      // Enhancement: Get user subscriptions - get most recent active subscription per user
       const { data: subscriptions, error: subscriptionsError } = await supabase
         .from('user_subscriptions')
-        .select('user_id, plan_id(id, name)')
-        .eq('status', 'active');
+        .select('user_id, plan_id(id, name), created_at')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
 
       if (subscriptionsError) throw subscriptionsError;
 
-      // Map subscriptions to users
+      // Map subscriptions to users - get most recent subscription per user
       const usersWithSubscriptions = usersFunctionData.users.map((user: UserProfile) => {
-        const subscription = subscriptions?.find((sub: any) => sub.user_id === user.id);
+        // Find the most recent subscription for this user
+        const userSubscriptions = subscriptions?.filter((sub: any) => sub.user_id === user.id) || [];
+        const latestSubscription = userSubscriptions.sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+        
         return {
           ...user,
-          subscription: subscription ? { plan_name: subscription.plan_id?.name } : null
+          subscription: latestSubscription ? { plan_name: latestSubscription.plan_id?.name } : null
         };
       });
 
