@@ -69,15 +69,27 @@ serve(async (req) => {
       }
     )
 
-    // Check if user is admin
-    const { data: isAdmin, error: adminCheckError } = await supabaseClient.rpc('is_admin')
-    if (adminCheckError) {
-      console.error("Error checking admin status:", adminCheckError);
-      throw new Error(`Admin check failed: ${adminCheckError.message}`)
+    // Get current user ID from auth
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Authentication required')
     }
-    
-    if (!isAdmin) {
-      throw new Error('Unauthorized: Admin access required')
+
+    // Check if user has permission to use this feature (admin or prompter)
+    const { data: userProfile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Error checking user profile:", profileError);
+      throw new Error(`Profile check failed: ${profileError.message}`)
+    }
+
+    const allowedRoles = ['admin', 'prompter'];
+    if (!userProfile || !allowedRoles.includes(userProfile.role)) {
+      throw new Error('Unauthorized: Admin or prompter access required')
     }
 
     console.log("Admin check passed, calling OpenAI...");
