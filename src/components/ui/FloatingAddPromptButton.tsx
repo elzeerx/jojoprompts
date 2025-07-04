@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { PlusCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { PromptDialog } from "@/pages/admin/components/prompts/PromptDialog";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -12,11 +13,12 @@ interface FloatingAddPromptButtonProps {
 }
 
 export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAddPromptButtonProps) {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
+  const { canManagePrompts, loading } = useUserPermissions();
   const [open, setOpen] = useState(false);
 
-  // Only render for admin users
-  if (!user || !isAdmin) return null;
+  // Only render for users with prompt management permissions
+  if (!user || !canManagePrompts || loading) return null;
 
   const handleSuccess = async () => {
     // Close the dialog
