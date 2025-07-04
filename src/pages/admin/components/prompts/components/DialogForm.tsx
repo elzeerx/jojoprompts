@@ -272,6 +272,7 @@ export function DialogForm({
         <TextPromptFields
           metadata={formData.metadata}
           onMetadataChange={updateMetadata}
+          promptText={formData.promptText}
         />
       )}
 
