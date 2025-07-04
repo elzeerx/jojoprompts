@@ -85,6 +85,32 @@ serve(async (req) => {
       throw new Error(`Authentication failed: ${userError?.message || 'No user found'}`)
     }
 
+    // Check user permissions using the database function
+    const { data: canManagePromptsResult, error: permissionError } = await supabaseClient
+      .rpc('can_manage_prompts', { _user_id: user.id });
+    
+    console.log("Permission check result:", { 
+      canManagePrompts: canManagePromptsResult,
+      permissionError: permissionError?.message 
+    });
+    
+    if (permissionError) {
+      console.error("Permission check failed:", permissionError);
+      throw new Error(`Permission check failed: ${permissionError.message}`);
+    }
+    
+    if (!canManagePromptsResult) {
+      console.error("User lacks permissions for metadata generation");
+      return new Response(
+        JSON.stringify({ 
+          error: 'Insufficient permissions. Only admins, prompters, and jadmins can auto-generate metadata.',
+          style: "",
+          tags: []
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
     // Get user profile for logging
     const { data: userProfile, error: profileError } = await supabaseClient
       .from('profiles')
@@ -98,7 +124,7 @@ serve(async (req) => {
       profileError: profileError?.message 
     });
 
-    console.log("Authentication verified, calling OpenAI...");
+    console.log("Authentication and permissions verified, calling OpenAI...");
 
     // Call OpenAI API - Updated prompt to exclude category
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Wand2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 
 interface AutoGenerateButtonProps {
   promptText: string;
@@ -13,6 +14,27 @@ interface AutoGenerateButtonProps {
 
 export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }: AutoGenerateButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const { canManagePrompts, loading: permissionsLoading } = useUserPermissions();
+
+  // Don't render if user doesn't have permissions
+  if (permissionsLoading) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={true}
+        className="flex items-center gap-2"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Checking permissions...
+      </Button>
+    );
+  }
+
+  if (!canManagePrompts) {
+    return null; // Hide the button for users without permissions
+  }
 
   const handleAutoGenerate = async () => {
     if (!promptText.trim()) {
@@ -94,6 +116,8 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
         errorMessage = "Authentication error. Please refresh the page and try again.";
       } else if (error.message?.includes("Session")) {
         errorMessage = "Session expired. Please refresh the page and log in again.";
+      } else if (error.message?.includes("Insufficient permissions")) {
+        errorMessage = "You don't have permission to use auto-generate features.";
       } else if (error.message?.includes("OpenAI")) {
         errorMessage = "AI service temporarily unavailable. Please try again later.";
       }

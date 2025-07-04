@@ -187,7 +187,38 @@ serve(async (req) => {
       );
     }
 
-    console.log("Authentication verified successfully, proceeding to OpenAI API call...");
+    // Check user permissions using the database function
+    const { data: canManagePromptsResult, error: permissionError } = await supabaseClient
+      .rpc('can_manage_prompts', { _user_id: user.id });
+    
+    console.log("Permission check result:", { 
+      canManagePrompts: canManagePromptsResult,
+      permissionError: permissionError?.message 
+    });
+    
+    if (permissionError) {
+      console.error("Permission check failed:", permissionError);
+      return new Response(
+        JSON.stringify({ 
+          error: `Permission check failed: ${permissionError.message}`,
+          use_case: ""
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+    
+    if (!canManagePromptsResult) {
+      console.error("User lacks permissions for use case generation");
+      return new Response(
+        JSON.stringify({ 
+          error: 'Insufficient permissions. Only admins, prompters, and jadmins can auto-generate use cases.',
+          use_case: ""
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
+    console.log("Authentication and permissions verified successfully, proceeding to OpenAI API call...");
 
     // Validate OpenAI API key
     const openAiApiKey = Deno.env.get('OPENAI_API_KEY');

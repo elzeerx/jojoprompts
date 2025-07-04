@@ -2,3 +2,6 @@ project_id = "fxkqgjakbyrxkmevkglv"
 
 [functions.generate-use-case]
 verify_jwt = true
+
+[functions.generate-metadata]
+verify_jwt = true

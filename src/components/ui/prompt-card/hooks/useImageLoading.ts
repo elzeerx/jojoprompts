@@ -13,23 +13,25 @@ export function useImageLoading(prompt: Prompt | PromptRow) {
       try {
         let finalImageUrl = '/placeholder.svg';
 
-        if (prompt_type === 'text') {
+        // Priority order: uploaded image_path -> media files -> default_image_path -> fallback
+        const primaryImagePath = image_path || 
+          mediaFiles.find((file: any) => file.type === 'image')?.path ||
+          image_url;
+
+        if (primaryImagePath) {
+          finalImageUrl = await getPromptImage(primaryImagePath, 400, 85);
+        } else if (prompt_type === 'text') {
+          // Only use default image for text prompts if no uploaded image exists
           if (default_image_path) {
             finalImageUrl = await getPromptImage(default_image_path, 400, 85);
           } else {
             finalImageUrl = await getTextPromptDefaultImage();
           }
-        } else {
-          const primaryImagePath = mediaFiles.find((file: any) => file.type === 'image')?.path ||
-            image_path || image_url;
-
-          if (primaryImagePath) {
-            finalImageUrl = await getPromptImage(primaryImagePath, 400, 85);
-          }
         }
 
         setImageUrl(finalImageUrl);
       } catch (error) {
+        console.error('Image loading error:', error);
         setImageUrl('/placeholder.svg');
       }
     }

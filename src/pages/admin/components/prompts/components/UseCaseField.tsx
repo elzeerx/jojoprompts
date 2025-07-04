@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Wand2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 
 interface UseCaseFieldProps {
   value: string;
@@ -15,6 +16,7 @@ interface UseCaseFieldProps {
 
 export function UseCaseField({ value, onChange, promptText, disabled }: UseCaseFieldProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const { canManagePrompts, loading: permissionsLoading } = useUserPermissions();
 
   const handleAutoGenerate = async () => {
     if (!promptText.trim()) {
@@ -109,6 +111,8 @@ export function UseCaseField({ value, onChange, promptText, disabled }: UseCaseF
       
       if (error.message?.includes("Authentication") || error.message?.includes("Session")) {
         errorMessage = "Authentication error. Please refresh the page and try again.";
+      } else if (error.message?.includes("Insufficient permissions")) {
+        errorMessage = "You don't have permission to use auto-generate features.";
       } else if (error.message?.includes("AI service") || error.message?.includes("OpenAI")) {
         errorMessage = "AI service temporarily unavailable. Please try again later.";
       } else if (error.message?.includes("prompt text") || error.message?.includes("Invalid")) {
@@ -142,21 +146,23 @@ export function UseCaseField({ value, onChange, promptText, disabled }: UseCaseF
             disabled={disabled}
             className="flex-1"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleAutoGenerate}
-            disabled={disabled || isGenerating || !promptText.trim()}
-            className="flex items-center gap-2 shrink-0"
-          >
-            {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Wand2 className="h-4 w-4" />
-            )}
-            {isGenerating ? "Generating..." : "Auto-generate"}
-          </Button>
+          {canManagePrompts && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAutoGenerate}
+              disabled={disabled || isGenerating || !promptText.trim() || permissionsLoading}
+              className="flex items-center gap-2 shrink-0"
+            >
+              {isGenerating || permissionsLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Wand2 className="h-4 w-4" />
+              )}
+              {isGenerating ? "Generating..." : permissionsLoading ? "Checking..." : "Auto-generate"}
+            </Button>
+          )}
         </div>
       </div>
     </div>
