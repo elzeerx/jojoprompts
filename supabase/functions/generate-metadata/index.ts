@@ -136,14 +136,17 @@ serve(async (req) => {
 
     // Validate OpenAI API key exists
     const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAiApiKey) {
-      console.error("OPENAI_API_KEY environment variable is not set");
+    console.log("OpenAI API key check:", { hasKey: !!openAiApiKey, keyLength: openAiApiKey?.length || 0 });
+    
+    if (!openAiApiKey || openAiApiKey.trim() === '') {
+      console.error("OPENAI_API_KEY environment variable is not set or empty");
       throw new Error('OpenAI API key is not configured. Please contact the administrator.');
     }
     
     console.log("OpenAI API key found, calling OpenAI API...");
 
     // Call OpenAI API - Updated prompt to exclude category
+    console.log("Making OpenAI API call...");
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -151,7 +154,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           {
             role: 'system',
@@ -164,6 +167,8 @@ serve(async (req) => {
         ],
       }),
     })
+    
+    console.log("OpenAI API response status:", openAiResponse.status);
 
     if (!openAiResponse.ok) {
       const errorDetails = await openAiResponse.text();
