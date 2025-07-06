@@ -6,8 +6,22 @@ import { useNavigate } from "react-router-dom";
 import HomePage from "./HomePage";
 
 export default function Index() {
-  const { loading, user, userRole } = useAuth();
   const navigate = useNavigate();
+  
+  // Safe auth hook with fallback
+  let loading = true;
+  let user = null;
+  let userRole = null;
+  
+  try {
+    const authContext = useAuth();
+    loading = authContext.loading;
+    user = authContext.user;
+    userRole = authContext.userRole;
+  } catch (error) {
+    console.warn('Auth context unavailable in Index:', error);
+    loading = false;
+  }
 
   useEffect(() => {
     if (!loading && user && userRole) {
@@ -15,7 +29,7 @@ export default function Index() {
       if (userRole === 'admin' || userRole === 'jadmin') {
         navigate('/admin');
       } else if (userRole === 'prompter') {
-        navigate('/prompter');
+        navigate('/dashboard/prompter');
       }
       // Regular users stay on the home page
     }

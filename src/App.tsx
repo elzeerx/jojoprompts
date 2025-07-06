@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { RootLayout } from "./components/layout/root-layout";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -38,47 +39,52 @@ const queryClient = new QueryClient();
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              <Route path="/" element={<RootLayout />}>
-                <Route index element={<Index />} />
-                <Route path="login" element={<LoginPage />} />
-                <Route path="reset-password" element={<ResetPasswordPage />} />
-                <Route path="signup" element={<SignupPage />} />
-                <Route path="examples" element={<ExamplesPage />} />
-                <Route path="prompts" element={<PromptsPage />} />
-                <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />
-                <Route path="prompts/midjourney" element={<MidjourneyPromptsPage />} />
-                <Route path="prompts/workflow" element={<WorkflowPromptsPage />} />
-                <Route path="favorites" element={<FavoritesPage />} />
-                <Route path="search" element={<SearchPage />} />
-                <Route path="pricing" element={<PricingPage />} />
-                <Route path="checkout" element={<CheckoutPage />} />
-                <Route path="payment/callback" element={<PaymentCallbackPage />} />
-                <Route path="payment-success" element={<PaymentSuccessPage />} />
-                <Route path="payment-failed" element={<PaymentFailedPage />} />
-                <Route path="dashboard" element={<UserDashboardPage />} />
-                <Route path="dashboard/subscription" element={<SubscriptionDashboard />} />
-                <Route path="dashboard/prompter" element={<PrompterDashboard />} />
-                <Route path="admin" element={<AdminDashboard />} />
-                <Route path="admin/prompts" element={<PromptsManagement />} />
-                <Route path="about" element={<AboutPage />} />
-                <Route path="contact" element={<ContactPage />} />
-                <Route path="faq" element={<FAQPage />} />
-                <Route path="privacy" element={<PrivacyPolicyPage />} />
-                <Route path="terms" element={<TermsOfServicePage />} />
-                <Route path="*" element={<NotFoundPage />} />
-              </Route>
-            </Routes>
-            <Toaster />
-            <Sonner />
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <BrowserRouter>
+            <ErrorBoundary>
+              <AuthProvider>
+                <Routes>
+                  <Route path="/" element={<RootLayout />}>
+                    <Route index element={<Index />} />
+                    <Route path="login" element={<LoginPage />} />
+                    <Route path="reset-password" element={<ResetPasswordPage />} />
+                    <Route path="signup" element={<SignupPage />} />
+                    <Route path="examples" element={<ExamplesPage />} />
+                    <Route path="prompts" element={<PromptsPage />} />
+                    <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />
+                    <Route path="prompts/midjourney" element={<MidjourneyPromptsPage />} />
+                    <Route path="prompts/workflow" element={<WorkflowPromptsPage />} />
+                    <Route path="favorites" element={<FavoritesPage />} />
+                    <Route path="search" element={<SearchPage />} />
+                    <Route path="pricing" element={<PricingPage />} />
+                    <Route path="checkout" element={<CheckoutPage />} />
+                    <Route path="payment/callback" element={<PaymentCallbackPage />} />
+                    <Route path="payment-success" element={<PaymentSuccessPage />} />
+                    <Route path="payment-failed" element={<PaymentFailedPage />} />
+                    <Route path="dashboard" element={<UserDashboardPage />} />
+                    <Route path="dashboard/subscription" element={<SubscriptionDashboard />} />
+                    <Route path="dashboard/prompter" element={<PrompterDashboard />} />
+                    <Route path="prompter" element={<PrompterDashboard />} />
+                    <Route path="admin" element={<AdminDashboard />} />
+                    <Route path="admin/prompts" element={<PromptsManagement />} />
+                    <Route path="about" element={<AboutPage />} />
+                    <Route path="contact" element={<ContactPage />} />
+                    <Route path="faq" element={<FAQPage />} />
+                    <Route path="privacy" element={<PrivacyPolicyPage />} />
+                    <Route path="terms" element={<TermsOfServicePage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Route>
+                </Routes>
+                <Toaster />
+                <Sonner />
+              </AuthProvider>
+            </ErrorBoundary>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

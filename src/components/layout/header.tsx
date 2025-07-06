@@ -8,9 +8,24 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function Header() {
-  const { user, signOut, isAdmin, isPrompter } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Safe auth hook with fallback
+  let user = null;
+  let signOut = async () => {};
+  let isAdmin = false;
+  let isPrompter = false;
+  
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+    signOut = authContext.signOut;
+    isAdmin = authContext.isAdmin;
+    isPrompter = authContext.isPrompter;
+  } catch (error) {
+    console.warn('Auth context unavailable in Header:', error);
+  }
 
   const handleLogout = async () => {
     try {
