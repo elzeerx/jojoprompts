@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 import { CopyButton } from "@/components/ui/copy-button";
 import { WorkflowDownloadSection } from "@/components/ui/workflow-download-section";
+import { ImageWrapper } from "@/components/ui/prompt-card/ImageWrapper";
+import { useImageLoading } from "@/components/ui/prompt-card/hooks/useImageLoading";
 
 interface AdminPromptCardProps {
   prompt: PromptRow;
@@ -48,6 +50,7 @@ export function AdminPromptCard({
   const [favorited, setFavorited] = useState<boolean>(initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const imageUrl = useImageLoading(prompt);
 
   // Debug log to track metadata
   console.log("AdminPromptCard - Prompt metadata:", prompt.metadata);
@@ -201,6 +204,16 @@ export function AdminPromptCard({
           )}
         </CardHeader>
         <CardContent className="space-y-3">
+          {/* Small thumbnail image */}
+          <div className="w-full h-32 mb-3">
+            <ImageWrapper
+              src={imageUrl}
+              alt={prompt.title}
+              className="w-full h-full object-cover rounded-md"
+              disableAspectRatio={true}
+            />
+          </div>
+          
           {/* Display workflow steps for n8n prompts */}
           {isN8nWorkflow && workflowSteps.length > 0 ? (
             <div className="space-y-2">
