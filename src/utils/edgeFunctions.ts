@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
-// Custom domain for Edge Functions only
-const EDGE_FUNCTION_URL = "https://api.jojoprompts.com";
+// Custom domain for Edge Functions only - temporarily using default for testing
+const EDGE_FUNCTION_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
 
 /**
  * Utility to call Edge Functions using the custom domain
