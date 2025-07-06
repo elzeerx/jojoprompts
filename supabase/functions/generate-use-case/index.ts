@@ -87,13 +87,22 @@ serve(async (req) => {
       profileError: profileError?.message 
     });
 
-    console.log("Authentication and permissions verified, calling OpenAI...");
+    console.log("Authentication and permissions verified, checking OpenAI API key...");
+
+    // Validate OpenAI API key exists
+    const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAiApiKey) {
+      console.error("OPENAI_API_KEY environment variable is not set");
+      throw new Error('OpenAI API key is not configured. Please contact the administrator.');
+    }
+    
+    console.log("OpenAI API key found, calling OpenAI API...");
 
     // Call OpenAI API
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${openAiApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

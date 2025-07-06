@@ -113,6 +113,8 @@ export function UseCaseField({ value, onChange, promptText, disabled }: UseCaseF
         errorMessage = "Authentication error. Please refresh the page and try again.";
       } else if (error.message?.includes("Insufficient permissions")) {
         errorMessage = "You don't have permission to use auto-generate features.";
+      } else if (error.message?.includes("OpenAI API key") || error.message?.includes("not configured")) {
+        errorMessage = "AI service is not properly configured. Please contact the administrator.";
       } else if (error.message?.includes("AI service") || error.message?.includes("OpenAI")) {
         errorMessage = "AI service temporarily unavailable. Please try again later.";
       } else if (error.message?.includes("prompt text") || error.message?.includes("Invalid")) {
