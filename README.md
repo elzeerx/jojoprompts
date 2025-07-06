@@ -56,6 +56,14 @@ A web application for browsing, managing, and exporting high-quality image gener
    npm run dev
    ```
 
+### Troubleshooting
+
+Admins and prompters must ensure `OPENAI_API_KEY` is saved in your Supabase Edge
+Function secrets. The edge functions rely on this variable and currently use the
+`gpt-4o-mini` model. After updating the secret, redeploy the
+`generate-metadata` and `generate-use-case` functions so they pick up the new
+value.
+
 ## Database Schema
 
 ### `prompts` Table
