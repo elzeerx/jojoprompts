@@ -1,16 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
+import React, { createContext, useContext, useState } from 'react';
 import { AuthContextType } from './authTypes';
-import { fetchUserProfile } from './profileService';
 import { setupAuthState } from './authStateManager';
-import { runOrphanedPaymentRecovery } from './orphanedPaymentRecovery';
 import { computeRolePermissions } from './rolePermissions';
 import { debug } from './authDebugger';
-import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
-import { SessionSecurity } from '@/utils/sessionSecurity';
-import { logger } from '@/utils/productionLogger';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuthInitialization } from './auth/useAuthInitialization';
+import { useAuthSignOut } from './auth/useAuthSignOut';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -20,129 +14,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
   const [recoveredOrphaned, setRecoveredOrphaned] = useState(false);
 
-  // Check if this is a password reset request
-  const isPasswordReset = () => {
-    const urlParams = new URLSearchParams(location.search);
-    const type = urlParams.get('type');
-    const token = urlParams.get('access_token') || urlParams.get('token');
-    return type === 'recovery' && token;
-  };
+  // Initialize authentication
+  useAuthInitialization({
+    setSession,
+    setUser,
+    setUserRole,
+    setLoading,
+    recoveredOrphaned,
+    setRecoveredOrphaned,
+    isLoggingOut: () => isLoggingOut
+  });
 
-  // Check if this is coming from signup email confirmation
-  const isFromSignupConfirmation = () => {
-    const urlParams = new URLSearchParams(location.search);
-    return urlParams.get('from_signup') === 'true';
-  };
-
-  // Check if this is a payment callback
-  const isPaymentCallback = () => {
-    return location.pathname.includes('/payment') || 
-           location.search.includes('success=') ||
-           location.search.includes('payment_id=') ||
-           location.search.includes('order_id=');
-  };
-
-  useEffect(() => {
-    const initializeAuth = async () => {
-      // If this is a password reset, don't set session
-      if (isPasswordReset()) {
-        debug("Password reset detected, not setting session");
-        setLoading(false);
-        return;
-      }
-
-      // Enhanced session restoration for payment callbacks
-      if (isPaymentCallback() && SessionManager.hasBackup()) {
-        debug("Payment callback detected with session backup, attempting restoration");
-        
-        const restorationResult = await SessionManager.restoreSession();
-        if (restorationResult.success && restorationResult.user) {
-          debug("Session successfully restored from backup", { userId: restorationResult.user.id });
-          
-          setSession({ user: restorationResult.user });
-          setUser(restorationResult.user);
-          
-          await fetchUserProfile(restorationResult.user, setUserRole);
-          setLoading(false);
-          
-          // Run orphan recovery for restored session
-          runOrphanedPaymentRecovery(restorationResult.user, recoveredOrphaned, setRecoveredOrphaned);
-          return;
-        } else {
-          debug("Session restoration failed, falling back to normal auth check");
-        }
-      }
-
-      // Normal session check
-      try {
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          logger.error("Error getting initial session", { error: error.message });
-          setLoading(false);
-          return;
-        }
-        
-        debug("Initial session check", { sessionExists: !!initialSession, userEmail: initialSession?.user?.email });
-        
-        setSession(initialSession);
-        const initialUser = initialSession?.user ?? null;
-        setUser(initialUser);
-        
-        if (initialUser) {
-          await fetchUserProfile(initialUser, setUserRole);
-          
-          // Handle signup confirmation redirect
-          if (isFromSignupConfirmation()) {
-            const urlParams = new URLSearchParams(location.search);
-            const planId = urlParams.get('plan_id');
-            
-            // Send welcome email for newly confirmed users
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('first_name')
-              .eq('id', initialUser.id)
-              .single();
-            
-            if (profile?.first_name && initialUser.email) {
-              // Import and send welcome email
-              const { emailService } = await import('@/utils/emailService');
-              setTimeout(async () => {
-                await emailService.sendWelcomeEmail(profile.first_name, initialUser.email!);
-              }, 1000);
-            }
-            
-            toast({
-              title: "Welcome! 🎉",
-              description: planId 
-                ? "Your email is confirmed! Complete your subscription below."
-                : "Your email is confirmed! Welcome to JoJo Prompts.",
-            });
-
-            if (!planId && location.pathname !== '/prompts') {
-              navigate('/prompts');
-            }
-          }
-
-          // Run orphan recovery
-          runOrphanedPaymentRecovery(initialUser, recoveredOrphaned, setRecoveredOrphaned);
-        }
-        
-        setLoading(false);
-        
-        // Initialize session security
-        SessionSecurity.initialize();
-      } catch (error) {
-        logger.error("Session initialization error", { error });
-        setLoading(false);
-      }
-    };
-
-    // Setup auth state changes
+  // Setup auth state changes
+  React.useEffect(() => {
     const cleanup = setupAuthState({ 
       setSession, 
       setUser, 
@@ -152,125 +38,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoggingOut: () => isLoggingOut
     });
     
-    // Initialize auth
-    initializeAuth();
-    
     return cleanup;
-  }, [location.search, location.pathname, navigate, isLoggingOut]);
+  }, [isLoggingOut]);
 
-  const signOut = async () => {
-    try {
-      debug("Starting logout process");
-      setIsLoggingOut(true);
-
-      // First, validate current session
-      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        logger.warn("Session validation error during logout", { error: sessionError.message });
-        // Continue with logout anyway
-      }
-
-      if (!currentSession) {
-        debug("No active session found, clearing local state only");
-        // Clean up local state even if no server session
-        SessionManager.cleanup();
-        setSession(null);
-        setUser(null);
-        setUserRole(null);
-        navigate('/login');
-        
-        toast({
-          title: "Logged out",
-          description: "You have been successfully logged out.",
-        });
-        return;
-      }
-
-      debug("Valid session found, proceeding with server logout", { userId: currentSession.user?.id });
-
-      // Attempt server logout with timeout
-      const logoutPromise = supabase.auth.signOut();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Logout timeout')), 10000)
-      );
-
-      let logoutError = null;
-      try {
-        const { error } = await Promise.race([logoutPromise, timeoutPromise]) as any;
-        logoutError = error;
-      } catch (timeoutError) {
-        logger.error("Logout timeout", { error: timeoutError });
-        logoutError = timeoutError;
-      }
-
-      if (logoutError) {
-        logger.error("Server logout error", { error: logoutError.message });
-        
-        // Check if it's a connection issue vs auth issue
-        if (logoutError.message?.includes('connection') || logoutError.message?.includes('network')) {
-          // For connection issues, force local logout
-          debug("Connection issue detected, forcing local logout");
-        } else if (logoutError.message?.includes('session_not_found')) {
-          // Session already invalid on server, proceed with local cleanup
-          debug("Session not found on server, proceeding with local cleanup");
-        } else {
-          // Other errors - still try to clean up locally but show error
-          logger.error("Unexpected logout error", { error: logoutError.message });
-          toast({
-            title: "Logout Issue",
-            description: "There was an issue signing out completely. Please try again if needed.",
-            variant: "destructive"
-          });
-        }
-      } else {
-        debug("Server logout successful");
-      }
-
-      // Always clean up local state after server logout attempt
-      SessionManager.cleanup();
-      SessionSecurity.cleanup();
-      
-      // Clear any additional auth-related localStorage items
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes('supabase') || key.includes('auth') || key.includes('session')) {
-          localStorage.removeItem(key);
-        }
-      });
-
-      // Clear local state
-      setSession(null);
-      setUser(null);
-      setUserRole(null);
-      
-      debug("Local state cleared, navigating to login");
-      navigate('/login');
-      
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      });
-
-    } catch (error) {
-      logger.error("Unexpected sign out error", { error });
-      
-      // Even on unexpected errors, try to clean up
-      SessionManager.cleanup();
-      SessionSecurity.cleanup();
-      setSession(null);
-      setUser(null);
-      setUserRole(null);
-      navigate('/login');
-      
-      toast({
-        title: "Logout Completed",
-        description: "You have been logged out. Please sign in again if needed.",
-      });
-    } finally {
-      setIsLoggingOut(false);
-      setLoading(false);
-    }
-  };
+  // Sign out functionality
+  const signOut = useAuthSignOut({
+    setIsLoggingOut,
+    setSession,
+    setUser,
+    setUserRole,
+    setLoading
+  });
 
   // Role/permission calculation
   const permissions = computeRolePermissions(userRole);
