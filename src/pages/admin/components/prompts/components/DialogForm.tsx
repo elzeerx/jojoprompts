@@ -7,7 +7,7 @@ import { ButtonPromptFields } from "./ButtonPromptFields";
 import { ImageSelectionFields } from "./ImageSelectionFields";
 import { WorkflowFields } from "./WorkflowFields";
 import { WorkflowFileUpload } from "./WorkflowFileUpload";
-import { AutoGenerateButton } from "./AutoGenerateButton";
+import { SmartInputFields } from "./SmartInputFields";
 import { ImageSelectionField } from "./ImageSelectionField";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
@@ -35,7 +35,7 @@ export function DialogForm({
   onMultipleFilesChange,
   onWorkflowFilesChange 
 }: DialogFormProps) {
-  const [generatedMetadata, setGeneratedMetadata] = useState<boolean>(false);
+  
   const [workflowFiles, setWorkflowFiles] = useState<any[]>([]);
   
   // Get categories from database
@@ -46,12 +46,6 @@ export function DialogForm({
   const isN8nWorkflow = formData.promptType === 'workflow' || 
                        (formData.metadata?.category && formData.metadata.category.toLowerCase().includes('n8n'));
 
-  useEffect(() => {
-    // Reset generated state when form data changes from external sources
-    if (formData && (!formData.metadata || Object.keys(formData.metadata).length === 0)) {
-      setGeneratedMetadata(false);
-    }
-  }, [formData]);
 
   const updateFormData = (field: string, value: any) => {
     console.log("DialogForm - Updating form field:", field, "with value:", value);
@@ -103,33 +97,6 @@ export function DialogForm({
     }
   };
 
-  const handleMetadataGenerated = (generatedMetadata: { style: string; tags: string[] }) => {
-    console.log("DialogForm - Metadata generated (style and tags only):", generatedMetadata);
-    
-    // Preserve existing metadata fields that should not be overwritten
-    const existingMediaFiles = formData.metadata?.media_files || [];
-    const existingWorkflowFiles = formData.metadata?.workflow_files || [];
-    const existingTargetModel = formData.metadata?.target_model || '';
-    const existingUseCase = formData.metadata?.use_case || '';
-    const existingCategory = formData.metadata?.category || 'ChatGPT'; // Keep the manually selected category
-    
-    const updatedMetadata = {
-      ...formData.metadata,
-      // Only update style and tags from auto-generation
-      style: generatedMetadata.style,
-      tags: generatedMetadata.tags,
-      // Preserve these fields
-      category: existingCategory, // Keep manual category selection
-      media_files: existingMediaFiles,
-      workflow_files: existingWorkflowFiles,
-      target_model: existingTargetModel,
-      use_case: existingUseCase
-    };
-    
-    console.log("DialogForm - Final merged metadata:", updatedMetadata);
-    updateMetadata(updatedMetadata);
-    setGeneratedMetadata(true);
-  };
 
   const handleImagePathChange = (path: string) => {
     updateFormData('imagePath', path);
@@ -171,37 +138,12 @@ export function DialogForm({
         type="textarea"
       />
 
-      {/* Auto-generate metadata section - updated description */}
-      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-blue-900">Auto-generate Style & Tags</h3>
-          <AutoGenerateButton
-            promptText={formData.promptText}
-            onMetadataGenerated={handleMetadataGenerated}
-          />
-        </div>
-        <p className="text-xs text-blue-700">
-          Let AI analyze your prompt text and automatically suggest style and tags. Category will be set manually below.
-        </p>
-        
-        {generatedMetadata && (
-          <div className="mt-3 pt-3 border-t border-blue-200">
-            <p className="text-xs font-medium text-blue-800 mb-2">Generated metadata:</p>
-            <div className="flex flex-wrap gap-2">
-              {formData.metadata?.style && (
-                <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-200">
-                  Style: {formData.metadata.style}
-                </Badge>
-              )}
-              {formData.metadata?.tags && formData.metadata.tags.map((tag: string, i: number) => (
-                <Badge key={i} variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Smart Input System */}
+      <SmartInputFields
+        metadata={formData.metadata}
+        onMetadataChange={updateMetadata}
+        promptText={formData.promptText}
+      />
 
       <div className="space-y-2">
         <label className="text-sm font-medium">Category</label>
