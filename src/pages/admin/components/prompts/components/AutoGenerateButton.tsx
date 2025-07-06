@@ -5,6 +5,7 @@ import { Wand2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { callEdgeFunction } from "@/utils/edgeFunctions";
 
 interface AutoGenerateButtonProps {
   promptText: string;
@@ -74,20 +75,8 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
         hasAccessToken: !!session.access_token
       });
       
-      const { data, error } = await supabase.functions.invoke('generate-metadata', {
-        body: { prompt_text: promptText }
-      });
+      const data = await callEdgeFunction('generate-metadata', { prompt_text: promptText });
 
-      if (error) {
-        console.error("AutoGenerateButton - Edge function error:", error);
-        console.error("AutoGenerateButton - Error details:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        throw error;
-      }
 
       console.log("AutoGenerateButton - Generated metadata from edge function:", data);
 

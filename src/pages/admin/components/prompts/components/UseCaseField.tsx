@@ -6,6 +6,7 @@ import { Wand2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { callEdgeFunction } from "@/utils/edgeFunctions";
 
 interface UseCaseFieldProps {
   value: string;
@@ -34,48 +35,13 @@ export function UseCaseField({ value, onChange, promptText, disabled }: UseCaseF
       console.log("UseCaseField - Starting use case generation");
       console.log("UseCaseField - Prompt length:", promptText.length);
 
-      // Verify we have a valid session before making the call
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log("UseCaseField - Calling edge function");
       
-      if (sessionError) {
-        console.error("UseCaseField - Session error:", sessionError);
-        throw new Error(`Session error: ${sessionError.message}`);
-      }
-      
-      if (!session) {
-        console.error("UseCaseField - No active session found");
-        throw new Error("No active session found. Please log in again.");
-      }
-
-      console.log("UseCaseField - Session verified, calling edge function");
-      console.log("UseCaseField - Session details:", {
-        userId: session.user?.id?.substring(0, 8) + '***',
-        hasAccessToken: !!session.access_token,
-        tokenType: session.token_type
-      });
-      
-      const { data, error } = await supabase.functions.invoke('generate-use-case', {
-        body: { 
-          prompt_text: promptText.trim()
-        }
+      const data = await callEdgeFunction('generate-use-case', { 
+        prompt_text: promptText.trim()
       });
 
-      console.log("UseCaseField - Edge function response:", { data, error });
-
-      if (error) {
-        console.error("UseCaseField - Edge function error:", error);
-        
-        // Handle specific error types
-        if (error.message?.includes('Authentication') || error.message?.includes('401')) {
-          throw new Error("Authentication failed. Please refresh the page and try again.");
-        } else if (error.message?.includes('OpenAI') || error.message?.includes('502')) {
-          throw new Error("AI service temporarily unavailable. Please try again in a moment.");
-        } else if (error.message?.includes('400')) {
-          throw new Error("Invalid prompt text. Please check your input and try again.");
-        }
-        
-        throw new Error(error.message || "Unknown error occurred");
-      }
+      console.log("UseCaseField - Edge function response:", { data });
 
       if (!data) {
         console.error("UseCaseField - No data returned from edge function");
