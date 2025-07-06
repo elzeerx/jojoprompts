@@ -78,7 +78,7 @@ export const getCSPHeader = (): string => {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https://*.supabase.co https://*.supabase.io blob:",
-    "connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io",
+    "connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://api.jojoprompts.com",
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
