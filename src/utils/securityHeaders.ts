@@ -60,5 +60,8 @@ export const initializeSecurity = (): void => {
     });
   }
 
-  console.log('Security measures initialized');
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log('Security measures initialized');
+    }
 };

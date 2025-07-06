@@ -8,6 +8,8 @@ import { runOrphanedPaymentRecovery } from './orphanedPaymentRecovery';
 import { computeRolePermissions } from './rolePermissions';
 import { debug } from './authDebugger';
 import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
+import { SessionSecurity } from '@/utils/sessionSecurity';
+import { logger } from '@/utils/productionLogger';
 import { supabase } from '@/integrations/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -80,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error("[AUTH] Error getting initial session:", error);
+          logger.error("Error getting initial session", { error: error.message });
           setLoading(false);
           return;
         }
@@ -131,8 +133,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         setLoading(false);
+        
+        // Initialize session security
+        SessionSecurity.initialize();
       } catch (error) {
-        console.error("[AUTH] Session initialization error:", error);
+        logger.error("Session initialization error", { error });
         setLoading(false);
       }
     };
@@ -162,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.warn("[AUTH] Session validation error during logout:", sessionError);
+        logger.warn("Session validation error during logout", { error: sessionError.message });
         // Continue with logout anyway
       }
 
@@ -195,12 +200,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { error } = await Promise.race([logoutPromise, timeoutPromise]) as any;
         logoutError = error;
       } catch (timeoutError) {
-        console.error("[AUTH] Logout timeout:", timeoutError);
+        logger.error("Logout timeout", { error: timeoutError });
         logoutError = timeoutError;
       }
 
       if (logoutError) {
-        console.error("[AUTH] Server logout error:", logoutError);
+        logger.error("Server logout error", { error: logoutError.message });
         
         // Check if it's a connection issue vs auth issue
         if (logoutError.message?.includes('connection') || logoutError.message?.includes('network')) {
@@ -211,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           debug("Session not found on server, proceeding with local cleanup");
         } else {
           // Other errors - still try to clean up locally but show error
-          console.error("[AUTH] Unexpected logout error:", logoutError);
+          logger.error("Unexpected logout error", { error: logoutError.message });
           toast({
             title: "Logout Issue",
             description: "There was an issue signing out completely. Please try again if needed.",
@@ -224,6 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Always clean up local state after server logout attempt
       SessionManager.cleanup();
+      SessionSecurity.cleanup();
       
       // Clear any additional auth-related localStorage items
       Object.keys(localStorage).forEach(key => {
@@ -246,10 +252,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
     } catch (error) {
-      console.error("[AUTH] Unexpected sign out error:", error);
+      logger.error("Unexpected sign out error", { error });
       
       // Even on unexpected errors, try to clean up
       SessionManager.cleanup();
+      SessionSecurity.cleanup();
       setSession(null);
       setUser(null);
       setUserRole(null);

@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
+import { PasswordResetSecurity } from "@/utils/passwordResetSecurity";
+import { logger } from "@/utils/productionLogger";
 
 export function SecuritySection() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -45,23 +46,10 @@ export function SecuritySection() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      toast({
-        title: "Password too short",
-        description: "Password must be at least 8 characters long",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsUpdating(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (error) throw error;
-
+    const result = await PasswordResetSecurity.updatePassword(newPassword);
+    
+    if (result.success) {
       toast({
         title: "Password updated",
         description: "Your password has been successfully changed",
@@ -71,15 +59,17 @@ export function SecuritySection() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
+      
+      logger.info("Password updated successfully by user");
+    } else {
       toast({
         title: "Error updating password",
-        description: error.message || "Failed to update password",
+        description: result.error || "Failed to update password",
         variant: "destructive",
       });
-    } finally {
-      setIsUpdating(false);
     }
+    
+    setIsUpdating(false);
   };
 
   const canSubmit = newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 8;
@@ -169,7 +159,7 @@ export function SecuritySection() {
 
           <div className="text-sm text-muted-foreground space-y-1">
             <p>• Password must be at least 8 characters long</p>
-            <p>• Use a mix of letters, numbers, and special characters</p>
+            <p>• Must contain uppercase, lowercase, number, and special character</p>
             <p>• Avoid using common words or personal information</p>
           </div>
         </CardContent>
