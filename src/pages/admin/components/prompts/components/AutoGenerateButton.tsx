@@ -109,6 +109,11 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
         errorMessage = "You don't have permission to use auto-generate features.";
       } else if (error.message?.includes("OpenAI API key") || error.message?.includes("not configured")) {
         errorMessage = "AI service is not properly configured. Please contact the administrator.";
+      } else if (
+        error.message?.toLowerCase().includes("model") ||
+        error.message?.toLowerCase().includes("does not exist")
+      ) {
+        errorMessage = "AI model not available. Please update the edge function.";
       } else if (error.message?.includes("OpenAI")) {
         errorMessage = "AI service temporarily unavailable. Please try again later.";
       }
