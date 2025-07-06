@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { IMAGE_BUCKET, VIDEO_BUCKET, AUDIO_BUCKET, DEFAULT_IMAGE_BUCKET } from "@/utils/buckets";
 
 // The correct Supabase URL for this project
-const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
+const SUPABASE_URL = "https://api.jojoprompts.com";
 const BUCKET = IMAGE_BUCKET;
 const DEFAULT_BUCKET = DEFAULT_IMAGE_BUCKET;
 const DEFAULT_TEXT_PROMPT_IMAGE = 'textpromptdefaultimg.jpg';

@@ -58,7 +58,7 @@ export function usePurchaseHistory(itemsPerPage = 20) {
       }
 
       // Call the edge function with query parameters
-      const functionUrl = `https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/get-admin-transactions?${params.toString()}`;
+      const functionUrl = `https://api.jojoprompts.com/functions/v1/get-admin-transactions?${params.toString()}`;
       
       const response = await fetch(functionUrl, {
         method: 'GET',
