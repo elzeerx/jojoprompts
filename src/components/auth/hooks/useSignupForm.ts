@@ -23,6 +23,7 @@ export function useSignupForm() {
     defaultValues: {
       firstName: "",
       lastName: "",
+      username: "",
       email: "",
       password: "",
     },

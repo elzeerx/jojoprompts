@@ -56,6 +56,19 @@ export function SignupForm({
         </div>
         <FormField
           control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium">Username</FormLabel>
+              <FormControl>
+                <Input placeholder="johndoe123" {...field} className="mobile-input" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem>
