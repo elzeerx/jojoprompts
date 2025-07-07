@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { type Prompt } from "@/types";
-import { Heart } from "lucide-react";
+import { Heart, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -198,6 +198,14 @@ export function MagazinePromptCard({
               +{tags.length - 3} more
             </span>
           )}
+        </div>
+      )}
+      
+      {/* Uploader info */}
+      {(prompt as any).uploader_name && (
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <User className="h-3 w-3" />
+          <span>by @{(prompt as any).uploader_name}</span>
         </div>
       )}
       
