@@ -79,6 +79,25 @@ export function UserTableRow({
     }
   };
 
+  const getSubscriptionBadgeColor = (planName: string | null) => {
+    if (!planName || planName === 'None') {
+      return 'text-gray-500 bg-gray-100';
+    }
+    
+    switch (planName.toLowerCase()) {
+      case 'basic':
+        return 'text-green-600 bg-green-100';
+      case 'standard':
+        return 'text-blue-600 bg-blue-100';
+      case 'premium':
+        return 'text-purple-600 bg-purple-100';
+      case 'lifetime':
+        return 'text-warm-gold bg-warm-gold/10';
+      default:
+        return 'text-indigo-600 bg-indigo-100';
+    }
+  };
+
   return (
     <tr className="border-b hover:bg-muted/50">
       <TableCell className="font-medium">
@@ -92,7 +111,11 @@ export function UserTableRow({
       </TableCell>
       <TableCell>{formatDate(user.created_at)}</TableCell>
       <TableCell>{formatDate(user.last_sign_in_at)}</TableCell>
-      <TableCell>{user.subscription?.plan_name || 'None'}</TableCell>
+      <TableCell>
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSubscriptionBadgeColor(user.subscription?.plan_name || null)}`}>
+          {user.subscription?.plan_name || 'None'}
+        </span>
+      </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
