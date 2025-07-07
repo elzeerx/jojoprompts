@@ -44,7 +44,7 @@ export default function PricingPage() {
         </div>
 
         {/* Pricing cards */}
-        <div className="mb-16 sm:mb-24">
+        <div id="pricing" className="mb-16 sm:mb-24">
           <PricingSection />
         </div>
 
