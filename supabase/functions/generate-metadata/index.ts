@@ -80,8 +80,9 @@ serve(async (req) => {
       }
     )
 
-    // Verify user authentication
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Verify user authentication - extract token from Authorization header
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     console.log("User authentication check:", { 
       userExists: !!user, 
       userId: user?.id?.substring(0, 8) + '***',
