@@ -5,7 +5,6 @@ import { type PromptRow } from "@/types";
 interface SmartSuggestions {
   tags: string[];
   styles: string[];
-  useCases: string[];
 }
 
 export function useSmartSuggestions(promptText: string, category: string) {
@@ -39,15 +38,13 @@ export function useSmartSuggestions(promptText: string, category: string) {
     if (!promptMetadata.length) {
       return {
         tags: getDefaultTags(category),
-        styles: getDefaultStyles(category),
-        useCases: getDefaultUseCases(category)
+        styles: getDefaultStyles(category)
       };
     }
 
-    // Extract all tags, styles, and use cases from existing prompts
+    // Extract all tags and styles from existing prompts
     const allTags = new Map<string, number>();
     const allStyles = new Map<string, number>();
-    const allUseCases = new Map<string, number>();
 
     promptMetadata.forEach(prompt => {
       const metadata = prompt.metadata;
@@ -65,12 +62,6 @@ export function useSmartSuggestions(promptText: string, category: string) {
         const normalizedStyle = metadata.style.toLowerCase().trim();
         allStyles.set(normalizedStyle, (allStyles.get(normalizedStyle) || 0) + 1);
       }
-
-      // Count use cases
-      if (metadata?.use_case) {
-        const normalizedUseCase = metadata.use_case.toLowerCase().trim();
-        allUseCases.set(normalizedUseCase, (allUseCases.get(normalizedUseCase) || 0) + 1);
-      }
     });
 
     // Sort by frequency and get top suggestions
@@ -84,19 +75,13 @@ export function useSmartSuggestions(promptText: string, category: string) {
       .slice(0, 8)
       .map(([style]) => style);
 
-    const topUseCases = Array.from(allUseCases.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([useCase]) => useCase);
-
     // Add keyword-based suggestions from prompt text
     const keywordTags = extractKeywordTags(promptText);
     const combinedTags = [...new Set([...keywordTags, ...topTags])].slice(0, 12);
 
     return {
       tags: combinedTags,
-      styles: topStyles.length ? topStyles : getDefaultStyles(category),
-      useCases: topUseCases.length ? topUseCases : getDefaultUseCases(category)
+      styles: topStyles.length ? topStyles : getDefaultStyles(category)
     };
   }, [promptMetadata, promptText, category]);
 
@@ -133,17 +118,6 @@ function getDefaultStyles(category: string): string[] {
     'midjourney': ['photorealistic', 'artistic', 'minimalist', 'dramatic', 'cinematic'],
     'workflow': ['efficient', 'robust', 'scalable', 'modular'],
     'n8n': ['automated', 'streamlined', 'efficient', 'modular']
-  };
-  
-  return defaults[category.toLowerCase()] || defaults['chatgpt'];
-}
-
-function getDefaultUseCases(category: string): string[] {
-  const defaults = {
-    'chatgpt': ['content creation', 'problem solving', 'learning', 'brainstorming'],
-    'midjourney': ['concept art', 'illustrations', 'marketing visuals', 'personal projects'],
-    'workflow': ['data processing', 'task automation', 'system integration'],
-    'n8n': ['workflow automation', 'data synchronization', 'notification systems']
   };
   
   return defaults[category.toLowerCase()] || defaults['chatgpt'];

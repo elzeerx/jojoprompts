@@ -145,7 +145,7 @@ serve(async (req) => {
     
     console.log("OpenAI API key found, calling OpenAI API...");
 
-    // Call OpenAI API - Updated prompt to exclude category
+    // Call OpenAI API - Generate only style and tags
     console.log("Making OpenAI API call...");
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -154,15 +154,15 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-mini-2025-04-14',
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful AI that analyzes image generation prompts and extracts metadata. Return ONLY valid JSON with "style" and "tags" (array) properties. DO NOT include "category" - that will be set separately. Do not include markdown formatting or code blocks in your response, just the raw JSON object.'
+            content: 'You are a helpful AI that analyzes prompts and extracts metadata. Return ONLY valid JSON with "style" (string) and "tags" (array of strings) properties. DO NOT include "category" or "use_case" - only style and tags. Do not include markdown formatting or code blocks in your response, just the raw JSON object.'
           },
           {
             role: 'user',
-            content: `Analyze this image generation prompt and provide metadata (style and tags only): ${prompt_text}`
+            content: `Analyze this prompt and provide metadata (style and tags only): ${prompt_text}`
           }
         ],
       }),
