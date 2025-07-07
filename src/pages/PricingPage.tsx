@@ -68,7 +68,13 @@ export default function PricingPage() {
             >
               <a href="#pricing" onClick={(e) => {
                 e.preventDefault();
-                document.querySelector('#pricing')?.scrollIntoView({ behavior: 'smooth' });
+                const element = document.querySelector('#pricing');
+                if (element) {
+                  // Add offset for mobile to account for any fixed elements or viewport issues
+                  const yOffset = isMobile ? -20 : -10;
+                  const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                  window.scrollTo({ top: y, behavior: 'smooth' });
+                }
               }}>
                 Get Access Today
               </a>
