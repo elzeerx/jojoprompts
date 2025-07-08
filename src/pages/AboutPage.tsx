@@ -127,7 +127,7 @@ export default function AboutPage() {
                 <div>
                   <h3 className="font-semibold text-base sm:text-lg mb-2 text-dark-base">Multi-Platform Ready</h3>
                   <p className="text-sm sm:text-base text-muted-foreground">
-                    Prompts for ChatGPT, Claude, Midjourney, DALL-E, Stable Diffusion, and more. 
+                    Prompts for ChatGPT, Claude, Midjourney, and other AI tools. 
                     Each prompt is optimized for the platform it's designed for.
                   </p>
                 </div>
