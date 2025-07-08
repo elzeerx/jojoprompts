@@ -20,7 +20,7 @@ export function CardActions({
   return (
     <div className={cn(
       "flex items-center justify-end w-full px-2",
-      "absolute top-3 left-0 z-10",
+      "absolute bottom-3 right-0 z-10",
       className
     )}>
       {/* Only show Heart for authenticated users */}

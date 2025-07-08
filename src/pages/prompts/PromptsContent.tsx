@@ -1,8 +1,9 @@
 
-import { PromptCard } from "@/components/ui/prompt-card";
-import { TextPromptCard } from "@/components/ui/text-prompt-card";
 import { Button } from "@/components/ui/button";
 import { type Prompt } from "@/types";
+import { MagazinePromptCard } from "@/components/ui/magazine-prompt-card";
+import { useState } from "react";
+import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
 
 interface PromptsContentProps {
   view: "grid" | "list";
@@ -22,13 +23,20 @@ export function PromptsContent({
   onClearFilters
 }: PromptsContentProps) {
   const isGridView = view === "grid";
+  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
+  // Array of background colors from our palette to rotate through
+  const bgColors = [
+    'bg-soft-bg', 'bg-warm-gold/10', 'bg-muted-teal/10'
+  ];
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-muted-foreground mb-2">Loading prompts...</p>
-        <div className="h-1 w-64 bg-secondary overflow-hidden rounded-full">
-          <div className="h-full bg-primary animate-pulse rounded-full"></div>
+      <div className="flex flex-col items-center justify-center py-16">
+        <p className="text-muted-foreground mb-3">Loading prompts...</p>
+        <div className="h-1.5 w-64 bg-secondary overflow-hidden">
+          <div className="h-full bg-warm-gold animate-pulse"></div>
         </div>
       </div>
     );
@@ -36,10 +44,11 @@ export function PromptsContent({
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-destructive mb-4">{error}</p>
+      <div className="flex flex-col items-center justify-center py-16">
+        <p className="text-destructive mb-6 text-lg">{error}</p>
         <Button
           variant="outline"
+          className="px-8 py-2 text-base font-bold border-warm-gold/20"
           onClick={() => window.location.reload()}
         >
           Retry
@@ -50,8 +59,8 @@ export function PromptsContent({
 
   if (filteredPrompts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-muted-foreground mb-4">
+      <div className="flex flex-col items-center justify-center py-16">
+        <p className="text-muted-foreground mb-6 text-lg">
           {searchQuery || category !== "all"
             ? "No prompts found matching your search."
             : "No prompts available."}
@@ -59,6 +68,7 @@ export function PromptsContent({
         {(searchQuery || category !== "all") && (
           <Button
             variant="outline"
+            className="px-8 py-2 text-base font-bold border-warm-gold/20"
             onClick={onClearFilters}
           >
             Clear Filters
@@ -68,18 +78,45 @@ export function PromptsContent({
     );
   }
 
+  // Group prompts into sets of 3 for the magazine layout
+  const groupedPrompts = [];
+  for (let i = 0; i < filteredPrompts.length; i += 3) {
+    const group = filteredPrompts.slice(i, Math.min(i + 3, filteredPrompts.length));
+    groupedPrompts.push(group);
+  }
+
+  const openPromptDetails = (prompt: Prompt) => {
+    setSelectedPrompt(prompt);
+    setDetailsDialogOpen(true);
+  };
+
   return (
-    <div className={isGridView
-      ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-      : "flex flex-col gap-3"
-    }>
-      {filteredPrompts.map((prompt) => (
-        prompt.prompt_type === 'text' ? (
-          <TextPromptCard key={prompt.id} prompt={prompt} />
-        ) : (
-          <PromptCard key={prompt.id} prompt={prompt} />
-        )
-      ))}
-    </div>
+    <>
+      <div className="mt-8 space-y-8">
+        {groupedPrompts.map((group, groupIndex) => (
+          <div key={groupIndex} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {group.map((prompt, index) => (
+              <MagazinePromptCard
+                key={prompt.id}
+                prompt={prompt}
+                showImage={true} // Show images for all prompt cards
+                colorIndex={(groupIndex * 3 + index) % bgColors.length}
+                bgColors={bgColors}
+                onCardClick={() => openPromptDetails(prompt)}
+                className=""
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      
+      {selectedPrompt && (
+        <PromptDetailsDialog
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          prompt={selectedPrompt}
+        />
+      )}
+    </>
   );
 }

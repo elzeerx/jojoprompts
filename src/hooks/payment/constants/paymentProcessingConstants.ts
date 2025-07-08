@@ -1,0 +1,10 @@
+
+export const PROCESSING_STATES = {
+  CHECKING: 'checking',
+  VERIFYING: 'verifying',
+  APPROVED: 'APPROVED',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+  ERROR: 'ERROR'
+};

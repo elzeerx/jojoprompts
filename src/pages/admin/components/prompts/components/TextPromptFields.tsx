@@ -8,17 +8,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { PromptFormField } from "./PromptFormField";
+import { UseCaseField } from "./UseCaseField";
 import { type PromptRow } from "@/types";
 
 interface TextPromptFieldsProps {
   metadata: PromptRow["metadata"];
   onMetadataChange: (metadata: PromptRow["metadata"]) => void;
+  promptText: string;
 }
 
 export const TextPromptFields: React.FC<TextPromptFieldsProps> = ({
   metadata,
   onMetadataChange,
+  promptText,
 }) => {
   return (
     <>
@@ -36,18 +38,20 @@ export const TextPromptFields: React.FC<TextPromptFieldsProps> = ({
             <SelectValue placeholder="Select target model" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+            <SelectItem value="gpt-4.1">GPT-4.1</SelectItem>
+            <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini</SelectItem>
+            <SelectItem value="gpt-4.1-nano">GPT-4.1 Nano</SelectItem>
             <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-            <SelectItem value="gpt-4.5-preview">GPT-4.5 Preview</SelectItem>
+            <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+            <SelectItem value="o3">OpenAI o3</SelectItem>
+            <SelectItem value="o4-mini">OpenAI o4-mini</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      <PromptFormField
-        id="use_case"
-        label="Use Case"
+      <UseCaseField
         value={metadata.use_case || ""}
         onChange={(value) => onMetadataChange({ ...metadata, use_case: value })}
-        placeholder="e.g., Writing Assistant, Code Helper"
+        promptText={promptText}
       />
     </>
   );

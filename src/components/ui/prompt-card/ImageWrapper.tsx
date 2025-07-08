@@ -2,6 +2,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImgHTMLAttributes, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { IMAGE_BUCKET } from "@/utils/buckets";
 import { AlertCircle } from "lucide-react";
 
 export function ImageWrapper({
@@ -63,7 +64,7 @@ export function ImageWrapper({
           
           const { data, error: supabaseError } = await supabase
             .storage
-            .from('prompt-images')
+            .from(IMAGE_BUCKET)
             .createSignedUrl(path, 300);
             
           if (supabaseError || !data?.signedUrl) {
@@ -132,7 +133,7 @@ export function ImageWrapper({
           setImageSrc(`${src}?t=${timestamp}`);
         }
       } else {
-        setImageSrc('/img/placeholder.png');
+        setImageSrc('/placeholder.svg');
       }
       setRetries(0);
     }
@@ -165,7 +166,7 @@ export function ImageWrapper({
           </div>
         ) : (
           <img
-            src={imageSrc || '/img/placeholder.png'}
+            src={imageSrc || '/placeholder.svg'}
             alt={alt || "Prompt image"}
             loading="lazy"
             aria-busy={loading}

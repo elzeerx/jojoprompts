@@ -1,149 +1,83 @@
-import { useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+
+import { useState } from "react";
 import { useFetchUsers } from "./useFetchUsers";
-import { useUserRoleManagement } from "./useUserRoleManagement";
-import { UserProfile } from "@/types";
+import { useUserUpdate } from "./useUserUpdate";
+import { usePlanAssignment } from "./usePlanAssignment";
+import { usePasswordReset } from "./usePasswordReset";
+import { useUserDeletion } from "./useUserDeletion";
+import { UserRole } from "@/utils/roleValidation";
 
 interface UserUpdateData {
   first_name?: string | null;
   last_name?: string | null;
-  role?: string;
+  role?: UserRole;
   email?: string;
 }
 
 export function useUserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
   const pageSize = 10;
-  const { users, loading, error, fetchUsers } = useFetchUsers();
-  const { updatingUserId, updateUserRole } = useUserRoleManagement();
-  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
+  
+  const { users, loading, error, total, totalPages, fetchUsers } = useFetchUsers({
+    page: currentPage,
+    limit: pageSize,
+    search: searchTerm
+  });
+  
+  const { processingUserId: updateProcessingUserId, updateUser } = useUserUpdate();
+  const { processingUserId: planProcessingUserId, assignPlanToUser } = usePlanAssignment();
+  const { sendPasswordResetEmail } = usePasswordReset();
+  const { processingUserId: deleteProcessingUserId, deleteUser } = useUserDeletion();
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleSearchChange = (search: string) => {
+    setSearchTerm(search);
+    setCurrentPage(1); // Reset to first page when searching
+  };
 
   const handleUpdateUser = async (userId: string, data: UserUpdateData) => {
-    try {
-      setProcessingUserId(userId);
-      
-      if (data.role && !data.first_name && !data.last_name && !data.email) {
-        await updateUserRole(userId, data.role);
-        await fetchUsers();
-        return;
-      }
-
-      console.log("Updating user with data:", data);
-      
-      const { data: updateResult, error: updateError } = await supabase.functions.invoke(
-        "get-all-users",
-        {
-          body: { 
-            userId,
-            action: "update",
-            userData: data
-          }
-        }
-      );
-
-      if (updateError) throw updateError;
-      if (updateResult?.error) throw new Error(updateResult.error);
-      
-      console.log("Update result:", updateResult);
-
-      toast({
-        title: "Success",
-        description: "User updated successfully",
-      });
-
-      await fetchUsers();
-    } catch (error: any) {
-      console.error("Error updating user:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update user",
-        variant: "destructive",
-      });
-    } finally {
-      setProcessingUserId(null);
+    const success = await updateUser(userId, data);
+    if (success) {
+      fetchUsers();
     }
   };
 
-  const sendPasswordResetEmail = async (email: string) => {
-    try {
-      const origin = window.location.origin;
-      const resetUrl = `${origin}/login?tab=reset`;
-      
-      console.log(`Sending password reset email to ${email} with redirect URL: ${resetUrl}`);
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: resetUrl,
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Reset email sent",
-        description: `Password reset email has been sent to ${email}`,
-      });
-    } catch (error: any) {
-      console.error("Error sending reset email:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send reset email",
-        variant: "destructive",
-      });
+  const handleAssignPlanToUser = async (userId: string, planId: string) => {
+    const success = await assignPlanToUser(userId, planId);
+    if (success) {
+      fetchUsers();
     }
   };
 
-  const deleteUser = async (userId: string, email: string) => {
-    try {
-      setProcessingUserId(userId);
-      
-      if (!window.confirm(`Are you sure you want to delete user: ${email}?`)) {
-        return false;
-      }
-
-      const { data, error } = await supabase.functions.invoke(
-        "get-all-users",
-        {
-          body: { 
-            userId,
-            action: "delete"
-          }
-        }
-      );
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      
-      toast({
-        title: "User deleted",
-        description: `User ${email} has been permanently deleted.`,
-      });
-
-      await fetchUsers();
-      return true;
-    } catch (error: any) {
-      console.error("Error deleting user:", error);
-      toast({
-        title: "Delete failed",
-        description: error.message || "Failed to delete user",
-        variant: "destructive",
-      });
-      return false;
-    } finally {
-      setProcessingUserId(null);
+  const handleDeleteUser = async (userId: string, email: string) => {
+    const success = await deleteUser(userId, email);
+    if (success) {
+      fetchUsers();
     }
   };
+
+  // Combine processing states from different hooks
+  const processingUserId = updateProcessingUserId || planProcessingUserId || deleteProcessingUserId;
 
   return {
     users,
     loading,
     error,
+    total,
     currentPage,
-    totalPages: Math.ceil(users.length / pageSize),
-    onPageChange: setCurrentPage,
-    updatingUserId: updatingUserId || processingUserId,
+    totalPages,
+    searchTerm,
+    onPageChange: handlePageChange,
+    onSearchChange: handleSearchChange,
+    updatingUserId: processingUserId,
     fetchUsers,
     updateUser: handleUpdateUser,
+    assignPlanToUser: handleAssignPlanToUser,
     sendPasswordResetEmail,
-    deleteUser
+    deleteUser: handleDeleteUser
   };
 }

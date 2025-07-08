@@ -1,185 +1,203 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { type PromptRow } from "@/types";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { type Prompt, type PromptRow } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
-import { useEffect, useState } from "react";
-import { ImageWrapper } from "./prompt-card/ImageWrapper";
-import { Skeleton } from "./skeleton";
-import { AlertCircle } from "lucide-react";
+import { PromptDetailsHeader } from "./prompt-details/PromptDetailsHeader";
+import { PromptDetailsContent } from "./prompt-details/PromptDetailsContent";
+import { PromptDetailsActions } from "./prompt-details/PromptDetailsActions";
+import { MediaPreviewDialog } from "./prompt-details/MediaPreviewDialog";
 
 interface PromptDetailsDialogProps {
   open: boolean;
-  onOpenChange: (v: boolean) => void;
-  prompt: PromptRow | null;
-  promptList?: PromptRow[];
+  onOpenChange: (open: boolean) => void;
+  prompt: Prompt | PromptRow;
 }
 
-export function PromptDetailsDialog({
-  open,
-  onOpenChange,
-  prompt,
-  promptList = []
-}: PromptDetailsDialogProps) {
-  if (!prompt) return null;
-  const [dialogImgUrl, setDialogImgUrl] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
-  
+export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetailsDialogProps) {
+  const { session } = useAuth();
+  const [favorited, setFavorited] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
+  const [copied, setCopied] = useState(false);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
+  const [mediaPreviewOpen, setMediaPreviewOpen] = useState(false);
+
+  const { title, prompt_text, metadata, prompt_type } = prompt;
+  const category = metadata?.category || "ChatGPT";
+  const tags = metadata?.tags || [];
+  const model = metadata?.target_model || category;
+  const useCase = metadata?.use_case;
+  const style = metadata?.style;
+  const mediaFiles = metadata?.media_files || [];
+  const workflowSteps = metadata?.workflow_steps || [];
+  const workflowFiles = metadata?.workflow_files || [];
+
+  // Check if this is an n8n workflow prompt
+  const isN8nWorkflow = prompt_type === 'workflow' || category.toLowerCase().includes('n8n');
+
+  // Get primary image for main display
+  const primaryImage = mediaFiles.find(file => file.type === 'image') || null;
+  const primaryImagePath = primaryImage?.path || prompt.image_path || prompt.image_url;
+
   useEffect(() => {
-    if (promptList.length > 0 && !promptList.find(p => p.id === prompt.id)) {
-      onOpenChange(false);
-    }
-  }, [promptList, prompt.id, onOpenChange]);
-
-  // For text prompts, use the default image path or fallback to the textpromptdefaultimg.jpg
-  const imagePath = prompt.prompt_type === "text" 
-    ? prompt.default_image_path || 'textpromptdefaultimg.jpg'
-    : prompt.image_path || prompt.image_url || null;
-
-  useEffect(() => {
-    if (open && imagePath) {
-      async function loadImage() {
-        try {
-          // Use specific function for default image
-          const imgUrl = imagePath === 'textpromptdefaultimg.jpg'
-            ? await getTextPromptDefaultImage()
-            : await getPromptImage(imagePath, 1200, 90);
-            
-          setDialogImgUrl(imgUrl);
-          setImageLoading(true);
-          setImageError(false);
-          console.log("Details dialog image path:", imagePath);
-          console.log("Details dialog image URL:", imgUrl);
-        } catch (error) {
-          console.error("Error loading dialog image:", error);
-          setImageError(true);
-          setImageLoading(false);
-        }
-      }
-      loadImage();
-    } else {
-      setDialogImgUrl(null);
-    }
-  }, [open, imagePath, prompt.id]);
-  
-  const handleImageLoad = () => {
-    setImageLoading(false);
-    setImageError(false);
-  };
-  
-  const handleImageError = () => {
-    console.error("Failed to load image in details dialog:", dialogImgUrl);
-    setImageLoading(false);
-    setImageError(true);
-  };
-  
-  const handleImageRetry = () => {
-    if (imagePath) {
-      setImageLoading(true);
-      setImageError(false);
-      
-      async function refreshImage() {
-        try {
-          const refreshedUrl = imagePath === 'textpromptdefaultimg.jpg'
-            ? await getTextPromptDefaultImage() + `&t=${Date.now()}`
-            : await getPromptImage(imagePath, 1200, 90) + `&t=${Date.now()}`;
-            
-          console.log("Retrying with refreshed URL:", refreshedUrl);
-          setDialogImgUrl(refreshedUrl);
-        } catch (error) {
-          console.error("Error refreshing image:", error);
-          setImageError(true);
-          setImageLoading(false);
-        }
-      }
-      
-      refreshImage();
-    }
-  };
-
-  const handleImageClick = async () => {
-    if (imagePath && !imageError && !imageLoading) {
+    async function loadImage() {
       try {
-        const fullImage = imagePath === 'textpromptdefaultimg.jpg'
-          ? await getTextPromptDefaultImage()
-          : await getPromptImage(imagePath, 2000, 100);
-          
-        if (fullImage) window.open(fullImage, "_blank", "noopener,noreferrer");
+        let url;
+        if (prompt_type === 'text' && (!primaryImagePath)) {
+          url = await getTextPromptDefaultImage();
+        } else {
+          url = await getPromptImage(primaryImagePath, 600, 85);
+        }
+        setImageUrl(url);
       } catch (error) {
-        console.error("Error opening full image:", error);
+        console.error('Error loading prompt image:', error);
+        setImageUrl('/placeholder.svg');
       }
+    }
+    loadImage();
+
+    // Check if prompt is favorited by current user
+    if (session) {
+      const checkFavoriteStatus = async () => {
+        const { data } = await supabase
+          .from("favorites")
+          .select()
+          .eq("user_id", session.user.id)
+          .eq("prompt_id", prompt.id);
+        
+        setFavorited(!!data && data.length > 0);
+      };
+      
+      checkFavoriteStatus();
+    }
+  }, [prompt.id, primaryImagePath, prompt_type, session]);
+
+  const handleToggleFavorite = async () => {
+    if (!session) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to favorite prompts",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      if (favorited) {
+        await supabase.from("favorites").delete().eq("user_id", session.user.id).eq("prompt_id", prompt.id);
+      } else {
+        await supabase.from("favorites").insert({
+          user_id: session.user.id,
+          prompt_id: prompt.id
+        });
+      }
+      setFavorited(!favorited);
+      
+      toast({
+        title: favorited ? "Removed from favorites" : "Added to favorites",
+        description: favorited ? "Prompt removed from your favorites" : "Prompt added to your favorites"
+      });
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update favorites",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCopyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt_text);
+      setCopied(true);
+      toast({
+        title: "Copied to clipboard",
+        description: isN8nWorkflow ? "Workflow details have been copied to your clipboard" : "Prompt text has been copied to your clipboard"
+      });
+      
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Error copying to clipboard:", error);
+      toast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleMediaClick = (index: number) => {
+    setSelectedMediaIndex(index);
+    setMediaPreviewOpen(true);
+  };
+
+  // Get category color
+  const getCategoryColor = (category: string) => {
+    switch (category?.toLowerCase()) {
+      case 'chatgpt':
+        return '#c49d68';
+      case 'midjourney':
+        return '#7a9e9f';
+      case 'workflow':
+      case 'n8n':
+        return '#8b7fb8';
+      default:
+        return '#c49d68';
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] p-0">
-        <DialogDescription id="prompt-details-description" className="sr-only">
-          Details for prompt: {prompt.title}
-        </DialogDescription>
-        <ScrollArea className="h-full max-h-[85vh]">
-          <div className="p-6 flex flex-col space-y-6">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold tracking-tight">
-                {prompt.title}
-              </DialogTitle>
-            </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="prompt-dialog max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-4 sm:p-8">
+              <PromptDetailsHeader
+                title={title}
+                category={category}
+                isN8nWorkflow={isN8nWorkflow}
+                session={session}
+                favorited={favorited}
+                onToggleFavorite={handleToggleFavorite}
+                getCategoryColor={getCategoryColor}
+              />
 
-            {imagePath ? (
-              <div className="rounded-xl overflow-hidden bg-muted/50 flex items-center justify-center">
-                <ImageWrapper 
-                  src={dialogImgUrl} 
-                  alt={prompt.title} 
-                  className="w-full"
-                  disableAspectRatio={true}
-                  isCard={false}
-                  onLoad={handleImageLoad} 
-                  onError={handleImageError} 
-                  onClick={handleImageClick}
-                />
-              </div>
-            ) : (
-              <div className="rounded-xl overflow-hidden bg-muted/50 flex items-center justify-center p-12">
-                <span className="text-muted-foreground text-lg">No image available</span>
-              </div>
-            )}
+              <PromptDetailsContent
+                imageUrl={imageUrl}
+                title={title}
+                mediaFiles={mediaFiles}
+                isN8nWorkflow={isN8nWorkflow}
+                workflowSteps={workflowSteps}
+                workflowFiles={workflowFiles}
+                prompt_text={prompt_text}
+                model={model}
+                useCase={useCase}
+                style={style}
+                tags={tags}
+                onMediaClick={handleMediaClick}
+              />
 
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Prompt Text</h3>
-              <div className="bg-muted/50 rounded-lg p-4">
-                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{prompt.prompt_text}</p>
-              </div>
+              <PromptDetailsActions
+                isN8nWorkflow={isN8nWorkflow}
+                copied={copied}
+                onCopyPrompt={handleCopyPrompt}
+              />
             </div>
-
-            {(prompt.metadata?.category || prompt.metadata?.style || prompt.metadata?.tags?.length > 0) && (
-              <div>
-                <h3 className="text-sm font-medium mb-3">Details</h3>
-                <div className="flex flex-wrap gap-2">
-                  {prompt.metadata?.category && (
-                    <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
-                      {prompt.metadata.category}
-                    </Badge>
-                  )}
-                  {prompt.metadata?.style && (
-                    <Badge variant="secondary" className="bg-secondary/30 hover:bg-secondary/40">
-                      {prompt.metadata.style}
-                    </Badge>
-                  )}
-                  {prompt.metadata?.tags?.map(tag => (
-                    <Badge key={tag} variant="outline" className="hover:bg-accent">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <MediaPreviewDialog
+        open={mediaPreviewOpen}
+        onOpenChange={setMediaPreviewOpen}
+        mediaFiles={mediaFiles}
+        selectedIndex={selectedMediaIndex}
+        title={title}
+      />
+    </>
   );
 }
-
-export default PromptDetailsDialog;

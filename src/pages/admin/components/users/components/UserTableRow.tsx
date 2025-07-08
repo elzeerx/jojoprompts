@@ -1,129 +1,217 @@
-import { Loader2, UserCheck, UserX, Mail, Trash, Edit } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { TableCell, TableRow } from "@/components/ui/table";
-import { UserProfile } from "@/types";
+
+import React, { useState } from 'react';
+import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { EditUserDialog } from "./EditUserDialog";
-import { useState } from "react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { toast } from "@/hooks/use-toast";
+import { EditUserDialog } from './EditUserDialog';
+import { AssignPlanDialog } from './AssignPlanDialog';
+import { UserProfile } from "@/types";
+import { TableCell } from "@/components/ui/table";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionActions } from "../hooks/useSubscriptionActions";
 
 interface UserTableRowProps {
-  user: UserProfile;
+  user: UserProfile & { subscription?: { plan_name: string } | null };
   isUpdating: boolean;
   onUpdateUser: (userId: string, data: Partial<UserProfile>) => void;
+  onAssignPlan: (userId: string, planId: string) => void;
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string) => void;
+  onRefresh: () => void;
 }
 
-export function UserTableRow({
-  user,
+export function UserTableRow({ 
+  user, 
   isUpdating,
   onUpdateUser,
+  onAssignPlan,
   onSendResetEmail,
   onDeleteUser,
+  onRefresh
 }: UserTableRowProps) {
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { canDeleteUsers, canCancelSubscriptions } = useAuth();
+  const { processingUserId, cancelUserSubscription } = useSubscriptionActions();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [assignPlanDialogOpen, setAssignPlanDialogOpen] = useState(false);
+  
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString();
+  };
 
-  const handleDeleteClick = () => {
-    if (window.confirm(`Are you sure you want to delete user ${user.email}?`)) {
-      onDeleteUser(user.id, user.email);
+  const handleCancelSubscription = async () => {
+    const success = await cancelUserSubscription(user.id, user.email);
+    if (success) {
+      onRefresh();
     }
   };
 
-  // Format user's name for display
-  const displayName = user.first_name || user.last_name 
-    ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
-    : <span className="text-muted-foreground italic">Not set</span>;
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'text-warm-gold bg-warm-gold/10';
+      case 'jadmin':
+        return 'text-orange-600 bg-orange-100';
+      case 'prompter':
+        return 'text-blue-600 bg-blue-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getSubscriptionBadgeColor = (planName: string | null) => {
+    if (!planName || planName === 'None') {
+      return 'text-gray-500 bg-gray-100';
+    }
+    
+    switch (planName.toLowerCase()) {
+      case 'basic':
+        return 'text-green-600 bg-green-100';
+      case 'standard':
+        return 'text-blue-600 bg-blue-100';
+      case 'premium':
+        return 'text-purple-600 bg-purple-100';
+      case 'lifetime':
+        return 'text-warm-gold bg-warm-gold/10';
+      default:
+        return 'text-indigo-600 bg-indigo-100';
+    }
+  };
 
   return (
-    <TableRow>
-      <TableCell>
-        {displayName}
+    <tr className="border-b hover:bg-muted/50">
+      <TableCell className="font-medium">
+        {user.first_name || ''} {user.last_name || ''}
       </TableCell>
       <TableCell>{user.email}</TableCell>
       <TableCell>
-        <Select
-          defaultValue={user.role}
-          onValueChange={(value) => onUpdateUser(user.id, { role: value })}
-          disabled={isUpdating}
-        >
-          <SelectTrigger className="w-[110px]">
-            <SelectValue>
-              <div className="flex items-center">
-                {isUpdating ? (
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                ) : user.role === "admin" ? (
-                  <UserCheck className="mr-2 h-3 w-3 text-primary" />
-                ) : (
-                  <UserX className="mr-2 h-3 w-3 text-muted-foreground" />
-                )}
-                {user.role}
-              </div>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="admin">
-              <div className="flex items-center">
-                <UserCheck className="mr-2 h-4 w-4 text-primary" />
-                admin
-              </div>
-            </SelectItem>
-            <SelectItem value="user">
-              <div className="flex items-center">
-                <UserX className="mr-2 h-4 w-4 text-muted-foreground" />
-                user
-              </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role || 'user')}`}>
+          {user.role || 'user'}
+        </span>
       </TableCell>
+      <TableCell>{formatDate(user.created_at)}</TableCell>
+      <TableCell>{formatDate(user.last_sign_in_at)}</TableCell>
       <TableCell>
-        {new Date(user.created_at).toLocaleDateString()}
-      </TableCell>
-      <TableCell>
-        {user.last_sign_in_at 
-          ? new Date(user.last_sign_in_at).toLocaleDateString() 
-          : "Never"}
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSubscriptionBadgeColor(user.subscription?.plan_name || null)}`}>
+          {user.subscription?.plan_name || 'None'}
+        </span>
       </TableCell>
       <TableCell className="text-right">
-        <div className="flex gap-2 justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsEditDialogOpen(true)}
-          >
-            <Edit className="h-4 w-4 mr-1" />
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onSendResetEmail(user.email)}
-          >
-            <Mail className="h-4 w-4 mr-1" />
-            Reset
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDeleteClick}
-            className="hover:bg-red-700"
-          >
-            <Trash className="h-4 w-4" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" disabled={isUpdating || processingUserId === user.id}>
+              <span className="sr-only">Open menu</span>
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setAssignPlanDialogOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" /> Assign Plan
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendResetEmail(user.email)}>
+              <Send className="mr-2 h-4 w-4" /> Send Reset Email
+            </DropdownMenuItem>
+            
+            {canCancelSubscriptions && user.subscription && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleCancelSubscription}>
+                  <CreditCard className="mr-2 h-4 w-4 text-orange-500" />
+                  <span className="text-orange-500">Cancel Subscription</span>
+                </DropdownMenuItem>
+              </>
+            )}
+            
+            {canDeleteUsers && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setDeleteDialogOpen(true)}>
+                  <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                  <span className="text-destructive">Delete</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {canDeleteUsers && (
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent className="prompt-dialog">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-3">
+                  <AlertTriangle className="h-8 w-8 text-red-500" />
+                  Delete User Account
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the user account for <strong>{user.email}</strong>. This action cannot be undone and will remove all associated data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="bg-white/40 p-6 rounded-xl border border-gray-200">
+                <div className="flex items-center gap-3 text-red-600">
+                  <AlertTriangle className="h-5 w-5" />
+                  <p className="font-medium">This action is irreversible</p>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  All user data, preferences, and subscription information will be permanently deleted.
+                </p>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => {
+                    onDeleteUser(user.id, user.email);
+                    setDeleteDialogOpen(false);
+                  }}
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                >
+                  Delete User
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </TableCell>
-      <EditUserDialog
-        user={user}
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onUpdate={(data) => onUpdateUser(user.id, data)}
+      
+      <EditUserDialog 
+        user={user} 
+        open={editDialogOpen} 
+        onOpenChange={setEditDialogOpen} 
+        onSave={(userId, data) => onUpdateUser(userId, data)}
       />
-    </TableRow>
+
+      <AssignPlanDialog
+        userId={user.id}
+        open={assignPlanDialogOpen}
+        onOpenChange={setAssignPlanDialogOpen}
+        onAssign={(planId) => {
+          onAssignPlan(user.id, planId);
+          setAssignPlanDialogOpen(false);
+        }}
+      />
+    </tr>
   );
 }

@@ -31,7 +31,6 @@ export function PromptStateManager({ prompts, children }: PromptStateManagerProp
           open={detailsDialogOpen}
           onOpenChange={setDetailsDialogOpen}
           prompt={selectedPrompt}
-          promptList={prompts as PromptRow[]}
         />
       )}
     </>

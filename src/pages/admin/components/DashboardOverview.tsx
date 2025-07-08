@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { FileText, Users, Activity } from "lucide-react";
+import { FileText, Users, Activity, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Card,
@@ -91,24 +91,31 @@ export default function DashboardOverview() {
       
       if (session?.access_token) {
         try {
+          console.log('Fetching users from edge function...');
           const { data: allUsers, error: usersError } = await supabase.functions.invoke(
             "get-all-users",
             {
               headers: {
                 Authorization: `Bearer ${session.access_token}`,
               },
+              method: "GET"
             }
           );
           
           if (usersError) {
             console.error("Error fetching users from edge function:", usersError);
           } else {
-            usersCount = Array.isArray(allUsers) ? allUsers.length : 0;
+            console.log("Users response from edge function:", allUsers);
+            usersCount = allUsers?.total || 0;
           }
         } catch (err) {
           console.error("Failed to call get-all-users edge function:", err);
         }
+      } else {
+        console.log('No session access token available');
       }
+      
+      console.log('Final users count:', usersCount);
       
       setStats({
         prompts: prompts?.length ?? 0,
@@ -196,16 +203,18 @@ export default function DashboardOverview() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
-          <Card key={card.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card key={card.title} className="border-warm-gold/20 bg-white/95 shadow-sm hover:shadow-md transition-all">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-warm-gold/10 via-transparent to-muted-teal/10">
               <CardTitle className="text-sm font-medium">
                 {card.title}
               </CardTitle>
-              <card.icon className="h-4 w-4 text-muted-foreground" />
+              <card.icon className="h-4 w-4 text-warm-gold" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? "Loading..." : card.value === 0 ? "No data yet" : card.value}
+              <div className="text-2xl font-bold text-dark-base">
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-warm-gold" />
+                ) : card.value === 0 ? "0" : card.value}
               </div>
             </CardContent>
           </Card>
@@ -213,19 +222,21 @@ export default function DashboardOverview() {
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
+        <Card className="col-span-4 border-warm-gold/20 bg-white/95 shadow-sm hover:shadow-md transition-all">
+          <CardHeader className="bg-gradient-to-r from-warm-gold/10 via-transparent to-muted-teal/10">
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>Latest user actions and system events</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-muted-foreground">Loading activity...</p>
+              <p className="text-muted-foreground flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-warm-gold" />
+              </p>
             ) : recentActivity.length > 0 ? (
               <ul className="space-y-4">
                 {recentActivity.map((item) => (
-                  <li key={item.id} className="flex items-start gap-2 border-b pb-3 last:border-0">
-                    <Activity className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <li key={item.id} className="flex items-start gap-2 border-b border-warm-gold/10 pb-3 last:border-0">
+                    <Activity className="h-5 w-5 text-warm-gold mt-0.5" />
                     <div>
                       <p className="text-sm font-medium">{item.description}</p>
                       <div className="flex gap-2 text-xs text-muted-foreground">
@@ -237,7 +248,7 @@ export default function DashboardOverview() {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground">No activity yet.</p>
+              <p className="text-muted-foreground text-center py-4">No activity yet.</p>
             )}
           </CardContent>
         </Card>

@@ -6,18 +6,17 @@ export function TagList({ tags }: { tags: string[] }) {
   return (
     <div className="flex flex-wrap gap-1.5 mt-2">
       {tags.slice(0, 3).map((tag, i) => (
-        <Badge
+        <span
           key={i}
-          variant="secondary"
-          className="text-xs font-medium px-2 py-0.5"
+          className="bg-secondary text-secondary-foreground px-2 py-0.5 text-xs font-mono"
         >
           {tag}
-        </Badge>
+        </span>
       ))}
       {tags.length > 3 && (
-        <Badge variant="outline" className="text-xs font-medium px-2 py-0.5">
+        <span className="border border-border px-2 py-0.5 text-xs font-mono">
           +{tags.length - 3}
-        </Badge>
+        </span>
       )}
     </div>
   );

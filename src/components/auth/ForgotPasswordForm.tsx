@@ -25,7 +25,7 @@ export function ForgotPasswordForm() {
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
-      resetEmail: "",
+      email: "",
     },
   });
 
@@ -34,10 +34,11 @@ export function ForgotPasswordForm() {
 
     try {
       const origin = window.location.origin;
-      const resetUrl = `${origin}/login?tab=reset`;
+      // Update redirect URL to use the reset-password route with type parameter
+      const resetUrl = `${origin}/login?type=recovery&tab=reset`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(
-        values.resetEmail,
+        values.email,
         {
           redirectTo: resetUrl,
         }
@@ -96,7 +97,7 @@ export function ForgotPasswordForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
         <FormField
           control={form.control}
-          name="resetEmail"
+          name="email"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Email</FormLabel>

@@ -12,7 +12,10 @@ interface CopyButtonProps {
 export function CopyButton({ value, className }: CopyButtonProps) {
   const [hasCopied, setHasCopied] = useState(false);
 
-  const copyToClipboard = async () => {
+  const copyToClipboard = async (e: React.MouseEvent) => {
+    // Prevent the event from bubbling up to parent elements
+    e.stopPropagation();
+    
     await navigator.clipboard.writeText(value);
     setHasCopied(true);
     
@@ -26,7 +29,7 @@ export function CopyButton({ value, className }: CopyButtonProps) {
       variant="outline"
       size="sm"
       onClick={copyToClipboard}
-      className={cn("transition-all", className)}
+      className={cn("transition-all rounded-lg", className)} // Added rounded-lg
     >
       {hasCopied ? (
         <>

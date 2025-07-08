@@ -1,104 +1,311 @@
+
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { LogOut, User, ShieldCheck, Heart } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
+import { Menu, X, User, LogOut, Settings, Heart, Edit } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-interface HeaderProps {
-  userRole?: string | null;
-  userEmail?: string | null;
-  onLogout?: () => void;
-}
-export function Header({
-  userEmail,
-  onLogout
-}: HeaderProps) {
-  const {
-    userRole,
-    user
-  } = useAuth();
-  const isLoggedIn = !!userEmail;
-  const isAdmin = userRole === "admin";
+export function Header() {
+  const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Safe auth hook with fallback
+  let user = null;
+  let signOut = async () => {};
+  let isAdmin = false;
+  let isPrompter = false;
+  
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+    signOut = authContext.signOut;
+    isAdmin = authContext.isAdmin;
+    isPrompter = authContext.isPrompter;
+  } catch (error) {
+    console.warn('Auth context unavailable in Header:', error);
+  }
 
-  // Get initials from email for avatar
-  const getInitials = (email: string) => {
-    if (!email) return "U";
-    return email.charAt(0).toUpperCase();
+  const handleLogout = async () => {
+    try {
+      console.log("[HEADER] Starting logout process");
+      await signOut();
+      console.log("[HEADER] Logout completed");
+    } catch (error) {
+      console.error("[HEADER] Logout error:", error);
+    }
   };
-  return <header className="border-b w-full">
-      <div className="max-w-6xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-6">
-          <a href={isLoggedIn ? "/prompts" : "/"} className="flex items-center gap-2">
-            <img alt="JojoPrompts logo" className="h-6 w-auto" src="/lovable-uploads/ff979f5e-633f-404f-8799-bd078ad6c678.png" />
-          </a>
-          
-          <nav className="hidden md:flex gap-6">
-            {isLoggedIn && (
-              <>
-                <Link to="/prompts" className="text-sm font-medium hover:text-primary">
-                  Browse Prompts
-                </Link>
-                <Link to="/dashboard" className="text-sm font-medium hover:text-primary flex items-center gap-1">
-                  <Heart className="h-4 w-4" />
-                  Favorites
-                </Link>
-                {isAdmin && <Link to="/admin" className="text-sm font-medium hover:text-primary">
-                    <ShieldCheck className="mr-2 h-4 w-4 inline" />
-                    Admin Dashboard
-                  </Link>}
-              </>
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  // Handler for conditional logo navigation
+  const handleLogoClick = () => {
+    if (user) {
+      // If logged in, send to /prompts
+      navigate("/prompts");
+    } else {
+      // Not logged in, send to the main page
+      navigate("/");
+    }
+  };
+
+  return (
+    <header className="bg-white/95 backdrop-blur-sm border-b border-warm-gold/20 sticky top-0 z-50">
+      <div className="container mx-auto">
+        <div className="flex items-center justify-between h-14 sm:h-16">
+          {/* Logo - Mobile optimized */}
+          <button
+            onClick={handleLogoClick}
+            className="flex items-center space-x-2 touch-manipulation focus:outline-none"
+            aria-label="JojoPrompts Home"
+            type="button"
+            tabIndex={0}
+            style={{ background: "none", border: "none", padding: 0, margin: 0 }}
+          >
+            <img
+              alt="JojoPrompts"
+              className="h-6 w-auto sm:h-8 transition-all duration-200"
+              src="/lovable-uploads/2207fac5-9e06-4da3-a1b4-da690a123a56.png"
+            />
+          </button>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
+            <Link
+              to="/examples"
+              className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+            >
+              Examples
+            </Link>
+            <Link
+              to="/prompts"
+              className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+            >
+              Prompts
+            </Link>
+            {!user && (
+              <Link
+                to="/pricing"
+                className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+              >
+                Pricing
+              </Link>
             )}
+            <Link
+              to="/about"
+              className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+            >
+              About
+            </Link>
           </nav>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          {isLoggedIn ? <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(userEmail || "")}
-                    </AvatarFallback>
-                  </Avatar>
+
+          {/* Desktop Auth */}
+          <div className="hidden md:flex items-center space-x-3">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-9 w-9 lg:h-10 lg:w-10 rounded-full hover:bg-warm-gold/10 transition-colors touch-manipulation"
+                  >
+                    <Avatar className="h-7 w-7 lg:h-8 lg:w-8">
+                      <AvatarFallback className="bg-warm-gold text-white font-medium text-sm">
+                        {user.email?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="w-60 lg:w-64 bg-white border border-warm-gold/20 shadow-lg rounded-lg p-2"
+                  align="end"
+                  forceMount
+                >
+                  <DropdownMenuItem
+                    onClick={() => navigate("/dashboard")}
+                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                  >
+                    <User className="mr-3 h-4 w-4 text-warm-gold" />
+                    <span className="text-dark-base font-medium">Dashboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/favorites")}
+                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                  >
+                    <Heart className="mr-3 h-4 w-4 text-warm-gold" />
+                    <span className="text-dark-base font-medium">Favorites</span>
+                  </DropdownMenuItem>
+                  {isPrompter && (
+                    <DropdownMenuItem
+                      onClick={() => navigate("/dashboard/prompter")}
+                      className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                    >
+                      <Edit className="mr-3 h-4 w-4 text-warm-gold" />
+                      <span className="text-dark-base font-medium">My Prompts</span>
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && (
+                    <DropdownMenuItem
+                      onClick={() => navigate("/admin")}
+                      className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                    >
+                      <Settings className="mr-3 h-4 w-4 text-warm-gold" />
+                      <span className="text-dark-base font-medium">Admin</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator className="my-2 bg-warm-gold/20" />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                  >
+                    <LogOut className="mr-3 h-4 w-4 text-warm-gold" />
+                    <span className="text-dark-base font-medium">Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate("/login")}
+                  className="text-dark-base hover:text-warm-gold text-sm lg:text-base py-2 px-3 touch-manipulation"
+                >
+                  Login
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    {userEmail && <p className="font-medium">{userEmail}</p>}
-                    {userRole && <p className="w-[200px] truncate text-sm text-muted-foreground">
-                        {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-                      </p>}
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard" className="cursor-pointer flex items-center gap-2">
-                    <Heart className="h-4 w-4" />
-                    Favorites
-                  </Link>
-                </DropdownMenuItem>
-                {isAdmin && <DropdownMenuItem asChild>
-                    <Link to="/admin" className="cursor-pointer">
-                      Admin Panel
-                    </Link>
-                  </DropdownMenuItem>}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer text-destructive" onClick={onLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu> : <div className="flex gap-2">
-              <Button asChild variant="outline">
-                <Link to="/login">Login</Link>
-              </Button>
-              <Button asChild>
-                <Link to="/signup">Sign Up</Link>
-              </Button>
-            </div>}
+                <Button
+                  onClick={() => navigate("/pricing")}
+                  className="bg-warm-gold hover:bg-warm-gold/90 text-white text-sm lg:text-base py-2 px-3 lg:px-4 touch-manipulation"
+                >
+                  Get Started
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile menu button - Enhanced touch target */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden touch-manipulation min-h-[44px] min-w-[44px] p-2"
+            onClick={toggleMobileMenu}
+          >
+            {isMobileMenuOpen ?
+              <X className="h-5 w-5 transition-transform duration-200" /> :
+              <Menu className="h-5 w-5 transition-transform duration-200" />
+            }
+          </Button>
         </div>
+
+        {/* Mobile Navigation - Enhanced animations and touch targets */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden animate-slide-down bg-white/95 backdrop-blur-sm border-t border-warm-gold/20">
+            <nav className="py-3 space-y-1">
+              <Link
+                to="/examples"
+                className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Examples
+              </Link>
+              <Link
+                to="/prompts"
+                className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Prompts
+              </Link>
+              {!user && (
+                <Link
+                  to="/pricing"
+                  className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Pricing
+                </Link>
+              )}
+              <Link
+                to="/about"
+                className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                About
+              </Link>
+
+              {user ? (
+                <>
+                  <div className="border-t border-warm-gold/10 mt-2 pt-2">
+                    <Link
+                      to="/dashboard"
+                      className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      to="/favorites"
+                      className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Favorites
+                    </Link>
+                    {isPrompter && (
+                      <Link
+                        to="/dashboard/prompter"
+                        className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        My Prompts
+                      </Link>
+                    )}
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Admin
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                    >
+                      Log out
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="border-t border-warm-gold/10 mt-2 pt-2 px-2 space-y-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      navigate("/login");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full justify-start text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 touch-manipulation h-12"
+                  >
+                    Login
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      navigate("/pricing");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full bg-warm-gold hover:bg-warm-gold/90 text-white touch-manipulation h-12"
+                  >
+                    Get Started
+                  </Button>
+                </div>
+              )}
+            </nav>
+          </div>
+        )}
       </div>
-    </header>;
+    </header>
+  );
 }

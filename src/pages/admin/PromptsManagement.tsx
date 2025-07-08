@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { AdminPromptCard } from "./components/prompts/AdminPromptCard";
 import { PromptDialog } from "./components/prompts/PromptDialog";
 import { type PromptRow } from "@/types";
@@ -22,6 +23,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   const fetchPrompts = async () => {
     setIsLoading(true);
     try {
+      console.log("PromptsManagement - Fetching prompts...");
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
@@ -29,9 +31,12 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         .order("created_at", { ascending: false });
       
       if (error) throw error;
+      
+      console.log("PromptsManagement - Fetched prompts:", data);
+      console.log("PromptsManagement - Sample prompt metadata:", data?.[0]?.metadata);
       return data || [];
     } catch (error) {
-      console.error("Error fetching prompts:", error);
+      console.error("PromptsManagement - Error fetching prompts:", error);
       toast({
         title: "Error",
         description: "Failed to load prompts",
@@ -45,6 +50,8 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   
   const updatePromptsState = (data: PromptRow[] | null) => {
     if (data) {
+      console.log("PromptsManagement - Updating prompts state with:", data);
+      console.log("PromptsManagement - First prompt metadata in update:", data[0]?.metadata);
       setPrompts(data);
     }
   };
@@ -61,6 +68,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   }, []);
   
   const handleAddPrompt = () => {
+    console.log("PromptsManagement - Adding new prompt");
     setEditing(null);
     setDialogOpen(true);
   };
@@ -68,6 +76,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   const handleEditPrompt = (promptId: string) => {
     const prompt = prompts.find(p => p.id === promptId);
     if (prompt) {
+      console.log("PromptsManagement - Editing prompt:", prompt.id, "with metadata:", prompt.metadata);
       setEditing(prompt);
       setDialogOpen(true);
     }
@@ -84,20 +93,14 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       
       if (error) throw error;
       
-      supabase
-        .from("prompts")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .returns<PromptRow[]>()
-        .then(({ data }) => updatePromptsState(data));
-      
       toast({
         title: "Success",
         description: "Prompt deleted successfully",
       });
     } catch (error) {
-      console.error("Error deleting prompt:", error);
+      console.error("PromptsManagement - Error deleting prompt:", error);
       
+      // Reload the prompts to restore the state
       fetchPrompts().then(updatePromptsState);
       
       toast({
@@ -108,74 +111,37 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     }
   };
   
-  const handleSave = async (prompt: Partial<PromptRow>) => {
+  const handleSuccess = async () => {
+    console.log("PromptsManagement - Prompt saved successfully, refreshing prompts...");
+    const freshPrompts = await fetchPrompts();
+    console.log("PromptsManagement - Fresh prompts after save:", freshPrompts);
+    updatePromptsState(freshPrompts);
     setDialogOpen(false);
-    
-    try {
-      if (editing) {
-        const { error } = await supabase
-          .from("prompts")
-          .update(prompt)
-          .eq("id", editing.id);
-        
-        if (error) throw error;
-        
-        setPrompts(prompts.map(p => 
-          p.id === editing.id ? { ...p, ...prompt } : p
-        ));
-        
-        toast({
-          title: "Success",
-          description: "Prompt updated successfully",
-        });
-      } else {
-        const payload = {
-          ...prompt,
-          user_id: user?.id
-        };
-        
-        const { data, error } = await supabase
-          .from("prompts")
-          .insert(payload as any)
-          .select()
-          .returns<PromptRow[]>()
-          .single();
-        
-        if (error) throw error;
-        
-        setPrompts([data, ...prompts]);
-        
-        toast({
-          title: "Success",
-          description: "Prompt created successfully",
-        });
-      }
-    } catch (error) {
-      console.error("Error saving prompt:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save prompt",
-        variant: "destructive"
-      });
-    }
   };
+
+  // Create a unique dialog key that changes when editing different prompts
+  const dialogKey = editing ? `edit-${editing.id}` : 'new-prompt';
   
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Prompts Management</h2>
-        <Button onClick={handleAddPrompt}>
+        <h2 className="text-2xl font-bold text-dark-base">Prompts Management</h2>
+        <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">
           <Plus className="mr-2 h-4 w-4" />
           Add Prompt
         </Button>
       </div>
       
       {isLoading ? (
-        <div className="text-center py-8">Loading prompts...</div>
-      ) : prompts.length === 0 ? (
         <div className="text-center py-8">
+          <div className="inline-block">
+            <Loader2 className="h-8 w-8 animate-spin text-warm-gold" />
+          </div>
+        </div>
+      ) : prompts.length === 0 ? (
+        <div className="text-center py-8 bg-soft-bg/30 rounded-xl border border-warm-gold/20 p-8">
           <p className="text-muted-foreground mb-4">No prompts found</p>
-          <Button onClick={handleAddPrompt}>Add Your First Prompt</Button>
+          <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">Add Your First Prompt</Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -192,11 +158,12 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       )}
       
       <PromptDialog
+        key={dialogKey}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        initial={editing}
-        promptType={editing?.prompt_type || "image"}
-        onSave={handleSave}
+        onSuccess={handleSuccess}
+        editingPrompt={editing}
+        promptType={editing?.prompt_type === 'button' || editing?.prompt_type === 'image-selection' ? 'text' : editing?.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound'}
       />
     </div>
   );

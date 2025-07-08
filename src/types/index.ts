@@ -15,13 +15,31 @@ export interface Prompt {
   image_path: string | null;
   image_url?: string | null;
   default_image_path?: string | null;
-  prompt_type: 'text' | 'image';
+  prompt_type: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';
   metadata: {
     category?: string;
     style?: string;
     tags?: string[];
     target_model?: string;
     use_case?: string;
+    button_text?: string;
+    button_action?: string;
+    image_options?: string[];
+    media_files?: Array<{
+      type: 'image' | 'video' | 'audio';
+      path: string;
+      name: string;
+    }>;
+    workflow_steps?: {
+      name: string;
+      description: string;
+    }[];
+    workflow_files?: Array<{
+      type: 'json' | 'zip';
+      path: string;
+      name: string;
+    }>;
+    buttons?: Array<{ id: string; name: string; description: string; type: string }>;
   };
   created_at: string;
 }
@@ -32,7 +50,7 @@ export interface PromptRow {
   title: string;
   prompt_text: string;
   image_path: string | null;
-  image_url?: string | null; // Add image_url property for backward compatibility
+  image_url?: string | null;
   default_image_path?: string | null;
   created_at: string | null;
   metadata: {
@@ -41,8 +59,26 @@ export interface PromptRow {
     tags?: string[];
     target_model?: string;
     use_case?: string;
+    button_text?: string;
+    button_action?: string;
+    image_options?: string[];
+    media_files?: Array<{
+      type: 'image' | 'video' | 'audio';
+      path: string;
+      name: string;
+    }>;
+    workflow_steps?: {
+      name: string;
+      description: string;
+    }[];
+    workflow_files?: Array<{
+      type: 'json' | 'zip';
+      path: string;
+      name: string;
+    }>;
+    buttons?: Array<{ id: string; name: string; description: string; type: string }>;
   };
-  prompt_type: 'text' | 'image';
+  prompt_type: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';
 }
 
 export interface UserProfile {
@@ -50,6 +86,7 @@ export interface UserProfile {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  username: string;
   created_at: string;
   role: string;
   last_sign_in_at: string | null;

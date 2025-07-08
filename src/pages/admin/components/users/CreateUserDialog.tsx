@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { UserPlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useWelcomeEmail } from "@/hooks/useWelcomeEmail";
 
 interface CreateUserDialogProps {
   onUserCreated: () => void;
@@ -19,6 +19,7 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
   const [role, setRole] = useState("user");
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const { sendWelcomeEmail } = useWelcomeEmail();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,12 +62,13 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
 
       if (profileError) throw profileError;
       
-      // Send email notification manually if needed
-      await sendWelcomeEmail(email);
+      // Send welcome email
+      const userName = email.split('@')[0]; // Use email prefix as name fallback
+      await sendWelcomeEmail(userName, email);
       
       toast({
-        title: "User created",
-        description: `Successfully created user ${email}`,
+        title: "User created successfully! 🎉",
+        description: `Successfully created user ${email} and sent welcome email`,
       });
       
       setOpen(false);
@@ -87,27 +89,6 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
     }
   };
 
-  const sendWelcomeEmail = async (userEmail: string) => {
-    try {
-      // Get the current origin with protocol
-      const origin = window.location.origin;
-      const loginUrl = `${origin}/login`;
-      
-      // Attempt to send a welcome email using Supabase Auth API
-      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-        redirectTo: loginUrl,
-      });
-      
-      if (error) {
-        console.warn("Could not send welcome email:", error.message);
-      } else {
-        console.log("Welcome email sent successfully");
-      }
-    } catch (err) {
-      console.warn("Failed to send welcome email:", err);
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -116,56 +97,68 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
           Add User
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create New User</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="user@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              "Create User"
-            )}
-          </Button>
-        </form>
+      <DialogContent className="prompt-dialog">
+        <div className="p-8">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-3xl font-bold text-gray-900 leading-tight">
+              Create New User
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="bg-white/40 p-6 rounded-xl border border-gray-200 space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-base font-medium">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-12 text-base"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-base font-medium">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="h-12 text-base"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role" className="text-base font-medium">Role</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger className="h-12 text-base">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button 
+              type="submit" 
+              className="w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white py-3 text-base font-semibold rounded-xl shadow-md" 
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create User"
+              )}
+            </Button>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

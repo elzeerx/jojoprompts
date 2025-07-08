@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { PromptCard } from "@/components/ui/prompt-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -89,7 +88,7 @@ export default function FavoritesPage() {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-muted-foreground mb-2">Checking authentication...</p>
-          <div className="h-1 w-64 bg-secondary overflow-hidden rounded-full">
+          <div className="h-1 w-48 sm:w-64 bg-secondary overflow-hidden rounded-full">
             <div className="h-full bg-primary animate-pulse rounded-full"></div>
           </div>
         </div>
@@ -100,7 +99,7 @@ export default function FavoritesPage() {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-muted-foreground mb-2">Loading your favorite prompts...</p>
-          <div className="h-1 w-64 bg-secondary overflow-hidden rounded-full">
+          <div className="h-1 w-48 sm:w-64 bg-secondary overflow-hidden rounded-full">
             <div className="h-full bg-primary animate-pulse rounded-full"></div>
           </div>
         </div>
@@ -114,6 +113,7 @@ export default function FavoritesPage() {
           <Button
             variant="outline"
             onClick={() => window.location.reload()}
+            className="mobile-button-secondary"
           >
             Retry
           </Button>
@@ -128,10 +128,10 @@ export default function FavoritesPage() {
             <Heart className="h-6 w-6 text-primary" />
           </div>
           <h3 className="text-lg font-semibold mb-1">No favorite prompts yet</h3>
-          <p className="text-muted-foreground mb-4 max-w-md">
+          <p className="text-muted-foreground mb-4 max-w-md text-sm sm:text-base px-4">
             You haven't added any prompts to your favorites. Browse and save the ones you like!
           </p>
-          <Button asChild>
+          <Button asChild className="mobile-button-primary">
             <a href="/prompts">Browse Prompts</a>
           </Button>
         </div>
@@ -139,7 +139,7 @@ export default function FavoritesPage() {
     }
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="mobile-grid gap-4 sm:gap-6">
         {favoritePrompts.map((prompt) => (
           <PromptCard
             key={prompt.id}
@@ -155,18 +155,23 @@ export default function FavoritesPage() {
   };
 
   return (
-    <div className="container py-8">
+    <div className="mobile-container-padding mobile-section-padding">
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Favorites</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-dark-base">My Favorites</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Manage your favorite prompts
           </p>
         </div>
 
         {selectedFavoritePrompts.length > 0 && (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setSelectedFavoritePrompts([])}>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => setSelectedFavoritePrompts([])}
+              className="mobile-button-ghost text-xs sm:text-sm"
+            >
               Clear ({selectedFavoritePrompts.length})
             </Button>
           </div>
@@ -174,8 +179,8 @@ export default function FavoritesPage() {
       </div>
 
       <Tabs defaultValue="favorites">
-        <TabsList className="mb-6">
-          <TabsTrigger value="favorites">Favorites</TabsTrigger>
+        <TabsList className="mb-4 sm:mb-6 mobile-tabs">
+          <TabsTrigger value="favorites" className="mobile-tab touch-target">Favorites</TabsTrigger>
         </TabsList>
 
         <TabsContent value="favorites">
