@@ -62,10 +62,11 @@ export function DiscountCodeInput({
       console.log('Plan ID:', planId);
       console.log('================================');
 
-      // Call the function with plan validation
+      // Call the function with plan validation and user_id
       const { data, error } = await supabase.rpc('validate_discount_code', {
         code_text: code.trim().toUpperCase(),
-        plan_id_param: planId || null
+        plan_id_param: planId || null,
+        user_id_param: null // Let the function use auth.uid() automatically
       });
 
       if (error) {
