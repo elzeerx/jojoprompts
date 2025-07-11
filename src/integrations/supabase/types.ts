@@ -672,6 +672,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      record_discount_usage: {
+        Args: {
+          discount_code_id_param: string
+          user_id_param?: string
+          payment_history_id_param?: string
+        }
+        Returns: boolean
+      }
       validate_discount_code: {
         Args:
           | { code_text: string; plan_id_param?: string }
