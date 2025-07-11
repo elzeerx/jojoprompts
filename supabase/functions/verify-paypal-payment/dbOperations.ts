@@ -85,8 +85,22 @@ export async function insertUserSubscriptionIfMissing(supabaseClient: any, { use
       return { data: updatedSub, error: updateError };
     }
 
+    // Fetch plan details to check if it's lifetime
+    const { data: planData } = await supabaseClient
+      .from('subscription_plans')
+      .select('is_lifetime, duration_days')
+      .eq('id', plan_id)
+      .single();
+
+    // Calculate end_date based on plan type
+    let endDate = null;
+    if (planData && !planData.is_lifetime) {
+      const durationDays = planData.duration_days || 365; // Default to 1 year if not specified
+      endDate = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+    }
+
     // Create new subscription
-    console.log('Creating new subscription:', { user_id, plan_id, payment_id, transaction_id });
+    console.log('Creating new subscription:', { user_id, plan_id, payment_id, transaction_id, is_lifetime: planData?.is_lifetime });
     const subscriptionData = {
       user_id,
       plan_id,
@@ -95,7 +109,7 @@ export async function insertUserSubscriptionIfMissing(supabaseClient: any, { use
       transaction_id,
       status: 'active',
       start_date: new Date().toISOString(),
-      end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
+      end_date: endDate // NULL for lifetime plans, calculated date for regular plans
     };
 
     const { data: newSub, error: insertError } = await supabaseClient

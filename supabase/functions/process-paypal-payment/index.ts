@@ -52,6 +52,20 @@ serve(async (req) => {
 
       console.log('Created transaction for direct activation:', transaction);
 
+      // Fetch plan details to check if it's lifetime
+      const { data: planData } = await supabaseClient
+        .from('subscription_plans')
+        .select('is_lifetime, duration_days')
+        .eq('id', planId)
+        .single();
+
+      // Calculate end_date based on plan type
+      let endDate = null;
+      if (planData && !planData.is_lifetime) {
+        const durationDays = planData.duration_days || 365; // Default to 1 year if not specified
+        endDate = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+      }
+
       // Create active subscription
       const { data: subscription, error: subscriptionError } = await supabaseClient
         .from('user_subscriptions')
@@ -63,7 +77,7 @@ serve(async (req) => {
           transaction_id: transaction.id,
           status: 'active',
           start_date: new Date().toISOString(),
-          end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
+          end_date: endDate // NULL for lifetime plans, calculated date for regular plans
         })
         .select()
         .single();
