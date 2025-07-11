@@ -88,6 +88,11 @@ export function SimplePayPalButton({
   const handlePayPalRedirect = async () => {
     setIsProcessing(true);
     try {
+      console.log('=== PAYPAL BUTTON DEBUG ===');
+      console.log('Amount received:', amount);
+      console.log('Final amount:', finalAmount);
+      console.log('Applied discount:', appliedDiscount);
+      console.log('========================');
       console.log('Initiating PayPal checkout:', { amount: finalAmount, planId, userId, appliedDiscount });
 
       // Enhanced session backup before PayPal redirect

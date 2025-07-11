@@ -131,6 +131,13 @@ serve(async (req) => {
     if (action === 'create') {
       const siteUrl = getSiteUrl();
       
+      console.log('=== PAYPAL ORDER DEBUG ===');
+      console.log('Received amount:', amount);
+      console.log('Applied discount:', appliedDiscount);
+      console.log('Plan ID:', planId);
+      console.log('User ID:', userId);
+      console.log('========================');
+      
       // FIXED: Include planId and userId in both return and cancel URLs with proper encoding
       const returnUrl = `${siteUrl}/payment/callback?success=true&plan_id=${encodeURIComponent(planId)}&user_id=${encodeURIComponent(userId)}`;
       const cancelUrl = `${siteUrl}/payment/callback?success=false&plan_id=${encodeURIComponent(planId)}&user_id=${encodeURIComponent(userId)}`;
