@@ -66,10 +66,10 @@ serve(async (req) => {
       .select(`
         id,
         user_id,
+        plan_id,
         amount_usd,
         status,
-        created_at,
-        subscription_plans(name)
+        created_at
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
@@ -101,15 +101,23 @@ serve(async (req) => {
 
     // Get user data for each transaction
     const userIds = [...new Set(transactions?.map(t => t.user_id) || [])]
+    const planIds = [...new Set(transactions?.map(t => t.plan_id) || [])]
+    
     const { data: users } = await supabase.auth.admin.listUsers()
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, first_name, last_name')
       .in('id', userIds)
+    
+    const { data: plans } = await supabase
+      .from('subscription_plans')
+      .select('id, name')
+      .in('id', planIds)
 
     // Create user lookup maps
     const userEmailMap = new Map()
     const profileMap = new Map()
+    const planMap = new Map()
 
     users?.users?.forEach(user => {
       userEmailMap.set(user.id, user.email)
@@ -119,10 +127,15 @@ serve(async (req) => {
       profileMap.set(profile.id, profile)
     })
 
+    plans?.forEach(plan => {
+      planMap.set(plan.id, plan)
+    })
+
     // Format the response data
     const formattedTransactions = transactions?.map(transaction => {
       const userEmail = userEmailMap.get(transaction.user_id)
       const profile = profileMap.get(transaction.user_id)
+      const plan = planMap.get(transaction.plan_id)
       const displayName = profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : ''
       
       return {
@@ -133,7 +146,7 @@ serve(async (req) => {
         created_at: transaction.created_at,
         user_email: userEmail || displayName || 'Unknown User',
         plan: {
-          name: transaction.subscription_plans?.name || 'Unknown Plan'
+          name: plan?.name || 'Unknown Plan'
         }
       }
     }) || []
