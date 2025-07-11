@@ -47,9 +47,46 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
       );
     }
 
-    // Get total count of auth users for pagination info
-    const { data: allAuthUsers, error: countError } = await supabase.auth.admin.listUsers();
-    const totalUsers = allAuthUsers?.users?.length || 0;
+    // Get total count of auth users for pagination info using database query
+    let totalUsers = 0;
+    let totalFilteredUsers = 0;
+    
+    if (search) {
+      // For search, we need to get all users first and then filter
+      const { data: allAuthUsers, error: countError } = await supabase.auth.admin.listUsers({
+        perPage: 1000 // Get a large batch to ensure we get all users
+      });
+      
+      if (countError) {
+        console.error('Error getting total user count:', countError);
+        totalUsers = 0;
+        totalFilteredUsers = 0;
+      } else {
+        const allUsers = allAuthUsers?.users || [];
+        totalUsers = allUsers.length;
+        
+        // Filter users by search term for accurate pagination
+        const filtered = allUsers.filter((user: any) => 
+          user.email?.toLowerCase().includes(search.toLowerCase())
+        );
+        totalFilteredUsers = filtered.length;
+      }
+    } else {
+      // For non-search requests, get total count via auth admin API with large page size
+      const { data: allAuthUsers, error: countError } = await supabase.auth.admin.listUsers({
+        perPage: 1000 // Get a large batch to ensure we get all users
+      });
+      
+      if (countError) {
+        console.error('Error getting total user count:', countError);
+        totalUsers = 0;
+      } else {
+        totalUsers = allAuthUsers?.users?.length || 0;
+      }
+      totalFilteredUsers = totalUsers;
+    }
+    
+    console.log(`Total users in system: ${totalUsers}, filtered users: ${totalFilteredUsers}, page: ${page}, limit: ${limit}`);
 
     // Get user IDs from auth response
     let userIds = authUsers?.users?.map((user: any) => user.id) || [];
@@ -101,17 +138,18 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
       };
     });
     
-    // Calculate pagination info
-    const totalPages = Math.ceil(totalUsers / limit);
+    // Calculate pagination info based on filtered results
+    const totalPages = Math.ceil(totalFilteredUsers / limit);
     
     return new Response(
       JSON.stringify({ 
         users: enrichedUsers, 
-        total: totalUsers, 
+        total: totalFilteredUsers, 
+        totalUsers: totalUsers, // Include both counts for debugging
         page, 
         limit,
         totalPages
-      }), 
+      }),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
