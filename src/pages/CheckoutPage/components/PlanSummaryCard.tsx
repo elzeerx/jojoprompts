@@ -28,8 +28,6 @@ interface PlanSummaryCardProps {
     discount_value: number;
   }) => void;
   onDiscountRemoved: () => void;
-  calculateDiscountedPrice: (originalPrice: number) => number;
-  getDiscountAmount: (originalPrice: number) => number;
   processing: boolean;
 }
 
@@ -41,13 +39,26 @@ export function PlanSummaryCard({
   appliedDiscount,
   onDiscountApplied,
   onDiscountRemoved,
-  calculateDiscountedPrice,
-  getDiscountAmount,
   processing
 }: PlanSummaryCardProps) {
   const originalPrice = price;
-  const finalPrice = calculateDiscountedPrice(originalPrice);
-  const discountAmount = getDiscountAmount(originalPrice);
+  
+  // Calculate discount locally for display purposes only
+  const calculateFinalAmount = () => {
+    if (!appliedDiscount) return originalPrice;
+    
+    if (appliedDiscount.discount_type === 'percentage') {
+      const discountAmount = (originalPrice * appliedDiscount.discount_value) / 100;
+      return Math.max(0, originalPrice - discountAmount);
+    } else if (appliedDiscount.discount_type === 'fixed_amount') {
+      return Math.max(0, originalPrice - appliedDiscount.discount_value);
+    }
+    
+    return originalPrice;
+  };
+
+  const finalPrice = calculateFinalAmount();
+  const discountAmount = originalPrice - finalPrice;
 
   return (
     <Card className="border-warm-gold/30 bg-gradient-to-br from-white/80 to-warm-gold/5 p-6">

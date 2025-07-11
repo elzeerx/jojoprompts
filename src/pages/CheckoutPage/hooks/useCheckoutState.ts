@@ -16,31 +16,6 @@ export function useCheckoutState() {
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
 
-  // DEPRECATED: Discount calculations moved to PaymentMethodsCard.tsx for single source of truth
-  // These functions are kept for backward compatibility but should not be used
-  const calculateDiscountedPrice = (originalPrice: number): number => {
-    console.warn('DEPRECATED: calculateDiscountedPrice should not be used. Discount calculation moved to PaymentMethodsCard.tsx');
-    if (!appliedDiscount) return originalPrice;
-
-    if (appliedDiscount.discount_type === 'percentage') {
-      const discountAmount = (originalPrice * appliedDiscount.discount_value) / 100;
-      return Math.max(0, originalPrice - discountAmount);
-    } else {
-      // Fixed amount discount
-      return Math.max(0, originalPrice - appliedDiscount.discount_value);
-    }
-  };
-
-  const getDiscountAmount = (originalPrice: number): number => {
-    console.warn('DEPRECATED: getDiscountAmount should not be used. Discount calculation moved to PaymentMethodsCard.tsx');
-    if (!appliedDiscount) return 0;
-
-    if (appliedDiscount.discount_type === 'percentage') {
-      return (originalPrice * appliedDiscount.discount_value) / 100;
-    } else {
-      return Math.min(appliedDiscount.discount_value, originalPrice);
-    }
-  };
 
   return {
     selectedPlan,
@@ -54,8 +29,6 @@ export function useCheckoutState() {
     showAuthForm,
     setShowAuthForm,
     appliedDiscount,
-    setAppliedDiscount,
-    calculateDiscountedPrice,
-    getDiscountAmount
+    setAppliedDiscount
   };
 }
