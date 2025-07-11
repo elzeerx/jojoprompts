@@ -29,21 +29,8 @@ export function SimplePayPalButton({
 }: SimplePayPalButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Calculate final amount after discount
-  const calculateFinalAmount = () => {
-    if (!appliedDiscount) return amount;
-    
-    if (appliedDiscount.discount_type === 'percentage') {
-      const discountAmount = (amount * appliedDiscount.discount_value) / 100;
-      return Math.max(0, amount - discountAmount);
-    } else if (appliedDiscount.discount_type === 'fixed_amount') {
-      return Math.max(0, amount - appliedDiscount.discount_value);
-    }
-    
-    return amount;
-  };
-
-  const finalAmount = calculateFinalAmount();
+  // Use the amount directly since discount is already applied in PaymentMethodsCard
+  const finalAmount = amount;
   const is100PercentDiscount = finalAmount === 0;
 
   const handleDirectActivation = async () => {

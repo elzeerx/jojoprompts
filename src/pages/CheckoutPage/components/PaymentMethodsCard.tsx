@@ -86,7 +86,7 @@ export function PaymentMethodsCard({
 
       <CardContent>
         <SimplePaymentSelection
-          amount={price} // Pass original price, let PayPal button handle discount
+          amount={finalAmount} // Pass final amount after discount calculation
           planName={planName}
           planId={planId}
           userId={userId}
