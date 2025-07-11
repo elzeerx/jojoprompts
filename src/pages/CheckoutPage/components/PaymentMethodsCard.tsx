@@ -30,7 +30,7 @@ export function PaymentMethodsCard({
   handlePaymentError,
   appliedDiscount
 }: PaymentMethodsCardProps) {
-  // Calculate final amount after discount
+  // Calculate final amount after discount - This is the SINGLE SOURCE OF TRUTH
   const calculateFinalAmount = () => {
     if (!appliedDiscount) return price;
     
@@ -46,6 +46,13 @@ export function PaymentMethodsCard({
 
   const finalAmount = calculateFinalAmount();
   const discountAmount = price - finalAmount;
+
+  console.log('=== PAYMENT METHODS CARD DEBUG ===');
+  console.log('Original price:', price);
+  console.log('Applied discount:', appliedDiscount);
+  console.log('Final amount (after discount):', finalAmount);
+  console.log('Discount amount:', discountAmount);
+  console.log('===============================');
 
   return (
     <Card className="w-full">
@@ -86,13 +93,13 @@ export function PaymentMethodsCard({
 
       <CardContent>
         <SimplePaymentSelection
-          amount={finalAmount} // Pass final amount after discount calculation
+          amount={finalAmount} // Final amount after discount - NO FURTHER DISCOUNT CALCULATION NEEDED
           planName={planName}
           planId={planId}
           userId={userId}
           onSuccess={handlePaymentSuccess}
           onError={handlePaymentError}
-          appliedDiscount={appliedDiscount}
+          appliedDiscount={appliedDiscount} // Pass discount info for tracking only
         />
       </CardContent>
     </Card>

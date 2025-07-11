@@ -132,10 +132,11 @@ serve(async (req) => {
       const siteUrl = getSiteUrl();
       
       console.log('=== PAYPAL ORDER DEBUG ===');
-      console.log('Received amount:', amount);
-      console.log('Applied discount:', appliedDiscount);
+      console.log('Received FINAL amount (already discounted):', amount);
+      console.log('Applied discount (for tracking only):', appliedDiscount);
       console.log('Plan ID:', planId);
       console.log('User ID:', userId);
+      console.log('NOTE: Amount should already include discount - NO FURTHER CALCULATION NEEDED');
       console.log('========================');
       
       // FIXED: Include planId and userId in both return and cancel URLs with proper encoding
