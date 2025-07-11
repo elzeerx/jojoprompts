@@ -265,6 +265,30 @@ serve(async (req) => {
       }
 
       if (paymentStatus === 'COMPLETED') {
+        // Record discount usage if a discount was applied
+        if (appliedDiscount && appliedDiscount.id) {
+          console.log('Recording discount usage:', { discountId: appliedDiscount.id, userId, transactionId: transaction.id });
+          try {
+            const { data: usageRecorded, error: usageError } = await supabaseClient.rpc('record_discount_usage', {
+              discount_code_id_param: appliedDiscount.id,
+              user_id_param: userId,
+              payment_history_id_param: transaction.id
+            });
+
+            if (usageError) {
+              console.error('Failed to record discount usage:', usageError);
+              // Don't fail the payment, just log the error
+            } else if (usageRecorded) {
+              console.log('Discount usage recorded successfully');
+            } else {
+              console.log('Discount usage not recorded (possibly already used)');
+            }
+          } catch (error) {
+            console.error('Error recording discount usage:', error);
+            // Don't fail the payment, just log the error
+          }
+        }
+
         // Check if this is an upgrade transaction
         if (transaction.is_upgrade && currentSubscriptionId) {
           console.log('Processing subscription upgrade:', { currentSubscriptionId, planId });

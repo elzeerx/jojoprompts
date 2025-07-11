@@ -3,6 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SimplePaymentSelection } from "@/components/payment/SimplePaymentSelection";
 import { CreditCard } from "lucide-react";
+import { DiscountErrorBoundary } from "@/components/checkout/DiscountErrorBoundary";
 
 interface PaymentMethodsCardProps {
   processing: boolean;
@@ -92,15 +93,17 @@ export function PaymentMethodsCard({
       </CardHeader>
 
       <CardContent>
-        <SimplePaymentSelection
-          amount={finalAmount} // Final amount after discount - NO FURTHER DISCOUNT CALCULATION NEEDED
-          planName={planName}
-          planId={planId}
-          userId={userId}
-          onSuccess={handlePaymentSuccess}
-          onError={handlePaymentError}
-          appliedDiscount={appliedDiscount} // Pass discount info for tracking only
-        />
+        <DiscountErrorBoundary>
+          <SimplePaymentSelection
+            amount={finalAmount} // Final amount after discount - NO FURTHER DISCOUNT CALCULATION NEEDED
+            planName={planName}
+            planId={planId}
+            userId={userId}
+            onSuccess={handlePaymentSuccess}
+            onError={handlePaymentError}
+            appliedDiscount={appliedDiscount} // Pass discount info for tracking only
+          />
+        </DiscountErrorBoundary>
       </CardContent>
     </Card>
   );

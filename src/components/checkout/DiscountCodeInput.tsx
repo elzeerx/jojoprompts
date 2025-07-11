@@ -33,6 +33,7 @@ export function DiscountCodeInput({
 }: DiscountCodeInputProps) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionDiscountApplied, setSessionDiscountApplied] = useState(false);
 
   const validateDiscountCode = async () => {
     if (!code.trim()) {
@@ -44,15 +45,33 @@ export function DiscountCodeInput({
       return;
     }
 
+    // Prevent multiple discount applications in same session
+    if (sessionDiscountApplied) {
+      toast({
+        title: "Error",
+        description: "A discount has already been applied to this session",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      // Call the updated function with plan validation
+      console.log('=== DISCOUNT VALIDATION DEBUG ===');
+      console.log('Validating code:', code.trim().toUpperCase());
+      console.log('Plan ID:', planId);
+      console.log('================================');
+
+      // Call the function with plan validation
       const { data, error } = await supabase.rpc('validate_discount_code', {
         code_text: code.trim().toUpperCase(),
         plan_id_param: planId || null
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Discount validation error:', error);
+        throw error;
+      }
 
       if (!data || data.length === 0) {
         toast({
@@ -64,6 +83,12 @@ export function DiscountCodeInput({
       }
 
       const discount = data[0];
+      
+      console.log('=== DISCOUNT VALIDATION RESULT ===');
+      console.log('Discount data:', discount);
+      console.log('Is valid:', discount.is_valid);
+      console.log('Error message:', discount.error_message);
+      console.log('=================================');
       
       if (!discount.is_valid) {
         toast({
@@ -81,6 +106,9 @@ export function DiscountCodeInput({
         discount_type: discount.discount_type,
         discount_value: discount.discount_value
       });
+
+      // Mark that a discount has been applied in this session
+      setSessionDiscountApplied(true);
 
       toast({
         title: "Discount Applied!",
@@ -102,6 +130,7 @@ export function DiscountCodeInput({
 
   const removeDiscount = () => {
     onDiscountRemoved();
+    setSessionDiscountApplied(false); // Reset session flag
     toast({
       title: "Discount Removed",
       description: "The discount code has been removed from your order",
@@ -146,12 +175,12 @@ export function DiscountCodeInput({
       <div className="flex gap-2">
         <Input
           type="text"
-          placeholder="Enter discount code"
+          placeholder={sessionDiscountApplied ? "Discount already applied" : "Enter discount code"}
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
-          disabled={loading || disabled}
+          disabled={loading || disabled || sessionDiscountApplied}
           onKeyPress={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !sessionDiscountApplied) {
               e.preventDefault();
               validateDiscountCode();
             }
@@ -159,7 +188,7 @@ export function DiscountCodeInput({
         />
         <Button
           onClick={validateDiscountCode}
-          disabled={loading || !code.trim() || disabled}
+          disabled={loading || !code.trim() || disabled || sessionDiscountApplied}
           variant="outline"
         >
           {loading ? (

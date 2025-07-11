@@ -16,7 +16,10 @@ export function useCheckoutState() {
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
 
+  // DEPRECATED: Discount calculations moved to PaymentMethodsCard.tsx for single source of truth
+  // These functions are kept for backward compatibility but should not be used
   const calculateDiscountedPrice = (originalPrice: number): number => {
+    console.warn('DEPRECATED: calculateDiscountedPrice should not be used. Discount calculation moved to PaymentMethodsCard.tsx');
     if (!appliedDiscount) return originalPrice;
 
     if (appliedDiscount.discount_type === 'percentage') {
@@ -29,6 +32,7 @@ export function useCheckoutState() {
   };
 
   const getDiscountAmount = (originalPrice: number): number => {
+    console.warn('DEPRECATED: getDiscountAmount should not be used. Discount calculation moved to PaymentMethodsCard.tsx');
     if (!appliedDiscount) return 0;
 
     if (appliedDiscount.discount_type === 'percentage') {
