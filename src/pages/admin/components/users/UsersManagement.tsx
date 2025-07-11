@@ -1,6 +1,7 @@
 
 import { Loader2 } from "lucide-react";
 import { useUserManagement } from "./hooks/useUserManagement";
+import { useUserActions } from "./hooks/useUserActions";
 import { UsersHeader } from "./components/UsersHeader";
 import { UsersTable } from "./UsersTable";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -25,6 +26,8 @@ export default function UsersManagement() {
     sendPasswordResetEmail,
     deleteUser
   } = useUserManagement();
+
+  const { resendConfirmationEmail } = useUserActions();
 
   return (
     <div className="space-y-6">
@@ -69,6 +72,7 @@ export default function UsersManagement() {
             onAssignPlan={assignPlanToUser}
             onSendResetEmail={sendPasswordResetEmail}
             onDeleteUser={deleteUser}
+            onResendConfirmation={resendConfirmationEmail}
             onRefresh={fetchUsers}
           />
           

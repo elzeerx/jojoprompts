@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 
 interface UsersTableProps {
-  users: (UserProfile & { subscription?: { plan_name: string } | null })[];
+  users: (UserProfile & { subscription?: { plan_name: string } | null, emailConfirmed?: boolean })[];
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -21,6 +21,7 @@ interface UsersTableProps {
   onAssignPlan: (userId: string, planId: string) => void;
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string) => void;
+  onResendConfirmation: (userId: string, email: string) => void;
   onRefresh: () => void;
 }
 
@@ -34,6 +35,7 @@ export function UsersTable({
   onAssignPlan,
   onSendResetEmail,
   onDeleteUser,
+  onResendConfirmation,
   onRefresh,
 }: UsersTableProps) {
   if (users.length === 0) {
@@ -51,6 +53,7 @@ export function UsersTable({
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Last Sign In</TableHead>
@@ -68,6 +71,7 @@ export function UsersTable({
               onAssignPlan={onAssignPlan}
               onSendResetEmail={onSendResetEmail}
               onDeleteUser={onDeleteUser}
+              onResendConfirmation={onResendConfirmation}
               onRefresh={onRefresh}
             />
           ))}

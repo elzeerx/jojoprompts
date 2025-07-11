@@ -221,9 +221,84 @@ export function useUserActions() {
     }
   };
 
+  const resendConfirmationEmail = async (userId: string, email: string): Promise<void> => {
+    console.log('Admin attempting to resend confirmation email for user:', userId, email);
+    
+    // Input validation
+    if (!userId || !email) {
+      console.error('Invalid input for resend confirmation:', { userId, email });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Invalid user ID or email provided.",
+      });
+      return;
+    }
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      console.error('Invalid email format:', email);
+      toast({
+        variant: "destructive",
+        title: "Error", 
+        description: "Invalid email format provided.",
+      });
+      return;
+    }
+
+    try {
+      setProcessingUserId(userId);
+
+      const { data, error } = await supabase.functions.invoke('resend-confirmation-email', {
+        body: { userId, email }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to resend confirmation email');
+      }
+
+      if (!data?.success) {
+        console.error('Function returned error:', data?.error);
+        throw new Error(data?.error || 'Failed to resend confirmation email');
+      }
+
+      console.log('Confirmation email resent successfully');
+
+      toast({
+        title: "Success",
+        description: "Confirmation email has been resent successfully.",
+      });
+
+      // Log the action
+      await supabase.from('admin_audit_log').insert({
+        admin_user_id: user?.id || '',
+        action: 'resend_confirmation_email',
+        target_resource: `user:${userId}`,
+        metadata: { 
+          target_email: email,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Error resending confirmation email:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to resend confirmation email. Please try again.",
+      });
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
   return {
     processingUserId,
     sendPasswordResetEmail,
-    deleteUser
+    deleteUser,
+    resendConfirmationEmail,
   };
 }

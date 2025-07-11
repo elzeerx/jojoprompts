@@ -137,6 +137,11 @@ class EmailService {
     const template = emailTemplates.accountDeleted({ name });
     return this.sendEmail(email, template.subject, template.html, template.text);
   }
+
+  async sendEmailConfirmation(name: string, email: string, confirmationLink: string): Promise<EmailServiceResponse> {
+    const template = emailTemplates.emailConfirmation({ name, email, confirmationLink });
+    return this.sendEmail(email, template.subject, template.html, template.text);
+  }
 }
 
 export const emailService = new EmailService();

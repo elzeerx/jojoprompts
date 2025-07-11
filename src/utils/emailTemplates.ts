@@ -45,6 +45,12 @@ interface AccountDeletedEmailData {
   name: string;
 }
 
+export interface EmailConfirmationData {
+  name: string;
+  email: string;
+  confirmationLink: string;
+}
+
 export const emailTemplates = {
   // Contact form confirmation email to user
   contactConfirmation: (data: ContactEmailData): EmailTemplate => ({
@@ -412,5 +418,22 @@ export const emailTemplates = {
       </div>
     `,
     text: `Account Deleted - JoJo Prompts\n\nHi ${data.name},\n\nYour JoJo Prompts account has been permanently deleted as requested.\n\nAll your data has been removed from our systems. This action cannot be undone.\n\nThank you for being part of our community!\n\nThe JoJo Prompts Team`
+  }),
+
+  emailConfirmation: (data: EmailConfirmationData): EmailTemplate => ({
+    subject: "Confirm Your Email - JojoPrompts",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #c49d68;">JojoPrompts</h1>
+        <h2>Confirm Your Email Address</h2>
+        <p>Hi ${data.name},</p>
+        <p>Please confirm your email address to complete your registration.</p>
+        <a href="${data.confirmationLink}" style="background: #c49d68; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
+          Confirm Email Address
+        </a>
+        <p>If the button doesn't work, copy this link: ${data.confirmationLink}</p>
+      </div>
+    `,
+    text: `Hi ${data.name},\n\nPlease confirm your email: ${data.confirmationLink}\n\n© 2024 JojoPrompts`
   })
 };
