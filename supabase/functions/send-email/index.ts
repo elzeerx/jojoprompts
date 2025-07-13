@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { Resend } from 'npm:resend@2.0.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
@@ -15,10 +14,32 @@ interface EmailRequest {
   text?: string;
   user_id?: string;
   email_type?: string;
+  retry_count?: number;
+  priority?: 'high' | 'normal' | 'low';
 }
 
 // Apple email domains that require special handling
 const APPLE_DOMAINS = ['icloud.com', 'mac.com', 'me.com'];
+
+// Apple-specific configuration
+const APPLE_CONFIG = {
+  maxRetries: 5,
+  baseDelayMs: 2000, // Start with 2 seconds
+  maxDelayMs: 30000, // Max 30 seconds
+  backoffMultiplier: 2.5,
+  specialHeaders: {
+    'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+  }
+};
+
+// Standard retry configuration for other domains
+const STANDARD_CONFIG = {
+  maxRetries: 3,
+  baseDelayMs: 1000,
+  maxDelayMs: 15000,
+  backoffMultiplier: 2
+};
 
 // Function to detect domain type
 function getDomainType(email: string): string {
@@ -29,6 +50,49 @@ function getDomainType(email: string): string {
   if (domain.includes('gmail.com')) return 'gmail';
   if (domain.includes('outlook.com') || domain.includes('hotmail.com') || domain.includes('live.com')) return 'outlook';
   return 'other';
+}
+
+// Calculate exponential backoff delay
+function calculateDelay(retryCount: number, domainType: string): number {
+  const config = domainType === 'apple' ? APPLE_CONFIG : STANDARD_CONFIG;
+  const delay = config.baseDelayMs * Math.pow(config.backoffMultiplier, retryCount);
+  return Math.min(delay, config.maxDelayMs);
+}
+
+// Function to optimize email content for Apple domains
+function optimizeForApple(html: string, subject: string): { html: string; subject: string } {
+  // Apple Mail preferences
+  let optimizedHtml = html;
+  let optimizedSubject = subject;
+  
+  // Add Apple-specific optimizations
+  // 1. Ensure proper HTML structure
+  if (!optimizedHtml.includes('<!DOCTYPE html>')) {
+    optimizedHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${optimizedSubject}</title>
+</head>
+<body>
+${optimizedHtml}
+</body>
+</html>`;
+  }
+  
+  // 2. Apple Mail prefers specific CSS
+  optimizedHtml = optimizedHtml.replace(
+    /<style[^>]*>/gi,
+    '<style type="text/css">'
+  );
+  
+  // 3. Ensure proper encoding for special characters
+  optimizedSubject = optimizedSubject.replace(/[^\x00-\x7F]/g, (char) => {
+    return '&#' + char.charCodeAt(0) + ';';
+  });
+  
+  return { html: optimizedHtml, subject: optimizedSubject };
 }
 
 // Function to log email attempt to database
@@ -42,6 +106,7 @@ async function logEmailAttempt(supabase: any, emailData: {
   retry_count: number;
   delivery_status: string;
   response_metadata?: any;
+  bounce_reason?: string;
 }, logger: any) {
   try {
     const { error } = await supabase
@@ -55,6 +120,124 @@ async function logEmailAttempt(supabase: any, emailData: {
     }
   } catch (error) {
     logger('ERROR in logEmailAttempt:', error);
+  }
+}
+
+// Function to check if we should alert on delivery failures
+async function checkAlertThresholds(supabase: any, domainType: string, logger: any) {
+  try {
+    // Check last hour's Apple domain success rate
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    
+    const { data: recentLogs, error } = await supabase
+      .from('email_logs')
+      .select('success, domain_type')
+      .eq('domain_type', domainType)
+      .gte('attempted_at', oneHourAgo);
+    
+    if (error || !recentLogs || recentLogs.length < 5) {
+      return; // Not enough data for alerting
+    }
+    
+    const successfulCount = recentLogs.filter(log => log.success).length;
+    const successRate = (successfulCount / recentLogs.length) * 100;
+    
+    // Alert thresholds
+    const criticalThreshold = domainType === 'apple' ? 70 : 80; // Lower threshold for Apple
+    const warningThreshold = domainType === 'apple' ? 85 : 90;
+    
+    if (successRate < criticalThreshold) {
+      logger(`CRITICAL ALERT: ${domainType} domain success rate: ${successRate.toFixed(1)}% (${successfulCount}/${recentLogs.length})`);
+      
+      // Log security event for monitoring
+      await supabase
+        .from('security_logs')
+        .insert([{
+          action: 'email_delivery_critical_failure',
+          details: {
+            domain_type: domainType,
+            success_rate: successRate,
+            total_emails: recentLogs.length,
+            successful_emails: successfulCount,
+            time_window: '1_hour',
+            alert_level: 'critical'
+          }
+        }]);
+    } else if (successRate < warningThreshold) {
+      logger(`WARNING: ${domainType} domain success rate: ${successRate.toFixed(1)}% (${successfulCount}/${recentLogs.length})`);
+      
+      await supabase
+        .from('security_logs')
+        .insert([{
+          action: 'email_delivery_warning',
+          details: {
+            domain_type: domainType,
+            success_rate: successRate,
+            total_emails: recentLogs.length,
+            successful_emails: successfulCount,
+            time_window: '1_hour',
+            alert_level: 'warning'
+          }
+        }]);
+    }
+  } catch (error) {
+    logger('ERROR checking alert thresholds:', error);
+  }
+}
+
+// Main send email function with retry logic
+async function sendEmailWithRetry(
+  resend: any,
+  emailPayload: any,
+  domainType: string,
+  retryCount: number,
+  logger: any
+): Promise<any> {
+  const config = domainType === 'apple' ? APPLE_CONFIG : STANDARD_CONFIG;
+  
+  try {
+    // Apply Apple-specific optimizations
+    if (domainType === 'apple') {
+      const optimized = optimizeForApple(emailPayload.html, emailPayload.subject);
+      emailPayload.html = optimized.html;
+      emailPayload.subject = optimized.subject;
+      
+      // Add Apple-specific headers
+      emailPayload.headers = {
+        ...emailPayload.headers,
+        ...APPLE_CONFIG.specialHeaders
+      };
+      
+      logger('Applied Apple-specific optimizations:', {
+        hasOptimizedHtml: !!optimized.html,
+        hasOptimizedSubject: !!optimized.subject,
+        headers: emailPayload.headers
+      });
+    }
+    
+    const response = await resend.emails.send(emailPayload);
+    
+    if (response.error) {
+      throw new Error(response.error.message || 'Resend API error');
+    }
+    
+    return response;
+  } catch (error: any) {
+    logger(`Attempt ${retryCount + 1} failed:`, error.message);
+    
+    // Check if we should retry
+    if (retryCount < config.maxRetries) {
+      const delay = calculateDelay(retryCount, domainType);
+      logger(`Retrying in ${delay}ms (domain: ${domainType}, attempt: ${retryCount + 1}/${config.maxRetries})`);
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      return sendEmailWithRetry(resend, emailPayload, domainType, retryCount + 1, logger);
+    }
+    
+    // Max retries reached
+    throw error;
   }
 }
 
@@ -76,6 +259,7 @@ serve(async (req) => {
   let emailAddress = '';
   let emailType = 'unknown';
   let userId: string | undefined;
+  let finalRetryCount = 0;
 
   try {
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
@@ -88,22 +272,32 @@ serve(async (req) => {
     const resend = new Resend(resendApiKey);
     const requestBody = await req.json();
     
-    const { to, subject, html, text, user_id, email_type: reqEmailType }: EmailRequest = requestBody;
+    const { 
+      to, 
+      subject, 
+      html, 
+      text, 
+      user_id, 
+      email_type: reqEmailType,
+      retry_count = 0,
+      priority = 'normal'
+    }: EmailRequest = requestBody;
     
     // Store values for logging
     emailAddress = to;
     emailType = reqEmailType || 'general';
     userId = user_id;
     domainType = getDomainType(to);
+    finalRetryCount = retry_count;
     
-    logger('Received request body:', { 
+    logger('Received request:', { 
       to, 
       subject, 
-      hasHtml: !!html,
-      hasText: !!text,
       domainType,
       emailType,
-      userId
+      userId,
+      retryCount: finalRetryCount,
+      priority
     });
 
     if (!to || !subject || !html) {
@@ -118,13 +312,10 @@ serve(async (req) => {
       throw new Error('Invalid email address format');
     }
 
-    // Apple domain specific handling
+    // Apple domain detection and logging
     if (domainType === 'apple') {
-      logger('APPLE DOMAIN DETECTED: Applying Apple-specific email handling for:', to);
-      // Add special headers and settings for Apple domains
+      logger('APPLE DOMAIN DETECTED: Applying enhanced delivery strategy for:', to);
     }
-
-    logger(`Sending email to ${to} with subject: "${subject}" (Domain: ${domainType})`);
 
     const emailPayload = {
       from: 'info@jojoprompts.com',
@@ -134,44 +325,23 @@ serve(async (req) => {
       text: text || html.replace(/<[^>]*>/g, ''), // Strip HTML if no text provided
     };
 
-    logger('Sending email with payload:', {
-      from: emailPayload.from,
-      to: emailPayload.to,
-      subject: emailPayload.subject,
-      hasHtml: !!emailPayload.html,
-      hasText: !!emailPayload.text,
-      domainType
-    });
+    logger(`Sending email to ${to} (Domain: ${domainType}, Priority: ${priority})`);
 
-    const emailResponse = await resend.emails.send(emailPayload);
-
-    logger('Resend API response:', emailResponse);
-
-    if (emailResponse.error) {
-      logger('ERROR: Resend API error:', emailResponse.error);
-      
-      // Log failed attempt
-      await logEmailAttempt(supabase, {
-        email_address: emailAddress,
-        email_type: emailType,
-        success: false,
-        error_message: `Resend API error: ${emailResponse.error.message || 'Unknown error'}`,
-        user_id: userId,
-        domain_type: domainType,
-        retry_count: 0,
-        delivery_status: 'failed',
-        response_metadata: emailResponse.error
-      }, logger);
-      
-      throw new Error(`Resend API error: ${emailResponse.error.message || 'Unknown error'}`);
-    }
+    // Send email with domain-specific retry logic
+    const emailResponse = await sendEmailWithRetry(
+      resend,
+      emailPayload,
+      domainType,
+      0, // Start with retry count 0
+      logger
+    );
 
     const messageId = emailResponse.data?.id || emailResponse.id;
     logger('Email sent successfully:', {
       messageId,
       to,
-      subject,
-      domainType
+      domainType,
+      finalRetryCount
     });
 
     // Log successful attempt
@@ -181,23 +351,34 @@ serve(async (req) => {
       success: true,
       user_id: userId,
       domain_type: domainType,
-      retry_count: 0,
+      retry_count: finalRetryCount,
       delivery_status: 'sent',
-      response_metadata: { messageId }
+      response_metadata: { messageId, priority }
     }, logger);
+
+    // Check alert thresholds in background
+    EdgeRuntime.waitUntil(checkAlertThresholds(supabase, domainType, logger));
 
     return new Response(JSON.stringify({
       success: true,
       message: 'Email sent successfully',
       messageId: messageId,
-      domainType: domainType
+      domainType: domainType,
+      retryCount: finalRetryCount,
+      optimized: domainType === 'apple'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error: any) {
     logger('ERROR in send-email function:', error.message);
-    logger('Error stack:', error.stack);
+    
+    // Determine bounce reason based on error
+    let bounceReason = null;
+    if (error.message.includes('blocked')) bounceReason = 'blocked';
+    else if (error.message.includes('invalid')) bounceReason = 'invalid_address';
+    else if (error.message.includes('quota')) bounceReason = 'quota_exceeded';
+    else if (error.message.includes('timeout')) bounceReason = 'timeout';
     
     // Log failed attempt if we have the email info
     if (emailAddress) {
@@ -208,15 +389,21 @@ serve(async (req) => {
         error_message: error.message,
         user_id: userId,
         domain_type: domainType,
-        retry_count: 0,
-        delivery_status: 'failed'
+        retry_count: finalRetryCount,
+        delivery_status: 'failed',
+        bounce_reason: bounceReason
       }, logger);
     }
+    
+    // Check alert thresholds for failures too
+    EdgeRuntime.waitUntil(checkAlertThresholds(supabase, domainType, logger));
     
     return new Response(JSON.stringify({ 
       success: false,
       error: error.message,
-      domainType: domainType
+      domainType: domainType,
+      retryCount: finalRetryCount,
+      bounceReason: bounceReason
     }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
