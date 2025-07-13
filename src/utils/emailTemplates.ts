@@ -95,6 +95,19 @@ export const emailTemplates = {
             <p style="margin: 0;">© 2024 JoJo Prompts. All rights reserved.</p>
           </div>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=contact_confirmation" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Thank you for contacting us, ${data.name}!\n\nWe have received your message about "${data.subject}" and will get back to you as soon as possible.\n\nYour message:\n${data.message}\n\nBest regards,\nThe JoJo Prompts Team`
@@ -177,6 +190,19 @@ export const emailTemplates = {
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Happy prompting!<br><strong>The JoJo Prompts Team</strong></p>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=welcome" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Welcome to JoJo Prompts, ${data.name}!\n\nThank you for joining our community. Start exploring amazing AI prompts at https://jojoprompts.com/prompts\n\nHappy prompting!\nThe JoJo Prompts Team`
@@ -226,6 +252,19 @@ export const emailTemplates = {
         
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Stay secure,<br><strong>The JoJo Prompts Team</strong></p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=password_reset" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
         </div>
       </div>
     `,
@@ -277,6 +316,19 @@ export const emailTemplates = {
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Thank you for your purchase!<br><strong>The JoJo Prompts Team</strong></p>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=payment_confirmation" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Payment Confirmed - JoJo Prompts\n\nHi ${data.name}!\n\nYour payment has been successfully processed!\n\nPlan: ${data.planName}\nAmount: $${data.amount.toFixed(2)} USD\nTransaction ID: ${data.transactionId}\n\nStart using your premium features at https://jojoprompts.com/prompts\n\nThank you!\nThe JoJo Prompts Team`
@@ -319,6 +371,19 @@ export const emailTemplates = {
         
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Thank you for being part of our community!<br><strong>The JoJo Prompts Team</strong></p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=subscription_cancelled" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
         </div>
       </div>
     `,
@@ -366,6 +431,19 @@ export const emailTemplates = {
         
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">We're here to help!<br><strong>The JoJo Prompts Team</strong></p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=payment_failed" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
         </div>
       </div>
     `,
@@ -415,6 +493,19 @@ export const emailTemplates = {
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Goodbye and best wishes!<br><strong>The JoJo Prompts Team</strong></p>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=account_deleted" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Account Deleted - JoJo Prompts\n\nHi ${data.name},\n\nYour JoJo Prompts account has been permanently deleted as requested.\n\nAll your data has been removed from our systems. This action cannot be undone.\n\nThank you for being part of our community!\n\nThe JoJo Prompts Team`
@@ -432,6 +523,19 @@ export const emailTemplates = {
           Confirm Email Address
         </a>
         <p>If the button doesn't work, copy this link: ${data.confirmationLink}</p>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=email_confirmation" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Hi ${data.name},\n\nPlease confirm your email: ${data.confirmationLink}\n\n© 2024 JojoPrompts`
