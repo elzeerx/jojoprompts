@@ -107,9 +107,10 @@ function getDomainType(email: string): string {
   const domain = email.split('@')[1]?.toLowerCase();
   if (!domain) return 'unknown';
   
+  // Check for Apple domains (including me.com)
   if (APPLE_DOMAINS.includes(domain)) return 'apple';
-  if (domain.includes('gmail.com')) return 'gmail';
-  if (domain.includes('outlook.com') || domain.includes('hotmail.com') || domain.includes('live.com')) return 'outlook';
+  if (domain === 'gmail.com') return 'gmail';
+  if (domain === 'outlook.com' || domain === 'hotmail.com' || domain === 'live.com') return 'outlook';
   return 'other';
 }
 
@@ -363,6 +364,9 @@ serve(async (req) => {
       retryCount: finalRetryCount,
       priority
     });
+
+    // Log domain detection for debugging
+    logger(`Domain detection for ${to}: domain=${to.split('@')[1]}, detected_type=${domainType}`);
 
     // Handle template-based emails
     let finalSubject = subject;

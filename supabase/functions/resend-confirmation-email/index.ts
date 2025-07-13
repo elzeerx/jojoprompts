@@ -94,33 +94,52 @@ serve(async (req: Request) => {
     console.log(`Generated confirmation link for ${email}`);
 
     // Get user profile to get name
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error: profileQueryError } = await supabaseAdmin
       .from("profiles")
       .select("first_name, last_name")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
+
+    if (profileQueryError) {
+      console.warn("Error fetching user profile:", profileQueryError);
+    }
 
     const userName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : email.split('@')[0];
 
     // Send email via our send-email function with Resend
-    const { data: emailData, error: emailError } = await supabaseAdmin.functions.invoke('send-email', {
-      body: {
-        to: email,
-        subject: "Confirm Your Email - JojoPrompts",
-        template: "emailConfirmation",
-        data: {
-          name: userName,
-          email: email,
-          confirmationLink: confirmationLink
-        }
+    console.log(`Calling send-email function for ${email} (domain: ${email.split('@')[1]})`);
+    
+    const emailPayload = {
+      to: email,
+      subject: "Confirm Your Email - JojoPrompts",
+      template: "emailConfirmation",
+      email_type: "email_confirmation",
+      user_id: userId,
+      data: {
+        name: userName,
+        email: email,
+        confirmationLink: confirmationLink
       }
+    };
+
+    console.log('Email payload:', { 
+      to: emailPayload.to, 
+      template: emailPayload.template, 
+      email_type: emailPayload.email_type,
+      userName: userName 
+    });
+
+    const { data: emailData, error: emailError } = await supabaseAdmin.functions.invoke('send-email', {
+      body: emailPayload
     });
 
     if (emailError) {
       console.error("Error sending confirmation email via Resend:", emailError);
-      throw new Error(`Failed to send confirmation email: ${emailError.message}`);
+      console.error("Full error details:", emailError);
+      throw new Error(`Failed to send confirmation email: ${emailError.message || 'Unknown error from send-email function'}`);
     }
 
+    console.log("Email function response:", emailData);
     console.log(`Successfully sent confirmation email via Resend to ${email}`);
 
     console.log(`Successfully resent confirmation email to ${email}`);
