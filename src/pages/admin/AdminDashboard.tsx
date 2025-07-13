@@ -9,8 +9,9 @@ import PurchaseHistoryManagement from "./components/purchases/PurchaseHistoryMan
 import DiscountCodesManagement from "./components/discount-codes/DiscountCodesManagement";
 import { CategoriesManagement } from "./components/categories/CategoriesManagement";
 import { SecurityMonitoringDashboard } from "@/components/security/SecurityMonitoringDashboard";
+import { EmailAnalyticsDashboard } from "@/components/admin/EmailAnalyticsDashboard";
 import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
-import { BarChart3, FileText, Tags, Users, CreditCard, Percent, Shield } from "lucide-react";
+import { BarChart3, FileText, Tags, Users, CreditCard, Percent, Shield, Mail } from "lucide-react";
 import { useAdminTabs } from "./hooks/useAdminTabs";
 import { MobileTabsList } from "./components/navigation/MobileTabsList";
 import { DesktopTabsList } from "./components/navigation/DesktopTabsList";
@@ -71,6 +72,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="discounts" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
               <DiscountCodesManagement />
+            </TabsContent>
+            <TabsContent value="emails" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
+              <EmailAnalyticsDashboard />
             </TabsContent>
             <TabsContent value="security" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
               <SecurityMonitoringDashboard />
