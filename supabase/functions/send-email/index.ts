@@ -2,6 +2,65 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { Resend } from 'npm:resend@2.0.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
+// Email templates
+const emailTemplates = {
+  emailConfirmation: (data: { name: string; email: string; confirmationLink: string }) => ({
+    subject: "Confirm Your Email - JojoPrompts",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px;" />
+          <h1 style="margin: 0; font-size: 28px;">Confirm Your Email</h1>
+          <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Complete your registration</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
+          <h2 style="color: #333; margin: 0 0 20px 0; font-size: 20px;">Hi ${data.name}! 👋</h2>
+          
+          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
+            Please confirm your email address to complete your registration and start exploring amazing AI prompts.
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.confirmationLink}" style="background: #c49d68; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+              Confirm Email Address
+            </a>
+          </div>
+          
+          <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 30px 0;">
+            If the button doesn't work, copy and paste this link into your browser:<br>
+            <span style="word-break: break-all; color: #007bff;">${data.confirmationLink}</span>
+          </p>
+          
+          <div style="background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 6px; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0; color: #0c5460; font-size: 14px;">
+              <strong>Security tip:</strong> This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
+            </p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
+          <p style="margin: 0;">Welcome to JoJo Prompts!<br><strong>The JoJo Prompts Team</strong></p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=email_confirmation" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
+      </div>
+    `,
+    text: `Hi ${data.name},\n\nPlease confirm your email address to complete your registration:\n\n${data.confirmationLink}\n\nThis link will expire in 24 hours.\n\nWelcome to JoJo Prompts!\nThe JoJo Prompts Team`
+  })
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -9,13 +68,15 @@ const corsHeaders = {
 
 interface EmailRequest {
   to: string;
-  subject: string;
-  html: string;
+  subject?: string; // Optional if using template
+  html?: string; // Optional if using template
   text?: string;
   user_id?: string;
   email_type?: string;
   retry_count?: number;
   priority?: 'high' | 'normal' | 'low';
+  template?: string; // Template name
+  data?: any; // Template data
 }
 
 // Apple email domains that require special handling
@@ -280,7 +341,9 @@ serve(async (req) => {
       user_id, 
       email_type: reqEmailType,
       retry_count = 0,
-      priority = 'normal'
+      priority = 'normal',
+      template,
+      data
     }: EmailRequest = requestBody;
     
     // Store values for logging
@@ -293,6 +356,7 @@ serve(async (req) => {
     logger('Received request:', { 
       to, 
       subject, 
+      template,
       domainType,
       emailType,
       userId,
@@ -300,9 +364,32 @@ serve(async (req) => {
       priority
     });
 
-    if (!to || !subject || !html) {
-      logger('ERROR: Missing required fields:', { to: !!to, subject: !!subject, html: !!html });
-      throw new Error('Missing required fields: to, subject, html');
+    // Handle template-based emails
+    let finalSubject = subject;
+    let finalHtml = html;
+    let finalText = text;
+
+    if (template && data) {
+      logger('Processing template:', template);
+      
+      if (emailTemplates[template as keyof typeof emailTemplates]) {
+        const templateFn = emailTemplates[template as keyof typeof emailTemplates];
+        const templateResult = templateFn(data);
+        
+        finalSubject = templateResult.subject;
+        finalHtml = templateResult.html;
+        finalText = templateResult.text || finalHtml.replace(/<[^>]*>/g, '');
+        
+        logger('Template processed successfully:', { template, hasHtml: !!finalHtml, hasSubject: !!finalSubject });
+      } else {
+        logger('ERROR: Template not found:', template);
+        throw new Error(`Template not found: ${template}`);
+      }
+    }
+
+    if (!to || !finalSubject || !finalHtml) {
+      logger('ERROR: Missing required fields:', { to: !!to, subject: !!finalSubject, html: !!finalHtml });
+      throw new Error('Missing required fields: to, subject, html (or valid template)');
     }
 
     // Validate email format
@@ -320,9 +407,9 @@ serve(async (req) => {
     const emailPayload = {
       from: 'info@jojoprompts.com',
       to: [to],
-      subject: subject,
-      html: html,
-      text: text || html.replace(/<[^>]*>/g, ''), // Strip HTML if no text provided
+      subject: finalSubject,
+      html: finalHtml,
+      text: finalText || finalHtml.replace(/<[^>]*>/g, ''), // Strip HTML if no text provided
     };
 
     logger(`Sending email to ${to} (Domain: ${domainType}, Priority: ${priority})`);

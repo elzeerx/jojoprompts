@@ -76,8 +76,8 @@ serve(async (req: Request) => {
       );
     }
 
-    // Resend confirmation email
-    const { error: resendError } = await supabaseAdmin.auth.admin.generateLink({
+    // Generate confirmation link
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email: email,
       options: {
@@ -85,20 +85,43 @@ serve(async (req: Request) => {
       }
     });
 
-    if (resendError) {
-      console.error("Error resending confirmation:", resendError);
-      throw new Error(`Failed to resend confirmation: ${resendError.message}`);
+    if (linkError || !linkData?.properties?.action_link) {
+      console.error("Error generating confirmation link:", linkError);
+      throw new Error(`Failed to generate confirmation link: ${linkError?.message || 'No action link returned'}`);
     }
 
-    // Log the email sending attempt
-    await supabaseAdmin
-      .from("email_logs")
-      .insert({
-        email_address: email,
-        email_type: "email_confirmation_resend",
-        success: true,
-        user_id: userId
-      });
+    const confirmationLink = linkData.properties.action_link;
+    console.log(`Generated confirmation link for ${email}`);
+
+    // Get user profile to get name
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("first_name, last_name")
+      .eq("id", userId)
+      .single();
+
+    const userName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : email.split('@')[0];
+
+    // Send email via our send-email function with Resend
+    const { data: emailData, error: emailError } = await supabaseAdmin.functions.invoke('send-email', {
+      body: {
+        to: email,
+        subject: "Confirm Your Email - JojoPrompts",
+        template: "emailConfirmation",
+        data: {
+          name: userName,
+          email: email,
+          confirmationLink: confirmationLink
+        }
+      }
+    });
+
+    if (emailError) {
+      console.error("Error sending confirmation email via Resend:", emailError);
+      throw new Error(`Failed to send confirmation email: ${emailError.message}`);
+    }
+
+    console.log(`Successfully sent confirmation email via Resend to ${email}`);
 
     console.log(`Successfully resent confirmation email to ${email}`);
 
