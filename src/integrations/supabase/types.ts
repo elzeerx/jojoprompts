@@ -241,31 +241,46 @@ export type Database = {
       email_logs: {
         Row: {
           attempted_at: string | null
+          bounce_reason: string | null
           created_at: string | null
+          delivery_status: string | null
+          domain_type: string | null
           email_address: string
           email_type: string
           error_message: string | null
           id: string
+          response_metadata: Json | null
+          retry_count: number | null
           success: boolean
           user_id: string | null
         }
         Insert: {
           attempted_at?: string | null
+          bounce_reason?: string | null
           created_at?: string | null
+          delivery_status?: string | null
+          domain_type?: string | null
           email_address: string
           email_type: string
           error_message?: string | null
           id?: string
+          response_metadata?: Json | null
+          retry_count?: number | null
           success?: boolean
           user_id?: string | null
         }
         Update: {
           attempted_at?: string | null
+          bounce_reason?: string | null
           created_at?: string | null
+          delivery_status?: string | null
+          domain_type?: string | null
           email_address?: string
           email_type?: string
           error_message?: string | null
           id?: string
+          response_metadata?: Json | null
+          retry_count?: number | null
           success?: boolean
           user_id?: string | null
         }
