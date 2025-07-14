@@ -9,5 +9,11 @@ verify_jwt = true
 [functions.resend-confirmation-email]
 verify_jwt = true
 
+[functions.resend-confirmation-alternative]
+verify_jwt = true
+
+[functions.debug-environment]
+verify_jwt = false
+
 [functions.send-email]
 verify_jwt = false

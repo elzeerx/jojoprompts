@@ -250,26 +250,56 @@ export function useUserActions() {
     try {
       setProcessingUserId(userId);
 
-      const { data, error } = await supabase.functions.invoke('resend-confirmation-email', {
+      console.log("Attempting alternative resend method first...");
+      
+      // First try the alternative method
+      const { data: altData, error: altError } = await supabase.functions.invoke('resend-confirmation-alternative', {
         body: { userId, email }
       });
 
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(error.message || 'Failed to resend confirmation email');
+      if (altError) {
+        console.warn("Alternative method failed, running debug check:", altError);
+        
+        // Run debug check to see what's wrong
+        const { data: debugData, error: debugError } = await supabase.functions.invoke('debug-environment');
+        
+        if (debugError) {
+          console.error("Debug check also failed:", debugError);
+        } else {
+          console.log("Environment debug info:", debugData);
+        }
+
+        // Fall back to original method
+        console.log("Falling back to original resend method...");
+        const { data: origData, error: origError } = await supabase.functions.invoke('resend-confirmation-email', {
+          body: { userId, email }
+        });
+
+        if (origError) {
+          console.error("Both methods failed:", { alternative: altError, original: origError });
+          throw new Error(`All resend methods failed. Latest error: ${origError.message || altError.message}`);
+        }
+
+        if (!origData?.success) {
+          throw new Error(origData?.error || 'Failed to resend confirmation email (original method)');
+        }
+
+        console.log('Confirmation email resent successfully via fallback method');
+        toast({
+          title: "Success",
+          description: "Confirmation email has been resent successfully (fallback method).",
+        });
+      } else {
+        if (!altData?.success) {
+          throw new Error(altData?.error || 'Failed to resend confirmation email (alternative method)');
+        }
+
+        console.log('Confirmation email resent successfully via alternative method:', altData);
+        toast({
+          title: "Success",
+          description: `Confirmation email has been resent successfully (${altData.method || 'alternative'} method).`,
+        });
       }
-
-      if (!data?.success) {
-        console.error('Function returned error:', data?.error);
-        throw new Error(data?.error || 'Failed to resend confirmation email');
-      }
-
-      console.log('Confirmation email resent successfully');
-
-      toast({
-        title: "Success",
-        description: "Confirmation email has been resent successfully.",
-      });
 
       // Log the action
       await supabase.from('admin_audit_log').insert({
@@ -278,17 +308,32 @@ export function useUserActions() {
         target_resource: `user:${userId}`,
         metadata: { 
           target_email: email,
-          timestamp: new Date().toISOString()
+          method: altError ? 'original_fallback' : 'alternative_success',
+          timestamp: new Date().toISOString(),
+          had_fallback: !!altError
         }
       });
 
     } catch (error: any) {
       console.error('Error resending confirmation email:', error);
       
+      // Enhanced error messaging
+      let errorMessage = "Failed to resend confirmation email.";
+      
+      if (error.message?.includes('All resend methods failed')) {
+        errorMessage = "All resend methods failed. Please check the system logs and try again later.";
+      } else if (error.message?.includes('Admin access required')) {
+        errorMessage = "You do not have permission to perform this action.";
+      } else if (error.message?.includes('already confirmed')) {
+        errorMessage = "This email is already confirmed.";
+      } else if (error.message?.includes('User not found')) {
+        errorMessage = "User not found in the system.";
+      }
+      
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to resend confirmation email. Please try again.",
+        description: errorMessage,
       });
     } finally {
       setProcessingUserId(null);
