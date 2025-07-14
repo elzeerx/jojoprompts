@@ -24,7 +24,6 @@ export function useSignupForm() {
       lastName: "",
       username: "",
       email: "",
-      password: "",
     },
   });
 
@@ -32,99 +31,67 @@ export function useSignupForm() {
     setIsLoading(true);
 
     try {
-      let redirectUrl = `${window.location.origin}/prompts?from_signup=true`;
+      let redirectUrl = `${window.location.origin}/prompts`;
       
       if (selectedPlan) {
-        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}&from_signup=true`;
+        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}`;
       } else if (fromCheckout) {
-        redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
+        redirectUrl = `${window.location.origin}/checkout`;
       }
 
-      // Create user account without email confirmation requirement
-      const { data, error } = await supabase.auth.signUp({
+      // Send magic link for signup/login
+      const { error } = await supabase.auth.signInWithOtp({
         email: values.email,
-        password: values.password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             first_name: values.firstName,
             last_name: values.lastName,
+            username: values.username,
           },
         },
       });
 
       if (error) {
-        if (error.message.includes("already registered")) {
-          toast({
-            variant: "destructive",
-            title: "Account already exists",
-            description: "This email is already registered. Please sign in instead.",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: error.message,
-          });
-        }
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message,
+        });
         return;
       }
 
-      if (data.user) {
-        // Always send our custom confirmation email (bypass Supabase entirely)
-        console.log('Sending custom confirmation email for user:', data.user.id);
-        
+      // Show success message and redirect to magic link sent page
+      toast({
+        title: "Magic link sent! ✨",
+        description: "Check your email for a secure login link.",
+      });
+
+      // Send welcome email in the background for new users
+      setTimeout(async () => {
         try {
-          const { data: emailData, error: emailError } = await supabase.functions.invoke('send-signup-confirmation', {
-            body: {
-              email: values.email,
-              firstName: values.firstName,
-              lastName: values.lastName,
-              userId: data.user.id,
-              redirectUrl: redirectUrl
-            }
-          });
-
-          if (emailError) {
-            console.error('Failed to send confirmation email:', emailError);
-            toast({
-              variant: "destructive",
-              title: "Email delivery issue",
-              description: "Your account was created but we couldn't send the confirmation email. Please try the resend button.",
-            });
-          } else {
-            console.log('Custom confirmation email sent successfully:', emailData);
-          }
-        } catch (emailError) {
-          console.error('Error sending confirmation email:', emailError);
-          toast({
-            variant: "destructive",
-            title: "Email delivery issue", 
-            description: "Your account was created but we couldn't send the confirmation email. Please try the resend button.",
-          });
-        }
-
-        // Send welcome email in the background (don't block the flow)
-        setTimeout(async () => {
           await sendWelcomeEmail(values.firstName, values.email);
-        }, 1000);
+        } catch (error) {
+          console.log('Welcome email failed (non-critical):', error);
+        }
+      }, 1000);
 
-        // Always redirect to confirmation page for manual confirmation
-        const confirmationParams = new URLSearchParams({
-          email: values.email,
-          firstName: values.firstName,
-        });
-        
-        if (selectedPlan) {
-          confirmationParams.append('plan', selectedPlan);
-        }
-        if (fromCheckout) {
-          confirmationParams.append('fromCheckout', 'true');
-        }
-        
-        navigate(`/email-confirmation?${confirmationParams.toString()}`);
+      // Redirect to a magic link sent page
+      const magicLinkParams = new URLSearchParams({
+        email: values.email,
+        firstName: values.firstName,
+      });
+      
+      if (selectedPlan) {
+        magicLinkParams.append('plan', selectedPlan);
       }
+      if (fromCheckout) {
+        magicLinkParams.append('fromCheckout', 'true');
+      }
+      
+      navigate(`/magic-link-sent?${magicLinkParams.toString()}`);
     } catch (error) {
-      console.error("Signup error:", error);
+      console.error("Magic link error:", error);
       toast({
         variant: "destructive",
         title: "Error",

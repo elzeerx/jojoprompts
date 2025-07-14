@@ -80,25 +80,12 @@ export function SignupForm({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-sm font-medium">Password</FormLabel>
-              <FormControl>
-                <Input type="password" {...field} className="mobile-input" />
-              </FormControl>
-              <FormMessage />
-              <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters long
-              </p>
-            </FormItem>
-          )}
-        />
         <Button type="submit" className="w-full mobile-button-primary" disabled={isLoading || isGoogleLoading}>
-          {isLoading ? "Creating account..." : "Create Account"}
+          {isLoading ? "Sending magic link..." : "Send Magic Link"}
         </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          We'll send you a secure link to sign in instantly without a password.
+        </p>
       </form>
     </Form>
   );

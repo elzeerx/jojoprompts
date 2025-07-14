@@ -25,77 +25,52 @@ export function SignupForm({ onSuccess, onSwitchToLogin, disabled }: SignupFormP
     mode: "onSubmit",
     defaultValues: {
       email: "",
-      password: "",
-      confirmPassword: "",
       firstName: "",
       lastName: "",
     },
   });
 
   const handleSignup = async (values: CheckoutSignupFormValues) => {
-    logInfo("Starting signup process", "auth");
-    logDebug("Signup form submission", "auth", { 
-      email: values.email, 
-      hasPassword: !!values.password,
-      hasConfirmPassword: !!values.confirmPassword,
+    logInfo("Starting magic link signup process", "auth");
+    logDebug("Magic link signup form submission", "auth", { 
+      email: values.email,
       firstName: values.firstName,
       lastName: values.lastName 
     });
     setIsLoading(true);
 
     try {
-      // Step 1: Sign up the user
-      logDebug("Attempting to create user account", "auth");
-      const { data: signupData, error: signupError } = await supabase.auth.signUp({
+      // Send magic link for immediate checkout access
+      logDebug("Sending magic link for checkout", "auth");
+      const { error } = await supabase.auth.signInWithOtp({
         email: values.email,
-        password: values.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/checkout`,
           data: {
             first_name: values.firstName,
             last_name: values.lastName,
           },
-          emailRedirectTo: `${window.location.origin}/`,
         },
       });
 
-      if (signupError) {
-        logError("Signup error", "auth", { error: signupError.message });
+      if (error) {
+        logError("Magic link error", "auth", { error: error.message });
         toast({
           variant: "destructive",
           title: "Error",
-          description: signupError.message,
+          description: error.message,
         });
         setIsLoading(false);
         return;
       }
 
-      logInfo("User account created successfully", "auth", undefined, signupData.user?.id);
-
-      // Step 2: Automatically sign in the user
-      logDebug("Attempting to sign in the new user", "auth", undefined, signupData.user?.id);
-      const { error: signinError } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
+      logInfo("Magic link sent successfully", "auth");
+      toast({
+        title: "Magic link sent! ✨",
+        description: "Check your email and click the link to continue with your purchase.",
       });
-
-      if (signinError) {
-        logError("Auto sign-in error", "auth", { error: signinError.message }, signupData.user?.id);
-        toast({
-          variant: "destructive",
-          title: "Account created but couldn't sign in automatically",
-          description: "Please proceed to login with your new credentials.",
-        });
-        onSwitchToLogin();
-      } else {
-        logInfo("User signed in successfully", "auth", undefined, signupData.user?.id);
-        toast({
-          title: "Welcome!",
-          description: "Your account has been created. Please complete your purchase.",
-        });
-        onSuccess();
-      }
     } catch (error: any) {
-      logError("Signup error", "auth", { error: error.message });
+      logError("Magic link signup error", "auth", { error: error.message });
       toast({
         variant: "destructive",
         title: "Error",
@@ -150,45 +125,19 @@ export function SignupForm({ onSuccess, onSwitchToLogin, disabled }: SignupFormP
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" {...field} />
-              </FormControl>
-              <FormMessage />
-              <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters long
-              </p>
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="confirmPassword"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
-              <FormControl>
-                <Input type="password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <Button type="submit" className="w-full" disabled={isLoading || disabled}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating account...
+              Sending magic link...
             </>
           ) : (
-            "Create Account & Continue"
+            "Send Magic Link & Continue"
           )}
         </Button>
+        <p className="text-xs text-muted-foreground text-center mt-2">
+          We'll send you a secure link to continue with your purchase.
+        </p>
       </form>
     </Form>
   );
