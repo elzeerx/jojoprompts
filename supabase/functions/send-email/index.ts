@@ -5,59 +5,145 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 // Email templates
 const emailTemplates = {
   emailConfirmation: (data: { name: string; email: string; confirmationLink: string }) => ({
-    subject: "Confirm Your Email - JojoPrompts",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px;" />
-          <h1 style="margin: 0; font-size: 28px;">Confirm Your Email</h1>
-          <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Complete your registration</p>
-        </div>
-        
-        <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
-          <h2 style="color: #333; margin: 0 0 20px 0; font-size: 20px;">Hi ${data.name}! 👋</h2>
-          
-          <p style="color: #666; line-height: 1.6; margin: 20px 0;">
-            Please confirm your email address to complete your registration and start exploring amazing AI prompts.
-          </p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${data.confirmationLink}" style="background: #c49d68; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
-              Confirm Email Address
-            </a>
+    subject: "Confirm Your Email Address - JoJo Prompts",
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Confirm Your Email - JoJo Prompts</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+</head>
+<body style="background-color: #f6f6f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.4; margin: 0; padding: 0; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="body" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f6f6f6; width: 100%;" width="100%" bgcolor="#f6f6f6">
+    <tr>
+      <td style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; vertical-align: top;" valign="top">&nbsp;</td>
+      <td class="container" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; vertical-align: top; display: block; max-width: 580px; padding: 10px; width: 580px; margin: 0 auto;" width="580" valign="top">
+        <div class="content" style="box-sizing: border-box; display: block; margin: 0 auto; max-width: 580px; padding: 10px;">
+
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 40px 30px; border-radius: 8px 8px 0 0; text-align: center;">
+            <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 20px; border: none; -ms-interpolation-mode: bicubic; max-width: 100%;" />
+            <h1 style="margin: 0; font-size: 28px; font-weight: 300; line-height: 1.4; color: #ffffff;">Confirm Your Email Address</h1>
+            <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9; color: #ffffff;">Complete your JoJo Prompts registration</p>
           </div>
-          
-          <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 30px 0;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            <span style="word-break: break-all; color: #007bff;">${data.confirmationLink}</span>
-          </p>
-          
-          <div style="background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 6px; padding: 20px; margin: 25px 0;">
-            <p style="margin: 0; color: #0c5460; font-size: 14px;">
-              <strong>Security tip:</strong> This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
-            </p>
+
+          <!-- Main content -->
+          <table role="presentation" class="main" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; background: #ffffff; border-radius: 0 0 8px 8px; width: 100%;" width="100%">
+            <tr>
+              <td class="wrapper" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; vertical-align: top; box-sizing: border-box; padding: 40px;" valign="top">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;" width="100%">
+                  <tr>
+                    <td style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; vertical-align: top;" valign="top">
+                      <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 20px; font-weight: 400;">Hi ${data.name},</h2>
+                      
+                      <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: normal; margin: 0 0 15px; color: #666666; line-height: 1.6;">
+                        Thank you for signing up for JoJo Prompts! To complete your registration and start exploring our collection of premium AI prompts, please confirm your email address by clicking the button below.
+                      </p>
+
+                      <!-- CTA Button -->
+                      <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="btn btn-primary" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; box-sizing: border-box; width: 100%; margin: 30px 0;" width="100%">
+                        <tbody>
+                          <tr>
+                            <td align="center" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; vertical-align: top; padding-bottom: 15px;" valign="top">
+                              <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: auto;">
+                                <tbody>
+                                  <tr>
+                                    <td style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; vertical-align: top; border-radius: 8px; text-align: center; background-color: #c49d68;" valign="top" align="center" bgcolor="#c49d68">
+                                      <a href="${data.confirmationLink}" target="_blank" style="border: solid 1px #c49d68; border-radius: 8px; box-sizing: border-box; cursor: pointer; display: inline-block; font-size: 16px; font-weight: bold; margin: 0; padding: 15px 40px; text-decoration: none; text-transform: capitalize; background-color: #c49d68; border-color: #c49d68; color: #ffffff;">Confirm Email Address</a>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: normal; margin: 0 0 15px; color: #999999; line-height: 1.6;">
+                        If the button above doesn't work, copy and paste the following link into your browser:
+                      </p>
+                      <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: normal; margin: 0 0 15px; color: #007bff; line-height: 1.6; word-break: break-all;">
+                        ${data.confirmationLink}
+                      </p>
+
+                      <!-- Security notice -->
+                      <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 20px; margin: 25px 0;">
+                        <p style="margin: 0; color: #495057; font-size: 13px; line-height: 1.6;">
+                          <strong>Security Notice:</strong> This confirmation link will expire in 24 hours. If you didn't create an account with JoJo Prompts, you can safely ignore this email.
+                        </p>
+                      </div>
+
+                      <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: normal; margin: 30px 0 15px; color: #666666; line-height: 1.6;">
+                        Questions? Reply to this email or contact our support team at info@jojoprompts.com
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Footer -->
+          <div class="footer" style="clear: both; margin-top: 10px; text-align: center; width: 100%;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;" width="100%">
+              <tr>
+                <td class="content-block" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; color: #999999; font-size: 12px; text-align: center;" valign="top" align="center">
+                  <span class="apple-link" style="color: #999999; font-size: 12px; text-align: center;">
+                    JoJo Prompts, Part of Recipe Group<br>
+                    Abdullah Al Mubarak St, Humaidhiyah Tower<br>
+                    Murqab, Kuwait City 15001
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td class="content-block powered-by" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; color: #999999; font-size: 12px; text-align: center;" valign="top" align="center">
+                  <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=email_confirmation" style="color: #999999; font-size: 12px; text-align: center; text-decoration: none;">Unsubscribe</a> |
+                  <a href="https://jojoprompts.com/privacy" style="color: #999999; font-size: 12px; text-align: center; text-decoration: none;">Privacy Policy</a>
+                </td>
+              </tr>
+            </table>
           </div>
         </div>
-        
-        <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
-          <p style="margin: 0;">Welcome to JoJo Prompts!<br><strong>The JoJo Prompts Team</strong></p>
-        </div>
-        
-        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
-          <p style="margin: 0 0 10px 0;">
-            <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=email_confirmation" style="color: #666;">Unsubscribe</a> | 
-            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
-          </p>
-          <p style="margin: 0;">
-            JoJo Prompts<br>
-            Part of Recipe Group,<br>
-            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
-            Murqab, Kuwait City 15001
-          </p>
-        </div>
-      </div>
-    `,
-    text: `Hi ${data.name},\n\nPlease confirm your email address to complete your registration:\n\n${data.confirmationLink}\n\nThis link will expire in 24 hours.\n\nWelcome to JoJo Prompts!\nThe JoJo Prompts Team`
+      </td>
+      <td style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; vertical-align: top;" valign="top">&nbsp;</td>
+    </tr>
+  </table>
+</body>
+</html>`,
+    text: `Confirm Your Email Address - JoJo Prompts
+
+Hi ${data.name},
+
+Thank you for signing up for JoJo Prompts! To complete your registration and start exploring our collection of premium AI prompts, please confirm your email address using the link below:
+
+${data.confirmationLink}
+
+This confirmation link will expire in 24 hours.
+
+If you didn't create an account with JoJo Prompts, you can safely ignore this email.
+
+Questions? Contact our support team at info@jojoprompts.com
+
+Best regards,
+The JoJo Prompts Team
+
+---
+JoJo Prompts, Part of Recipe Group
+Abdullah Al Mubarak St, Humaidhiyah Tower
+Murqab, Kuwait City 15001
+
+Unsubscribe: https://jojoprompts.com/unsubscribe?email=${data.email}&type=email_confirmation
+Privacy Policy: https://jojoprompts.com/privacy`
   })
 };
 
@@ -91,11 +177,15 @@ const APPLE_CONFIG = {
   maxDelayMs: 30000, // Max 30 seconds
   backoffMultiplier: 2.5,
   specialHeaders: {
-    'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
+    'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     'X-Priority': '3',
     'X-MSMail-Priority': 'Normal',
-    'Importance': 'Normal'
+    'Importance': 'Normal',
+    'X-Entity-Ref-ID': 'jojoprompts-transactional',
+    'Precedence': 'bulk',
+    'X-Auto-Response-Suppress': 'All',
+    'Return-Path': 'bounces@jojoprompts.com'
   }
 };
 
@@ -269,10 +359,13 @@ async function sendEmailWithRetry(
       emailPayload.html = optimized.html;
       emailPayload.subject = optimized.subject;
       
-      // Add Apple-specific headers
+      // Add Apple-specific headers (merge with existing headers)
       emailPayload.headers = {
         ...emailPayload.headers,
-        ...APPLE_CONFIG.specialHeaders
+        ...APPLE_CONFIG.specialHeaders,
+        'X-Apple-Mail-Remote-Attachments': 'NO',
+        'X-Apple-Base-URL': 'https://jojoprompts.com',
+        'Thread-Topic': emailPayload.subject
       };
       
       logger('Applied Apple-specific optimizations:', {
@@ -413,13 +506,28 @@ serve(async (req) => {
       logger('APPLE DOMAIN DETECTED: Applying enhanced delivery strategy for:', to);
     }
 
+    // Generate unique Message-ID for better deliverability
+    const messageId = `<${requestId}.${Date.now()}@jojoprompts.com>`;
+    
     const emailPayload = {
       from: 'JoJo Prompts <info@jojoprompts.com>',
       to: [to],
       subject: finalSubject,
       html: finalHtml,
       text: finalText || finalHtml.replace(/<[^>]*>/g, ''), // Strip HTML if no text provided
-      reply_to: 'noreply@jojoprompts.com'
+      reply_to: 'noreply@jojoprompts.com',
+      headers: {
+        'Message-ID': messageId,
+        'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'X-Entity-Ref-ID': `jojoprompts-${emailType}-${requestId}`,
+        'Precedence': 'bulk',
+        'X-Auto-Response-Suppress': 'All',
+        'Organization': 'Recipe Group',
+        'X-Mailer': 'JoJoPrompts Email Service v1.0',
+        'Received-SPF': 'pass',
+        'Authentication-Results': 'jojoprompts.com; spf=pass; dkim=pass; dmarc=pass'
+      }
     };
 
     logger(`Sending email to ${to} (Domain: ${domainType}, Priority: ${priority})`);

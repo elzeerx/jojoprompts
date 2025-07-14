@@ -149,7 +149,7 @@ export const emailTemplates = {
 
   // Welcome email for new users
   welcome: (data: WelcomeEmailData): EmailTemplate => ({
-    subject: "Welcome to JoJo Prompts! 🎉",
+    subject: "Welcome to JoJo Prompts! Your AI Prompt Journey Starts Now",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
@@ -273,7 +273,7 @@ export const emailTemplates = {
 
   // Payment confirmation email
   paymentConfirmation: (data: PaymentConfirmationEmailData): EmailTemplate => ({
-    subject: "Payment Confirmed - Welcome to Premium! 🎉",
+    subject: "Payment Confirmed - Welcome to Premium Access",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
