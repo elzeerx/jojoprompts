@@ -32,11 +32,11 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Generate confirmation link
+    // Since email confirmation is disabled in Supabase Auth settings, 
+    // we'll use 'invite' type which works even when confirmation is disabled
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'signup',
+      type: 'invite',
       email: email,
-      password: 'temp_password_for_link_generation', // Required by API but not used
       options: {
         redirectTo: redirectUrl || `${Deno.env.get("FRONTEND_URL") || "https://jojoprompts.com"}/prompts`
       }

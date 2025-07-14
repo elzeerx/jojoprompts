@@ -59,9 +59,10 @@ serve(async (req: Request) => {
       );
     }
 
-    // Generate confirmation link
+    // Since email confirmation is disabled in Supabase Auth settings, 
+    // we'll use 'invite' type which works even when confirmation is disabled
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'signup',
+      type: 'invite',
       email: email,
       options: {
         redirectTo: `${Deno.env.get("FRONTEND_URL") || "https://jojoprompts.com"}/`
