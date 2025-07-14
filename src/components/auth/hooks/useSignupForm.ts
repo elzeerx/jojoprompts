@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,11 +40,12 @@ export function useSignupForm() {
         redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
       }
 
+      // Disable Supabase auto-confirmation to use our custom template
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
-          emailRedirectTo: redirectUrl,
+          emailRedirectTo: null, // Disable automatic email
           data: {
             first_name: values.firstName,
             last_name: values.lastName,
@@ -71,6 +71,26 @@ export function useSignupForm() {
       }
 
       if (data.user && !data.user.email_confirmed_at) {
+        // Send custom confirmation email using our dedicated function
+        try {
+          const { error: emailError } = await supabase.functions.invoke('send-signup-confirmation', {
+            body: {
+              email: values.email,
+              firstName: values.firstName,
+              lastName: values.lastName,
+              userId: data.user.id,
+              redirectUrl: redirectUrl
+            }
+          });
+
+          if (emailError) {
+            console.error('Failed to send confirmation email:', emailError);
+            // Still show success message as the account was created
+          }
+        } catch (emailError) {
+          console.error('Error sending confirmation email:', emailError);
+        }
+
         // Send welcome email in the background (don't block the flow)
         setTimeout(async () => {
           await sendWelcomeEmail(values.firstName, values.email);

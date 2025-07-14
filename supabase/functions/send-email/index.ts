@@ -84,7 +84,7 @@ interface EmailRequest {
 // Apple email domains that require special handling
 const APPLE_DOMAINS = ['icloud.com', 'mac.com', 'me.com'];
 
-// Apple-specific configuration
+// Apple-specific configuration based on Apple's postmaster guidelines
 const APPLE_CONFIG = {
   maxRetries: 5,
   baseDelayMs: 2000, // Start with 2 seconds
@@ -92,7 +92,10 @@ const APPLE_CONFIG = {
   backoffMultiplier: 2.5,
   specialHeaders: {
     'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
-    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    'X-Priority': '3',
+    'X-MSMail-Priority': 'Normal',
+    'Importance': 'Normal'
   }
 };
 
@@ -411,11 +414,12 @@ serve(async (req) => {
     }
 
     const emailPayload = {
-      from: 'info@jojoprompts.com',
+      from: 'JoJo Prompts <info@jojoprompts.com>',
       to: [to],
       subject: finalSubject,
       html: finalHtml,
       text: finalText || finalHtml.replace(/<[^>]*>/g, ''), // Strip HTML if no text provided
+      reply_to: 'noreply@jojoprompts.com'
     };
 
     logger(`Sending email to ${to} (Domain: ${domainType}, Priority: ${priority})`);

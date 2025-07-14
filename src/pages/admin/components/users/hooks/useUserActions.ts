@@ -250,56 +250,27 @@ export function useUserActions() {
     try {
       setProcessingUserId(userId);
 
-      console.log("Attempting alternative resend method first...");
+      console.log("Using custom confirmation email template...");
       
-      // First try the alternative method
-      const { data: altData, error: altError } = await supabase.functions.invoke('resend-confirmation-alternative', {
+      // Use our custom send-email function directly for confirmation emails
+      const { data: response, error } = await supabase.functions.invoke('resend-confirmation-email', {
         body: { userId, email }
       });
 
-      if (altError) {
-        console.warn("Alternative method failed, running debug check:", altError);
-        
-        // Run debug check to see what's wrong
-        const { data: debugData, error: debugError } = await supabase.functions.invoke('debug-environment');
-        
-        if (debugError) {
-          console.error("Debug check also failed:", debugError);
-        } else {
-          console.log("Environment debug info:", debugData);
-        }
-
-        // Fall back to original method
-        console.log("Falling back to original resend method...");
-        const { data: origData, error: origError } = await supabase.functions.invoke('resend-confirmation-email', {
-          body: { userId, email }
-        });
-
-        if (origError) {
-          console.error("Both methods failed:", { alternative: altError, original: origError });
-          throw new Error(`All resend methods failed. Latest error: ${origError.message || altError.message}`);
-        }
-
-        if (!origData?.success) {
-          throw new Error(origData?.error || 'Failed to resend confirmation email (original method)');
-        }
-
-        console.log('Confirmation email resent successfully via fallback method');
-        toast({
-          title: "Success",
-          description: "Confirmation email has been resent successfully (fallback method).",
-        });
-      } else {
-        if (!altData?.success) {
-          throw new Error(altData?.error || 'Failed to resend confirmation email (alternative method)');
-        }
-
-        console.log('Confirmation email resent successfully via alternative method:', altData);
-        toast({
-          title: "Success",
-          description: `Confirmation email has been resent successfully (${altData.method || 'alternative'} method).`,
-        });
+      if (error) {
+        console.error("Custom confirmation email failed:", error);
+        throw new Error(`Failed to resend confirmation email: ${error.message}`);
       }
+
+      if (!response?.success) {
+        throw new Error(response?.error || 'Failed to resend confirmation email');
+      }
+
+      console.log('Custom confirmation email sent successfully');
+      toast({
+        title: "Success",
+        description: "Confirmation email has been resent successfully with custom template.",
+      });
 
       // Log the action
       await supabase.from('admin_audit_log').insert({
@@ -308,9 +279,8 @@ export function useUserActions() {
         target_resource: `user:${userId}`,
         metadata: { 
           target_email: email,
-          method: altError ? 'original_fallback' : 'alternative_success',
-          timestamp: new Date().toISOString(),
-          had_fallback: !!altError
+          method: 'custom_template',
+          timestamp: new Date().toISOString()
         }
       });
 
