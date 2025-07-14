@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SignupPage from "./pages/SignupPage";
+import EmailConfirmationPage from "./pages/EmailConfirmationPage";
 import PromptsPage from "./pages/PromptsPage";
 import ChatGPTPromptsPage from "./pages/prompts/ChatGPTPromptsPage";
 import MidjourneyPromptsPage from "./pages/prompts/MidjourneyPromptsPage";
@@ -51,6 +52,7 @@ function App() {
                     <Route path="login" element={<LoginPage />} />
                     <Route path="reset-password" element={<ResetPasswordPage />} />
                     <Route path="signup" element={<SignupPage />} />
+                    <Route path="email-confirmation" element={<EmailConfirmationPage />} />
                     <Route path="examples" element={<ExamplesPage />} />
                     <Route path="prompts" element={<PromptsPage />} />
                     <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />

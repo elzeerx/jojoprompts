@@ -96,10 +96,20 @@ export function useSignupForm() {
           await sendWelcomeEmail(values.firstName, values.email);
         }, 1000);
 
-        toast({
-          title: "Check your email! 📧",
-          description: "We've sent you a confirmation link to complete your registration.",
+        // Redirect to confirmation page instead of showing toast
+        const confirmationParams = new URLSearchParams({
+          email: values.email,
+          firstName: values.firstName,
         });
+        
+        if (selectedPlan) {
+          confirmationParams.append('plan', selectedPlan);
+        }
+        if (fromCheckout) {
+          confirmationParams.append('fromCheckout', 'true');
+        }
+        
+        navigate(`/email-confirmation?${confirmationParams.toString()}`);
       } else if (data.user) {
         // User is already confirmed, send welcome email and proceed
         setTimeout(async () => {
