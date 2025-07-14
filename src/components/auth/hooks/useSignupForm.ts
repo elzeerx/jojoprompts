@@ -45,7 +45,7 @@ export function useSignupForm() {
         email: values.email,
         password: values.password,
         options: {
-          // Don't set emailRedirectTo to disable automatic email confirmation
+          emailRedirectTo: undefined, // Completely disable email confirmation
           data: {
             first_name: values.firstName,
             last_name: values.lastName,
