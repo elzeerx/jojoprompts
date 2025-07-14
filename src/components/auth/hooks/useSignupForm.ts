@@ -40,16 +40,14 @@ export function useSignupForm() {
         redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
       }
 
-      // Completely disable Supabase email confirmation to prevent default templates
+      // Create user account without email confirmation requirement
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
-          emailRedirectTo: undefined, // Completely disable email confirmation
           data: {
             first_name: values.firstName,
             last_name: values.lastName,
-            email_confirm: false, // Prevent automatic email confirmation
           },
         },
       });

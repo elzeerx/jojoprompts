@@ -667,6 +667,10 @@ export type Database = {
         Args: { _user_id: string; _admin_id: string }
         Returns: Json
       }
+      confirm_user_email: {
+        Args: { user_id: string; email_confirmed?: boolean }
+        Returns: undefined
+      }
       create_subscription: {
         Args: {
           p_user_id: string
