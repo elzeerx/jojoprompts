@@ -512,32 +512,115 @@ export const emailTemplates = {
   }),
 
   emailConfirmation: (data: EmailConfirmationData): EmailTemplate => ({
-    subject: "Confirm Your Email - JojoPrompts",
+    subject: "Please Confirm Your Email Address",
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #c49d68;">JojoPrompts</h1>
-        <h2>Confirm Your Email Address</h2>
-        <p>Hi ${data.name},</p>
-        <p>Please confirm your email address to complete your registration.</p>
-        <a href="${data.confirmationLink}" style="background: #c49d68; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
-          Confirm Email Address
-        </a>
-        <p>If the button doesn't work, copy this link: ${data.confirmationLink}</p>
-        
-        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
-          <p style="margin: 0 0 10px 0;">
-            <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=email_confirmation" style="color: #666;">Unsubscribe</a> | 
-            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
-          </p>
-          <p style="margin: 0;">
-            JoJo Prompts<br>
-            Part of Recipe Group,<br>
-            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
-            Murqab, Kuwait City 15001
-          </p>
-        </div>
-      </div>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="x-apple-disable-message-reformatting">
+        <title>Email Confirmation - JoJo Prompts</title>
+        <!--[if mso]>
+        <noscript>
+          <xml>
+            <o:OfficeDocumentSettings>
+              <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+          </xml>
+        </noscript>
+        <![endif]-->
+      </head>
+      <body style="margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: #f7f7f7;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0; padding: 0;">
+          <tr>
+            <td style="padding: 20px 0;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; max-width: 600px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 40px 30px; border-radius: 8px 8px 0 0; text-align: center;">
+                    <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 20px;" />
+                    <h1 style="margin: 0; font-size: 28px; font-family: Arial, sans-serif; line-height: 1.2;">Confirm Your Email</h1>
+                    <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9; font-family: Arial, sans-serif;">Complete your account setup</p>
+                  </td>
+                </tr>
+                
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="color: #333; margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 22px;">Hi ${data.name}!</h2>
+                    
+                    <p style="color: #666; line-height: 1.6; margin: 20px 0; font-family: Arial, sans-serif; font-size: 16px;">
+                      Thank you for signing up with JoJo Prompts. To complete your account setup and start exploring our premium AI prompts, please confirm your email address by clicking the button below.
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                      <a href="${data.confirmationLink}" style="background-color: #c49d68; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; font-family: Arial, sans-serif; border: none; -webkit-text-size-adjust: none;">
+                        Confirm Email Address
+                      </a>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 20px; margin: 25px 0;">
+                      <p style="margin: 0; color: #666; font-size: 14px; font-family: Arial, sans-serif;">
+                        <strong>Security Notice:</strong> This link will expire in 24 hours. If you didn't create an account with us, please ignore this email.
+                      </p>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 30px 0; font-family: Arial, sans-serif;">
+                      If the button above doesn't work, copy and paste this link into your browser:<br>
+                      <span style="word-break: break-all; color: #007bff; font-size: 12px;">${data.confirmationLink}</span>
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; text-align: center;">
+                    <p style="color: #666; margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 14px;">
+                      Questions? Contact us at <a href="mailto:support@jojoprompts.com" style="color: #c49d68;">support@jojoprompts.com</a>
+                    </p>
+                    
+                    <div style="margin: 20px 0; padding: 20px 0; border-top: 1px solid #e9ecef;">
+                      <p style="margin: 0 0 10px 0; font-size: 12px; color: #666; font-family: Arial, sans-serif;">
+                        <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=confirmation" style="color: #666; text-decoration: none;">Unsubscribe</a> | 
+                        <a href="https://jojoprompts.com/privacy" style="color: #666; text-decoration: none;">Privacy Policy</a>
+                      </p>
+                      <p style="margin: 0; font-size: 12px; color: #999; font-family: Arial, sans-serif;">
+                        JoJo Prompts, Part of Recipe Group<br>
+                        Abdullah Al Mubarak St, Humaidhiyah Tower<br>
+                        Murqab, Kuwait City 15001
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
     `,
-    text: `Hi ${data.name},\n\nPlease confirm your email: ${data.confirmationLink}\n\n© 2024 JojoPrompts`
+    text: `Hi ${data.name},
+
+Thank you for signing up with JoJo Prompts!
+
+To complete your account setup, please confirm your email address by clicking this link:
+${data.confirmationLink}
+
+This link will expire in 24 hours.
+
+If you didn't create an account with us, please ignore this email.
+
+Questions? Contact us at support@jojoprompts.com
+
+Best regards,
+The JoJo Prompts Team
+
+---
+JoJo Prompts
+Part of Recipe Group
+Abdullah Al Mubarak St, Humaidhiyah Tower
+Murqab, Kuwait City 15001`
   })
 };

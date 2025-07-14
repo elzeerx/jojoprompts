@@ -11,8 +11,8 @@ const corsHeaders = {
 };
 
 interface ResendConfirmationRequest {
-  userId: string;
   email: string;
+  firstName: string;
 }
 
 serve(async (req: Request) => {
@@ -22,9 +22,9 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { userId, email }: ResendConfirmationRequest = await req.json();
+    const { email, firstName }: ResendConfirmationRequest = await req.json();
 
-    console.log(`Resending confirmation email for user: ${userId} (${email})`);
+    console.log(`Resending confirmation email for: ${email}`);
 
     // Create admin client to resend confirmation
     const supabaseAdmin = createClient(
@@ -32,42 +32,21 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Verify the request is from an admin
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("Authorization header required");
+    // Look up user by email to get their ID and check confirmation status
+    const { data: authUserData, error: userLookupError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (userLookupError) {
+      console.error("Error looking up users:", userLookupError);
+      throw new Error("Failed to lookup user");
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      throw new Error("Invalid authentication");
-    }
-
-    // Check if user is admin
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || profile?.role !== "admin") {
-      throw new Error("Admin access required");
-    }
-
-    // Get the user to resend confirmation for
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (userError || !userData.user) {
+    const targetUser = authUserData.users.find(u => u.email === email);
+    if (!targetUser) {
       throw new Error("User not found");
     }
 
     // Check if email is already confirmed
-    if (userData.user.email_confirmed_at) {
+    if (targetUser.email_confirmed_at) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -97,18 +76,7 @@ serve(async (req: Request) => {
     const confirmationLink = linkData.properties.action_link;
     console.log(`Generated confirmation link for ${email}`);
 
-    // Get user profile to get name
-    const { data: profile, error: profileQueryError } = await supabaseAdmin
-      .from("profiles")
-      .select("first_name, last_name")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (profileQueryError) {
-      console.warn("Error fetching user profile:", profileQueryError);
-    }
-
-    const userName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : email.split('@')[0];
+    const userName = firstName || email.split('@')[0];
 
     // Send email via our send-email function with Resend
     console.log(`Calling send-email function for ${email} (domain: ${email.split('@')[1]})`);
@@ -118,7 +86,7 @@ serve(async (req: Request) => {
       subject: "Confirm Your Email - JojoPrompts",
       template: "emailConfirmation",
       email_type: "email_confirmation",
-      user_id: userId,
+      user_id: targetUser.id,
       data: {
         name: userName,
         email: email,

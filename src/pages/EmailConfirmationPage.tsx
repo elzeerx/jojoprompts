@@ -29,30 +29,41 @@ export default function EmailConfirmationPage() {
     
     setIsResending(true);
     try {
-      const { error } = await supabase.functions.invoke('resend-confirmation-email', {
+      const { data, error } = await supabase.functions.invoke('resend-confirmation-email', {
         body: { 
           email,
           firstName 
         }
       });
 
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to resend confirmation email. Please try again.",
-        });
+      if (error || !data?.success) {
+        const errorMessage = data?.error || error?.message || "Failed to resend confirmation email. Please try again.";
+        
+        // Handle specific error cases
+        if (errorMessage.includes("already confirmed")) {
+          toast({
+            title: "Email Already Confirmed",
+            description: "Your email has already been confirmed. You can now sign in to your account.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: errorMessage,
+          });
+        }
       } else {
         toast({
           title: "Email sent! 📧",
-          description: "We've sent another confirmation email to your inbox.",
+          description: "We've sent another confirmation email to your inbox. Please check your spam folder if you don't see it.",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Resend confirmation error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to resend confirmation email. Please try again.",
+        description: "Something went wrong. Please try again or contact support if the issue persists.",
       });
     } finally {
       setIsResending(false);
