@@ -40,15 +40,16 @@ export function useSignupForm() {
         redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
       }
 
-      // Disable Supabase auto-confirmation to use our custom template
+      // Completely disable Supabase email confirmation to prevent default templates
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
-          emailRedirectTo: null, // Disable automatic email
+          // Don't set emailRedirectTo to disable automatic email confirmation
           data: {
             first_name: values.firstName,
             last_name: values.lastName,
+            email_confirm: false, // Prevent automatic email confirmation
           },
         },
       });
@@ -70,10 +71,12 @@ export function useSignupForm() {
         return;
       }
 
-      if (data.user && !data.user.email_confirmed_at) {
-        // Send custom confirmation email using our dedicated function
+      if (data.user) {
+        // Always send our custom confirmation email (bypass Supabase entirely)
+        console.log('Sending custom confirmation email for user:', data.user.id);
+        
         try {
-          const { error: emailError } = await supabase.functions.invoke('send-signup-confirmation', {
+          const { data: emailData, error: emailError } = await supabase.functions.invoke('send-signup-confirmation', {
             body: {
               email: values.email,
               firstName: values.firstName,
@@ -85,10 +88,21 @@ export function useSignupForm() {
 
           if (emailError) {
             console.error('Failed to send confirmation email:', emailError);
-            // Still show success message as the account was created
+            toast({
+              variant: "destructive",
+              title: "Email delivery issue",
+              description: "Your account was created but we couldn't send the confirmation email. Please try the resend button.",
+            });
+          } else {
+            console.log('Custom confirmation email sent successfully:', emailData);
           }
         } catch (emailError) {
           console.error('Error sending confirmation email:', emailError);
+          toast({
+            variant: "destructive",
+            title: "Email delivery issue", 
+            description: "Your account was created but we couldn't send the confirmation email. Please try the resend button.",
+          });
         }
 
         // Send welcome email in the background (don't block the flow)
@@ -96,7 +110,7 @@ export function useSignupForm() {
           await sendWelcomeEmail(values.firstName, values.email);
         }, 1000);
 
-        // Redirect to confirmation page instead of showing toast
+        // Always redirect to confirmation page for manual confirmation
         const confirmationParams = new URLSearchParams({
           email: values.email,
           firstName: values.firstName,
@@ -110,22 +124,6 @@ export function useSignupForm() {
         }
         
         navigate(`/email-confirmation?${confirmationParams.toString()}`);
-      } else if (data.user) {
-        // User is already confirmed, send welcome email and proceed
-        setTimeout(async () => {
-          await sendWelcomeEmail(values.firstName, values.email);
-        }, 1000);
-
-        toast({
-          title: "Welcome! 🎉",
-          description: "Your account has been created successfully.",
-        });
-        
-        if (selectedPlan) {
-          navigate(`/checkout?plan_id=${selectedPlan}`);
-        } else {
-          navigate('/prompts');
-        }
       }
     } catch (error) {
       console.error("Signup error:", error);
