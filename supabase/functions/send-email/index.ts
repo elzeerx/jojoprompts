@@ -183,7 +183,7 @@ const getAppleConfig = (emailType: string) => ({
     'Importance': 'High',
     'X-Entity-Ref-ID': 'jojoprompts-transactional',
     'X-Auto-Response-Suppress': 'DR, RN, NRN, OOF', // Suppress auto-responses but not delivery receipts
-    'Return-Path': 'noreply@jojoprompts.com',
+    'Return-Path': 'noreply@noreply.jojoprompts.com',
     'Content-Type': 'text/html; charset=UTF-8',
     'MIME-Version': '1.0',
     'X-Mailer': 'JoJoPrompts-v1.0',
@@ -191,7 +191,7 @@ const getAppleConfig = (emailType: string) => ({
     'Thread-Topic': 'Email Confirmation Required'
   } : {
     // Marketing/bulk email headers
-    'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+    'List-Unsubscribe': '<mailto:unsubscribe@noreply.jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     'X-Priority': '3',
     'X-MSMail-Priority': 'Normal',
@@ -199,7 +199,7 @@ const getAppleConfig = (emailType: string) => ({
     'X-Entity-Ref-ID': 'jojoprompts-marketing',
     'Precedence': 'bulk',
     'X-Auto-Response-Suppress': 'All',
-    'Return-Path': 'bounces@jojoprompts.com',
+    'Return-Path': 'noreply@noreply.jojoprompts.com',
     'Content-Type': 'text/html; charset=UTF-8',
     'MIME-Version': '1.0'
   }
@@ -527,24 +527,28 @@ serve(async (req) => {
     const messageId = `<${requestId}.${Date.now()}@jojoprompts.com>`;
     
     const emailPayload = {
-      from: 'JoJo Prompts <info@jojoprompts.com>',
+      from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
       to: [to],
       subject: finalSubject,
       html: finalHtml,
       text: finalText || finalHtml.replace(/<[^>]*>/g, ''), // Strip HTML if no text provided
-      reply_to: 'noreply@jojoprompts.com',
+      reply_to: 'info@jojoprompts.com',
       headers: {
         'Message-ID': messageId,
-        'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+        'List-Unsubscribe': '<mailto:unsubscribe@noreply.jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         'X-Entity-Ref-ID': `jojoprompts-${emailType}-${requestId}`,
-        'Precedence': 'bulk',
-        'X-Auto-Response-Suppress': 'All',
+        // Remove Precedence: bulk for transactional emails like signup confirmations
+        ...(emailType === 'email_confirmation' || emailType === 'transactional' ? {} : { 'Precedence': 'bulk' }),
+        'X-Auto-Response-Suppress': emailType === 'email_confirmation' ? 'OOF, AutoReply' : 'All',
         'Organization': 'Recipe Group',
         'X-Mailer': 'JoJoPrompts Email Service v1.0',
-        'X-Feedback-ID': `${emailType}:jojoprompts.com`,
+        'X-Feedback-ID': `${emailType}:noreply.jojoprompts.com`,
         'Content-Type': 'text/html; charset=UTF-8',
-        'MIME-Version': '1.0'
+        'MIME-Version': '1.0',
+        // Add Apple-friendly headers for all emails
+        'X-Apple-Mail-Remote-Attachments': 'NO',
+        'Return-Path': 'noreply@noreply.jojoprompts.com'
       }
     };
 
