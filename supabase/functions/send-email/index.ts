@@ -643,11 +643,12 @@ serve(async (req) => {
     );
 
     const responseMessageId = emailResponse.data?.id || emailResponse.id;
+    const actualRetryCount = emailResponse.retryCount || 0;
     logger('Email sent successfully:', {
       messageId: responseMessageId,
       to,
       domainType,
-      finalRetryCount
+      retryCount: actualRetryCount
     });
 
     // Log successful attempt
@@ -657,7 +658,7 @@ serve(async (req) => {
       success: true,
       user_id: userId,
       domain_type: domainType,
-      retry_count: finalRetryCount,
+      retry_count: actualRetryCount,
       delivery_status: 'sent',
       response_metadata: { messageId: responseMessageId, priority }
     }, logger);
@@ -670,7 +671,7 @@ serve(async (req) => {
       message: 'Email sent successfully',
       messageId: responseMessageId,
       domainType: domainType,
-      retryCount: finalRetryCount,
+      retryCount: actualRetryCount,
       optimized: domainType === 'apple'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -695,7 +696,7 @@ serve(async (req) => {
         error_message: error.message,
         user_id: userId,
         domain_type: domainType,
-        retry_count: finalRetryCount,
+        retry_count: retry_count || 0,
         delivery_status: 'failed',
         bounce_reason: bounceReason
       }, logger);
