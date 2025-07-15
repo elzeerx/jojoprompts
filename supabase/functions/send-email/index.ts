@@ -696,7 +696,7 @@ serve(async (req) => {
         error_message: error.message,
         user_id: userId,
         domain_type: domainType,
-        retry_count: retry_count || 0,
+        retry_count: 0,
         delivery_status: 'failed',
         bounce_reason: bounceReason
       }, logger);
