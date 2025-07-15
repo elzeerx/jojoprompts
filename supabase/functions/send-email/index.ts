@@ -601,34 +601,47 @@ serve(async (req) => {
       logger('APPLE DOMAIN DETECTED: Applying enhanced delivery strategy for:', to);
     }
 
-    // Generate unique Message-ID for better deliverability
-    const messageId = `<${requestId}.${Date.now()}@jojoprompts.com>`;
+    // Create email payload - simplified for signup confirmations
+    let emailPayload;
     
-    const emailPayload = {
-      from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
-      to: [to],
-      subject: finalSubject,
-      html: finalHtml,
-      text: finalText || finalHtml.replace(/<[^>]*>/g, ''), // Strip HTML if no text provided
-      reply_to: 'info@jojoprompts.com',
-      headers: {
-        'Message-ID': messageId,
-        'List-Unsubscribe': '<mailto:unsubscribe@noreply.jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        'X-Entity-Ref-ID': `jojoprompts-${emailType}-${requestId}`,
-        // Remove Precedence: bulk for transactional emails like signup confirmations
-        ...(emailType === 'email_confirmation' || emailType === 'transactional' ? {} : { 'Precedence': 'bulk' }),
-        'X-Auto-Response-Suppress': emailType === 'email_confirmation' ? 'OOF, AutoReply' : 'All',
-        'Organization': 'Recipe Group',
-        'X-Mailer': 'JoJoPrompts Email Service v1.0',
-        'X-Feedback-ID': `${emailType}:noreply.jojoprompts.com`,
-        'Content-Type': 'text/html; charset=UTF-8',
-        'MIME-Version': '1.0',
-        // Add Apple-friendly headers for all emails
-        'X-Apple-Mail-Remote-Attachments': 'NO',
-        'Return-Path': 'noreply@noreply.jojoprompts.com'
-      }
-    };
+    if (emailType === 'email_confirmation' || emailType === 'transactional') {
+      // Simplified payload for signup confirmations to avoid Resend validation errors
+      emailPayload = {
+        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
+        to: to, // String instead of array for signup confirmations
+        subject: finalSubject,
+        html: finalHtml,
+        text: finalText || finalHtml.replace(/<[^>]*>/g, '')
+      };
+      
+      logger('Using simplified payload for signup confirmation');
+    } else {
+      // Full payload for other email types
+      const messageId = `<${requestId}.${Date.now()}@jojoprompts.com>`;
+      
+      emailPayload = {
+        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
+        to: [to],
+        subject: finalSubject,
+        html: finalHtml,
+        text: finalText || finalHtml.replace(/<[^>]*>/g, ''),
+        reply_to: 'info@jojoprompts.com',
+        headers: {
+          'Message-ID': messageId,
+          'List-Unsubscribe': '<mailto:unsubscribe@noreply.jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          'X-Entity-Ref-ID': `jojoprompts-${emailType}-${requestId}`,
+          'Precedence': 'bulk',
+          'X-Auto-Response-Suppress': 'All',
+          'Organization': 'Recipe Group',
+          'X-Mailer': 'JoJoPrompts Email Service v1.0',
+          'X-Feedback-ID': `${emailType}:noreply.jojoprompts.com`,
+          'Content-Type': 'text/html; charset=UTF-8',
+          'MIME-Version': '1.0',
+          'Return-Path': 'noreply@noreply.jojoprompts.com'
+        }
+      };
+    }
 
     logger(`Sending email to ${to} (Domain: ${domainType}, Priority: ${priority})`);
 
