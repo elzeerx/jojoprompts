@@ -171,28 +171,39 @@ interface EmailRequest {
 const APPLE_DOMAINS = ['icloud.com', 'mac.com', 'me.com'];
 
 // Apple-specific configuration based on Apple's postmaster guidelines
-const APPLE_CONFIG = {
-  maxRetries: 5,
-  baseDelayMs: 2000, // Start with 2 seconds
-  maxDelayMs: 30000, // Max 30 seconds
-  backoffMultiplier: 2.5,
-  specialHeaders: {
+const getAppleConfig = (emailType: string) => ({
+  maxRetries: 3, // Reduced retries for transactional emails
+  baseDelayMs: 5000, // Longer delays for Apple
+  maxDelayMs: 60000, // Max 1 minute
+  backoffMultiplier: 2,
+  specialHeaders: emailType === 'email_confirmation' || emailType === 'transactional' ? {
+    // Transactional email headers for signup confirmations
+    'X-Priority': '1', // High priority for transactional
+    'X-MSMail-Priority': 'High',
+    'Importance': 'High',
+    'X-Entity-Ref-ID': 'jojoprompts-transactional',
+    'X-Auto-Response-Suppress': 'DR, RN, NRN, OOF', // Suppress auto-responses but not delivery receipts
+    'Return-Path': 'noreply@jojoprompts.com',
+    'Content-Type': 'text/html; charset=UTF-8',
+    'MIME-Version': '1.0',
+    'X-Mailer': 'JoJoPrompts-v1.0',
+    'X-Apple-Mail-Remote-Attachments': 'NO',
+    'Thread-Topic': 'Email Confirmation Required'
+  } : {
+    // Marketing/bulk email headers
     'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     'X-Priority': '3',
     'X-MSMail-Priority': 'Normal',
     'Importance': 'Normal',
-    'X-Entity-Ref-ID': 'jojoprompts-transactional',
+    'X-Entity-Ref-ID': 'jojoprompts-marketing',
     'Precedence': 'bulk',
     'X-Auto-Response-Suppress': 'All',
     'Return-Path': 'bounces@jojoprompts.com',
-    'DKIM-Signature': 'v=1; a=rsa-sha256; c=relaxed/relaxed; d=jojoprompts.com;',
-    'Authentication-Results': 'jojoprompts.com; spf=pass; dkim=pass; dmarc=pass;',
-    'X-Feedback-ID': 'signup:jojoprompts.com',
     'Content-Type': 'text/html; charset=UTF-8',
     'MIME-Version': '1.0'
   }
-};
+});
 
 // Standard retry configuration for other domains
 const STANDARD_CONFIG = {
@@ -215,8 +226,8 @@ function getDomainType(email: string): string {
 }
 
 // Calculate exponential backoff delay
-function calculateDelay(retryCount: number, domainType: string): number {
-  const config = domainType === 'apple' ? APPLE_CONFIG : STANDARD_CONFIG;
+function calculateDelay(retryCount: number, domainType: string, emailType: string): number {
+  const config = domainType === 'apple' ? getAppleConfig(emailType) : STANDARD_CONFIG;
   const delay = config.baseDelayMs * Math.pow(config.backoffMultiplier, retryCount);
   return Math.min(delay, config.maxDelayMs);
 }
@@ -353,9 +364,10 @@ async function sendEmailWithRetry(
   emailPayload: any,
   domainType: string,
   retryCount: number,
+  emailType: string,
   logger: any
 ): Promise<any> {
-  const config = domainType === 'apple' ? APPLE_CONFIG : STANDARD_CONFIG;
+  const config = domainType === 'apple' ? getAppleConfig(emailType) : STANDARD_CONFIG;
   
   try {
     // Apply Apple-specific optimizations
@@ -365,10 +377,10 @@ async function sendEmailWithRetry(
       emailPayload.subject = optimized.subject;
       
       // Add Apple-specific headers (merge with existing headers)
+      const appleConfig = getAppleConfig(emailType);
       emailPayload.headers = {
         ...emailPayload.headers,
-        ...APPLE_CONFIG.specialHeaders,
-        'X-Apple-Mail-Remote-Attachments': 'NO',
+        ...appleConfig.specialHeaders,
         'X-Apple-Base-URL': 'https://jojoprompts.com',
         'Thread-Topic': emailPayload.subject
       };
@@ -392,13 +404,13 @@ async function sendEmailWithRetry(
     
     // Check if we should retry
     if (retryCount < config.maxRetries) {
-      const delay = calculateDelay(retryCount, domainType);
+      const delay = calculateDelay(retryCount, domainType, emailType);
       logger(`Retrying in ${delay}ms (domain: ${domainType}, attempt: ${retryCount + 1}/${config.maxRetries})`);
       
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, delay));
       
-      return sendEmailWithRetry(resend, emailPayload, domainType, retryCount + 1, logger);
+      return sendEmailWithRetry(resend, emailPayload, domainType, retryCount + 1, emailType, logger);
     }
     
     // Max retries reached
@@ -544,6 +556,7 @@ serve(async (req) => {
       emailPayload,
       domainType,
       0, // Start with retry count 0
+      email_type || 'transactional',
       logger
     );
 
