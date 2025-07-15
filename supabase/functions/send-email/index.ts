@@ -282,12 +282,48 @@ async function logEmailAttempt(supabase: any, emailData: {
   bounce_reason?: string;
 }, logger: any) {
   try {
+    // Create a clean email data object, excluding user_id if it's null/undefined
+    // This prevents foreign key constraint violations when user_id doesn't exist in auth.users
+    const cleanEmailData = {
+      email_address: emailData.email_address,
+      email_type: emailData.email_type,
+      success: emailData.success,
+      domain_type: emailData.domain_type,
+      retry_count: emailData.retry_count,
+      delivery_status: emailData.delivery_status,
+      ...(emailData.error_message && { error_message: emailData.error_message }),
+      ...(emailData.response_metadata && { response_metadata: emailData.response_metadata }),
+      ...(emailData.bounce_reason && { bounce_reason: emailData.bounce_reason }),
+      // Only include user_id if it exists and is not null/empty
+      ...(emailData.user_id && emailData.user_id.trim() !== '' && { user_id: emailData.user_id })
+    };
+
+    logger('Logging email attempt:', { 
+      email_address: cleanEmailData.email_address,
+      success: cleanEmailData.success,
+      user_id: cleanEmailData.user_id || 'none'
+    });
+
     const { error } = await supabase
       .from('email_logs')
-      .insert([emailData]);
+      .insert([cleanEmailData]);
     
     if (error) {
       logger('ERROR logging email attempt:', error);
+      // Try logging without user_id if it still fails
+      if (error.code === '23503' && emailData.user_id) {
+        logger('Retrying email log without user_id due to foreign key constraint');
+        const { user_id, ...dataWithoutUserId } = cleanEmailData;
+        const { error: retryError } = await supabase
+          .from('email_logs')
+          .insert([dataWithoutUserId]);
+        
+        if (retryError) {
+          logger('ERROR on retry logging email attempt:', retryError);
+        } else {
+          logger('Email attempt logged successfully on retry (without user_id)');
+        }
+      }
     } else {
       logger('Email attempt logged successfully');
     }
