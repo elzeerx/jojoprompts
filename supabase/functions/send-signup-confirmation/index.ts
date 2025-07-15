@@ -69,12 +69,15 @@ serve(async (req: Request) => {
       to: emailPayload.to, 
       template: emailPayload.template, 
       email_type: emailPayload.email_type,
-      userName: userName 
+      userName: userName,
+      hasConfirmationLink: !!emailPayload.data.confirmationLink
     });
 
     const { data: emailData, error: emailError } = await supabaseAdmin.functions.invoke('send-email', {
       body: emailPayload
     });
+
+    console.log('Email function raw response:', { emailData, emailError });
 
     if (emailError) {
       console.error("Error sending confirmation email:", emailError);
