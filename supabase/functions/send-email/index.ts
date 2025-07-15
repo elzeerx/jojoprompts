@@ -638,7 +638,7 @@ serve(async (req) => {
       emailPayload,
       domainType,
       0, // Start with retry count 0
-      email_type || 'transactional',
+      emailType || 'transactional',
       logger
     );
 
