@@ -606,9 +606,9 @@ serve(async (req) => {
       logger
     );
 
-    const messageId = emailResponse.data?.id || emailResponse.id;
+    const responseMessageId = emailResponse.data?.id || emailResponse.id;
     logger('Email sent successfully:', {
-      messageId,
+      messageId: responseMessageId,
       to,
       domainType,
       finalRetryCount
@@ -623,7 +623,7 @@ serve(async (req) => {
       domain_type: domainType,
       retry_count: finalRetryCount,
       delivery_status: 'sent',
-      response_metadata: { messageId, priority }
+      response_metadata: { messageId: responseMessageId, priority }
     }, logger);
 
     // Check alert thresholds in background
