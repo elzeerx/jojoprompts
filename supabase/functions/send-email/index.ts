@@ -32,9 +32,9 @@ const emailTemplates = {
 
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 40px 30px; border-radius: 8px 8px 0 0; text-align: center;">
-            <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 20px; border: none; -ms-interpolation-mode: bicubic; max-width: 100%;" />
-            <h1 style="margin: 0; font-size: 28px; font-weight: 300; line-height: 1.4; color: #ffffff;">Confirm Your Email Address</h1>
-            <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9; color: #ffffff;">Complete your JoJo Prompts registration</p>
+            <h1 style="margin: 0; font-size: 32px; font-weight: 600; line-height: 1.2; color: #ffffff; letter-spacing: -0.5px;">JoJo Prompts</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9; color: #ffffff; font-weight: 300;">Confirm Your Email Address</p>
+            <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.8; color: #ffffff;">Complete your registration to access premium AI prompts</p>
           </div>
 
           <!-- Main content -->
