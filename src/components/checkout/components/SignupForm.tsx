@@ -40,25 +40,35 @@ export function SignupForm({ onSuccess, onSwitchToLogin, disabled }: SignupFormP
     setIsLoading(true);
 
     try {
-      // Send magic link for immediate checkout access
+      // Generate magic link using our edge function for better Apple deliverability
       logDebug("Sending magic link for checkout", "auth");
-      const { error } = await supabase.auth.signInWithOtp({
-        email: values.email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/checkout`,
-          data: {
-            first_name: values.firstName,
-            last_name: values.lastName,
-          },
-        },
+      const { data, error } = await supabase.functions.invoke('send-signup-confirmation', {
+        body: {
+          email: values.email,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          userId: crypto.randomUUID(), // Generate temporary ID
+          redirectUrl: `${window.location.origin}/checkout`
+        }
       });
 
       if (error) {
-        logError("Magic link error", "auth", { error: error.message });
+        logError("Magic link generation error", "auth", { error: error.message });
         toast({
           variant: "destructive",
           title: "Error",
-          description: error.message,
+          description: error.message || "Failed to send magic link. Please try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data?.success) {
+        logError("Magic link sending failed", "auth", { error: data?.error });
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data?.error || "Failed to send magic link. Please try again.",
         });
         setIsLoading(false);
         return;

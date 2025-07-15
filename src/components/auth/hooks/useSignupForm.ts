@@ -39,24 +39,33 @@ export function useSignupForm() {
         redirectUrl = `${window.location.origin}/checkout`;
       }
 
-      // Send magic link for signup/login
-      const { error } = await supabase.auth.signInWithOtp({
-        email: values.email,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            first_name: values.firstName,
-            last_name: values.lastName,
-            username: values.username,
-          },
-        },
+      // Generate magic link using our edge function for better Apple deliverability
+      const { data, error } = await supabase.functions.invoke('send-signup-confirmation', {
+        body: {
+          email: values.email,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          userId: crypto.randomUUID(), // Generate temporary ID
+          redirectUrl: redirectUrl
+        }
       });
 
       if (error) {
+        console.error("Magic link generation error:", error);
         toast({
           variant: "destructive",
-          title: "Error",
-          description: error.message,
+          title: "Error sending magic link",
+          description: error.message || "Failed to send magic link. Please try again.",
+        });
+        return;
+      }
+
+      if (!data?.success) {
+        console.error("Magic link sending failed:", data?.error);
+        toast({
+          variant: "destructive",
+          title: "Error sending magic link", 
+          description: data?.error || "Failed to send magic link. Please try again.",
         });
         return;
       }

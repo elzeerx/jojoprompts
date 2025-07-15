@@ -34,18 +34,27 @@ export default function MagicLinkSentPage() {
         redirectUrl = `${window.location.origin}/checkout`;
       }
 
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email,
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
+      const { data, error } = await supabase.functions.invoke('send-signup-confirmation', {
+        body: {
+          email: email,
+          firstName: firstName || 'User',
+          lastName: '',
+          userId: crypto.randomUUID(), // Generate temporary ID
+          redirectUrl: redirectUrl
+        }
       });
 
       if (error) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: error.message,
+          description: error.message || "Failed to resend magic link. Please try again.",
+        });
+      } else if (!data?.success) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data?.error || "Failed to resend magic link. Please try again.",
         });
       } else {
         toast({

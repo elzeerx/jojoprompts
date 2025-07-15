@@ -185,7 +185,12 @@ const APPLE_CONFIG = {
     'X-Entity-Ref-ID': 'jojoprompts-transactional',
     'Precedence': 'bulk',
     'X-Auto-Response-Suppress': 'All',
-    'Return-Path': 'bounces@jojoprompts.com'
+    'Return-Path': 'bounces@jojoprompts.com',
+    'DKIM-Signature': 'v=1; a=rsa-sha256; c=relaxed/relaxed; d=jojoprompts.com;',
+    'Authentication-Results': 'jojoprompts.com; spf=pass; dkim=pass; dmarc=pass;',
+    'X-Feedback-ID': 'signup:jojoprompts.com',
+    'Content-Type': 'text/html; charset=UTF-8',
+    'MIME-Version': '1.0'
   }
 };
 
@@ -525,8 +530,9 @@ serve(async (req) => {
         'X-Auto-Response-Suppress': 'All',
         'Organization': 'Recipe Group',
         'X-Mailer': 'JoJoPrompts Email Service v1.0',
-        'Received-SPF': 'pass',
-        'Authentication-Results': 'jojoprompts.com; spf=pass; dkim=pass; dmarc=pass'
+        'X-Feedback-ID': `${emailType}:jojoprompts.com`,
+        'Content-Type': 'text/html; charset=UTF-8',
+        'MIME-Version': '1.0'
       }
     };
 
