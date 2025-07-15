@@ -632,7 +632,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       message: 'Email sent successfully',
-      messageId: messageId,
+      messageId: responseMessageId,
       domainType: domainType,
       retryCount: finalRetryCount,
       optimized: domainType === 'apple'
