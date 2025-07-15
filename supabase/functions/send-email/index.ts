@@ -392,10 +392,52 @@ async function sendEmailWithRetry(
       });
     }
     
-    const response = await resend.emails.send(emailPayload);
+    console.log('Sending email with final payload:', {
+      from: emailPayload.from,
+      to: emailPayload.to,
+      subject: emailPayload.subject,
+      hasHtml: !!emailPayload.html,
+      hasText: !!emailPayload.text,
+      headerKeys: Object.keys(emailPayload.headers || {}),
+      retryCount,
+      domainType
+    });
+
+    let response;
+    try {
+      response = await resend.emails.send(emailPayload);
+      console.log('Resend API response:', {
+        success: !response.error,
+        data: response.data,
+        error: response.error,
+        statusCode: response.error?.name || 'success'
+      });
+    } catch (apiError: any) {
+      console.error('Resend API call failed with exception:', {
+        name: apiError.name,
+        message: apiError.message,
+        cause: apiError.cause,
+        stack: apiError.stack,
+        domainType,
+        emailType,
+        retryCount,
+        from: emailPayload.from
+      });
+      throw new Error(`Resend API exception: ${apiError.message} (${apiError.name})`);
+    }
     
     if (response.error) {
-      throw new Error(response.error.message || 'Resend API error');
+      console.error(`Email send attempt ${retryCount + 1} failed:`, {
+        error: response.error,
+        errorName: response.error.name,
+        errorMessage: response.error.message,
+        domainType,
+        emailType,
+        retryCount,
+        from: emailPayload.from,
+        fullError: JSON.stringify(response.error)
+      });
+      throw new Error(`Resend API error: ${response.error.name} - ${response.error.message}`);
     }
     
     return response;
