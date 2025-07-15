@@ -58,7 +58,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px;" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px;" />
           <h1 style="margin: 0; font-size: 28px;">Thank You, ${data.name}!</h1>
           <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">We've received your message</p>
         </div>
@@ -119,7 +119,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 50px; margin-bottom: 10px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 50px; margin-bottom: 10px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 24px;">🔔 New Contact Form Submission</h1>
         </div>
         
@@ -153,7 +153,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
           <h1 style="margin: 0; font-size: 32px;">Welcome to JoJo Prompts!</h1>
           <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Your journey to better AI prompts starts here</p>
         </div>
@@ -214,7 +214,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #dc3545; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">🔒 Password Reset</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Reset your JoJo Prompts password</p>
         </div>
@@ -277,7 +277,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
           <h1 style="margin: 0; font-size: 32px;">Payment Confirmed! 🎉</h1>
           <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Welcome to JoJo Prompts Premium</p>
         </div>
@@ -340,7 +340,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #6c757d; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">Subscription Cancelled</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">We're sorry to see you go</p>
         </div>
@@ -396,7 +396,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #dc3545; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">Payment Issue</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Action required for your subscription</p>
         </div>
@@ -456,7 +456,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #6c757d; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">Account Deleted</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Your account has been permanently deleted</p>
         </div>
@@ -540,7 +540,7 @@ export const emailTemplates = {
                 <!-- Header -->
                 <tr>
                   <td style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 40px 30px; border-radius: 8px 8px 0 0; text-align: center;">
-                    <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 20px;" />
+                    <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 20px;" />
                     <h1 style="margin: 0; font-size: 28px; font-family: Arial, sans-serif; line-height: 1.2;">Confirm Your Email</h1>
                     <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9; font-family: Arial, sans-serif;">Complete your account setup</p>
                   </td>
