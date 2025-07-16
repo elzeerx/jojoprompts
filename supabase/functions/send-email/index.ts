@@ -170,11 +170,8 @@ interface EmailRequest {
 // Apple email domains that require special handling
 const APPLE_DOMAINS = ['icloud.com', 'mac.com', 'me.com', 'privaterelay.appleid.com'];
 
-// Function to detect Apple domains
 function isAppleEmail(email: string): boolean {
-  const domain = email.split('@')[1]?.toLowerCase();
-  if (!domain) return false;
-  return APPLE_DOMAINS.includes(domain) || domain.endsWith('.privaterelay.appleid.com');
+  return !!email.match(/@(me|mac|icloud|privaterelay\.appleid)\.com$/);
 }
 
 // Function to log Apple email attempts
@@ -624,92 +621,41 @@ serve(async (req) => {
     }
 
     // Check if this is an Apple email domain
-    const isAppleDomain = domainType === 'apple';
+    const isAppleDomain = isAppleEmail(to);
     
     if (isAppleDomain) {
-      logger('APPLE EMAIL DETECTED: Applying special handling for:', to);
-      
-      // Add 5-second delay for Apple domains
-      logger('Applying 5-second delay for Apple domain');
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      logger('Apple email detected:', to);
+      // Don't throw error or return early - just add special headers and continue
     }
 
-    // Create email payload with consistent verified subdomain and required headers
-    let emailPayload;
+    // Create email payload with consistent verified subdomain
+    const messageId = `<${crypto.randomUUID()}@noreply.jojoprompts.com>`;
     
-    if (isAppleDomain) {
-      // For Apple domains, use plain text emails for better deliverability
-      emailPayload = {
-        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
-        to: to,
-        subject: finalSubject,
-        text: finalText || finalHtml.replace(/<[^>]*>/g, '').trim(), // Plain text only
-        reply_to: 'info@jojoprompts.com',
-        headers: {
-          'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
-          'Precedence': (emailType === 'marketing' || emailType === 'newsletter') ? 'bulk' : 'transactional',
-          'Auto-Submitted': 'auto-generated',
-          'Date': new Date().toUTCString(),
-          'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
-          'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
-          'X-Apple-Special-Handling': 'true'
-        }
-      };
-      
-      logger('Using plain text email for Apple domain:', {
-        to: emailPayload.to,
-        hasText: !!emailPayload.text,
-        hasHtml: !!emailPayload.html
-      });
-    } else if (emailType === 'email_confirmation' || emailType === 'transactional') {
-      // Standard simplified payload for signup confirmations
-      emailPayload = {
-        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
-        to: to,
-        subject: finalSubject,
-        html: finalHtml,
-        text: finalText || finalHtml.replace(/<[^>]*>/g, ''),
-        reply_to: 'info@jojoprompts.com',
-        headers: {
-          'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
-          'Precedence': (emailType === 'marketing' || emailType === 'newsletter') ? 'bulk' : 'transactional',
-          'Auto-Submitted': 'auto-generated',
-          'Date': new Date().toUTCString(),
-          'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
-          'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`
-        }
-      };
-      
-      logger('Using simplified payload for signup confirmation');
-    } else {
-      // Full payload for other email types
-      const messageId = `<${crypto.randomUUID()}@noreply.jojoprompts.com>`;
-      
-      emailPayload = {
-        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
-        to: [to],
-        subject: finalSubject,
-        html: finalHtml,
-        text: finalText || finalHtml.replace(/<[^>]*>/g, ''),
-        reply_to: 'info@jojoprompts.com',
-        headers: {
-          'Message-ID': messageId,
-          'Precedence': (emailType === 'marketing' || emailType === 'newsletter') ? 'bulk' : 'transactional',
-          'Auto-Submitted': 'auto-generated',
-          'Date': new Date().toUTCString(),
-          'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-          'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
-          'X-Auto-Response-Suppress': 'All',
-          'Organization': 'JoJo Prompts',
-          'X-Mailer': 'JoJoPrompts Email Service v1.0',
-          'X-Feedback-ID': `${emailType}:jojoprompts.com`,
-          'Content-Type': 'text/html; charset=UTF-8',
-          'MIME-Version': '1.0',
-          'Return-Path': 'noreply@noreply.jojoprompts.com'
-        }
-      };
-    }
+    const emailPayload = {
+      from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
+      to: to,
+      subject: finalSubject,
+      html: finalHtml,
+      text: finalText || finalHtml.replace(/<[^>]*>/g, ''),
+      reply_to: 'info@jojoprompts.com',
+      headers: {
+        'Message-ID': messageId,
+        'Precedence': (emailType === 'marketing' || emailType === 'newsletter') ? 'bulk' : 'transactional',
+        'Auto-Submitted': 'auto-generated',
+        'Date': new Date().toUTCString(),
+        'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
+        'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
+        'Content-Type': 'text/html; charset=UTF-8',
+        'MIME-Version': '1.0',
+        'Return-Path': 'noreply@noreply.jojoprompts.com',
+        // Add Apple-specific headers if it's an Apple email
+        ...(isAppleDomain && {
+          'X-Priority': '3',
+          'Importance': 'Normal',
+          'X-Apple-Mail-Version': '1.0'
+        })
+      }
+    };
 
     logger(`Sending email to ${to} (Domain: ${domainType}, Priority: ${priority})`);
 
@@ -792,7 +738,7 @@ serve(async (req) => {
       }, logger);
       
       // Log Apple email failure
-      if (domainType === 'apple') {
+      if (isAppleEmail(emailAddress)) {
         await logAppleEmailAttempt(supabase, {
           email: emailAddress,
           status: 'failed',
