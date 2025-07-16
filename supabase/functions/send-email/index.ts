@@ -629,6 +629,10 @@ serve(async (req) => {
         text: finalText || finalHtml.replace(/<[^>]*>/g, '').trim(),
         reply_to: 'info@jojoprompts.com',
         headers: {
+          'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
+          'Precedence': (email_type === 'marketing' || email_type === 'newsletter') ? 'bulk' : 'transactional',
+          'Auto-Submitted': 'auto-generated',
+          'Date': new Date().toUTCString(),
           'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
           'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`
         }
@@ -651,6 +655,10 @@ serve(async (req) => {
         text: finalText || finalHtml.replace(/<[^>]*>/g, ''),
         reply_to: 'info@jojoprompts.com',
         headers: {
+          'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
+          'Precedence': (email_type === 'marketing' || email_type === 'newsletter') ? 'bulk' : 'transactional',
+          'Auto-Submitted': 'auto-generated',
+          'Date': new Date().toUTCString(),
           'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
           'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`
         }
@@ -659,7 +667,7 @@ serve(async (req) => {
       logger('Using simplified payload for signup confirmation');
     } else {
       // Full payload for other email types
-      const messageId = `<${requestId}.${Date.now()}@jojoprompts.com>`;
+      const messageId = `<${crypto.randomUUID()}@noreply.jojoprompts.com>`;
       
       emailPayload = {
         from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
@@ -670,10 +678,12 @@ serve(async (req) => {
         reply_to: 'info@jojoprompts.com',
         headers: {
           'Message-ID': messageId,
+          'Precedence': (email_type === 'marketing' || email_type === 'newsletter') ? 'bulk' : 'transactional',
+          'Auto-Submitted': 'auto-generated',
+          'Date': new Date().toUTCString(),
           'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
-          'Precedence': 'bulk',
           'X-Auto-Response-Suppress': 'All',
           'Organization': 'JoJo Prompts',
           'X-Mailer': 'JoJoPrompts Email Service v1.0',
