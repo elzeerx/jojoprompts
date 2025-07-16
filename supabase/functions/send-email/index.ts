@@ -647,7 +647,7 @@ serve(async (req) => {
         reply_to: 'info@jojoprompts.com',
         headers: {
           'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
-          'Precedence': (email_type === 'marketing' || email_type === 'newsletter') ? 'bulk' : 'transactional',
+          'Precedence': (emailType === 'marketing' || emailType === 'newsletter') ? 'bulk' : 'transactional',
           'Auto-Submitted': 'auto-generated',
           'Date': new Date().toUTCString(),
           'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
@@ -672,7 +672,7 @@ serve(async (req) => {
         reply_to: 'info@jojoprompts.com',
         headers: {
           'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
-          'Precedence': (email_type === 'marketing' || email_type === 'newsletter') ? 'bulk' : 'transactional',
+          'Precedence': (emailType === 'marketing' || emailType === 'newsletter') ? 'bulk' : 'transactional',
           'Auto-Submitted': 'auto-generated',
           'Date': new Date().toUTCString(),
           'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
@@ -694,7 +694,7 @@ serve(async (req) => {
         reply_to: 'info@jojoprompts.com',
         headers: {
           'Message-ID': messageId,
-          'Precedence': (email_type === 'marketing' || email_type === 'newsletter') ? 'bulk' : 'transactional',
+          'Precedence': (emailType === 'marketing' || emailType === 'newsletter') ? 'bulk' : 'transactional',
           'Auto-Submitted': 'auto-generated',
           'Date': new Date().toUTCString(),
           'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
@@ -728,7 +728,7 @@ serve(async (req) => {
       await logAppleEmailAttempt(supabase, {
         email: to,
         status: 'sent',
-        email_type: email_type || 'unknown'
+        email_type: emailType || 'unknown'
       }, logger);
     }
 
@@ -807,12 +807,13 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ 
       success: false,
+      message: error.message,
       error: error.message,
       domainType: domainType,
       retryCount: finalRetryCount,
       bounceReason: bounceReason
     }), {
-      status: 400,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
