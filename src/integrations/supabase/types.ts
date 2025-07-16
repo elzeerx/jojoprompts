@@ -663,6 +663,30 @@ export type Database = {
           },
         ]
       }
+      unsubscribed_emails: {
+        Row: {
+          email: string
+          id: string
+          resubscribed_at: string | null
+          unsubscribe_type: string
+          unsubscribed_at: string
+        }
+        Insert: {
+          email: string
+          id?: string
+          resubscribed_at?: string | null
+          unsubscribe_type?: string
+          unsubscribed_at?: string
+        }
+        Update: {
+          email?: string
+          id?: string
+          resubscribed_at?: string | null
+          unsubscribe_type?: string
+          unsubscribed_at?: string
+        }
+        Relationships: []
+      }
       user_subscriptions: {
         Row: {
           created_at: string | null
