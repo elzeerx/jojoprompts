@@ -620,16 +620,21 @@ serve(async (req) => {
     let emailPayload;
     
     if (domainType === 'apple') {
-      // Ultra-simplified payload for Apple domains to pass strict validation
+      // Properly formatted payload for Apple domains with required fields only
       emailPayload = {
-        from: 'noreply@noreply.jojoprompts.com', // Use verified domain consistently
-        to: to,
+        from: 'noreply@noreply.jojoprompts.com',
+        to: [to], // Resend API expects array format
         subject: finalSubject,
-        html: finalHtml,
-        text: finalText || finalHtml.replace(/<[^>]*>/g, '')
+        html: finalHtml
       };
       
-      logger('Using ultra-simplified payload for Apple domain');
+      // Only add text if it exists and is different from HTML
+      const textContent = finalText || finalHtml.replace(/<[^>]*>/g, '').trim();
+      if (textContent && textContent !== finalHtml) {
+        emailPayload.text = textContent;
+      }
+      
+      logger('Using properly formatted payload for Apple domain');
     } else if (emailType === 'email_confirmation' || emailType === 'transactional') {
       // Standard simplified payload for signup confirmations
       emailPayload = {
