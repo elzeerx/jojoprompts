@@ -244,10 +244,15 @@ export default async function handler(req: Request) {
       headers: {
         'Reply-To': 'info@jojoprompts.com',
         'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
         'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
         'Precedence': 'transactional',
         'Auto-Submitted': 'auto-generated',
+        'X-Priority': '3',
+        'Importance': 'Normal',
+        'X-Mailer': 'JoJo Prompts Mailer 1.0',
+        'Feedback-ID': `jp:account:${email_type}:${user_id || 'anonymous'}`,
         'Date': new Date().toUTCString(),
         'Content-Type': 'text/html; charset=UTF-8',
         'MIME-Version': '1.0'
