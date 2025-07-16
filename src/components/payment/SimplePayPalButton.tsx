@@ -29,22 +29,16 @@ export function SimplePayPalButton({
 }: SimplePayPalButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Calculate final amount after discount
-  const calculateFinalAmount = () => {
-    if (!appliedDiscount) return amount;
-    
-    if (appliedDiscount.discount_type === 'percentage') {
-      const discountAmount = (amount * appliedDiscount.discount_value) / 100;
-      return Math.max(0, amount - discountAmount);
-    } else if (appliedDiscount.discount_type === 'fixed_amount') {
-      return Math.max(0, amount - appliedDiscount.discount_value);
-    }
-    
-    return amount;
-  };
-
-  const finalAmount = calculateFinalAmount();
+  // Amount is already final amount after discount calculation from PaymentMethodsCard
+  // NO FURTHER DISCOUNT CALCULATIONS SHOULD BE DONE HERE
+  const finalAmount = amount;
   const is100PercentDiscount = finalAmount === 0;
+
+  console.log('=== SIMPLE PAYPAL BUTTON DEBUG ===');
+  console.log('Received amount (final):', amount);
+  console.log('Applied discount (for tracking only):', appliedDiscount);
+  console.log('Is 100% discount:', is100PercentDiscount);
+  console.log('================================');
 
   const handleDirectActivation = async () => {
     setIsProcessing(true);
@@ -101,6 +95,12 @@ export function SimplePayPalButton({
   const handlePayPalRedirect = async () => {
     setIsProcessing(true);
     try {
+      console.log('=== PAYPAL REDIRECT DEBUG ===');
+      console.log('Final amount being sent to PayPal:', finalAmount);
+      console.log('Plan ID:', planId);
+      console.log('User ID:', userId);
+      console.log('Applied discount (for tracking):', appliedDiscount);
+      console.log('===============================');
       console.log('Initiating PayPal checkout:', { amount: finalAmount, planId, userId, appliedDiscount });
 
       // Enhanced session backup before PayPal redirect

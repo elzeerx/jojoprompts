@@ -30,11 +30,11 @@ export function useUserSubscription(userId?: string) {
       setIsLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
+        const { data, error } = await supabase
         .from("user_subscriptions")
         .select(`
           *,
-          subscription_plans(name, price_usd, is_lifetime)
+          subscription_plans(name, price_usd, is_lifetime, duration_days)
         `)
         .eq("user_id", userId)
         .eq("status", "active")

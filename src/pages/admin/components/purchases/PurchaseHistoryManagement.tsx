@@ -7,6 +7,7 @@ import { PurchaseHistoryStats } from "./PurchaseHistoryStats";
 import { usePurchaseHistory } from "./hooks/usePurchaseHistory";
 import { PurchaseFilters } from "./PurchaseFilters";
 import { exportTransactionsToCSV } from "./utils/exportTransactionsToCSV";
+import { PaymentRecoveryTool } from "../transactions/PaymentRecoveryTool";
 
 export default function PurchaseHistoryManagement() {
   const {
@@ -37,6 +38,8 @@ export default function PurchaseHistoryManagement() {
       </div>
 
       <PurchaseHistoryStats payments={transactions} />
+
+      <PaymentRecoveryTool />
 
       <Card className="border-warm-gold/20">
         <CardHeader>

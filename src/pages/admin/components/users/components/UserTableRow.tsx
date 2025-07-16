@@ -30,12 +30,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionActions } from "../hooks/useSubscriptionActions";
 
 interface UserTableRowProps {
-  user: UserProfile & { subscription?: { plan_name: string } | null };
+  user: UserProfile & { subscription?: { plan_name: string } | null, emailConfirmed?: boolean };
   isUpdating: boolean;
   onUpdateUser: (userId: string, data: Partial<UserProfile>) => void;
   onAssignPlan: (userId: string, planId: string) => void;
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string) => void;
+  onResendConfirmation: (userId: string, email: string) => void;
   onRefresh: () => void;
 }
 
@@ -46,6 +47,7 @@ export function UserTableRow({
   onAssignPlan,
   onSendResetEmail,
   onDeleteUser,
+  onResendConfirmation,
   onRefresh
 }: UserTableRowProps) {
   const { canDeleteUsers, canCancelSubscriptions } = useAuth();
@@ -105,6 +107,17 @@ export function UserTableRow({
       </TableCell>
       <TableCell>{user.email}</TableCell>
       <TableCell>
+        {user.emailConfirmed === false ? (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            Unconfirmed
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Confirmed
+          </span>
+        )}
+      </TableCell>
+      <TableCell>
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role || 'user')}`}>
           {user.role || 'user'}
         </span>
@@ -135,6 +148,11 @@ export function UserTableRow({
             <DropdownMenuItem onClick={() => onSendResetEmail(user.email)}>
               <Send className="mr-2 h-4 w-4" /> Send Reset Email
             </DropdownMenuItem>
+            {user.emailConfirmed === false && (
+              <DropdownMenuItem onClick={() => onResendConfirmation(user.id, user.email)}>
+                <Send className="mr-2 h-4 w-4" /> Resend Confirmation
+              </DropdownMenuItem>
+            )}
             
             {canCancelSubscriptions && user.subscription && (
               <>

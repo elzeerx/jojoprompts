@@ -19,6 +19,13 @@ interface UseFetchUsersReturn {
   totalPages: number;
   currentPage: number;
   fetchUsers: () => void;
+  retryCount: number;
+  performance?: {
+    requestId: string;
+    totalDuration: number;
+    cacheHit: boolean;
+    searchActive: boolean;
+  };
 }
 
 export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUsersParams = {}): UseFetchUsersReturn {
@@ -27,13 +34,41 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const [performance, setPerformance] = useState<any>(null);
 
   const { session, loading: authLoading } = useAuth();
 
+  // Enhanced retry logic with exponential backoff
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  
+  const retryOperation = async (operation: () => Promise<any>, maxRetries = 3): Promise<any> => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        console.log(`Attempt ${attempt}/${maxRetries} failed:`, error.message);
+        
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        
+        // Exponential backoff: wait 1s, 2s, 4s
+        const delay = Math.pow(2, attempt - 1) * 1000;
+        console.log(`Retrying in ${delay}ms...`);
+        await sleep(delay);
+        setRetryCount(attempt);
+      }
+    }
+  };
+
   const fetchUsers = useCallback(async () => {
+    const startTime = Date.now();
+    
     try {
       setLoading(true);
       setError(null);
+      setRetryCount(0);
 
       if (!session?.access_token) {
         setError("No admin session token; please log in or refresh.");
@@ -53,39 +88,65 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
       // Create the function URL with query parameters
       const functionUrl = `get-all-users?${params.toString()}`;
 
-      // Fetch users through the edge function using GET request with pagination parameters in URL
-      const { data: usersFunctionData, error: usersError } = await supabase.functions.invoke(
-        functionUrl,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          method: "GET"
-        }
-      );
+      // Use retry logic for the main API call
+      const usersFunctionData = await retryOperation(async () => {
+        const { data, error: usersError } = await supabase.functions.invoke(
+          functionUrl,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            method: "GET"
+          }
+        );
 
-      if (usersError) {
-        // Handle unauthorized/forbidden with a helpful toast
-        if (usersError.status === 401 || usersError.status === 403) {
-          toast({
-            title: "Admin authentication failed",
-            description: "You are not authorized. Please log out and log in as an admin.",
-            variant: "destructive"
-          });
-          setError(usersError.message || "Unauthorized. Only admins can access this section.");
-          return;
+        if (usersError) {
+          // Handle page redirect for out-of-range pages
+          if (usersError.status === 416 && data?.redirect) {
+            console.log('Page out of range, redirecting to last available page');
+            toast({
+              title: "Page not found",
+              description: `Redirecting to page ${data.redirect.page} (last available page)`,
+              variant: "default"
+            });
+            
+            // Update the page and let useEffect handle the refetch
+            // Note: This requires parent component to handle page updates
+            return null; // Signal to parent to update page
+          }
+          
+          // Handle unauthorized/forbidden with a helpful toast
+          if (usersError.status === 401 || usersError.status === 403) {
+            toast({
+              title: "Admin authentication failed",
+              description: "You are not authorized. Please log out and log in as an admin.",
+              variant: "destructive"
+            });
+            throw new Error(usersError.message || "Unauthorized. Only admins can access this section.");
+          }
+          
+          throw usersError;
         }
-        throw usersError;
+
+        return data;
+      });
+
+      if (!usersFunctionData) {
+        // Handle redirect case - don't continue processing
+        return;
       }
 
-      // Enhancement: Get user subscriptions - get most recent active subscription per user
-      const { data: subscriptions, error: subscriptionsError } = await supabase
-        .from('user_subscriptions')
-        .select('user_id, plan_id(id, name), created_at')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
+      // Enhancement: Get user subscriptions with retry logic
+      const subscriptions = await retryOperation(async () => {
+        const { data, error: subscriptionsError } = await supabase
+          .from('user_subscriptions')
+          .select('user_id, plan_id(id, name), created_at')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
 
-      if (subscriptionsError) throw subscriptionsError;
+        if (subscriptionsError) throw subscriptionsError;
+        return data;
+      });
 
       // Map subscriptions to users - get most recent subscription per user
       const usersWithSubscriptions = usersFunctionData.users.map((user: UserProfile) => {
@@ -104,21 +165,48 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
       setUsers(usersWithSubscriptions || []);
       setTotal(usersFunctionData.total || 0);
       setTotalPages(usersFunctionData.totalPages || 0);
+      setPerformance(usersFunctionData.performance);
+      
+      // Log successful operation
+      const duration = Date.now() - startTime;
+      console.log(`Successfully fetched ${usersWithSubscriptions.length} users in ${duration}ms`, {
+        page,
+        limit,
+        search,
+        total: usersFunctionData.total,
+        performance: usersFunctionData.performance
+      });
     } catch (error: any) {
-      // If auth error, prompt and refresh session
+      const duration = Date.now() - startTime;
+      console.error(`Error fetching users after ${duration}ms:`, error);
+      
+      // Enhanced error handling with different strategies based on error type
       if (error?.message?.includes("token") || error?.message?.includes("auth")) {
         toast({
           title: "Session expired",
           description: "Please log out and log in again as admin.",
           variant: "destructive"
         });
+        setError("Authentication failed - please log in again");
+      } else if (error?.message?.includes("Network")) {
+        toast({
+          title: "Network error",
+          description: `Failed to fetch users (${retryCount + 1} attempts). Please check your connection.`,
+          variant: "destructive"
+        });
+        setError(`Network error after ${retryCount + 1} attempts`);
+      } else {
+        toast({
+          title: "Error fetching users",
+          description: error.message || "An unexpected error occurred",
+          variant: "destructive"
+        });
+        setError(error.message || "Failed to fetch users");
       }
-      console.error("Error fetching users:", error);
-      setError(error.message || "Failed to fetch users");
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token, page, limit, search]);
+  }, [session?.access_token, page, limit, search, retryCount]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -133,6 +221,8 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
     total,
     totalPages,
     currentPage: page,
-    fetchUsers 
+    fetchUsers,
+    retryCount,
+    performance
   };
 }

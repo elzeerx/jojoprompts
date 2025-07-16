@@ -85,6 +85,7 @@ export const useAuthInitialization = ({
           // Handle signup confirmation redirect
           if (checkSignupConfirmation(location.search)) {
             const { planId } = getSignupConfirmationParams(location.search);
+            debug("Signup confirmation detected", { planId, currentPath: location.pathname, search: location.search });
             
             // Send welcome email for newly confirmed users
             const { data: profile } = await supabase
@@ -108,7 +109,10 @@ export const useAuthInitialization = ({
                 : "Your email is confirmed! Welcome to JoJo Prompts.",
             });
 
-            if (!planId && location.pathname !== '/prompts') {
+            // Redirect to checkout with plan or to prompts
+            if (planId) {
+              navigate(`/checkout?plan_id=${planId}`);
+            } else if (location.pathname !== '/prompts') {
               navigate('/prompts');
             }
           }

@@ -1,8 +1,11 @@
 
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SimplePaymentSelection } from "@/components/payment/SimplePaymentSelection";
-import { CreditCard } from "lucide-react";
+import { CreditCard, X } from "lucide-react";
+import { DiscountErrorBoundary } from "@/components/checkout/DiscountErrorBoundary";
+import { useNavigate } from "react-router-dom";
 
 interface PaymentMethodsCardProps {
   processing: boolean;
@@ -30,7 +33,13 @@ export function PaymentMethodsCard({
   handlePaymentError,
   appliedDiscount
 }: PaymentMethodsCardProps) {
-  // Calculate final amount after discount
+  const navigate = useNavigate();
+
+  const handleCancelTransaction = () => {
+    // Navigate away without creating any pending transaction
+    navigate("/pricing");
+  };
+  // Calculate final amount after discount - This is the SINGLE SOURCE OF TRUTH
   const calculateFinalAmount = () => {
     if (!appliedDiscount) return price;
     
@@ -46,6 +55,13 @@ export function PaymentMethodsCard({
 
   const finalAmount = calculateFinalAmount();
   const discountAmount = price - finalAmount;
+
+  console.log('=== PAYMENT METHODS CARD DEBUG ===');
+  console.log('Original price:', price);
+  console.log('Applied discount:', appliedDiscount);
+  console.log('Final amount (after discount):', finalAmount);
+  console.log('Discount amount:', discountAmount);
+  console.log('===============================');
 
   return (
     <Card className="w-full">
@@ -85,15 +101,30 @@ export function PaymentMethodsCard({
       </CardHeader>
 
       <CardContent>
-        <SimplePaymentSelection
-          amount={finalAmount} // Pass final amount instead of original price
-          planName={planName}
-          planId={planId}
-          userId={userId}
-          onSuccess={handlePaymentSuccess}
-          onError={handlePaymentError}
-          appliedDiscount={appliedDiscount}
-        />
+        <DiscountErrorBoundary>
+          <SimplePaymentSelection
+            amount={finalAmount} // Final amount after discount - NO FURTHER DISCOUNT CALCULATION NEEDED
+            planName={planName}
+            planId={planId}
+            userId={userId}
+            onSuccess={handlePaymentSuccess}
+            onError={handlePaymentError}
+            appliedDiscount={appliedDiscount} // Pass discount info for tracking only
+          />
+        </DiscountErrorBoundary>
+        
+        {/* Cancel Transaction Button */}
+        <div className="mt-6 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={handleCancelTransaction}
+            disabled={processing}
+            className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Cancel Transaction
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

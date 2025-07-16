@@ -35,9 +35,7 @@ export default function CheckoutPage() {
     showAuthForm,
     setShowAuthForm,
     appliedDiscount,
-    setAppliedDiscount,
-    calculateDiscountedPrice,
-    getDiscountAmount
+    setAppliedDiscount
   } = useCheckoutState();
 
   // Log the current state for debugging (with sanitized data)
@@ -126,7 +124,6 @@ export default function CheckoutPage() {
   }
 
   const originalPrice = selectedPlan.price_usd;
-  const finalPrice = calculateDiscountedPrice(originalPrice);
   const features = Array.isArray(selectedPlan.features) ? selectedPlan.features : [];
   const planName = selectedPlan.name || "Access Plan";
   const isLifetime = selectedPlan.is_lifetime;
@@ -161,8 +158,6 @@ export default function CheckoutPage() {
             appliedDiscount={appliedDiscount}
             onDiscountApplied={handleDiscountApplied}
             onDiscountRemoved={handleDiscountRemoved}
-            calculateDiscountedPrice={calculateDiscountedPrice}
-            getDiscountAmount={getDiscountAmount}
             processing={processing}
           />
 
@@ -171,13 +166,13 @@ export default function CheckoutPage() {
             <CheckoutSignupForm
               onSuccess={handleAuthSuccess}
               planName={planName}
-              planPrice={finalPrice}
+              planPrice={originalPrice}
             />
           ) : (
             <PaymentErrorBoundary>
               <PaymentMethodsCard
                 processing={processing}
-                price={finalPrice}
+                price={originalPrice}
                 planName={planName}
                 planId={selectedPlan.id}
                 userId={user?.id || ''}

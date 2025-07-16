@@ -241,31 +241,46 @@ export type Database = {
       email_logs: {
         Row: {
           attempted_at: string | null
+          bounce_reason: string | null
           created_at: string | null
+          delivery_status: string | null
+          domain_type: string | null
           email_address: string
           email_type: string
           error_message: string | null
           id: string
+          response_metadata: Json | null
+          retry_count: number | null
           success: boolean
           user_id: string | null
         }
         Insert: {
           attempted_at?: string | null
+          bounce_reason?: string | null
           created_at?: string | null
+          delivery_status?: string | null
+          domain_type?: string | null
           email_address: string
           email_type: string
           error_message?: string | null
           id?: string
+          response_metadata?: Json | null
+          retry_count?: number | null
           success?: boolean
           user_id?: string | null
         }
         Update: {
           attempted_at?: string | null
+          bounce_reason?: string | null
           created_at?: string | null
+          delivery_status?: string | null
+          domain_type?: string | null
           email_address?: string
           email_type?: string
           error_message?: string | null
           id?: string
+          response_metadata?: Json | null
+          retry_count?: number | null
           success?: boolean
           user_id?: string | null
         }
@@ -652,6 +667,10 @@ export type Database = {
         Args: { _user_id: string; _admin_id: string }
         Returns: Json
       }
+      confirm_user_email: {
+        Args: { user_id: string; email_confirmed?: boolean }
+        Returns: undefined
+      }
       create_subscription: {
         Args: {
           p_user_id: string
@@ -672,8 +691,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      record_discount_usage: {
+        Args: {
+          discount_code_id_param: string
+          user_id_param?: string
+          payment_history_id_param?: string
+        }
+        Returns: boolean
+      }
       validate_discount_code: {
-        Args: { code_text: string; plan_id_param?: string }
+        Args: {
+          code_text: string
+          plan_id_param?: string
+          user_id_param?: string
+        }
         Returns: {
           id: string
           discount_type: string

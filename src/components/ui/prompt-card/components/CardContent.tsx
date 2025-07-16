@@ -22,9 +22,9 @@ export function CardContent({
 }) {
   return (
     <>
-      <h3 className="text-gray-900 font-bold leading-tight flex-shrink-0">
+      <h3 className="text-gray-900 font-extrabold leading-tight flex-shrink-0">
         <span className={
-          isSmallMobile ? "block text-sm min-h-[2rem] line-clamp-2" : "block text-base sm:text-lg lg:text-xl min-h-[2.5rem] sm:min-h-[3rem] line-clamp-2"
+          isSmallMobile ? "block text-base font-black min-h-[2rem] line-clamp-2" : "block text-lg sm:text-xl lg:text-2xl font-black min-h-[2.5rem] sm:min-h-[3rem] line-clamp-2"
         }>
           {title}
         </span>

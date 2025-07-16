@@ -221,9 +221,99 @@ export function useUserActions() {
     }
   };
 
+  const resendConfirmationEmail = async (userId: string, email: string): Promise<void> => {
+    console.log('Admin attempting to resend confirmation email for user:', userId, email);
+    
+    // Input validation
+    if (!userId || !email) {
+      console.error('Invalid input for resend confirmation:', { userId, email });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Invalid user ID or email provided.",
+      });
+      return;
+    }
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      console.error('Invalid email format:', email);
+      toast({
+        variant: "destructive",
+        title: "Error", 
+        description: "Invalid email format provided.",
+      });
+      return;
+    }
+
+    try {
+      setProcessingUserId(userId);
+
+      console.log("Using custom confirmation email template...");
+      
+      // Use our custom send-email function directly for confirmation emails
+      const { data: response, error } = await supabase.functions.invoke('resend-confirmation-email', {
+        body: { userId, email }
+      });
+
+      if (error) {
+        console.error("Custom confirmation email failed:", error);
+        throw new Error(`Failed to resend confirmation email: ${error.message}`);
+      }
+
+      if (!response?.success) {
+        throw new Error(response?.error || 'Failed to resend confirmation email');
+      }
+
+      console.log('Custom confirmation email sent successfully');
+      toast({
+        title: "Success",
+        description: "Confirmation email has been resent successfully with custom template.",
+      });
+
+      // Log the action
+      await supabase.from('admin_audit_log').insert({
+        admin_user_id: user?.id || '',
+        action: 'resend_confirmation_email',
+        target_resource: `user:${userId}`,
+        metadata: { 
+          target_email: email,
+          method: 'custom_template',
+          timestamp: new Date().toISOString()
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Error resending confirmation email:', error);
+      
+      // Enhanced error messaging
+      let errorMessage = "Failed to resend confirmation email.";
+      
+      if (error.message?.includes('All resend methods failed')) {
+        errorMessage = "All resend methods failed. Please check the system logs and try again later.";
+      } else if (error.message?.includes('Admin access required')) {
+        errorMessage = "You do not have permission to perform this action.";
+      } else if (error.message?.includes('already confirmed')) {
+        errorMessage = "This email is already confirmed.";
+      } else if (error.message?.includes('User not found')) {
+        errorMessage = "User not found in the system.";
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
   return {
     processingUserId,
     sendPasswordResetEmail,
-    deleteUser
+    deleteUser,
+    resendConfirmationEmail,
   };
 }

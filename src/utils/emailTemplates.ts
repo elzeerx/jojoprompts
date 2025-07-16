@@ -45,6 +45,12 @@ interface AccountDeletedEmailData {
   name: string;
 }
 
+export interface EmailConfirmationData {
+  name: string;
+  email: string;
+  confirmationLink: string;
+}
+
 export const emailTemplates = {
   // Contact form confirmation email to user
   contactConfirmation: (data: ContactEmailData): EmailTemplate => ({
@@ -52,7 +58,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px;" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px;" />
           <h1 style="margin: 0; font-size: 28px;">Thank You, ${data.name}!</h1>
           <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">We've received your message</p>
         </div>
@@ -89,6 +95,19 @@ export const emailTemplates = {
             <p style="margin: 0;">© 2024 JoJo Prompts. All rights reserved.</p>
           </div>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=contact_confirmation" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Thank you for contacting us, ${data.name}!\n\nWe have received your message about "${data.subject}" and will get back to you as soon as possible.\n\nYour message:\n${data.message}\n\nBest regards,\nThe JoJo Prompts Team`
@@ -100,7 +119,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 50px; margin-bottom: 10px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 50px; margin-bottom: 10px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 24px;">🔔 New Contact Form Submission</h1>
         </div>
         
@@ -130,11 +149,11 @@ export const emailTemplates = {
 
   // Welcome email for new users
   welcome: (data: WelcomeEmailData): EmailTemplate => ({
-    subject: "Welcome to JoJo Prompts! 🎉",
+    subject: "Welcome to JoJo Prompts! Your AI Prompt Journey Starts Now",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
           <h1 style="margin: 0; font-size: 32px;">Welcome to JoJo Prompts!</h1>
           <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Your journey to better AI prompts starts here</p>
         </div>
@@ -171,6 +190,19 @@ export const emailTemplates = {
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Happy prompting!<br><strong>The JoJo Prompts Team</strong></p>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=welcome" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Welcome to JoJo Prompts, ${data.name}!\n\nThank you for joining our community. Start exploring amazing AI prompts at https://jojoprompts.com/prompts\n\nHappy prompting!\nThe JoJo Prompts Team`
@@ -182,7 +214,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #dc3545; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">🔒 Password Reset</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Reset your JoJo Prompts password</p>
         </div>
@@ -221,6 +253,19 @@ export const emailTemplates = {
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Stay secure,<br><strong>The JoJo Prompts Team</strong></p>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=password_reset" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Password Reset - JoJo Prompts\n\nHi ${data.name},\n\nWe received a request to reset your password. Click the link below to reset it:\n\n${data.resetLink}\n\nThis link will expire in 24 hours. If you didn't request this reset, please ignore this email.\n\nStay secure,\nThe JoJo Prompts Team`
@@ -228,11 +273,11 @@ export const emailTemplates = {
 
   // Payment confirmation email
   paymentConfirmation: (data: PaymentConfirmationEmailData): EmailTemplate => ({
-    subject: "Payment Confirmed - Welcome to Premium! 🎉",
+    subject: "Payment Confirmed - Welcome to Premium Access",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 80px; margin-bottom: 20px;" />
           <h1 style="margin: 0; font-size: 32px;">Payment Confirmed! 🎉</h1>
           <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Welcome to JoJo Prompts Premium</p>
         </div>
@@ -271,6 +316,19 @@ export const emailTemplates = {
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Thank you for your purchase!<br><strong>The JoJo Prompts Team</strong></p>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=payment_confirmation" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Payment Confirmed - JoJo Prompts\n\nHi ${data.name}!\n\nYour payment has been successfully processed!\n\nPlan: ${data.planName}\nAmount: $${data.amount.toFixed(2)} USD\nTransaction ID: ${data.transactionId}\n\nStart using your premium features at https://jojoprompts.com/prompts\n\nThank you!\nThe JoJo Prompts Team`
@@ -282,7 +340,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #6c757d; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">Subscription Cancelled</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">We're sorry to see you go</p>
         </div>
@@ -314,6 +372,19 @@ export const emailTemplates = {
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Thank you for being part of our community!<br><strong>The JoJo Prompts Team</strong></p>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=subscription_cancelled" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Subscription Cancelled - JoJo Prompts\n\nHi ${data.name},\n\nYour subscription to ${data.planName} has been cancelled.\n\nYou'll continue to have access until ${data.endDate}.\n\nWe'd love to have you back! Visit https://jojoprompts.com/pricing to reactivate.\n\nThank you!\nThe JoJo Prompts Team`
@@ -325,7 +396,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #dc3545; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">Payment Issue</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Action required for your subscription</p>
         </div>
@@ -361,6 +432,19 @@ export const emailTemplates = {
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">We're here to help!<br><strong>The JoJo Prompts Team</strong></p>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=payment_failed" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Payment Issue - JoJo Prompts\n\nHi ${data.name},\n\nWe encountered an issue processing your payment for ${data.planName}.\n\nIssue: ${data.reason}\n\nPlease update your payment method: ${data.retryLink}\n\nNeed help? Contact us at info@jojoprompts.com\n\nThe JoJo Prompts Team`
@@ -372,7 +456,7 @@ export const emailTemplates = {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #6c757d; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <img src="https://fxkqgjakbyrxkmevkglv.supabase.co/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
+          <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 15px; filter: brightness(0) invert(1);" />
           <h1 style="margin: 0; font-size: 28px;">Account Deleted</h1>
           <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9;">Your account has been permanently deleted</p>
         </div>
@@ -409,8 +493,134 @@ export const emailTemplates = {
         <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
           <p style="margin: 0;">Goodbye and best wishes!<br><strong>The JoJo Prompts Team</strong></p>
         </div>
+        
+        <div style="text-align: center; margin: 30px 0; padding: 20px; border-top: 1px solid #e9ecef; color: #666; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">
+            <a href="https://jojoprompts.com/unsubscribe?email={{email}}&type=account_deleted" style="color: #666;">Unsubscribe</a> | 
+            <a href="https://jojoprompts.com/privacy" style="color: #666;">Privacy Policy</a>
+          </p>
+          <p style="margin: 0;">
+            JoJo Prompts<br>
+            Part of Recipe Group,<br>
+            Abdullah Al Mubarak St, Humaidhiyah Tower.<br>
+            Murqab, Kuwait City 15001
+          </p>
+        </div>
       </div>
     `,
     text: `Account Deleted - JoJo Prompts\n\nHi ${data.name},\n\nYour JoJo Prompts account has been permanently deleted as requested.\n\nAll your data has been removed from our systems. This action cannot be undone.\n\nThank you for being part of our community!\n\nThe JoJo Prompts Team`
+  }),
+
+  emailConfirmation: (data: EmailConfirmationData): EmailTemplate => ({
+    subject: "Please Confirm Your Email Address",
+    html: `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="x-apple-disable-message-reformatting">
+        <title>Email Confirmation - JoJo Prompts</title>
+        <!--[if mso]>
+        <noscript>
+          <xml>
+            <o:OfficeDocumentSettings>
+              <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+          </xml>
+        </noscript>
+        <![endif]-->
+      </head>
+      <body style="margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: #f7f7f7;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0; padding: 0;">
+          <tr>
+            <td style="padding: 20px 0;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; max-width: 600px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #c49d68 0%, #b8935a 100%); color: white; padding: 40px 30px; border-radius: 8px 8px 0 0; text-align: center;">
+                    <img src="https://api.jojoprompts.com/storage/v1/object/public/storage.bucket/jojo-prompts-logo.png" alt="JoJo Prompts" style="max-height: 60px; margin-bottom: 20px;" />
+                    <h1 style="margin: 0; font-size: 28px; font-family: Arial, sans-serif; line-height: 1.2;">Confirm Your Email</h1>
+                    <p style="margin: 15px 0 0 0; font-size: 16px; opacity: 0.9; font-family: Arial, sans-serif;">Complete your account setup</p>
+                  </td>
+                </tr>
+                
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="color: #333; margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 22px;">Hi ${data.name}!</h2>
+                    
+                    <p style="color: #666; line-height: 1.6; margin: 20px 0; font-family: Arial, sans-serif; font-size: 16px;">
+                      Thank you for signing up with JoJo Prompts. To complete your account setup and start exploring our premium AI prompts, please confirm your email address by clicking the button below.
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                      <a href="${data.confirmationLink}" style="background-color: #c49d68; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; font-family: Arial, sans-serif; border: none; -webkit-text-size-adjust: none;">
+                        Confirm Email Address
+                      </a>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 20px; margin: 25px 0;">
+                      <p style="margin: 0; color: #666; font-size: 14px; font-family: Arial, sans-serif;">
+                        <strong>Security Notice:</strong> This link will expire in 24 hours. If you didn't create an account with us, please ignore this email.
+                      </p>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 30px 0; font-family: Arial, sans-serif;">
+                      If the button above doesn't work, copy and paste this link into your browser:<br>
+                      <span style="word-break: break-all; color: #007bff; font-size: 12px;">${data.confirmationLink}</span>
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; text-align: center;">
+                    <p style="color: #666; margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 14px;">
+                      Questions? Contact us at <a href="mailto:support@jojoprompts.com" style="color: #c49d68;">support@jojoprompts.com</a>
+                    </p>
+                    
+                    <div style="margin: 20px 0; padding: 20px 0; border-top: 1px solid #e9ecef;">
+                      <p style="margin: 0 0 10px 0; font-size: 12px; color: #666; font-family: Arial, sans-serif;">
+                        <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=confirmation" style="color: #666; text-decoration: none;">Unsubscribe</a> | 
+                        <a href="https://jojoprompts.com/privacy" style="color: #666; text-decoration: none;">Privacy Policy</a>
+                      </p>
+                      <p style="margin: 0; font-size: 12px; color: #999; font-family: Arial, sans-serif;">
+                        JoJo Prompts, Part of Recipe Group<br>
+                        Abdullah Al Mubarak St, Humaidhiyah Tower<br>
+                        Murqab, Kuwait City 15001
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `,
+    text: `Hi ${data.name},
+
+Thank you for signing up with JoJo Prompts!
+
+To complete your account setup, please confirm your email address by clicking this link:
+${data.confirmationLink}
+
+This link will expire in 24 hours.
+
+If you didn't create an account with us, please ignore this email.
+
+Questions? Contact us at support@jojoprompts.com
+
+Best regards,
+The JoJo Prompts Team
+
+---
+JoJo Prompts
+Part of Recipe Group
+Abdullah Al Mubarak St, Humaidhiyah Tower
+Murqab, Kuwait City 15001`
   })
 };

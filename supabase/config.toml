@@ -5,3 +5,18 @@ verify_jwt = true
 
 [functions.generate-metadata]
 verify_jwt = true
+
+[functions.resend-confirmation-email]
+verify_jwt = false
+
+[functions.resend-confirmation-alternative]
+verify_jwt = true
+
+[functions.debug-environment]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.send-signup-confirmation]
+verify_jwt = false

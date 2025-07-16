@@ -40,6 +40,20 @@ export async function updateTransactionOnCapture(supabaseClient: any, { orderId,
 
 // Create subscription on completed payment
 export async function createUserSubscription(supabaseClient: any, { userId, planId, paymentId, transactionId }: any) {
+  // Fetch plan details to check if it's lifetime
+  const { data: planData } = await supabaseClient
+    .from('subscription_plans')
+    .select('is_lifetime, duration_days')
+    .eq('id', planId)
+    .single();
+
+  // Calculate end_date based on plan type
+  let endDate = null;
+  if (planData && !planData.is_lifetime) {
+    const durationDays = planData.duration_days || 365; // Default to 1 year if not specified
+    endDate = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+  }
+
   return supabaseClient
     .from('user_subscriptions')
     .insert({
@@ -49,7 +63,7 @@ export async function createUserSubscription(supabaseClient: any, { userId, plan
       payment_id: paymentId,
       transaction_id: transactionId,
       status: 'active',
-      end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      end_date: endDate // NULL for lifetime plans, calculated date for regular plans
     });
 }
 
@@ -80,6 +94,20 @@ export async function upgradeUserSubscription(supabaseClient: any, { currentSubs
     throw new Error(`Failed to cancel current subscriptions: ${cancelError.message}`);
   }
 
+  // Fetch plan details to check if it's lifetime
+  const { data: planData } = await supabaseClient
+    .from('subscription_plans')
+    .select('is_lifetime, duration_days')
+    .eq('id', newPlanId)
+    .single();
+
+  // Calculate end_date based on plan type
+  let endDate = null;
+  if (planData && !planData.is_lifetime) {
+    const durationDays = planData.duration_days || 365; // Default to 1 year if not specified
+    endDate = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+  }
+
   // Create new subscription with upgraded plan
   return supabaseClient
     .from('user_subscriptions')
@@ -91,6 +119,6 @@ export async function upgradeUserSubscription(supabaseClient: any, { currentSubs
       transaction_id: transactionId,
       status: 'active',
       start_date: new Date().toISOString(),
-      end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      end_date: endDate // NULL for lifetime plans, calculated date for regular plans
     });
 }

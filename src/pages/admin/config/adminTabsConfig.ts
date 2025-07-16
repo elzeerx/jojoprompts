@@ -1,5 +1,5 @@
 
-import { BarChart3, FileText, Tags, Users, CreditCard, Percent } from "lucide-react";
+import { BarChart3, FileText, Tags, Users, CreditCard, Percent, Mail } from "lucide-react";
 
 export interface AdminTabConfig {
   id: string;
@@ -14,5 +14,6 @@ export const adminTabs: AdminTabConfig[] = [
   { id: "categories", label: "Categories", icon: Tags, mobileLabel: "Tags" },
   { id: "users", label: "Users", icon: Users, mobileLabel: "Users" },
   { id: "purchases", label: "Purchases", icon: CreditCard, mobileLabel: "Sales" },
-  { id: "discounts", label: "Discounts", icon: Percent, mobileLabel: "Codes" }
+  { id: "discounts", label: "Discounts", icon: Percent, mobileLabel: "Codes" },
+  { id: "emails", label: "Email Analytics", icon: Mail, mobileLabel: "Emails" }
 ];

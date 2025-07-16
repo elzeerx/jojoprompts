@@ -52,12 +52,14 @@ export function SubscriptionCard({ userSubscription }: SubscriptionCardProps) {
                   Active
                 </Badge>
               </div>
-              <div className="text-sm text-muted-foreground">
-                <p>Started: {formatDate(userSubscription.start_date)}</p>
-                {userSubscription.end_date && (
-                  <p>Expires: {formatDate(userSubscription.end_date)}</p>
-                )}
-              </div>
+                <div className="text-sm text-muted-foreground">
+                  <p>Started: {formatDate(userSubscription.start_date)}</p>
+                  {userSubscription.subscription_plans.is_lifetime ? (
+                    <p className="text-green-600 font-medium">Lifetime Access</p>
+                  ) : userSubscription.end_date ? (
+                    <p>Expires: {formatDate(userSubscription.end_date)}</p>
+                  ) : null}
+                </div>
             </div>
             
             {/* Upgrade Options */}

@@ -52,6 +52,20 @@ serve(async (req) => {
 
       console.log('Created transaction for direct activation:', transaction);
 
+      // Fetch plan details to check if it's lifetime
+      const { data: planData } = await supabaseClient
+        .from('subscription_plans')
+        .select('is_lifetime, duration_days')
+        .eq('id', planId)
+        .single();
+
+      // Calculate end_date based on plan type
+      let endDate = null;
+      if (planData && !planData.is_lifetime) {
+        const durationDays = planData.duration_days || 365; // Default to 1 year if not specified
+        endDate = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+      }
+
       // Create active subscription
       const { data: subscription, error: subscriptionError } = await supabaseClient
         .from('user_subscriptions')
@@ -63,7 +77,7 @@ serve(async (req) => {
           transaction_id: transaction.id,
           status: 'active',
           start_date: new Date().toISOString(),
-          end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
+          end_date: endDate // NULL for lifetime plans, calculated date for regular plans
         })
         .select()
         .single();
@@ -130,6 +144,14 @@ serve(async (req) => {
 
     if (action === 'create') {
       const siteUrl = getSiteUrl();
+      
+      console.log('=== PAYPAL ORDER DEBUG ===');
+      console.log('Received FINAL amount (already discounted):', amount);
+      console.log('Applied discount (for tracking only):', appliedDiscount);
+      console.log('Plan ID:', planId);
+      console.log('User ID:', userId);
+      console.log('NOTE: Amount should already include discount - NO FURTHER CALCULATION NEEDED');
+      console.log('========================');
       
       // FIXED: Include planId and userId in both return and cancel URLs with proper encoding
       const returnUrl = `${siteUrl}/payment/callback?success=true&plan_id=${encodeURIComponent(planId)}&user_id=${encodeURIComponent(userId)}`;
@@ -257,6 +279,30 @@ serve(async (req) => {
       }
 
       if (paymentStatus === 'COMPLETED') {
+        // Record discount usage if a discount was applied
+        if (appliedDiscount && appliedDiscount.id) {
+          console.log('Recording discount usage:', { discountId: appliedDiscount.id, userId, transactionId: transaction.id });
+          try {
+            const { data: usageRecorded, error: usageError } = await supabaseClient.rpc('record_discount_usage', {
+              discount_code_id_param: appliedDiscount.id,
+              user_id_param: userId,
+              payment_history_id_param: transaction.id
+            });
+
+            if (usageError) {
+              console.error('Failed to record discount usage:', usageError);
+              // Don't fail the payment, just log the error
+            } else if (usageRecorded) {
+              console.log('Discount usage recorded successfully');
+            } else {
+              console.log('Discount usage not recorded (possibly already used)');
+            }
+          } catch (error) {
+            console.error('Error recording discount usage:', error);
+            // Don't fail the payment, just log the error
+          }
+        }
+
         // Check if this is an upgrade transaction
         if (transaction.is_upgrade && currentSubscriptionId) {
           console.log('Processing subscription upgrade:', { currentSubscriptionId, planId });

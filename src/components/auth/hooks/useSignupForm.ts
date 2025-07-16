@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +24,6 @@ export function useSignupForm() {
       lastName: "",
       username: "",
       email: "",
-      password: "",
     },
   });
 
@@ -33,72 +31,76 @@ export function useSignupForm() {
     setIsLoading(true);
 
     try {
-      let redirectUrl = `${window.location.origin}/prompts?from_signup=true`;
+      let redirectUrl = `${window.location.origin}/prompts`;
       
       if (selectedPlan) {
-        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}&from_signup=true`;
+        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}`;
       } else if (fromCheckout) {
-        redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
+        redirectUrl = `${window.location.origin}/checkout`;
       }
 
-      const { data, error } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            first_name: values.firstName,
-            last_name: values.lastName,
-          },
-        },
+      // Generate magic link using our edge function for better Apple deliverability
+      const { data, error } = await supabase.functions.invoke('send-signup-confirmation', {
+        body: {
+          email: values.email,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          userId: crypto.randomUUID(), // Generate temporary ID
+          redirectUrl: redirectUrl
+        }
       });
 
       if (error) {
-        if (error.message.includes("already registered")) {
-          toast({
-            variant: "destructive",
-            title: "Account already exists",
-            description: "This email is already registered. Please sign in instead.",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: error.message,
-          });
-        }
+        console.error("Magic link generation error:", error);
+        toast({
+          variant: "destructive",
+          title: "Error sending magic link",
+          description: error.message || "Failed to send magic link. Please try again.",
+        });
         return;
       }
 
-      if (data.user && !data.user.email_confirmed_at) {
-        // Send welcome email in the background (don't block the flow)
-        setTimeout(async () => {
-          await sendWelcomeEmail(values.firstName, values.email);
-        }, 1000);
-
+      if (!data?.success) {
+        console.error("Magic link sending failed:", data?.error);
         toast({
-          title: "Check your email! 📧",
-          description: "We've sent you a confirmation link to complete your registration.",
+          variant: "destructive",
+          title: "Error sending magic link", 
+          description: data?.error || "Failed to send magic link. Please try again.",
         });
-      } else if (data.user) {
-        // User is already confirmed, send welcome email and proceed
-        setTimeout(async () => {
-          await sendWelcomeEmail(values.firstName, values.email);
-        }, 1000);
-
-        toast({
-          title: "Welcome! 🎉",
-          description: "Your account has been created successfully.",
-        });
-        
-        if (selectedPlan) {
-          navigate(`/checkout?plan_id=${selectedPlan}`);
-        } else {
-          navigate('/prompts');
-        }
+        return;
       }
+
+      // Show success message and redirect to magic link sent page
+      toast({
+        title: "Magic link sent! ✨",
+        description: "Check your email for a secure login link.",
+      });
+
+      // Send welcome email in the background for new users
+      setTimeout(async () => {
+        try {
+          await sendWelcomeEmail(values.firstName, values.email);
+        } catch (error) {
+          console.log('Welcome email failed (non-critical):', error);
+        }
+      }, 1000);
+
+      // Redirect to a magic link sent page
+      const magicLinkParams = new URLSearchParams({
+        email: values.email,
+        firstName: values.firstName,
+      });
+      
+      if (selectedPlan) {
+        magicLinkParams.append('plan', selectedPlan);
+      }
+      if (fromCheckout) {
+        magicLinkParams.append('fromCheckout', 'true');
+      }
+      
+      navigate(`/magic-link-sent?${magicLinkParams.toString()}`);
     } catch (error) {
-      console.error("Signup error:", error);
+      console.error("Magic link error:", error);
       toast({
         variant: "destructive",
         title: "Error",

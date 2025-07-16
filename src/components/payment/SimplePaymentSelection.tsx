@@ -32,7 +32,7 @@ export function SimplePaymentSelection({
       <CardHeader>
         <CardTitle>Complete Your Payment</CardTitle>
         <CardDescription>
-          Choose your preferred payment method for the {planName} plan (${amount.toFixed(2)})
+          Choose your preferred payment method for the {planName} plan
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
