@@ -36,6 +36,7 @@ import TermsOfServicePage from "./pages/TermsOfServicePage";
 import ExamplesPage from "./pages/ExamplesPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import MagicLinkSentPage from "./pages/MagicLinkSentPage";
+import UnsubscribePage from "./pages/UnsubscribePage";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ function App() {
                     <Route path="reset-password" element={<ResetPasswordPage />} />
                     <Route path="signup" element={<SignupPage />} />
                     <Route path="magic-link-sent" element={<MagicLinkSentPage />} />
+                    <Route path="unsubscribe" element={<UnsubscribePage />} />
                     <Route path="email-confirmation" element={<EmailConfirmationPage />} />
                     <Route path="examples" element={<ExamplesPage />} />
                     <Route path="prompts" element={<PromptsPage />} />
