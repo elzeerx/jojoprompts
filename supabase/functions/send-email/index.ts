@@ -168,7 +168,8 @@ interface EmailRequest {
 }
 
 // Apple email domains that require special handling
-const APPLE_DOMAINS = ['icloud.com', 'mac.com', 'me.com'];
+// Include iCloud, legacy mac.com/me.com and Apple's private relay addresses
+const APPLE_DOMAINS = ['icloud.com', 'mac.com', 'me.com', 'privaterelay.appleid.com'];
 
 // Apple-specific configuration - optimized for speed and verified domain
 const getAppleConfig = (emailType: string) => ({
@@ -217,9 +218,9 @@ const STANDARD_CONFIG = {
 function getDomainType(email: string): string {
   const domain = email.split('@')[1]?.toLowerCase();
   if (!domain) return 'unknown';
-  
-  // Check for Apple domains (including me.com)
-  if (APPLE_DOMAINS.includes(domain)) return 'apple';
+
+  // Check for Apple domains (including private relay addresses)
+  if (APPLE_DOMAINS.includes(domain) || domain.endsWith('.privaterelay.appleid.com')) return 'apple';
   if (domain === 'gmail.com') return 'gmail';
   if (domain === 'outlook.com' || domain === 'hotmail.com' || domain === 'live.com') return 'outlook';
   return 'other';
