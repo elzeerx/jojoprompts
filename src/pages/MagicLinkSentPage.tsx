@@ -5,6 +5,7 @@ import { Mail, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { AppleEmailNotice } from "@/components/auth/AppleEmailNotice";
 
 export default function MagicLinkSentPage() {
   const [searchParams] = useSearchParams();
@@ -100,6 +101,8 @@ export default function MagicLinkSentPage() {
               Click the link in your email to sign in instantly - no password required!
             </p>
           </div>
+
+          <AppleEmailNotice email={email} />
 
           <div className="space-y-3">
             <Button

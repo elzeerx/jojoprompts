@@ -168,41 +168,53 @@ interface EmailRequest {
 }
 
 // Apple email domains that require special handling
-// Include iCloud, legacy mac.com/me.com and Apple's private relay addresses
 const APPLE_DOMAINS = ['icloud.com', 'mac.com', 'me.com', 'privaterelay.appleid.com'];
 
-// Apple-specific configuration - optimized for speed and verified domain
+// Function to detect Apple domains
+function isAppleEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return false;
+  return APPLE_DOMAINS.includes(domain) || domain.endsWith('.privaterelay.appleid.com');
+}
+
+// Function to log Apple email attempts
+async function logAppleEmailAttempt(supabase: any, data: {
+  email: string;
+  status: 'sent' | 'failed';
+  error_message?: string;
+  email_type: string;
+}, logger: any) {
+  try {
+    const { error } = await supabase
+      .from('apple_email_logs')
+      .insert([{
+        email: data.email,
+        status: data.status,
+        error_message: data.error_message,
+        email_type: data.email_type,
+        timestamp: new Date().toISOString()
+      }]);
+    
+    if (error) {
+      logger('ERROR logging Apple email attempt:', error);
+    } else {
+      logger('Apple email attempt logged successfully');
+    }
+  } catch (error) {
+    logger('ERROR in logAppleEmailAttempt:', error);
+  }
+}
+
+
+// Apple-specific configuration
 const getAppleConfig = (emailType: string) => ({
-  maxRetries: 2, // Reduced retries for faster response
-  baseDelayMs: 1000, // Much faster retry delays
-  maxDelayMs: 5000, // Max 5 seconds instead of 1 minute
+  maxRetries: 2,
+  baseDelayMs: 1000,
+  maxDelayMs: 5000,
   backoffMultiplier: 2,
-  specialHeaders: emailType === 'email_confirmation' || emailType === 'transactional' ? {
-    // Transactional email headers for signup confirmations
-    'X-Priority': '1', // High priority for transactional
-    'X-MSMail-Priority': 'High',
-    'Importance': 'High',
-    'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
-    'X-Auto-Response-Suppress': 'DR, RN, NRN, OOF', // Suppress auto-responses but not delivery receipts
-    'Return-Path': 'noreply@noreply.jojoprompts.com',
-    'Content-Type': 'text/html; charset=UTF-8',
-    'MIME-Version': '1.0',
-    'X-Mailer': 'JoJoPrompts-v1.0',
-    'X-Apple-Mail-Remote-Attachments': 'NO',
-    'Thread-Topic': 'Email Confirmation Required'
-  } : {
-    // Marketing/bulk email headers
-    'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
-    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-    'X-Priority': '3',
-    'X-MSMail-Priority': 'Normal',
-    'Importance': 'Normal',
-    'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
-    'Precedence': 'bulk',
-    'X-Auto-Response-Suppress': 'All',
-    'Return-Path': 'noreply@noreply.jojoprompts.com',
-    'Content-Type': 'text/html; charset=UTF-8',
-    'MIME-Version': '1.0'
+  specialHeaders: {
+    'X-Priority': emailType === 'email_confirmation' ? '1' : '3',
+    'X-Apple-Special-Handling': 'true'
   }
 });
 
@@ -611,22 +623,27 @@ serve(async (req) => {
       throw new Error('Invalid email address format');
     }
 
-    // Apple domain detection and logging
-    if (domainType === 'apple') {
-      logger('APPLE DOMAIN DETECTED: Applying enhanced delivery strategy for:', to);
+    // Check if this is an Apple email domain
+    const isAppleDomain = domainType === 'apple';
+    
+    if (isAppleDomain) {
+      logger('APPLE EMAIL DETECTED: Applying special handling for:', to);
+      
+      // Add 5-second delay for Apple domains
+      logger('Applying 5-second delay for Apple domain');
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
     // Create email payload with consistent verified subdomain and required headers
     let emailPayload;
     
-    if (domainType === 'apple') {
-      // Create clean payload for Apple domains to avoid validation errors
+    if (isAppleDomain) {
+      // For Apple domains, use plain text emails for better deliverability
       emailPayload = {
         from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
-        to: to, // Use string format as shown in working logs
+        to: to,
         subject: finalSubject,
-        html: finalHtml,
-        text: finalText || finalHtml.replace(/<[^>]*>/g, '').trim(),
+        text: finalText || finalHtml.replace(/<[^>]*>/g, '').trim(), // Plain text only
         reply_to: 'info@jojoprompts.com',
         headers: {
           'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
@@ -634,16 +651,15 @@ serve(async (req) => {
           'Auto-Submitted': 'auto-generated',
           'Date': new Date().toUTCString(),
           'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
-          'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`
+          'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
+          'X-Apple-Special-Handling': 'true'
         }
       };
       
-      logger('Using clean payload for Apple domain:', {
-        from: emailPayload.from,
+      logger('Using plain text email for Apple domain:', {
         to: emailPayload.to,
-        hasSubject: !!emailPayload.subject,
-        hasHtml: !!emailPayload.html,
-        hasText: !!emailPayload.text
+        hasText: !!emailPayload.text,
+        hasHtml: !!emailPayload.html
       });
     } else if (emailType === 'email_confirmation' || emailType === 'transactional') {
       // Standard simplified payload for signup confirmations
@@ -706,6 +722,15 @@ serve(async (req) => {
       emailType || 'transactional',
       logger
     );
+    
+    // Log Apple email attempt
+    if (isAppleDomain) {
+      await logAppleEmailAttempt(supabase, {
+        email: to,
+        status: 'sent',
+        email_type: email_type || 'unknown'
+      }, logger);
+    }
 
     const responseMessageId = emailResponse.data?.id || emailResponse.id;
     const actualRetryCount = emailResponse.retryCount || 0;
@@ -765,6 +790,16 @@ serve(async (req) => {
         delivery_status: 'failed',
         bounce_reason: bounceReason
       }, logger);
+      
+      // Log Apple email failure
+      if (domainType === 'apple') {
+        await logAppleEmailAttempt(supabase, {
+          email: emailAddress,
+          status: 'failed',
+          error_message: error.message,
+          email_type: emailType || 'unknown'
+        }, logger);
+      }
     }
     
     // Check alert thresholds for failures too

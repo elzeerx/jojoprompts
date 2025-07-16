@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      apple_email_logs: {
+        Row: {
+          created_at: string
+          email: string
+          email_type: string
+          error_message: string | null
+          id: string
+          status: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          status: string
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          status?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           bg_gradient: string
