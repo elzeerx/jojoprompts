@@ -13,15 +13,6 @@ const emailTemplates = {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Confirm Your Email - JoJo Prompts</title>
-  <!--[if mso]>
-  <noscript>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
-  </noscript>
-  <![endif]-->
 </head>
 <body style="background-color: #f6f6f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.4; margin: 0; padding: 0; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;">
   <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="body" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f6f6f6; width: 100%;" width="100%" bgcolor="#f6f6f6">
@@ -156,377 +147,74 @@ const corsHeaders = {
 
 interface EmailRequest {
   to: string;
-  subject?: string; // Optional if using template
-  html?: string; // Optional if using template
+  subject?: string;
+  html?: string;
   text?: string;
   user_id?: string;
   email_type?: string;
-  retry_count?: number;
-  priority?: 'high' | 'normal' | 'low';
-  template?: string; // Template name
-  data?: any; // Template data
+  template?: string;
+  data?: any;
 }
 
-// Apple email domains that require special handling
-const APPLE_DOMAINS = ['icloud.com', 'mac.com', 'me.com', 'privaterelay.appleid.com'];
-
-function isAppleEmail(email: string): boolean {
-  return !!email.match(/@(me|mac|icloud|privaterelay\.appleid)\.com$/);
-}
-
-// Function to log Apple email attempts
-async function logAppleEmailAttempt(supabase: any, data: {
-  email: string;
-  status: 'sent' | 'failed';
-  error_message?: string;
-  email_type: string;
-}, logger: any) {
-  try {
-    const { error } = await supabase
-      .from('apple_email_logs')
-      .insert([{
-        email: data.email,
-        status: data.status,
-        error_message: data.error_message,
-        email_type: data.email_type,
-        timestamp: new Date().toISOString()
-      }]);
-    
-    if (error) {
-      logger('ERROR logging Apple email attempt:', error);
-    } else {
-      logger('Apple email attempt logged successfully');
-    }
-  } catch (error) {
-    logger('ERROR in logAppleEmailAttempt:', error);
+function getSubject(email_type: string): string {
+  switch (email_type) {
+    case 'email_confirmation':
+      return 'Confirm Your Email Address - JoJo Prompts';
+    default:
+      return 'JoJo Prompts';
   }
 }
 
-
-// Apple-specific configuration
-const getAppleConfig = (emailType: string) => ({
-  maxRetries: 2,
-  baseDelayMs: 1000,
-  maxDelayMs: 5000,
-  backoffMultiplier: 2,
-  specialHeaders: {
-    'X-Priority': emailType === 'email_confirmation' ? '1' : '3',
-    'X-Apple-Special-Handling': 'true'
+function getEmailHtml(email_type: string, data: any): string {
+  switch (email_type) {
+    case 'email_confirmation':
+      if (emailTemplates.emailConfirmation) {
+        return emailTemplates.emailConfirmation(data).html;
+      }
+      break;
+    default:
+      return data.html || '<p>Thank you for using JoJo Prompts!</p>';
   }
-});
-
-// Standard retry configuration for other domains - optimized for speed
-const STANDARD_CONFIG = {
-  maxRetries: 2, // Reduced retries for faster response
-  baseDelayMs: 500, // Faster retry delays
-  maxDelayMs: 3000, // Max 3 seconds
-  backoffMultiplier: 2
-};
-
-// Function to detect domain type
-function getDomainType(email: string): string {
-  const domain = email.split('@')[1]?.toLowerCase();
-  if (!domain) return 'unknown';
-
-  // Check for Apple domains (including private relay addresses)
-  if (APPLE_DOMAINS.includes(domain) || domain.endsWith('.privaterelay.appleid.com')) return 'apple';
-  if (domain === 'gmail.com') return 'gmail';
-  if (domain === 'outlook.com' || domain === 'hotmail.com' || domain === 'live.com') return 'outlook';
-  return 'other';
+  return '<p>Thank you for using JoJo Prompts!</p>';
 }
 
-// Calculate exponential backoff delay
-function calculateDelay(retryCount: number, domainType: string, emailType: string): number {
-  const config = domainType === 'apple' ? getAppleConfig(emailType) : STANDARD_CONFIG;
-  const delay = config.baseDelayMs * Math.pow(config.backoffMultiplier, retryCount);
-  return Math.min(delay, config.maxDelayMs);
-}
-
-// Function to optimize email content for Apple domains
-function optimizeForApple(html: string, subject: string): { html: string; subject: string } {
-  // Apple Mail preferences
-  let optimizedHtml = html;
-  let optimizedSubject = subject;
-  
-  // Add Apple-specific optimizations
-  // 1. Ensure proper HTML structure
-  if (!optimizedHtml.includes('<!DOCTYPE html>')) {
-    optimizedHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${optimizedSubject}</title>
-</head>
-<body>
-${optimizedHtml}
-</body>
-</html>`;
-  }
-  
-  // 2. Apple Mail prefers specific CSS
-  optimizedHtml = optimizedHtml.replace(
-    /<style[^>]*>/gi,
-    '<style type="text/css">'
-  );
-  
-  // 3. Ensure proper encoding for special characters
-  optimizedSubject = optimizedSubject.replace(/[^\x00-\x7F]/g, (char) => {
-    return '&#' + char.charCodeAt(0) + ';';
-  });
-  
-  return { html: optimizedHtml, subject: optimizedSubject };
-}
-
-// Function to log email attempt to database
+// Simple logging function
 async function logEmailAttempt(supabase: any, emailData: {
   email_address: string;
   email_type: string;
   success: boolean;
   error_message?: string;
   user_id?: string;
-  domain_type: string;
-  retry_count: number;
-  delivery_status: string;
-  response_metadata?: any;
-  bounce_reason?: string;
-}, logger: any) {
+}) {
   try {
-    // Create a clean email data object, excluding user_id if it's null/undefined
-    // This prevents foreign key constraint violations when user_id doesn't exist in auth.users
-    const cleanEmailData = {
-      email_address: emailData.email_address,
-      email_type: emailData.email_type,
-      success: emailData.success,
-      domain_type: emailData.domain_type,
-      retry_count: emailData.retry_count,
-      delivery_status: emailData.delivery_status,
-      ...(emailData.error_message && { error_message: emailData.error_message }),
-      ...(emailData.response_metadata && { response_metadata: emailData.response_metadata }),
-      ...(emailData.bounce_reason && { bounce_reason: emailData.bounce_reason }),
-      // Only include user_id if it exists and is not null/empty
-      ...(emailData.user_id && emailData.user_id.trim() !== '' && { user_id: emailData.user_id })
-    };
-
-    logger('Logging email attempt:', { 
-      email_address: cleanEmailData.email_address,
-      success: cleanEmailData.success,
-      user_id: cleanEmailData.user_id || 'none'
-    });
-
     const { error } = await supabase
       .from('email_logs')
-      .insert([cleanEmailData]);
+      .insert([{
+        email_address: emailData.email_address,
+        email_type: emailData.email_type,
+        success: emailData.success,
+        error_message: emailData.error_message,
+        user_id: emailData.user_id,
+        domain_type: 'other',
+        retry_count: 0,
+        delivery_status: emailData.success ? 'sent' : 'failed'
+      }]);
     
     if (error) {
-      logger('ERROR logging email attempt:', error);
-      // Try logging without user_id if it still fails
-      if (error.code === '23503' && emailData.user_id) {
-        logger('Retrying email log without user_id due to foreign key constraint');
-        const { user_id, ...dataWithoutUserId } = cleanEmailData;
-        const { error: retryError } = await supabase
-          .from('email_logs')
-          .insert([dataWithoutUserId]);
-        
-        if (retryError) {
-          logger('ERROR on retry logging email attempt:', retryError);
-        } else {
-          logger('Email attempt logged successfully on retry (without user_id)');
-        }
-      }
-    } else {
-      logger('Email attempt logged successfully');
+      console.log('Error logging email attempt:', error);
     }
   } catch (error) {
-    logger('ERROR in logEmailAttempt:', error);
+    console.log('Error in logEmailAttempt:', error);
   }
 }
 
-// Function to check if we should alert on delivery failures
-async function checkAlertThresholds(supabase: any, domainType: string, logger: any) {
-  try {
-    // Check last hour's Apple domain success rate
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    
-    const { data: recentLogs, error } = await supabase
-      .from('email_logs')
-      .select('success, domain_type')
-      .eq('domain_type', domainType)
-      .gte('attempted_at', oneHourAgo);
-    
-    if (error || !recentLogs || recentLogs.length < 5) {
-      return; // Not enough data for alerting
-    }
-    
-    const successfulCount = recentLogs.filter(log => log.success).length;
-    const successRate = (successfulCount / recentLogs.length) * 100;
-    
-    // Alert thresholds
-    const criticalThreshold = domainType === 'apple' ? 70 : 80; // Lower threshold for Apple
-    const warningThreshold = domainType === 'apple' ? 85 : 90;
-    
-    if (successRate < criticalThreshold) {
-      logger(`CRITICAL ALERT: ${domainType} domain success rate: ${successRate.toFixed(1)}% (${successfulCount}/${recentLogs.length})`);
-      
-      // Log security event for monitoring
-      await supabase
-        .from('security_logs')
-        .insert([{
-          action: 'email_delivery_critical_failure',
-          details: {
-            domain_type: domainType,
-            success_rate: successRate,
-            total_emails: recentLogs.length,
-            successful_emails: successfulCount,
-            time_window: '1_hour',
-            alert_level: 'critical'
-          }
-        }]);
-    } else if (successRate < warningThreshold) {
-      logger(`WARNING: ${domainType} domain success rate: ${successRate.toFixed(1)}% (${successfulCount}/${recentLogs.length})`);
-      
-      await supabase
-        .from('security_logs')
-        .insert([{
-          action: 'email_delivery_warning',
-          details: {
-            domain_type: domainType,
-            success_rate: successRate,
-            total_emails: recentLogs.length,
-            successful_emails: successfulCount,
-            time_window: '1_hour',
-            alert_level: 'warning'
-          }
-        }]);
-    }
-  } catch (error) {
-    logger('ERROR checking alert thresholds:', error);
-  }
-}
-
-// Main send email function with retry logic
-async function sendEmailWithRetry(
-  resend: any,
-  emailPayload: any,
-  domainType: string,
-  retryCount: number,
-  emailType: string,
-  logger: any
-): Promise<any> {
-  const config = domainType === 'apple' ? getAppleConfig(emailType) : STANDARD_CONFIG;
-  
-  try {
-    // Apply Apple-specific optimizations
-    if (domainType === 'apple') {
-      const optimized = optimizeForApple(emailPayload.html, emailPayload.subject);
-      emailPayload.html = optimized.html;
-      emailPayload.subject = optimized.subject;
-      
-      // Add Apple-specific headers (merge with existing headers)
-      const appleConfig = getAppleConfig(emailType);
-      emailPayload.headers = {
-        ...emailPayload.headers,
-        ...appleConfig.specialHeaders,
-        'X-Apple-Base-URL': 'https://jojoprompts.com',
-        'Thread-Topic': emailPayload.subject
-      };
-      
-      logger('Applied Apple-specific optimizations:', {
-        hasOptimizedHtml: !!optimized.html,
-        hasOptimizedSubject: !!optimized.subject,
-        headers: emailPayload.headers
-      });
-    }
-    
-    console.log('Sending email with final payload:', {
-      from: emailPayload.from,
-      to: emailPayload.to,
-      subject: emailPayload.subject,
-      hasHtml: !!emailPayload.html,
-      hasText: !!emailPayload.text,
-      headerKeys: Object.keys(emailPayload.headers || {}),
-      retryCount,
-      domainType
-    });
-
-    let response;
-    try {
-      response = await resend.emails.send(emailPayload);
-      console.log('Resend API response:', {
-        success: !response.error,
-        data: response.data,
-        error: response.error,
-        statusCode: response.error?.name || 'success'
-      });
-    } catch (apiError: any) {
-      console.error('Resend API call failed with exception:', {
-        name: apiError.name,
-        message: apiError.message,
-        cause: apiError.cause,
-        stack: apiError.stack,
-        domainType,
-        emailType,
-        retryCount,
-        from: emailPayload.from
-      });
-      throw new Error(`Resend API exception: ${apiError.message} (${apiError.name})`);
-    }
-    
-    if (response.error) {
-      console.error(`Email send attempt ${retryCount + 1} failed:`, {
-        error: response.error,
-        errorName: response.error.name,
-        errorMessage: response.error.message,
-        domainType,
-        emailType,
-        retryCount,
-        from: emailPayload.from,
-        fullError: JSON.stringify(response.error)
-      });
-      throw new Error(`Resend API error: ${response.error.name} - ${response.error.message}`);
-    }
-    
-    return response;
-  } catch (error: any) {
-    logger(`Attempt ${retryCount + 1} failed:`, error.message);
-    
-    // Fast failure for known permanent errors to avoid wasting time
-    const errorMessage = error.message.toLowerCase();
-    const isPermanentError = 
-      errorMessage.includes('domain is not verified') ||
-      errorMessage.includes('validation_error') ||
-      errorMessage.includes('invalid email') ||
-      errorMessage.includes('unauthorized') ||
-      errorMessage.includes('forbidden');
-    
-    if (isPermanentError) {
-      logger(`FAST FAILURE: Permanent error detected, not retrying: ${error.message}`);
-      throw error;
-    }
-    
-    // Check if we should retry (only for transient errors)
-    if (retryCount < config.maxRetries) {
-      const delay = calculateDelay(retryCount, domainType, emailType);
-      logger(`Retrying in ${delay}ms (domain: ${domainType}, attempt: ${retryCount + 1}/${config.maxRetries})`);
-      
-      // Wait before retrying
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
-      return sendEmailWithRetry(resend, emailPayload, domainType, retryCount + 1, emailType, logger);
-    }
-    
-    // Max retries reached
-    throw error;
-  }
-}
-
-serve(async (req) => {
+export default async function handler(req: Request) {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   const requestId = crypto.randomUUID();
-  const logger = (...args: any[]) => console.log(`[send-email:${requestId}]`, ...args);
+  console.log(`[send-email:${requestId}] Processing request`);
 
   // Initialize Supabase client for logging
   const supabase = createClient(
@@ -534,64 +222,27 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
-  let domainType = 'unknown';
-  let emailAddress = '';
-  let emailType = 'unknown';
-  let userId: string | undefined;
-  let finalRetryCount = 0;
-
   try {
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    
-    if (!resendApiKey) {
-      logger('ERROR: RESEND_API_KEY not configured');
-      throw new Error('RESEND_API_KEY not configured');
-    }
-
-    const resend = new Resend(resendApiKey);
-    const requestBody = await req.json();
-    
     const { 
-      to, 
+      to: email_address, 
       subject, 
       html, 
       text, 
       user_id, 
-      email_type: reqEmailType,
-      retry_count = 0,
-      priority = 'normal',
+      email_type = 'general',
       template,
-      data
-    }: EmailRequest = requestBody;
+      data 
+    }: EmailRequest = await req.json();
     
-    // Store values for logging
-    emailAddress = to;
-    emailType = reqEmailType || 'general';
-    userId = user_id;
-    domainType = getDomainType(to);
-    finalRetryCount = retry_count;
+    console.log(`[send-email:${requestId}] Sending ${email_type} email to ${email_address}`);
     
-    logger('Received request:', { 
-      to, 
-      subject, 
-      template,
-      domainType,
-      emailType,
-      userId,
-      retryCount: finalRetryCount,
-      priority
-    });
-
-    // Log domain detection for debugging
-    logger(`Domain detection for ${to}: domain=${to.split('@')[1]}, detected_type=${domainType}`);
-
     // Handle template-based emails
-    let finalSubject = subject;
-    let finalHtml = html;
+    let finalSubject = subject || getSubject(email_type);
+    let finalHtml = html || getEmailHtml(email_type, data);
     let finalText = text;
 
     if (template && data) {
-      logger('Processing template:', template);
+      console.log(`[send-email:${requestId}] Processing template: ${template}`);
       
       if (emailTemplates[template as keyof typeof emailTemplates]) {
         const templateFn = emailTemplates[template as keyof typeof emailTemplates];
@@ -600,167 +251,104 @@ serve(async (req) => {
         finalSubject = templateResult.subject;
         finalHtml = templateResult.html;
         finalText = templateResult.text || finalHtml.replace(/<[^>]*>/g, '');
-        
-        logger('Template processed successfully:', { template, hasHtml: !!finalHtml, hasSubject: !!finalSubject });
       } else {
-        logger('ERROR: Template not found:', template);
-        throw new Error(`Template not found: ${template}`);
+        console.log(`[send-email:${requestId}] Template not found: ${template}`);
       }
     }
 
-    if (!to || !finalSubject || !finalHtml) {
-      logger('ERROR: Missing required fields:', { to: !!to, subject: !!finalSubject, html: !!finalHtml });
-      throw new Error('Missing required fields: to, subject, html (or valid template)');
+    if (!email_address || !finalSubject || !finalHtml) {
+      throw new Error('Missing required fields: email_address, subject, html');
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(to)) {
-      logger('ERROR: Invalid email address format:', to);
+    if (!emailRegex.test(email_address)) {
       throw new Error('Invalid email address format');
     }
-
-    // Check if this is an Apple email domain
-    const isAppleDomain = isAppleEmail(to);
     
-    if (isAppleDomain) {
-      logger('Apple email detected:', to);
-      // Don't throw error or return early - just add special headers and continue
-    }
-
-    // Create email payload with consistent verified subdomain
-    const messageId = `<${crypto.randomUUID()}@noreply.jojoprompts.com>`;
-    
-    const emailPayload = {
+    // Configure email with our verified subdomain
+    const emailConfig = {
       from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
-      to: to,
+      to: email_address,
       subject: finalSubject,
       html: finalHtml,
       text: finalText || finalHtml.replace(/<[^>]*>/g, ''),
-      reply_to: 'info@jojoprompts.com',
       headers: {
-        'Message-ID': messageId,
-        'Precedence': (emailType === 'marketing' || emailType === 'newsletter') ? 'bulk' : 'transactional',
-        'Auto-Submitted': 'auto-generated',
-        'Date': new Date().toUTCString(),
+        'Reply-To': 'info@jojoprompts.com',
         'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
         'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
+        'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
+        'Precedence': 'transactional',
+        'Auto-Submitted': 'auto-generated',
+        'Date': new Date().toUTCString(),
         'Content-Type': 'text/html; charset=UTF-8',
-        'MIME-Version': '1.0',
-        'Return-Path': 'noreply@noreply.jojoprompts.com',
-        // Add Apple-specific headers if it's an Apple email
-        ...(isAppleDomain && {
-          'X-Priority': '3',
-          'Importance': 'Normal',
-          'X-Apple-Mail-Version': '1.0'
-        })
+        'MIME-Version': '1.0'
       }
     };
-
-    logger(`Sending email to ${to} (Domain: ${domainType}, Priority: ${priority})`);
-
-    // Send email with domain-specific retry logic
-    const emailResponse = await sendEmailWithRetry(
-      resend,
-      emailPayload,
-      domainType,
-      0, // Start with retry count 0
-      emailType || 'transactional',
-      logger
-    );
     
-    // Log Apple email attempt
-    if (isAppleDomain) {
-      await logAppleEmailAttempt(supabase, {
-        email: to,
-        status: 'sent',
-        email_type: emailType || 'unknown'
-      }, logger);
+    // Send via Resend
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY not configured');
     }
 
-    const responseMessageId = emailResponse.data?.id || emailResponse.id;
-    const actualRetryCount = emailResponse.retryCount || 0;
-    logger('Email sent successfully:', {
-      messageId: responseMessageId,
-      to,
-      domainType,
-      retryCount: actualRetryCount
-    });
+    const resend = new Resend(resendApiKey);
+    const result = await resend.emails.send(emailConfig);
+    
+    if (result.error) {
+      throw new Error(`Resend API error: ${result.error.name} - ${result.error.message}`);
+    }
 
+    console.log(`[send-email:${requestId}] Email sent successfully:`, result);
+    
     // Log successful attempt
     await logEmailAttempt(supabase, {
-      email_address: emailAddress,
-      email_type: emailType,
+      email_address,
+      email_type,
       success: true,
-      user_id: userId,
-      domain_type: domainType,
-      retry_count: actualRetryCount,
-      delivery_status: 'sent',
-      response_metadata: { messageId: responseMessageId, priority }
-    }, logger);
-
-    // Check alert thresholds in background
-    EdgeRuntime.waitUntil(checkAlertThresholds(supabase, domainType, logger));
-
-    return new Response(JSON.stringify({
-      success: true,
-      message: 'Email sent successfully',
-      messageId: responseMessageId,
-      domainType: domainType,
-      retryCount: actualRetryCount,
-      optimized: domainType === 'apple'
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      user_id
     });
-
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Email sent successfully', 
+        messageId: result.data?.id || result.id 
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+    
   } catch (error: any) {
-    logger('ERROR in send-email function:', error.message);
+    console.error(`[send-email:${requestId}] Email error:`, error);
     
-    // Determine bounce reason based on error
-    let bounceReason = null;
-    if (error.message.includes('blocked')) bounceReason = 'blocked';
-    else if (error.message.includes('invalid')) bounceReason = 'invalid_address';
-    else if (error.message.includes('quota')) bounceReason = 'quota_exceeded';
-    else if (error.message.includes('timeout')) bounceReason = 'timeout';
-    
-    // Log failed attempt if we have the email info
-    if (emailAddress) {
+    // Log failed attempt if we have email info
+    const requestData = await req.json().catch(() => ({}));
+    if (requestData.to) {
       await logEmailAttempt(supabase, {
-        email_address: emailAddress,
-        email_type: emailType,
+        email_address: requestData.to,
+        email_type: requestData.email_type || 'general',
         success: false,
         error_message: error.message,
-        user_id: userId,
-        domain_type: domainType,
-        retry_count: 0,
-        delivery_status: 'failed',
-        bounce_reason: bounceReason
-      }, logger);
-      
-      // Log Apple email failure
-      if (isAppleEmail(emailAddress)) {
-        await logAppleEmailAttempt(supabase, {
-          email: emailAddress,
-          status: 'failed',
-          error_message: error.message,
-          email_type: emailType || 'unknown'
-        }, logger);
-      }
+        user_id: requestData.user_id
+      });
     }
     
-    // Check alert thresholds for failures too
-    EdgeRuntime.waitUntil(checkAlertThresholds(supabase, domainType, logger));
-    
-    return new Response(JSON.stringify({ 
-      success: false,
-      message: error.message,
-      error: error.message,
-      domainType: domainType,
-      retryCount: finalRetryCount,
-      bounceReason: bounceReason
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    // Still return 200 to prevent edge function errors
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        message: 'Email processing failed', 
+        error: error.message 
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
   }
-});
+}
+
+serve(handler);
