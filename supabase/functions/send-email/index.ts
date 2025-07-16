@@ -183,7 +183,7 @@ const getAppleConfig = (emailType: string) => ({
     'Importance': 'High',
     'X-Entity-Ref-ID': 'jojoprompts-transactional',
     'X-Auto-Response-Suppress': 'DR, RN, NRN, OOF', // Suppress auto-responses but not delivery receipts
-    'Return-Path': 'noreply@jojoprompts.com',
+    'Return-Path': 'noreply@noreply.jojoprompts.com',
     'Content-Type': 'text/html; charset=UTF-8',
     'MIME-Version': '1.0',
     'X-Mailer': 'JoJoPrompts-v1.0',
@@ -191,7 +191,7 @@ const getAppleConfig = (emailType: string) => ({
     'Thread-Topic': 'Email Confirmation Required'
   } : {
     // Marketing/bulk email headers
-    'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+    'List-Unsubscribe': '<mailto:unsubscribe@noreply.jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     'X-Priority': '3',
     'X-MSMail-Priority': 'Normal',
@@ -199,7 +199,7 @@ const getAppleConfig = (emailType: string) => ({
     'X-Entity-Ref-ID': 'jojoprompts-marketing',
     'Precedence': 'bulk',
     'X-Auto-Response-Suppress': 'All',
-    'Return-Path': 'noreply@jojoprompts.com',
+    'Return-Path': 'noreply@noreply.jojoprompts.com',
     'Content-Type': 'text/html; charset=UTF-8',
     'MIME-Version': '1.0'
   }
@@ -621,7 +621,7 @@ serve(async (req) => {
     if (domainType === 'apple') {
       // Ultra-simplified payload for Apple domains to pass strict validation
       emailPayload = {
-        from: 'noreply@jojoprompts.com', // Use verified domain consistently
+        from: 'noreply@noreply.jojoprompts.com', // Use verified domain consistently
         to: to,
         subject: finalSubject,
         html: finalHtml,
@@ -632,7 +632,7 @@ serve(async (req) => {
     } else if (emailType === 'email_confirmation' || emailType === 'transactional') {
       // Standard simplified payload for signup confirmations
       emailPayload = {
-        from: 'JoJo Prompts <noreply@jojoprompts.com>', // Use verified domain consistently
+        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>', // Use verified domain consistently
         to: to,
         subject: finalSubject,
         html: finalHtml,
@@ -645,7 +645,7 @@ serve(async (req) => {
       const messageId = `<${requestId}.${Date.now()}@jojoprompts.com>`;
       
       emailPayload = {
-        from: 'JoJo Prompts <noreply@jojoprompts.com>', // Use verified domain consistently
+        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>', // Use verified domain consistently
         to: [to],
         subject: finalSubject,
         html: finalHtml,
@@ -653,7 +653,7 @@ serve(async (req) => {
         reply_to: 'info@jojoprompts.com',
         headers: {
           'Message-ID': messageId,
-          'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+          'List-Unsubscribe': '<mailto:unsubscribe@noreply.jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           'X-Entity-Ref-ID': `jojoprompts-${emailType}-${requestId}`,
           'Precedence': 'bulk',
@@ -663,7 +663,7 @@ serve(async (req) => {
           'X-Feedback-ID': `${emailType}:jojoprompts.com`,
           'Content-Type': 'text/html; charset=UTF-8',
           'MIME-Version': '1.0',
-          'Return-Path': 'noreply@jojoprompts.com'
+          'Return-Path': 'noreply@noreply.jojoprompts.com'
         }
       };
     }
