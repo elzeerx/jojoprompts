@@ -6,6 +6,7 @@ import { ProfileSettings } from "@/components/profile/ProfileSettings";
 import { SubscriptionCard } from "./SubscriptionCard";
 import { UserStatsCards } from "./UserStatsCards";
 import { DangerZone } from "@/components/account/DangerZone";
+import { EmailPreferences } from "@/components/account/EmailPreferences";
 
 interface UserSubscription {
   id: string;
@@ -82,6 +83,8 @@ export function DashboardContent({
               </p>
             </CardContent>
           </Card>
+
+          <EmailPreferences />
 
           <DangerZone 
             hasActiveSubscription={hasActiveSubscription}
