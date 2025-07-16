@@ -34,11 +34,24 @@ serve(async (req: Request) => {
 
     // Since email confirmation is disabled in Supabase Auth settings, 
     // we'll use 'invite' type which works even when confirmation is disabled
+    
+    // Add signup confirmation flag to redirect URL
+    const baseRedirectUrl = redirectUrl || `${Deno.env.get("FRONTEND_URL") || "https://jojoprompts.com"}/prompts`;
+    const url = new URL(baseRedirectUrl);
+    url.searchParams.set('from_signup', 'true');
+    
+    console.log('Magic link redirect URL:', { 
+      original: baseRedirectUrl, 
+      final: url.toString(),
+      hasPlanId: url.searchParams.has('plan_id'),
+      planId: url.searchParams.get('plan_id')
+    });
+    
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'invite',
       email: email,
       options: {
-        redirectTo: redirectUrl || `${Deno.env.get("FRONTEND_URL") || "https://jojoprompts.com"}/prompts`
+        redirectTo: url.toString()
       }
     });
 
