@@ -211,6 +211,38 @@ export default async function handler(req: Request) {
     
     console.log(`[send-email:${requestId}] Sending ${email_type} email to ${email_address}`);
     
+    // Check if user has unsubscribed
+    const { data: unsubData } = await supabase
+      .from('unsubscribed_emails')
+      .select('email')
+      .eq('email', email_address)
+      .maybeSingle();
+    
+    if (unsubData) {
+      console.log(`[send-email:${requestId}] User ${email_address} has unsubscribed - skipping email`);
+      
+      // Log the blocked email attempt
+      await logEmailAttempt(supabase, {
+        email_address,
+        email_type,
+        success: true,
+        error_message: 'Email blocked - user unsubscribed',
+        user_id
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'User unsubscribed - email not sent',
+          unsubscribed: true 
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
     // Handle template-based emails
     let finalSubject = subject || getSubject(email_type);
     let finalHtml = html || getEmailHtml(email_type, data);
