@@ -170,11 +170,11 @@ interface EmailRequest {
 // Apple email domains that require special handling
 const APPLE_DOMAINS = ['icloud.com', 'mac.com', 'me.com'];
 
-// Apple-specific configuration based on Apple's postmaster guidelines
+// Apple-specific configuration - optimized for speed and verified domain
 const getAppleConfig = (emailType: string) => ({
-  maxRetries: 3, // Reduced retries for transactional emails
-  baseDelayMs: 5000, // Longer delays for Apple
-  maxDelayMs: 60000, // Max 1 minute
+  maxRetries: 2, // Reduced retries for faster response
+  baseDelayMs: 1000, // Much faster retry delays
+  maxDelayMs: 5000, // Max 5 seconds instead of 1 minute
   backoffMultiplier: 2,
   specialHeaders: emailType === 'email_confirmation' || emailType === 'transactional' ? {
     // Transactional email headers for signup confirmations
@@ -183,7 +183,7 @@ const getAppleConfig = (emailType: string) => ({
     'Importance': 'High',
     'X-Entity-Ref-ID': 'jojoprompts-transactional',
     'X-Auto-Response-Suppress': 'DR, RN, NRN, OOF', // Suppress auto-responses but not delivery receipts
-    'Return-Path': 'noreply@noreply.jojoprompts.com',
+    'Return-Path': 'noreply@jojoprompts.com',
     'Content-Type': 'text/html; charset=UTF-8',
     'MIME-Version': '1.0',
     'X-Mailer': 'JoJoPrompts-v1.0',
@@ -191,7 +191,7 @@ const getAppleConfig = (emailType: string) => ({
     'Thread-Topic': 'Email Confirmation Required'
   } : {
     // Marketing/bulk email headers
-    'List-Unsubscribe': '<mailto:unsubscribe@noreply.jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+    'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     'X-Priority': '3',
     'X-MSMail-Priority': 'Normal',
@@ -199,17 +199,17 @@ const getAppleConfig = (emailType: string) => ({
     'X-Entity-Ref-ID': 'jojoprompts-marketing',
     'Precedence': 'bulk',
     'X-Auto-Response-Suppress': 'All',
-    'Return-Path': 'noreply@noreply.jojoprompts.com',
+    'Return-Path': 'noreply@jojoprompts.com',
     'Content-Type': 'text/html; charset=UTF-8',
     'MIME-Version': '1.0'
   }
 });
 
-// Standard retry configuration for other domains
+// Standard retry configuration for other domains - optimized for speed
 const STANDARD_CONFIG = {
-  maxRetries: 3,
-  baseDelayMs: 1000,
-  maxDelayMs: 15000,
+  maxRetries: 2, // Reduced retries for faster response
+  baseDelayMs: 500, // Faster retry delays
+  maxDelayMs: 3000, // Max 3 seconds
   backoffMultiplier: 2
 };
 
@@ -480,7 +480,21 @@ async function sendEmailWithRetry(
   } catch (error: any) {
     logger(`Attempt ${retryCount + 1} failed:`, error.message);
     
-    // Check if we should retry
+    // Fast failure for known permanent errors to avoid wasting time
+    const errorMessage = error.message.toLowerCase();
+    const isPermanentError = 
+      errorMessage.includes('domain is not verified') ||
+      errorMessage.includes('validation_error') ||
+      errorMessage.includes('invalid email') ||
+      errorMessage.includes('unauthorized') ||
+      errorMessage.includes('forbidden');
+    
+    if (isPermanentError) {
+      logger(`FAST FAILURE: Permanent error detected, not retrying: ${error.message}`);
+      throw error;
+    }
+    
+    // Check if we should retry (only for transient errors)
     if (retryCount < config.maxRetries) {
       const delay = calculateDelay(retryCount, domainType, emailType);
       logger(`Retrying in ${delay}ms (domain: ${domainType}, attempt: ${retryCount + 1}/${config.maxRetries})`);
@@ -607,7 +621,7 @@ serve(async (req) => {
     if (domainType === 'apple') {
       // Ultra-simplified payload for Apple domains to pass strict validation
       emailPayload = {
-        from: 'noreply@jojoprompts.com', // Simplified from format without display name
+        from: 'noreply@jojoprompts.com', // Use verified domain consistently
         to: to,
         subject: finalSubject,
         html: finalHtml,
@@ -618,7 +632,7 @@ serve(async (req) => {
     } else if (emailType === 'email_confirmation' || emailType === 'transactional') {
       // Standard simplified payload for signup confirmations
       emailPayload = {
-        from: 'JoJo Prompts <noreply@jojoprompts.com>',
+        from: 'JoJo Prompts <noreply@jojoprompts.com>', // Use verified domain consistently
         to: to,
         subject: finalSubject,
         html: finalHtml,
@@ -631,7 +645,7 @@ serve(async (req) => {
       const messageId = `<${requestId}.${Date.now()}@jojoprompts.com>`;
       
       emailPayload = {
-        from: 'JoJo Prompts <noreply@jojoprompts.com>',
+        from: 'JoJo Prompts <noreply@jojoprompts.com>', // Use verified domain consistently
         to: [to],
         subject: finalSubject,
         html: finalHtml,
@@ -639,14 +653,14 @@ serve(async (req) => {
         reply_to: 'info@jojoprompts.com',
         headers: {
           'Message-ID': messageId,
-          'List-Unsubscribe': '<mailto:unsubscribe@noreply.jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+          'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           'X-Entity-Ref-ID': `jojoprompts-${emailType}-${requestId}`,
           'Precedence': 'bulk',
           'X-Auto-Response-Suppress': 'All',
           'Organization': 'Recipe Group',
           'X-Mailer': 'JoJoPrompts Email Service v1.0',
-          'X-Feedback-ID': `${emailType}:noreply.jojoprompts.com`,
+          'X-Feedback-ID': `${emailType}:jojoprompts.com`,
           'Content-Type': 'text/html; charset=UTF-8',
           'MIME-Version': '1.0',
           'Return-Path': 'noreply@jojoprompts.com'
