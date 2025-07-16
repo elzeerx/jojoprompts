@@ -3,9 +3,13 @@ import { Resend } from 'npm:resend@2.0.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
 const emailTemplates = {
-  emailConfirmation: (data: { name: string; email: string; confirmationLink: string }) => ({
-    subject: "Your JoJo Prompts account confirmation",
-    html: `<!DOCTYPE html>
+  emailConfirmation: (data: { name: string; email: string; confirmationLink: string; email_type?: string }) => {
+    const emailType = data.email_type || 'confirmation';
+    const unsubscribeUrl = `https://jojoprompts.com/unsubscribe?email=${encodeURIComponent(data.email)}&type=${emailType}`;
+    
+    return {
+      subject: "Your JoJo Prompts account confirmation",
+      html: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -68,7 +72,11 @@ const emailTemplates = {
               </p>
               
               <p style="margin: 10px 0; font-size: 12px; color: #666; font-family: Arial, sans-serif;">
-                Don't want these emails? <a href="https://jojoprompts.com/unsubscribe?email=${data.email}&type=confirmation" style="color: #666;">Unsubscribe here</a>
+                Don't want these emails? <a href="${unsubscribeUrl}" style="color: #666;">Unsubscribe here</a>
+              </p>
+              
+              <p style="margin: 10px 0; font-size: 11px; color: #999; font-family: Arial, sans-serif;">
+                To unsubscribe, copy and paste this link into your browser: ${unsubscribeUrl}
               </p>
               
               <p style="margin: 10px 0 0 0; font-size: 11px; color: #999; font-family: Arial, sans-serif;">
@@ -84,7 +92,7 @@ const emailTemplates = {
   </table>
 </body>
 </html>`,
-    text: `You're receiving this because you signed up at jojoprompts.com
+      text: `You're receiving this because you signed up at jojoprompts.com
 
 Hi ${data.name},
 
@@ -98,12 +106,15 @@ If you didn't create an account with us, please ignore this email.
 Questions? Contact us at info@jojoprompts.com
 
 Don't want these emails? Unsubscribe here:
-https://jojoprompts.com/unsubscribe?email=${data.email}&type=confirmation
+${unsubscribeUrl}
+
+To unsubscribe, copy and paste this link into your browser: ${unsubscribeUrl}
 
 JoJo Prompts, Part of Recipe Group
 Abdullah Al Mubarak St, Humaidhiyah Tower
 Murqab, Kuwait City 15001`
-  })
+    };
+  }
 };
 
 const corsHeaders = {
@@ -138,7 +149,7 @@ function getEmailHtml(email_type: string, data: any): string {
     switch (email_type) {
       case 'email_confirmation':
         if (emailTemplates.emailConfirmation) {
-          return emailTemplates.emailConfirmation(data).html;
+          return emailTemplates.emailConfirmation({ ...data, email_type }).html;
         }
         break;
       default:
@@ -253,7 +264,7 @@ export default async function handler(req: Request) {
       
       if (emailTemplates[template as keyof typeof emailTemplates]) {
         const templateFn = emailTemplates[template as keyof typeof emailTemplates];
-        const templateResult = templateFn(data);
+        const templateResult = templateFn({ ...data, email_type });
         
         finalSubject = templateResult.subject;
         finalHtml = templateResult.html;
