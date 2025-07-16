@@ -578,7 +578,7 @@ export const emailTemplates = {
                 <tr>
                   <td style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; text-align: center;">
                     <p style="color: #666; margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 14px;">
-                      Questions? Contact us at <a href="mailto:support@jojoprompts.com" style="color: #c49d68;">support@jojoprompts.com</a>
+                      Questions? Contact us at <a href="mailto:info@jojoprompts.com" style="color: #c49d68;">info@jojoprompts.com</a>
                     </p>
                     
                     <div style="margin: 20px 0; padding: 20px 0; border-top: 1px solid #e9ecef;">
@@ -612,7 +612,7 @@ This link will expire in 24 hours.
 
 If you didn't create an account with us, please ignore this email.
 
-Questions? Contact us at support@jojoprompts.com
+Questions? Contact us at info@jojoprompts.com
 
 Best regards,
 The JoJo Prompts Team

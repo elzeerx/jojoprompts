@@ -182,7 +182,7 @@ const getAppleConfig = (emailType: string) => ({
     'X-Priority': '1', // High priority for transactional
     'X-MSMail-Priority': 'High',
     'Importance': 'High',
-    'X-Entity-Ref-ID': 'jojoprompts-transactional',
+    'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
     'X-Auto-Response-Suppress': 'DR, RN, NRN, OOF', // Suppress auto-responses but not delivery receipts
     'Return-Path': 'noreply@noreply.jojoprompts.com',
     'Content-Type': 'text/html; charset=UTF-8',
@@ -192,12 +192,12 @@ const getAppleConfig = (emailType: string) => ({
     'Thread-Topic': 'Email Confirmation Required'
   } : {
     // Marketing/bulk email headers
-    'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+    'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     'X-Priority': '3',
     'X-MSMail-Priority': 'Normal',
     'Importance': 'Normal',
-    'X-Entity-Ref-ID': 'jojoprompts-marketing',
+    'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
     'Precedence': 'bulk',
     'X-Auto-Response-Suppress': 'All',
     'Return-Path': 'noreply@noreply.jojoprompts.com',
@@ -616,17 +616,22 @@ serve(async (req) => {
       logger('APPLE DOMAIN DETECTED: Applying enhanced delivery strategy for:', to);
     }
 
-    // Create email payload with Apple domain-specific handling
+    // Create email payload with consistent verified subdomain and required headers
     let emailPayload;
     
     if (domainType === 'apple') {
       // Create clean payload for Apple domains to avoid validation errors
       emailPayload = {
-        from: 'noreply@noreply.jojoprompts.com',
+        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
         to: to, // Use string format as shown in working logs
         subject: finalSubject,
         html: finalHtml,
-        text: finalText || finalHtml.replace(/<[^>]*>/g, '').trim()
+        text: finalText || finalHtml.replace(/<[^>]*>/g, '').trim(),
+        reply_to: 'info@jojoprompts.com',
+        headers: {
+          'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
+          'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`
+        }
       };
       
       logger('Using clean payload for Apple domain:', {
@@ -639,11 +644,16 @@ serve(async (req) => {
     } else if (emailType === 'email_confirmation' || emailType === 'transactional') {
       // Standard simplified payload for signup confirmations
       emailPayload = {
-        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>', // Use verified domain consistently
+        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
         to: to,
         subject: finalSubject,
         html: finalHtml,
-        text: finalText || finalHtml.replace(/<[^>]*>/g, '')
+        text: finalText || finalHtml.replace(/<[^>]*>/g, ''),
+        reply_to: 'info@jojoprompts.com',
+        headers: {
+          'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
+          'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`
+        }
       };
       
       logger('Using simplified payload for signup confirmation');
@@ -652,7 +662,7 @@ serve(async (req) => {
       const messageId = `<${requestId}.${Date.now()}@jojoprompts.com>`;
       
       emailPayload = {
-        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>', // Use verified domain consistently
+        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
         to: [to],
         subject: finalSubject,
         html: finalHtml,
@@ -660,12 +670,12 @@ serve(async (req) => {
         reply_to: 'info@jojoprompts.com',
         headers: {
           'Message-ID': messageId,
-          'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>, <https://jojoprompts.com/unsubscribe>',
+          'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-          'X-Entity-Ref-ID': `jojoprompts-${emailType}-${requestId}`,
+          'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
           'Precedence': 'bulk',
           'X-Auto-Response-Suppress': 'All',
-          'Organization': 'Recipe Group',
+          'Organization': 'JoJo Prompts',
           'X-Mailer': 'JoJoPrompts Email Service v1.0',
           'X-Feedback-ID': `${emailType}:jojoprompts.com`,
           'Content-Type': 'text/html; charset=UTF-8',
