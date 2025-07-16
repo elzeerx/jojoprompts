@@ -601,14 +601,25 @@ serve(async (req) => {
       logger('APPLE DOMAIN DETECTED: Applying enhanced delivery strategy for:', to);
     }
 
-    // Create email payload - simplified for signup confirmations
+    // Create email payload with Apple domain-specific handling
     let emailPayload;
     
-    if (emailType === 'email_confirmation' || emailType === 'transactional') {
-      // Simplified payload for signup confirmations to avoid Resend validation errors
+    if (domainType === 'apple') {
+      // Ultra-simplified payload for Apple domains to pass strict validation
       emailPayload = {
-        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
-        to: to, // String instead of array for signup confirmations
+        from: 'noreply@jojoprompts.com', // Simplified from format without display name
+        to: to,
+        subject: finalSubject,
+        html: finalHtml,
+        text: finalText || finalHtml.replace(/<[^>]*>/g, '')
+      };
+      
+      logger('Using ultra-simplified payload for Apple domain');
+    } else if (emailType === 'email_confirmation' || emailType === 'transactional') {
+      // Standard simplified payload for signup confirmations
+      emailPayload = {
+        from: 'JoJo Prompts <noreply@jojoprompts.com>',
+        to: to,
         subject: finalSubject,
         html: finalHtml,
         text: finalText || finalHtml.replace(/<[^>]*>/g, '')
@@ -620,7 +631,7 @@ serve(async (req) => {
       const messageId = `<${requestId}.${Date.now()}@jojoprompts.com>`;
       
       emailPayload = {
-        from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
+        from: 'JoJo Prompts <noreply@jojoprompts.com>',
         to: [to],
         subject: finalSubject,
         html: finalHtml,
@@ -638,7 +649,7 @@ serve(async (req) => {
           'X-Feedback-ID': `${emailType}:noreply.jojoprompts.com`,
           'Content-Type': 'text/html; charset=UTF-8',
           'MIME-Version': '1.0',
-          'Return-Path': 'noreply@noreply.jojoprompts.com'
+          'Return-Path': 'noreply@jojoprompts.com'
         }
       };
     }
