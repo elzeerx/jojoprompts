@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
+import { AppleEmailHelp } from "@/components/auth/AppleEmailHelp";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
@@ -112,6 +113,11 @@ export default function LoginPage() {
                 </CardContent>
               </TabsContent>
             </Tabs>
+
+            {/* Apple Email Help Section */}
+            <div className="mt-4 px-4 sm:px-6 pb-4">
+              <AppleEmailHelp />
+            </div>
 
             {/* Premium footer with gradient */}
             <div className="h-2 bg-gradient-to-r from-warm-gold via-muted-teal to-warm-gold"></div>

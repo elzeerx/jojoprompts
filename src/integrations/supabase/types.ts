@@ -268,6 +268,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_engagement: {
+        Row: {
+          created_at: string | null
+          domain: string
+          email_address: string
+          email_opened: boolean | null
+          id: string
+          link_clicked: boolean | null
+          marked_as_spam: boolean | null
+          timestamp: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          domain: string
+          email_address: string
+          email_opened?: boolean | null
+          id?: string
+          link_clicked?: boolean | null
+          marked_as_spam?: boolean | null
+          timestamp?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          domain?: string
+          email_address?: string
+          email_opened?: boolean | null
+          id?: string
+          link_clicked?: boolean | null
+          marked_as_spam?: boolean | null
+          timestamp?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           attempted_at: string | null

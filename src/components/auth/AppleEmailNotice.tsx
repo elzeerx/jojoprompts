@@ -1,4 +1,5 @@
-import { AlertTriangle } from 'lucide-react';
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isAppleEmail } from '@/utils/emailUtils';
 
 interface AppleEmailNoticeProps {
@@ -11,29 +12,21 @@ export function AppleEmailNotice({ email }: AppleEmailNoticeProps) {
   }
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="text-amber-500 w-5 h-5 mt-0.5 flex-shrink-0" />
-        <div>
-          <h3 className="font-medium text-amber-800 mb-2">
-            Apple Email Users: Important Delivery Notice
-          </h3>
-          <p className="text-sm text-amber-700 leading-relaxed">
-            To ensure you receive our emails, please add{' '}
-            <code className="bg-amber-100 px-2 py-1 rounded text-amber-800 font-mono text-xs">
-              noreply@noreply.jojoprompts.com
-            </code>{' '}
-            to your contacts in your Apple Mail app. This will help ensure our 
-            confirmation emails and important notifications reach your inbox.
+    <Alert className="border-amber-200 bg-amber-50">
+      <AlertCircle className="h-4 w-4 text-amber-600" />
+      <AlertDescription className="text-amber-700">
+        <div className="space-y-2">
+          <p className="font-medium">Important for Apple Mail users:</p>
+          <p className="text-sm">
+            We've sent a confirmation email to <strong>{email}</strong>. 
+            Please check your <strong>Junk/Spam folder</strong> and mark our email as 
+            <strong> 'Not Junk'</strong> to ensure future emails reach your inbox.
           </p>
-          <div className="mt-3 text-xs text-amber-600">
-            <p>
-              <strong>Quick steps:</strong> Open Apple Mail → Contacts → Add New Contact → 
-              Enter our email address → Save
-            </p>
-          </div>
+          <p className="text-sm">
+            You may also want to add <strong>noreply@noreply.jojoprompts.com</strong> to your contacts.
+          </p>
         </div>
-      </div>
-    </div>
+      </AlertDescription>
+    </Alert>
   );
 }

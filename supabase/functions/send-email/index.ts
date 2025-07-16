@@ -134,16 +134,23 @@ function getSubject(email_type: string): string {
 }
 
 function getEmailHtml(email_type: string, data: any): string {
-  switch (email_type) {
-    case 'email_confirmation':
-      if (emailTemplates.emailConfirmation) {
-        return emailTemplates.emailConfirmation(data).html;
-      }
-      break;
-    default:
-      return data.html || '<p>Thank you for using JoJo Prompts!</p>';
-  }
-  return '<p>Thank you for using JoJo Prompts!</p>';
+  const baseHtml = (() => {
+    switch (email_type) {
+      case 'email_confirmation':
+        if (emailTemplates.emailConfirmation) {
+          return emailTemplates.emailConfirmation(data).html;
+        }
+        break;
+      default:
+        return data.html || '<p>Thank you for using JoJo Prompts!</p>';
+    }
+    return '<p>Thank you for using JoJo Prompts!</p>';
+  })();
+
+  // Add tracking pixel for email opens
+  const trackingPixel = `<img src="https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/track-email-engagement?email=${encodeURIComponent(data.email || '')}" width="1" height="1" style="display:none;" alt="" />`;
+  
+  return baseHtml + trackingPixel;
 }
 
 // Simple logging function
