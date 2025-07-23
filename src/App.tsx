@@ -28,6 +28,7 @@ import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
 import PrompterDashboard from "./pages/prompter/PrompterDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import PromptsManagement from "./pages/admin/PromptsManagement";
+import PromptGeneratorPage from "./pages/PromptGeneratorPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
@@ -75,6 +76,7 @@ function App() {
                     <Route path="prompter" element={<PrompterDashboard />} />
                     <Route path="admin" element={<AdminDashboard />} />
                     <Route path="admin/prompts" element={<PromptsManagement />} />
+                    <Route path="prompt-generator" element={<PromptGeneratorPage />} />
                     <Route path="about" element={<AboutPage />} />
                     <Route path="contact" element={<ContactPage />} />
                     <Route path="faq" element={<FAQPage />} />
