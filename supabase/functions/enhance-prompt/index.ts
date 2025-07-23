@@ -30,22 +30,20 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     console.log("JWT token extracted:", token.substring(0, 20) + '...');
 
-    // Initialize Supabase client
+    // Get environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://fxkqgjakbyrxkmevkglv.supabase.co';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4';
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    const supabaseClient = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    )
+    if (!supabaseServiceRoleKey) {
+      console.error("SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
+      throw new Error('Server configuration error');
+    }
 
-    // Verify user authentication using the JWT token
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    // Create service role client to validate JWT and check permissions
+    const serviceRoleClient = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // Validate JWT token using service role client
+    const { data: { user }, error: userError } = await serviceRoleClient.auth.getUser(token);
     console.log("User authentication check:", { 
       userExists: !!user, 
       userId: user?.id?.substring(0, 8) + '***',
@@ -57,8 +55,8 @@ serve(async (req) => {
       throw new Error(`Authentication failed: ${userError?.message || 'No user found'}`)
     }
 
-    // Check user permissions by querying profiles table directly
-    const { data: profile, error: profileError } = await supabaseClient
+    // Check user permissions by querying profiles table with service role client
+    const { data: profile, error: profileError } = await serviceRoleClient
       .from('profiles')
       .select('role')
       .eq('id', user.id)
