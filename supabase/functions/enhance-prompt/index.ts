@@ -26,6 +26,10 @@ serve(async (req) => {
       throw new Error('No authorization header')
     }
 
+    // Extract JWT token from Authorization header
+    const token = authHeader.replace('Bearer ', '')
+    console.log("JWT token extracted:", token.substring(0, 20) + '...');
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://fxkqgjakbyrxkmevkglv.supabase.co';
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4';
@@ -40,8 +44,8 @@ serve(async (req) => {
       }
     )
 
-    // Verify user authentication
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Verify user authentication using the JWT token
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     console.log("User authentication check:", { 
       userExists: !!user, 
       userId: user?.id?.substring(0, 8) + '***',
@@ -53,22 +57,30 @@ serve(async (req) => {
       throw new Error(`Authentication failed: ${userError?.message || 'No user found'}`)
     }
 
-    // Check user permissions
-    const { data: canManagePromptsResult, error: permissionError } = await supabaseClient
-      .rpc('can_manage_prompts', { _user_id: user.id });
+    // Check user permissions by querying profiles table directly
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
     
-    console.log("Permission check result:", { 
-      canManagePrompts: canManagePromptsResult,
-      permissionError: permissionError?.message 
+    console.log("User profile check:", { 
+      profileExists: !!profile,
+      role: profile?.role,
+      profileError: profileError?.message 
     });
     
-    if (permissionError) {
-      console.error("Permission check failed:", permissionError);
-      throw new Error(`Permission check failed: ${permissionError.message}`);
+    if (profileError || !profile) {
+      console.error("Profile check failed:", profileError?.message);
+      throw new Error(`Profile check failed: ${profileError?.message || 'No profile found'}`);
     }
     
-    if (!canManagePromptsResult) {
-      console.error("User lacks permissions for prompt enhancement");
+    // Check if user has permission to manage prompts
+    const allowedRoles = ['admin', 'prompter', 'jadmin'];
+    const userRole = profile.role?.toLowerCase();
+    
+    if (!allowedRoles.includes(userRole)) {
+      console.error("User lacks permissions for prompt enhancement", { userRole, allowedRoles });
       return new Response(
         JSON.stringify({ 
           error: 'Insufficient permissions. Only admins, prompters, and jadmins can enhance prompts.',
@@ -125,7 +137,7 @@ Keep the core subject but expand with rich visual details that would help AI gen
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
