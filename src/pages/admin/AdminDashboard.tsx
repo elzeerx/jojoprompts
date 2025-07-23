@@ -10,6 +10,10 @@ import DiscountCodesManagement from "./components/discount-codes/DiscountCodesMa
 import { CategoriesManagement } from "./components/categories/CategoriesManagement";
 import { SecurityMonitoringDashboard } from "@/components/security/SecurityMonitoringDashboard";
 import { EmailAnalyticsDashboard } from "@/components/admin/EmailAnalyticsDashboard";
+import { PromptGeneratorForm } from "@/components/prompt-generator/PromptGeneratorForm";
+import { ModelManager } from "@/components/prompt-generator/ModelManager";
+import { FieldManager } from "@/components/prompt-generator/FieldManager";
+import { TemplateManager } from "@/components/prompt-generator/TemplateManager";
 import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 import { BarChart3, FileText, Tags, Users, CreditCard, Percent, Shield, Mail } from "lucide-react";
 import { useAdminTabs } from "./hooks/useAdminTabs";
@@ -75,6 +79,41 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="emails" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
               <EmailAnalyticsDashboard />
+            </TabsContent>
+            <TabsContent value="generator" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-dark-base mb-2">AI Prompt Generator</h2>
+                  <p className="text-muted-foreground text-sm">Generate, manage, and configure prompts for various AI models</p>
+                </div>
+                
+                <Tabs defaultValue="generator" className="w-full">
+                  <div className="mb-4">
+                    <TabsList className="grid w-full grid-cols-4">
+                      <TabsTrigger value="generator" className="text-xs sm:text-sm">Generator</TabsTrigger>
+                      <TabsTrigger value="models" className="text-xs sm:text-sm">Models</TabsTrigger>
+                      <TabsTrigger value="fields" className="text-xs sm:text-sm">Fields</TabsTrigger>
+                      <TabsTrigger value="templates" className="text-xs sm:text-sm">Templates</TabsTrigger>
+                    </TabsList>
+                  </div>
+                  
+                  <TabsContent value="generator">
+                    <PromptGeneratorForm />
+                  </TabsContent>
+                  
+                  <TabsContent value="models">
+                    <ModelManager />
+                  </TabsContent>
+                  
+                  <TabsContent value="fields">
+                    <FieldManager />
+                  </TabsContent>
+                  
+                  <TabsContent value="templates">
+                    <TemplateManager />
+                  </TabsContent>
+                </Tabs>
+              </div>
             </TabsContent>
             <TabsContent value="security" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
               <SecurityMonitoringDashboard />
