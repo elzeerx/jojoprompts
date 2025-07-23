@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { Menu, X, User, LogOut, Settings, Heart, Edit } from "lucide-react";
+import { Menu, X, User, LogOut, Settings, Heart, Edit, Wand2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -16,6 +16,7 @@ export function Header() {
   let signOut = async () => {};
   let isAdmin = false;
   let isPrompter = false;
+  let canManagePrompts = false;
   
   try {
     const authContext = useAuth();
@@ -23,6 +24,7 @@ export function Header() {
     signOut = authContext.signOut;
     isAdmin = authContext.isAdmin;
     isPrompter = authContext.isPrompter;
+    canManagePrompts = authContext.canManagePrompts;
   } catch (error) {
     console.warn('Auth context unavailable in Header:', error);
   }
@@ -145,16 +147,25 @@ export function Header() {
                       <Edit className="mr-3 h-4 w-4 text-warm-gold" />
                       <span className="text-dark-base font-medium">My Prompts</span>
                     </DropdownMenuItem>
-                  )}
-                  {isAdmin && (
-                    <DropdownMenuItem
-                      onClick={() => navigate("/admin")}
-                      className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
-                    >
-                      <Settings className="mr-3 h-4 w-4 text-warm-gold" />
-                      <span className="text-dark-base font-medium">Admin</span>
-                    </DropdownMenuItem>
-                  )}
+                   )}
+                   {canManagePrompts && (
+                     <DropdownMenuItem
+                       onClick={() => navigate("/prompt-generator")}
+                       className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                     >
+                       <Wand2 className="mr-3 h-4 w-4 text-warm-gold" />
+                       <span className="text-dark-base font-medium">Prompt Generator</span>
+                     </DropdownMenuItem>
+                   )}
+                   {isAdmin && (
+                     <DropdownMenuItem
+                       onClick={() => navigate("/admin")}
+                       className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                     >
+                       <Settings className="mr-3 h-4 w-4 text-warm-gold" />
+                       <span className="text-dark-base font-medium">Admin</span>
+                     </DropdownMenuItem>
+                   )}
                   <DropdownMenuSeparator className="my-2 bg-warm-gold/20" />
                   <DropdownMenuItem
                     onClick={handleLogout}
@@ -258,16 +269,25 @@ export function Header() {
                       >
                         My Prompts
                       </Link>
-                    )}
-                    {isAdmin && (
-                      <Link
-                        to="/admin"
-                        className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        Admin
-                      </Link>
-                    )}
+                     )}
+                     {canManagePrompts && (
+                       <Link
+                         to="/prompt-generator"
+                         className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                         onClick={() => setIsMobileMenuOpen(false)}
+                       >
+                         Prompt Generator
+                       </Link>
+                     )}
+                     {isAdmin && (
+                       <Link
+                         to="/admin"
+                         className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                         onClick={() => setIsMobileMenuOpen(false)}
+                       >
+                         Admin
+                       </Link>
+                     )}
                     <button
                       onClick={() => {
                         handleLogout();
