@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Download, Save, Wand2 } from "lucide-react";
+import { Copy, Download, Save, Wand2, Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePromptGenerator } from "@/hooks/prompt-generator/usePromptGenerator";
+import { callEdgeFunction } from "@/utils/edgeFunctions";
 import { DynamicField } from "./DynamicField";
 import { ModelParametersEditor } from "./ModelParametersEditor";
 import { PromptPreview } from "./PromptPreview";
@@ -20,6 +21,7 @@ import { PromptPreview } from "./PromptPreview";
 const promptSchema = z.object({
   modelType: z.enum(["image", "video"]),
   selectedModel: z.string().min(1, "Please select a model"),
+  promptDescription: z.string().min(1, "Please provide a basic prompt description"),
   style: z.record(z.string(), z.any()).optional(),
   subject: z.record(z.string(), z.any()).optional(),
   effects: z.record(z.string(), z.any()).optional(),
@@ -42,12 +44,16 @@ export function PromptGeneratorForm() {
   const [outputMode, setOutputMode] = useState<"text" | "json">("text");
   const [generatedPrompt, setGeneratedPrompt] = useState<string>("");
   const [promptData, setPromptData] = useState<any>(null);
+  const [enhancedDescription, setEnhancedDescription] = useState<string>("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [useAiEnhancement, setUseAiEnhancement] = useState(true);
 
   const form = useForm<PromptFormData>({
     resolver: zodResolver(promptSchema),
     defaultValues: {
       modelType: "image",
       selectedModel: "",
+      promptDescription: "",
       style: {},
       subject: {},
       effects: {},
@@ -58,6 +64,7 @@ export function PromptGeneratorForm() {
 
   const selectedModelType = form.watch("modelType");
   const selectedModelId = form.watch("selectedModel");
+  const promptDescription = form.watch("promptDescription");
 
   const filteredModels = models.filter(model => 
     model.type === selectedModelType && model.is_active
@@ -65,9 +72,58 @@ export function PromptGeneratorForm() {
 
   const selectedModel = models.find(model => model.id === selectedModelId);
 
+  const handleEnhancePrompt = async () => {
+    if (!promptDescription.trim()) {
+      toast({
+        variant: "destructive",
+        title: "No Description",
+        description: "Please provide a basic prompt description first.",
+      });
+      return;
+    }
+
+    setIsEnhancing(true);
+    try {
+      // Get selected style preferences for context
+      const stylePreferences = Object.values(form.getValues("style") || {})
+        .filter(Boolean)
+        .map(String);
+
+      const result = await callEdgeFunction("enhance-prompt", {
+        prompt_description: promptDescription,
+        model_type: selectedModelType,
+        style_preferences: stylePreferences
+      });
+
+      setEnhancedDescription(result.enhanced_prompt);
+      toast({
+        title: "Prompt Enhanced",
+        description: "Your prompt has been enhanced with AI.",
+      });
+    } catch (error) {
+      console.error("Error enhancing prompt:", error);
+      toast({
+        variant: "destructive",
+        title: "Enhancement Failed",
+        description: "Failed to enhance prompt. Using original description.",
+      });
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   const onSubmit = async (data: PromptFormData) => {
     try {
-      const result = await generatePrompt(data);
+      // Use enhanced description if available and AI enhancement is enabled
+      const finalDescription = useAiEnhancement && enhancedDescription 
+        ? enhancedDescription 
+        : data.promptDescription;
+
+      const result = await generatePrompt({
+        ...data,
+        enhancedDescription: finalDescription
+      });
+      
       setGeneratedPrompt(result.prompt);
       setPromptData(result.data);
       
@@ -150,7 +206,6 @@ export function PromptGeneratorForm() {
     URL.revokeObjectURL(url);
   };
 
-  // Get fields by category for the selected model type
   const getFieldsByCategory = (category: string) => {
     return fields.filter(field => 
       field.field_category === category && field.is_active
@@ -218,6 +273,69 @@ export function PromptGeneratorForm() {
               </CardContent>
             </Card>
 
+            {/* Prompt Description */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Prompt Description</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="promptDescription"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Basic Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Enter your basic prompt description (e.g., 'man walking on the beach')"
+                          {...field}
+                          rows={3}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="useAiEnhancement"
+                      checked={useAiEnhancement}
+                      onChange={(e) => setUseAiEnhancement(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <label htmlFor="useAiEnhancement" className="text-sm font-medium">
+                      Use AI Enhancement
+                    </label>
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEnhancePrompt}
+                    disabled={!promptDescription.trim() || isEnhancing}
+                  >
+                    {isEnhancing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-2 h-4 w-4" />
+                    )}
+                    {isEnhancing ? "Enhancing..." : "Enhance with AI"}
+                  </Button>
+                </div>
+
+                {enhancedDescription && (
+                  <div className="mt-4 p-3 bg-muted rounded-lg">
+                    <h4 className="text-sm font-medium mb-2">Enhanced Description:</h4>
+                    <p className="text-sm text-muted-foreground">{enhancedDescription}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Style Fields */}
             <Card>
               <CardHeader>
@@ -255,10 +373,10 @@ export function PromptGeneratorForm() {
                   name="customPrompt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Custom Subject Description</FormLabel>
+                      <FormLabel>Additional Subject Details</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Add custom subject details..."
+                          placeholder="Add additional subject details..."
                           {...field}
                           rows={3}
                         />

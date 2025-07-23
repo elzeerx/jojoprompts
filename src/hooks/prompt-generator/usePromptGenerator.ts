@@ -104,6 +104,12 @@ export function usePromptGenerator() {
       let prompt = "";
       const promptParts: string[] = [];
 
+      // Start with enhanced description if available, otherwise use basic description
+      const baseDescription = formData.enhancedDescription || formData.promptDescription;
+      if (baseDescription) {
+        promptParts.push(baseDescription);
+      }
+
       // Add style elements
       if (formData.style) {
         Object.entries(formData.style).forEach(([key, value]) => {
@@ -111,11 +117,6 @@ export function usePromptGenerator() {
             promptParts.push(String(value));
           }
         });
-      }
-
-      // Add subject description
-      if (formData.customPrompt) {
-        promptParts.push(formData.customPrompt);
       }
 
       // Add subject elements
@@ -127,6 +128,11 @@ export function usePromptGenerator() {
             promptParts.push(String(value));
           }
         });
+      }
+
+      // Add custom prompt if provided
+      if (formData.customPrompt) {
+        promptParts.push(formData.customPrompt);
       }
 
       // Add effects
@@ -171,7 +177,9 @@ export function usePromptGenerator() {
         prompt: prompt,
         parameters: formData.modelParameters || {},
         timestamp: new Date().toISOString(),
-        formData: formData
+        formData: formData,
+        enhancedDescription: formData.enhancedDescription || null,
+        originalDescription: formData.promptDescription
       };
 
       return {
