@@ -4,10 +4,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Copy, Eye } from "lucide-react";
+import { Copy, Eye, Edit, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { DiscountCodeDetailsDialog } from "./DiscountCodeDetailsDialog";
+import { EditDiscountCodeDialog } from "./EditDiscountCodeDialog";
+import { DeleteDiscountCodeDialog } from "./DeleteDiscountCodeDialog";
 
 interface DiscountCode {
   id: string;
@@ -31,6 +33,9 @@ interface DiscountCodesTableProps {
 
 export function DiscountCodesTable({ discountCodes, onToggleActive, onRefresh }: DiscountCodesTableProps) {
   const [selectedCode, setSelectedCode] = useState<DiscountCode | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -91,6 +96,33 @@ export function DiscountCodesTable({ discountCodes, onToggleActive, onRefresh }:
     return <Badge variant="outline" className="border-purple-400 text-purple-600">
       {planCount} Plan{planCount !== 1 ? 's' : ''}
     </Badge>;
+  };
+
+  const handleViewDetails = (code: DiscountCode) => {
+    setSelectedCode(code);
+    setDetailsOpen(true);
+  };
+
+  const handleEdit = (code: DiscountCode) => {
+    setSelectedCode(code);
+    setEditOpen(true);
+  };
+
+  const handleDelete = (code: DiscountCode) => {
+    setSelectedCode(code);
+    setDeleteOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    setEditOpen(false);
+    setSelectedCode(null);
+    onRefresh();
+  };
+
+  const handleDeleteSuccess = () => {
+    setDeleteOpen(false);
+    setSelectedCode(null);
+    onRefresh();
   };
 
   return (
@@ -168,13 +200,35 @@ export function DiscountCodesTable({ discountCodes, onToggleActive, onRefresh }:
                   {new Date(code.created_at).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedCode(code)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewDetails(code)}
+                      className="h-8 w-8 p-0"
+                      title="View details"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(code)}
+                      className="h-8 w-8 p-0"
+                      title="Edit code"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(code)}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                      title="Delete code"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -190,9 +244,32 @@ export function DiscountCodesTable({ discountCodes, onToggleActive, onRefresh }:
 
       <DiscountCodeDetailsDialog
         code={selectedCode}
-        open={!!selectedCode}
-        onClose={() => setSelectedCode(null)}
+        open={detailsOpen}
+        onClose={() => {
+          setDetailsOpen(false);
+          setSelectedCode(null);
+        }}
         onRefresh={onRefresh}
+      />
+
+      <EditDiscountCodeDialog
+        open={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          setSelectedCode(null);
+        }}
+        onSuccess={handleEditSuccess}
+        discountCode={selectedCode}
+      />
+
+      <DeleteDiscountCodeDialog
+        open={deleteOpen}
+        onClose={() => {
+          setDeleteOpen(false);
+          setSelectedCode(null);
+        }}
+        onSuccess={handleDeleteSuccess}
+        discountCode={selectedCode}
       />
     </>
   );

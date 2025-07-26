@@ -1,17 +1,30 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { DiscountCodeFormFields } from "./DiscountCodeFormFields";
 
+interface DiscountCode {
+  id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  expiration_date: string | null;
+  usage_limit: number | null;
+  applies_to_all_plans?: boolean;
+  applicable_plans?: string[];
+}
+
 interface DiscountCodeFormProps {
   onSuccess: () => void;
   onCancel: () => void;
+  initialData?: DiscountCode;
+  isEditing?: boolean;
 }
 
-export function DiscountCodeForm({ onSuccess, onCancel }: DiscountCodeFormProps) {
+export function DiscountCodeForm({ onSuccess, onCancel, initialData, isEditing = false }: DiscountCodeFormProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -23,6 +36,21 @@ export function DiscountCodeForm({ onSuccess, onCancel }: DiscountCodeFormProps)
     applies_to_all_plans: true,
     applicable_plans: [] as string[],
   });
+
+  // Initialize form data when editing
+  useEffect(() => {
+    if (initialData && isEditing) {
+      setFormData({
+        code: initialData.code,
+        discount_type: initialData.discount_type,
+        discount_value: initialData.discount_value.toString(),
+        expiration_date: initialData.expiration_date ? new Date(initialData.expiration_date) : undefined,
+        usage_limit: initialData.usage_limit?.toString() || '',
+        applies_to_all_plans: initialData.applies_to_all_plans ?? true,
+        applicable_plans: initialData.applicable_plans || [],
+      });
+    }
+  }, [initialData, isEditing]);
 
   const generateRandomCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -76,35 +104,60 @@ export function DiscountCodeForm({ onSuccess, onCancel }: DiscountCodeFormProps)
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("discount_codes")
-        .insert({
-          code: formData.code.toUpperCase(),
-          discount_type: formData.discount_type,
-          discount_value: discountValue,
-          expiration_date: formData.expiration_date?.toISOString(),
-          usage_limit: formData.usage_limit ? parseInt(formData.usage_limit) : null,
-          applies_to_all_plans: formData.applies_to_all_plans,
-          applicable_plans: formData.applies_to_all_plans ? [] : formData.applicable_plans,
-          created_by: user.id,
+      if (isEditing && initialData) {
+        // Update existing discount code
+        const { error } = await supabase
+          .from("discount_codes")
+          .update({
+            code: formData.code.toUpperCase(),
+            discount_type: formData.discount_type,
+            discount_value: discountValue,
+            expiration_date: formData.expiration_date?.toISOString(),
+            usage_limit: formData.usage_limit ? parseInt(formData.usage_limit) : null,
+            applies_to_all_plans: formData.applies_to_all_plans,
+            applicable_plans: formData.applies_to_all_plans ? [] : formData.applicable_plans,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", initialData.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Discount code updated successfully",
+        });
+      } else {
+        // Create new discount code
+        const { error } = await supabase
+          .from("discount_codes")
+          .insert({
+            code: formData.code.toUpperCase(),
+            discount_type: formData.discount_type,
+            discount_value: discountValue,
+            expiration_date: formData.expiration_date?.toISOString(),
+            usage_limit: formData.usage_limit ? parseInt(formData.usage_limit) : null,
+            applies_to_all_plans: formData.applies_to_all_plans,
+            applicable_plans: formData.applies_to_all_plans ? [] : formData.applicable_plans,
+            created_by: user.id,
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Discount code created successfully",
         });
 
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Discount code created successfully",
-      });
-
-      setFormData({
-        code: '',
-        discount_type: 'percentage',
-        discount_value: '',
-        expiration_date: undefined,
-        usage_limit: '',
-        applies_to_all_plans: true,
-        applicable_plans: [],
-      });
+        setFormData({
+          code: '',
+          discount_type: 'percentage',
+          discount_value: '',
+          expiration_date: undefined,
+          usage_limit: '',
+          applies_to_all_plans: true,
+          applicable_plans: [],
+        });
+      }
 
       onSuccess();
     } catch (error: any) {
@@ -113,7 +166,7 @@ export function DiscountCodeForm({ onSuccess, onCancel }: DiscountCodeFormProps)
         title: "Error",
         description: error.message.includes('duplicate') ? 
           "A discount code with this name already exists" : 
-          "Failed to create discount code",
+          `Failed to ${isEditing ? 'update' : 'create'} discount code`,
         variant: "destructive",
       });
     } finally {
@@ -146,7 +199,7 @@ export function DiscountCodeForm({ onSuccess, onCancel }: DiscountCodeFormProps)
           disabled={loading}
           className="bg-[#c49d68] hover:bg-[#c49d68]/90 text-white px-6 py-3 text-base font-semibold rounded-xl shadow-md order-1 sm:order-2"
         >
-          {loading ? "Creating..." : "Create Code"}
+          {loading ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Code" : "Create Code")}
         </Button>
       </div>
     </form>
