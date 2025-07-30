@@ -9,7 +9,7 @@ import { RootLayout } from "./components/layout/root-layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RouteGuard } from "./components/auth/RouteGuard";
-import { useSecurityMonitoring } from "./hooks/useSecurityMonitoring";
+import { SecurityMonitoringWrapper } from "./components/SecurityMonitoringWrapper";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -45,12 +45,6 @@ import UnsubscribePage from "./pages/UnsubscribePage";
 const queryClient = new QueryClient();
 
 function App() {
-  // Initialize security monitoring
-  useSecurityMonitoring({
-    enableRouteMonitoring: true,
-    enableSessionValidation: true,
-    enableRateLimit: true
-  });
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -58,6 +52,7 @@ function App() {
           <BrowserRouter>
             <ErrorBoundary>
               <AuthProvider>
+                <SecurityMonitoringWrapper>
                 <Routes>
                   <Route path="/" element={<RootLayout />}>
                     <Route index element={<Index />} />
@@ -96,6 +91,7 @@ function App() {
                 </Routes>
                 <Toaster />
                 <Sonner />
+                </SecurityMonitoringWrapper>
               </AuthProvider>
             </ErrorBoundary>
           </BrowserRouter>
