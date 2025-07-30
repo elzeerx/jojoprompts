@@ -97,12 +97,45 @@ export const useAuthSignOut = ({
       SessionManager.cleanup();
       SessionSecurity.cleanup();
       
-      // Clear any additional auth-related localStorage items
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes('supabase') || key.includes('auth') || key.includes('session')) {
-          localStorage.removeItem(key);
-        }
-      });
+      // Enhanced cleanup of auth-related storage
+      try {
+        // Clear Supabase specific storage keys
+        const storageKeys = Object.keys(localStorage);
+        const authKeys = storageKeys.filter(key => 
+          key.includes('supabase') || 
+          key.includes('auth') || 
+          key.includes('session') ||
+          key.includes('sb-') || // Supabase storage prefix
+          key.includes('refresh_token') ||
+          key.includes('access_token')
+        );
+        
+        authKeys.forEach(key => {
+          try {
+            localStorage.removeItem(key);
+            debug(`Cleared localStorage key: ${key}`);
+          } catch (err) {
+            console.warn(`Failed to clear localStorage key ${key}:`, err);
+          }
+        });
+
+        // Also clear sessionStorage
+        const sessionKeys = Object.keys(sessionStorage);
+        const authSessionKeys = sessionKeys.filter(key => 
+          key.includes('supabase') || key.includes('auth') || key.includes('session')
+        );
+        
+        authSessionKeys.forEach(key => {
+          try {
+            sessionStorage.removeItem(key);
+            debug(`Cleared sessionStorage key: ${key}`);
+          } catch (err) {
+            console.warn(`Failed to clear sessionStorage key ${key}:`, err);
+          }
+        });
+      } catch (cleanupError) {
+        logger.warn("Error during storage cleanup", { error: cleanupError });
+      }
 
       // Clear local state
       setSession(null);

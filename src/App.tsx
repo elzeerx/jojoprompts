@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { RootLayout } from "./components/layout/root-layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -70,12 +71,12 @@ function App() {
                     <Route path="payment/callback" element={<PaymentCallbackPage />} />
                     <Route path="payment-success" element={<PaymentSuccessPage />} />
                     <Route path="payment-failed" element={<PaymentFailedPage />} />
-                    <Route path="dashboard" element={<UserDashboardPage />} />
-                    <Route path="dashboard/subscription" element={<SubscriptionDashboard />} />
-                    <Route path="dashboard/prompter" element={<PrompterDashboard />} />
-                    <Route path="prompter" element={<PrompterDashboard />} />
-                    <Route path="admin" element={<AdminDashboard />} />
-                    <Route path="admin/prompts" element={<PromptsManagement />} />
+                    <Route path="dashboard" element={<ProtectedRoute><UserDashboardPage /></ProtectedRoute>} />
+                    <Route path="dashboard/subscription" element={<ProtectedRoute><SubscriptionDashboard /></ProtectedRoute>} />
+                    <Route path="dashboard/prompter" element={<ProtectedRoute requireRole="prompter"><PrompterDashboard /></ProtectedRoute>} />
+                    <Route path="prompter" element={<ProtectedRoute requireRole="prompter"><PrompterDashboard /></ProtectedRoute>} />
+                    <Route path="admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
+                    <Route path="admin/prompts" element={<ProtectedRoute requireAdmin><PromptsManagement /></ProtectedRoute>} />
                     <Route path="prompt-generator" element={<PromptGeneratorPage />} />
                     <Route path="about" element={<AboutPage />} />
                     <Route path="contact" element={<ContactPage />} />
