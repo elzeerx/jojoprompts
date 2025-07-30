@@ -8,6 +8,8 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { RootLayout } from "./components/layout/root-layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { RouteGuard } from "./components/auth/RouteGuard";
+import { useSecurityMonitoring } from "./hooks/useSecurityMonitoring";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -43,6 +45,12 @@ import UnsubscribePage from "./pages/UnsubscribePage";
 const queryClient = new QueryClient();
 
 function App() {
+  // Initialize security monitoring
+  useSecurityMonitoring({
+    enableRouteMonitoring: true,
+    enableSessionValidation: true,
+    enableRateLimit: true
+  });
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -73,10 +81,10 @@ function App() {
                     <Route path="payment-failed" element={<PaymentFailedPage />} />
                     <Route path="dashboard" element={<ProtectedRoute><UserDashboardPage /></ProtectedRoute>} />
                     <Route path="dashboard/subscription" element={<ProtectedRoute><SubscriptionDashboard /></ProtectedRoute>} />
-                    <Route path="dashboard/prompter" element={<ProtectedRoute requireRole="prompter"><PrompterDashboard /></ProtectedRoute>} />
-                    <Route path="prompter" element={<ProtectedRoute requireRole="prompter"><PrompterDashboard /></ProtectedRoute>} />
-                    <Route path="admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
-                    <Route path="admin/prompts" element={<ProtectedRoute requireAdmin><PromptsManagement /></ProtectedRoute>} />
+                    <Route path="dashboard/prompter" element={<RouteGuard requiredRole="prompter"><PrompterDashboard /></RouteGuard>} />
+                    <Route path="prompter" element={<RouteGuard requiredRole="prompter"><PrompterDashboard /></RouteGuard>} />
+                    <Route path="admin" element={<RouteGuard requiredRole="admin" fallbackRoute="/prompts"><AdminDashboard /></RouteGuard>} />
+                    <Route path="admin/prompts" element={<RouteGuard requiredRole="admin" fallbackRoute="/prompts"><PromptsManagement /></RouteGuard>} />
                     <Route path="prompt-generator" element={<PromptGeneratorPage />} />
                     <Route path="about" element={<AboutPage />} />
                     <Route path="contact" element={<ContactPage />} />
