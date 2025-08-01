@@ -83,7 +83,7 @@ export abstract class BaseService<T = any> {
     context?: Record<string, any>
   ): Promise<ApiResponse<R>> {
     try {
-      logger.api(`Starting ${operation}`, this.serviceName, context);
+      logger.api(`Starting ${operation}`, this.serviceName, context || {});
       
       const { data, error, count } = await queryFn();
       
@@ -105,7 +105,7 @@ export abstract class BaseService<T = any> {
 
       logger.api(`${operation} completed successfully`, this.serviceName, { 
         resultCount: Array.isArray(data) ? data.length : (data ? 1 : 0),
-        context 
+        context: context || {}
       });
 
       return {
@@ -182,11 +182,13 @@ export abstract class BaseService<T = any> {
           .select('*', { count: 'exact', head: true });
 
         // Get paginated data
-        const { data, error } = await this.buildQuery({
+        const result = await this.buildQuery({
           ...options,
           limit: pageSize,
           offset
         });
+        
+        const { data, error } = result;
 
         if (error) throw error;
 
@@ -343,7 +345,7 @@ export abstract class BaseService<T = any> {
   ): Promise<ApiResponse<R>> {
     return this.executeQuery(
       `callFunction:${functionName}`,
-      () => supabase.rpc(functionName, params),
+      () => supabase.rpc(functionName as any, params),
       { functionName, params }
     );
   }

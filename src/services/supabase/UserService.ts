@@ -1,40 +1,55 @@
 /**
- * User service for authentication and profile management
+ * User service for handling user-related operations
+ * Extends BaseService with user-specific functionality
  */
 
 import { BaseService } from './BaseService';
 import { supabase } from '@/integrations/supabase/client';
-import { User, UserProfile, UserRole, ApiResponse } from '@/types/common';
 import { logger } from '@/utils/logger';
+import { ApiResponse } from '@/types/common';
 
+// User-related type interfaces
 export interface AuthCredentials {
   email: string;
   password: string;
 }
 
-export interface SignUpData extends AuthCredentials {
+export interface SignUpData {
+  email: string;
+  password: string;
   firstName?: string;
   lastName?: string;
 }
 
 export interface ProfileUpdateData {
-  first_name?: string;
-  last_name?: string;
-  bio?: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
   avatar_url?: string;
-  phone_number?: string;
-  country?: string;
-  timezone?: string;
-  social_links?: Record<string, string>;
+  bio?: string;
 }
 
-class UserService extends BaseService<UserProfile> {
+export interface UserProfile {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  role: 'user' | 'admin' | 'prompter' | 'jadmin';
+  avatar_url?: string;
+  bio?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type UserRole = 'user' | 'admin' | 'prompter' | 'jadmin';
+
+export class UserService extends BaseService<UserProfile> {
   constructor() {
     super('profiles', 'UserService');
   }
 
-  // Authentication methods
-  async signUp(data: SignUpData): Promise<ApiResponse<User>> {
+  // Authentication-related methods
+  async signUp(data: SignUpData): Promise<ApiResponse<any>> {
     return this.executeQuery(
       'signUp',
       async () => {
@@ -44,45 +59,27 @@ class UserService extends BaseService<UserProfile> {
           options: {
             data: {
               first_name: data.firstName,
-              last_name: data.lastName,
-              full_name: `${data.firstName || ''} ${data.lastName || ''}`.trim()
+              last_name: data.lastName
             }
           }
         });
 
         if (error) throw error;
-        return { data: authData.user };
+        return { data: authData };
       },
       { email: data.email }
     );
   }
 
-  async signIn(credentials: AuthCredentials): Promise<ApiResponse<User>> {
+  async signIn(credentials: AuthCredentials): Promise<ApiResponse<any>> {
     return this.executeQuery(
       'signIn',
       async () => {
         const { data, error } = await supabase.auth.signInWithPassword(credentials);
         if (error) throw error;
-        return { data: data.user };
+        return { data };
       },
       { email: credentials.email }
-    );
-  }
-
-  async signInWithMagicLink(email: string): Promise<ApiResponse<void>> {
-    return this.executeQuery(
-      'signInWithMagicLink',
-      async () => {
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            emailRedirectTo: `${window.location.origin}/email-confirmation`
-          }
-        });
-        if (error) throw error;
-        return { data: undefined };
-      },
-      { email }
     );
   }
 
@@ -97,74 +94,85 @@ class UserService extends BaseService<UserProfile> {
     );
   }
 
-  async resetPassword(email: string): Promise<ApiResponse<void>> {
+  async getCurrentUser(): Promise<ApiResponse<UserProfile>> {
     return this.executeQuery(
-      'resetPassword',
+      'getCurrentUser',
       async () => {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`
-        });
-        if (error) throw error;
-        return { data: undefined };
-      },
-      { email }
-    );
-  }
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        if (!user) throw new Error('No authenticated user');
 
-  async updatePassword(newPassword: string): Promise<ApiResponse<void>> {
-    return this.executeQuery(
-      'updatePassword',
-      async () => {
-        const { error } = await supabase.auth.updateUser({
-          password: newPassword
-        });
-        if (error) throw error;
-        return { data: undefined };
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) throw profileError;
+        return { data: profile };
       }
     );
   }
 
-  // Profile methods
-  async getProfile(userId: string): Promise<ApiResponse<UserProfile>> {
-    return this.findById(userId);
-  }
-
+  // Profile management
   async updateProfile(userId: string, data: ProfileUpdateData): Promise<ApiResponse<UserProfile>> {
-    return this.update(userId, data);
-  }
-
-  async getUserWithProfile(userId: string): Promise<ApiResponse<{ user: User; profile: UserProfile }>> {
     return this.executeQuery(
-      'getUserWithProfile',
-      async () => {
-        // Get auth user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-        if (!user) throw new Error('User not found');
-
-        // Get profile
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (profileError) throw profileError;
-
-        return { data: { user, profile } };
-      },
-      { userId }
+      'updateProfile',
+      () => supabase
+        .from('profiles')
+        .update({
+          first_name: data.firstName,
+          last_name: data.lastName,
+          username: data.username,
+          avatar_url: data.avatar_url,
+          bio: data.bio,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select('*')
+        .single(),
+      { userId, data }
     );
   }
 
-  async getUsersByRole(role: UserRole): Promise<ApiResponse<UserProfile[]>> {
-    return this.findAll({
-      filters: { role },
-      orderBy: { column: 'created_at', ascending: false }
-    });
+  async getUserProfile(userId: string): Promise<ApiResponse<UserProfile>> {
+    return this.findById(userId);
   }
 
-  async searchUsers(searchTerm: string, limit: number = 20): Promise<ApiResponse<UserProfile[]>> {
+  async getAllUsers(
+    page: number = 1, 
+    pageSize: number = 20,
+    searchTerm?: string
+  ): Promise<ApiResponse<UserProfile[]>> {
+    const options: any = {
+      orderBy: { column: 'created_at', ascending: false }
+    };
+
+    if (searchTerm) {
+      // For search, we'll use a direct query instead of buildQuery
+      return this.executeQuery(
+        'getAllUsers',
+        () => supabase
+          .from('profiles')
+          .select('*')
+          .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,username.ilike.%${searchTerm}%`)
+          .order('created_at', { ascending: false })
+          .range((page - 1) * pageSize, page * pageSize - 1),
+        { page, pageSize, searchTerm }
+      );
+    }
+
+    const result = await this.findPaginated(page, pageSize, options);
+    if (result.success && result.data) {
+      return {
+        success: true,
+        data: result.data.data
+      };
+    }
+    return result as any;
+  }
+
+  async searchUsers(searchTerm: string, limit = 10): Promise<ApiResponse<UserProfile[]>> {
     return this.executeQuery(
       'searchUsers',
       () => supabase
@@ -177,7 +185,7 @@ class UserService extends BaseService<UserProfile> {
   }
 
   async updateUserRole(userId: string, newRole: UserRole, adminId: string): Promise<ApiResponse<UserProfile>> {
-    logger.security('Attempting role change', this.serviceName, { 
+    logger.security('Attempting role change', { 
       userId, 
       newRole, 
       adminId 
@@ -207,7 +215,7 @@ class UserService extends BaseService<UserProfile> {
 
         if (error) throw error;
 
-        logger.security('Role change completed', this.serviceName, { 
+        logger.security('Role change completed', { 
           userId, 
           newRole, 
           adminId 
@@ -228,12 +236,14 @@ class UserService extends BaseService<UserProfile> {
         });
 
         if (error) throw error;
-        if (!data.success) throw new Error(data.error || 'Failed to delete account');
+        
+        const result = data as any;
+        if (!result.success) throw new Error(result.error || 'Failed to delete account');
 
-        logger.security('User account deleted', this.serviceName, { 
+        logger.security('User account deleted', { 
           userId, 
           adminId,
-          subscriptionCancelled: data.subscription_cancelled 
+          subscriptionCancelled: result.subscription_cancelled 
         });
 
         return { data: undefined };
@@ -242,64 +252,74 @@ class UserService extends BaseService<UserProfile> {
     );
   }
 
-  // Session and security methods
-  async getCurrentSession(): Promise<ApiResponse<any>> {
+  // Password management
+  async resetPassword(email: string): Promise<ApiResponse<void>> {
     return this.executeQuery(
-      'getCurrentSession',
+      'resetPassword',
       async () => {
-        const { data, error } = await supabase.auth.getSession();
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw error;
-        return { data: data.session };
+        return { data: undefined };
+      },
+      { email }
+    );
+  }
+
+  async updatePassword(newPassword: string): Promise<ApiResponse<void>> {
+    return this.executeQuery(
+      'updatePassword',
+      async () => {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        return { data: undefined };
       }
     );
   }
 
-  async refreshSession(): Promise<ApiResponse<any>> {
-    return this.executeQuery(
-      'refreshSession',
-      async () => {
-        const { data, error } = await supabase.auth.refreshSession();
-        if (error) throw error;
-        return { data: data.session };
-      }
-    );
+  // Permission helpers
+  async hasRole(userId: string, role: UserRole): Promise<boolean> {
+    try {
+      const result = await this.callFunction('has_role', { _user_id: userId, _role: role });
+      return result.success && result.data === true;
+    } catch (error) {
+      logger.error('Failed to check user role', this.serviceName, { userId, role, error });
+      return false;
+    }
   }
 
-  // Admin methods
-  async getAllUsers(options: { page?: number; pageSize?: number; role?: UserRole } = {}): Promise<ApiResponse<any>> {
-    const { page = 1, pageSize = 20, role } = options;
-    
-    const queryOptions = {
-      orderBy: { column: 'created_at', ascending: false },
-      ...(role && { filters: { role } })
-    };
-
-    return this.findPaginated(page, pageSize, queryOptions);
+  async canManagePrompts(userId: string): Promise<boolean> {
+    try {
+      const result = await this.callFunction('can_manage_prompts', { _user_id: userId });
+      return result.success && result.data === true;
+    } catch (error) {
+      logger.error('Failed to check prompt management permissions', this.serviceName, { userId, error });
+      return false;
+    }
   }
 
-  async getUserStats(): Promise<ApiResponse<Record<string, number>>> {
+  // User statistics
+  async getUserStats(): Promise<ApiResponse<any>> {
     return this.executeQuery(
       'getUserStats',
       async () => {
-        const [
-          { count: totalUsers },
-          { count: adminUsers },
-          { count: prompterUsers },
-          { count: activeUsers }
-        ] = await Promise.all([
-          supabase.from('profiles').select('*', { count: 'exact', head: true }),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'prompter'),
-          supabase.from('profiles').select('*', { count: 'exact', head: true })
-            .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-        ]);
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('role, created_at');
+
+        const usersByRole = users?.reduce((acc, user) => {
+          acc[user.role] = (acc[user.role] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>) || {};
+
+        const recentUsers = users?.filter(user => 
+          new Date(user.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        ).length || 0;
 
         return {
           data: {
-            total: totalUsers || 0,
-            admins: adminUsers || 0,
-            prompters: prompterUsers || 0,
-            activeLastMonth: activeUsers || 0
+            totalUsers: users?.length || 0,
+            usersByRole,
+            recentUsers
           }
         };
       }
@@ -307,4 +327,5 @@ class UserService extends BaseService<UserProfile> {
   }
 }
 
+// Export singleton instance
 export const userService = new UserService();
