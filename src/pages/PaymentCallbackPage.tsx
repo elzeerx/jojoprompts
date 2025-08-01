@@ -37,7 +37,7 @@ export default function PaymentCallbackPage() {
   useEffect(() => {
     const attemptAutoCapture = async () => {
       if (success && orderId && !paymentId) {
-        console.log('Attempting auto-capture for approved order:', orderId);
+        // Attempting auto-capture for approved PayPal order
         try {
           const { data, error } = await supabase.functions.invoke('process-paypal-payment', {
             body: {
@@ -49,13 +49,13 @@ export default function PaymentCallbackPage() {
           });
 
           if (data?.success) {
-            console.log('Auto-capture successful:', data);
+            // Auto-capture completed successfully
             // The payment processing hook will handle the rest
           } else {
-            console.log('Auto-capture failed:', error || data?.error);
+            // Auto-capture failed - will be handled by payment processing hook
           }
         } catch (err) {
-          console.log('Auto-capture error:', err);
+          // Auto-capture error will be handled by payment processing
         }
       }
     };

@@ -48,12 +48,19 @@ export function useSecurityMonitoring(options: SecurityMonitoringOptions = {}) {
           const result = await EnhancedSessionValidator.validateSession(user.id);
           
           if (!result.isValid) {
-            console.warn('Session validation failed:', result.reason);
-            // Handle session invalidation if needed
+            securityLogger.logSecurityEvent({
+              action: 'session_validation_failed',
+              userId: user.id,
+              details: { reason: result.reason }
+            });
           }
 
           if (result.securityFlags && result.securityFlags.length > 0) {
-            console.warn('Security flags detected:', result.securityFlags);
+            securityLogger.logSecurityEvent({
+              action: 'security_flags_detected',
+              userId: user.id,
+              details: { flags: result.securityFlags }
+            });
           }
         }
       }, 5 * 60 * 1000); // Every 5 minutes

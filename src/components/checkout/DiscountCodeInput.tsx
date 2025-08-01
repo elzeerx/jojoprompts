@@ -57,10 +57,7 @@ export function DiscountCodeInput({
 
     setLoading(true);
     try {
-      console.log('=== DISCOUNT VALIDATION DEBUG ===');
-      console.log('Validating code:', code.trim().toUpperCase());
-      console.log('Plan ID:', planId);
-      console.log('================================');
+      // Validating discount code
 
       // Call the function with plan validation and user_id
       const { data, error } = await supabase.rpc('validate_discount_code', {
@@ -85,11 +82,7 @@ export function DiscountCodeInput({
 
       const discount = data[0];
       
-      console.log('=== DISCOUNT VALIDATION RESULT ===');
-      console.log('Discount data:', discount);
-      console.log('Is valid:', discount.is_valid);
-      console.log('Error message:', discount.error_message);
-      console.log('=================================');
+      // Discount validation completed
       
       if (!discount.is_valid) {
         toast({
