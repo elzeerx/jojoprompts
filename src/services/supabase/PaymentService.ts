@@ -1,9 +1,8 @@
 /**
  * Payment service for handling subscription and transaction operations
- * Extends BaseService with payment-specific functionality
+ * Simplified to avoid TypeScript type recursion issues
  */
 
-import { BaseService } from './BaseService';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
 import { ApiResponse } from '@/types/common';
@@ -27,47 +26,33 @@ export interface PaymentVerificationParams {
   userId: string;
 }
 
-export interface UserSubscription {
-  id: string;
-  user_id: string;
-  plan_id: string;
-  status: 'active' | 'cancelled' | 'expired';
-  start_date: string;
-  end_date?: string;
-  payment_method: string;
-  payment_id?: string;
-  transaction_id?: string;
-}
-
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  description?: string;
-  price_usd: number;
-  billing_period: 'monthly' | 'yearly' | 'lifetime';
-  features: string[];
-  is_active: boolean;
-  is_lifetime: boolean;
-}
-
-export class PaymentService extends BaseService {
-  constructor() {
-    super('transactions', 'PaymentService');
-  }
+export class PaymentService {
+  constructor() {}
 
   // Transaction management
   async createTransaction(data: PaymentData): Promise<ApiResponse<any>> {
-    const transactionData = {
-      user_id: data.userId,
-      plan_id: data.planId,
-      amount: data.amount,
-      currency: data.currency || 'USD',
-      payment_method: data.paymentMethod,
-      payment_id: data.paymentId,
-      status: 'pending'
-    };
+    try {
+      const transactionData = {
+        user_id: data.userId,
+        plan_id: data.planId,
+        amount_usd: data.amount,
+        payment_method: data.paymentMethod,
+        paypal_payment_id: data.paymentId,
+        status: 'pending'
+      };
 
-    return this.create(transactionData);
+      const { data: result, error } = await supabase
+        .from('transactions')
+        .insert(transactionData)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   async updateTransactionStatus(
@@ -75,31 +60,52 @@ export class PaymentService extends BaseService {
     status: string, 
     metadata?: Record<string, any>
   ): Promise<ApiResponse<any>> {
-    const updateData: any = { 
-      status,
-      updated_at: new Date().toISOString()
-    };
-    
-    if (metadata) {
-      updateData.metadata = metadata;
-    }
+    try {
+      const updateData: any = { 
+        status,
+        completed_at: status === 'completed' ? new Date().toISOString() : null
+      };
+      
+      if (metadata) {
+        updateData.error_message = metadata.error;
+      }
 
-    return this.update(transactionId, updateData);
+      const { data, error } = await supabase
+        .from('transactions')
+        .update(updateData)
+        .eq('id', transactionId)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   async getTransactionsByUser(userId: string, limit = 10): Promise<ApiResponse<any[]>> {
-    return this.findAll({
-      filters: { user_id: userId },
-      orderBy: { column: 'created_at', ascending: false },
-      limit
-    });
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   // Subscription management
-  async createSubscription(data: PaymentData): Promise<ApiResponse<UserSubscription>> {
-    return this.executeQuery(
-      'createSubscription',
-      () => supabase
+  async createSubscription(data: PaymentData): Promise<ApiResponse<any>> {
+    try {
+      const { data: result, error } = await supabase
         .from('user_subscriptions')
         .insert({
           user_id: data.userId,
@@ -111,95 +117,115 @@ export class PaymentService extends BaseService {
           start_date: new Date().toISOString()
         })
         .select('*')
-        .single(),
-      data
-    );
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
-  async getUserSubscription(userId: string): Promise<ApiResponse<UserSubscription>> {
-    return this.executeQuery(
-      'getUserSubscription',
-      () => supabase
+  async getUserSubscription(userId: string): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await supabase
         .from('user_subscriptions')
-        .select('id, user_id, plan_id, status, start_date, end_date, payment_method, payment_id, created_at')
+        .select('*')
         .eq('user_id', userId)
         .eq('status', 'active')
-        .maybeSingle(),
-      { userId }
-    );
+        .maybeSingle();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
-  async cancelSubscription(
-    userId: string, 
-    adminId?: string
-  ): Promise<ApiResponse<UserSubscription>> {
-    return this.executeQuery(
-      'cancelSubscription',
-      async () => {
-        if (adminId) {
-          // Admin cancellation
-          const { data, error } = await supabase.rpc('cancel_user_subscription', {
-            _user_id: userId,
-            _admin_id: adminId
-          });
-          
-          if (error) throw error;
-          const result = data as any;
-          if (!result.success) throw new Error(result.error);
-          
-          logger.security('Admin cancelled user subscription', { userId, adminId });
-          
-          return { data };
-        } else {
-          // User self-cancellation
-          return supabase
-            .from('user_subscriptions')
-            .update({ status: 'cancelled' })
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .select('*');
-        }
-      },
-      { userId, adminId }
-    );
+  async cancelSubscription(userId: string, adminId?: string): Promise<ApiResponse<any>> {
+    try {
+      if (adminId) {
+        // Admin cancellation
+        const { data, error } = await supabase.rpc('cancel_user_subscription', {
+          _user_id: userId,
+          _admin_id: adminId
+        });
+        
+        if (error) throw error;
+        
+        const result = data as any;
+        if (!result.success) throw new Error(result.error);
+        
+        logger.security('Admin cancelled user subscription', { userId, adminId });
+        
+        return { success: true, data: result };
+      } else {
+        // User self-cancellation
+        const { data, error } = await supabase
+          .from('user_subscriptions')
+          .update({ status: 'cancelled' })
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .select('*');
+
+        if (error) throw error;
+
+        return { success: true, data };
+      }
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   // Subscription plan methods
-  async getSubscriptionPlans(): Promise<ApiResponse<SubscriptionPlan[]>> {
-    return this.executeQuery(
-      'getSubscriptionPlans',
-      () => supabase
+  async getSubscriptionPlans(): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
         .from('subscription_plans')
         .select('*')
-        .eq('is_active', true)
-        .order('price_usd', { ascending: true }),
-      {}
-    );
+        .order('price_usd', { ascending: true });
+
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
-  async getSubscriptionPlan(planId: string): Promise<ApiResponse<SubscriptionPlan>> {
-    return this.executeQuery(
-      'getSubscriptionPlan',
-      () => supabase
+  async getSubscriptionPlan(planId: string): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await supabase
         .from('subscription_plans')
         .select('*')
         .eq('id', planId)
-        .single(),
-      { planId }
-    );
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   // Discount code methods
   async validateDiscountCode(code: string, planId?: string, userId?: string): Promise<ApiResponse<any>> {
-    return this.executeQuery(
-      'validateDiscountCode',
-      () => supabase.rpc('validate_discount_code', {
+    try {
+      const { data, error } = await supabase.rpc('validate_discount_code', {
         code_text: code,
         plan_id_param: planId,
         user_id_param: userId
-      }),
-      { code, planId, userId }
-    );
+      });
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   async recordDiscountUsage(
@@ -207,24 +233,38 @@ export class PaymentService extends BaseService {
     userId: string, 
     paymentHistoryId?: string
   ): Promise<ApiResponse<boolean>> {
-    return this.executeQuery(
-      'recordDiscountUsage',
-      () => supabase.rpc('record_discount_usage', {
+    try {
+      const { data, error } = await supabase.rpc('record_discount_usage', {
         discount_code_id_param: discountCodeId,
         user_id_param: userId,
         payment_history_id_param: paymentHistoryId
-      }),
-      { discountCodeId, userId, paymentHistoryId }
-    );
+      });
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   // PayPal integration methods
   async createPayPalPayment(data: PaymentData): Promise<ApiResponse<any>> {
-    return this.callEdgeFunction('create-paypal-payment', {
-      planId: data.planId,
-      userId: data.userId,
-      discountCode: data.discountCode
-    });
+    try {
+      const { data: result, error } = await supabase.functions.invoke('create-paypal-payment', {
+        body: {
+          planId: data.planId,
+          userId: data.userId,
+          discountCode: data.discountCode
+        }
+      });
+
+      if (error) throw error;
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   async capturePayPalPayment(data: {
@@ -233,70 +273,65 @@ export class PaymentService extends BaseService {
     userId: string;
     discountCode?: string;
   }): Promise<ApiResponse<any>> {
-    return this.callEdgeFunction('capture-paypal-payment', data);
-  }
+    try {
+      const { data: result, error } = await supabase.functions.invoke('capture-paypal-payment', {
+        body: data
+      });
 
-  async processDirectActivation(data: PaymentData): Promise<ApiResponse<any>> {
-    return this.callEdgeFunction('process-direct-activation', {
-      planId: data.planId,
-      userId: data.userId,
-      paymentMethod: data.paymentMethod
-    });
+      if (error) throw error;
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   async verifyPayment(params: PaymentVerificationParams): Promise<ApiResponse<any>> {
-    return this.callEdgeFunction('verify-payment', params);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('verify-payment', {
+        body: params
+      });
+
+      if (error) throw error;
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   // Analytics and reporting
   async getPaymentStats(startDate?: string, endDate?: string): Promise<ApiResponse<any>> {
-    const { data: transactions } = await supabase
-      .from('transactions')
-      .select('amount_usd, created_at, status')
-      .gte('created_at', startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-      .lte('created_at', endDate || new Date().toISOString());
+    try {
+      const { data: transactions } = await supabase
+        .from('transactions')
+        .select('amount_usd, created_at, status')
+        .gte('created_at', startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .lte('created_at', endDate || new Date().toISOString());
 
-    const { data: subscriptions } = await supabase
-      .from('user_subscriptions')
-      .select('created_at, status')
-      .gte('created_at', startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-      .lte('created_at', endDate || new Date().toISOString());
+      const { data: subscriptions } = await supabase
+        .from('user_subscriptions')
+        .select('created_at, status')
+        .gte('created_at', startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .lte('created_at', endDate || new Date().toISOString());
 
-    const totalRevenue = transactions?.reduce((sum, t) => sum + (t.amount_usd || 0), 0) || 0;
-    const successfulTransactions = transactions?.filter(t => t.status === 'completed').length || 0;
-    const newSubscriptions = subscriptions?.filter(s => s.status === 'active').length || 0;
+      const totalRevenue = transactions?.reduce((sum, t) => sum + (t.amount_usd || 0), 0) || 0;
+      const successfulTransactions = transactions?.filter(t => t.status === 'completed').length || 0;
+      const newSubscriptions = subscriptions?.filter(s => s.status === 'active').length || 0;
 
-    return {
-      success: true,
-      data: {
-        totalRevenue,
-        successfulTransactions,
-        newSubscriptions,
-        totalTransactions: transactions?.length || 0,
-        conversionRate: transactions?.length ? (successfulTransactions / transactions.length) * 100 : 0
-      }
-    };
-  }
-
-  async getSubscriptionStats(): Promise<ApiResponse<any>> {
-    const { data: subscriptionCounts } = await supabase
-      .from('user_subscriptions')
-      .select('status');
-
-    const activeSubscriptions = subscriptionCounts?.filter(s => s.status === 'active').length || 0;
-    const cancelledSubscriptions = subscriptionCounts?.filter(s => s.status === 'cancelled').length || 0;
-    const expiredSubscriptions = subscriptionCounts?.filter(s => s.status === 'expired').length || 0;
-
-    return {
-      success: true,
-      data: {
-        active: activeSubscriptions,
-        cancelled: cancelledSubscriptions,
-        expired: expiredSubscriptions,
-        total: subscriptionCounts?.length || 0,
-        churnRate: subscriptionCounts?.length ? (cancelledSubscriptions / subscriptionCounts.length) * 100 : 0
-      }
-    };
+      return {
+        success: true,
+        data: {
+          totalRevenue,
+          successfulTransactions,
+          newSubscriptions,
+          totalTransactions: transactions?.length || 0,
+          conversionRate: transactions?.length ? (successfulTransactions / transactions.length) * 100 : 0
+        }
+      };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 }
 

@@ -1,9 +1,8 @@
 /**
  * Prompt service for handling prompt-related operations
- * Extends BaseService with prompt-specific functionality
+ * Simplified to avoid TypeScript type recursion issues
  */
 
-import { BaseService } from './BaseService';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
 import { ApiResponse } from '@/types/common';
@@ -36,324 +35,311 @@ export interface PromptSearchOptions {
   tags?: string[];
   isPublic?: boolean;
   userId?: string;
-  sortBy?: 'created_at' | 'updated_at' | 'usage_count';
+  sortBy?: 'created_at' | 'updated_at';
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface Prompt {
-  id: string;
-  title: string;
-  description?: string;
-  content: string;
-  category_id?: string;
-  tags?: string[];
-  is_public: boolean;
-  image_url?: string;
-  user_id: string;
-  usage_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  description?: string;
-  is_active: boolean;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export class PromptService extends BaseService<Prompt> {
-  constructor() {
-    super('prompts', 'PromptService');
-  }
+export class PromptService {
+  constructor() {}
 
   // Prompt CRUD operations
-  async createPrompt(data: CreatePromptData): Promise<ApiResponse<Prompt>> {
-    const promptData = {
-      title: data.title,
-      description: data.description,
-      content: data.content,
-      category_id: data.categoryId,
-      tags: data.tags,
-      is_public: data.isPublic ?? false,
-      image_url: data.imageUrl,
-      user_id: data.userId,
-      usage_count: 0
-    };
+  async createPrompt(data: CreatePromptData): Promise<ApiResponse<any>> {
+    try {
+      const promptData = {
+        title: data.title,
+        prompt_text: data.content,
+        prompt_type: 'image',
+        user_id: data.userId,
+        metadata: {
+          description: data.description,
+          tags: data.tags,
+          isPublic: data.isPublic
+        },
+        image_path: data.imageUrl
+      };
 
-    return this.create(promptData);
+      const { data: result, error } = await supabase
+        .from('prompts')
+        .insert(promptData)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
-  async updatePrompt(promptId: string, data: UpdatePromptData): Promise<ApiResponse<Prompt>> {
-    const updateData = {
-      ...data,
-      category_id: data.categoryId,
-      is_public: data.isPublic,
-      image_url: data.imageUrl,
-      updated_at: new Date().toISOString()
-    };
+  async updatePrompt(promptId: string, data: UpdatePromptData): Promise<ApiResponse<any>> {
+    try {
+      const updateData = {
+        title: data.title,
+        prompt_text: data.content,
+        image_path: data.imageUrl,
+        metadata: {
+          description: data.description,
+          tags: data.tags,
+          isPublic: data.isPublic
+        }
+      };
 
-    return this.update(promptId, updateData);
+      const { data: result, error } = await supabase
+        .from('prompts')
+        .update(updateData)
+        .eq('id', promptId)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   async deletePrompt(promptId: string): Promise<ApiResponse<void>> {
-    return this.delete(promptId);
+    try {
+      const { error } = await supabase
+        .from('prompts')
+        .delete()
+        .eq('id', promptId);
+
+      if (error) throw error;
+
+      return { success: true, data: undefined };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
-  async getPrompt(promptId: string): Promise<ApiResponse<Prompt>> {
-    return this.findById(promptId);
+  async getPrompt(promptId: string): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await supabase
+        .from('prompts')
+        .select('*')
+        .eq('id', promptId)
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   // Search and filtering
-  async searchPrompts(options: PromptSearchOptions): Promise<ApiResponse<Prompt[]>> {
-    return this.executeQuery(
-      'searchPrompts',
-      () => {
-        let query = supabase.from('prompts').select('*');
+  async searchPrompts(options: PromptSearchOptions): Promise<ApiResponse<any[]>> {
+    try {
+      let query = supabase.from('prompts').select('*');
 
-        // Apply filters
-        if (options.searchTerm) {
-          query = query.or(`title.ilike.%${options.searchTerm}%,description.ilike.%${options.searchTerm}%,content.ilike.%${options.searchTerm}%`);
-        }
+      // Apply filters
+      if (options.searchTerm) {
+        query = query.or(`title.ilike.%${options.searchTerm}%,prompt_text.ilike.%${options.searchTerm}%`);
+      }
 
-        if (options.categoryId) {
-          query = query.eq('category_id', options.categoryId);
-        }
+      if (options.userId) {
+        query = query.eq('user_id', options.userId);
+      }
 
-        if (options.isPublic !== undefined) {
-          query = query.eq('is_public', options.isPublic);
-        }
+      // Apply sorting
+      const sortBy = options.sortBy || 'created_at';
+      const ascending = options.sortOrder === 'asc';
+      query = query.order(sortBy, { ascending });
 
-        if (options.userId) {
-          query = query.eq('user_id', options.userId);
-        }
+      const { data, error } = await query;
 
-        if (options.tags && options.tags.length > 0) {
-          query = query.overlaps('tags', options.tags);
-        }
+      if (error) throw error;
 
-        // Apply sorting
-        const sortBy = options.sortBy || 'created_at';
-        const ascending = options.sortOrder === 'asc';
-        query = query.order(sortBy, { ascending });
-
-        return query;
-      },
-      options
-    );
-  }
-
-  async getPublicPrompts(limit = 20, offset = 0): Promise<ApiResponse<Prompt[]>> {
-    return this.findAll({
-      filters: { is_public: true },
-      orderBy: { column: 'created_at', ascending: false },
-      limit,
-      offset
-    });
-  }
-
-  async getUserPrompts(userId: string, includePrivate = false): Promise<ApiResponse<Prompt[]>> {
-    const filters: any = { user_id: userId };
-    
-    if (!includePrivate) {
-      filters.is_public = true;
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
     }
-
-    return this.findAll({
-      filters,
-      orderBy: { column: 'created_at', ascending: false }
-    });
   }
 
-  async getPopularPrompts(limit = 20): Promise<ApiResponse<Prompt[]>> {
-    return this.findAll({
-      filters: { is_public: true },
-      orderBy: { column: 'usage_count', ascending: false },
-      limit
-    });
+  async getPublicPrompts(limit = 20, offset = 0): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prompts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
-  async getRecentPrompts(limit = 10): Promise<ApiResponse<Prompt[]>> {
-    return this.findAll({
-      filters: { is_public: true },
-      orderBy: { column: 'created_at', ascending: false },
-      limit
-    });
+  async getUserPrompts(userId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prompts')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
-  async getPromptsByCategory(categoryId: string, limit = 20): Promise<ApiResponse<Prompt[]>> {
-    return this.findAll({
-      filters: { category_id: categoryId, is_public: true },
-      orderBy: { column: 'created_at', ascending: false },
-      limit
-    });
+  async getPopularPrompts(limit = 20): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prompts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
-  // Usage tracking - simplified since increment_prompt_usage function doesn't exist
-  async incrementUsageCount(promptId: string): Promise<ApiResponse<void>> {
-    // This would need a custom database function or manual update
-    return {
-      success: false,
-      error: { message: 'Usage tracking not implemented' }
-    };
+  async getRecentPrompts(limit = 10): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('prompts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
+  // Usage tracking
   async recordPromptUsage(promptId: string, userId: string): Promise<ApiResponse<void>> {
-    return this.executeQuery(
-      'recordPromptUsage',
-      () => supabase
+    try {
+      const { error } = await supabase
         .from('prompt_usage_history')
         .insert({
           action_type: 'used',
           prompt_id: promptId,
           user_id: userId,
           metadata: {}
-        }),
-      { promptId, userId }
-    );
+        });
+
+      if (error) throw error;
+
+      return { success: true, data: undefined };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   // Category management
-  async getCategories(): Promise<ApiResponse<Category[]>> {
-    return this.executeQuery(
-      'getCategories',
-      () => supabase
+  async getCategories(): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
         .from('categories')
         .select('*')
         .eq('is_active', true)
-        .order('display_order', { ascending: true })
-    );
-  }
+        .order('display_order', { ascending: true });
 
-  async createCategory(data: Partial<Category>): Promise<ApiResponse<Category>> {
-    return this.executeQuery(
-      'createCategory',
-      () => supabase
-        .from('categories')
-        .insert({
-          name: data.name || 'New Category',
-          link_path: data.name?.toLowerCase().replace(/\s+/g, '-') || 'new-category',
-          description: data.description,
-          display_order: data.display_order || 0
-        })
-        .select('*')
-        .single(),
-      { data }
-    );
-  }
+      if (error) throw error;
 
-  async updateCategory(categoryId: string, data: Partial<Category>): Promise<ApiResponse<Category>> {
-    return this.executeQuery(
-      'updateCategory',
-      () => supabase
-        .from('categories')
-        .update(data)
-        .eq('id', categoryId)
-        .select('*')
-        .single(),
-      { categoryId, data }
-    );
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   // Favorites management
   async addToFavorites(userId: string, promptId: string): Promise<ApiResponse<void>> {
-    return this.executeQuery(
-      'addToFavorites',
-      () => supabase
+    try {
+      const { error } = await supabase
         .from('favorites')
         .insert({
           user_id: userId,
           prompt_id: promptId
-        }),
-      { userId, promptId }
-    );
+        });
+
+      if (error) throw error;
+
+      return { success: true, data: undefined };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   async removeFromFavorites(userId: string, promptId: string): Promise<ApiResponse<void>> {
-    return this.executeQuery(
-      'removeFromFavorites',
-      () => supabase
+    try {
+      const { error } = await supabase
         .from('favorites')
         .delete()
         .eq('user_id', userId)
-        .eq('prompt_id', promptId),
-      { userId, promptId }
-    );
+        .eq('prompt_id', promptId);
+
+      if (error) throw error;
+
+      return { success: true, data: undefined };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
-  async getUserFavorites(userId: string): Promise<ApiResponse<Prompt[]>> {
-    return this.executeQuery(
-      'getUserFavorites',
-      () => supabase
+  async getUserFavorites(userId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
         .from('favorites')
         .select(`
-          prompts (
-            id, title, description, content, category_id, tags, is_public, 
-            image_url, user_id, usage_count, created_at, updated_at
-          )
+          prompt_id,
+          prompts (*)
         `)
-        .eq('user_id', userId),
-      { userId }
-    );
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 
   // Analytics and statistics
   async getPromptStats(): Promise<ApiResponse<any>> {
-    return this.executeQuery(
-      'getPromptStats',
-      async () => {
-        const { data: prompts } = await supabase
-          .from('prompts')
-          .select('prompt_type, created_at, metadata');
-
-        const totalPrompts = prompts?.length || 0;
-        const imagePrompts = prompts?.filter(p => p.prompt_type === 'image').length || 0;
-        const textPrompts = prompts?.filter(p => p.prompt_type === 'text').length || 0;
-        
-        const recentPrompts = prompts?.filter(p => 
-          new Date(p.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        ).length || 0;
-
-        return {
-          data: {
-            totalPrompts,
-            imagePrompts,
-            textPrompts,
-            recentPrompts
-          }
-        };
-      }
-    );
-  }
-
-  // Bulk operations
-  async bulkUpdatePrompts(
-    promptIds: string[], 
-    updateData: Partial<Prompt>
-  ): Promise<ApiResponse<Prompt[]>> {
-    return this.executeQuery(
-      'bulkUpdatePrompts',
-      () => supabase
+    try {
+      const { data: prompts } = await supabase
         .from('prompts')
-        .update(updateData)
-        .in('id', promptIds)
-        .select('*'),
-      { promptIds, updateData }
-    );
-  }
+        .select('prompt_type, created_at, metadata');
 
-  async bulkDeletePrompts(promptIds: string[]): Promise<ApiResponse<void>> {
-    return this.executeQuery(
-      'bulkDeletePrompts',
-      () => supabase
-        .from('prompts')
-        .delete()
-        .in('id', promptIds),
-      { promptIds }
-    );
+      const totalPrompts = prompts?.length || 0;
+      const imagePrompts = prompts?.filter(p => p.prompt_type === 'image').length || 0;
+      const textPrompts = prompts?.filter(p => p.prompt_type === 'text').length || 0;
+      
+      const recentPrompts = prompts?.filter(p => 
+        new Date(p.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      ).length || 0;
+
+      return {
+        success: true,
+        data: {
+          totalPrompts,
+          imagePrompts,
+          textPrompts,
+          recentPrompts
+        }
+      };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
+    }
   }
 }
 

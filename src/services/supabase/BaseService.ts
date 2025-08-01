@@ -83,15 +83,12 @@ export abstract class BaseService<T = any> {
     context?: Record<string, any>
   ): Promise<ApiResponse<R>> {
     try {
-      logger.api(`Starting ${operation}`, this.serviceName, context || {});
+      logger.api(`Starting ${operation}`, context || {});
       
       const { data, error, count } = await queryFn();
       
       if (error) {
-        logger.error(`${operation} failed`, this.serviceName, { 
-          error: error.message, 
-          context 
-        });
+        logger.error(`${operation} failed: ${error.message}`);
         
         return {
           success: false,
@@ -103,7 +100,7 @@ export abstract class BaseService<T = any> {
         };
       }
 
-      logger.api(`${operation} completed successfully`, this.serviceName, { 
+      logger.api(`${operation} completed successfully`, { 
         resultCount: Array.isArray(data) ? data.length : (data ? 1 : 0),
         context: context || {}
       });
@@ -116,10 +113,7 @@ export abstract class BaseService<T = any> {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      logger.error(`${operation} threw exception`, this.serviceName, { 
-        error: errorMessage,
-        context 
-      });
+      logger.error(`${operation} threw exception: ${errorMessage}`);
 
       return {
         success: false,
@@ -181,14 +175,15 @@ export abstract class BaseService<T = any> {
           .from(this.tableName as any)
           .select('*', { count: 'exact', head: true });
 
-        // Get paginated data
-        const result = await this.buildQuery({
+        // Get paginated data  
+        const query = this.buildQuery({
           ...options,
           limit: pageSize,
           offset
         });
         
-        const { data, error } = result;
+        // Execute the query to get data and error
+        const { data, error } = await query as any;
 
         if (error) throw error;
 
