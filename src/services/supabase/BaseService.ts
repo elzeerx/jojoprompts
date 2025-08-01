@@ -34,13 +34,13 @@ export abstract class BaseService<T = any> {
   }
 
   protected buildQuery(options: QueryOptions = {}) {
-    let query = supabase.from(this.tableName);
+    let query = supabase.from(this.tableName as any);
 
     // Select specific columns
     if (options.select) {
-      query = query.select(options.select);
+      query = query.select(options.select) as any;
     } else {
-      query = query.select('*');
+      query = query.select('*') as any;
     }
 
     // Apply filters
@@ -48,11 +48,11 @@ export abstract class BaseService<T = any> {
       Object.entries(options.filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           if (Array.isArray(value)) {
-            query = query.in(key, value);
+            query = (query as any).in(key, value);
           } else if (typeof value === 'string' && value.includes('%')) {
-            query = query.like(key, value);
+            query = (query as any).like(key, value);
           } else {
-            query = query.eq(key, value);
+            query = (query as any).eq(key, value);
           }
         }
       });
@@ -60,18 +60,18 @@ export abstract class BaseService<T = any> {
 
     // Order by
     if (options.orderBy) {
-      query = query.order(options.orderBy.column, { 
+      query = (query as any).order(options.orderBy.column, { 
         ascending: options.orderBy.ascending !== false 
       });
     }
 
     // Pagination
     if (options.limit) {
-      query = query.limit(options.limit);
+      query = (query as any).limit(options.limit);
     }
     
     if (options.offset) {
-      query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
+      query = (query as any).range(options.offset, options.offset + (options.limit || 10) - 1);
     }
 
     return query;
@@ -143,13 +143,13 @@ export abstract class BaseService<T = any> {
     return this.executeQuery(
       'findById',
       () => {
-        let query = supabase.from(this.tableName);
+        let query = supabase.from(this.tableName as any);
         if (select) {
-          query = query.select(select);
+          query = query.select(select) as any;
         } else {
-          query = query.select('*');
+          query = query.select('*') as any;
         }
-        return query.eq('id', id).single();
+        return (query as any).eq('id', id).single();
       },
       { id, select }
     );
@@ -160,7 +160,7 @@ export abstract class BaseService<T = any> {
       'findOne',
       () => {
         const options: QueryOptions = { filters, select };
-        return this.buildQuery(options).single();
+        return (this.buildQuery(options) as any).single();
       },
       { filters, select }
     );
@@ -178,7 +178,7 @@ export abstract class BaseService<T = any> {
       async () => {
         // Get total count
         const { count: totalCount } = await supabase
-          .from(this.tableName)
+          .from(this.tableName as any)
           .select('*', { count: 'exact', head: true });
 
         // Get paginated data
@@ -210,19 +210,19 @@ export abstract class BaseService<T = any> {
     return this.executeQuery(
       'create',
       () => {
-        let query = supabase.from(this.tableName).insert(data);
+        let query = supabase.from(this.tableName as any).insert(data as any);
         
         if (options.returning) {
-          query = query.select(options.returning);
+          query = (query as any).select(options.returning);
         } else {
-          query = query.select('*');
+          query = (query as any).select('*');
         }
 
         if (options.onConflict) {
-          query = query.upsert(data as any, { onConflict: options.onConflict });
+          query = (query as any).upsert(data as any, { onConflict: options.onConflict });
         }
 
-        return query.single();
+        return (query as any).single();
       },
       { data, options }
     );
@@ -232,12 +232,12 @@ export abstract class BaseService<T = any> {
     return this.executeQuery(
       'createMany',
       () => {
-        let query = supabase.from(this.tableName).insert(data);
+        let query = supabase.from(this.tableName as any).insert(data as any);
         
         if (options.returning) {
-          query = query.select(options.returning);
+          query = (query as any).select(options.returning);
         } else {
-          query = query.select('*');
+          query = (query as any).select('*');
         }
 
         return query;
@@ -250,9 +250,9 @@ export abstract class BaseService<T = any> {
     return this.executeQuery(
       'update',
       () => {
-        let query = supabase.from(this.tableName)
-          .update(data)
-          .eq('id', id);
+        let query = supabase.from(this.tableName as any)
+          .update(data as any)
+          .eq('id', id) as any;
         
         if (options.returning) {
           query = query.select(options.returning);
@@ -274,7 +274,7 @@ export abstract class BaseService<T = any> {
     return this.executeQuery(
       'updateMany',
       () => {
-        let query = supabase.from(this.tableName).update(data);
+        let query = supabase.from(this.tableName as any).update(data as any) as any;
         
         // Apply filters
         Object.entries(filters).forEach(([key, value]) => {
@@ -296,7 +296,7 @@ export abstract class BaseService<T = any> {
   async delete(id: string): Promise<ApiResponse<void>> {
     return this.executeQuery(
       'delete',
-      () => supabase.from(this.tableName).delete().eq('id', id),
+      () => supabase.from(this.tableName as any).delete().eq('id', id) as any,
       { id }
     );
   }
@@ -305,7 +305,7 @@ export abstract class BaseService<T = any> {
     return this.executeQuery(
       'deleteMany',
       () => {
-        let query = supabase.from(this.tableName).delete();
+        let query = supabase.from(this.tableName as any).delete() as any;
         
         Object.entries(filters).forEach(([key, value]) => {
           query = query.eq(key, value);
@@ -321,7 +321,7 @@ export abstract class BaseService<T = any> {
     return this.executeQuery(
       'count',
       async () => {
-        let query = supabase.from(this.tableName).select('*', { count: 'exact', head: true });
+        let query = supabase.from(this.tableName as any).select('*', { count: 'exact', head: true }) as any;
         
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
