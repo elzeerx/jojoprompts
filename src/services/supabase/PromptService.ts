@@ -192,13 +192,13 @@ export class PromptService extends BaseService<Prompt> {
     });
   }
 
-  // Usage tracking
+  // Usage tracking - simplified since increment_prompt_usage function doesn't exist
   async incrementUsageCount(promptId: string): Promise<ApiResponse<void>> {
-    return this.executeQuery(
-      'incrementUsageCount',
-      () => supabase.rpc('increment_prompt_usage', { prompt_id: promptId }),
-      { promptId }
-    );
+    // This would need a custom database function or manual update
+    return {
+      success: false,
+      error: { message: 'Usage tracking not implemented' }
+    };
   }
 
   async recordPromptUsage(promptId: string, userId: string): Promise<ApiResponse<void>> {
@@ -207,9 +207,10 @@ export class PromptService extends BaseService<Prompt> {
       () => supabase
         .from('prompt_usage_history')
         .insert({
+          action_type: 'used',
           prompt_id: promptId,
           user_id: userId,
-          used_at: new Date().toISOString()
+          metadata: {}
         }),
       { promptId, userId }
     );
@@ -232,7 +233,12 @@ export class PromptService extends BaseService<Prompt> {
       'createCategory',
       () => supabase
         .from('categories')
-        .insert(data)
+        .insert({
+          name: data.name || 'New Category',
+          link_path: data.name?.toLowerCase().replace(/\s+/g, '-') || 'new-category',
+          description: data.description,
+          display_order: data.display_order || 0
+        })
         .select('*')
         .single(),
       { data }
@@ -301,12 +307,11 @@ export class PromptService extends BaseService<Prompt> {
       async () => {
         const { data: prompts } = await supabase
           .from('prompts')
-          .select('is_public, created_at, usage_count');
+          .select('prompt_type, created_at, metadata');
 
         const totalPrompts = prompts?.length || 0;
-        const publicPrompts = prompts?.filter(p => p.is_public).length || 0;
-        const privatePrompts = totalPrompts - publicPrompts;
-        const totalUsage = prompts?.reduce((sum, p) => sum + (p.usage_count || 0), 0) || 0;
+        const imagePrompts = prompts?.filter(p => p.prompt_type === 'image').length || 0;
+        const textPrompts = prompts?.filter(p => p.prompt_type === 'text').length || 0;
         
         const recentPrompts = prompts?.filter(p => 
           new Date(p.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -315,11 +320,9 @@ export class PromptService extends BaseService<Prompt> {
         return {
           data: {
             totalPrompts,
-            publicPrompts,
-            privatePrompts,
-            totalUsage,
-            recentPrompts,
-            averageUsage: totalPrompts > 0 ? totalUsage / totalPrompts : 0
+            imagePrompts,
+            textPrompts,
+            recentPrompts
           }
         };
       }

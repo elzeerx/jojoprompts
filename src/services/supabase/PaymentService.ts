@@ -252,7 +252,7 @@ export class PaymentService extends BaseService {
   async getPaymentStats(startDate?: string, endDate?: string): Promise<ApiResponse<any>> {
     const { data: transactions } = await supabase
       .from('transactions')
-      .select('amount, created_at, status')
+      .select('amount_usd, created_at, status')
       .gte('created_at', startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
       .lte('created_at', endDate || new Date().toISOString());
 
@@ -262,7 +262,7 @@ export class PaymentService extends BaseService {
       .gte('created_at', startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
       .lte('created_at', endDate || new Date().toISOString());
 
-    const totalRevenue = transactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+    const totalRevenue = transactions?.reduce((sum, t) => sum + (t.amount_usd || 0), 0) || 0;
     const successfulTransactions = transactions?.filter(t => t.status === 'completed').length || 0;
     const newSubscriptions = subscriptions?.filter(s => s.status === 'active').length || 0;
 
