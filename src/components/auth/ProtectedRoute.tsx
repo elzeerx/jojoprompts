@@ -7,9 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  requireRole?: 'admin' | 'jadmin' | 'prompter' | 'user';
 }
 
-export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireAdmin = false, requireRole }: ProtectedRouteProps) {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -18,8 +19,10 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
       navigate("/login");
     } else if (!loading && requireAdmin && userRole !== "admin") {
       navigate("/prompts");
+    } else if (!loading && requireRole && userRole !== requireRole) {
+      navigate("/prompts");
     }
-  }, [user, userRole, requireAdmin, navigate, loading]);
+  }, [user, userRole, requireAdmin, requireRole, navigate, loading]);
 
   if (loading) {
     return (
@@ -32,7 +35,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     );
   }
 
-  if (!user || (requireAdmin && userRole !== "admin")) {
+  if (!user || (requireAdmin && userRole !== "admin") || (requireRole && userRole !== requireRole)) {
     return null;
   }
 

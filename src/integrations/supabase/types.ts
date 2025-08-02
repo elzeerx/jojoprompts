@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      apple_email_logs: {
+        Row: {
+          created_at: string
+          email: string
+          email_type: string
+          error_message: string | null
+          id: string
+          status: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          status: string
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          status?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           bg_gradient: string
@@ -238,6 +268,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_engagement: {
+        Row: {
+          created_at: string | null
+          domain: string
+          email_address: string
+          email_opened: boolean | null
+          id: string
+          link_clicked: boolean | null
+          marked_as_spam: boolean | null
+          timestamp: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          domain: string
+          email_address: string
+          email_opened?: boolean | null
+          id?: string
+          link_clicked?: boolean | null
+          marked_as_spam?: boolean | null
+          timestamp?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          domain?: string
+          email_address?: string
+          email_opened?: boolean | null
+          id?: string
+          link_clicked?: boolean | null
+          marked_as_spam?: boolean | null
+          timestamp?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           attempted_at: string | null
@@ -359,6 +425,138 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      prompt_generator_fields: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          display_order: number | null
+          field_category: string
+          field_name: string
+          field_type: string
+          id: string
+          is_active: boolean | null
+          options: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          field_category: string
+          field_name: string
+          field_type: string
+          id?: string
+          is_active?: boolean | null
+          options?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number | null
+          field_category?: string
+          field_name?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean | null
+          options?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_generator_fields_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_generator_models: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          parameters: Json
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          parameters?: Json
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          parameters?: Json
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_generator_models_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_generator_templates: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_public: boolean | null
+          model_type: string
+          name: string
+          template_data: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          model_type: string
+          name: string
+          template_data: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          model_type?: string
+          name?: string
+          template_data?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_generator_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       prompt_shares: {
         Row: {
@@ -596,6 +794,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      unsubscribed_emails: {
+        Row: {
+          email: string
+          id: string
+          resubscribed_at: string | null
+          unsubscribe_type: string
+          unsubscribed_at: string
+        }
+        Insert: {
+          email: string
+          id?: string
+          resubscribed_at?: string | null
+          unsubscribe_type?: string
+          unsubscribed_at?: string
+        }
+        Update: {
+          email?: string
+          id?: string
+          resubscribed_at?: string | null
+          unsubscribe_type?: string
+          unsubscribed_at?: string
+        }
+        Relationships: []
       }
       user_subscriptions: {
         Row: {

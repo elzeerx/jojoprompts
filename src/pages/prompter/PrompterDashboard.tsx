@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, BarChart } from "lucide-react";
 import { AdminPromptCard } from "../admin/components/prompts/AdminPromptCard";
@@ -13,18 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PromptStatistics } from "@/components/statistics/PromptStatistics";
 
 export default function PrompterDashboard() {
-  const { user, userRole, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PromptRow | null>(null);
-  
-  useEffect(() => {
-    if (!authLoading && (!user || userRole !== 'prompter')) {
-      navigate('/');
-    }
-  }, [user, userRole, authLoading, navigate]);
 
   const fetchMyPrompts = async () => {
     if (!user) return;
@@ -56,10 +48,10 @@ export default function PrompterDashboard() {
   };
   
   useEffect(() => {
-    if (user && userRole === 'prompter') {
+    if (user) {
       fetchMyPrompts();
     }
-  }, [user, userRole]);
+  }, [user]);
   
   const handleAddPrompt = () => {
     setEditing(null);
@@ -110,17 +102,6 @@ export default function PrompterDashboard() {
     setDialogOpen(false);
   };
 
-  if (authLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-warm-gold" />
-      </div>
-    );
-  }
-
-  if (!user || userRole !== 'prompter') {
-    return null;
-  }
   
   return (
     <div className="container mx-auto p-6">

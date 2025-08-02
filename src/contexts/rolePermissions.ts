@@ -6,12 +6,14 @@ export function computeRolePermissions(userRole: string | null) {
   const canDeleteUsers = isAdmin;
   const canCancelSubscriptions = isAdmin;
   const canManagePrompts = isAdmin || isJadmin || isPrompter;
+  const canAccessPromptGenerator = isAdmin || isPrompter;
   return {
     isAdmin,
     isJadmin,
     isPrompter,
     canDeleteUsers,
     canCancelSubscriptions,
-    canManagePrompts
+    canManagePrompts,
+    canAccessPromptGenerator
   };
 }

@@ -5,7 +5,11 @@ import './index.css'
 import { initializeSecurity } from './utils/securityHeaders'
 
 // Initialize security measures before app starts
-initializeSecurity();
+try {
+  initializeSecurity();
+} catch (error) {
+  console.warn('Security initialization failed:', error);
+}
 
 createRoot(document.getElementById("root")!).render(
   <App />

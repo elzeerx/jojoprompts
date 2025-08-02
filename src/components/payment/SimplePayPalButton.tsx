@@ -34,21 +34,12 @@ export function SimplePayPalButton({
   const finalAmount = amount;
   const is100PercentDiscount = finalAmount === 0;
 
-  console.log('=== SIMPLE PAYPAL BUTTON DEBUG ===');
-  console.log('Received amount (final):', amount);
-  console.log('Applied discount (for tracking only):', appliedDiscount);
-  console.log('Is 100% discount:', is100PercentDiscount);
-  console.log('================================');
+  // Logging will be handled by the payment processing functions
 
   const handleDirectActivation = async () => {
     setIsProcessing(true);
     try {
-      console.log('Processing 100% discount - Direct activation:', { 
-        amount: finalAmount, 
-        planId, 
-        userId, 
-        appliedDiscount 
-      });
+      // Processing 100% discount direct activation
 
       const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
         body: {
@@ -64,7 +55,7 @@ export function SimplePayPalButton({
         throw new Error(error?.message || data?.error || "Failed to activate subscription with discount.");
       }
 
-      console.log('Direct activation successful:', data);
+      // Success handled by onSuccess callback
 
       onSuccess({
         status: 'COMPLETED',
@@ -95,13 +86,7 @@ export function SimplePayPalButton({
   const handlePayPalRedirect = async () => {
     setIsProcessing(true);
     try {
-      console.log('=== PAYPAL REDIRECT DEBUG ===');
-      console.log('Final amount being sent to PayPal:', finalAmount);
-      console.log('Plan ID:', planId);
-      console.log('User ID:', userId);
-      console.log('Applied discount (for tracking):', appliedDiscount);
-      console.log('===============================');
-      console.log('Initiating PayPal checkout:', { amount: finalAmount, planId, userId, appliedDiscount });
+      // PayPal checkout initiated
 
       // Enhanced session backup before PayPal redirect
       const backupSuccess = await SessionManager.backupSession(userId, planId);
@@ -123,10 +108,7 @@ export function SimplePayPalButton({
         throw new Error(error?.message || data?.error || "Failed to initiate PayPal checkout.");
       }
 
-      console.log('PayPal order created:', {
-        orderId: data.orderId,
-        approvalUrl: data.approvalUrl
-      });
+      // PayPal order created successfully
 
       // Store comprehensive payment context for callback recovery
       const paymentContext = {
@@ -141,13 +123,13 @@ export function SimplePayPalButton({
       };
 
       localStorage.setItem("pending_payment", JSON.stringify(paymentContext));
-      console.log('Stored enhanced payment context:', paymentContext);
+      // Payment context stored for callback recovery
 
       // Small delay to ensure localStorage is written
       await new Promise(resolve => setTimeout(resolve, 200));
 
       // Redirect to PayPal
-      console.log('Redirecting to PayPal...');
+      // Redirecting to PayPal approval URL
       window.location.href = data.approvalUrl;
       
     } catch (err: any) {

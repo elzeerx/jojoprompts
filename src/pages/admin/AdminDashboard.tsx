@@ -8,7 +8,7 @@ import UsersManagement from "./components/users/UsersManagement";
 import PurchaseHistoryManagement from "./components/purchases/PurchaseHistoryManagement";
 import DiscountCodesManagement from "./components/discount-codes/DiscountCodesManagement";
 import { CategoriesManagement } from "./components/categories/CategoriesManagement";
-import { SecurityMonitoringDashboard } from "@/components/security/SecurityMonitoringDashboard";
+import { SecurityMonitoringDashboard } from "@/components/admin/SecurityMonitoringDashboard";
 import { EmailAnalyticsDashboard } from "@/components/admin/EmailAnalyticsDashboard";
 import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 import { BarChart3, FileText, Tags, Users, CreditCard, Percent, Shield, Mail } from "lucide-react";
