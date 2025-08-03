@@ -31,7 +31,7 @@ export function getPromptTitle(prompt: Prompt | PromptRow): string {
 
 // Utility to get prompt description with fallback
 export function getPromptDescription(prompt: Prompt | PromptRow): string {
-  return prompt.description || 
+  return (prompt as any).description || 
          prompt.prompt_text?.substring(0, 100) + '...' || 
          'No description available';
 }

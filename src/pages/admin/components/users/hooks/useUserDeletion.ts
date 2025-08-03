@@ -10,7 +10,7 @@ export function useUserDeletion() {
     setProcessingUserId(userId);
     
     try {
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/get-all-users`, {
+      const response = await fetch(`https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/get-all-users`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

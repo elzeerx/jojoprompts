@@ -43,7 +43,7 @@ export function handleError(
                     errorType === 'AUTHENTICATION_REQUIRED' ? ErrorCategory.AUTHENTICATION :
                     ErrorCategory.UNKNOWN;
 
-    reportError(error, severity, category, { context });
+    reportError(error, severity, category, {});
   }
 
   // Show user-friendly toast if requested

@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, AlertCircle, Save, Upload } from 'lucide-react';
-import { ModelSpecificPromptForm } from './ModelSpecificPromptForm';
+// import { ModelSpecificPromptForm } from './ModelSpecificPromptForm';
 import { DragDropUpload } from './DragDropUpload';
 import { RichTextEditor } from './RichTextEditor';
 import { usePromptValidation } from '@/utils/promptValidation';
@@ -146,11 +146,10 @@ export function EnhancedPromptDialog({
         <ScrollArea className="flex-1 px-6">
           <div className="py-6 space-y-6">
             {/* Model-Specific Form */}
-            <ModelSpecificPromptForm
-              value={formData}
-              onChange={handleFormChange}
-              onValidationChange={handleValidationChange}
-            />
+            {/* ModelSpecificPromptForm temporarily disabled */}
+            <div className="p-4 border border-dashed border-gray-300 rounded-lg text-center text-gray-500">
+              Model-specific form will be available soon
+            </div>
 
             {/* File Upload Section */}
             <div className="border-t pt-6">

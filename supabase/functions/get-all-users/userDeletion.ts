@@ -14,6 +14,8 @@ export async function deleteUser(
   console.log(`[userDeletion] Admin ${adminId} is attempting to delete user ${userId}`);
 
   try {
+    // Delete security logs first to avoid foreign key constraints
+    await safeDelete(supabase, 'security_logs', 'user_id', userId);
     await safeDelete(supabase, 'collection_prompts', 'collection_id', userId);
     await safeDelete(supabase, 'collections', 'user_id', userId);
     await safeDelete(supabase, 'prompt_shares', 'shared_by', userId);

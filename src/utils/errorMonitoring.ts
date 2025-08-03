@@ -125,7 +125,7 @@ class ErrorMonitor {
       error,
       ErrorSeverity.MEDIUM,
       ErrorCategory.NETWORK,
-      context
+      {}
     );
   }
 

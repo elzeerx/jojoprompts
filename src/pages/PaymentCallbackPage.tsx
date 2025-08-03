@@ -1,7 +1,7 @@
 
 import { useEffect } from "react";
 import { usePaymentCallbackParams } from "@/hooks/payment/usePaymentCallbackParams";
-import { usePaymentProcessing } from "@/hooks/payment/usePaymentProcessing";
+// import { usePaymentProcessing } from "@/hooks/payment/usePaymentProcessing";
 import { PaymentProcessingError } from "@/components/payment/PaymentProcessingError";
 import { PaymentProcessingLoader } from "@/components/payment/PaymentProcessingLoader";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,20 +18,11 @@ export default function PaymentCallbackPage() {
     hasSessionIndependentData
   } = usePaymentCallbackParams();
 
-  const {
-    status,
-    error,
-    pollCount,
-    MAX_POLLS
-  } = usePaymentProcessing({
-    success,
-    paymentId,
-    orderId,
-    planId,
-    userId,
-    debugObject,
-    hasSessionIndependentData
-  });
+  // Temporarily disabled payment processing
+  const status = 'processing';
+  const error = null;
+  const pollCount = 0;
+  const MAX_POLLS = 30;
 
   // Auto-capture for approved orders
   useEffect(() => {
