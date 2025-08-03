@@ -69,21 +69,46 @@ serve(async (req) => {
         return await handleGetUsers(supabase, userId, req);
 
       case 'POST':
-        // Parse request body to check for action type
-        const postRequestBody = await req.json();
-        
-        // Handle delete actions sent via POST
-        if (postRequestBody.action === 'delete') {
-          // Verify delete permissions for delete actions
-          if (!hasPermission(permissions, 'user:delete')) {
+        try {
+          // Parse request body to check for action type
+          const postRequestBody = await req.json();
+          
+          console.log('[POST] Received request body:', { action: postRequestBody.action, userId: postRequestBody.userId });
+          
+          // Handle delete actions sent via POST
+          if (postRequestBody.action === 'delete') {
+            console.log('[POST] Processing delete action for user:', postRequestBody.userId);
+            
+            // Verify delete permissions for delete actions
+            if (!hasPermission(permissions, 'user:delete')) {
+              await logSecurityEvent(supabase, {
+                user_id: userId,
+                action: 'permission_denied',
+                details: { required_permission: 'user:delete', function: 'get-all-users' }
+              });
+
+              return new Response(
+                JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
+                { 
+                  status: 403, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              );
+            }
+
+            return await handleDeleteUser(supabase, userId, postRequestBody);
+          }
+          
+          // For non-delete actions, verify write permissions
+          if (!hasPermission(permissions, 'user:write')) {
             await logSecurityEvent(supabase, {
               user_id: userId,
               action: 'permission_denied',
-              details: { required_permission: 'user:delete', function: 'get-all-users' }
+              details: { required_permission: 'user:write', function: 'get-all-users' }
             });
 
             return new Response(
-              JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
+              JSON.stringify({ error: 'Insufficient permissions for user write operations' }), 
               { 
                 status: 403, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -91,34 +116,24 @@ serve(async (req) => {
             );
           }
 
-          return await handleDeleteUser(supabase, userId, postRequestBody);
-        }
-        
-        // For non-delete actions, verify write permissions
-        if (!hasPermission(permissions, 'user:write')) {
-          await logSecurityEvent(supabase, {
-            user_id: userId,
-            action: 'permission_denied',
-            details: { required_permission: 'user:write', function: 'get-all-users' }
+          // Clone the request with the already parsed body for create user handler
+          const createRequest = new Request(req.url, {
+            method: req.method,
+            headers: req.headers,
+            body: JSON.stringify(postRequestBody)
           });
-
+          
+          return await handleCreateUser(supabase, userId, createRequest);
+        } catch (error: any) {
+          console.error('[POST] Error processing POST request:', error);
           return new Response(
-            JSON.stringify({ error: 'Insufficient permissions for user write operations' }), 
+            JSON.stringify({ error: 'Failed to process POST request', details: error.message }), 
             { 
-              status: 403, 
+              status: 500, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
             }
           );
         }
-
-        // Clone the request with the already parsed body for create user handler
-        const createRequest = new Request(req.url, {
-          method: req.method,
-          headers: req.headers,
-          body: JSON.stringify(postRequestBody)
-        });
-        
-        return await handleCreateUser(supabase, userId, createRequest);
 
       case 'PUT':
         // Verify write permissions
