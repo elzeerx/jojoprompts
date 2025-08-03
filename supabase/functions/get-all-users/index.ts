@@ -69,7 +69,32 @@ serve(async (req) => {
         return await handleGetUsers(supabase, userId, req);
 
       case 'POST':
-        // Verify write permissions
+        // Parse request body to check for action type
+        const postRequestBody = await req.json();
+        
+        // Handle delete actions sent via POST
+        if (postRequestBody.action === 'delete') {
+          // Verify delete permissions for delete actions
+          if (!hasPermission(permissions, 'user:delete')) {
+            await logSecurityEvent(supabase, {
+              user_id: userId,
+              action: 'permission_denied',
+              details: { required_permission: 'user:delete', function: 'get-all-users' }
+            });
+
+            return new Response(
+              JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
+              { 
+                status: 403, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          return await handleDeleteUser(supabase, userId, postRequestBody);
+        }
+        
+        // For non-delete actions, verify write permissions
         if (!hasPermission(permissions, 'user:write')) {
           await logSecurityEvent(supabase, {
             user_id: userId,
@@ -86,7 +111,14 @@ serve(async (req) => {
           );
         }
 
-        return await handleCreateUser(supabase, userId, req);
+        // Clone the request with the already parsed body for create user handler
+        const createRequest = new Request(req.url, {
+          method: req.method,
+          headers: req.headers,
+          body: JSON.stringify(postRequestBody)
+        });
+        
+        return await handleCreateUser(supabase, userId, createRequest);
 
       case 'PUT':
         // Verify write permissions
