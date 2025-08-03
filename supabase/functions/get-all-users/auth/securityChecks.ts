@@ -1,6 +1,6 @@
 
 import { SecurityCheckParams } from './types.ts';
-import { logSecurityEvent } from './securityLogger.ts';
+import { logSecurityEvent } from '../../shared/securityLogger.ts';
 
 // Perform additional security checks
 export async function performSecurityChecks(

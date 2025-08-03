@@ -1,7 +1,7 @@
 
 import { generatePermissions } from './permissionManager.ts';
 import { performSecurityChecks } from './securityChecks.ts';
-import { logSecurityEvent } from './securityLogger.ts';
+import { logSecurityEvent } from '../../shared/securityLogger.ts';
 
 export interface ProfileVerificationResult {
   profile: any;
