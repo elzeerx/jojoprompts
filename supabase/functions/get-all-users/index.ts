@@ -1,23 +1,75 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import { corsHeaders } from "./cors.ts";
-import { verifyAdmin, validateAdminRequest, hasPermission } from "./auth.ts";
-import { logSecurityEvent } from "../shared/securityLogger.ts";
-import { handleGetUsers } from "./handlers/getUsersHandler.ts";
-import { handleCreateUser } from "./handlers/createUserHandler.ts";
-import { handleUpdateUser } from "./handlers/updateUserHandler.ts";
-import { handleDeleteUser } from "./handlers/deleteUserHandler.ts";
+import { deleteUser } from "./userDeletion.ts";
+
+// Simple validation functions inlined to avoid import issues
+function validateRequest(req: Request): { isValid: boolean; error?: string } {
+  const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
+  if (!allowedMethods.includes(req.method)) {
+    return { isValid: false, error: 'Invalid request method' };
+  }
+
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { isValid: false, error: 'Missing or invalid authorization header' };
+  }
+
+  return { isValid: true };
+}
+
+async function authenticateAdmin(req: Request) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') as string;
+
+  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+    throw new Error('Missing required environment variables');
+  }
+
+  const authHeader = req.headers.get('Authorization');
+  const token = authHeader?.slice(7); // Remove 'Bearer ' prefix
+
+  if (!token) {
+    throw new Error('No token provided');
+  }
+
+  // Create anon client to validate user token
+  const anonClient = createClient(supabaseUrl, anonKey);
+  const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
+
+  if (userError || !user) {
+    throw new Error('Invalid token');
+  }
+
+  // Create service role client for operations
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  // Get user profile to check role
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile || !['admin', 'jadmin'].includes(profile.role)) {
+    throw new Error('Insufficient permissions - admin role required');
+  }
+
+  return { supabase, userId: user.id, userRole: profile.role };
+}
 
 serve(async (req) => {
+  console.log(`[${req.method}] Edge function called:`, req.url);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Enhanced request validation
-    const validation = validateAdminRequest(req);
+    // Basic request validation
+    const validation = validateRequest(req);
     if (!validation.isValid) {
       console.error('Request validation failed:', validation.error);
       return new Response(
@@ -29,66 +81,51 @@ serve(async (req) => {
       );
     }
 
-    // Enhanced admin authentication with comprehensive security
-    const authContext = await verifyAdmin(req);
-    const { supabase, userId, userRole, permissions } = authContext;
+    // Authenticate admin
+    const { supabase, userId, userRole } = await authenticateAdmin(req);
+    console.log(`Successfully authenticated admin user ${userId} with role ${userRole}`);
 
-    // Log successful admin access
-    await logSecurityEvent(supabase, {
-      user_id: userId,
-      action: 'admin_function_accessed',
-      details: { 
-        function: 'get-all-users',
-        method: req.method,
-        role: userRole
-      },
-      ip_address: req.headers.get('x-forwarded-for') || 'unknown',
-      user_agent: req.headers.get('user-agent')?.substring(0, 200)
-    });
-
-    // Handle different HTTP methods with enhanced security
+    // Handle different HTTP methods
     switch (req.method) {
       case 'GET':
-        // Verify read permissions
-        if (!hasPermission(permissions, 'user:read')) {
-          await logSecurityEvent(supabase, {
-            user_id: userId,
-            action: 'permission_denied',
-            details: { required_permission: 'user:read', function: 'get-all-users' }
-          });
-          
-          return new Response(
-            JSON.stringify({ error: 'Insufficient permissions for user read operations' }), 
-            { 
-              status: 403, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          );
+        // Simple user listing for admin
+        const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
+        
+        if (usersError) {
+          throw new Error(`Failed to fetch users: ${usersError.message}`);
         }
 
-        return await handleGetUsers(supabase, userId, req);
+        return new Response(
+          JSON.stringify({ users: users.users || [] }), 
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
 
       case 'POST':
         try {
-          // Parse request body to check for action type
-          const postRequestBody = await req.json();
-          
-          console.log('[POST] Received request body:', { action: postRequestBody.action, userId: postRequestBody.userId });
+          const requestBody = await req.json();
+          console.log('[POST] Received request body:', { action: requestBody.action, userId: requestBody.userId });
           
           // Handle delete actions sent via POST
-          if (postRequestBody.action === 'delete') {
-            console.log('[POST] Processing delete action for user:', postRequestBody.userId);
+          if (requestBody.action === 'delete') {
+            console.log('[POST] Processing delete action for user:', requestBody.userId);
             
-            // Verify delete permissions for delete actions
-            if (!hasPermission(permissions, 'user:delete')) {
-              await logSecurityEvent(supabase, {
-                user_id: userId,
-                action: 'permission_denied',
-                details: { required_permission: 'user:delete', function: 'get-all-users' }
-              });
-
+            if (!requestBody.userId) {
               return new Response(
-                JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
+                JSON.stringify({ error: 'User ID is required for delete action' }), 
+                { 
+                  status: 400, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              );
+            }
+
+            // Only admin role can delete users, not jadmin
+            if (userRole !== 'admin') {
+              return new Response(
+                JSON.stringify({ error: 'Insufficient permissions - admin role required for user deletion' }), 
                 { 
                   status: 403, 
                   headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -96,34 +133,54 @@ serve(async (req) => {
               );
             }
 
-            return await handleDeleteUser(supabase, userId, postRequestBody);
-          }
-          
-          // For non-delete actions, verify write permissions
-          if (!hasPermission(permissions, 'user:write')) {
-            await logSecurityEvent(supabase, {
-              user_id: userId,
-              action: 'permission_denied',
-              details: { required_permission: 'user:write', function: 'get-all-users' }
-            });
+            // Check if user exists before deletion
+            const { data: existingUser, error: userCheckError } = await supabase
+              .from('profiles')
+              .select('id, role')
+              .eq('id', requestBody.userId)
+              .maybeSingle();
+              
+            if (userCheckError || !existingUser) {
+              return new Response(
+                JSON.stringify({ error: 'User not found' }), 
+                { 
+                  status: 404, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              );
+            }
+
+            // Prevent deleting other admins
+            if (existingUser.role === 'admin' && userId !== requestBody.userId) {
+              return new Response(
+                JSON.stringify({ error: 'Cannot delete another administrator' }), 
+                { 
+                  status: 403, 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+                }
+              );
+            }
+
+            // Use the comprehensive deleteUser function
+            const deletionResult = await deleteUser(supabase, requestBody.userId, userId);
 
             return new Response(
-              JSON.stringify({ error: 'Insufficient permissions for user write operations' }), 
+              JSON.stringify(deletionResult), 
               { 
-                status: 403, 
+                status: 200, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
               }
             );
           }
 
-          // Clone the request with the already parsed body for create user handler
-          const createRequest = new Request(req.url, {
-            method: req.method,
-            headers: req.headers,
-            body: JSON.stringify(postRequestBody)
-          });
-          
-          return await handleCreateUser(supabase, userId, createRequest);
+          return new Response(
+            JSON.stringify({ error: 'Unsupported action' }), 
+            { 
+              status: 400, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+
         } catch (error: any) {
           console.error('[POST] Error processing POST request:', error);
           return new Response(
@@ -134,36 +191,6 @@ serve(async (req) => {
             }
           );
         }
-
-      case 'PUT':
-        // Verify write permissions
-        if (!hasPermission(permissions, 'user:write')) {
-          return new Response(
-            JSON.stringify({ error: 'Insufficient permissions for user update operations' }), 
-            { 
-              status: 403, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          );
-        }
-
-        return await handleUpdateUser(supabase, userId, req);
-
-      case 'DELETE':
-        // Verify delete permissions
-        if (!hasPermission(permissions, 'user:delete')) {
-          return new Response(
-            JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
-            { 
-              status: 403, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          );
-        }
-
-        // Parse the request body for DELETE requests
-        const requestBody = await req.json();
-        return await handleDeleteUser(supabase, userId, requestBody);
 
       default:
         return new Response(
@@ -182,31 +209,10 @@ serve(async (req) => {
       timestamp: new Date().toISOString()
     });
 
-    // Try to log the error if we have a supabase client
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
-      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
-      
-      if (supabaseUrl && serviceRoleKey) {
-        const errorClient = createClient(supabaseUrl, serviceRoleKey);
-        await logSecurityEvent(errorClient, {
-          action: 'function_error',
-          details: { 
-            function: 'get-all-users',
-            error: error.message,
-            method: req.method
-          },
-          ip_address: req.headers.get('x-forwarded-for') || 'unknown'
-        });
-      }
-    } catch (logError) {
-      console.warn('Failed to log error event:', logError);
-    }
-
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error',
-        message: 'An unexpected error occurred' 
+        message: error.message || 'An unexpected error occurred' 
       }), 
       { 
         status: 500, 
