@@ -1,6 +1,7 @@
 
 import { useSearchParams } from "react-router-dom";
 import { useMemo } from "react";
+import { safeLog } from "@/utils/safeLogging";
 
 export function usePaymentCallbackParams() {
   const [searchParams] = useSearchParams();
@@ -41,7 +42,7 @@ export function usePaymentCallbackParams() {
         const pendingPayment = localStorage.getItem('pending_payment');
         if (pendingPayment) {
           const parsed = JSON.parse(pendingPayment);
-          console.log('Retrieved payment context from localStorage:', parsed);
+          safeLog.debug('Retrieved payment context from localStorage:', parsed);
           
           // Validate the stored data is recent (within last hour)
           const storedTime = parsed.timestamp;
@@ -51,13 +52,13 @@ export function usePaymentCallbackParams() {
             if (!planId && parsed.planId) planId = parsed.planId;
             if (!userId && parsed.userId) userId = parsed.userId;
           } else {
-            console.log('Stored payment context is too old, ignoring');
+            safeLog.debug('Stored payment context is too old, ignoring');
             // Clean up old localStorage entry
             localStorage.removeItem('pending_payment');
           }
         }
       } catch (error) {
-        console.error('Error retrieving payment context from localStorage:', error);
+        safeLog.error('Error retrieving payment context from localStorage:', error);
         // Clean up corrupted localStorage entry
         localStorage.removeItem('pending_payment');
       }
@@ -101,15 +102,15 @@ export function usePaymentCallbackParams() {
       timestamp: Date.now()
     };
 
-    console.log('Enhanced payment callback parameters extracted:', debugObject);
+    safeLog.debug('Enhanced payment callback parameters extracted:', debugObject);
 
     // Clean up localStorage if we have all required params from URL
     if (searchParams.get('plan_id') && searchParams.get('user_id')) {
       try {
         localStorage.removeItem('pending_payment');
-        console.log('Cleaned up localStorage after successful parameter extraction');
+        safeLog.debug('Cleaned up localStorage after successful parameter extraction');
       } catch (error) {
-        console.error('Error cleaning up localStorage:', error);
+        safeLog.error('Error cleaning up localStorage:', error);
       }
     }
 

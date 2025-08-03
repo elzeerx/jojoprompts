@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { safeLog } from "@/utils/safeLogging";
 
 interface SessionBackup {
   access_token: string;
@@ -36,11 +37,11 @@ export class SessionManager {
         };
         localStorage.setItem(this.CONTEXT_KEY, JSON.stringify(context));
         
-        console.log('Enhanced session backed up successfully for PayPal flow', { userId, planId, orderId });
+        safeLog.debug('Enhanced session backed up successfully for PayPal flow', { userId, planId, orderId });
         return true;
       }
     } catch (error) {
-      console.error('Failed to backup session:', error);
+      safeLog.error('Failed to backup session:', error);
     }
     return false;
   }
@@ -50,7 +51,7 @@ export class SessionManager {
       // First check if we already have a valid session
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       if (currentSession?.user) {
-        console.log('Valid session already exists, cleaning up backup');
+        safeLog.debug('Valid session already exists, cleaning up backup');
         this.cleanup(); // Clean up since we have a valid session
         return { success: true, user: currentSession.user };
       }
@@ -66,12 +67,12 @@ export class SessionManager {
         // Check if backup is not too old (45 minutes - extended for PayPal flow)
         const isExpired = Date.now() - backup.timestamp > 45 * 60 * 1000;
         if (isExpired) {
-          console.log('Session backup expired, cleaning up');
+          safeLog.debug('Session backup expired, cleaning up');
           this.cleanup();
           return { success: false };
         }
 
-        console.log('Attempting session restoration from backup...', { 
+        safeLog.debug('Attempting session restoration from backup...', { 
           userId: backup.user_id, 
           age: Math.round((Date.now() - backup.timestamp) / 1000) + 's' 
         });
@@ -88,7 +89,7 @@ export class SessionManager {
             });
 
             if (!error && restored.session?.user) {
-              console.log('Session restored successfully from backup', { 
+              safeLog.debug('Session restored successfully from backup', { 
                 userId: restored.session.user.id, 
                 attempt: restoreAttempts + 1 
               });
@@ -99,14 +100,14 @@ export class SessionManager {
                 context 
               };
             } else {
-              console.warn(`Session restore attempt ${restoreAttempts + 1} failed:`, error);
+              safeLog.warn(`Session restore attempt ${restoreAttempts + 1} failed:`, error);
               restoreAttempts++;
               if (restoreAttempts < maxAttempts) {
                 await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
               }
             }
           } catch (restoreError) {
-            console.error(`Session restore attempt ${restoreAttempts + 1} error:`, restoreError);
+            safeLog.error(`Session restore attempt ${restoreAttempts + 1} error:`, restoreError);
             restoreAttempts++;
             if (restoreAttempts < maxAttempts) {
               await new Promise(resolve => setTimeout(resolve, 1000));
@@ -114,13 +115,13 @@ export class SessionManager {
           }
         }
         
-        console.error('All session restore attempts failed');
+        safeLog.error('All session restore attempts failed');
         this.cleanup();
       }
 
       return { success: false };
     } catch (error) {
-      console.error('Session restoration error:', error);
+      safeLog.error('Session restoration error:', error);
       this.cleanup();
       return { success: false };
     }
@@ -140,9 +141,9 @@ export class SessionManager {
         localStorage.removeItem(this.BACKUP_KEY);
         localStorage.removeItem(this.CONTEXT_KEY);
       }
-      console.log('Session backup cleanup completed', { force });
+      safeLog.debug('Session backup cleanup completed', { force });
     } catch (error) {
-      console.error('Error during session cleanup:', error);
+      safeLog.error('Error during session cleanup:', error);
     }
   }
 

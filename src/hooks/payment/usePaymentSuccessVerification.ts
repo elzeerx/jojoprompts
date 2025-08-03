@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { PaymentSuccessParams } from './usePaymentSuccessParams';
+import { safeLog } from '@/utils/safeLogging';
 
 interface UsePaymentSuccessVerificationProps {
   params: PaymentSuccessParams;
@@ -28,14 +29,14 @@ export function usePaymentSuccessVerification({
   const verifyPayment = useCallback(async () => {
     // Prevent duplicate verification attempts
     if (verificationAttempted.current || isVerifying.current) {
-      console.log('Payment verification already attempted or in progress, skipping');
+      safeLog.debug('Payment verification already attempted or in progress, skipping');
       return;
     }
 
     // If we have clear success indicators in the URL params, skip re-verification
     if (params.paymentId && params.planId && params.userId && 
         (params.debugObject?.status === 'completed' || params.debugObject?.status === 'COMPLETED')) {
-      console.log('Payment success already confirmed by URL params, skipping verification');
+      safeLog.debug('Payment success already confirmed by URL params, skipping verification');
       setVerified(true);
       setVerifying(false);
       toast({
@@ -47,7 +48,7 @@ export function usePaymentSuccessVerification({
 
     // Check if we have the minimum required parameters for verification
     if (!params.paymentId && !params.orderId) {
-      console.log('Missing payment information for verification, setting error');
+      safeLog.debug('Missing payment information for verification, setting error');
       setError('Missing payment information');
       setVerifying(false);
       return;
@@ -56,7 +57,7 @@ export function usePaymentSuccessVerification({
     // Skip verification if payment processing is still handling this payment
     // This prevents the dual call issue where both processing and success verification call the backend
     if (params.debugObject?.source === 'payment_processing') {
-      console.log('Payment being handled by payment processing, skipping success verification');
+      safeLog.debug('Payment being handled by payment processing, skipping success verification');
       setVerified(true);
       setVerifying(false);
       toast({
@@ -66,7 +67,7 @@ export function usePaymentSuccessVerification({
       return;
     }
 
-    console.log('Starting payment verification with params:', {
+    safeLog.debug('Starting payment verification with params:', {
       paymentId: params.paymentId,
       orderId: params.orderId,
       planId: params.planId,
@@ -84,7 +85,7 @@ export function usePaymentSuccessVerification({
       // which includes proper duplicate prevention and email handling
       // Frontend just needs to show success state
       
-      console.log('Payment verification completed successfully');
+      safeLog.debug('Payment verification completed successfully');
       
       setVerified(true);
       toast({
@@ -93,7 +94,7 @@ export function usePaymentSuccessVerification({
       });
 
     } catch (error: any) {
-      console.error('Payment verification exception:', error);
+      safeLog.error('Payment verification exception:', error);
       setError(`Payment verification failed: ${error.message}`);
     } finally {
       isVerifying.current = false;
@@ -104,7 +105,7 @@ export function usePaymentSuccessVerification({
   useEffect(() => {
     // Only run verification if we haven't attempted it yet
     if (!verificationAttempted.current) {
-      console.log('useEffect triggered, starting payment verification');
+      safeLog.debug('useEffect triggered, starting payment verification');
       verifyPayment();
     }
   }, [verifyPayment]);
@@ -112,7 +113,7 @@ export function usePaymentSuccessVerification({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      console.log('Payment verification hook unmounting');
+      safeLog.debug('Payment verification hook unmounting');
       isVerifying.current = false;
     };
   }, []);

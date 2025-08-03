@@ -1,15 +1,18 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, RefreshCw, Home, ArrowLeft } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { AlertTriangle, RefreshCw, CreditCard, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { safeLog } from '@/utils/safeLogging';
 
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
-  resetOnPropsChange?: boolean;
+  paymentContext?: {
+    planId?: string;
+    orderId?: string;
+    paymentId?: string;
+  };
 }
 
 interface State {
@@ -19,7 +22,7 @@ interface State {
   errorId: string;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+export class PaymentErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -31,8 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    // Generate a unique error ID for tracking
-    const errorId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const errorId = `payment_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     return {
       hasError: true,
@@ -42,14 +44,15 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log the error for debugging
-    safeLog.error('Error boundary caught an error:', {
+    // Log payment-specific error
+    safeLog.error('Payment error boundary caught an error:', {
       error: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
       errorId: this.state.errorId,
+      paymentContext: this.props.paymentContext,
       location: window.location.href,
-      userAgent: navigator.userAgent
+      timestamp: new Date().toISOString()
     });
 
     // Call custom error handler if provided
@@ -57,22 +60,9 @@ export class ErrorBoundary extends Component<Props, State> {
       this.props.onError(error, errorInfo);
     }
 
-    // Update state with error info
     this.setState({
       errorInfo
     });
-  }
-
-  componentDidUpdate(prevProps: Props) {
-    // Reset error state if props changed and resetOnPropsChange is true
-    if (this.props.resetOnPropsChange && prevProps !== this.props && this.state.hasError) {
-      this.setState({
-        hasError: false,
-        error: null,
-        errorInfo: null,
-        errorId: ''
-      });
-    }
   }
 
   handleReset = () => {
@@ -84,38 +74,33 @@ export class ErrorBoundary extends Component<Props, State> {
     });
   };
 
-  handleReportError = () => {
-    const { error, errorInfo, errorId } = this.state;
-    if (error) {
-      // In a real app, you'd send this to your error reporting service
-      safeLog.error('User reported error:', {
-        errorId,
-        error: error.message,
-        stack: error.stack,
-        componentStack: errorInfo?.componentStack,
-        url: window.location.href,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Show feedback to user
-      alert('Error reported successfully. Thank you for helping us improve!');
+  handleRetryPayment = () => {
+    // Navigate back to checkout to retry payment
+    const { planId } = this.props.paymentContext || {};
+    if (planId) {
+      window.location.href = `/checkout?planId=${planId}`;
+    } else {
+      window.location.href = '/pricing';
     }
+  };
+
+  handleContactSupport = () => {
+    // Pre-fill contact form with payment context
+    const { planId, orderId, paymentId } = this.props.paymentContext || {};
+    const supportUrl = `/contact?context=payment&planId=${planId || ''}&orderId=${orderId || ''}&paymentId=${paymentId || ''}`;
+    window.location.href = supportUrl;
   };
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback UI
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
-      // Default error UI
-      return <ErrorFallback 
+      return <PaymentErrorFallback 
         error={this.state.error}
         errorInfo={this.state.errorInfo}
         errorId={this.state.errorId}
+        paymentContext={this.props.paymentContext}
         onReset={this.handleReset}
-        onReportError={this.handleReportError}
+        onRetryPayment={this.handleRetryPayment}
+        onContactSupport={this.handleContactSupport}
       />;
     }
 
@@ -123,33 +108,59 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-interface ErrorFallbackProps {
+interface PaymentErrorFallbackProps {
   error: Error | null;
   errorInfo: ErrorInfo | null;
   errorId: string;
+  paymentContext?: {
+    planId?: string;
+    orderId?: string;
+    paymentId?: string;
+  };
   onReset: () => void;
-  onReportError: () => void;
+  onRetryPayment: () => void;
+  onContactSupport: () => void;
 }
 
-function ErrorFallback({ error, errorInfo, errorId, onReset, onReportError }: ErrorFallbackProps) {
+function PaymentErrorFallback({ 
+  error, 
+  errorInfo, 
+  errorId, 
+  paymentContext,
+  onReset, 
+  onRetryPayment, 
+  onContactSupport 
+}: PaymentErrorFallbackProps) {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center p-4">
-      <Card className="max-w-2xl w-full shadow-xl border-red-200">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100 flex items-center justify-center p-4">
+      <Card className="max-w-2xl w-full shadow-xl border-orange-200">
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-            <AlertTriangle className="h-8 w-8 text-red-600" />
+          <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+            <CreditCard className="h-8 w-8 text-orange-600" />
           </div>
-          <CardTitle className="text-2xl font-bold text-red-800">
-            Something went wrong
+          <CardTitle className="text-2xl font-bold text-orange-800">
+            Payment Processing Error
           </CardTitle>
-          <CardDescription className="text-red-600">
-            We're sorry, but something unexpected happened. Our team has been notified.
+          <CardDescription className="text-orange-600">
+            We encountered an issue while processing your payment. Don't worry, your payment information is secure.
           </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-6">
+          {/* Payment Context Info */}
+          {paymentContext && (
+            <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+              <h4 className="font-semibold text-orange-800 mb-2">Payment Details:</h4>
+              <div className="text-sm text-orange-700 space-y-1">
+                {paymentContext.planId && <p>Plan ID: {paymentContext.planId}</p>}
+                {paymentContext.orderId && <p>Order ID: {paymentContext.orderId}</p>}
+                {paymentContext.paymentId && <p>Payment ID: {paymentContext.paymentId}</p>}
+              </div>
+            </div>
+          )}
+
           {/* Error Details (only in development) */}
           {process.env.NODE_ENV === 'development' && error && (
             <div className="bg-red-50 p-4 rounded-lg border border-red-200">
@@ -168,20 +179,20 @@ function ErrorFallback({ error, errorInfo, errorId, onReset, onReportError }: Er
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
             <Button 
-              onClick={onReset}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              onClick={onRetryPayment}
+              className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
+              Retry Payment
             </Button>
             
             <Button 
               variant="outline" 
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/pricing')}
               className="flex-1"
             >
-              <Home className="h-4 w-4 mr-2" />
-              Go Home
+              <CreditCard className="h-4 w-4 mr-2" />
+              Choose Different Plan
             </Button>
             
             <Button 
@@ -194,26 +205,24 @@ function ErrorFallback({ error, errorInfo, errorId, onReset, onReportError }: Er
             </Button>
           </div>
 
-          {/* Report Error Button */}
+          {/* Contact Support */}
           <div className="text-center">
             <Button 
               variant="ghost" 
-              onClick={onReportError}
-              className="text-sm text-red-600 hover:text-red-700"
+              onClick={onContactSupport}
+              className="text-sm text-orange-600 hover:text-orange-700"
             >
-              Report this error
+              Contact Support
             </Button>
           </div>
 
           {/* Help Text */}
           <div className="text-center text-sm text-gray-600">
-            <p>If this problem persists, please contact our support team.</p>
-            <Link to="/contact" className="text-red-600 hover:text-red-700 underline">
-              Contact Support
-            </Link>
+            <p>Your payment information is secure and has not been charged.</p>
+            <p>If you continue to experience issues, please contact our support team.</p>
           </div>
         </CardContent>
       </Card>
     </div>
   );
-}
+} 

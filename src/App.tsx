@@ -37,6 +37,7 @@ import FAQPage from "./pages/FAQPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import ExamplesPage from "./pages/ExamplesPage";
+import EnhancedPromptDemo from "./pages/EnhancedPromptDemo";
 import NotFoundPage from "./pages/NotFoundPage";
 import MagicLinkSentPage from "./pages/MagicLinkSentPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
@@ -62,6 +63,7 @@ function App() {
                       <Route path="unsubscribe" element={<UnsubscribePage />} />
                       <Route path="email-confirmation" element={<EmailConfirmationPage />} />
                       <Route path="examples" element={<ExamplesPage />} />
+                      <Route path="demo/enhanced-prompt" element={<EnhancedPromptDemo />} />
                       <Route path="prompts" element={<PromptsPage />} />
                       <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />
                       <Route path="prompts/midjourney" element={<MidjourneyPromptsPage />} />
