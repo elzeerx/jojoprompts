@@ -10,17 +10,20 @@ export function useUserDeletion() {
     setProcessingUserId(userId);
     
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "get-all-users",
-        {
-          body: {
-            action: 'delete',
-            userId
-          }
-        }
-      );
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/get-all-users`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'delete',
+          userId
+        })
+      });
+
+      const { data, error } = await response.json();
       
-      if (error) throw error;
+      if (!response.ok || error) throw new Error(error?.message || 'Failed to delete user');
       
       // Check if the response indicates an error
       if (data && data.error) {

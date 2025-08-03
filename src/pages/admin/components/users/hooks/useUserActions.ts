@@ -165,21 +165,22 @@ export function useUserActions() {
         return false;
       }
       
-      // Call edge function with proper error handling
-      const { data, error } = await supabase.functions.invoke(
-        "get-all-users",
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: { 
-            userId, 
-            action: "delete"
-          }
-        }
-      );
+      // Call edge function with proper error handling using DELETE method
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/get-all-users`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          userId, 
+          action: "delete"
+        })
+      });
 
-      if (error || (data && data.error)) {
+      const { data, error } = await response.json();
+
+      if (!response.ok || error || (data && data.error)) {
         const errorMessage = error?.message || data?.error || "Error deleting user";
         
         logError("User deletion failed", "admin", { error: errorMessage }, user?.id);
