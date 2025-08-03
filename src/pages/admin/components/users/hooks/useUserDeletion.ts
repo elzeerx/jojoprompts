@@ -10,20 +10,14 @@ export function useUserDeletion() {
     setProcessingUserId(userId);
     
     try {
-      const response = await fetch(`https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/get-all-users`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('get-all-users', {
+        body: {
           action: 'delete',
           userId
-        })
+        }
       });
-
-      const { data, error } = await response.json();
       
-      if (!response.ok || error) throw new Error(error?.message || 'Failed to delete user');
+      if (error) throw new Error(error?.message || 'Failed to delete user');
       
       // Check if the response indicates an error
       if (data && data.error) {
