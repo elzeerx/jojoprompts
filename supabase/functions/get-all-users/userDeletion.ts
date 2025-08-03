@@ -14,19 +14,60 @@ export async function deleteUser(
   console.log(`[userDeletion] Admin ${adminId} is attempting to delete user ${userId}`);
 
   try {
-    // Delete security logs first to avoid foreign key constraints
+    // Delete in order to respect foreign key constraints
+    // 1. First delete all audit/logging tables that reference the user
+    logStep('Deleting security logs', userId);
     await safeDelete(supabase, 'security_logs', 'user_id', userId);
-    await safeDelete(supabase, 'collection_prompts', 'collection_id', userId);
+    
+    logStep('Deleting email logs', userId);
+    await safeDelete(supabase, 'email_logs', 'user_id', userId);
+    
+    logStep('Deleting admin audit logs', userId);
+    await safeDelete(supabase, 'admin_audit_log', 'admin_user_id', userId);
+
+    // 2. Delete collection-related data (collection_prompts references collections)
+    logStep('Deleting collection prompts', userId);
+    const { data: userCollections } = await supabase
+      .from('collections')
+      .select('id')
+      .eq('user_id', userId);
+    
+    if (userCollections && userCollections.length > 0) {
+      for (const collection of userCollections) {
+        await safeDelete(supabase, 'collection_prompts', 'collection_id', collection.id);
+      }
+    }
+    
+    logStep('Deleting collections', userId);
     await safeDelete(supabase, 'collections', 'user_id', userId);
+
+    // 3. Delete other user-related data
+    logStep('Deleting prompt shares', userId);
     await safeDelete(supabase, 'prompt_shares', 'shared_by', userId);
+    
+    logStep('Deleting prompt usage history', userId);
     await safeDelete(supabase, 'prompt_usage_history', 'user_id', userId);
+    
+    logStep('Deleting user subscriptions', userId);
     await safeDelete(supabase, 'user_subscriptions', 'user_id', userId);
+    
+    logStep('Deleting transactions', userId);
     await safeDelete(supabase, 'transactions', 'user_id', userId);
+    
+    logStep('Deleting favorites', userId);
     await safeDelete(supabase, 'favorites', 'user_id', userId);
+    
+    logStep('Deleting prompts', userId);
     await safeDelete(supabase, 'prompts', 'user_id', userId);
+    
+    logStep('Deleting discount code usage', userId);
     await safeDelete(supabase, 'discount_code_usage', 'user_id', userId);
+    
+    // 4. Delete profile last (but before auth user)
+    logStep('Deleting profile', userId);
     await safeDelete(supabase, 'profiles', 'id', userId);
 
+    // 5. Finally delete from auth.users
     logStep('Deleting user from Auth', userId);
     const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
 
