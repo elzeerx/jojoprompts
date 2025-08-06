@@ -78,6 +78,8 @@ serve(async (req) => {
           // Handle delete actions sent via POST
           if (postRequestBody.action === 'delete') {
             console.log('[POST] Processing delete action for user:', postRequestBody.userId);
+            console.log('[POST] Request headers:', Object.fromEntries(req.headers.entries()));
+            console.log('[POST] Admin permissions:', permissions);
             
             // Verify delete permissions for delete actions
             if (!hasPermission(permissions, 'user:delete')) {

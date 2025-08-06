@@ -86,15 +86,24 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       details: { target_user_id: userId }
     });
 
+    // Enhanced logging before deletion
+    console.log(`[deleteUserHandler] Starting deletion process for user ${userId} by admin ${adminId}`);
+    
     // Use the comprehensive deleteUser function from userDeletion.ts
     const deletionResult = await deleteUser(supabase, userId, adminId);
 
-    // Log successful user deletion
+    // Log successful user deletion with enhanced details
     await logSecurityEvent(supabase, {
       user_id: adminId,
       action: 'user_deleted',
-      details: { target_user_id: userId }
+      details: { 
+        target_user_id: userId,
+        transaction_duration: deletionResult.transactionDuration,
+        success: true 
+      }
     });
+
+    console.log(`[deleteUserHandler] User ${userId} successfully deleted by admin ${adminId}`);
 
     return new Response(
       JSON.stringify(deletionResult), 
