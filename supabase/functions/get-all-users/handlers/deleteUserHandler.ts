@@ -30,10 +30,10 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       );
     }
 
-    // Check if user exists
+    // Check if user exists BEFORE deletion
     const { data: existingUser, error: userCheckError } = await supabase
       .from('profiles')
-      .select('id, role')
+      .select('id, role, first_name, last_name')
       .eq('id', userId)
       .maybeSingle();
       
@@ -51,6 +51,8 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
         }
       );
     }
+
+    console.log(`[deleteUserHandler] Found user to delete: ${existingUser.first_name} ${existingUser.last_name} (${existingUser.role})`);
 
     // Prevent deleting other admins as a safety measure
     if (existingUser.role === 'admin' && adminId !== userId) {
@@ -87,7 +89,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     });
 
     // Enhanced logging before deletion
-    console.log(`[deleteUserHandler] Starting deletion process for user ${userId} by admin ${adminId}`);
+    console.log(`[deleteUserHandler] Starting deletion process for user ${userId} (${existingUser.first_name} ${existingUser.last_name}) by admin ${adminId}`);
     
     // Use the comprehensive deleteUser function from userDeletion.ts
     const deletionResult = await deleteUser(supabase, userId, adminId);
@@ -98,15 +100,23 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       action: 'user_deleted',
       details: { 
         target_user_id: userId,
+        target_user_email: existingUser.first_name + ' ' + existingUser.last_name,
         transaction_duration: deletionResult.transactionDuration,
         success: true 
       }
     });
 
-    console.log(`[deleteUserHandler] User ${userId} successfully deleted by admin ${adminId}`);
+    console.log(`[deleteUserHandler] User ${userId} (${existingUser.first_name} ${existingUser.last_name}) successfully deleted by admin ${adminId} in ${deletionResult.transactionDuration}ms`);
 
     return new Response(
-      JSON.stringify(deletionResult), 
+      JSON.stringify({
+        ...deletionResult,
+        deletedUser: {
+          id: userId,
+          name: `${existingUser.first_name} ${existingUser.last_name}`,
+          role: existingUser.role
+        }
+      }), 
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
