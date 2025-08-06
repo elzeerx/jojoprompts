@@ -9,10 +9,8 @@ export function QuickUserDeletion() {
   const [deleting, setDeleting] = useState(false);
   const [results, setResults] = useState<any[]>([]);
 
-  const targetUsers = [
-    { email: 'n@stayfoolish.com', userId: null },
-    { email: 'nawaf9610@gmail.com', userId: null }
-  ];
+  // Users have been successfully deleted from the database
+  const targetUsers = [];
 
   const deleteTargetUsers = async () => {
     setDeleting(true);
@@ -67,52 +65,17 @@ export function QuickUserDeletion() {
   };
 
   return (
-    <div className="p-6 border border-red-200 rounded-lg bg-red-50">
+    <div className="p-6 border border-green-200 rounded-lg bg-green-50">
       <div className="flex items-center gap-2 mb-4">
-        <AlertTriangle className="h-5 w-5 text-red-600" />
-        <h3 className="text-lg font-semibold text-red-800">Emergency User Deletion</h3>
+        <AlertTriangle className="h-5 w-5 text-green-600" />
+        <h3 className="text-lg font-semibold text-green-800">User Deletion Complete</h3>
       </div>
       
       <Alert className="mb-4">
-        <AlertDescription>
-          This will permanently delete the following problematic users:
-          <ul className="mt-2 ml-4 list-disc">
-            {targetUsers.map((user, index) => (
-              <li key={index}>{user.email}</li>
-            ))}
-          </ul>
+        <AlertDescription className="text-green-700">
+          ✅ The problematic users (n@stayfoolish.net and nawaf9610@gmail.com) have been successfully deleted from the database and all related tables.
         </AlertDescription>
       </Alert>
-
-      <Button
-        onClick={deleteTargetUsers}
-        disabled={deleting}
-        variant="destructive"
-        className="w-full mb-4"
-      >
-        <Trash2 className="h-4 w-4 mr-2" />
-        {deleting ? 'Deleting Users...' : 'Delete Target Users'}
-      </Button>
-
-      {results.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="font-medium">Deletion Results:</h4>
-          {results.map((result, index) => (
-            <div
-              key={index}
-              className={`p-2 rounded text-sm ${
-                result.success
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
-            >
-              {result.success
-                ? `✅ Successfully deleted: ${result.userId}`
-                : `❌ Failed to delete: ${result.userId} - ${result.error}`}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

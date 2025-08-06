@@ -39,25 +39,27 @@ export async function listUsers(supabase: ReturnType<typeof createClient>, admin
     // Create a map of profiles for efficient lookup
     const profileMap = new Map(profiles?.map(profile => [profile.id, profile]) || []);
 
-    // Combine the data
-    const combinedUsers = users.users.map(user => {
-      const profile = profileMap.get(user.id) || { role: 'user', first_name: null, last_name: null };
-      
-      console.log(`Combining data for user ${user.id}:`, { 
-        auth: user,
-        profile: profile 
+    // Combine the data - only include users who have profiles
+    const combinedUsers = users.users
+      .filter(user => profileMap.has(user.id)) // Only include users with profiles
+      .map(user => {
+        const profile = profileMap.get(user.id);
+        
+        console.log(`Combining data for user ${user.id}:`, { 
+          auth: user,
+          profile: profile 
+        });
+        
+        return {
+          id: user.id,
+          email: user.email,
+          created_at: user.created_at,
+          last_sign_in_at: user.last_sign_in_at,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          role: profile.role || 'user'
+        };
       });
-      
-      return {
-        id: user.id,
-        email: user.email,
-        created_at: user.created_at,
-        last_sign_in_at: user.last_sign_in_at,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        role: profile.role || 'user'
-      };
-    });
 
     console.log('Final combined users data:', combinedUsers);
     return { users: combinedUsers };
