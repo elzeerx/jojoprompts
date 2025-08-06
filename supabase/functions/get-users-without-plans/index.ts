@@ -52,8 +52,22 @@ serve(async (req) => {
 
     logStep("Admin authenticated", { adminId: user.id });
 
+    // First get users with active subscriptions
+    const { data: activeSubscriptions, error: subscriptionError } = await supabaseClient
+      .from("user_subscriptions")
+      .select("user_id")
+      .eq("status", "active");
+
+    if (subscriptionError) {
+      throw new Error(`Error fetching active subscriptions: ${subscriptionError.message}`);
+    }
+
+    const activeUserIds = activeSubscriptions?.map(sub => sub.user_id) || [];
+    
+    logStep("Active subscription users found", { count: activeUserIds.length });
+
     // Get all users without active subscriptions
-    const { data: usersWithoutPlans, error: usersError } = await supabaseClient
+    let query = supabaseClient
       .from("profiles")
       .select(`
         id,
@@ -63,12 +77,14 @@ serve(async (req) => {
         role,
         created_at
       `)
-      .eq("role", "user")
-      .not("id", "in", `(
-        SELECT DISTINCT user_id 
-        FROM user_subscriptions 
-        WHERE status = 'active'
-      )`);
+      .eq("role", "user");
+
+    // If there are active users, exclude them
+    if (activeUserIds.length > 0) {
+      query = query.not("id", "in", `(${activeUserIds.map(id => `'${id}'`).join(',')})`);
+    }
+
+    const { data: usersWithoutPlans, error: usersError } = await query;
 
     if (usersError) {
       throw new Error(`Database error: ${usersError.message}`);
