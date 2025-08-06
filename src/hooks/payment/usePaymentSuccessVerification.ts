@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { PaymentParams } from './usePaymentParams';
 import { safeLog } from '@/utils/safeLogging';
+import { usePostPurchaseEmail } from '@/hooks/usePostPurchaseEmail';
 
 interface UsePaymentSuccessVerificationProps {
   params: PaymentParams;
@@ -21,6 +22,7 @@ export function usePaymentSuccessVerification({
 }: UsePaymentSuccessVerificationProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { sendPostPurchaseEmails } = usePostPurchaseEmail();
   
   // Simplified state tracking - only track active verification
   const isVerifying = useRef(false);
@@ -71,6 +73,19 @@ export function usePaymentSuccessVerification({
         safeLog.debug('Payment verification completed - valid payment identifiers found');
         
         setVerified(true);
+        
+        // Send post-purchase emails if user info is available
+        if (user?.email && params.planId && (params.paymentId || params.orderId)) {
+          const firstName = user.user_metadata?.first_name || user.email.split('@')[0];
+          const planName = 'Premium Plan'; // You may want to fetch actual plan name
+          const paymentId = params.paymentId || params.orderId || 'N/A';
+          
+          // Send emails in background
+          setTimeout(() => {
+            sendPostPurchaseEmails(user.email!, firstName, planName, paymentId);
+          }, 1000);
+        }
+        
         toast({
           title: "Payment Successful! 🎉",
           description: "Your subscription has been activated successfully.",
