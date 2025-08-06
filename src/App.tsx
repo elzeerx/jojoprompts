@@ -25,6 +25,8 @@ import CheckoutPage from "./pages/CheckoutPage";
 import PaymentCallbackPage from "./pages/PaymentCallbackPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
+import PaymentDashboardPage from "./pages/PaymentDashboardPage";
+import PaymentRecoveryPage from "./pages/PaymentRecoveryPage";
 import UserDashboardPage from "./pages/UserDashboardPage";
 import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
 import PrompterDashboard from "./pages/prompter/PrompterDashboard";
@@ -75,6 +77,8 @@ function App() {
                       <Route path="payment/callback" element={<PaymentCallbackPage />} />
                       <Route path="payment-success" element={<PaymentSuccessPage />} />
                       <Route path="payment-failed" element={<PaymentFailedPage />} />
+                      <Route path="payment-dashboard" element={<ProtectedRoute><PaymentDashboardPage /></ProtectedRoute>} />
+                      <Route path="payment-recovery" element={<PaymentRecoveryPage />} />
                       <Route path="dashboard" element={<ProtectedRoute><UserDashboardPage /></ProtectedRoute>} />
                       <Route path="dashboard/subscription" element={<ProtectedRoute><SubscriptionDashboard /></ProtectedRoute>} />
                       <Route path="dashboard/prompter" element={<RouteGuard requiredRole="prompter"><PrompterDashboard /></RouteGuard>} />
