@@ -98,8 +98,37 @@ export class SecurityHeaders {
     if (window.self === window.top) {
       document.documentElement.setAttribute('data-frame-safe', 'true');
     } else {
-      // Log potential clickjacking attempt
-      console.warn('Application loaded in iframe - potential clickjacking attempt');
+      // Check if we're in a trusted iframe (like Lovable's preview)
+      let isTrustedFrame = false;
+      
+      try {
+        // Trusted domains for iframe embedding
+        const trustedDomains = [
+          'lovable.dev',
+          'lovableproject.com',
+          'app.lovable.dev',
+          'preview.lovable.dev'
+        ];
+        
+        // Try to access parent location
+        const parentOrigin = window.parent.location.hostname;
+        isTrustedFrame = trustedDomains.some(domain => 
+          parentOrigin.includes(domain)
+        );
+      } catch (e) {
+        // Cross-origin access blocked - check if we're in development
+        if (import.meta.env.DEV) {
+          // In development, allow iframe embedding for easier testing
+          isTrustedFrame = true;
+        }
+      }
+      
+      if (isTrustedFrame) {
+        document.documentElement.setAttribute('data-frame-safe', 'true');
+      } else {
+        // Log potential clickjacking attempt
+        console.warn('Application loaded in untrusted iframe - potential clickjacking attempt');
+      }
     }
   }
 
