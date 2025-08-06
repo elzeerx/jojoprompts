@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check, X, ArrowRight, Sparkles, Copy, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
+import { useCopyToClipboard } from "@/hooks/ui/useCopyToClipboard";
 
 const demoPrompts = [
   {
@@ -36,9 +37,10 @@ const demoPrompts = [
 export function InteractiveDemo() {
   const [activeDemo, setActiveDemo] = useState(0);
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
+  const { copyToClipboard: copy } = useCopyToClipboard();
 
   const copyToClipboard = (text: string, type: string) => {
-    navigator.clipboard.writeText(text);
+    copy(text);
     setCopiedPrompt(type);
     setTimeout(() => setCopiedPrompt(null), 2000);
   };

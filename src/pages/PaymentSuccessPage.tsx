@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { usePaymentSuccessParams } from "@/hooks/payment/usePaymentSuccessParams";
+import { usePaymentParams } from "@/hooks/payment/usePaymentParams";
 import { usePaymentSuccessVerification } from "@/hooks/payment/usePaymentSuccessVerification";
 import { PaymentSuccessLoader } from "@/components/payment/PaymentSuccessLoader";
 import { PaymentSuccessError } from "@/components/payment/PaymentSuccessError";
@@ -23,7 +23,7 @@ export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
 
-  const params = usePaymentSuccessParams();
+  const params = usePaymentParams();
   const authRequired = searchParams.get('auth_required') === 'true';
 
   // Enhanced session restoration and payment recovery

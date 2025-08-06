@@ -3,11 +3,11 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { PaymentSuccessParams } from './usePaymentSuccessParams';
+import { PaymentParams } from './usePaymentParams';
 import { safeLog } from '@/utils/safeLogging';
 
 interface UsePaymentSuccessVerificationProps {
-  params: PaymentSuccessParams;
+  params: PaymentParams;
   setVerifying: (verifying: boolean) => void;
   setVerified: (verified: boolean) => void;
   setError: (error: string | null) => void;
