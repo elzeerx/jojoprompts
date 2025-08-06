@@ -29,3 +29,12 @@ verify_jwt = false
 
 [functions.send-email-confirmation-reminder]
 verify_jwt = false
+
+[functions.get-users-without-plans]
+verify_jwt = true
+
+[functions.send-plan-reminder]
+verify_jwt = true
+
+[functions.send-bulk-plan-reminders]
+verify_jwt = true
