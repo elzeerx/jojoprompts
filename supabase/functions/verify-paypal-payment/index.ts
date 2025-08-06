@@ -245,6 +245,44 @@ serve(async (req: Request) => {
       }
     }
 
+    // If payment is completed, send confirmation email
+    if (payPalStatus === "COMPLETED" && userId && planId) {
+      logger(`Payment completed successfully, sending confirmation email`);
+      
+      // Get user and plan details for email
+      const { data: userProfile } = await supabaseClient
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', userId)
+        .single();
+      
+      const { data: planDetails } = await supabaseClient
+        .from('subscription_plans')
+        .select('name, price')
+        .eq('id', planId)
+        .single();
+      
+      if (userProfile && planDetails) {
+        const userName = `${userProfile.first_name} ${userProfile.last_name}`.trim();
+        const userEmail = (await supabaseClient.auth.admin.getUserById(userId)).data?.user?.email;
+        
+        if (userEmail) {
+          // Send confirmation email in background
+          setTimeout(async () => {
+            await sendPaymentConfirmationEmail(
+              supabaseClient,
+              userEmail,
+              userName,
+              planDetails.name,
+              planDetails.price,
+              paymentId || orderIdToUse || 'unknown',
+              logger
+            );
+          }, 0);
+        }
+      }
+    }
+
     // Simplified response - just return the status
     return new Response(JSON.stringify({
       status: payPalStatus || PAYMENT_STATES.UNKNOWN,
