@@ -12,8 +12,10 @@ interface SessionBackup {
 export class SessionManager {
   private static readonly BACKUP_KEY = 'paypal_session_backup';
   private static readonly CONTEXT_KEY = 'paypal_payment_context';
+  private static readonly FALLBACK_KEY = 'paypal_fallback_data';
+  private static readonly RESTORATION_ATTEMPT_KEY = 'session_restoration_attempts';
 
-  static async backupSession(userId: string, planId: string, orderId?: string) {
+  static async backupSession(userId: string, planId: string, orderId?: string): Promise<boolean> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token && session?.refresh_token) {
@@ -24,20 +26,52 @@ export class SessionManager {
           timestamp: Date.now()
         };
         
-        localStorage.setItem(this.BACKUP_KEY, JSON.stringify(backup));
+        // Enhanced backup with multiple storage strategies for better browser compatibility
+        try {
+          localStorage.setItem(this.BACKUP_KEY, JSON.stringify(backup));
+        } catch (localStorageError) {
+          // Fallback to sessionStorage if localStorage fails
+          sessionStorage.setItem(this.BACKUP_KEY, JSON.stringify(backup));
+          safeLog.warn('localStorage failed, using sessionStorage fallback', localStorageError);
+        }
         
-        // Also backup payment context with enhanced data
+        // Enhanced payment context with additional recovery data
         const context = {
           userId,
           planId,
           orderId,
           timestamp: Date.now(),
           userEmail: session.user?.email || '',
-          sessionId: session.access_token.substring(0, 20) // First 20 chars for identification
+          sessionId: session.access_token.substring(0, 20),
+          browserInfo: {
+            userAgent: navigator.userAgent.substring(0, 100),
+            platform: navigator.platform,
+            language: navigator.language
+          },
+          backupMethod: localStorage.getItem(this.BACKUP_KEY) ? 'localStorage' : 'sessionStorage'
         };
-        localStorage.setItem(this.CONTEXT_KEY, JSON.stringify(context));
         
-        safeLog.debug('Enhanced session backed up successfully for PayPal flow', { userId, planId, orderId });
+        try {
+          localStorage.setItem(this.CONTEXT_KEY, JSON.stringify(context));
+          // Also store in sessionStorage as backup
+          sessionStorage.setItem(this.CONTEXT_KEY, JSON.stringify(context));
+        } catch (contextError) {
+          sessionStorage.setItem(this.CONTEXT_KEY, JSON.stringify(context));
+          safeLog.warn('Context storage fallback used', contextError);
+        }
+        
+        // Create minimal fallback data that doesn't require auth
+        const fallbackData = { userId, planId, orderId, timestamp: Date.now() };
+        try {
+          localStorage.setItem(this.FALLBACK_KEY, JSON.stringify(fallbackData));
+          sessionStorage.setItem(this.FALLBACK_KEY, JSON.stringify(fallbackData));
+        } catch (fallbackError) {
+          safeLog.warn('Fallback data storage failed', fallbackError);
+        }
+        
+        safeLog.debug('Enhanced session backed up successfully for PayPal flow', { 
+          userId, planId, orderId, method: context.backupMethod 
+        });
         return true;
       }
     } catch (error) {
@@ -48,6 +82,17 @@ export class SessionManager {
 
   static async restoreSession(): Promise<{ success: boolean; user?: any; context?: any }> {
     try {
+      // Track restoration attempts to prevent infinite loops
+      const attempts = parseInt(localStorage.getItem(this.RESTORATION_ATTEMPT_KEY) || '0');
+      if (attempts >= 5) {
+        safeLog.warn('Max session restoration attempts reached, aborting');
+        this.cleanup(true);
+        return { success: false };
+      }
+      
+      // Increment attempt counter
+      localStorage.setItem(this.RESTORATION_ATTEMPT_KEY, (attempts + 1).toString());
+      
       // First check if we already have a valid session
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       if (currentSession?.user) {
@@ -56,16 +101,28 @@ export class SessionManager {
         return { success: true, user: currentSession.user };
       }
 
-      // Try to restore from backup
-      const backupData = localStorage.getItem(this.BACKUP_KEY);
-      const contextData = localStorage.getItem(this.CONTEXT_KEY);
+      // Try multiple sources for backup data
+      let backupData: string | null = null;
+      let contextData: string | null = null;
+      let storageSource = '';
+      
+      // Try localStorage first, then sessionStorage
+      if (localStorage.getItem(this.BACKUP_KEY)) {
+        backupData = localStorage.getItem(this.BACKUP_KEY);
+        contextData = localStorage.getItem(this.CONTEXT_KEY);
+        storageSource = 'localStorage';
+      } else if (sessionStorage.getItem(this.BACKUP_KEY)) {
+        backupData = sessionStorage.getItem(this.BACKUP_KEY);
+        contextData = sessionStorage.getItem(this.CONTEXT_KEY);
+        storageSource = 'sessionStorage';
+      }
       
       if (backupData) {
         const backup: SessionBackup = JSON.parse(backupData);
         const context = contextData ? JSON.parse(contextData) : null;
         
-        // Check if backup is not too old (45 minutes - extended for PayPal flow)
-        const isExpired = Date.now() - backup.timestamp > 45 * 60 * 1000;
+        // Extended expiration time for PayPal flow (60 minutes)
+        const isExpired = Date.now() - backup.timestamp > 60 * 60 * 1000;
         if (isExpired) {
           safeLog.debug('Session backup expired, cleaning up');
           this.cleanup();
@@ -74,12 +131,13 @@ export class SessionManager {
 
         safeLog.debug('Attempting session restoration from backup...', { 
           userId: backup.user_id, 
-          age: Math.round((Date.now() - backup.timestamp) / 1000) + 's' 
+          age: Math.round((Date.now() - backup.timestamp) / 1000) + 's',
+          source: storageSource
         });
 
-        // Attempt session restoration with retry logic
+        // Enhanced retry logic with exponential backoff
         let restoreAttempts = 0;
-        const maxAttempts = 3;
+        const maxAttempts = 5;
         
         while (restoreAttempts < maxAttempts) {
           try {
@@ -91,9 +149,14 @@ export class SessionManager {
             if (!error && restored.session?.user) {
               safeLog.debug('Session restored successfully from backup', { 
                 userId: restored.session.user.id, 
-                attempt: restoreAttempts + 1 
+                attempt: restoreAttempts + 1,
+                source: storageSource
               });
+              
+              // Reset attempt counter on success
+              localStorage.removeItem(this.RESTORATION_ATTEMPT_KEY);
               this.cleanup(); // Clean up after successful restoration
+              
               return { 
                 success: true, 
                 user: restored.session.user,
@@ -103,14 +166,17 @@ export class SessionManager {
               safeLog.warn(`Session restore attempt ${restoreAttempts + 1} failed:`, error);
               restoreAttempts++;
               if (restoreAttempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+                // Exponential backoff: 1s, 2s, 4s, 8s
+                const delay = Math.pow(2, restoreAttempts) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
               }
             }
           } catch (restoreError) {
             safeLog.error(`Session restore attempt ${restoreAttempts + 1} error:`, restoreError);
             restoreAttempts++;
             if (restoreAttempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              const delay = Math.pow(2, restoreAttempts) * 1000;
+              await new Promise(resolve => setTimeout(resolve, delay));
             }
           }
         }
@@ -130,16 +196,38 @@ export class SessionManager {
   static cleanup(force: boolean = false) {
     try {
       if (force) {
-        // Force cleanup - remove all auth-related items
+        // Force cleanup - remove all payment and auth-related items from both storages
+        const cleanupKeys = [
+          this.BACKUP_KEY, this.CONTEXT_KEY, this.FALLBACK_KEY, 
+          this.RESTORATION_ATTEMPT_KEY, 'payPalSessionBackup'
+        ];
+        
+        cleanupKeys.forEach(key => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+        
+        // Also clean up any remaining PayPal-related keys
         Object.keys(localStorage).forEach(key => {
-          if (key.includes('paypal') || key.includes('session') || key.includes('auth')) {
+          if (key.includes('paypal') || key.includes('payPal')) {
             localStorage.removeItem(key);
           }
         });
+        
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.includes('paypal') || key.includes('payPal')) {
+            sessionStorage.removeItem(key);
+          }
+        });
       } else {
-        // Normal cleanup
-        localStorage.removeItem(this.BACKUP_KEY);
-        localStorage.removeItem(this.CONTEXT_KEY);
+        // Normal cleanup - remove backup data but keep attempt counter temporarily
+        [this.BACKUP_KEY, this.CONTEXT_KEY, this.FALLBACK_KEY].forEach(key => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+        
+        // Reset attempt counter after successful cleanup
+        localStorage.removeItem(this.RESTORATION_ATTEMPT_KEY);
       }
       safeLog.debug('Session backup cleanup completed', { force });
     } catch (error) {
@@ -149,14 +237,42 @@ export class SessionManager {
 
   static getPaymentContext() {
     try {
-      const contextData = localStorage.getItem(this.CONTEXT_KEY);
+      // Try localStorage first, then sessionStorage
+      let contextData = localStorage.getItem(this.CONTEXT_KEY);
+      if (!contextData) {
+        contextData = sessionStorage.getItem(this.CONTEXT_KEY);
+      }
       return contextData ? JSON.parse(contextData) : null;
     } catch {
       return null;
     }
   }
 
+  static getFallbackData() {
+    try {
+      let fallbackData = localStorage.getItem(this.FALLBACK_KEY);
+      if (!fallbackData) {
+        fallbackData = sessionStorage.getItem(this.FALLBACK_KEY);
+      }
+      return fallbackData ? JSON.parse(fallbackData) : null;
+    } catch {
+      return null;
+    }
+  }
+
   static hasBackup(): boolean {
-    return !!localStorage.getItem(this.BACKUP_KEY);
+    return !!(localStorage.getItem(this.BACKUP_KEY) || sessionStorage.getItem(this.BACKUP_KEY));
+  }
+
+  static hasAnyRecoveryData(): boolean {
+    return this.hasBackup() || !!this.getFallbackData() || !!this.getPaymentContext();
+  }
+
+  static getRestorationAttempts(): number {
+    try {
+      return parseInt(localStorage.getItem(this.RESTORATION_ATTEMPT_KEY) || '0');
+    } catch {
+      return 0;
+    }
   }
 }

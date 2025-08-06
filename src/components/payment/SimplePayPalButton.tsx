@@ -88,10 +88,18 @@ export function SimplePayPalButton({
     try {
       // PayPal checkout initiated
 
-      // Enhanced session backup before PayPal redirect
+      // Enhanced session backup with fallback preservation
       const backupSuccess = await SessionManager.backupSession(userId, planId);
       if (!backupSuccess) {
-        console.warn('Session backup failed, but continuing with PayPal flow');
+        console.warn('Session backup failed, using fallback preservation');
+        // Store critical data in multiple locations as fallback
+        try {
+          localStorage.setItem('paypal_fallback_user', userId);
+          localStorage.setItem('paypal_fallback_plan', planId);
+          sessionStorage.setItem('paypal_session_fallback', JSON.stringify({ userId, planId, timestamp: Date.now() }));
+        } catch (e) {
+          console.error('Even fallback storage failed:', e);
+        }
       }
 
       const { data, error } = await supabase.functions.invoke("process-paypal-payment", {
