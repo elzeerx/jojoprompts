@@ -881,6 +881,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user_data: {
+        Args: { target_user_id: string }
+        Returns: Json
+      }
       can_manage_prompts: {
         Args: { _user_id: string }
         Returns: boolean
