@@ -63,6 +63,22 @@ export async function deleteUser(
     logStep('Deleting discount code usage', userId);
     await safeDelete(supabase, 'discount_code_usage', 'user_id', userId);
     
+    // Delete prompt generator templates created by user
+    logStep('Deleting prompt generator templates', userId);
+    await safeDelete(supabase, 'prompt_generator_templates', 'created_by', userId);
+    
+    // Delete prompt generator fields created by user  
+    logStep('Deleting prompt generator fields', userId);
+    await safeDelete(supabase, 'prompt_generator_fields', 'created_by', userId);
+    
+    // Delete prompt generator models created by user
+    logStep('Deleting prompt generator models', userId);
+    await safeDelete(supabase, 'prompt_generator_models', 'created_by', userId);
+    
+    // Delete discount codes created by user
+    logStep('Deleting discount codes', userId);
+    await safeDelete(supabase, 'discount_codes', 'created_by', userId);
+    
     // 4. Delete profile last (but before auth user)
     logStep('Deleting profile', userId);
     await safeDelete(supabase, 'profiles', 'id', userId);

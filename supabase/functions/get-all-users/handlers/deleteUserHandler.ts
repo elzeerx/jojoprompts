@@ -12,12 +12,17 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     // Validate userId parameter
     const validation = ParameterValidator.validateParameters(
       { userId },
-      { userId: ParameterValidator.SCHEMAS.USER_UPDATE.userId }
+      { userId: ParameterValidator.SCHEMAS.USER_DELETE.userId }
     );
     
     if (!validation.isValid) {
+      console.error(`[deleteUserHandler] Validation failed for userId ${userId}:`, validation.errors);
       return new Response(
-        JSON.stringify({ error: validation.errors.join(', ') }), 
+        JSON.stringify({ 
+          error: 'Invalid user ID format', 
+          details: validation.errors.join(', '),
+          received: userId 
+        }), 
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -33,8 +38,13 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       .maybeSingle();
       
     if (userCheckError || !existingUser) {
+      console.error(`[deleteUserHandler] User ${userId} not found:`, userCheckError);
       return new Response(
-        JSON.stringify({ error: 'User not found' }), 
+        JSON.stringify({ 
+          error: 'User not found', 
+          details: userCheckError?.message || 'User does not exist in the database',
+          userId: userId 
+        }), 
         { 
           status: 404, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -95,9 +105,14 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     );
     
   } catch (error) {
-    console.error('Error in handleDeleteUser:', error);
+    console.error(`[deleteUserHandler] Critical error deleting user ${requestBody.userId}:`, error);
     return new Response(
-      JSON.stringify({ error: 'Failed to delete user', details: error.message }), 
+      JSON.stringify({ 
+        error: 'Failed to delete user', 
+        details: error.message,
+        userId: requestBody.userId,
+        timestamp: new Date().toISOString()
+      }), 
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
