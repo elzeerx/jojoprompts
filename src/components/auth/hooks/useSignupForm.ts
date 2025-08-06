@@ -24,6 +24,8 @@ export function useSignupForm() {
       lastName: "",
       username: "",
       email: "",
+      password: "",
+      confirmPassword: "",
     },
   });
 
@@ -31,52 +33,47 @@ export function useSignupForm() {
     setIsLoading(true);
 
     try {
-      let redirectUrl = `${window.location.origin}/prompts`;
-      
-      if (selectedPlan) {
-        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}`;
-      } else if (fromCheckout) {
-        redirectUrl = `${window.location.origin}/checkout`;
-      }
-
-      // Generate magic link using our edge function for better Apple deliverability
-      const { data, error } = await supabase.functions.invoke('send-signup-confirmation', {
-        body: {
-          email: values.email,
-          firstName: values.firstName,
-          lastName: values.lastName,
-          userId: crypto.randomUUID(), // Generate temporary ID
-          redirectUrl: redirectUrl
+      // Direct email/password signup with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: {
+          data: {
+            first_name: values.firstName,
+            last_name: values.lastName,
+            username: values.username,
+          },
+          // Skip email confirmation for faster checkout
+          emailRedirectTo: undefined
         }
       });
 
       if (error) {
-        console.error("Magic link generation error:", error);
+        console.error("Signup error:", error);
         toast({
           variant: "destructive",
-          title: "Error sending magic link",
-          description: error.message || "Failed to send magic link. Please try again.",
+          title: "Signup failed",
+          description: error.message || "Failed to create account. Please try again.",
         });
         return;
       }
 
-      if (!data?.success) {
-        console.error("Magic link sending failed:", data?.error);
+      if (!data.user) {
         toast({
           variant: "destructive",
-          title: "Error sending magic link", 
-          description: data?.error || "Failed to send magic link. Please try again.",
+          title: "Signup failed",
+          description: "Failed to create account. Please try again.",
         });
         return;
       }
 
-      // Show success message and redirect to magic link sent page
+      // Success! User is now logged in
       toast({
-        title: "Magic link sent! ✨",
-        description: "Check your email for a secure login link.",
+        title: "Account created! 🎉",
+        description: "Welcome! You can now complete your purchase.",
       });
 
-      // Send welcome email in the background for new users
+      // Send welcome email in the background (post-signup)
       setTimeout(async () => {
         try {
           await sendWelcomeEmail(values.firstName, values.email);
@@ -85,22 +82,16 @@ export function useSignupForm() {
         }
       }, 1000);
 
-      // Redirect to a magic link sent page
-      const magicLinkParams = new URLSearchParams({
-        email: values.email,
-        firstName: values.firstName,
-      });
-      
+      // Navigate directly to checkout if from checkout flow
       if (selectedPlan) {
-        magicLinkParams.append('plan', selectedPlan);
+        navigate(`/checkout?plan_id=${selectedPlan}&from_signup=true`);
+      } else if (fromCheckout) {
+        navigate('/checkout?from_signup=true');
+      } else {
+        navigate('/prompts');
       }
-      if (fromCheckout) {
-        magicLinkParams.append('fromCheckout', 'true');
-      }
-      
-      navigate(`/magic-link-sent?${magicLinkParams.toString()}`);
     } catch (error) {
-      console.error("Magic link error:", error);
+      console.error("Signup error:", error);
       toast({
         variant: "destructive",
         title: "Error",

@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.send-signup-confirmation]
 verify_jwt = false
+
+[functions.send-welcome-email]
+verify_jwt = false
+
+[functions.send-purchase-confirmation]
+verify_jwt = false
+
+[functions.send-email-confirmation-reminder]
+verify_jwt = false

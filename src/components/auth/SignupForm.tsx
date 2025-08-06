@@ -80,11 +80,37 @@ export function SignupForm({
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium">Password</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="Enter your password" {...field} className="mobile-input" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium">Confirm Password</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="Confirm your password" {...field} className="mobile-input" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <Button type="submit" className="w-full mobile-button-primary" disabled={isLoading || isGoogleLoading}>
-          {isLoading ? "Sending magic link..." : "Send Magic Link"}
+          {isLoading ? "Creating account..." : "Create Account"}
         </Button>
         <p className="text-xs text-muted-foreground text-center">
-          We'll send you a secure link to sign in instantly without a password.
+          Create your account to continue to checkout. No email confirmation required.
         </p>
       </form>
     </Form>

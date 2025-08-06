@@ -2,6 +2,7 @@
 import { useEffect, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { logInfo, logDebug } from '@/utils/secureLogging';
+import { CheckoutContextManager } from '@/utils/checkoutContext';
 
 export function useAuthenticationFlow(
   user: any,
@@ -27,6 +28,9 @@ export function useAuthenticationFlow(
       } else {
         logInfo("User authenticated, hiding auth form", "checkout", undefined, user.id);
         setShowAuthForm(false);
+        
+        // Clear checkout context after successful authentication
+        CheckoutContextManager.clearContext();
         
         // If this is a Google OAuth callback, clean up the URL
         if (authCallback === 'google') {
