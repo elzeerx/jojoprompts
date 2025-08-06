@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -33,9 +32,24 @@ export function useUserDeletion() {
     } catch (error: any) {
       console.error("Error deleting user:", error);
       
+      // Parse error message more specifically
+      let errorMessage = "Failed to delete user.";
+      
+      if (error.message) {
+        if (error.message.includes("Edge Function returned a non-2xx status code")) {
+          errorMessage = "Server error occurred. Please try again or contact support.";
+        } else if (error.message.includes("User not found")) {
+          errorMessage = "User not found in database.";
+        } else if (error.message.includes("Invalid user ID")) {
+          errorMessage = "Invalid user ID provided.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Deletion failed",
-        description: error.message || "Failed to delete user.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
