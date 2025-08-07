@@ -21,6 +21,13 @@ const logStep = (step: string, details?: any) => {
   console.log(`[SEND-BULK-PLAN-REMINDERS] ${step}${detailsStr}`);
 };
 
+// Helper function to construct URLs safely
+const getSiteUrl = () => {
+  const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://jojoprompts.com";
+  // Remove trailing slash to prevent double slashes
+  return frontendUrl.replace(/\/+$/, '');
+};
+
 // Rate limiting utility
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -178,7 +185,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </div>
                   
                   <div style="text-align: center; margin: 30px 0;">
-                    <a href="${Deno.env.get("FRONTEND_URL")}/pricing" 
+                    <a href="${getSiteUrl()}/pricing" 
                        style="display: inline-block; padding: 15px 30px; background: #c49d68; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
                       Choose Your Plan Now
                     </a>
@@ -186,7 +193,7 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <p style="font-size: 14px; color: #666; margin-top: 30px;">
                     Don't want to receive these emails? 
-                    <a href="${Deno.env.get("FRONTEND_URL")}/unsubscribe" style="color: #c49d68;">Unsubscribe here</a>
+                    <a href="${getSiteUrl()}/unsubscribe" style="color: #c49d68;">Unsubscribe here</a>
                   </p>
                 </div>
               </div>
