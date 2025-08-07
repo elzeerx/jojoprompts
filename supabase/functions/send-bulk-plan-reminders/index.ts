@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import React from 'npm:react@18.3.1';
 import { renderAsync } from 'npm:@react-email/components@0.0.22';
-import { PlanReminderEmail } from '../send-plan-reminder/_templates/plan-reminder.tsx';
+import { PlanReminderEmail } from './_templates/plan-reminder.tsx';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 // Validate environment variables
