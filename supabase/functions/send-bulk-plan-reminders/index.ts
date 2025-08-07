@@ -169,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 
                 <div style="padding: 30px; background: #fff;">
-                  <h2 style="color: #c49d68; margin-bottom: 20px;">Hi ${targetUser.first_name},</h2>
+                  <h2 style="color: #c49d68; margin-bottom: 20px;">Hi ${targetUser.first_name || 'there'},</h2>
                   
                   <p>We noticed you haven't selected a subscription plan yet. You're missing out on our premium AI prompts that can transform your creative workflow!</p>
                   
