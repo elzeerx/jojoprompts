@@ -81,7 +81,7 @@ serve(async (req) => {
 
     // If there are active users, exclude them
     if (activeUserIds.length > 0) {
-      query = query.not("id", "in", `(${activeUserIds.map(id => `'${id}'`).join(',')})`);
+      query = query.not("id", "in", `(${activeUserIds.join(',')})`);
     }
 
     const { data: usersWithoutPlans, error: usersError } = await query;
