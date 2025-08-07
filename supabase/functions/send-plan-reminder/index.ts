@@ -2,7 +2,14 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+// Validate environment variables
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+if (!RESEND_API_KEY) {
+  console.error("[SEND-PLAN-REMINDER] RESEND_API_KEY environment variable is not set");
+  throw new Error("RESEND_API_KEY is required");
+}
+
+const resend = new Resend(RESEND_API_KEY);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +19,59 @@ const corsHeaders = {
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[SEND-PLAN-REMINDER] ${step}${detailsStr}`);
+};
+
+// Rate limiting utility
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Retry mechanism for email sending
+const sendEmailWithRetry = async (emailData: any, maxRetries = 3): Promise<any> => {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      logStep(`Email send attempt ${attempt}`, { to: emailData.to });
+      
+      const response = await resend.emails.send(emailData);
+      
+      if (response.error) {
+        logStep(`Resend API error on attempt ${attempt}`, { 
+          error: response.error,
+          errorType: typeof response.error,
+          statusCode: (response as any).statusCode,
+          headers: (response as any).headers
+        });
+        throw new Error(`Resend API error: ${JSON.stringify(response.error)}`);
+      }
+      
+      logStep(`Email sent successfully on attempt ${attempt}`, { 
+        emailId: response.data?.id,
+        to: emailData.to 
+      });
+      return response;
+      
+    } catch (error: any) {
+      lastError = error;
+      logStep(`Email send failed on attempt ${attempt}`, { 
+        error: error.message,
+        errorStack: error.stack,
+        to: emailData.to
+      });
+      
+      // Check if it's a rate limit error
+      if (error.message?.includes('rate') || error.message?.includes('limit') || 
+          error.message?.includes('429') || error.statusCode === 429) {
+        const backoffDelay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        logStep(`Rate limit detected, waiting ${backoffDelay}ms before retry`);
+        await delay(backoffDelay);
+      } else if (attempt < maxRetries) {
+        // For other errors, wait a shorter time
+        await delay(1000 * attempt);
+      }
+    }
+  }
+  
+  throw lastError;
 };
 
 interface PlanReminderRequest {
@@ -64,8 +124,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     logStep("Sending plan reminder email", { email, firstName, isIndividual });
 
-    const emailResponse = await resend.emails.send({
-      from: "JojoPrompts <noreply@jojoprompts.com>",
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error(`Invalid email address: ${email}`);
+    }
+
+    const emailData = {
+      from: "JojoPrompts <noreply@noreply.jojoprompts.com>",
       to: [email],
       subject: "Unlock Premium Features - Choose Your Plan 🎯",
       html: `
@@ -105,12 +171,9 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
         </div>
       `,
-    });
+    };
 
-    if (emailResponse.error) {
-      throw new Error(`Email sending failed: ${emailResponse.error.message}`);
-    }
-
+    const emailResponse = await sendEmailWithRetry(emailData);
     logStep("Email sent successfully", { emailId: emailResponse.data?.id });
 
     // Log the email activity
