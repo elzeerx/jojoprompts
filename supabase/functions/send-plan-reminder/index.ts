@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import React from 'npm:react@18.3.1';
+import { renderAsync } from 'npm:@react-email/components@0.0.22';
+import { PlanReminderEmail } from './_templates/plan-reminder.tsx';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 // Validate environment variables
@@ -188,50 +191,25 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Invalid email address: ${email}`);
     }
 
+    // Render React Email template
+    const html = await renderAsync(
+      React.createElement(PlanReminderEmail, {
+        firstName: firstName || 'there',
+        personalizedMessage: userInsights.personalizedMessage,
+        recommendedPlan: userInsights.recommendedPlan,
+        recommendationReason: userInsights.recommendationReason,
+        daysSinceSignup: userInsights.daysSinceSignup,
+        urgencyLevel: userInsights.urgencyLevel,
+        pricingLink,
+        unsubscribeLink,
+      })
+    );
+
     const emailData = {
       from: "JojoPrompts <noreply@noreply.jojoprompts.com>",
       to: [email],
       subject: "Unlock Premium Features - Choose Your Plan 🎯",
-      html: `
-        <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="background: linear-gradient(135deg, #c49d68, #7a9e9f); padding: 30px; text-align: center; color: white;">
-            <h1 style="margin: 0; font-size: 28px;">JojoPrompts</h1>
-            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Premium AI Prompts Await You</p>
-          </div>
-          
-          <div style="padding: 30px; background: #fff;">
-            <h2 style="color: #c49d68; margin-bottom: 20px;">Hi ${firstName || 'there'},</h2>
-            
-            <p style="color: #333; line-height: 1.6; margin-bottom: 20px;">
-              ${userInsights.personalizedMessage}
-            </p>
-
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #c49d68; margin-top: 0;">🎯 ${userInsights.recommendedPlan} Plan - Perfect for You!</h3>
-              <p style="margin: 10px 0; color: #555;">${userInsights.recommendationReason}</p>
-              <ul style="margin: 0; padding-left: 20px; color: #555;">
-                <li>Access to thousands of high-quality AI prompts</li>
-                <li>Exclusive prompt collections for different AI models</li>
-                <li>Regular updates with new prompt categories</li>
-                <li>Priority support and feature requests</li>
-                <li>Commercial usage rights</li>
-              </ul>
-            </div>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${pricingLink}" 
-                 style="display: inline-block; padding: 15px 30px; background: #c49d68; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                Choose Your Plan Now
-              </a>
-            </div>
-            
-            <p style="font-size: 14px; color: #666; margin-top: 30px;">
-              Don't want to receive these emails? 
-              <a href="${unsubscribeLink}" style="color: #c49d68;">Unsubscribe here</a>
-            </p>
-          </div>
-        </div>
-      `,
+      html,
     };
 
     const emailResponse = await sendEmailWithRetry(emailData);
