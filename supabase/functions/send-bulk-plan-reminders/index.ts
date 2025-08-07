@@ -152,6 +152,21 @@ const handler = async (req: Request): Promise<Response> => {
       
       const batchPromises = batch.map(async (targetUser) => {
         try {
+          // Generate magic link for this user
+          const { data: magicLinkData, error: magicLinkError } = await supabaseClient.functions.invoke('generate-magic-link', {
+            headers: { Authorization: req.headers.get("Authorization") || "" },
+            body: { 
+              email: targetUser.email, 
+              redirectTo: '/pricing',
+              expirationHours: 48 
+            }
+          });
+
+          let pricingLink = `${getSiteUrl()}/pricing`;
+          if (magicLinkData?.success) {
+            pricingLink = magicLinkData.magicLink;
+          }
+
           // Validate email address
           if (!emailRegex.test(targetUser.email)) {
             throw new Error(`Invalid email address: ${targetUser.email}`);
@@ -185,7 +200,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </div>
                   
                   <div style="text-align: center; margin: 30px 0;">
-                    <a href="${getSiteUrl()}/pricing" 
+                    <a href="${pricingLink}" 
                        style="display: inline-block; padding: 15px 30px; background: #c49d68; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
                       Choose Your Plan Now
                     </a>

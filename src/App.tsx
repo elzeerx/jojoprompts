@@ -23,6 +23,7 @@ import SearchPage from "./pages/SearchPage";
 import PricingPage from "./pages/PricingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentCallbackPage from "./pages/PaymentCallbackPage";
+import { MagicLoginPage } from "./pages/MagicLoginPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
 import PaymentDashboardPage from "./pages/PaymentDashboardPage";
@@ -59,6 +60,7 @@ function App() {
                     <Route path="/" element={<RootLayout />}>
                       <Route index element={<Index />} />
                       <Route path="login" element={<LoginPage />} />
+                      <Route path="auth/magic-login" element={<MagicLoginPage />} />
                       <Route path="reset-password" element={<ResetPasswordPage />} />
                       <Route path="signup" element={<SignupPage />} />
                       <Route path="magic-link-sent" element={<MagicLinkSentPage />} />

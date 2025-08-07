@@ -352,6 +352,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_magic_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          metadata: Json | null
+          token: string
+          token_type: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          metadata?: Json | null
+          token: string
+          token_type?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          metadata?: Json | null
+          token?: string
+          token_type?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string | null
@@ -892,6 +928,10 @@ export type Database = {
       cancel_user_subscription: {
         Args: { _user_id: string; _admin_id: string }
         Returns: Json
+      }
+      cleanup_expired_magic_tokens: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       confirm_user_email: {
         Args: { user_id: string; email_confirmed?: boolean }

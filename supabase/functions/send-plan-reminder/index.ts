@@ -131,6 +131,23 @@ const handler = async (req: Request): Promise<Response> => {
 
     logStep("Sending plan reminder email", { email, firstName, isIndividual });
 
+    // Generate magic link for authenticated pricing access
+    const { data: magicLinkData, error: magicLinkError } = await supabaseClient.functions.invoke('generate-magic-link', {
+      headers: { Authorization: authHeader },
+      body: { 
+        email, 
+        redirectTo: '/pricing',
+        expirationHours: 48 
+      }
+    });
+
+    let pricingLink = `${getSiteUrl()}/pricing`;
+    if (magicLinkData?.success) {
+      pricingLink = magicLinkData.magicLink;
+      logStep("Magic link generated", { email, magicLink: pricingLink });
+    } else {
+      logStep("Magic link generation failed, using fallback", { error: magicLinkError });
+    }
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -165,7 +182,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${getSiteUrl()}/pricing" 
+              <a href="${pricingLink}" 
                  style="display: inline-block; padding: 15px 30px; background: #c49d68; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
                 Choose Your Plan Now
               </a>
