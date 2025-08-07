@@ -24,6 +24,7 @@ import PricingPage from "./pages/PricingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentCallbackPage from "./pages/PaymentCallbackPage";
 import { MagicLoginPage } from "./pages/MagicLoginPage";
+import UnsubscribePage from "./pages/UnsubscribePage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
 import PaymentDashboardPage from "./pages/PaymentDashboardPage";
@@ -43,7 +44,6 @@ import ExamplesPage from "./pages/ExamplesPage";
 import EnhancedPromptDemo from "./pages/EnhancedPromptDemo";
 import NotFoundPage from "./pages/NotFoundPage";
 import MagicLinkSentPage from "./pages/MagicLinkSentPage";
-import UnsubscribePage from "./pages/UnsubscribePage";
 
 const queryClient = new QueryClient();
 
@@ -61,10 +61,9 @@ function App() {
                       <Route index element={<Index />} />
                       <Route path="login" element={<LoginPage />} />
                       <Route path="auth/magic-login" element={<MagicLoginPage />} />
-                      <Route path="reset-password" element={<ResetPasswordPage />} />
+                      <Route path="unsubscribe" element={<UnsubscribePage />} />
                       <Route path="signup" element={<SignupPage />} />
                       <Route path="magic-link-sent" element={<MagicLinkSentPage />} />
-                      <Route path="unsubscribe" element={<UnsubscribePage />} />
                       <Route path="email-confirmation" element={<EmailConfirmationPage />} />
                       <Route path="examples" element={<ExamplesPage />} />
                       <Route path="demo/enhanced-prompt" element={<EnhancedPromptDemo />} />

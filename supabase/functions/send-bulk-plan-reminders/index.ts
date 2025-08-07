@@ -152,6 +152,24 @@ const handler = async (req: Request): Promise<Response> => {
       
       const batchPromises = batch.map(async (targetUser) => {
         try {
+          // Get user insights for personalization
+          const { data: insightsData, error: insightsError } = await supabaseClient.functions.invoke('get-user-insights', {
+            headers: { Authorization: req.headers.get("Authorization") || "" },
+            body: { email: targetUser.email }
+          });
+
+          let userInsights = {
+            personalizedMessage: `You haven't selected a subscription plan yet. You're missing out on our premium AI prompts that can transform your creative workflow!`,
+            recommendedPlan: 'Starter',
+            daysSinceSignup: 0,
+            urgencyLevel: 'medium' as const,
+            recommendationReason: 'Start with our Starter plan to explore thousands of quality AI prompts.'
+          };
+
+          if (insightsData?.success) {
+            userInsights = insightsData.insights;
+          }
+
           // Generate magic link for this user
           const { data: magicLinkData, error: magicLinkError } = await supabaseClient.functions.invoke('generate-magic-link', {
             headers: { Authorization: req.headers.get("Authorization") || "" },
@@ -165,6 +183,17 @@ const handler = async (req: Request): Promise<Response> => {
           let pricingLink = `${getSiteUrl()}/pricing`;
           if (magicLinkData?.success) {
             pricingLink = magicLinkData.magicLink;
+          }
+
+          // Generate smart unsubscribe link
+          const { data: unsubscribeData, error: unsubscribeError } = await supabaseClient.functions.invoke('smart-unsubscribe', {
+            headers: { Authorization: req.headers.get("Authorization") || "" },
+            body: { email: targetUser.email }
+          });
+
+          let unsubscribeLink = `${getSiteUrl()}/unsubscribe`;
+          if (unsubscribeData?.success) {
+            unsubscribeLink = unsubscribeData.unsubscribeLink;
           }
 
           // Validate email address
@@ -186,11 +215,14 @@ const handler = async (req: Request): Promise<Response> => {
                 <div style="padding: 30px; background: #fff;">
                   <h2 style="color: #c49d68; margin-bottom: 20px;">Hi ${targetUser.first_name || 'there'},</h2>
                   
-                  <p>We noticed you haven't selected a subscription plan yet. You're missing out on our premium AI prompts that can transform your creative workflow!</p>
-                  
+                  <p style="color: #333; line-height: 1.6; margin-bottom: 20px;">
+                    ${userInsights.personalizedMessage}
+                  </p>
+
                   <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="color: #c49d68; margin-top: 0;">What You Get with Premium:</h3>
-                    <ul style="margin: 0; padding-left: 20px;">
+                    <h3 style="color: #c49d68; margin-top: 0;">🎯 ${userInsights.recommendedPlan} Plan - Perfect for You!</h3>
+                    <p style="margin: 10px 0; color: #555;">${userInsights.recommendationReason}</p>
+                    <ul style="margin: 0; padding-left: 20px; color: #555;">
                       <li>Access to thousands of high-quality AI prompts</li>
                       <li>Exclusive prompt collections for different AI models</li>
                       <li>Regular updates with new prompt categories</li>
@@ -208,7 +240,7 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <p style="font-size: 14px; color: #666; margin-top: 30px;">
                     Don't want to receive these emails? 
-                    <a href="${getSiteUrl()}/unsubscribe" style="color: #c49d68;">Unsubscribe here</a>
+                    <a href="${unsubscribeLink}" style="color: #c49d68;">Unsubscribe here</a>
                   </p>
                 </div>
               </div>
