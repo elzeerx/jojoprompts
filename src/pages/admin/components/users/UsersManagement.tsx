@@ -10,7 +10,7 @@ import { MarketingEmailsPanel } from "./components/MarketingEmailsPanel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { QuickUserDeletion } from "@/components/admin/QuickUserDeletion";
+
 
 export default function UsersManagement() {
   const {
@@ -57,8 +57,6 @@ export default function UsersManagement() {
             onUserCreated={fetchUsers}
           />
 
-          {/* Emergency deletion tool */}
-          <QuickUserDeletion />
 
           <UserPerformanceStats 
             performance={performance}
