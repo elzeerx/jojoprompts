@@ -388,6 +388,57 @@ export type Database = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          html: string
+          id: string
+          is_active: boolean
+          locale: string
+          name: string
+          slug: string
+          subject: string
+          text: string | null
+          type: string
+          updated_at: string
+          updated_by: string | null
+          variables: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          html: string
+          id?: string
+          is_active?: boolean
+          locale?: string
+          name: string
+          slug: string
+          subject: string
+          text?: string | null
+          type: string
+          updated_at?: string
+          updated_by?: string | null
+          variables?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          html?: string
+          id?: string
+          is_active?: boolean
+          locale?: string
+          name?: string
+          slug?: string
+          subject?: string
+          text?: string | null
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+          variables?: Json
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string | null
