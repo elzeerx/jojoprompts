@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -217,7 +217,7 @@ export function EmailTemplatesManagement() {
                   <td className="p-3 text-right space-x-2">
                     <Button size="sm" variant="secondary" onClick={() => openEdit(t)}>Edit</Button>
                     <Button size="sm" variant="outline" onClick={() => openSendTest(t)}>
-                      <Send className="h-3.5 w-3.5 mr-1" /> Test
+                      <Send className="h-4 w-4 mr-1" /> Test
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => remove(t)}>Delete</Button>
                   </td>
@@ -230,11 +230,14 @@ export function EmailTemplatesManagement() {
 
       {/* Editor Dialog */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-4xl w-[95vw]">
-          <DialogHeader>
-            <DialogTitle>{current?.id ? "Edit Template" : "New Template"}</DialogTitle>
+        <DialogContent className="max-w-4xl w-[95vw] p-0 overflow-hidden rounded-xl">
+          <DialogHeader className="px-6 py-4 border-b bg-muted/30">
+            <DialogTitle className="section-title text-lg sm:text-xl">
+              {current?.id ? "Edit Template" : "New Template"}
+            </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="px-6 py-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
               <div>
                 <Label>Slug</Label>
@@ -284,16 +287,18 @@ export function EmailTemplatesManagement() {
               </div>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </DialogContent>
+    </Dialog>
 
       {/* Send Test Dialog */}
       <Dialog open={sendingOpen} onOpenChange={setSendingOpen}>
-        <DialogContent className="max-w-xl w-[95vw]">
-          <DialogHeader>
-            <DialogTitle>Send Test Email</DialogTitle>
+        <DialogContent className="max-w-xl w-[95vw] p-0 overflow-hidden rounded-xl">
+          <DialogHeader className="px-6 py-4 border-b bg-muted/30">
+            <DialogTitle className="section-title text-lg sm:text-xl">Send Test Email</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="px-6 py-5 space-y-4">
+            <div className="space-y-3">
             <div>
               <Label>Recipient email</Label>
               <Input placeholder="name@example.com" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} />
@@ -302,15 +307,16 @@ export function EmailTemplatesManagement() {
               <Label>Variables (JSON)</Label>
               <Textarea rows={6} value={varsJson} onChange={(e) => setVarsJson(e.target.value)} />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setSendingOpen(false)}>Cancel</Button>
-              <Button onClick={sendTest} disabled={sending} className="mobile-button-secondary">
-                {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MailCheck className="h-4 w-4 mr-2" />} Send Test
-              </Button>
-            </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSendingOpen(false)}>Cancel</Button>
+                <Button onClick={sendTest} disabled={sending} className="mobile-button-secondary">
+                  {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MailCheck className="h-4 w-4 mr-2" />} Send Test
+                </Button>
+              </DialogFooter>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </DialogContent>
+    </Dialog>
     </div>
   );
 }
