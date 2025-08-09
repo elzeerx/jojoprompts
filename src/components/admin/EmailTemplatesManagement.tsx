@@ -255,13 +255,13 @@ export function EmailTemplatesManagement() {
 
       {/* Editor Dialog */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-4xl w-[95vw] p-0 overflow-hidden rounded-xl">
-          <DialogHeader className="px-6 py-4 border-b bg-muted/30">
+        <DialogContent className="max-w-4xl w-[95vw] p-0 rounded-xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="sticky top-0 z-10 px-6 py-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <DialogTitle className="section-title text-lg sm:text-xl">
               {current?.id ? "Edit Template" : "New Template"}
             </DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-5 space-y-4">
+          <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
               <div>
@@ -353,11 +353,11 @@ export function EmailTemplatesManagement() {
 
       {/* Send Test Dialog */}
       <Dialog open={sendingOpen} onOpenChange={setSendingOpen}>
-        <DialogContent className="max-w-xl w-[95vw] p-0 overflow-hidden rounded-xl">
-          <DialogHeader className="px-6 py-4 border-b bg-muted/30">
+        <DialogContent className="max-w-xl w-[95vw] p-0 rounded-xl max-h-[80vh] flex flex-col">
+          <DialogHeader className="sticky top-0 z-10 px-6 py-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <DialogTitle className="section-title text-lg sm:text-xl">Send Test Email</DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-5 space-y-4">
+          <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
             <div className="space-y-3">
             <div>
               <Label>Recipient email</Label>
