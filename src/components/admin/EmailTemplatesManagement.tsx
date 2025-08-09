@@ -10,6 +10,8 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, MailCheck, Plus, Send } from "lucide-react";
 
+import { TemplatePreview } from "@/components/admin/email-templates/TemplatePreview";
+import { RichHtmlEditor } from "@/components/admin/email-templates/RichHtmlEditor";
 interface EmailTemplate {
   id: string;
   slug: string;
@@ -37,6 +39,8 @@ export function EmailTemplatesManagement() {
   const [sending, setSending] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [varsJson, setVarsJson] = useState("{}");
+
+  const previewVars = useMemo(() => { try { return varsJson ? JSON.parse(varsJson) : {}; } catch { return {}; } }, [varsJson]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
@@ -273,11 +277,23 @@ export function EmailTemplatesManagement() {
             <div className="md:col-span-2 space-y-3">
               <div>
                 <Label>HTML</Label>
-                <Textarea rows={10} value={current?.html || ""} onChange={(e) => setCurrent((c) => ({ ...(c as any), html: e.target.value }))} />
+                <RichHtmlEditor
+                  value={current?.html || ""}
+                  onChange={(val) => setCurrent((c) => ({ ...(c as any), html: val }))}
+                />
               </div>
               <div>
                 <Label>Plain Text (optional)</Label>
                 <Textarea rows={5} value={current?.text || ""} onChange={(e) => setCurrent((c) => ({ ...(c as any), text: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Live Preview</Label>
+                <TemplatePreview
+                  subject={current?.subject || ""}
+                  html={current?.html || ""}
+                  text={current?.text || ""}
+                  variables={previewVars}
+                />
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button>
