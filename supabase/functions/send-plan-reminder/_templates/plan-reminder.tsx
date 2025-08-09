@@ -10,6 +10,7 @@ interface PlanReminderEmailProps {
   urgencyLevel: 'low' | 'medium' | 'high';
   pricingLink: string;
   unsubscribeLink: string;
+  fallbackLoginLink?: string;
 }
 
 export const PlanReminderEmail = ({
@@ -54,6 +55,13 @@ export const PlanReminderEmail = ({
               Choose Your Plan Now
             </Button>
           </div>
+
+          <Text style={hintText}>
+            Trouble with the button?{' '}
+            <Link href={fallbackLoginLink || `${pricingLink}`} style={secondaryLink}>
+              Sign in first
+            </Link>{' '}then continue to pricing.
+          </Text>
           
           <Hr style={hr} />
           
@@ -177,4 +185,16 @@ const footer = {
 const unsubscribeLink = {
   color: '#c49d68',
   textDecoration: 'none',
+};
+
+const hintText = {
+  fontSize: '14px',
+  color: '#666',
+  marginTop: '8px',
+  textAlign: 'center' as const,
+};
+
+const secondaryLink = {
+  color: '#7a9e9f',
+  textDecoration: 'underline',
 };

@@ -165,9 +165,12 @@ const handler = async (req: Request): Promise<Response> => {
       }
     });
 
-    let pricingLink = `${getSiteUrl()}/pricing`;
-    if (magicLinkData?.success) {
-      pricingLink = magicLinkData.magicLink;
+    const siteUrl = getSiteUrl();
+    let pricingLink = `${siteUrl}/pricing`;
+    const fallbackLoginLink = `${siteUrl}/login?redirect=${encodeURIComponent('/pricing')}`;
+    if (magicLinkData?.success && typeof magicLinkData.magicLink === 'string') {
+      const rawLink = magicLinkData.magicLink as string;
+      pricingLink = rawLink.replace(/^https?:\/\/[^/]+/, siteUrl);
       logStep("Magic link generated", { email, magicLink: pricingLink });
     } else {
       logStep("Magic link generation failed, using fallback", { error: magicLinkError });
@@ -202,6 +205,7 @@ const handler = async (req: Request): Promise<Response> => {
         urgencyLevel: userInsights.urgencyLevel,
         pricingLink,
         unsubscribeLink,
+        fallbackLoginLink,
       })
     );
 

@@ -183,9 +183,12 @@ const handler = async (req: Request): Promise<Response> => {
             }
           });
 
-          let pricingLink = `${getSiteUrl()}/pricing`;
-          if (magicLinkData?.success) {
-            pricingLink = magicLinkData.magicLink;
+          const siteUrl = getSiteUrl();
+          let pricingLink = `${siteUrl}/pricing`;
+          const fallbackLoginLink = `${siteUrl}/login?redirect=${encodeURIComponent('/pricing')}`;
+          if (magicLinkData?.success && typeof magicLinkData.magicLink === 'string') {
+            const rawLink = magicLinkData.magicLink as string;
+            pricingLink = rawLink.replace(/^https?:\/\/[^/]+/, siteUrl);
           }
 
           // Generate smart unsubscribe link
@@ -215,6 +218,7 @@ const handler = async (req: Request): Promise<Response> => {
               urgencyLevel: userInsights.urgencyLevel,
               pricingLink,
               unsubscribeLink,
+              fallbackLoginLink,
             })
           );
 

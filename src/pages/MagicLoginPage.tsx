@@ -65,7 +65,7 @@ export function MagicLoginPage() {
 
         // Redirect to login page after error
         setTimeout(() => {
-          navigate('/auth');
+          navigate('/login');
         }, 3000);
       } finally {
         setIsLoading(false);
