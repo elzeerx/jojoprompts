@@ -185,7 +185,7 @@ const handler = async (req: Request): Promise<Response> => {
 
           const siteUrl = getSiteUrl();
           let pricingLink = `${siteUrl}/pricing`;
-          const fallbackLoginLink = `${siteUrl}/login?redirect=${encodeURIComponent('/pricing')}`;
+          const fallbackLoginLink = `${siteUrl}/login?redirect=${encodeURIComponent('pricing')}`;
           if (magicLinkData?.success && typeof magicLinkData.magicLink === 'string') {
             const rawLink = magicLinkData.magicLink as string;
             pricingLink = rawLink.replace(/^https?:\/\/[^/]+/, siteUrl);
