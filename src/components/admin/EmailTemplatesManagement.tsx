@@ -12,6 +12,7 @@ import { Loader2, MailCheck, Plus, Send } from "lucide-react";
 
 import { TemplatePreview } from "@/components/admin/email-templates/TemplatePreview";
 import { RichHtmlEditor } from "@/components/admin/email-templates/RichHtmlEditor";
+import { templatePresets, blocks, PresetKey } from "@/components/admin/email-templates/presets";
 interface EmailTemplate {
   id: string;
   slug: string;
@@ -39,7 +40,7 @@ export function EmailTemplatesManagement() {
   const [sending, setSending] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [varsJson, setVarsJson] = useState("{}");
-
+  const [selectedPreset, setSelectedPreset] = useState<PresetKey>("branded");
   const previewVars = useMemo(() => { try { return varsJson ? JSON.parse(varsJson) : {}; } catch { return {}; } }, [varsJson]);
 
   const filtered = useMemo(() => {
@@ -170,6 +171,26 @@ export function EmailTemplatesManagement() {
     }
   };
 
+  const applySelectedPreset = () => {
+    if (!current) {
+      setCurrent({ slug: "", name: "", type: "general", subject: "", html: "", text: "", locale: "en", is_active: true, variables: {} });
+    }
+    const preset = templatePresets.find((p) => p.key === selectedPreset);
+    if (!preset) return;
+    setCurrent((c) => ({
+      ...(c as any),
+      subject: preset.subject || c?.subject || "",
+      html: preset.html || "",
+      text: preset.text || c?.text || "",
+    }));
+    if (preset.exampleVars) {
+      setVarsJson(JSON.stringify(preset.exampleVars, null, 2));
+    }
+  };
+
+  const insertBlock = (htmlToInsert: string) => {
+    setCurrent((c) => ({ ...(c as any), html: `${(c?.html || "").trim()}\n${htmlToInsert}` }));
+  };
   return (
     <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
@@ -277,6 +298,29 @@ export function EmailTemplatesManagement() {
             <div className="md:col-span-2 space-y-3">
               <div>
                 <Label>HTML</Label>
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 my-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Preset</span>
+                    <select
+                      value={selectedPreset}
+                      onChange={(e) => setSelectedPreset(e.target.value as PresetKey)}
+                      className="h-9 rounded-md border bg-background px-2"
+                    >
+                      {templatePresets.map((p) => (
+                        <option key={p.key} value={p.key}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button size="sm" onClick={applySelectedPreset}>Apply</Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Quick insert</span>
+                    <Button size="sm" variant="outline" onClick={() => insertBlock(blocks.cta)}>CTA</Button>
+                    <Button size="sm" variant="outline" onClick={() => insertBlock(blocks.highlight)}>Highlight</Button>
+                    <Button size="sm" variant="outline" onClick={() => insertBlock(blocks.divider)}>Divider</Button>
+                  </div>
+                </div>
                 <RichHtmlEditor
                   value={current?.html || ""}
                   onChange={(val) => setCurrent((c) => ({ ...(c as any), html: val }))}
