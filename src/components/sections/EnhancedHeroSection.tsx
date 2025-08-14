@@ -39,18 +39,18 @@ export function EnhancedHeroSection() {
             
             {/* Enhanced value proposition */}
             <div className="space-y-3 sm:space-y-4 mb-8 text-base sm:text-lg text-white/90 animate-fade-in-delayed">
-              <p className="flex items-center gap-3 justify-center lg:justify-start glass-effect px-4 py-2 rounded-lg border border-white/10">
+              <div className="flex items-center gap-3 justify-center lg:justify-start glass-effect px-4 py-2 rounded-lg border border-white/10">
                 <div className="h-2 w-2 rounded-full bg-gradient-to-r from-warm-gold to-muted-teal animate-pulse-gentle flex-shrink-0"></div>
                 <span>Stop wasting time on generic prompts that don't work</span>
-              </p>
-              <p className="flex items-center gap-3 justify-center lg:justify-start glass-effect px-4 py-2 rounded-lg border border-white/10">
+              </div>
+              <div className="flex items-center gap-3 justify-center lg:justify-start glass-effect px-4 py-2 rounded-lg border border-white/10">
                 <div className="h-2 w-2 rounded-full bg-gradient-to-r from-warm-gold to-muted-teal animate-pulse-gentle flex-shrink-0" style={{ animationDelay: '0.3s' }}></div>
                 <span>Get 10x better AI outputs with our hand-crafted prompts</span>
-              </p>
-              <p className="flex items-center gap-3 justify-center lg:justify-start glass-effect px-4 py-2 rounded-lg border border-white/10">
+              </div>
+              <div className="flex items-center gap-3 justify-center lg:justify-start glass-effect px-4 py-2 rounded-lg border border-white/10">
                 <div className="h-2 w-2 rounded-full bg-gradient-to-r from-warm-gold to-muted-teal animate-pulse-gentle flex-shrink-0" style={{ animationDelay: '0.6s' }}></div>
                 <span>One-time payment, lifetime access - no subscriptions ever</span>
-              </p>
+              </div>
             </div>
 
             {/* Trust indicators */}

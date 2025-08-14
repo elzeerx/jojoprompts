@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { safeLog } from "@/utils/safeLogging";
 
 interface VerificationResult {
   isSuccessful: boolean;
@@ -17,7 +18,7 @@ export class PaymentStateVerifier {
     orderId?: string,
     paymentId?: string
   ): Promise<VerificationResult> {
-    console.log('Starting payment state verification:', { userId, planId, orderId, paymentId });
+    safeLog.debug('Starting payment state verification:', { userId, planId, orderId, paymentId });
 
     try {
       // Phase 1: Check for active subscription first
@@ -32,7 +33,7 @@ export class PaymentStateVerifier {
           .maybeSingle();
 
         if (subscription) {
-          console.log('Found active subscription, payment was successful');
+          safeLog.debug('Found active subscription, payment was successful');
           // Check if this is a discount-based payment
           const isDiscountPayment = subscription.payment_method === 'discount_100_percent' || 
                                    (subscription.payment_id && subscription.payment_id.startsWith('discount_'));
@@ -56,7 +57,7 @@ export class PaymentStateVerifier {
           .maybeSingle();
 
         if (transaction) {
-          console.log('Found transaction:', transaction.status);
+          safeLog.debug('Found transaction:', transaction.status);
           
           if (transaction.status === "completed") {
             // Check if subscription was created for this transaction
@@ -112,7 +113,7 @@ export class PaymentStateVerifier {
             .maybeSingle();
 
           if (sub) {
-            console.log('Found discount-based subscription, payment was successful');
+            safeLog.debug('Found discount-based subscription, payment was successful');
             return {
               isSuccessful: true,
               hasActiveSubscription: true,
@@ -133,7 +134,7 @@ export class PaymentStateVerifier {
       };
 
     } catch (error) {
-      console.error('Payment state verification error:', error);
+      safeLog.error('Payment state verification error:', error);
       return {
         isSuccessful: false,
         hasActiveSubscription: false,

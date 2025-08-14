@@ -1,10 +1,11 @@
 
 import { useState } from "react";
-import { usePaymentSuccessParams } from "@/hooks/payment/usePaymentSuccessParams";
+import { usePaymentParams } from "@/hooks/payment/usePaymentParams";
 import { usePaymentSuccessVerification } from "@/hooks/payment/usePaymentSuccessVerification";
 import { PaymentSuccessLoader } from "@/components/payment/PaymentSuccessLoader";
 import { PaymentSuccessError } from "@/components/payment/PaymentSuccessError";
 import { PaymentSuccessCard } from "@/components/payment/PaymentSuccessCard";
+import { PaymentRecoveryCard } from "@/components/payment/PaymentRecoveryCard";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,27 +19,41 @@ export default function PaymentSuccessPage() {
   const [verifying, setVerifying] = useState(true);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRecovery, setShowRecovery] = useState(false);
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
 
-  const params = usePaymentSuccessParams();
+  const params = usePaymentParams();
   const authRequired = searchParams.get('auth_required') === 'true';
 
-  // Enhanced session restoration attempt on load
+  // Enhanced session restoration and payment recovery
   useEffect(() => {
-    const attemptSessionRecovery = async () => {
-      if (!user && !authLoading && SessionManager.hasBackup()) {
-        console.log('Attempting session recovery on payment success page');
-        const result = await SessionManager.restoreSession();
-        if (result.success) {
-          console.log('Session recovered successfully, refreshing page');
-          window.location.reload();
+    const handleAuthenticationRecovery = async () => {
+      // If user is not logged in but we have payment parameters, try recovery
+      if (!user && !authLoading && (params.orderId || params.paymentId || (params.planId && params.userId))) {
+        console.log('No user session but payment params detected, attempting recovery');
+        
+        // First try session restoration
+        if (SessionManager.hasBackup()) {
+          console.log('Attempting session recovery');
+          const result = await SessionManager.restoreSession();
+          if (result.success) {
+            console.log('Session recovered successfully, refreshing page');
+            window.location.reload();
+            return;
+          }
         }
+        
+        // If session restoration fails, show payment recovery UI
+        console.log('Session restoration failed, showing payment recovery');
+        setShowRecovery(true);
       }
     };
 
-    attemptSessionRecovery();
-  }, [user, authLoading]);
+    if (!authLoading) {
+      handleAuthenticationRecovery();
+    }
+  }, [user, authLoading, params]);
 
   usePaymentSuccessVerification({
     params,
@@ -46,6 +61,18 @@ export default function PaymentSuccessPage() {
     setVerified,
     setError,
   });
+
+  // If we should show recovery (payment params but no user), show recovery card
+  if (showRecovery && !user && (params.orderId || params.paymentId || (params.planId && params.userId))) {
+    return (
+      <PaymentRecoveryCard
+        orderId={params.orderId}
+        paymentId={params.paymentId}
+        planId={params.planId}
+        userId={params.userId}
+      />
+    );
+  }
 
   // Enhanced auth required case
   if (authRequired && !verifying) {
@@ -114,8 +141,22 @@ export default function PaymentSuccessPage() {
   }
 
   if (error) {
-    // Enhanced error handling with session recovery suggestion
-    if (error.toLowerCase().includes("login") || error.toLowerCase().includes("authentication") || !user) {
+    // Enhanced error handling with payment recovery
+    if ((error.toLowerCase().includes("login") || error.toLowerCase().includes("authentication") || !user) &&
+        (params.orderId || params.paymentId || (params.planId && params.userId))) {
+      // Show payment recovery instead of just error
+      return (
+        <PaymentRecoveryCard
+          orderId={params.orderId}
+          paymentId={params.paymentId}
+          planId={params.planId}
+          userId={params.userId}
+        />
+      );
+    }
+    
+    // Enhanced error handling for other cases
+    if (!user) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-soft-bg py-16">
           <div className="container mx-auto max-w-md px-4">
@@ -129,10 +170,13 @@ export default function PaymentSuccessPage() {
                   variant="outline" 
                   size="sm" 
                   className="w-full"
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    setShowRecovery(true);
+                    setError(null);
+                  }}
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh Page
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Check Payment Status
                 </Button>
                 <Button asChild size="sm" className="w-full">
                   <Link to="/login">

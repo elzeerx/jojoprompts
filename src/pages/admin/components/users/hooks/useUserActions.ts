@@ -165,19 +165,13 @@ export function useUserActions() {
         return false;
       }
       
-      // Call edge function with proper error handling
-      const { data, error } = await supabase.functions.invoke(
-        "get-all-users",
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: { 
-            userId, 
-            action: "delete"
-          }
+      // Call edge function using supabase.functions.invoke() for proper authentication
+      const { data, error } = await supabase.functions.invoke('get-all-users', {
+        body: { 
+          userId, 
+          action: "delete"
         }
-      );
+      });
 
       if (error || (data && data.error)) {
         const errorMessage = error?.message || data?.error || "Error deleting user";

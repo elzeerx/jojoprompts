@@ -133,6 +133,8 @@ interface EmailRequest {
   email_type?: string;
   template?: string;
   data?: any;
+  template_slug?: string;
+  variables?: any;
 }
 
 function getSubject(email_type: string): string {
@@ -162,6 +164,28 @@ function getEmailHtml(email_type: string, data: any): string {
   const trackingPixel = `<img src="https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/track-email-engagement?email=${encodeURIComponent(data.email || '')}" width="1" height="1" style="display:none;" alt="" />`;
   
   return baseHtml + trackingPixel;
+}
+
+// Helper: deep-get value by path (e.g., user.first_name)
+function getProp(obj: Record<string, any>, path: string) {
+  return path.split('.').reduce((acc: any, key: string) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
+}
+
+// Helper: replace {{variable}} placeholders
+function interpolate(input: string, vars: Record<string, any>) {
+  if (!input) return input;
+  return input.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_m, key) => {
+    const val = getProp(vars, key);
+    return val !== undefined && val !== null ? String(val) : '';
+  });
+}
+
+function stripTags(html: string) {
+  return html.replace(/<[^>]*>/g, '');
+}
+
+function buildTrackingPixel(email: string) {
+  return `<img src="https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/track-email-engagement?email=${encodeURIComponent(email || '')}" width="1" height="1" style="display:none;" alt="" />`;
 }
 
 // Simple logging function
@@ -217,8 +241,17 @@ export default async function handler(req: Request) {
       user_id, 
       email_type = 'general',
       template,
-      data 
+      data,
+      template_slug,
+      variables
     }: EmailRequest = await req.json();
+    
+    // Merge variables and ensure defaults
+    const vars = { ...(data || {}), ...(variables || {}) };
+    if (email_address) {
+      vars.email = email_address;
+      vars.unsubscribe_link = vars.unsubscribe_link || `https://jojoprompts.com/unsubscribe?email=${encodeURIComponent(email_address)}&type=${email_type}`;
+    }
     
     console.log(`[send-email:${requestId}] Sending ${email_type} email to ${email_address}`);
     
@@ -256,16 +289,37 @@ export default async function handler(req: Request) {
     
     // Handle template-based emails
     let finalSubject = subject || getSubject(email_type);
-    let finalHtml = html || getEmailHtml(email_type, data);
+    let finalHtml = html || getEmailHtml(email_type, { ...vars, email: email_address });
     let finalText = text;
 
-    if (template && data) {
-      console.log(`[send-email:${requestId}] Processing template: ${template}`);
-      
+    // Load and render DB-managed template by slug if provided
+    if (template_slug) {
+      console.log(`[send-email:${requestId}] Loading template slug: ${template_slug}`);
+      const { data: tmpl, error: tmplErr } = await supabase
+        .from('email_templates')
+        .select('subject, html, text, is_active')
+        .eq('slug', template_slug)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (tmplErr) {
+        console.log(`[send-email:${requestId}] DB template load error:`, tmplErr);
+      }
+      if (tmpl) {
+        const htmlInterpolated = interpolate(tmpl.html, vars);
+        finalSubject = interpolate(tmpl.subject, vars);
+        finalHtml = htmlInterpolated + buildTrackingPixel(email_address);
+        finalText = interpolate(tmpl.text || stripTags(htmlInterpolated), vars);
+      } else {
+        console.log(`[send-email:${requestId}] Template slug not found or inactive: ${template_slug}`);
+      }
+    }
+
+    if (template && (data || variables)) {
+      console.log(`[send-email:${requestId}] Processing legacy template: ${template}`);
       if (emailTemplates[template as keyof typeof emailTemplates]) {
         const templateFn = emailTemplates[template as keyof typeof emailTemplates];
-        const templateResult = templateFn({ ...data, email_type });
-        
+        const templateResult = templateFn({ ...(vars || {}), email_type });
         finalSubject = templateResult.subject;
         finalHtml = templateResult.html;
         finalText = templateResult.text || finalHtml.replace(/<[^>]*>/g, '');

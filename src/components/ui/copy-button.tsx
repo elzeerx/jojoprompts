@@ -1,8 +1,8 @@
-
+import React from "react";
+import { Button } from "@/components/ui/button";
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
-import { Button } from "./button";
 import { cn } from "@/lib/utils";
+import { useCopyToClipboard } from "@/hooks/ui/useCopyToClipboard";
 
 interface CopyButtonProps {
   value: string;
@@ -10,26 +10,22 @@ interface CopyButtonProps {
 }
 
 export function CopyButton({ value, className }: CopyButtonProps) {
-  const [hasCopied, setHasCopied] = useState(false);
+  const { copyToClipboard, hasCopied } = useCopyToClipboard({
+    successDescription: "Content copied to clipboard",
+    resetDelay: 1000
+  });
 
-  const copyToClipboard = async (e: React.MouseEvent) => {
-    // Prevent the event from bubbling up to parent elements
+  const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    await navigator.clipboard.writeText(value);
-    setHasCopied(true);
-    
-    setTimeout(() => {
-      setHasCopied(false);
-    }, 2000);
+    copyToClipboard(value);
   };
 
   return (
     <Button
       variant="outline"
       size="sm"
-      onClick={copyToClipboard}
-      className={cn("transition-all rounded-lg", className)} // Added rounded-lg
+      onClick={handleClick}
+      className={cn("transition-all rounded-lg", className)}
     >
       {hasCopied ? (
         <>

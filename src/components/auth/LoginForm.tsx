@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock } from "lucide-react";
 import { LoginFormValues, MagicLinkFormValues, loginSchema, magicLinkSchema } from "./validation";
+import { CheckoutContextManager } from "@/utils/checkoutContext";
 
 type AuthMode = 'password' | 'magic-link';
 
@@ -70,9 +71,12 @@ export function LoginForm() {
           description: "You have been logged in.",
         });
         
-        // Handle redirection based on parameters
-        if (selectedPlan) {
-          navigate(`/checkout?plan_id=${selectedPlan}`);
+        // Handle redirection based on parameters or saved context
+        const savedContext = CheckoutContextManager.getContext();
+        if (selectedPlan || savedContext?.planId) {
+          const planId = selectedPlan || savedContext?.planId;
+          CheckoutContextManager.clearContext(); // Clear after use
+          navigate(`/checkout?plan_id=${planId}&from_login=true`);
         } else if (redirectTo) {
           navigate(`/${redirectTo}`);
         } else {

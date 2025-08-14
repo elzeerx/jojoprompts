@@ -50,6 +50,10 @@ export class ValidationSchemas {
     }
   };
 
+  static readonly USER_DELETE: ValidationSchema = {
+    userId: { required: true, type: 'uuid' }
+  };
+
   static readonly PAYMENT_REQUEST: ValidationSchema = {
     userId: { required: true, type: 'uuid' },
     planId: { required: true, type: 'uuid' },

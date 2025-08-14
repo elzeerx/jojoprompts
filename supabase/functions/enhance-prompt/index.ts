@@ -135,7 +135,7 @@ Keep the core subject but expand with rich visual details that would help AI gen
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: model_to_use,
         messages: [
           {
             role: 'system',

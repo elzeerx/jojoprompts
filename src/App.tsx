@@ -23,8 +23,12 @@ import SearchPage from "./pages/SearchPage";
 import PricingPage from "./pages/PricingPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentCallbackPage from "./pages/PaymentCallbackPage";
+import { MagicLoginPage } from "./pages/MagicLoginPage";
+import UnsubscribePage from "./pages/UnsubscribePage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
+import PaymentDashboardPage from "./pages/PaymentDashboardPage";
+import PaymentRecoveryPage from "./pages/PaymentRecoveryPage";
 import UserDashboardPage from "./pages/UserDashboardPage";
 import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
 import PrompterDashboard from "./pages/prompter/PrompterDashboard";
@@ -37,9 +41,9 @@ import FAQPage from "./pages/FAQPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import ExamplesPage from "./pages/ExamplesPage";
+import EnhancedPromptDemo from "./pages/EnhancedPromptDemo";
 import NotFoundPage from "./pages/NotFoundPage";
 import MagicLinkSentPage from "./pages/MagicLinkSentPage";
-import UnsubscribePage from "./pages/UnsubscribePage";
 
 const queryClient = new QueryClient();
 
@@ -56,12 +60,13 @@ function App() {
                     <Route path="/" element={<RootLayout />}>
                       <Route index element={<Index />} />
                       <Route path="login" element={<LoginPage />} />
-                      <Route path="reset-password" element={<ResetPasswordPage />} />
+                      <Route path="auth/magic-login" element={<MagicLoginPage />} />
+                      <Route path="unsubscribe" element={<UnsubscribePage />} />
                       <Route path="signup" element={<SignupPage />} />
                       <Route path="magic-link-sent" element={<MagicLinkSentPage />} />
-                      <Route path="unsubscribe" element={<UnsubscribePage />} />
                       <Route path="email-confirmation" element={<EmailConfirmationPage />} />
                       <Route path="examples" element={<ExamplesPage />} />
+                      <Route path="demo/enhanced-prompt" element={<EnhancedPromptDemo />} />
                       <Route path="prompts" element={<PromptsPage />} />
                       <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />
                       <Route path="prompts/midjourney" element={<MidjourneyPromptsPage />} />
@@ -73,6 +78,8 @@ function App() {
                       <Route path="payment/callback" element={<PaymentCallbackPage />} />
                       <Route path="payment-success" element={<PaymentSuccessPage />} />
                       <Route path="payment-failed" element={<PaymentFailedPage />} />
+                      <Route path="payment-dashboard" element={<ProtectedRoute><PaymentDashboardPage /></ProtectedRoute>} />
+                      <Route path="payment-recovery" element={<PaymentRecoveryPage />} />
                       <Route path="dashboard" element={<ProtectedRoute><UserDashboardPage /></ProtectedRoute>} />
                       <Route path="dashboard/subscription" element={<ProtectedRoute><SubscriptionDashboard /></ProtectedRoute>} />
                       <Route path="dashboard/prompter" element={<RouteGuard requiredRole="prompter"><PrompterDashboard /></RouteGuard>} />

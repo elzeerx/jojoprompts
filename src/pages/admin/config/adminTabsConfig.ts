@@ -15,5 +15,6 @@ export const adminTabs: AdminTabConfig[] = [
   { id: "users", label: "Users", icon: Users, mobileLabel: "Users" },
   { id: "purchases", label: "Purchases", icon: CreditCard, mobileLabel: "Sales" },
   { id: "discounts", label: "Discounts", icon: Percent, mobileLabel: "Codes" },
+  { id: "email-templates", label: "Email Templates", icon: Mail, mobileLabel: "Templates" },
   { id: "emails", label: "Email Analytics", icon: Mail, mobileLabel: "Emails" }
 ];

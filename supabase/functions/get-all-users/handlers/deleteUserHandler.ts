@@ -12,12 +12,17 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     // Validate userId parameter
     const validation = ParameterValidator.validateParameters(
       { userId },
-      { userId: ParameterValidator.SCHEMAS.USER_UPDATE.userId }
+      { userId: ParameterValidator.SCHEMAS.USER_DELETE.userId }
     );
     
     if (!validation.isValid) {
+      console.error(`[deleteUserHandler] Validation failed for userId ${userId}:`, validation.errors);
       return new Response(
-        JSON.stringify({ error: validation.errors.join(', ') }), 
+        JSON.stringify({ 
+          error: 'Invalid user ID format', 
+          details: validation.errors.join(', '),
+          received: userId 
+        }), 
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -25,22 +30,29 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       );
     }
 
-    // Check if user exists
+    // Check if user exists BEFORE deletion
     const { data: existingUser, error: userCheckError } = await supabase
       .from('profiles')
-      .select('id, role')
+      .select('id, role, first_name, last_name')
       .eq('id', userId)
       .maybeSingle();
       
     if (userCheckError || !existingUser) {
+      console.error(`[deleteUserHandler] User ${userId} not found:`, userCheckError);
       return new Response(
-        JSON.stringify({ error: 'User not found' }), 
+        JSON.stringify({ 
+          error: 'User not found', 
+          details: userCheckError?.message || 'User does not exist in the database',
+          userId: userId 
+        }), 
         { 
           status: 404, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
+
+    console.log(`[deleteUserHandler] Found user to delete: ${existingUser.first_name} ${existingUser.last_name} (${existingUser.role})`);
 
     // Prevent deleting other admins as a safety measure
     if (existingUser.role === 'admin' && adminId !== userId) {
@@ -76,18 +88,35 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       details: { target_user_id: userId }
     });
 
+    // Enhanced logging before deletion
+    console.log(`[deleteUserHandler] Starting deletion process for user ${userId} (${existingUser.first_name} ${existingUser.last_name}) by admin ${adminId}`);
+    
     // Use the comprehensive deleteUser function from userDeletion.ts
     const deletionResult = await deleteUser(supabase, userId, adminId);
 
-    // Log successful user deletion
+    // Log successful user deletion with enhanced details
     await logSecurityEvent(supabase, {
       user_id: adminId,
       action: 'user_deleted',
-      details: { target_user_id: userId }
+      details: { 
+        target_user_id: userId,
+        target_user_email: existingUser.first_name + ' ' + existingUser.last_name,
+        transaction_duration: deletionResult.transactionDuration,
+        success: true 
+      }
     });
 
+    console.log(`[deleteUserHandler] User ${userId} (${existingUser.first_name} ${existingUser.last_name}) successfully deleted by admin ${adminId} in ${deletionResult.transactionDuration}ms`);
+
     return new Response(
-      JSON.stringify(deletionResult), 
+      JSON.stringify({
+        ...deletionResult,
+        deletedUser: {
+          id: userId,
+          name: `${existingUser.first_name} ${existingUser.last_name}`,
+          role: existingUser.role
+        }
+      }), 
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -95,9 +124,14 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     );
     
   } catch (error) {
-    console.error('Error in handleDeleteUser:', error);
+    console.error(`[deleteUserHandler] Critical error deleting user ${requestBody.userId}:`, error);
     return new Response(
-      JSON.stringify({ error: 'Failed to delete user', details: error.message }), 
+      JSON.stringify({ 
+        error: 'Failed to delete user', 
+        details: error.message,
+        userId: requestBody.userId,
+        timestamp: new Date().toISOString()
+      }), 
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

@@ -352,6 +352,93 @@ export type Database = {
         }
         Relationships: []
       }
+      email_magic_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          metadata: Json | null
+          token: string
+          token_type: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          metadata?: Json | null
+          token: string
+          token_type?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          metadata?: Json | null
+          token?: string
+          token_type?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          html: string
+          id: string
+          is_active: boolean
+          locale: string
+          name: string
+          slug: string
+          subject: string
+          text: string | null
+          type: string
+          updated_at: string
+          updated_by: string | null
+          variables: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          html: string
+          id?: string
+          is_active?: boolean
+          locale?: string
+          name: string
+          slug: string
+          subject: string
+          text?: string | null
+          type: string
+          updated_at?: string
+          updated_by?: string | null
+          variables?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          html?: string
+          id?: string
+          is_active?: boolean
+          locale?: string
+          name?: string
+          slug?: string
+          subject?: string
+          text?: string | null
+          type?: string
+          updated_at?: string
+          updated_by?: string | null
+          variables?: Json
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string | null
@@ -881,6 +968,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user_data: {
+        Args: { target_user_id: string }
+        Returns: Json
+      }
       can_manage_prompts: {
         Args: { _user_id: string }
         Returns: boolean
@@ -888,6 +979,10 @@ export type Database = {
       cancel_user_subscription: {
         Args: { _user_id: string; _admin_id: string }
         Returns: Json
+      }
+      cleanup_expired_magic_tokens: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       confirm_user_email: {
         Args: { user_id: string; email_confirmed?: boolean }

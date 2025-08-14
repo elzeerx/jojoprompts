@@ -1,9 +1,9 @@
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Prompt, PromptRow } from "@/types";
+import { handleAuthError, handleFavoriteError } from "@/utils/errorHandling";
 
 export function useFavoriteLogic(prompt: Prompt | PromptRow, initiallyFavorited: boolean = false) {
   const { session } = useAuth();
@@ -13,11 +13,7 @@ export function useFavoriteLogic(prompt: Prompt | PromptRow, initiallyFavorited:
     e.preventDefault();
     e.stopPropagation();
     if (!session) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to favorite prompts",
-        variant: "destructive"
-      });
+      handleAuthError(null, "favorite_toggle");
       return;
     }
     try {
@@ -34,12 +30,7 @@ export function useFavoriteLogic(prompt: Prompt | PromptRow, initiallyFavorited:
       }
       setFavorited(!favorited);
     } catch (error) {
-      console.error("Error toggling favorite:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update favorites",
-        variant: "destructive"
-      });
+      handleFavoriteError(error, "favorite_toggle");
     }
   };
 

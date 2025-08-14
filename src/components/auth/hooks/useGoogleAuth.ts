@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { CheckoutContextManager } from "@/utils/checkoutContext";
 
 export function useGoogleAuth() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -16,14 +17,20 @@ export function useGoogleAuth() {
     setIsGoogleLoading(true);
 
     try {
-      // Build redirect URL for Google OAuth
-      let redirectUrl = `${window.location.origin}/prompts`;
-      
-      if (selectedPlan) {
-        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}&from_signup=true`;
-      } else if (fromCheckout) {
-        redirectUrl = `${window.location.origin}/checkout?from_signup=true`;
+      // Save checkout context before OAuth redirect
+      if (selectedPlan || fromCheckout) {
+        CheckoutContextManager.saveContext({
+          planId: selectedPlan || undefined,
+          fromCheckout: fromCheckout
+        });
       }
+
+      // Build redirect URL for Google OAuth
+      const redirectUrl = CheckoutContextManager.buildRedirectUrl(
+        window.location.origin,
+        selectedPlan || undefined,
+        true
+      );
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
