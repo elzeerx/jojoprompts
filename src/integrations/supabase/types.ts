@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -977,7 +977,7 @@ export type Database = {
         Returns: boolean
       }
       cancel_user_subscription: {
-        Args: { _user_id: string; _admin_id: string }
+        Args: { _admin_id: string; _user_id: string }
         Returns: Json
       }
       cleanup_expired_magic_tokens: {
@@ -985,14 +985,14 @@ export type Database = {
         Returns: undefined
       }
       confirm_user_email: {
-        Args: { user_id: string; email_confirmed?: boolean }
+        Args: { email_confirmed?: boolean; user_id: string }
         Returns: undefined
       }
       create_subscription: {
         Args: {
-          p_user_id: string
-          p_plan_id: string
           p_paypal_payment_id: string
+          p_plan_id: string
+          p_user_id: string
         }
         Returns: Json
       }
@@ -1001,7 +1001,7 @@ export type Database = {
         Returns: Json
       }
       has_role: {
-        Args: { _user_id: string; _role: string }
+        Args: { _role: string; _user_id: string }
         Returns: boolean
       }
       is_admin: {
@@ -1011,8 +1011,8 @@ export type Database = {
       record_discount_usage: {
         Args: {
           discount_code_id_param: string
-          user_id_param?: string
           payment_history_id_param?: string
+          user_id_param?: string
         }
         Returns: boolean
       }
@@ -1023,11 +1023,11 @@ export type Database = {
           user_id_param?: string
         }
         Returns: {
-          id: string
           discount_type: string
           discount_value: number
-          is_valid: boolean
           error_message: string
+          id: string
+          is_valid: boolean
         }[]
       }
     }
