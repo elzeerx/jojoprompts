@@ -65,17 +65,7 @@ export default function PromptGeneratorPage() {
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <TabsContent value="generator" className="m-0">
-              <Card className="border-0 shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-dark-base">AI Prompt Generator</CardTitle>
-                  <CardDescription>
-                    Create structured prompts for various AI models with dynamic field configuration
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <PromptGeneratorForm />
-                </CardContent>
-              </Card>
+              <PromptGeneratorForm />
             </TabsContent>
 
             <TabsContent value="models" className="m-0">
