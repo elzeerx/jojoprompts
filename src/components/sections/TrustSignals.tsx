@@ -4,12 +4,6 @@ import { Container } from '@/components/ui/container';
 
 const trustFeatures = [
   {
-    icon: Shield,
-    title: "30-Day Money-Back Guarantee",
-    description: "Not satisfied? Get a full refund, no questions asked.",
-    highlight: "Risk-Free"
-  },
-  {
     icon: Clock,
     title: "Instant Access",
     description: "Download your prompts immediately after purchase.",
@@ -58,8 +52,8 @@ const securityBadges = [
     icon: "🛡️"
   },
   {
-    name: "Money Back",
-    description: "30-day guarantee",
+    name: "Trusted Quality",
+    description: "Expert verified",
     icon: "✅"
   }
 ];
@@ -140,15 +134,6 @@ export function TrustSignals() {
           </div>
         </div>
 
-        {/* Money-back guarantee highlight */}
-        <div className="mt-8 sm:mt-12 text-center">
-          <div className="inline-flex items-center gap-3 bg-green-50 border border-green-200 rounded-full px-6 py-3 text-green-700">
-            <Shield className="h-5 w-5" />
-            <span className="font-semibold">30-Day Money-Back Guarantee</span>
-            <span className="text-green-600">•</span>
-            <span className="text-sm">No Risk, All Reward</span>
-          </div>
-        </div>
       </Container>
     </section>
   );
