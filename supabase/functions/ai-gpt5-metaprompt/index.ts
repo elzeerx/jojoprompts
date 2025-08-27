@@ -159,7 +159,11 @@ Output Format: ${output_format}`;
       userMessage += `\nAdditional Context: ${quick_request.trim()}`;
     }
 
-    userMessage += `\n\nPlease generate a structured JSON metaprompt following the workflow and structure_fields defined in your instructions.`;
+    userMessage += `\n\nPlease generate a structured JSON metaprompt following the workflow and structure_fields defined in your instructions. Generate TWO versions: one in English and one in Arabic. The response should have this structure:
+{
+  "metaprompt_english": { /* full metaprompt structure in English */ },
+  "metaprompt_arabic": { /* full metaprompt structure in Arabic */ }
+}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -220,11 +224,10 @@ Output Format: ${output_format}`;
 
     const metapromptJson = cleanJsonResponse(content);
 
-    // Generate a human-readable template from the JSON
-    let template = "";
-    if (metapromptJson.metaprompt) {
-      const mp = metapromptJson.metaprompt;
-      template = `${mp.role_instruction || ''}
+    // Generate human-readable templates for both languages
+    const generateTemplate = (mp: any) => {
+      if (!mp) return "";
+      return `${mp.role_instruction || ''}
 
 ${mp.task_instruction || ''}
 
@@ -232,8 +235,11 @@ ${mp.constraints || ''}
 
 Available placeholders: ${mp.placeholders ? mp.placeholders.join(', ') : ''}
 
-${mp.example_usage || ''}`;
-    }
+${mp.example_usage || ''}`.trim();
+    };
+
+    const englishTemplate = generateTemplate(metapromptJson.metaprompt_english);
+    const arabicTemplate = generateTemplate(metapromptJson.metaprompt_arabic);
 
     // Auto-suggest field values based on the inputs
     const autoFillSuggestions = {
@@ -246,7 +252,8 @@ ${mp.example_usage || ''}`;
 
     const result = {
       metaprompt_json: metapromptJson,
-      metaprompt_template: template.trim(),
+      metaprompt_template_english: englishTemplate,
+      metaprompt_template_arabic: arabicTemplate,
       autofill_suggestions: autoFillSuggestions
     };
 

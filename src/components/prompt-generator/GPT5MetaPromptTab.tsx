@@ -420,13 +420,14 @@ export function GPT5MetaPromptTab() {
               </TabsList>
               
               <TabsContent value="template" className="space-y-4">
+                {/* English Template */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Human-readable Template</Label>
+                    <Label className="text-sm font-medium">English Template</Label>
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => copyToClipboard(generatedMetaprompt.metaprompt_template, "Template")}
+                      onClick={() => copyToClipboard(generatedMetaprompt.metaprompt_template_english, "English Template")}
                     >
                       <Copy className="h-4 w-4 mr-2" />
                       Copy
@@ -434,7 +435,27 @@ export function GPT5MetaPromptTab() {
                   </div>
                   <div className="p-4 rounded-lg bg-muted border">
                     <pre className="whitespace-pre-wrap text-sm font-mono">
-                      {generatedMetaprompt.metaprompt_template}
+                      {generatedMetaprompt.metaprompt_template_english}
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Arabic Template */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Arabic Template / القالب العربي</Label>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => copyToClipboard(generatedMetaprompt.metaprompt_template_arabic, "Arabic Template")}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy
+                    </Button>
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted border">
+                    <pre className="whitespace-pre-wrap text-sm font-mono" dir="rtl">
+                      {generatedMetaprompt.metaprompt_template_arabic}
                     </pre>
                   </div>
                 </div>
@@ -443,7 +464,7 @@ export function GPT5MetaPromptTab() {
               <TabsContent value="json" className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Structured JSON</Label>
+                    <Label className="text-sm font-medium">Structured JSON (English & Arabic)</Label>
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -454,7 +475,7 @@ export function GPT5MetaPromptTab() {
                     </Button>
                   </div>
                   <div className="p-4 rounded-lg bg-muted border">
-                    <pre className="whitespace-pre-wrap text-sm font-mono">
+                    <pre className="whitespace-pre-wrap text-sm font-mono overflow-auto max-h-96">
                       {JSON.stringify(generatedMetaprompt.metaprompt_json, null, 2)}
                     </pre>
                   </div>

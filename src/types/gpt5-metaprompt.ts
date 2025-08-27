@@ -8,17 +8,21 @@ export interface GPT5MetapromptRequest {
   quick_request?: string;
 }
 
+export interface MetapromptStructure {
+  role_instruction: string;
+  task_instruction: string;
+  constraints: string;
+  placeholders: string[];
+  example_usage?: string;
+}
+
 export interface GPT5MetapromptResponse {
   metaprompt_json: {
-    metaprompt: {
-      role_instruction: string;
-      task_instruction: string;
-      constraints: string;
-      placeholders: string[];
-      example_usage?: string;
-    };
+    metaprompt_english: MetapromptStructure;
+    metaprompt_arabic: MetapromptStructure;
   };
-  metaprompt_template: string;
+  metaprompt_template_english: string;
+  metaprompt_template_arabic: string;
   autofill_suggestions: {
     style: string[];
     subject: string[];
