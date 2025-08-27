@@ -3,19 +3,14 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { ArrowRight, Sparkles, Zap, Shield, Clock } from "lucide-react";
-
 import { useAuth } from "@/contexts/AuthContext";
-
 export function EnhancedHeroSection() {
-  const { user } = useAuth();
-
-  return (
-    <section 
-      className="pt-16 pb-12 sm:pt-20 sm:pb-16 md:pt-24 md:pb-20 relative overflow-hidden min-h-[85vh] sm:min-h-[90vh] flex items-center bg-cover bg-center"
-      style={{
-        backgroundImage: "url('/lovable-uploads/adc48b81-aea8-44bc-a53e-5aa9e7bcb323.png')",
-      }}
-    >
+  const {
+    user
+  } = useAuth();
+  return <section className="pt-16 pb-12 sm:pt-20 sm:pb-16 md:pt-24 md:pb-20 relative overflow-hidden min-h-[85vh] sm:min-h-[90vh] flex items-center bg-cover bg-center" style={{
+    backgroundImage: "url('/lovable-uploads/adc48b81-aea8-44bc-a53e-5aa9e7bcb323.png')"
+  }}>
       {/* Dark overlay for better text readability */}
       <div className="absolute inset-0 bg-gradient-to-br from-dark-base/60 via-dark-base/40 to-transparent"></div>
       
@@ -44,11 +39,15 @@ export function EnhancedHeroSection() {
                 <span>Stop wasting time on generic prompts that don't work</span>
               </div>
               <div className="flex items-center gap-3 justify-center lg:justify-start glass-effect px-4 py-2 rounded-lg border border-white/10">
-                <div className="h-2 w-2 rounded-full bg-gradient-to-r from-warm-gold to-muted-teal animate-pulse-gentle flex-shrink-0" style={{ animationDelay: '0.3s' }}></div>
+                <div className="h-2 w-2 rounded-full bg-gradient-to-r from-warm-gold to-muted-teal animate-pulse-gentle flex-shrink-0" style={{
+                animationDelay: '0.3s'
+              }}></div>
                 <span>Get 10x better AI outputs with our hand-crafted prompts</span>
               </div>
               <div className="flex items-center gap-3 justify-center lg:justify-start glass-effect px-4 py-2 rounded-lg border border-white/10">
-                <div className="h-2 w-2 rounded-full bg-gradient-to-r from-warm-gold to-muted-teal animate-pulse-gentle flex-shrink-0" style={{ animationDelay: '0.6s' }}></div>
+                <div className="h-2 w-2 rounded-full bg-gradient-to-r from-warm-gold to-muted-teal animate-pulse-gentle flex-shrink-0" style={{
+                animationDelay: '0.6s'
+              }}></div>
                 <span>One-time payment, lifetime access - no subscriptions ever</span>
               </div>
             </div>
@@ -71,11 +70,7 @@ export function EnhancedHeroSection() {
             
             {/* Enhanced CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
-              <Button 
-                asChild 
-                size="lg" 
-                className="order-1 text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 bg-gradient-to-r from-warm-gold to-warm-gold/90 hover:from-warm-gold/90 hover:to-warm-gold/80 text-white font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-bounce-in border-0"
-              >
+              <Button asChild size="lg" className="order-1 text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 bg-gradient-to-r from-warm-gold to-warm-gold/90 hover:from-warm-gold/90 hover:to-warm-gold/80 text-white font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-bounce-in border-0">
                 <a href="#pricing" className="flex items-center gap-2">
                   <Zap className="h-5 w-5" />
                   Unlock Premium Prompts Now
@@ -83,12 +78,7 @@ export function EnhancedHeroSection() {
                 </a>
               </Button>
               
-              <Button 
-                asChild 
-                variant="outline" 
-                size="lg" 
-                className="order-2 glass-effect border-warm-gold/30 bg-white/10 hover:bg-white/20 text-white px-6 sm:px-8 py-4 sm:py-6 font-semibold text-base sm:text-lg rounded-lg min-h-[44px] touch-manipulation backdrop-blur-sm transition-all duration-300 hover:border-warm-gold/50"
-              >
+              <Button asChild variant="outline" size="lg" className="order-2 glass-effect border-warm-gold/30 bg-white/10 hover:bg-white/20 text-white px-6 sm:px-8 py-4 sm:py-6 font-semibold text-base sm:text-lg rounded-lg min-h-[44px] touch-manipulation backdrop-blur-sm transition-all duration-300 hover:border-warm-gold/50">
                 <Link to="/examples" className="flex items-center gap-2">
                   <span>See Examples</span>
                   <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -111,13 +101,10 @@ export function EnhancedHeroSection() {
               <div className="absolute top-10 right-10 w-20 h-20 glass-effect rounded-full border border-warm-gold/20 flex items-center justify-center animate-float">
                 <Sparkles className="h-8 w-8 text-warm-gold" />
               </div>
-              <div className="absolute bottom-20 left-10 w-16 h-16 glass-effect rounded-full border border-muted-teal/20 flex items-center justify-center animate-float" style={{ animationDelay: '1s' }}>
-                <Zap className="h-6 w-6 text-muted-teal" />
-              </div>
+              
             </div>
           </div>
         </div>
       </Container>
-    </section>
-  );
+    </section>;
 }
