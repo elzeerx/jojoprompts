@@ -6,7 +6,7 @@
 import { BaseService } from './BaseService';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
-import { ApiResponse } from '@/types/common';
+interface ApiResponse<T = any> { data?: T; error?: any; success: boolean; }
 
 // User-related type interfaces
 export interface AuthCredentials {

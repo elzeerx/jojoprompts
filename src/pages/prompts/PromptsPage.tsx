@@ -1,46 +1,77 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { usePromptsData } from "./usePromptsData";
-import { PromptStateManager } from "./components/PromptStateManager";
-import { PromptsPageContent } from "./components/PromptsPageContent";
-import { usePromptDeletion } from "./hooks/usePromptDeletion";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FloatingAddPromptButton } from "@/components/ui/FloatingAddPromptButton";
+import { RefactoredPromptsContent } from "./components/RefactoredPromptsContent";
+import { usePromptFilters } from "@/hooks/usePromptFilters";
+import { PromptService } from "@/services/PromptService";
+import type { PromptRow } from "@/types/prompts";
 
 export default function PromptsPage() {
   const { loading: authLoading, session } = useAuth();
   const navigate = useNavigate();
+  const [prompts, setPrompts] = useState<PromptRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch prompts & categories
-  const { prompts, setPrompts, categories, isLoading, error, reloadPrompts } = usePromptsData({ authLoading, session });
-  const { handleDeletePrompt } = usePromptDeletion(setPrompts, reloadPrompts);
+  const filters = usePromptFilters();
 
-  // Reload prompts when the page is visited
+  // Handle authentication redirect
   useEffect(() => {
-    reloadPrompts();
-  }, []);
+    if (!authLoading && !session) {
+      navigate("/login");
+    }
+  }, [authLoading, session, navigate]);
 
+  // Load prompts
+  const loadPrompts = async () => {
+    if (authLoading) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await PromptService.getPrompts({
+        category: filters.debouncedSearchQuery ? undefined : filters.filters.category,
+        search: filters.debouncedSearchQuery,
+        type: filters.filters.promptType,
+        orderBy: filters.filters.sortBy,
+        orderDirection: filters.filters.sortOrder
+      });
+      
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setPrompts(result.data);
+      }
+    } catch (err) {
+      setError('Failed to load prompts');
+      console.error('Error loading prompts:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPrompts();
+  }, [authLoading, filters.debouncedSearchQuery, filters.filters.category, filters.filters.promptType, filters.filters.sortBy, filters.filters.sortOrder]);
+
+  // Don't render if not authenticated
   if (!authLoading && !session) {
-    navigate("/login");
+    return null;
   }
 
   return (
     <div className="w-full bg-soft-bg min-h-screen">
-      <PromptStateManager prompts={prompts}>
-        {({ selectedPrompt, setSelectedPrompt, detailsDialogOpen, setDetailsDialogOpen }) => (
-          <>
-            <PromptsPageContent
-              prompts={prompts}
-              categories={categories}
-              isLoading={isLoading}
-              error={error}
-              reloadPrompts={reloadPrompts}
-            />
-            <FloatingAddPromptButton reloadPrompts={reloadPrompts} />
-          </>
-        )}
-      </PromptStateManager>
+      <RefactoredPromptsContent
+        prompts={prompts}
+        isLoading={isLoading}
+        error={error}
+        filters={filters}
+        onReload={loadPrompts}
+      />
+      <FloatingAddPromptButton reloadPrompts={loadPrompts} />
     </div>
   );
 }

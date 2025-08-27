@@ -18,7 +18,7 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
     setIsLoading(true);
     setError(null);
     try {
-      console.log("Fetching prompts with profiles...");
+      
       const { data, error } = await supabase
         .from("prompts")
         .select(`
@@ -28,11 +28,9 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Supabase query error:", error);
+        console.error("Error fetching prompts:", error);
         throw error;
       }
-      
-      console.log("Successfully fetched prompts:", data?.length || 0);
       
       const transformedData = (data ?? []).map((item) => {
         // Ensure metadata is always an object
@@ -120,7 +118,6 @@ export function usePromptsData({ authLoading, session }: { authLoading: boolean;
   }, [authLoading, categoriesLoading]);
 
   const reloadPrompts = async () => {
-    console.log("Reloading prompts...");
     const data = await fetchPrompts();
     if (data) {
       setPrompts(data);

@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { logger } from '@/utils/logger';
-import { AsyncAction } from '@/types/common';
+interface AsyncAction<T = any> { loading: boolean; error: string | null; data: T | null; execute: (...args: any[]) => Promise<void>; reset: () => void; }
 
 export interface UseAsyncActionOptions {
   onSuccess?: (data: any) => void;

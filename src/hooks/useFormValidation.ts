@@ -4,7 +4,8 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { ValidationResult, FormField } from '@/types/common';
+interface ValidationResult { isValid: boolean; errors: Record<string, string>; }
+interface FormField<T = any> { name: string; value: T; error?: string; touched: boolean; required?: boolean; }
 import { logger } from '@/utils/logger';
 
 export interface ValidationRule<T = any> {

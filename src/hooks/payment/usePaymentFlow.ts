@@ -8,7 +8,9 @@ import { useNavigate } from 'react-router-dom';
 import { logger } from '@/utils/logger';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { paymentService } from '@/services/supabase';
-import { PaymentContextData, PaymentVerificationResult } from '@/types/common';
+// Temporary inline types
+interface PaymentContextData { orderId?: string; paymentId?: string; planId: string; userId: string; amount: number; }
+interface PaymentVerificationResult { success: boolean; status: string; error?: string; transactionId?: string; subscriptionId?: string; }
 
 export interface PaymentState {
   status: string;

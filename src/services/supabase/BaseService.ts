@@ -5,7 +5,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
-import { ApiResponse, PaginatedResponse } from '@/types/common';
+interface ApiResponse<T = any> { data?: T; error?: any; success: boolean; }
+interface PaginatedResponse<T = any> { data: T[]; count: number; page: number; }
 
 export interface QueryOptions {
   select?: string;
