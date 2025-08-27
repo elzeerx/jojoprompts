@@ -34,7 +34,7 @@ export class PromptService {
       if (query.search && query.search.trim()) {
         const searchTerm = `%${query.search.trim()}%`;
         supabaseQuery = supabaseQuery.or(
-          `title.ilike.${searchTerm},prompt_text.ilike.${searchTerm},metadata->category.ilike.${searchTerm}`
+          `title.ilike.${searchTerm},prompt_text.ilike.${searchTerm},metadata->>category.ilike.${searchTerm}`
         );
       }
 
