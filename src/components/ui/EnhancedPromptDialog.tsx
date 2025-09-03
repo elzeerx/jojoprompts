@@ -187,7 +187,7 @@ export function EnhancedPromptDialog({
                     <p>Please fix the following issues:</p>
                     <ul className="list-disc list-inside space-y-1">
                       {Object.entries(validation.errors).map(([field, error]) => (
-                        <li key={field}>{error}</li>
+                        <li key={field}>{String(error)}</li>
                       ))}
                     </ul>
                   </div>

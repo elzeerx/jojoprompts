@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { mapOpenAIModel, OPENAI_MODEL_ALIAS } from "@/utils/aiModelConfig";
 import { Sparkles, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { useSmartSuggestions } from "@/pages/admin/components/prompts/hooks/useSmartSuggestions";
+import { usePromptValidation } from "@/utils/promptValidation";
 
 // Lightweight form shape for v1
 interface FormData {
