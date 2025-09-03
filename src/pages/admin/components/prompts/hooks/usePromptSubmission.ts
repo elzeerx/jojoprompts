@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { uploadFiles } from "./useFileUpload";
 import { IMAGE_BUCKET, FILE_BUCKET } from "@/utils/buckets";
 import { type PromptRow } from "@/types";
+import { PromptService } from "@/services/PromptService";
 
 interface UsePromptSubmissionProps {
   onSuccess: () => void;
@@ -20,6 +21,30 @@ export function usePromptSubmission({
 }: UsePromptSubmissionProps) {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-translation helper
+  const handleAutoTranslation = async (prompt: any, submittedFormData: any) => {
+    try {
+      const translations = prompt.metadata?.translations || {};
+      
+      // If we have English but not Arabic, translate to Arabic
+      if ((translations.english || submittedFormData.titleEnglish || submittedFormData.promptTextEnglish) && 
+          !translations.arabic && !submittedFormData.titleArabic && !submittedFormData.promptTextArabic) {
+        console.log('Auto-translating to Arabic...');
+        await PromptService.translatePrompt(prompt.id, 'arabic', false);
+      }
+      
+      // If we have Arabic but not English, translate to English  
+      if ((translations.arabic || submittedFormData.titleArabic || submittedFormData.promptTextArabic) && 
+          !translations.english && !submittedFormData.titleEnglish && !submittedFormData.promptTextEnglish) {
+        console.log('Auto-translating to English...');
+        await PromptService.translatePrompt(prompt.id, 'english', false);
+      }
+    } catch (error) {
+      console.log('Auto-translation failed:', error);
+      // Don't throw - this is optional enhancement
+    }
+  };
 
   const handleSubmit = async (
     e: React.FormEvent,
@@ -104,7 +129,22 @@ export function usePromptSubmission({
         use_case: metadata?.use_case || '',
         media_files: mediaFiles,
         workflow_files: workflowFilesData,
-        workflow_steps: metadata?.workflow_steps || []
+        workflow_steps: metadata?.workflow_steps || [],
+        translations: {
+          ...(metadata?.translations || {}),
+          ...(formData.titleEnglish || formData.promptTextEnglish ? {
+            english: {
+              title: formData.titleEnglish || formData.title,
+              prompt_text: formData.promptTextEnglish || formData.promptText
+            }
+          } : {}),
+          ...(formData.titleArabic || formData.promptTextArabic ? {
+            arabic: {
+              title: formData.titleArabic || formData.title,
+              prompt_text: formData.promptTextArabic || formData.promptText
+            }
+          } : {})
+        }
       }));
 
       const promptData = {
@@ -129,11 +169,16 @@ export function usePromptSubmission({
           description: "Prompt updated successfully"
         });
       } else {
-        const { error } = await supabase
+        const { data: newPrompt, error } = await supabase
           .from("prompts")
           .insert(promptData)
-          .select();
+          .select()
+          .single();
         if (error) throw error;
+        
+        // Auto-translate if needed
+        await handleAutoTranslation(newPrompt, formData);
+        
         toast({
           title: "Success", 
           description: "Prompt created successfully"

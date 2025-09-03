@@ -4,6 +4,8 @@ import { Header } from "./header";
 import { Footer } from "./footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { FloatingAddPromptButton } from "../ui/FloatingAddPromptButton";
+import { ErrorBoundary } from "../ErrorBoundary";
+import { PreviewWatchdog } from "../PreviewWatchdog";
 
 export function RootLayout() {
   const location = useLocation();
@@ -15,16 +17,20 @@ export function RootLayout() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="flex-1 relative">
-        <Outlet />
-        {/* Only show the FloatingAddPromptButton on pages other than the home page and prompts page */}
-        {location.pathname !== "/" && location.pathname !== "/prompts" && (
-          <FloatingAddPromptButton reloadPrompts={dummyReloadPrompts} className="rounded-none" />
-        )}
-      </main>
-      <Footer />
-    </div>
+    <ErrorBoundary>
+      <PreviewWatchdog>
+        <div className="flex min-h-screen flex-col">
+          <Header />
+          <main className="flex-1 relative">
+            <Outlet />
+            {/* Only show the FloatingAddPromptButton on pages other than the home page and prompts page */}
+            {location.pathname !== "/" && location.pathname !== "/prompts" && (
+              <FloatingAddPromptButton reloadPrompts={dummyReloadPrompts} className="rounded-none" />
+            )}
+          </main>
+          <Footer />
+        </div>
+      </PreviewWatchdog>
+    </ErrorBoundary>
   );
 }
