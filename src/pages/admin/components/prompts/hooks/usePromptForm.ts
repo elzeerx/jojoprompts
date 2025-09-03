@@ -1,6 +1,6 @@
 
 import { useState, useCallback, useEffect } from "react";
-import { type PromptRow, type LocalePrompt } from "@/types";
+import { type PromptRow } from "@/types";
 import { toast } from "@/hooks/use-toast";
 
 interface MediaFile {
@@ -20,11 +20,6 @@ interface WorkflowFile {
 interface FormData {
   title: string;
   promptText: string;
-  // Bilingual fields for admins/prompters
-  titleEnglish?: string;
-  titleArabic?: string;
-  promptTextEnglish?: string;
-  promptTextArabic?: string;
   promptType: "text" | "image" | "workflow" | "video" | "sound" | "button" | "image-selection";
   imagePath: string;
   defaultImagePath: string;
@@ -38,10 +33,6 @@ interface FormData {
     media_files?: MediaFile[];
     workflow_files?: WorkflowFile[];
     workflow_steps?: Array<{ name: string; description: string; type?: string }>;
-    translations?: {
-      english?: LocalePrompt;
-      arabic?: LocalePrompt;
-    };
   };
 }
 
@@ -49,15 +40,9 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
   const [formData, setFormData] = useState<FormData>(() => {
     if (editingPrompt) {
       console.log("usePromptForm - Initial form data from editing prompt:", editingPrompt.metadata);
-      const translations = editingPrompt.metadata?.translations || {};
       return {
         title: editingPrompt.title || "",
         promptText: editingPrompt.prompt_text || "",
-        // Extract bilingual fields from translations
-        titleEnglish: translations.english?.title || "",
-        titleArabic: translations.arabic?.title || "",
-        promptTextEnglish: translations.english?.prompt_text || "",
-        promptTextArabic: translations.arabic?.prompt_text || "",
         promptType: editingPrompt.prompt_type || "text",
         imagePath: editingPrompt.image_path || "",
         defaultImagePath: editingPrompt.default_image_path || "",
@@ -70,8 +55,7 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
           buttons: editingPrompt.metadata?.buttons || [],
           media_files: editingPrompt.metadata?.media_files || [],
           workflow_files: editingPrompt.metadata?.workflow_files || [],
-          workflow_steps: editingPrompt.metadata?.workflow_steps || [],
-          translations: translations
+          workflow_steps: editingPrompt.metadata?.workflow_steps || []
         }
       };
     }
@@ -79,10 +63,6 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
     return {
       title: "",
       promptText: "",
-      titleEnglish: "",
-      titleArabic: "",
-      promptTextEnglish: "",
-      promptTextArabic: "",
       promptType: "text",
       imagePath: "",
       defaultImagePath: "",
@@ -95,8 +75,7 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
         buttons: [],
         media_files: [],
         workflow_files: [],
-        workflow_steps: [],
-        translations: {}
+        workflow_steps: []
       }
     };
   });
@@ -105,14 +84,9 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
   useEffect(() => {
     if (editingPrompt) {
       console.log("usePromptForm - Editing prompt changed, updating form data:", editingPrompt.metadata);
-      const translations = editingPrompt.metadata?.translations || {};
       setFormData({
         title: editingPrompt.title || "",
         promptText: editingPrompt.prompt_text || "",
-        titleEnglish: translations.english?.title || "",
-        titleArabic: translations.arabic?.title || "",
-        promptTextEnglish: translations.english?.prompt_text || "",
-        promptTextArabic: translations.arabic?.prompt_text || "",
         promptType: editingPrompt.prompt_type || "text",
         imagePath: editingPrompt.image_path || "",
         defaultImagePath: editingPrompt.default_image_path || "",
@@ -125,8 +99,7 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
           buttons: editingPrompt.metadata?.buttons || [],
           media_files: editingPrompt.metadata?.media_files || [],
           workflow_files: editingPrompt.metadata?.workflow_files || [],
-          workflow_steps: editingPrompt.metadata?.workflow_steps || [],
-          translations: translations
+          workflow_steps: editingPrompt.metadata?.workflow_steps || []
         }
       });
     }
@@ -137,10 +110,6 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
     setFormData({
       title: "",
       promptText: "",
-      titleEnglish: "",
-      titleArabic: "",
-      promptTextEnglish: "",
-      promptTextArabic: "",
       promptType: "text",
       imagePath: "",
       defaultImagePath: "",
@@ -153,8 +122,7 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
         buttons: [],
         media_files: [],
         workflow_files: [],
-        workflow_steps: [],
-        translations: {}
+        workflow_steps: []
       }
     });
   }, []);

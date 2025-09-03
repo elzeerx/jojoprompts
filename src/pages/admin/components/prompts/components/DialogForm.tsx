@@ -20,11 +20,6 @@ interface DialogFormProps {
     promptType: string;
     imagePath?: string;
     defaultImagePath?: string;
-    // Bilingual fields
-    titleEnglish?: string;
-    titleArabic?: string;
-    promptTextEnglish?: string;
-    promptTextArabic?: string;
     metadata: any;
   };
   onChange: (formData: any) => void;
@@ -220,16 +215,6 @@ export function DialogForm({
           metadata={formData.metadata}
           onMetadataChange={updateMetadata}
           promptText={formData.promptText}
-          titleEnglish={formData.titleEnglish}
-          titleArabic={formData.titleArabic}
-          promptTextEnglish={formData.promptTextEnglish}
-          promptTextArabic={formData.promptTextArabic}
-          onBilingualChange={(field, value) => {
-            onChange({
-              ...formData,
-              [field]: value
-            });
-          }}
         />
       )}
 
