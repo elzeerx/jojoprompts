@@ -7,6 +7,11 @@ export interface User {
   last_name?: string | null;
 }
 
+export interface LocalePrompt {
+  title?: string;
+  prompt_text?: string;
+}
+
 export interface Prompt {
   id: string;
   user_id: string;
@@ -25,6 +30,10 @@ export interface Prompt {
     button_text?: string;
     button_action?: string;
     image_options?: string[];
+    translations?: {
+      arabic?: LocalePrompt;
+      english?: LocalePrompt;
+    };
     media_files?: Array<{
       type: 'image' | 'video' | 'audio';
       path: string;
@@ -62,6 +71,10 @@ export interface PromptRow {
     button_text?: string;
     button_action?: string;
     image_options?: string[];
+    translations?: {
+      arabic?: LocalePrompt;
+      english?: LocalePrompt;
+    };
     media_files?: Array<{
       type: 'image' | 'video' | 'audio';
       path: string;

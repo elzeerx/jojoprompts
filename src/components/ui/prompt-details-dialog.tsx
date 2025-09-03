@@ -10,6 +10,7 @@ import { PromptDetailsHeader } from "./prompt-details/PromptDetailsHeader";
 import { PromptDetailsContent } from "./prompt-details/PromptDetailsContent";
 import { PromptDetailsActions } from "./prompt-details/PromptDetailsActions";
 import { MediaPreviewDialog } from "./prompt-details/MediaPreviewDialog";
+import { LanguageTabs, type Language } from "./LanguageTabs";
 
 interface PromptDetailsDialogProps {
   open: boolean;
@@ -24,6 +25,9 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const [copied, setCopied] = useState(false);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [mediaPreviewOpen, setMediaPreviewOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(() => {
+    return (localStorage.getItem('preferred-language') as Language) || 'english';
+  });
 
   const { title, prompt_text, metadata, prompt_type } = prompt;
   const category = metadata?.category || "ChatGPT";
@@ -34,6 +38,26 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const mediaFiles = metadata?.media_files || [];
   const workflowSteps = metadata?.workflow_steps || [];
   const workflowFiles = metadata?.workflow_files || [];
+  const translations = metadata?.translations;
+  
+  // Check if this prompt supports bilingual content (ChatGPT or Claude)
+  const supportsBilingual = category.toLowerCase().includes('chatgpt') || category.toLowerCase().includes('claude');
+  const hasTranslations = supportsBilingual && translations && !!(translations.arabic || translations.english);
+  
+  // Get current content based on selected language
+  const getCurrentContent = () => {
+    if (!hasTranslations) {
+      return { title, prompt_text };
+    }
+    
+    const currentTranslation = translations?.[selectedLanguage];
+    return {
+      title: currentTranslation?.title || title,
+      prompt_text: currentTranslation?.prompt_text || prompt_text
+    };
+  };
+  
+  const currentContent = getCurrentContent();
 
   // Check if this is an n8n workflow prompt
   const isN8nWorkflow = prompt_type === 'workflow' || category.toLowerCase().includes('n8n');
@@ -112,7 +136,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
 
   const handleCopyPrompt = async () => {
     try {
-      await navigator.clipboard.writeText(prompt_text);
+      await navigator.clipboard.writeText(currentContent.prompt_text);
       setCopied(true);
       toast({
         title: "Copied to clipboard",
@@ -128,6 +152,11 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
         variant: "destructive"
       });
     }
+  };
+
+  const handleLanguageChange = (language: Language) => {
+    setSelectedLanguage(language);
+    localStorage.setItem('preferred-language', language);
   };
 
   const handleMediaClick = (index: number) => {
@@ -157,7 +186,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
           <div className="flex-1 overflow-y-auto">
             <div className="p-4 sm:p-8">
               <PromptDetailsHeader
-                title={title}
+                title={currentContent.title}
                 category={category}
                 isN8nWorkflow={isN8nWorkflow}
                 session={session}
@@ -166,20 +195,29 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                 getCategoryColor={getCategoryColor}
               />
 
-              <PromptDetailsContent
-                imageUrl={imageUrl}
-                title={title}
-                mediaFiles={mediaFiles}
-                isN8nWorkflow={isN8nWorkflow}
-                workflowSteps={workflowSteps}
-                workflowFiles={workflowFiles}
-                prompt_text={prompt_text}
-                model={model}
-                useCase={useCase}
-                style={style}
-                tags={tags}
-                onMediaClick={handleMediaClick}
-              />
+              <LanguageTabs
+                hasTranslations={hasTranslations}
+                selectedLanguage={selectedLanguage}
+                onLanguageChange={handleLanguageChange}
+              >
+                {(language) => (
+                  <PromptDetailsContent
+                    imageUrl={imageUrl}
+                    title={currentContent.title}
+                    mediaFiles={mediaFiles}
+                    isN8nWorkflow={isN8nWorkflow}
+                    workflowSteps={workflowSteps}
+                    workflowFiles={workflowFiles}
+                    prompt_text={currentContent.prompt_text}
+                    model={model}
+                    useCase={useCase}
+                    style={style}
+                    tags={tags}
+                    onMediaClick={handleMediaClick}
+                    isRTL={language === 'arabic'}
+                  />
+                )}
+              </LanguageTabs>
 
               <PromptDetailsActions
                 isN8nWorkflow={isN8nWorkflow}

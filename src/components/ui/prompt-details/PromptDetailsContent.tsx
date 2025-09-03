@@ -17,6 +17,7 @@ interface PromptDetailsContentProps {
   style?: string;
   tags: string[];
   onMediaClick: (index: number) => void;
+  isRTL?: boolean;
 }
 
 export function PromptDetailsContent({
@@ -31,10 +32,11 @@ export function PromptDetailsContent({
   useCase,
   style,
   tags,
-  onMediaClick
+  onMediaClick,
+  isRTL = false
 }: PromptDetailsContentProps) {
   return (
-    <div className="bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200 space-y-6">
+    <div className={`bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200 space-y-6 ${isRTL ? 'text-right' : 'text-left'}`}>
       {/* Main Image */}
       <div 
         className="relative overflow-hidden rounded-xl aspect-square bg-white/50 cursor-pointer hover:opacity-90 transition-opacity"
@@ -98,9 +100,11 @@ export function PromptDetailsContent({
       ) : (
         /* Show prompt text for non-workflow prompts */
         <div>
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Prompt Text</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-4">
+            {isRTL ? 'نص الطلب' : 'Prompt Text'}
+          </h3>
           <div className="bg-gray-50 p-4 rounded-lg border max-h-60 overflow-y-auto">
-            <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+            <p className={`text-gray-800 text-sm leading-relaxed whitespace-pre-wrap ${isRTL ? 'font-arabic' : ''}`}>
               {prompt_text}
             </p>
           </div>
