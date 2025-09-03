@@ -9,6 +9,8 @@ import HomePage from "./HomePage";
 export default function Index() {
   const navigate = useNavigate();
   
+  console.log('[INDEX] Component mounted');
+  
   // Handle subscription-based redirects
   useSubscriptionRedirect();
   
@@ -22,6 +24,7 @@ export default function Index() {
     loading = authContext.loading;
     user = authContext.user;
     userRole = authContext.userRole;
+    console.log('[INDEX] Auth context:', { loading, user: !!user, userRole });
   } catch (error) {
     console.warn('Auth context unavailable in Index:', error);
     loading = false;
@@ -39,7 +42,10 @@ export default function Index() {
     }
   }, [loading, user, userRole, navigate]);
 
+  console.log('[INDEX] Rendering state:', { loading, user: !!user, userRole });
+
   if (loading) {
+    console.log('[INDEX] Showing loader');
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -47,5 +53,6 @@ export default function Index() {
     );
   }
 
+  console.log('[INDEX] Rendering HomePage');
   return <HomePage />;
 }
