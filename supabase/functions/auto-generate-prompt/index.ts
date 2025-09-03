@@ -50,14 +50,12 @@ serve(async (req) => {
       throw new Error('Invalid auth token');
     }
 
-    // Check if user can manage prompts
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    // Check if user can manage prompts using existing RPC
+    const { data: canManage, error: permError } = await supabase.rpc('can_manage_prompts', {
+      _user_id: user.id
+    });
 
-    if (!profile || !['admin', 'prompter', 'jadmin'].includes(profile.role)) {
+    if (permError || !canManage) {
       throw new Error('Insufficient permissions');
     }
 
