@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, Wand2, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IMAGE_BUCKET, VIDEO_BUCKET, AUDIO_BUCKET, FILE_BUCKET } from "@/utils/buckets";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ import { usePromptForm } from "./hooks/usePromptForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePromptSubmission } from "./hooks/usePromptSubmission";
 import { uploadFiles } from "./hooks/useFileUpload";
+import { SecureImageUploadField } from "./components/SecureImageUploadField";
 import { getCategoryColor } from "./utils/categoryUtils";
 import { 
   CHATGPT_TEXT_PROMPT,
@@ -65,6 +66,9 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   const [templateFormData, setTemplateFormData] = useState<Record<string, any>>({});
   const [activeLanguage, setActiveLanguage] = useState<'en' | 'ar'>('en');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePath, setImagePath] = useState<string>('');
   const { user } = useAuth();
 
   // Available templates
@@ -171,6 +175,9 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       setBilingualData({ title: { en: '', ar: '' }, promptText: { en: '', ar: '' } });
       setTemplateFormData({});
       setValidationErrors({});
+      setIsGenerating(false);
+      setImageFile(null);
+      setImagePath('');
     }
   }, [open]);
 
@@ -227,6 +234,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       ...formData,
       title: bilingualData.title.en || bilingualData.title.ar,
       promptText: bilingualData.promptText.en || bilingualData.promptText.ar,
+      imagePath: imagePath || formData.imagePath,
       metadata: {
         ...formData.metadata,
         category: selectedTemplate.category,
@@ -240,7 +248,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       e,
       enhancedFormData,
       () => true, // Skip basic validation as we handle it above
-      currentFile,
+      imageFile || currentFile,
       currentFiles,
       workflowFiles
     );
@@ -250,6 +258,62 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   const handleBack = () => {
     setStep('template');
     setValidationErrors({});
+  };
+
+  // Handle auto-generation
+  const handleAutoGenerate = async () => {
+    if (!selectedTemplate) {
+      toast({
+        title: "Template Required",
+        description: "Please select a template first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-generate-prompt', {
+        body: {
+          category: selectedTemplate.category,
+          use_case: templateFormData.use_case,
+          style: templateFormData.style,
+          description: templateFormData.description || bilingualData.promptText.en
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.prompt) {
+        // Update bilingual data with generated content
+        setBilingualData(prev => ({
+          ...prev,
+          title: {
+            en: data.title || prev.title.en,
+            ar: prev.title.ar
+          },
+          promptText: {
+            en: data.prompt,
+            ar: prev.promptText.ar
+          }
+        }));
+
+        toast({
+          title: "Prompt Generated",
+          description: "AI has generated a new prompt for you"
+        });
+      }
+    } catch (error: any) {
+      console.error('Auto-generation error:', error);
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate prompt",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // Get category color
@@ -329,6 +393,54 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Left Column - Form Fields */}
                   <div className="space-y-6">
+                    {/* Auto-Generate Section */}
+                    <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 p-6 rounded-xl border border-purple-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="font-semibold text-foreground flex items-center gap-2">
+                            <Wand2 className="h-5 w-5 text-purple-600" />
+                            AI Prompt Generator
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            Let AI create a professional prompt for you using GPT-5
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleAutoGenerate}
+                          disabled={isGenerating || !selectedTemplate}
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          size="sm"
+                        >
+                          {isGenerating ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Generating...
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="h-4 w-4" />
+                              Generate
+                            </div>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Image Upload Section */}
+                    <div className="bg-background/60 p-6 rounded-xl border border-border">
+                      <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                        <Upload className="h-5 w-5" />
+                        Prompt Thumbnail
+                      </h3>
+                      <SecureImageUploadField
+                        imageUrl={imagePath}
+                        onImageChange={setImagePath}
+                        onFileChange={setImageFile}
+                        label="Upload or select an image for this prompt"
+                      />
+                    </div>
+
                     <div className="bg-background/60 p-6 rounded-xl border border-border">
                       <BilingualFields
                         title={bilingualData.title}

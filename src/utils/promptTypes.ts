@@ -146,13 +146,8 @@ export const CHATGPT_TEXT_PROMPT: ModelPromptType = {
       type: 'select',
       required: true,
       options: [
-        { value: 'gpt-4o', label: 'GPT-4o' },
-        { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-        { value: 'gpt-4.1', label: 'GPT-4.1' },
-        { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
-        { value: 'gpt-4.1-nano', label: 'GPT-4.1 Nano' },
-        { value: 'o3', label: 'OpenAI o3' },
-        { value: 'o4-mini', label: 'OpenAI o4-mini' }
+        { value: 'gpt-5-2025-08-07', label: 'GPT-5' },
+        { value: 'gpt-4.1-2025-04-14', label: 'GPT-4.1' }
       ],
       help: 'Select the AI model this prompt is optimized for'
     },
