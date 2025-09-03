@@ -3,7 +3,6 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
-import { getCategoryTheme } from "../utils/categoryUtils";
 
 export function CardFooter({
   tags,
@@ -14,8 +13,7 @@ export function CardFooter({
   onDelete,
   promptId,
   isN8nWorkflow,
-  uploaderName,
-  category
+  uploaderName
 }: {
   tags: string[];
   isSmallMobile: boolean;
@@ -26,23 +24,21 @@ export function CardFooter({
   promptId: string;
   isN8nWorkflow: boolean;
   uploaderName?: string;
-  category: string;
 }) {
-  const theme = getCategoryTheme(category);
   return (
     <>
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {tags.slice(0, isSmallMobile ? 2 : 3).map((tag, i) => (
             <span
               key={i}
-              className="px-2 py-1 bg-background/80 backdrop-blur-sm text-foreground text-xs rounded-md border border-border/50 hover:border-border transition-colors"
+              className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/60 text-gray-700 text-xs rounded-md border border-gray-200"
             >
               {isSmallMobile && tag.length > 8 ? tag.substring(0, 8) + '...' : tag}
             </span>
           ))}
           {tags.length > (isSmallMobile ? 2 : 3) && (
-            <span className="px-2 py-1 bg-muted/80 text-muted-foreground text-xs rounded-md border border-border/50">
+            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/60 text-gray-500 text-xs rounded-md border border-gray-200">
               +{tags.length - (isSmallMobile ? 2 : 3)} more
             </span>
           )}
@@ -62,10 +58,9 @@ export function CardFooter({
         {!isLocked && (
           <Button
             className={cn(
-              "w-full text-white font-semibold rounded-xl shadow-md transition-all duration-200 border-0",
+              "w-full bg-[#c49d68] hover:bg-[#c49d68]/90 text-white font-semibold rounded-xl shadow-md transition-all duration-200",
               isSmallMobile ? "py-2 text-xs" : "py-3 text-sm sm:text-base"
             )}
-            style={{ backgroundColor: theme.color }}
           >
             {isN8nWorkflow ? "View Workflow" : "View Details"}
           </Button>

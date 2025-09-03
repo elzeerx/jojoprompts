@@ -1,7 +1,7 @@
 import React from "react";
 import { Heart, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getCategoryBadgeStyle, getCategoryTheme } from "../utils/categoryUtils.tsx";
+import { getCategoryBadgeStyle } from "../utils/categoryUtils.tsx";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function CardHeader({ 
@@ -19,43 +19,33 @@ export function CardHeader({
   session: any;
   isSmallMobile?: boolean;
 }) {
-  const theme = getCategoryTheme(category);
-  
   return (
-    <>
-      {/* Category accent bar */}
-      <div 
-        className="absolute top-0 left-0 right-0 h-1 opacity-60"
-        style={{ backgroundColor: theme.color }}
-      />
-      
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-1 sm:gap-2">
-          <span className={cn(
-            "inline-block px-2 py-1 text-xs font-medium rounded-lg",
-            getCategoryBadgeStyle(category)
-          )}>
-            {isSmallMobile && category.length > 8 ? category.substring(0, 8) + '...' : category}
-          </span>
-          {isN8nWorkflow && (
-            <Workflow className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
-          )}
-        </div>
-        {session && (
-          <button
-            onClick={toggleFavorite}
-            className={cn(
-              "p-2 rounded-full transition-all duration-200 flex items-center justify-center min-w-[44px] min-h-[44px]",
-              "hover:bg-white/30 active:bg-white/50", 
-              favorited 
-                ? "text-[#c49d68]" 
-                : "text-gray-400 hover:text-[#c49d68]"
-            )}
-          >
-            <Heart className={cn("h-4 w-4", favorited && "fill-current")} />
-          </button>
+    <div className="flex items-start justify-between">
+      <div className="flex items-center gap-1 sm:gap-2">
+        <span className={cn(
+          "inline-block px-2 py-1 text-xs font-medium rounded-lg",
+          getCategoryBadgeStyle(category)
+        )}>
+          {isSmallMobile && category.length > 8 ? category.substring(0, 8) + '...' : category}
+        </span>
+        {isN8nWorkflow && (
+          <Workflow className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
         )}
       </div>
-    </>
+      {session && (
+        <button
+          onClick={toggleFavorite}
+          className={cn(
+            "p-2 rounded-full transition-all duration-200 flex items-center justify-center min-w-[44px] min-h-[44px]",
+            "hover:bg-white/30 active:bg-white/50", 
+            favorited 
+              ? "text-[#c49d68]" 
+              : "text-gray-400 hover:text-[#c49d68]"
+          )}
+        >
+          <Heart className={cn("h-4 w-4", favorited && "fill-current")} />
+        </button>
+      )}
+    </div>
   );
 }

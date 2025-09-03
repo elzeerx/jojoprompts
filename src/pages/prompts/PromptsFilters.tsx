@@ -8,11 +8,11 @@ import { List, Grid, Search } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCategories } from "@/hooks/useCategories";
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getCategoryTheme } from "@/components/ui/prompt-card/utils/categoryUtils";
 
 interface PromptsFiltersProps {
   category: string;
   setCategory: (cat: string) => void;
+  categories: string[];
   searchQuery: string;
   setSearchQuery: (val: string) => void;
   view: "grid" | "list";
@@ -20,16 +20,27 @@ interface PromptsFiltersProps {
 }
 
 export function PromptsFilters({
-  category, setCategory, searchQuery, setSearchQuery, view, setView
+  category, setCategory, categories, searchQuery, setSearchQuery, view, setView
 }: PromptsFiltersProps) {
   const { categories: dbCategories } = useCategories();
   const isMobile = useIsMobile();
   const isGridView = view === "grid";
   
-  // Get active categories from database
-  const activeCategories = dbCategories?.filter(cat => cat.is_active) || [];
-  const mainCategories = ["All", "ChatGPT", "Midjourney", "Claude", "Gemini", "Workflow", "Video", "Audio"];
-  const categoryOptions = mainCategories;
+  // Get active categories from database, fallback to passed categories
+  const activeCategories = dbCategories.filter(cat => cat.is_active);
+  const mainCategories = ["all", ...activeCategories.map(cat => cat.name)];
+  
+  // Filter out main categories from the full categories list to get subcategories
+  const subCategories = categories.filter(cat => 
+    cat !== "all" && 
+    !mainCategories.includes(cat)
+  );
+  
+  // Combine categories for the dropdown
+  const categoryOptions = [
+    ...mainCategories,
+    ...subCategories
+  ];
 
   return (
     <div className="mb-6 sm:mb-10 space-y-4 sm:space-y-6">
@@ -37,23 +48,15 @@ export function PromptsFilters({
       <div className="overflow-x-auto pb-2 sm:pb-3 mb-3 sm:mb-4 border-b border-warm-gold/10">
         <Tabs value={category} onValueChange={setCategory} className="w-full">
           <TabsList className="mobile-tabs bg-gray-100/80 h-auto p-1 flex w-max min-w-full">
-            {categoryOptions.map((cat) => {
-              const isActive = category === cat || (cat === "All" && !category);
-              const theme = getCategoryTheme(cat);
-              const IconComponent = theme.icon;
-              
-              return (
-                <TabsTrigger 
-                  key={cat} 
-                  value={cat === "All" ? "" : cat}
-                  className="mobile-tab whitespace-nowrap px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 touch-manipulation flex items-center gap-1.5"
-                  style={isActive ? { backgroundColor: theme.color, color: 'white' } : {}}
-                >
-                  <IconComponent className="h-3 w-3" />
-                  {cat}
-                </TabsTrigger>
-              );
-            })}
+            {mainCategories.map((cat) => (
+              <TabsTrigger 
+                key={cat} 
+                value={cat}
+                className="mobile-tab mobile-tab-inactive data-[state=active]:mobile-tab-active whitespace-nowrap px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 touch-manipulation"
+              >
+                {cat === "all" ? "All Categories" : cat}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
       </div>
@@ -80,13 +83,13 @@ export function PromptsFilters({
             </SelectTrigger>
             <SelectContent className="bg-white border border-warm-gold/20 shadow-lg rounded-lg z-50">
               {categoryOptions.map((cat) => (
-                 <SelectItem 
-                   key={cat} 
-                   value={cat === "All" ? "" : cat}
-                   className="touch-manipulation py-2 sm:py-2.5 px-3 sm:px-4 hover:bg-warm-gold/10 transition-colors"
-                 >
-                   {cat}
-                 </SelectItem>
+                <SelectItem 
+                  key={cat} 
+                  value={cat}
+                  className="touch-manipulation py-2 sm:py-2.5 px-3 sm:px-4 hover:bg-warm-gold/10 transition-colors"
+                >
+                  {cat === "all" ? "All Categories" : cat}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>

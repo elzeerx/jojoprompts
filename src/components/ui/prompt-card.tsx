@@ -111,7 +111,6 @@ export function PromptCard({
           promptId={prompt.id}
           isN8nWorkflow={isN8nWorkflow}
           uploaderName={(prompt as any).uploader_name}
-          category={category}
         />
       </div>
       {!isLocked && (
