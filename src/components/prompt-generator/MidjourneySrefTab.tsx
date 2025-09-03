@@ -169,16 +169,29 @@ export function MidjourneySrefTab() {
               ))}
             </div>
 
-            {/* Formatted for Midjourney */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Ready for Midjourney:</Label>
-              <div className="p-4 rounded-lg bg-muted border">
-                <code className="text-sm font-mono text-warm-gold">
-                  {formatSrefForMidjourney()}
-                </code>
+            {/* Individual SREF commands */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Individual SREF Commands:</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {generatedSrefs.map((sref, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="flex-1 p-3 rounded-lg bg-muted border">
+                      <code className="text-sm font-mono text-warm-gold">
+                        --sref {sref}
+                      </code>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => copyToClipboard(`--sref ${sref}`, `SREF ${index + 1}`)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
               </div>
               <div className="text-xs text-muted-foreground">
-                Copy this text and add it to the end of your Midjourney prompt.
+                Copy individual SREF commands or use the "Copy" button above for all combined.
               </div>
             </div>
           </CardContent>
