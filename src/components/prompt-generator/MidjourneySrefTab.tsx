@@ -58,7 +58,7 @@ export function MidjourneySrefTab() {
   // Format SREF for Midjourney
   const formatSrefForMidjourney = () => {
     if (generatedSrefs.length === 0) return "";
-    return `--sref ${generatedSrefs.join(' ')}`;
+    return generatedSrefs.map(sref => `--sref ${sref}`).join(' ');
   };
 
   return (
@@ -200,7 +200,7 @@ export function MidjourneySrefTab() {
           <p>
             <strong>3.</strong> Add it to your Midjourney prompt: <br />
             <code className="bg-muted px-1 rounded">
-              /imagine your prompt here --sref 123456 789012 345678 901234
+              /imagine your prompt here --sref 123456 --sref 789012 --sref 345678 --sref 901234
             </code>
           </p>
           <p>
