@@ -37,6 +37,84 @@ export interface ValidationRules {
   custom?: (data: any) => Record<string, string>;
 }
 
+// Claude Text Prompt
+export const CLAUDE_TEXT_PROMPT: ModelPromptType = {
+  id: 'claude-text',
+  name: 'Claude Text Prompt',
+  description: 'Create text-based prompts optimized for Claude AI',
+  category: 'Claude',
+  fields: [
+    {
+      id: 'promptText',
+      name: 'Prompt Text',
+      type: 'textarea',
+      required: true,
+      placeholder: 'Enter your prompt here...',
+      validation: {
+        minLength: 10,
+        maxLength: 3000
+      },
+      help: 'Claude works best with clear, detailed instructions'
+    },
+    {
+      id: 'thinking_style',
+      name: 'Thinking Style',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'analytical', label: 'Analytical' },
+        { value: 'creative', label: 'Creative' },
+        { value: 'balanced', label: 'Balanced' },
+        { value: 'step_by_step', label: 'Step-by-step' }
+      ],
+      help: 'How Claude should approach the task'
+    },
+    {
+      id: 'output_format',
+      name: 'Output Format',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'paragraph', label: 'Paragraph' },
+        { value: 'bullet_points', label: 'Bullet Points' },
+        { value: 'numbered_list', label: 'Numbered List' },
+        { value: 'markdown', label: 'Markdown' },
+        { value: 'json', label: 'JSON' }
+      ],
+      help: 'Preferred response format'
+    },
+    {
+      id: 'use_case',
+      name: 'Use Case',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'research', label: 'Research' },
+        { value: 'writing', label: 'Writing' },
+        { value: 'analysis', label: 'Analysis' },
+        { value: 'coding', label: 'Coding' },
+        { value: 'brainstorming', label: 'Brainstorming' }
+      ],
+      help: 'Primary use case for this prompt'
+    }
+  ],
+  validation: {
+    required: ['promptText'],
+    optional: ['thinking_style', 'output_format', 'use_case']
+  },
+  examples: [
+    'Analyze the key themes in this text and provide insights',
+    'Write a comprehensive guide on sustainable living practices',
+    'Help me brainstorm innovative solutions for remote team collaboration'
+  ],
+  tips: [
+    'Be specific about what you want Claude to focus on',
+    'Include context and background information when relevant',
+    'Specify the desired tone and style for responses'
+  ],
+  color: '#f97316'
+};
+
 // ChatGPT Text Prompt
 export const CHATGPT_TEXT_PROMPT: ModelPromptType = {
   id: MODEL_PROMPT_TYPES.CHATGPT.TEXT,
@@ -553,6 +631,7 @@ export const WORKFLOW_N8N_PROMPT: ModelPromptType = {
 export const ALL_PROMPT_TYPES: ModelPromptType[] = [
   CHATGPT_TEXT_PROMPT,
   CHATGPT_IMAGE_PROMPT,
+  CLAUDE_TEXT_PROMPT,
   MIDJOURNEY_FULL_PROMPT,
   MIDJOURNEY_STYLE_REF_PROMPT,
   VIDEO_FULL_PROMPT,

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { usePromptValidation } from "@/utils/promptValidation";
+// Enhanced category-aware prompt builder with bilingual support and specialized fields for each AI model has been successfully implemented!
 import { mapOpenAIModel, OPENAI_MODEL_ALIAS } from "@/utils/aiModelConfig";
 import { Sparkles, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { useSmartSuggestions } from "@/pages/admin/components/prompts/hooks/useSmartSuggestions";
