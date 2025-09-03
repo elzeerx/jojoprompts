@@ -23,28 +23,34 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with the user's token
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
+    // Extract user ID from JWT token (avoiding auth.getUser() call)
+    const token = authHeader.replace('Bearer ', '');
+    let userId;
+    try {
+      // Decode JWT payload (base64url decode the middle part)
+      const [, payload] = token.split('.');
+      const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      userId = decodedPayload.sub;
+      
+      if (!userId) {
+        throw new Error('No user ID in token');
       }
-    );
-
-    // Check if user can manage prompts
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.log('translate-prompt: No authenticated user');
+      console.log('translate-prompt: Extracted user ID from token');
+    } catch (error) {
+      console.log('translate-prompt: Invalid token format', error);
       return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
+        JSON.stringify({ error: 'Invalid authentication token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { data: canManage } = await supabase.rpc('can_manage_prompts', { _user_id: user.id });
+    // Create Supabase client for database operations
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+
+    const { data: canManage } = await supabase.rpc('can_manage_prompts', { _user_id: userId });
     if (!canManage) {
       console.log('translate-prompt: User cannot manage prompts');
       return new Response(

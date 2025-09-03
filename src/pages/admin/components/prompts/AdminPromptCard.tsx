@@ -35,6 +35,7 @@ import { useFavoriteLogic } from "@/components/ui/prompt-card/hooks/useFavoriteL
 import { extractPromptMetadata, isWorkflowPrompt } from "@/utils/promptUtils";
 import { PromptService } from "@/services/PromptService";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminPromptCardProps {
   prompt: PromptRow;
@@ -83,6 +84,17 @@ export function AdminPromptCard({
   const handleTranslate = async (targetLanguage: 'arabic' | 'english', e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Check if user has a valid session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        variant: "destructive",
+        title: "Authentication required",
+        description: "Please log in to translate prompts",
+      });
+      return;
+    }
     
     setIsTranslating(true);
     try {

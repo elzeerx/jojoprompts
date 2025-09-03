@@ -490,9 +490,11 @@ export class PromptService {
       return { success: true, data };
     } catch (error) {
       console.error('Error translating prompt:', error);
+      // Extract the actual error message from the edge function response
+      const errorMessage = error instanceof Error ? error.message : 'Failed to translate prompt';
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Failed to translate prompt' 
+        error: errorMessage
       };
     }
   }

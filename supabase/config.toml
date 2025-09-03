@@ -1,5 +1,8 @@
 project_id = "fxkqgjakbyrxkmevkglv"
 
+[functions.translate-prompt]
+verify_jwt = true
+
 [functions.generate-use-case]
 verify_jwt = true
 
