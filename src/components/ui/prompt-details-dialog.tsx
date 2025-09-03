@@ -11,6 +11,8 @@ import { PromptDetailsContent } from "./prompt-details/PromptDetailsContent";
 import { PromptDetailsActions } from "./prompt-details/PromptDetailsActions";
 import { MediaPreviewDialog } from "./prompt-details/MediaPreviewDialog";
 import { LanguageTabs, type Language } from "./LanguageTabs";
+import { PromptService } from "@/services/PromptService";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 
 interface PromptDetailsDialogProps {
   open: boolean;
@@ -20,6 +22,7 @@ interface PromptDetailsDialogProps {
 
 export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetailsDialogProps) {
   const { session } = useAuth();
+  const { canManagePrompts } = useUserPermissions();
   const [favorited, setFavorited] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('/placeholder.svg');
   const [copied, setCopied] = useState(false);
@@ -28,8 +31,10 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(() => {
     return (localStorage.getItem('preferred-language') as Language) || 'english';
   });
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [promptData, setPromptData] = useState(prompt);
 
-  const { title, prompt_text, metadata, prompt_type } = prompt;
+  const { title, prompt_text, metadata, prompt_type } = promptData;
   const category = metadata?.category || "ChatGPT";
   const tags = metadata?.tags || [];
   const model = metadata?.target_model || category;
@@ -42,7 +47,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   
   // Check if this prompt supports bilingual content (ChatGPT or Claude)
   const supportsBilingual = category.toLowerCase().includes('chatgpt') || category.toLowerCase().includes('claude');
-  const hasTranslations = supportsBilingual && translations && !!(translations.arabic || translations.english);
+  const hasTranslations = supportsBilingual;
   
   // Get current content based on selected language
   const getCurrentContent = () => {
@@ -50,11 +55,62 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
       return { title, prompt_text };
     }
     
-    const currentTranslation = translations?.[selectedLanguage];
-    return {
-      title: currentTranslation?.title || title,
-      prompt_text: currentTranslation?.prompt_text || prompt_text
-    };
+    if (selectedLanguage === 'arabic') {
+      return {
+        title: translations?.arabic?.title || title,
+        prompt_text: translations?.arabic?.prompt_text || prompt_text
+      };
+    } else {
+      return {
+        title: translations?.english?.title || title,
+        prompt_text: translations?.english?.prompt_text || prompt_text
+      };
+    }
+  };
+
+  // Check if translation exists for the current language
+  const hasTranslationFor = (language: Language) => {
+    return !!(translations?.[language]?.title && translations?.[language]?.prompt_text);
+  };
+
+  // Handle AI translation
+  const handleTranslate = async (targetLanguage: 'arabic' | 'english') => {
+    if (!canManagePrompts) return;
+    
+    setIsTranslating(true);
+    try {
+      const result = await PromptService.translatePrompt(promptData.id, targetLanguage);
+      
+      if (result.success) {
+        // Update local prompt data with the new translation
+        const updatedPrompt = { ...promptData };
+        if (!updatedPrompt.metadata) updatedPrompt.metadata = {};
+        if (!updatedPrompt.metadata.translations) updatedPrompt.metadata.translations = {};
+        
+        updatedPrompt.metadata.translations[targetLanguage] = result.data.translation;
+        setPromptData(updatedPrompt);
+        
+        toast({
+          title: "Translation completed",
+          description: `Successfully translated to ${targetLanguage}`,
+        });
+      } else {
+        toast({
+          title: "Translation failed",
+          description: result.error || "Failed to translate prompt",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast({
+        title: "Translation failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTranslating(false);
+    }
   };
   
   const currentContent = getCurrentContent();
@@ -193,6 +249,11 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                 favorited={favorited}
                 onToggleFavorite={handleToggleFavorite}
                 getCategoryColor={getCategoryColor}
+                canManagePrompts={canManagePrompts}
+                hasTranslation={hasTranslationFor(selectedLanguage)}
+                selectedLanguage={selectedLanguage}
+                isTranslating={isTranslating}
+                onTranslate={handleTranslate}
               />
 
               <LanguageTabs

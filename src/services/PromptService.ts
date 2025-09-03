@@ -467,4 +467,33 @@ export class PromptService {
       return { success: false, error: { message: error.message } };
     }
   }
+
+  /**
+   * Translate a prompt using AI
+   */
+  static async translatePrompt(
+    promptId: string, 
+    targetLanguage: 'arabic' | 'english', 
+    overwrite: boolean = false
+  ): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await supabase.functions.invoke('translate-prompt', {
+        body: {
+          prompt_id: promptId,
+          target_language: targetLanguage,
+          overwrite
+        }
+      });
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error translating prompt:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to translate prompt' 
+      };
+    }
+  }
 }
