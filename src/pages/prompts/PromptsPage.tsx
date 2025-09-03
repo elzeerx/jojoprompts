@@ -24,9 +24,9 @@ export default function PromptsPage() {
     }
   }, [authLoading, session, navigate]);
 
-  // Load prompts
+  // Load prompts with optimizations
   const loadPrompts = async () => {
-    if (authLoading) return;
+    if (authLoading || !session) return;
     
     setIsLoading(true);
     setError(null);
@@ -54,8 +54,10 @@ export default function PromptsPage() {
   };
 
   useEffect(() => {
-    loadPrompts();
-  }, [authLoading, filters.debouncedSearchQuery, filters.filters.category, filters.filters.promptType, filters.filters.sortBy, filters.filters.sortOrder]);
+    if (!authLoading && session) {
+      loadPrompts();
+    }
+  }, [authLoading, session, filters.debouncedSearchQuery, filters.filters.category, filters.filters.promptType, filters.filters.sortBy, filters.filters.sortOrder]);
 
   // Don't render if not authenticated
   if (!authLoading && !session) {

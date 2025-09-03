@@ -98,34 +98,36 @@ export class PromptService {
         };
       }
 
-      // Safely fetch uploader names for admin users only
-      const transformedData = await Promise.all((data || []).map(async (prompt: any) => {
-        let uploader_name = 'Anonymous';
-        let uploader_username = undefined;
-
+      // Batch fetch uploader names for better performance
+      const uniqueUserIds = [...new Set((data || []).map((prompt: any) => prompt.user_id))];
+      
+      // Single batch query for all profiles
+      let profileMap: Record<string, string> = {};
+      if (uniqueUserIds.length > 0) {
         try {
-          // Only attempt to fetch profiles if user has admin permissions
-          const { data: profile } = await supabase
+          const { data: profiles } = await supabase
             .from('profiles')
-            .select('username')
-            .eq('id', prompt.user_id)
-            .maybeSingle();
+            .select('id, username')
+            .in('id', uniqueUserIds);
           
-          if (profile) {
-            uploader_name = profile.username || 'Anonymous';
-            uploader_username = profile.username;
-          }
+          profileMap = (profiles || []).reduce((acc, profile) => {
+            acc[profile.id] = profile.username || 'Anonymous';
+            return acc;
+          }, {} as Record<string, string>);
         } catch (profileError) {
-          // Silently fail profile fetch for non-admin users
-          console.debug('Profile fetch failed (expected for non-admin users):', profileError);
+          console.debug('Batch profile fetch failed:', profileError);
         }
+      }
 
+      // Transform data with cached profile info
+      const transformedData = (data || []).map((prompt: any) => {
+        const uploader_name = profileMap[prompt.user_id] || 'Anonymous';
         return {
           ...prompt,
           uploader_name,
-          uploader_username
+          uploader_username: uploader_name !== 'Anonymous' ? uploader_name : undefined
         };
-      })) as PromptRow[];
+      }) as PromptRow[];
 
       return {
         data: transformedData,
