@@ -136,7 +136,43 @@ export class UserService extends BaseService<UserProfile> {
   }
 
   async getUserProfile(userId: string): Promise<ApiResponse<UserProfile>> {
-    return this.findById(userId);
+    return this.executeQuery(
+      'getUserProfile',
+      async () => {
+        // Use the secure function to get user profile with proper access controls
+        const { data, error } = await supabase.rpc('get_user_profile_safe', {
+          user_id_param: userId
+        });
+
+        if (error) throw error;
+        
+        // Convert RPC result to expected format
+        if (data && data.length > 0) {
+          const profile = data[0];
+          return { 
+            data: {
+              id: profile.id,
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+              username: profile.username,
+              role: profile.role,
+              avatar_url: profile.avatar_url,
+              bio: profile.bio,
+              country: profile.country,
+              membership_tier: profile.membership_tier,
+              created_at: profile.created_at,
+              // These fields will be null if user doesn't have access to sensitive data
+              phone_number: profile.phone_number,
+              social_links: profile.social_links,
+              updated_at: new Date().toISOString() // Default since not returned by RPC
+            }
+          };
+        }
+        
+        throw new Error('User profile not found or access denied');
+      },
+      { userId }
+    );
   }
 
   async getAllUsers(
@@ -144,32 +180,34 @@ export class UserService extends BaseService<UserProfile> {
     pageSize: number = 20,
     searchTerm?: string
   ): Promise<ApiResponse<UserProfile[]>> {
-    const options: any = {
-      orderBy: { column: 'created_at', ascending: false }
-    };
-
-    if (searchTerm) {
-      // For search, we'll use a direct query instead of buildQuery
-      return this.executeQuery(
-        'getAllUsers',
-        () => supabase
+    return this.executeQuery(
+      'getAllUsers',
+      async () => {
+        // Use secure query with proper admin verification
+        let query = supabase
           .from('profiles')
-          .select('*')
-          .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,username.ilike.%${searchTerm}%`)
+          .select('id, first_name, last_name, username, role, avatar_url, bio, country, membership_tier, created_at')
           .order('created_at', { ascending: false })
-          .range((page - 1) * pageSize, page * pageSize - 1),
-        { page, pageSize, searchTerm }
-      );
-    }
+          .range((page - 1) * pageSize, page * pageSize - 1);
 
-    const result = await this.findPaginated(page, pageSize, options);
-    if (result.success && result.data) {
-      return {
-        success: true,
-        data: result.data.data
-      };
-    }
-    return result as any;
+        if (searchTerm) {
+          query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,username.ilike.%${searchTerm}%`);
+        }
+
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        // Map to include updated_at field
+        const profiles = data?.map(profile => ({
+          ...profile,
+          updated_at: new Date().toISOString() // Default since not queried for performance
+        })) || [];
+        
+        return { data: profiles };
+      },
+      { page, pageSize, searchTerm }
+    );
   }
 
   async searchUsers(searchTerm: string, limit = 10): Promise<ApiResponse<UserProfile[]>> {
@@ -194,23 +232,21 @@ export class UserService extends BaseService<UserProfile> {
     return this.executeQuery(
       'updateUserRole',
       async () => {
-        // Verify admin permissions
-        const { data: adminProfile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', adminId)
-          .single();
+        // Use enhanced admin verification which includes audit logging
+        const { data: isVerifiedAdmin, error: verifyError } = await supabase.rpc('is_verified_admin', {
+          action_context: 'role_change_request'
+        });
 
-        if (!adminProfile || adminProfile.role !== 'admin') {
-          throw new Error('Insufficient permissions to change user roles');
+        if (verifyError || !isVerifiedAdmin) {
+          throw new Error('Admin verification failed - insufficient permissions to change user roles');
         }
 
-        // Update user role
+        // Update user role - this will use the new secure RLS policies
         const { data, error } = await supabase
           .from('profiles')
           .update({ role: newRole })
           .eq('id', userId)
-          .select('*')
+          .select('id, first_name, last_name, username, role, avatar_url, bio, country, membership_tier, created_at')
           .single();
 
         if (error) throw error;
@@ -221,7 +257,13 @@ export class UserService extends BaseService<UserProfile> {
           adminId 
         });
 
-        return { data };
+        // Add updated_at field
+        const profile = {
+          ...data,
+          updated_at: new Date().toISOString()
+        };
+
+        return { data: profile };
       },
       { userId, newRole, adminId }
     );
@@ -302,6 +344,15 @@ export class UserService extends BaseService<UserProfile> {
     return this.executeQuery(
       'getUserStats',
       async () => {
+        // Verify admin access for statistics with logging
+        const { data: isVerifiedAdmin, error: verifyError } = await supabase.rpc('is_verified_admin', {
+          action_context: 'user_statistics_access'
+        });
+
+        if (verifyError || !isVerifiedAdmin) {
+          throw new Error('Admin verification failed - insufficient permissions to access user statistics');
+        }
+
         const { data: users } = await supabase
           .from('profiles')
           .select('role, created_at');

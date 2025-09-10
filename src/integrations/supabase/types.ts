@@ -979,6 +979,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: Json
       }
+      can_access_sensitive_profile_data: {
+        Args: { target_user_id?: string }
+        Returns: boolean
+      }
       can_manage_prompts: {
         Args: { _user_id: string }
         Returns: boolean
@@ -1007,12 +1011,33 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Json
       }
+      get_user_profile_safe: {
+        Args: { user_id_param: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          country: string
+          created_at: string
+          first_name: string
+          id: string
+          last_name: string
+          membership_tier: string
+          phone_number: string
+          role: string
+          social_links: Json
+          username: string
+        }[]
+      }
       has_role: {
         Args: { _role: string; _user_id: string }
         Returns: boolean
       }
       is_admin: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_verified_admin: {
+        Args: { action_context?: string }
         Returns: boolean
       }
       record_discount_usage: {
