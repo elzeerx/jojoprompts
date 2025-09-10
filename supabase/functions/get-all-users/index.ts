@@ -1,9 +1,6 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
-import { corsHeaders } from "./cors.ts";
-import { verifyAdmin, validateAdminRequest, hasPermission } from "./auth.ts";
-import { logSecurityEvent } from "../shared/securityLogger.ts";
+import { serve, corsHeaders, createSupabaseClient, handleCors } from "../_shared/standardImports.ts";
+import { verifyAdmin, validateAdminRequest, hasPermission, logSecurityEvent } from "../_shared/adminAuth.ts";
 import { handleGetUsers } from "./handlers/getUsersHandler.ts";
 import { handleCreateUser } from "./handlers/createUserHandler.ts";
 import { handleUpdateUser } from "./handlers/updateUserHandler.ts";
@@ -12,7 +9,7 @@ import { handleDeleteUser } from "./handlers/deleteUserHandler.ts";
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return handleCors();
   }
 
   try {
@@ -185,22 +182,17 @@ serve(async (req) => {
     });
 
     // Try to log the error if we have a supabase client
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
-      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
-      
-      if (supabaseUrl && serviceRoleKey) {
-        const errorClient = createClient(supabaseUrl, serviceRoleKey);
-        await logSecurityEvent(errorClient, {
-          action: 'function_error',
-          details: { 
-            function: 'get-all-users',
-            error: error.message,
-            method: req.method
-          },
-          ip_address: req.headers.get('x-forwarded-for') || 'unknown'
-        });
-      }
+    try {      
+      const supabase = createSupabaseClient();
+      await logSecurityEvent(supabase, {
+        action: 'function_error',
+        details: { 
+          function: 'get-all-users',
+          error: error.message,
+          method: req.method
+        },
+        ip_address: req.headers.get('x-forwarded-for') || 'unknown'
+      });
     } catch (logError) {
       console.warn('Failed to log error event:', logError);
     }
