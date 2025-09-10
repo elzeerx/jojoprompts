@@ -1,7 +1,7 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
-import { AuthContext } from './types.ts';
-import { logSecurityEvent } from '../../shared/securityLogger.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import type { AuthContext } from '../../_shared/adminAuth.ts';
+import { logSecurityEvent } from '../../_shared/adminAuth.ts';
 import { validateEnvironment } from './environmentValidator.ts';
 import { parseAuthHeader } from './authHeaderParser.ts';
 import { validateToken } from './tokenValidator.ts';
