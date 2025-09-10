@@ -4,10 +4,6 @@ import { toast } from "@/hooks/use-toast";
 
 export async function fetchUserProfile(currentUser: any, setUserRole: (role: string) => void) {
   try {
-    if (currentUser.email === 'nawaf@elzeer.com') {
-      setUserRole("admin");
-      return;
-    }
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('role')
