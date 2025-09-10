@@ -24,7 +24,7 @@ export default function UsersManagement() {
     onPageChange,
     onSearchChange,
     updatingUserId,
-    fetchUsers,
+    refetch,
     updateUser,
     assignPlanToUser,
     sendPasswordResetEmail,
@@ -54,7 +54,7 @@ export default function UsersManagement() {
           <UsersHeader 
             searchTerm={searchTerm}
             onSearchChange={onSearchChange}
-            onUserCreated={fetchUsers}
+            onUserCreated={refetch}
           />
 
 
@@ -74,7 +74,7 @@ export default function UsersManagement() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={fetchUsers}
+                  onClick={refetch}
                   className="w-fit flex items-center gap-2 border-warm-gold/30 text-warm-gold hover:bg-warm-gold/10"
                 >
                   <RefreshCw className="h-4 w-4" />
@@ -105,7 +105,7 @@ export default function UsersManagement() {
                 onSendResetEmail={sendPasswordResetEmail}
                 onDeleteUser={deleteUser}
                 onResendConfirmation={resendConfirmationEmail}
-                onRefresh={fetchUsers}
+                onRefresh={refetch}
               />
               
               {/* Show total count info with performance data */}

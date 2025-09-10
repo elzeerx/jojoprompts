@@ -1,10 +1,10 @@
 
 import { useState } from "react";
-import { useFetchUsers } from "./useFetchUsers";
-import { useUserUpdate } from "./useUserUpdate";
-import { usePlanAssignment } from "./usePlanAssignment";
+import { useFetchUsers } from "./useFetchUsers.query";
+import { useUserUpdate } from "./useUserUpdate.query";
+import { usePlanAssignment } from "./usePlanAssignment.query";
 import { usePasswordReset } from "./usePasswordReset";
-import { useUserDeletion } from "./useUserDeletion";
+import { useUserDeletion } from "./useUserDeletion.query";
 import { UserRole } from "@/utils/roleValidation";
 
 interface UserUpdateData {
@@ -19,7 +19,7 @@ export function useUserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const pageSize = 10;
   
-  const { users, loading, error, total, totalPages, fetchUsers, retryCount, performance } = useFetchUsers({
+  const { users, loading, error, total, totalPages, refetch, retryCount, performance } = useFetchUsers({
     page: currentPage,
     limit: pageSize,
     search: searchTerm
@@ -40,23 +40,29 @@ export function useUserManagement() {
   };
 
   const handleUpdateUser = async (userId: string, data: UserUpdateData) => {
-    const success = await updateUser(userId, data);
-    if (success) {
-      fetchUsers();
+    try {
+      await updateUser(userId, data);
+      return true;
+    } catch (error) {
+      return false;
     }
   };
 
   const handleAssignPlanToUser = async (userId: string, planId: string) => {
-    const success = await assignPlanToUser(userId, planId);
-    if (success) {
-      fetchUsers();
+    try {
+      await assignPlanToUser(userId, planId);
+      return true;
+    } catch (error) {
+      return false;
     }
   };
 
   const handleDeleteUser = async (userId: string, email: string) => {
-    const success = await deleteUser(userId, email);
-    if (success) {
-      fetchUsers();
+    try {
+      await deleteUser(userId, email);
+      return true;
+    } catch (error) {
+      return false;
     }
   };
 
@@ -74,7 +80,7 @@ export function useUserManagement() {
     onPageChange: handlePageChange,
     onSearchChange: handleSearchChange,
     updatingUserId: processingUserId,
-    fetchUsers,
+    refetch: refetch,
     updateUser: handleUpdateUser,
     assignPlanToUser: handleAssignPlanToUser,
     sendPasswordResetEmail,

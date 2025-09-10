@@ -230,9 +230,11 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
     
     // Phase 4: Enhanced profile fetching with error recovery
     let profiles = [];
+    let subscriptions = [];
     if (userIds.length > 0) {
       const profileStartTime = Date.now();
       try {
+        // Fetch profiles
         const { data: profilesData, error: profileError } = await supabase
           .from('profiles')
           .select('id, first_name, last_name, username, role, created_at')
@@ -245,21 +247,50 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
         } else {
           profiles = profilesData || [];
         }
+
+        // Fetch active subscriptions with plan details
+        const { data: subscriptionsData, error: subscriptionError } = await supabase
+          .from('user_subscriptions')
+          .select(`
+            user_id, 
+            status,
+            created_at,
+            end_date,
+            plan_id:subscription_plans(id, name, price_usd, is_lifetime)
+          `)
+          .in('user_id', userIds)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+
+        if (subscriptionError) {
+          console.error(`[${requestId}] Database error when fetching subscriptions:`, subscriptionError);
+          subscriptions = [];
+        } else {
+          subscriptions = subscriptionsData || [];
+        }
         
-        logPerformanceMetrics('Profile fetching', profileStartTime, { 
+        logPerformanceMetrics('Profile and subscription fetching', profileStartTime, { 
           userCount: userIds.length,
-          profilesFound: profiles.length 
+          profilesFound: profiles.length,
+          subscriptionsFound: subscriptions.length
         });
-      } catch (profileFetchError) {
-        console.error(`[${requestId}] Exception during profile fetch:`, profileFetchError);
+      } catch (fetchError) {
+        console.error(`[${requestId}] Exception during profile/subscription fetch:`, fetchError);
         profiles = [];
+        subscriptions = [];
       }
     }
     
-    // Merge profile data with auth data
+    // Merge profile data and subscription data with auth data
     const enrichmentStartTime = Date.now();
     const enrichedUsers = paginatedUsers.map((authUser: any) => {
       const profile = profiles.find((p: any) => p.id === authUser.id);
+      // Find the most recent active subscription for this user
+      const userSubscriptions = subscriptions.filter((sub: any) => sub.user_id === authUser.id);
+      const latestSubscription = userSubscriptions.sort((a: any, b: any) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0];
+
       return {
         id: authUser.id,
         email: authUser.email || 'unknown',
@@ -269,7 +300,14 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
         first_name: profile?.first_name || null,
         last_name: profile?.last_name || null,
         role: profile?.role || 'user',
-        username: profile?.username || ''
+        username: profile?.username || '',
+        subscription: latestSubscription ? {
+          plan_name: latestSubscription.plan_id?.name || 'Unknown',
+          status: latestSubscription.status,
+          end_date: latestSubscription.end_date,
+          is_lifetime: latestSubscription.plan_id?.is_lifetime || false,
+          price_usd: latestSubscription.plan_id?.price_usd || 0
+        } : null
       };
     });
     
