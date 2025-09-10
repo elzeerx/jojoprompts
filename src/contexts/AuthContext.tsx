@@ -5,6 +5,7 @@ import { computeRolePermissions } from './roles';
 import { debug } from './authDebugger';
 import { useAuthInitialization } from './auth/useAuthInitialization';
 import { useAuthSignOut } from './auth/useAuthSignOut';
+import { createLogger } from '@/utils/logging';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -15,6 +16,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [recoveredOrphaned, setRecoveredOrphaned] = useState(false);
+  
+  const logger = createLogger('AUTH_CONTEXT');
 
   // Initialize authentication
   useAuthInitialization({

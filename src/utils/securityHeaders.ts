@@ -1,5 +1,6 @@
 
 import { getCSPHeader } from "./security";
+import { createLogger } from "./logging";
 
 // Apply security headers to the application
 export const applySecurityHeaders = (): void => {
@@ -36,6 +37,8 @@ export const applySecurityHeaders = (): void => {
 
 // Initialize security headers when the app loads
 export const initializeSecurity = (): void => {
+  const logger = createLogger('SECURITY');
+  
   // Apply security headers
   applySecurityHeaders();
 
@@ -60,8 +63,6 @@ export const initializeSecurity = (): void => {
     });
   }
 
-    // Only log in development
-    if (import.meta.env.DEV) {
-      console.log('Security measures initialized');
-    }
+  // Log initialization
+  logger.info('Security measures initialized');
 };
