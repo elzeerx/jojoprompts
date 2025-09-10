@@ -3,11 +3,12 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { logInfo, logError } from '@/utils/secureLogging';
+import type { UsePaymentHandlingParams, UsePaymentHandlingReturn, PaymentData } from '../types';
 
-export function usePaymentHandling(user: any, selectedPlan: any, processing: boolean, setProcessing: any) {
+export function usePaymentHandling({ user, selectedPlan, processing, setProcessing }: UsePaymentHandlingParams): UsePaymentHandlingReturn {
   const navigate = useNavigate();
 
-  const handlePaymentSuccess = useCallback(async (paymentData: any) => {
+  const handlePaymentSuccess = useCallback(async (paymentData: PaymentData) => {
     console.log('[Payment] Success handler called with:', paymentData);
     
     if (processing) {

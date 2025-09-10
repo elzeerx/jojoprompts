@@ -3,15 +3,16 @@ import { useEffect, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { logInfo, logDebug } from '@/utils/secureLogging';
 import { CheckoutContextManager } from '@/utils/checkoutContext';
+import type { UseAuthenticationFlowParams, UseAuthenticationFlowReturn } from '../types';
 
-export function useAuthenticationFlow(
-  user: any,
-  authLoading: boolean,
-  loading: boolean,
-  selectedPlan: any,
-  authCallback: string | null,
-  setShowAuthForm: any
-) {
+export function useAuthenticationFlow({
+  user,
+  authLoading,
+  loading,
+  selectedPlan,
+  authCallback,
+  setShowAuthForm
+}: UseAuthenticationFlowParams): UseAuthenticationFlowReturn {
   useEffect(() => {
     logDebug("Auth state effect triggered", "checkout", { 
       hasUser: !!user, 

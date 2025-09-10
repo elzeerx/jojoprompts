@@ -51,23 +51,23 @@ export default function CheckoutPage() {
     hasDiscount: !!appliedDiscount
   }, user?.id);
 
-  usePlanFetching(planId, user, setSelectedPlan, setError, setLoading);
+  usePlanFetching({ planId, user, setSelectedPlan, setError, setLoading });
 
-  const { handleAuthSuccess } = useAuthenticationFlow(
+  const { handleAuthSuccess } = useAuthenticationFlow({
     user,
     authLoading,
     loading,
     selectedPlan,
     authCallback,
     setShowAuthForm
-  );
+  });
 
-  const { handlePaymentSuccess, handlePaymentError } = usePaymentHandling(
+  const { handlePaymentSuccess, handlePaymentError } = usePaymentHandling({
     user,
     selectedPlan,
     processing,
     setProcessing
-  );
+  });
 
   const handleDiscountApplied = (discount: {
     id: string;
