@@ -92,18 +92,18 @@ class Logger {
       }
     }
 
-    // TODO: Implement remote logging for production
+    // Remote logging configuration
     if (this.config.enableRemoteLogging && entry.level <= LogLevel.WARN) {
       this.sendToRemote(entry);
     }
   }
 
   private async sendToRemote(entry: LogEntry): Promise<void> {
-    // Implementation for sending logs to remote service
-    // This could be Supabase, external logging service, etc.
+    // Remote logging implementation
+    // Currently disabled - can be enabled with specific logging service integration
     try {
-      // Placeholder for remote logging implementation
-      // await supabase.from('app_logs').insert(entry);
+      // Future implementation: supabase.from('app_logs').insert(entry)
+      // or integration with external logging service
     } catch (error) {
       // Fail silently to prevent logging loops
     }

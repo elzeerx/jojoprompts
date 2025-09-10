@@ -3,48 +3,57 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { RootLayout } from "./components/layout/root-layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthPremiumGuard, RoleGuard, AdminGuard } from "./components/auth/Guard";
 import { SecurityMonitoringWrapper } from "./components/SecurityMonitoringWrapper";
-import Index from "./pages/Index";
-import LoginPage from "./pages/LoginPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import SignupPage from "./pages/SignupPage";
-import EmailConfirmationPage from "./pages/EmailConfirmationPage";
-import PromptsPage from "./pages/PromptsPage";
-import ChatGPTPromptsPage from "./pages/prompts/ChatGPTPromptsPage";
-import MidjourneyPromptsPage from "./pages/prompts/MidjourneyPromptsPage";
-import WorkflowPromptsPage from "./pages/prompts/WorkflowPromptsPage";
-import FavoritesPage from "./pages/FavoritesPage";
-import SearchPage from "./pages/SearchPage";
-import PricingPage from "./pages/PricingPage";
-import CheckoutPage from "./pages/CheckoutPage";
-import PaymentCallbackPage from "./pages/PaymentCallbackPage";
-import { MagicLoginPage } from "./pages/MagicLoginPage";
-import UnsubscribePage from "./pages/UnsubscribePage";
-import PaymentSuccessPage from "./pages/PaymentSuccessPage";
-import PaymentFailedPage from "./pages/PaymentFailedPage";
-import PaymentDashboardPage from "./pages/PaymentDashboardPage";
-import PaymentRecoveryPage from "./pages/PaymentRecoveryPage";
-import UserDashboardPage from "./pages/UserDashboardPage";
-import SubscriptionDashboard from "./pages/dashboard/SubscriptionDashboard";
-import PrompterDashboard from "./pages/prompter/PrompterDashboard";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import PromptsManagement from "./pages/admin/PromptsManagement";
-import PromptGeneratorPage from "./pages/PromptGeneratorPage";
-import AboutPage from "./pages/AboutPage";
-import ContactPage from "./pages/ContactPage";
-import FAQPage from "./pages/FAQPage";
-import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
-import TermsOfServicePage from "./pages/TermsOfServicePage";
-import ExamplesPage from "./pages/ExamplesPage";
-import EnhancedPromptDemo from "./pages/EnhancedPromptDemo";
-import NotFoundPage from "./pages/NotFoundPage";
-import MagicLinkSentPage from "./pages/MagicLinkSentPage";
+import { routes } from "./config/routes";
 
 const queryClient = new QueryClient();
+
+// Loading component for suspense fallback
+const SuspenseLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+      <p>Loading...</p>
+    </div>
+  </div>
+);
+
+// Helper function to wrap component with appropriate guard
+const createGuardedRoute = (route: typeof routes[0]) => {
+  const Component = route.component;
+  
+  switch (route.protection) {
+    case 'premium':
+      return (
+        <AuthPremiumGuard>
+          <Component />
+        </AuthPremiumGuard>
+      );
+    case 'role':
+      if (route.requiredRole) {
+        return (
+          <RoleGuard role={route.requiredRole}>
+            <Component />
+          </RoleGuard>
+        );
+      }
+      return <Component />;
+    case 'admin':
+      return (
+        <AdminGuard fallbackRoute={route.fallbackRoute}>
+          <Component />
+        </AdminGuard>
+      );
+    default:
+      return <Component />;
+  }
+};
 
 function App() {
   return (
@@ -55,45 +64,20 @@ function App() {
             <ErrorBoundary>
               <AuthProvider>
                 <SecurityMonitoringWrapper>
-                  <Routes>
-                    <Route path="/" element={<RootLayout />}>
-                      <Route index element={<Index />} />
-                      <Route path="login" element={<LoginPage />} />
-                      <Route path="auth/magic-login" element={<MagicLoginPage />} />
-                      <Route path="unsubscribe" element={<UnsubscribePage />} />
-                      <Route path="signup" element={<SignupPage />} />
-                      <Route path="magic-link-sent" element={<MagicLinkSentPage />} />
-                      <Route path="email-confirmation" element={<EmailConfirmationPage />} />
-                      <Route path="examples" element={<ExamplesPage />} />
-                      <Route path="demo/enhanced-prompt" element={<EnhancedPromptDemo />} />
-                      <Route path="prompts" element={<PromptsPage />} />
-                      <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />
-                      <Route path="prompts/midjourney" element={<MidjourneyPromptsPage />} />
-                      <Route path="prompts/workflow" element={<WorkflowPromptsPage />} />
-                      <Route path="favorites" element={<AuthPremiumGuard><FavoritesPage /></AuthPremiumGuard>} />
-                      <Route path="search" element={<SearchPage />} />
-                      <Route path="pricing" element={<PricingPage />} />
-                      <Route path="checkout" element={<CheckoutPage />} />
-                      <Route path="payment/callback" element={<PaymentCallbackPage />} />
-                      <Route path="payment-success" element={<PaymentSuccessPage />} />
-                      <Route path="payment-failed" element={<PaymentFailedPage />} />
-                      <Route path="payment-dashboard" element={<AuthPremiumGuard><PaymentDashboardPage /></AuthPremiumGuard>} />
-                      <Route path="payment-recovery" element={<PaymentRecoveryPage />} />
-                      <Route path="dashboard" element={<AuthPremiumGuard><UserDashboardPage /></AuthPremiumGuard>} />
-                      <Route path="dashboard/subscription" element={<AuthPremiumGuard><SubscriptionDashboard /></AuthPremiumGuard>} />
-                      <Route path="dashboard/prompter" element={<RoleGuard role="prompter"><PrompterDashboard /></RoleGuard>} />
-                      <Route path="prompter" element={<RoleGuard role="prompter"><PrompterDashboard /></RoleGuard>} />
-                      <Route path="admin" element={<AdminGuard fallbackRoute="/prompts"><AdminDashboard /></AdminGuard>} />
-                      <Route path="admin/prompts" element={<AdminGuard fallbackRoute="/prompts"><PromptsManagement /></AdminGuard>} />
-                      <Route path="prompt-generator" element={<PromptGeneratorPage />} />
-                      <Route path="about" element={<AboutPage />} />
-                      <Route path="contact" element={<ContactPage />} />
-                      <Route path="faq" element={<FAQPage />} />
-                      <Route path="privacy" element={<PrivacyPolicyPage />} />
-                      <Route path="terms" element={<TermsOfServicePage />} />
-                      <Route path="*" element={<NotFoundPage />} />
-                    </Route>
-                  </Routes>
+                  <Suspense fallback={<SuspenseLoader />}>
+                    <Routes>
+                      <Route path="/" element={<RootLayout />}>
+                        {routes.map((route) => (
+                          <Route
+                            key={route.path}
+                            path={route.path}
+                            element={createGuardedRoute(route)}
+                            index={route.index}
+                          />
+                        ))}
+                      </Route>
+                    </Routes>
+                  </Suspense>
                   <Toaster />
                   <Sonner />
                 </SecurityMonitoringWrapper>
