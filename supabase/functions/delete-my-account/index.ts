@@ -1,6 +1,6 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,8 +14,14 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') as string;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Create user client for authentication and RPC calls
+    const userClient = createClient(supabaseUrl, supabaseAnonKey);
+    
+    // Create admin client for auth user deletion
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -23,7 +29,7 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userError } = await userClient.auth.getUser(token);
     
     if (userError || !user) {
       throw new Error('Unauthorized');
@@ -38,8 +44,8 @@ serve(async (req) => {
 
     console.log(`Starting account deletion for user: ${user.id}`);
 
-    // Call the database function to delete the account
-    const { data, error } = await supabase.rpc('delete_user_account', {
+    // Call the database function to delete the account using user client
+    const { data, error } = await userClient.rpc('delete_user_account', {
       _user_id: user.id
     });
 
@@ -53,8 +59,8 @@ serve(async (req) => {
 
     console.log(`Account deletion completed for user: ${user.id}`, data);
 
-    // Now delete the auth user (this will cascade to our cleaned up profile)
-    const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(user.id);
+    // Now delete the auth user using admin client
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(user.id);
     
     if (deleteAuthError) {
       console.error('Error deleting auth user:', deleteAuthError);
