@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { AuthContextType } from './authTypes';
 import { setupAuthState } from './authStateManager';
-import { computeRolePermissions } from './rolePermissions';
+import { computeRolePermissions } from './roles';
 import { debug } from './authDebugger';
 import { useAuthInitialization } from './auth/useAuthInitialization';
 import { useAuthSignOut } from './auth/useAuthSignOut';
