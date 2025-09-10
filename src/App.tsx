@@ -8,6 +8,7 @@ import { RootLayout } from "./components/layout/root-layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RouteGuard } from "./components/auth/RouteGuard";
+import { SubscriptionGuard } from "./components/auth/SubscriptionGuard";
 import { SecurityMonitoringWrapper } from "./components/SecurityMonitoringWrapper";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
@@ -71,17 +72,17 @@ function App() {
                       <Route path="prompts/chatgpt" element={<ChatGPTPromptsPage />} />
                       <Route path="prompts/midjourney" element={<MidjourneyPromptsPage />} />
                       <Route path="prompts/workflow" element={<WorkflowPromptsPage />} />
-                      <Route path="favorites" element={<FavoritesPage />} />
+                      <Route path="favorites" element={<ProtectedRoute><SubscriptionGuard><FavoritesPage /></SubscriptionGuard></ProtectedRoute>} />
                       <Route path="search" element={<SearchPage />} />
                       <Route path="pricing" element={<PricingPage />} />
                       <Route path="checkout" element={<CheckoutPage />} />
                       <Route path="payment/callback" element={<PaymentCallbackPage />} />
                       <Route path="payment-success" element={<PaymentSuccessPage />} />
                       <Route path="payment-failed" element={<PaymentFailedPage />} />
-                      <Route path="payment-dashboard" element={<ProtectedRoute><PaymentDashboardPage /></ProtectedRoute>} />
+                      <Route path="payment-dashboard" element={<ProtectedRoute><SubscriptionGuard><PaymentDashboardPage /></SubscriptionGuard></ProtectedRoute>} />
                       <Route path="payment-recovery" element={<PaymentRecoveryPage />} />
-                      <Route path="dashboard" element={<ProtectedRoute><UserDashboardPage /></ProtectedRoute>} />
-                      <Route path="dashboard/subscription" element={<ProtectedRoute><SubscriptionDashboard /></ProtectedRoute>} />
+                      <Route path="dashboard" element={<ProtectedRoute><SubscriptionGuard><UserDashboardPage /></SubscriptionGuard></ProtectedRoute>} />
+                      <Route path="dashboard/subscription" element={<ProtectedRoute><SubscriptionGuard><SubscriptionDashboard /></SubscriptionGuard></ProtectedRoute>} />
                       <Route path="dashboard/prompter" element={<RouteGuard requiredRole="prompter"><PrompterDashboard /></RouteGuard>} />
                       <Route path="prompter" element={<RouteGuard requiredRole="prompter"><PrompterDashboard /></RouteGuard>} />
                       <Route path="admin" element={<RouteGuard requiredRole="admin" fallbackRoute="/prompts"><AdminDashboard /></RouteGuard>} />
