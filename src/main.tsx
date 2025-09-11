@@ -2,11 +2,11 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { initializeSecurity } from './utils/securityHeaders'
+import { SecurityHeaders } from './utils/security/securityHeaders'
 
 // Initialize security measures before app starts
 try {
-  initializeSecurity();
+  SecurityHeaders.initialize();
 } catch (error) {
   console.warn('Security initialization failed:', error);
 }
