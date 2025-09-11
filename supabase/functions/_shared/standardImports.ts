@@ -2,7 +2,8 @@
 // Version: @supabase/supabase-js@2.57.0
 
 export { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-export { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+export { createClient };
 
 // Standard CORS headers for all functions
 export const corsHeaders = {
