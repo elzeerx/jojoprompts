@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Sparkles, Wand2, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IMAGE_BUCKET, VIDEO_BUCKET, AUDIO_BUCKET, FILE_BUCKET } from "@/utils/buckets";
@@ -69,6 +70,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   const [isGenerating, setIsGenerating] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePath, setImagePath] = useState<string>('');
+  const [generatorQuery, setGeneratorQuery] = useState<string>('');
   const { user } = useAuth();
 
   // Available templates
@@ -178,6 +180,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       setIsGenerating(false);
       setImageFile(null);
       setImagePath('');
+      setGeneratorQuery('');
     }
   }, [open]);
 
@@ -271,6 +274,16 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       return;
     }
 
+    const query = generatorQuery.trim();
+    if (!query || query.length < 8) {
+      toast({
+        title: "Description Required",
+        description: "Please describe what you want the AI to generate (minimum 8 characters)",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
@@ -279,7 +292,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
           category: selectedTemplate.category,
           use_case: templateFormData.use_case,
           style: templateFormData.style,
-          description: templateFormData.description || bilingualData.promptText.en
+          description: query
         }
       });
 
@@ -408,7 +421,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                         <Button
                           type="button"
                           onClick={handleAutoGenerate}
-                          disabled={isGenerating || !selectedTemplate}
+                          disabled={isGenerating || !selectedTemplate || generatorQuery.trim().length < 8}
                           className="bg-purple-600 hover:bg-purple-700 text-white"
                           size="sm"
                         >
@@ -424,6 +437,24 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                             </div>
                           )}
                         </Button>
+                      </div>
+                      
+                      {/* User Input Field */}
+                      <div className="space-y-2">
+                        <label htmlFor="generator-query" className="block text-sm font-medium text-foreground">
+                          Describe what you want the AI to generate:
+                        </label>
+                        <Textarea
+                          id="generator-query"
+                          placeholder="e.g., Create a prompt for writing engaging blog posts about technology, include SEO best practices..."
+                          value={generatorQuery}
+                          onChange={(e) => setGeneratorQuery(e.target.value)}
+                          className="min-h-[80px] resize-none"
+                          disabled={isGenerating}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {generatorQuery.length}/8 characters minimum
+                        </p>
                       </div>
                     </div>
 
