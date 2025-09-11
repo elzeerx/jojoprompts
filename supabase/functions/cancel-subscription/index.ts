@@ -1,5 +1,5 @@
 
-import { serve, corsHeaders, createSupabaseClient, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
+import { serve, corsHeaders, createSupabaseClient, createClient, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
 import { verifyAdmin, hasPermission, logSecurityEvent, validateAdminRequest } from "../_shared/adminAuth.ts";
 
 serve(async (req) => {
@@ -20,13 +20,18 @@ serve(async (req) => {
     const authContext = await verifyAdmin(req);
     const { supabase, userId, userRole, permissions } = authContext;
 
-    // Verify subscription management permissions
-    if (!hasPermission(permissions, 'subscription:manage')) {
+    // Verify subscription management permissions (check multiple possible permissions)
+    const hasSubscriptionPermission = hasPermission(permissions, 'subscription:manage') || 
+                                     hasPermission(permissions, 'subscription:cancel') || 
+                                     hasPermission(permissions, 'subscription:write');
+    
+    if (!hasSubscriptionPermission) {
       await logSecurityEvent(supabase, {
         user_id: userId,
         action: 'permission_denied',
         details: { 
-          required_permission: 'subscription:manage', 
+          required_permissions: ['subscription:manage', 'subscription:cancel', 'subscription:write'], 
+          user_permissions: permissions,
           function: 'cancel-subscription',
           attempted_role: userRole
         },
@@ -68,8 +73,31 @@ serve(async (req) => {
       }
     });
 
-    // Call the database function to cancel subscription
-    const { data, error } = await supabase.rpc('cancel_user_subscription', {
+    // Extract Bearer token from the request
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return createErrorResponse('Missing or invalid authorization header', 401);
+    }
+    const userToken = authHeader.substring(7); // Remove "Bearer " prefix
+
+    // Create user-scoped Supabase client for RPC call (so auth.uid() works correctly)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Missing Supabase environment variables');
+    }
+
+    const supabaseAsUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${userToken}`
+        }
+      }
+    });
+
+    // Call the database function using user-scoped client
+    const { data, error } = await supabaseAsUser.rpc('cancel_user_subscription', {
       _user_id: targetUserId,
       _admin_id: userId
     });
