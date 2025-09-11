@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PromptsFilters } from "../PromptsFilters";
 import { PromptCard } from "@/components/ui/prompt-card";
@@ -7,6 +8,9 @@ import type { PromptRow } from "@/types/prompts";
 import type { Prompt } from "@/types";
 import type { usePromptFilters } from "@/hooks/usePromptFilters";
 import { useCategories } from "@/hooks/useCategories";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserSubscription } from "@/hooks/useUserSubscription";
+import { getSubscriptionTier, isPromptLocked } from "@/utils/subscription";
 
 interface RefactoredPromptsContentProps {
   prompts: PromptRow[];
@@ -23,10 +27,18 @@ export function RefactoredPromptsContent({
   filters,
   onReload
 }: RefactoredPromptsContentProps) {
+  const navigate = useNavigate();
   const { categories } = useCategories();
+  const { user, userRole } = useAuth();
+  const { userSubscription } = useUserSubscription(user?.id);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptRow | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
+
+  // Determine user privileges and subscription tier
+  const isPrivileged = userRole === 'admin' || userRole === 'prompter' || userRole === 'jadmin';
+  const userTier = getSubscriptionTier(userSubscription?.subscription_plans?.name);
+  const isAdmin = userRole === 'admin';
 
   const categoryNames = categories.map(cat => cat.name);
   
@@ -68,6 +80,10 @@ export function RefactoredPromptsContent({
     setDetailsDialogOpen(true);
   };
 
+  const handleUpgradeClick = () => {
+    navigate('/pricing');
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <PromptsFilters
@@ -103,18 +119,23 @@ export function RefactoredPromptsContent({
             ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
             : "grid-cols-1 max-w-4xl mx-auto"
         }`}>
-          {processedPrompts.map((prompt) => (
-            <PromptCard
-              key={prompt.id}
-              prompt={prompt as unknown as Prompt}
-              isSelected={false}
-              onSelect={() => openPromptDetails(prompt)}
-              isAdmin={false}
-              onEdit={() => {}}
-              onDelete={() => {}}
-              isLocked={false}
-            />
-          ))}
+          {processedPrompts.map((prompt) => {
+            const promptIsLocked = isPromptLocked(prompt.prompt_type || 'text', userTier, isPrivileged);
+            
+            return (
+              <PromptCard
+                key={prompt.id}
+                prompt={prompt as unknown as Prompt}
+                isSelected={false}
+                onSelect={() => openPromptDetails(prompt)}
+                isAdmin={isAdmin}
+                onEdit={() => {}}
+                onDelete={() => {}}
+                isLocked={promptIsLocked}
+                onUpgradeClick={handleUpgradeClick}
+              />
+            );
+          })}
         </div>
       )}
 
