@@ -58,7 +58,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [currentFiles, setCurrentFiles] = useState<File[]>([]);
   const [workflowFiles, setWorkflowFiles] = useState<File[]>([]);
-  const [step, setStep] = useState<'template' | 'form'>('template');
+  const [step, setStep] = useState<'generate' | 'edit' | 'metadata' | 'preview'>('generate');
   const [selectedTemplate, setSelectedTemplate] = useState<ModelPromptType | null>(null);
   const [bilingualData, setBilingualData] = useState({
     title: { en: '', ar: '' },
@@ -72,6 +72,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   const [imagePath, setImagePath] = useState<string>('');
   const [generatorQuery, setGeneratorQuery] = useState<string>('');
   const [aiResult, setAiResult] = useState<{title: string; prompt: string} | null>(null);
+  const [hasAppliedAI, setHasAppliedAI] = useState(false);
   const { user } = useAuth();
 
   // Available templates
@@ -99,8 +100,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   // Initialize for editing existing prompts
   useEffect(() => {
     if (editingPrompt && open) {
-      // Set step to form for existing prompts
-      setStep('form');
+      // Set step to edit for existing prompts (skip generate step)
+      setStep('edit');
       
       // Initialize bilingual data from existing prompt - handle both old and new format
       const translations = editingPrompt.metadata?.translations;
@@ -152,7 +153,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       
       if (matchingTemplate) {
         setSelectedTemplate(matchingTemplate);
-        setStep('form');
+        // For ChatGPT Text prompts, start with generate step
+        setStep(matchingTemplate.category === 'ChatGPT' ? 'generate' : 'edit');
       }
       
       setFormData(prev => ({
@@ -173,7 +175,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       setCurrentFile(null);
       setCurrentFiles([]);
       setWorkflowFiles([]);
-      setStep('template');
+      setStep('generate');
       setSelectedTemplate(null);
       setBilingualData({ title: { en: '', ar: '' }, promptText: { en: '', ar: '' } });
       setTemplateFormData({});
@@ -183,6 +185,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       setImagePath('');
       setGeneratorQuery('');
       setAiResult(null);
+      setHasAppliedAI(false);
     }
   }, [open]);
 
@@ -195,7 +198,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   // Handle template selection
   const handleTemplateSelect = (template: ModelPromptType) => {
     setSelectedTemplate(template);
-    setStep('form');
+    // For ChatGPT Text prompts, go to generate step; others go to edit step
+    setStep(template.category === 'ChatGPT' ? 'generate' : 'edit');
     
     // Initialize template form data with default values
     const initialData: Record<string, any> = {};
@@ -205,6 +209,62 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       }
     });
     setTemplateFormData(initialData);
+  };
+
+  // Handle step navigation
+  const handleNext = () => {
+    switch (step) {
+      case 'generate':
+        setStep('edit');
+        break;
+      case 'edit':
+        setStep('metadata');
+        break;
+      case 'metadata':
+        setStep('preview');
+        break;
+    }
+  };
+
+  const handleBack = () => {
+    switch (step) {
+      case 'edit':
+        if (selectedTemplate?.category === 'ChatGPT') {
+          setStep('generate');
+        } else {
+          // Go back to template selection for non-ChatGPT text prompts
+          setStep('generate');
+          setSelectedTemplate(null);
+        }
+        break;
+      case 'metadata':
+        setStep('edit');
+        break;
+      case 'preview':
+        setStep('metadata');
+        break;
+      case 'generate':
+        setSelectedTemplate(null);
+        break;
+    }
+    setValidationErrors({});
+  };
+
+  // Check if Next button should be enabled
+  const canProceedToNext = () => {
+    switch (step) {
+      case 'generate':
+        // Can proceed if AI result exists OR user wants to skip to manual
+        return aiResult !== null || true; // Allow manual skip
+      case 'edit':
+        // Basic validation for title and prompt
+        return (bilingualData.title.en.trim() || bilingualData.title.ar.trim()) && 
+               (bilingualData.promptText.en.trim() || bilingualData.promptText.ar.trim());
+      case 'metadata':
+        return true; // Always can proceed from metadata
+      default:
+        return true;
+    }
   };
 
   // Handle form submission with enhanced data
@@ -257,12 +317,6 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       currentFiles,
       workflowFiles
     );
-  };
-
-  // Handle going back to template selection
-  const handleBack = () => {
-    setStep('template');
-    setValidationErrors({});
   };
 
   // Handle auto-generation
@@ -340,6 +394,9 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       }
     }));
 
+    // Mark that AI result has been applied
+    setHasAppliedAI(true);
+    
     // Clear the AI result after applying
     setAiResult(null);
     
@@ -352,7 +409,40 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   // Handle regenerating with same query
   const handleRegenerate = () => {
     if (generatorQuery.trim().length >= 8) {
+      // Only auto-apply if user hasn't manually edited after applying AI result
+      const shouldAutoApply = !hasAppliedAI;
       handleAutoGenerate();
+    }
+  };
+
+  // Get step title and description
+  const getStepInfo = () => {
+    switch (step) {
+      case 'generate':
+        return {
+          title: "Generate AI Prompt",
+          description: "Let AI create a professional prompt for you"
+        };
+      case 'edit':
+        return {
+          title: "Review & Edit",
+          description: "Customize your prompt content and translations"
+        };
+      case 'metadata':
+        return {
+          title: "Metadata & Thumbnail",
+          description: "Add additional details and upload thumbnail"
+        };
+      case 'preview':
+        return {
+          title: "Preview & Save",
+          description: "Review your prompt before saving"
+        };
+      default:
+        return {
+          title: "Create Enhanced Prompt",
+          description: "Fill in the details for your AI prompt"
+        };
     }
   };
 
@@ -380,17 +470,48 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         {/* Fixed Header */}
         <div className="flex-shrink-0 p-6 border-b border-border">
           <div className="flex items-center gap-4">
-            {step === 'form' && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleBack}
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-            )}
+            {/* Step Navigation */}
+            <div className="flex items-center gap-2">
+              {selectedTemplate && step !== 'generate' && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleBack}
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+              )}
+              
+              {!selectedTemplate && (
+                <div className="text-sm text-muted-foreground">
+                  Step 1: Choose Template
+                </div>
+              )}
+              
+              {selectedTemplate && (
+                <div className="flex items-center gap-2">
+                  <div className="text-sm text-muted-foreground">
+                    Step {step === 'generate' ? '1' : step === 'edit' ? '2' : step === 'metadata' ? '3' : '4'} of 4
+                  </div>
+                  <div className="flex gap-1">
+                    {['generate', 'edit', 'metadata', 'preview'].map((s, i) => (
+                      <div
+                        key={s}
+                        className={`w-2 h-2 rounded-full ${
+                          step === s 
+                            ? 'bg-[var(--warm-gold)]' 
+                            : (i < ['generate', 'edit', 'metadata', 'preview'].indexOf(step) 
+                                ? 'bg-green-500' 
+                                : 'bg-gray-300')
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             
             <div className="flex-1">
               {selectedTemplate && (
@@ -404,139 +525,201 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
               <DialogHeader className="text-left p-0">
                 <DialogTitle className="text-2xl sm:text-3xl font-bold text-foreground leading-tight flex items-center gap-2">
                   <Sparkles className="h-6 w-6 text-[var(--warm-gold)]" />
-                  {editingPrompt ? "Edit Prompt" : "Create Enhanced Prompt"}
+                  {editingPrompt ? "Edit Prompt" : (selectedTemplate ? getStepInfo().title : "Create Enhanced Prompt")}
                 </DialogTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {step === 'template' 
-                    ? "Choose an AI model template to get started"
-                    : "Fill in the details for your AI prompt"
-                  }
+                  {selectedTemplate ? getStepInfo().description : "Choose an AI model template to get started"}
                 </p>
               </DialogHeader>
             </div>
+
+            {/* Next Button */}
+            {selectedTemplate && step !== 'preview' && (
+              <Button
+                onClick={handleNext}
+                disabled={!canProceedToNext()}
+                className="bg-[var(--warm-gold)] hover:bg-[var(--warm-gold)]/90 text-white"
+              >
+                Next
+              </Button>
+            )}
           </div>
         </div>
         
         {/* Scrollable Content */}
         <ScrollArea className="flex-1 px-6">
           <div className="py-6">
-            {step === 'template' ? (
+            {!selectedTemplate ? (
               // Template Selection Step
               <CategorySelector
                 templates={availableTemplates}
                 selectedTemplate={selectedTemplate}
                 onTemplateSelect={handleTemplateSelect}
               />
-            ) : (
-              // Form Step
-              <form onSubmit={handleEnhancedSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left Column - Form Fields */}
-                  <div className="space-y-6">
-                    {/* Auto-Generate Section */}
-                    <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 p-6 rounded-xl border border-purple-200">
+            ) : step === 'generate' ? (
+              // Step 1: Generate
+              <div className="max-w-2xl mx-auto">
+                <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 p-8 rounded-xl border border-purple-200">
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-semibold text-foreground flex items-center justify-center gap-2 mb-2">
+                      <Wand2 className="h-6 w-6 text-purple-600" />
+                      AI Prompt Generator
+                    </h3>
+                    <p className="text-muted-foreground">
+                      Describe what you want and let GPT-5 create a professional prompt for you
+                    </p>
+                  </div>
+                  
+                  {/* User Input Field */}
+                  <div className="space-y-3">
+                    <label htmlFor="generator-query" className="block text-sm font-medium text-foreground">
+                      Describe what you want the AI to generate:
+                    </label>
+                    <Textarea
+                      id="generator-query"
+                      placeholder="e.g., Create a prompt for writing engaging blog posts about technology, include SEO best practices and target audience considerations..."
+                      value={generatorQuery}
+                      onChange={(e) => setGeneratorQuery(e.target.value)}
+                      className="min-h-[120px] resize-none"
+                      disabled={isGenerating}
+                    />
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">
+                        {generatorQuery.length}/8 characters minimum
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={handleAutoGenerate}
+                        disabled={isGenerating || !selectedTemplate || generatorQuery.trim().length < 8}
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                      >
+                        {isGenerating ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Generating...
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4" />
+                            Generate
+                          </div>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* AI Result Display */}
+                  {aiResult && (
+                    <div className="mt-6 p-6 bg-white rounded-lg border border-green-200 shadow-sm">
                       <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h3 className="font-semibold text-foreground flex items-center gap-2">
-                            <Wand2 className="h-5 w-5 text-purple-600" />
-                            AI Prompt Generator
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            Let AI create a professional prompt for you using GPT-5
-                          </p>
+                        <h4 className="font-medium text-green-800 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4" />
+                          Generated Result
+                        </h4>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigator.clipboard.writeText(`Title: ${aiResult.title}\n\nPrompt: ${aiResult.prompt}`)}
+                            className="text-xs"
+                          >
+                            Copy
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRegenerate}
+                            disabled={isGenerating}
+                            className="text-xs"
+                          >
+                            Regenerate
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={handleApplyResult}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                          >
+                            Use Result
+                          </Button>
                         </div>
-                        <Button
-                          type="button"
-                          onClick={handleAutoGenerate}
-                          disabled={isGenerating || !selectedTemplate || generatorQuery.trim().length < 8}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
-                          size="sm"
-                        >
-                          {isGenerating ? (
-                            <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Generating...
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <Sparkles className="h-4 w-4" />
-                              Generate
-                            </div>
-                          )}
-                        </Button>
                       </div>
                       
-                      {/* User Input Field */}
-                      <div className="space-y-2">
-                        <label htmlFor="generator-query" className="block text-sm font-medium text-foreground">
-                          Describe what you want the AI to generate:
-                        </label>
-                        <Textarea
-                          id="generator-query"
-                          placeholder="e.g., Create a prompt for writing engaging blog posts about technology, include SEO best practices..."
-                          value={generatorQuery}
-                          onChange={(e) => setGeneratorQuery(e.target.value)}
-                          className="min-h-[80px] resize-none"
-                          disabled={isGenerating}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          {generatorQuery.length}/8 characters minimum
-                        </p>
-                      </div>
-
-                      {/* AI Result Display */}
-                      {aiResult && (
-                        <div className="mt-4 p-4 bg-white rounded-lg border border-green-200 shadow-sm">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-medium text-green-800 flex items-center gap-2">
-                              <Sparkles className="h-4 w-4" />
-                              Generated Result
-                            </h4>
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigator.clipboard.writeText(`Title: ${aiResult.title}\n\nPrompt: ${aiResult.prompt}`)}
-                                className="text-xs"
-                              >
-                                Copy
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleRegenerate}
-                                disabled={isGenerating}
-                                className="text-xs"
-                              >
-                                Regenerate
-                              </Button>
-                              <Button
-                                type="button"
-                                onClick={handleApplyResult}
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white text-xs"
-                              >
-                                Use Result
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-3">
-                            <div>
-                              <div className="text-xs font-medium text-gray-600 mb-1">Title:</div>
-                              <div className="text-sm p-2 bg-gray-50 rounded border">{aiResult.title}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-medium text-gray-600 mb-1">Prompt:</div>
-                              <div className="text-sm p-2 bg-gray-50 rounded border max-h-32 overflow-y-auto">{aiResult.prompt}</div>
-                            </div>
-                          </div>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-xs font-medium text-gray-600 mb-1">Title:</div>
+                          <div className="text-sm p-3 bg-gray-50 rounded border">{aiResult.title}</div>
                         </div>
-                      )}
+                        <div>
+                          <div className="text-xs font-medium text-gray-600 mb-1">Prompt:</div>
+                          <div className="text-sm p-3 bg-gray-50 rounded border max-h-40 overflow-y-auto whitespace-pre-wrap">{aiResult.prompt}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Skip to Manual Option */}
+                  <div className="text-center mt-6">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleNext}
+                      className="text-muted-foreground"
+                    >
+                      Skip to Manual Entry
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : step === 'edit' ? (
+              // Step 2: Review & Edit
+              <form onSubmit={handleEnhancedSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left Column - Bilingual Fields */}
+                  <div className="space-y-6">
+                    <div className="bg-background/60 p-6 rounded-xl border border-border">
+                      <BilingualFields
+                        title={bilingualData.title}
+                        promptText={bilingualData.promptText}
+                        onTitleChange={(title) => setBilingualData(prev => ({ ...prev, title }))}
+                        onPromptTextChange={(promptText) => setBilingualData(prev => ({ ...prev, promptText }))}
+                      />
                     </div>
 
+                    {/* Template-specific Fields */}
+                    {selectedTemplate && selectedTemplate.fields.length > 0 && (
+                      <div className="bg-background/60 p-6 rounded-xl border border-border">
+                        <h3 className="font-semibold text-foreground mb-4">Template Configuration</h3>
+                        <DynamicFormRenderer
+                          template={selectedTemplate}
+                          formData={templateFormData}
+                          onChange={(fieldId, value) => setTemplateFormData(prev => ({ ...prev, [fieldId]: value }))}
+                          errors={validationErrors}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column - Preview */}
+                  <div className="space-y-6">
+                    <div className="bg-background/60 p-6 rounded-xl border border-border">
+                      <PromptPreview
+                        template={selectedTemplate}
+                        formData={templateFormData}
+                        bilingualData={bilingualData}
+                        language={activeLanguage}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </form>
+            ) : step === 'metadata' ? (
+              // Step 3: Metadata & Thumbnail
+              <form onSubmit={handleEnhancedSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-6">
                     {/* Image Upload Section */}
                     <div className="bg-background/60 p-6 rounded-xl border border-border">
                       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -551,38 +734,35 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                       />
                     </div>
 
-                    <div className="bg-background/60 p-6 rounded-xl border border-border">
-                      <BilingualFields
-                        title={bilingualData.title}
-                        promptText={bilingualData.promptText}
-                        onTitleChange={(title) => setBilingualData(prev => ({ ...prev, title }))}
-                        onPromptTextChange={(promptText) => setBilingualData(prev => ({ ...prev, promptText }))}
-                      />
-                    </div>
-
-                    {selectedTemplate && (
-                      <div className="bg-background/60 p-6 rounded-xl border border-border">
-                        <DynamicFormRenderer
-                          template={selectedTemplate}
-                          formData={templateFormData}
-                          onChange={(fieldId, value) => {
-                            setTemplateFormData(prev => ({ ...prev, [fieldId]: value }));
-                            // Clear validation error for this field
-                            if (validationErrors[fieldId]) {
-                              setValidationErrors(prev => {
-                                const { [fieldId]: _, ...rest } = prev;
-                                return rest;
-                              });
-                            }
-                          }}
-                          errors={validationErrors}
-                        />
-                      </div>
-                    )}
+                    {/* Additional Form Fields */}
+                    <DialogForm
+                      formData={formData}
+                      onChange={setFormData}
+                      onFileChange={setCurrentFile}
+                      onMultipleFilesChange={setCurrentFiles}
+                      onWorkflowFilesChange={setWorkflowFiles}
+                    />
                   </div>
 
                   {/* Right Column - Preview */}
-                  <div className="lg:sticky lg:top-0 lg:h-fit">
+                  <div className="space-y-6">
+                    <div className="bg-background/60 p-6 rounded-xl border border-border">
+                      <PromptPreview
+                        template={selectedTemplate}
+                        formData={templateFormData}
+                        bilingualData={bilingualData}
+                        language={activeLanguage}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              // Step 4: Preview & Save
+              <form onSubmit={handleEnhancedSubmit} className="space-y-6">
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-background/60 p-8 rounded-xl border border-border">
+                    <h3 className="text-xl font-semibold text-foreground mb-6 text-center">Final Preview</h3>
                     <PromptPreview
                       template={selectedTemplate}
                       formData={templateFormData}
@@ -590,33 +770,33 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                       language={activeLanguage}
                     />
                   </div>
-                </div>
-                
-                {/* Form Footer Buttons */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 pb-2 border-t border-border">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                    disabled={isSubmitting}
-                    className="px-6 py-3 text-base font-semibold rounded-xl order-2 sm:order-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-3 text-base font-semibold rounded-xl shadow-md order-1 sm:order-2"
-                    style={{ 
-                      backgroundColor: selectedTemplate ? getCategoryColor(selectedTemplate.category) : 'hsl(var(--warm-gold))',
-                      color: 'white'
-                    }}
-                  >
-                    {isSubmitting 
-                      ? (editingPrompt ? "Updating..." : "Creating...") 
-                      : (editingPrompt ? "Update Prompt" : "Create Prompt")
-                    }
-                  </Button>
+
+                  {/* Form Footer Buttons */}
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-border mt-6">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                      disabled={isSubmitting}
+                      className="px-6 py-3 text-base font-semibold rounded-xl order-2 sm:order-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-6 py-3 text-base font-semibold rounded-xl shadow-md order-1 sm:order-2"
+                      style={{ 
+                        backgroundColor: selectedTemplate ? getCategoryColor(selectedTemplate.category) : 'hsl(var(--warm-gold))',
+                        color: 'white'
+                      }}
+                    >
+                      {isSubmitting 
+                        ? (editingPrompt ? "Updating..." : "Creating...") 
+                        : (editingPrompt ? "Update Prompt" : "Create Prompt")
+                      }
+                    </Button>
+                  </div>
                 </div>
               </form>
             )}
