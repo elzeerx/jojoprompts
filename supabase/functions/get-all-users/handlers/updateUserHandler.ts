@@ -1,5 +1,5 @@
 
-import { corsHeaders } from "../cors.ts";
+import { corsHeaders } from "../../_shared/standardImports.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
 

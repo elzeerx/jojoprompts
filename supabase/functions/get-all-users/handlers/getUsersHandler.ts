@@ -1,5 +1,5 @@
 
-import { corsHeaders } from "../cors.ts";
+import { corsHeaders } from "../../_shared/standardImports.ts";
 import { logAdminAction } from "../../shared/securityLogger.ts";
 
 // Cache for user counts to reduce expensive queries
