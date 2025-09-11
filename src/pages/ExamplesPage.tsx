@@ -116,7 +116,7 @@ export default function ExamplesPage() {
 
   useEffect(() => {
     fetchExamplePrompts();
-  }, []);
+  }, [user]); // Re-fetch when authentication state changes
 
   const fetchExamplePrompts = async () => {
     try {
@@ -139,7 +139,7 @@ export default function ExamplesPage() {
         error = response.error;
       } else {
         // Unauthenticated users get preview data through secure function
-        const response = await supabase.rpc('get_public_prompt_preview', {});
+        const response = await supabase.rpc('get_public_prompt_previews', { limit_count: 12 });
         data = response.data;
         error = response.error;
       }

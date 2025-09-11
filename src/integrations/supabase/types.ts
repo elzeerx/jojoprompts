@@ -1011,8 +1011,8 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Json
       }
-      get_public_prompt_preview: {
-        Args: { prompt_id: string }
+      get_public_prompt_previews: {
+        Args: { limit_count?: number }
         Returns: {
           category: string
           created_at: string
