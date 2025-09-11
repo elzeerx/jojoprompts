@@ -71,6 +71,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePath, setImagePath] = useState<string>('');
   const [generatorQuery, setGeneratorQuery] = useState<string>('');
+  const [aiResult, setAiResult] = useState<{title: string; prompt: string} | null>(null);
   const { user } = useAuth();
 
   // Available templates
@@ -181,6 +182,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       setImageFile(null);
       setImagePath('');
       setGeneratorQuery('');
+      setAiResult(null);
     }
   }, [open]);
 
@@ -299,22 +301,15 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       if (error) throw error;
 
       if (data?.prompt) {
-        // Update bilingual data with generated content
-        setBilingualData(prev => ({
-          ...prev,
-          title: {
-            en: data.title || prev.title.en,
-            ar: prev.title.ar
-          },
-          promptText: {
-            en: data.prompt,
-            ar: prev.promptText.ar
-          }
-        }));
+        // Store the AI result in state instead of directly updating form
+        setAiResult({
+          title: data.title || "Generated Prompt",
+          prompt: data.prompt
+        });
 
         toast({
-          title: "Prompt Generated",
-          description: "AI has generated a new prompt for you"
+          title: "Prompt Generated Successfully",
+          description: "Review the generated content and click 'Use Result' to apply it"
         });
       }
     } catch (error: any) {
@@ -326,6 +321,38 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // Handle applying AI result to form
+  const handleApplyResult = () => {
+    if (!aiResult) return;
+    
+    setBilingualData(prev => ({
+      ...prev,
+      title: {
+        en: aiResult.title,
+        ar: prev.title.ar
+      },
+      promptText: {
+        en: aiResult.prompt,
+        ar: prev.promptText.ar
+      }
+    }));
+
+    // Clear the AI result after applying
+    setAiResult(null);
+    
+    toast({
+      title: "Result Applied",
+      description: "The generated content has been applied to your prompt"
+    });
+  };
+
+  // Handle regenerating with same query
+  const handleRegenerate = () => {
+    if (generatorQuery.trim().length >= 8) {
+      handleAutoGenerate();
     }
   };
 
@@ -456,6 +483,58 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                           {generatorQuery.length}/8 characters minimum
                         </p>
                       </div>
+
+                      {/* AI Result Display */}
+                      {aiResult && (
+                        <div className="mt-4 p-4 bg-white rounded-lg border border-green-200 shadow-sm">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium text-green-800 flex items-center gap-2">
+                              <Sparkles className="h-4 w-4" />
+                              Generated Result
+                            </h4>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(`Title: ${aiResult.title}\n\nPrompt: ${aiResult.prompt}`)}
+                                className="text-xs"
+                              >
+                                Copy
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleRegenerate}
+                                disabled={isGenerating}
+                                className="text-xs"
+                              >
+                                Regenerate
+                              </Button>
+                              <Button
+                                type="button"
+                                onClick={handleApplyResult}
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                              >
+                                Use Result
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <div className="text-xs font-medium text-gray-600 mb-1">Title:</div>
+                              <div className="text-sm p-2 bg-gray-50 rounded border">{aiResult.title}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-medium text-gray-600 mb-1">Prompt:</div>
+                              <div className="text-sm p-2 bg-gray-50 rounded border max-h-32 overflow-y-auto">{aiResult.prompt}</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Image Upload Section */}
