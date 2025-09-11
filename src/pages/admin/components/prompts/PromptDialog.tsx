@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Sparkles, Wand2, Upload } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Sparkles, Wand2, Upload, History, ChevronLeft, ChevronRight, FileText, Type } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IMAGE_BUCKET, VIDEO_BUCKET, AUDIO_BUCKET, FILE_BUCKET } from "@/utils/buckets";
 import { toast } from "@/hooks/use-toast";
@@ -73,6 +74,9 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
   const [generatorQuery, setGeneratorQuery] = useState<string>('');
   const [aiResult, setAiResult] = useState<{title: string; prompt: string} | null>(null);
   const [hasAppliedAI, setHasAppliedAI] = useState(false);
+  const [refineInput, setRefineInput] = useState<string>('');
+  const [resultHistory, setResultHistory] = useState<{title: string; prompt: string; query: string}[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const { user } = useAuth();
 
   // Available templates
@@ -186,6 +190,9 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       setGeneratorQuery('');
       setAiResult(null);
       setHasAppliedAI(false);
+      setRefineInput('');
+      setResultHistory([]);
+      setHistoryIndex(-1);
     }
   }, [open]);
 
@@ -356,10 +363,20 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
 
       if (data?.prompt) {
         // Store the AI result in state instead of directly updating form
-        setAiResult({
+        const newResult = {
           title: data.title || "Generated Prompt",
           prompt: data.prompt
-        });
+        };
+        
+        setAiResult(newResult);
+
+        // Add to history
+        const historyEntry = {
+          ...newResult,
+          query: query + (refineInput ? ` (Refined: ${refineInput})` : '')
+        };
+        setResultHistory(prev => [...prev, historyEntry]);
+        setHistoryIndex(prev => prev + 1);
 
         toast({
           title: "Prompt Generated Successfully",
@@ -375,6 +392,7 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
       });
     } finally {
       setIsGenerating(false);
+      setRefineInput(''); // Clear refine input after generation
     }
   };
 
@@ -406,12 +424,127 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
     });
   };
 
+  // Handle applying only title
+  const handleApplyTitle = () => {
+    if (!aiResult) return;
+    
+    setBilingualData(prev => ({
+      ...prev,
+      title: {
+        en: aiResult.title,
+        ar: prev.title.ar
+      }
+    }));
+
+    toast({
+      title: "Title Applied",
+      description: "The generated title has been applied"
+    });
+  };
+
+  // Handle applying only prompt
+  const handleApplyPrompt = () => {
+    if (!aiResult) return;
+    
+    setBilingualData(prev => ({
+      ...prev,
+      promptText: {
+        en: aiResult.prompt,
+        ar: prev.promptText.ar
+      }
+    }));
+
+    toast({
+      title: "Prompt Applied", 
+      description: "The generated prompt has been applied"
+    });
+  };
+
   // Handle regenerating with same query
   const handleRegenerate = () => {
     if (generatorQuery.trim().length >= 8) {
-      // Only auto-apply if user hasn't manually edited after applying AI result
-      const shouldAutoApply = !hasAppliedAI;
       handleAutoGenerate();
+    }
+  };
+
+  // Handle improve generation
+  const handleImprove = async () => {
+    if (!refineInput.trim() || !generatorQuery.trim()) {
+      toast({
+        title: "Refinement Required",
+        description: "Please enter how you'd like to improve the prompt",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Combine original query with refinement
+    const combinedQuery = `${generatorQuery.trim()}\n\nAdditional instructions: ${refineInput.trim()}`;
+    
+    if (!selectedTemplate) return;
+
+    setIsGenerating(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-generate-prompt', {
+        body: {
+          category: selectedTemplate.category,
+          use_case: templateFormData.use_case,
+          style: templateFormData.style,
+          description: combinedQuery
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.prompt) {
+        const newResult = {
+          title: data.title || "Generated Prompt",
+          prompt: data.prompt
+        };
+        
+        setAiResult(newResult);
+
+        // Add to history
+        const historyEntry = {
+          ...newResult,
+          query: `${generatorQuery} (Refined: ${refineInput})`
+        };
+        setResultHistory(prev => [...prev, historyEntry]);
+        setHistoryIndex(prev => prev + 1);
+
+        toast({
+          title: "Prompt Improved",
+          description: "Generated an improved version based on your feedback"
+        });
+      }
+    } catch (error: any) {
+      console.error('Improve generation error:', error);
+      toast({
+        title: "Improvement Failed",
+        description: error.message || "Failed to improve prompt",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+      setRefineInput('');
+    }
+  };
+
+  // Handle history navigation
+  const handleHistoryBack = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setAiResult(resultHistory[newIndex]);
+    }
+  };
+
+  const handleHistoryForward = () => {
+    if (historyIndex < resultHistory.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setAiResult(resultHistory[newIndex]);
     }
   };
 
@@ -584,9 +717,10 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                       disabled={isGenerating}
                     />
                     <div className="flex justify-between items-center">
-                      <p className="text-xs text-muted-foreground">
-                        {generatorQuery.length}/8 characters minimum
-                      </p>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p>{generatorQuery.length}/8 characters minimum</p>
+                        <p className="text-green-600">💡 Tip: Be specific about your target audience, tone, and desired outcomes</p>
+                      </div>
                       <Button
                         type="button"
                         onClick={handleAutoGenerate}
@@ -606,16 +740,56 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                         )}
                       </Button>
                     </div>
+
+                    {/* Example Tips */}
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <h4 className="text-xs font-medium text-blue-800 mb-2">💡 Example prompts:</h4>
+                      <ul className="text-xs text-blue-700 space-y-1">
+                        <li>• "Create a social media content prompt for tech startups, focus on engagement"</li>
+                        <li>• "Generate a creative writing prompt for fantasy stories with character development"</li>
+                        <li>• "Make a prompt for email marketing that converts, include urgency and personalization"</li>
+                      </ul>
+                    </div>
                   </div>
 
                   {/* AI Result Display */}
                   {aiResult && (
                     <div className="mt-6 p-6 bg-white rounded-lg border border-green-200 shadow-sm">
                       <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-medium text-green-800 flex items-center gap-2">
-                          <Sparkles className="h-4 w-4" />
-                          Generated Result
-                        </h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium text-green-800 flex items-center gap-2">
+                            <Sparkles className="h-4 w-4" />
+                            Generated Result
+                          </h4>
+                          {/* History Navigation */}
+                          {resultHistory.length > 1 && (
+                            <div className="flex items-center gap-1 ml-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleHistoryBack}
+                                disabled={historyIndex <= 0}
+                                className="h-6 w-6 p-0"
+                              >
+                                <ChevronLeft className="h-3 w-3" />
+                              </Button>
+                              <span className="text-xs text-gray-500 min-w-[40px] text-center">
+                                {historyIndex + 1}/{resultHistory.length}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleHistoryForward}
+                                disabled={historyIndex >= resultHistory.length - 1}
+                                className="h-6 w-6 p-0"
+                              >
+                                <ChevronRight className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                         <div className="flex gap-2">
                           <Button
                             type="button"
@@ -636,18 +810,10 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                           >
                             Regenerate
                           </Button>
-                          <Button
-                            type="button"
-                            onClick={handleApplyResult}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white text-xs"
-                          >
-                            Use Result
-                          </Button>
                         </div>
                       </div>
                       
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         <div>
                           <div className="text-xs font-medium text-gray-600 mb-1">Title:</div>
                           <div className="text-sm p-3 bg-gray-50 rounded border">{aiResult.title}</div>
@@ -655,6 +821,66 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                         <div>
                           <div className="text-xs font-medium text-gray-600 mb-1">Prompt:</div>
                           <div className="text-sm p-3 bg-gray-50 rounded border max-h-40 overflow-y-auto whitespace-pre-wrap">{aiResult.prompt}</div>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleApplyTitle}
+                            className="flex items-center gap-1 text-xs"
+                          >
+                            <Type className="h-3 w-3" />
+                            Use Title Only
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleApplyPrompt}
+                            className="flex items-center gap-1 text-xs"
+                          >
+                            <FileText className="h-3 w-3" />
+                            Use Prompt Only
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={handleApplyResult}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                          >
+                            Use Both
+                          </Button>
+                        </div>
+
+                        {/* Refine Section */}
+                        <div className="border-t pt-4">
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Make it more concise, add examples, etc..."
+                              value={refineInput}
+                              onChange={(e) => setRefineInput(e.target.value)}
+                              className="flex-1 text-sm"
+                              disabled={isGenerating}
+                            />
+                            <Button
+                              type="button"
+                              onClick={handleImprove}
+                              disabled={isGenerating || !refineInput.trim()}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                            >
+                              {isGenerating ? (
+                                <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                              ) : (
+                                "Improve"
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">💡 Tell AI how to improve the result</p>
                         </div>
                       </div>
                     </div>
