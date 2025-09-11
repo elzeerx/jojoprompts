@@ -10,6 +10,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to sanitize amount for PayPal precision requirements
+function sanitizeAmount(amount: number): { value: string; number: number } {
+  // Convert to cents and back to fix floating point precision issues
+  const centsValue = Math.round(amount * 100);
+  const sanitizedNumber = centsValue / 100;
+  const sanitizedString = sanitizedNumber.toFixed(2);
+  
+  console.log('Amount sanitization:', {
+    original: amount,
+    centsValue,
+    sanitizedNumber,
+    sanitizedString
+  });
+  
+  return {
+    value: sanitizedString,      // For PayPal API (string with 2 decimals)
+    number: sanitizedNumber      // For database storage (number)
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -143,10 +163,27 @@ serve(async (req) => {
     const accessToken = await fetchPayPalAccessToken(baseUrl, clientId, clientSecret);
 
     if (action === 'create') {
+      // Handle 0.00 amounts - redirect to direct activation
+      if (amount === 0) {
+        console.log('Amount is 0.00, redirecting to direct activation path');
+        return new Response(JSON.stringify({
+          success: false,
+          redirectToDirectActivation: true,
+          message: 'Use direct activation for zero amounts'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       const siteUrl = getSiteUrl();
       
       console.log('=== PAYPAL ORDER DEBUG ===');
       console.log('Received FINAL amount (already discounted):', amount);
+      
+      // Sanitize amount for PayPal precision requirements
+      const sanitizedAmount = sanitizeAmount(amount);
+      console.log('Sanitized amount for PayPal:', sanitizedAmount);
+      
       console.log('Applied discount (for tracking only):', appliedDiscount);
       console.log('Plan ID:', planId);
       console.log('User ID:', userId);
@@ -170,7 +207,7 @@ serve(async (req) => {
           purchase_units: [{
             amount: {
               currency_code: 'USD',
-              value: amount.toString()
+              value: sanitizedAmount.value  // Use sanitized string value
             },
             description: `Subscription Plan Purchase`,
             // ENHANCED: Add custom data that will persist through PayPal redirect
@@ -199,7 +236,7 @@ serve(async (req) => {
         userId,
         planId,
         paypalOrderId: orderData.id,
-        amount,
+        amount: sanitizedAmount.number,  // Use sanitized number for database
         isUpgrade: isUpgrade || false,
         upgradingFromPlanId: upgradingFromPlanId || null
       };
