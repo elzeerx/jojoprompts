@@ -1,4 +1,4 @@
-import { serve, corsHeaders, createSupabaseClient, handleCors } from "../_shared/standardImports.ts";
+import { serve, corsHeaders, createSupabaseClient, createClient, handleCors } from "../_shared/standardImports.ts";
 import { verifyAdmin, validateAdminRequest, hasPermission, logSecurityEvent } from "../_shared/adminAuth.ts";
 
 serve(async (req) => {
@@ -59,6 +59,34 @@ serve(async (req) => {
         }
 
         return await handleGetUsers(supabase, userId, req);
+
+      case 'POST':
+        // Verify delete permissions
+        const hasDeletePermission = hasPermission(permissions, 'user:delete') || 
+                                   hasPermission(permissions, 'user:manage') || 
+                                   hasPermission(permissions, 'user:write');
+        
+        if (!hasDeletePermission) {
+          await logSecurityEvent(supabase, {
+            user_id: userId,
+            action: 'permission_denied',
+            details: { 
+              required_permissions: ['user:delete', 'user:manage', 'user:write'], 
+              user_permissions: permissions,
+              function: 'get-all-users' 
+            }
+          });
+          
+          return new Response(
+            JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
+            { 
+              status: 403, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+
+        return await handleDeleteUser(supabase, userId, req);
 
       default:
         return new Response(
@@ -341,6 +369,214 @@ async function handleGetUsers(supabase: any, adminId: string, req: Request) {
     
     return new Response(
       JSON.stringify(errorResponse), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+// Handle user deletion with proper authentication
+async function handleDeleteUser(supabase: any, adminId: string, req: Request) {
+  try {
+    // Parse request body
+    const requestBody = await req.json();
+    const { action, userId } = requestBody;
+
+    // Validate the action is delete
+    if (action !== 'delete') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid action' }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Validate userId parameter
+    if (!userId || typeof userId !== 'string') {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid user ID format', 
+          details: 'userId is required and must be a string',
+          received: userId 
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Check if user exists BEFORE deletion
+    const { data: existingUser, error: userCheckError } = await supabase
+      .from('profiles')
+      .select('id, role, first_name, last_name')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    if (userCheckError || !existingUser) {
+      console.error(`[deleteUserHandler] User ${userId} not found:`, userCheckError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'User not found', 
+          details: userCheckError?.message || 'User does not exist in the database',
+          userId: userId 
+        }), 
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log(`[deleteUserHandler] Found user to delete: ${existingUser.first_name} ${existingUser.last_name} (${existingUser.role})`);
+
+    // Prevent deleting other admins as a safety measure
+    if (existingUser.role === 'admin' && adminId !== userId) {
+      // Log the attempt to delete another admin
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'admin_deletion_attempt',
+        details: { 
+          target_admin_id: userId,
+          severity: 'high'
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ error: 'Cannot delete another administrator' }), 
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Extract Bearer token from the request for user-scoped operations
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Missing or invalid authorization header' }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    const userToken = authHeader.substring(7); // Remove "Bearer " prefix
+
+    // Create user-scoped Supabase client for RPC call (so auth.uid() works correctly)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Missing Supabase environment variables');
+    }
+
+    const supabaseAsUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${userToken}`
+        }
+      }
+    });
+
+    // Log the user deletion attempt (critical action)
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'critical_user_deletion_attempt',
+      details: { 
+        target_user_id: userId,
+        target_user_name: `${existingUser.first_name} ${existingUser.last_name}`,
+        target_user_role: existingUser.role
+      }
+    });
+
+    const startTime = Date.now();
+    console.log(`[deleteUserHandler] Starting deletion process for user ${userId} (${existingUser.first_name} ${existingUser.last_name}) by admin ${adminId}`);
+    
+    // Step 1: Delete user data using user-scoped client for RPC call
+    const { data: deleteResult, error: deleteError } = await supabaseAsUser.rpc('admin_delete_user_data', {
+      target_user_id: userId
+    });
+
+    if (deleteError || !deleteResult?.success) {
+      console.error(`[deleteUserHandler] Failed to delete user data for ${userId}:`, deleteError || deleteResult);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to delete user data',
+          details: deleteError?.message || deleteResult?.error || 'Unknown error',
+          userId: userId
+        }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Step 2: Delete user from Supabase Auth using service role client
+    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
+
+    if (authDeleteError) {
+      console.error(`[deleteUserHandler] Failed to delete user from auth ${userId}:`, authDeleteError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to delete user from authentication system',
+          details: authDeleteError.message,
+          userId: userId
+        }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const transactionDuration = Date.now() - startTime;
+
+    // Log successful user deletion with enhanced details
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'user_deleted',
+      details: { 
+        target_user_id: userId,
+        target_user_email: `${existingUser.first_name} ${existingUser.last_name}`,
+        transaction_duration: transactionDuration,
+        success: true 
+      }
+    });
+
+    console.log(`[deleteUserHandler] User ${userId} (${existingUser.first_name} ${existingUser.last_name}) successfully deleted by admin ${adminId} in ${transactionDuration}ms`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'User deleted successfully',
+        transactionDuration,
+        deletedUser: {
+          id: userId,
+          name: `${existingUser.first_name} ${existingUser.last_name}`,
+          role: existingUser.role
+        }
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+    
+  } catch (error) {
+    console.error(`[deleteUserHandler] Critical error deleting user:`, error);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to delete user', 
+        details: error.message,
+        timestamp: new Date().toISOString()
+      }), 
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
