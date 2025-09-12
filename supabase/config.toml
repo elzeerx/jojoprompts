@@ -41,3 +41,6 @@ verify_jwt = true
 
 [functions.send-bulk-plan-reminders]
 verify_jwt = true
+
+[functions.translate-text]
+verify_jwt = false
