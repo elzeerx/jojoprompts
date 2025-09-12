@@ -3,6 +3,9 @@ project_id = "fxkqgjakbyrxkmevkglv"
 [functions.auto-generate-prompt]
 verify_jwt = true
 
+[functions.cancel-subscription]
+verify_jwt = true
+
 [functions.translate-prompt]
 verify_jwt = true
 
