@@ -26,6 +26,8 @@ class UnifiedLogger {
   private sinks: Set<LogSink> = new Set(['console']);
   private minLevel: LogLevel = import.meta.env.DEV ? 'debug' : 'info';
   private sessionId: string = this.generateSessionId();
+  private isLogging: boolean = false; // Recursion protection
+  private nativeConsole = globalThis.console; // Save native console reference
 
   constructor() {
     // Initialize with default sinks
@@ -55,34 +57,42 @@ class UnifiedLogger {
   }
 
   private async sendToSinks(entry: LogEntry): Promise<void> {
-    // Console sink
-    if (this.sinks.has('console')) {
-      const formatted = this.formatMessage(entry);
-      switch (entry.level) {
-        case 'debug':
-          console.log(formatted, entry.data);
-          break;
-        case 'info':
-          console.info(formatted, entry.data);
-          break;
-        case 'warn':
-          console.warn(formatted, entry.data);
-          break;
-        case 'error':
-          console.error(formatted, entry.data);
-          break;
-      }
-    }
+    // Prevent recursion
+    if (this.isLogging) return;
+    this.isLogging = true;
 
-    // Remote sink (future: send to external service)
-    if (this.sinks.has('remote') && entry.level !== 'debug') {
-      try {
-        // Future: implement remote logging service
-        // await this.sendToRemoteService(entry);
-      } catch (error) {
-        // Fallback to console for remote logging failures
-        console.warn('Failed to send log to remote service:', error);
+    try {
+      // Console sink - use native console to avoid recursion
+      if (this.sinks.has('console')) {
+        const formatted = this.formatMessage(entry);
+        switch (entry.level) {
+          case 'debug':
+            this.nativeConsole.log(formatted, entry.data);
+            break;
+          case 'info':
+            this.nativeConsole.info(formatted, entry.data);
+            break;
+          case 'warn':
+            this.nativeConsole.warn(formatted, entry.data);
+            break;
+          case 'error':
+            this.nativeConsole.error(formatted, entry.data);
+            break;
+        }
       }
+
+      // Remote sink (future: send to external service)
+      if (this.sinks.has('remote') && entry.level !== 'debug') {
+        try {
+          // Future: implement remote logging service
+          // await this.sendToRemoteService(entry);
+        } catch (error) {
+          // Use native console for remote logging failures to avoid recursion
+          this.nativeConsole.warn('Failed to send log to remote service:', error);
+        }
+      }
+    } finally {
+      this.isLogging = false;
     }
   }
 
@@ -137,13 +147,13 @@ class UnifiedLogger {
       sessionId: this.sessionId
     };
 
-    // Always log security events regardless of level
+    // Always log security events regardless of level - use native console to avoid recursion
     if (this.sinks.has('console')) {
       const formatted = `🔒 SECURITY [${entry.action}] ${entry.message}`;
       if (entry.success === false) {
-        console.error(formatted, securityEntry);
+        this.nativeConsole.error(formatted, securityEntry);
       } else {
-        console.info(formatted, securityEntry);
+        this.nativeConsole.info(formatted, securityEntry);
       }
     }
 
@@ -153,7 +163,7 @@ class UnifiedLogger {
         // Future: send to security monitoring service
         // await this.sendToSecurityService(securityEntry);
       } catch (error) {
-        console.warn('Failed to send security log:', error);
+        this.nativeConsole.warn('Failed to send security log:', error);
       }
     }
   }
