@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -24,6 +24,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { EditUserDialog } from './EditUserDialog';
 import { AssignPlanDialog } from './AssignPlanDialog';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { UserProfile } from "@/types";
 import { TableCell } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,11 +51,12 @@ export function UserTableRow({
   onResendConfirmation,
   onRefresh
 }: UserTableRowProps) {
-  const { canDeleteUsers, canCancelSubscriptions } = useAuth();
+  const { canDeleteUsers, canCancelSubscriptions, canChangePasswords, canFullCRUD } = useAuth();
   const { processingUserId, cancelUserSubscription } = useSubscriptionActions();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [assignPlanDialogOpen, setAssignPlanDialogOpen] = useState(false);
+  const [changePasswordDialogOpen, setChangePasswordDialogOpen] = useState(false);
   
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
@@ -139,12 +141,21 @@ export function UserTableRow({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
-              <Edit className="mr-2 h-4 w-4" /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setAssignPlanDialogOpen(true)}>
-              <UserPlus className="mr-2 h-4 w-4" /> Assign Plan
-            </DropdownMenuItem>
+            {canFullCRUD && (
+              <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
+                <Edit className="mr-2 h-4 w-4" /> Edit
+              </DropdownMenuItem>
+            )}
+            {canFullCRUD && (
+              <DropdownMenuItem onClick={() => setAssignPlanDialogOpen(true)}>
+                <UserPlus className="mr-2 h-4 w-4" /> Assign Plan
+              </DropdownMenuItem>
+            )}
+            {canChangePasswords && (
+              <DropdownMenuItem onClick={() => setChangePasswordDialogOpen(true)}>
+                <Key className="mr-2 h-4 w-4" /> Change Password
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => onSendResetEmail(user.email)}>
               <Send className="mr-2 h-4 w-4" /> Send Reset Email
             </DropdownMenuItem>
@@ -229,6 +240,13 @@ export function UserTableRow({
           onAssignPlan(user.id, planId);
           setAssignPlanDialogOpen(false);
         }}
+      />
+
+      <ChangePasswordDialog
+        user={user}
+        open={changePasswordDialogOpen}
+        onOpenChange={setChangePasswordDialogOpen}
+        onSuccess={onRefresh}
       />
     </tr>
   );

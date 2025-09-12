@@ -61,32 +61,74 @@ serve(async (req) => {
         return await handleGetUsers(supabase, userId, req);
 
       case 'POST':
-        // Verify delete permissions
-        const hasDeletePermission = hasPermission(permissions, 'user:delete') || 
-                                   hasPermission(permissions, 'user:manage') || 
-                                   hasPermission(permissions, 'user:write');
-        
-        if (!hasDeletePermission) {
-          await logSecurityEvent(supabase, {
-            user_id: userId,
-            action: 'permission_denied',
-            details: { 
-              required_permissions: ['user:delete', 'user:manage', 'user:write'], 
-              user_permissions: permissions,
-              function: 'get-all-users' 
-            }
-          });
+        // Parse request body to determine action type
+        const requestBody = await req.json();
+        const { action } = requestBody;
+
+        if (action === 'delete') {
+          // Verify delete permissions
+          const hasDeletePermission = hasPermission(permissions, 'user:delete') || 
+                                     hasPermission(permissions, 'user:manage') || 
+                                     hasPermission(permissions, 'user:write');
           
+          if (!hasDeletePermission) {
+            await logSecurityEvent(supabase, {
+              user_id: userId,
+              action: 'permission_denied',
+              details: { 
+                required_permissions: ['user:delete', 'user:manage', 'user:write'], 
+                user_permissions: permissions,
+                function: 'get-all-users' 
+              }
+            });
+            
+            return new Response(
+              JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
+              { 
+                status: 403, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          return await handleDeleteUser(supabase, userId, req);
+        } else if (action === 'change-password') {
+          // Verify super admin permissions (only nawaf@elzeer.com)
+          const { data: adminProfile } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('id', userId)
+            .single();
+
+          if (!adminProfile || adminProfile.email !== 'nawaf@elzeer.com') {
+            await logSecurityEvent(supabase, {
+              user_id: userId,
+              action: 'unauthorized_password_change_attempt',
+              details: { 
+                attempted_by: adminProfile?.email || 'unknown',
+                target_user: requestBody.userId
+              }
+            });
+            
+            return new Response(
+              JSON.stringify({ error: 'Only super admin can change user passwords' }), 
+              { 
+                status: 403, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          return await handleChangePassword(supabase, userId, requestBody);
+        } else {
           return new Response(
-            JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
+            JSON.stringify({ error: 'Invalid action specified' }), 
             { 
-              status: 403, 
+              status: 400, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
             }
           );
         }
-
-        return await handleDeleteUser(supabase, userId, req);
 
       default:
         return new Response(
@@ -369,6 +411,162 @@ async function handleGetUsers(supabase: any, adminId: string, req: Request) {
     
     return new Response(
       JSON.stringify(errorResponse), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+// Handle password change with proper authentication
+async function handleChangePassword(supabase: any, adminId: string, requestBody: any) {
+  try {
+    const { userId, newPassword } = requestBody;
+
+    // Validate userId parameter
+    if (!userId || typeof userId !== 'string') {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid user ID format', 
+          details: 'userId is required and must be a string'
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Validate password parameter
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid password', 
+          details: 'Password must be at least 6 characters long'
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Check if target user exists
+    const { data: targetUser, error: userCheckError } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email')
+      .eq('id', userId)
+      .single();
+      
+    if (userCheckError || !targetUser) {
+      console.error(`[changePasswordHandler] User ${userId} not found:`, userCheckError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'User not found', 
+          details: userCheckError?.message || 'User does not exist in the database'
+        }), 
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log the password change attempt
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'password_change_attempt',
+      details: { 
+        target_user_id: userId,
+        target_user_email: targetUser.email
+      }
+    });
+
+    console.log(`[changePasswordHandler] Admin ${adminId} changing password for user ${userId} (${targetUser.email})`);
+
+    // Update the user's password using Supabase Admin API
+    const { data: updateData, error: updateError } = await supabase.auth.admin.updateUserById(
+      userId,
+      { 
+        password: newPassword,
+        email_confirm: true // Ensure user remains confirmed
+      }
+    );
+
+    if (updateError) {
+      console.error('Error updating user password:', updateError);
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'password_change_failed',
+        details: { 
+          target_user_id: userId,
+          error: updateError.message
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to change password', 
+          details: updateError.message 
+        }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log successful password change
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'password_change_success',
+      details: { 
+        target_user_id: userId,
+        target_user_email: targetUser.email
+      }
+    });
+
+    console.log(`[changePasswordHandler] Successfully changed password for user ${userId}`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Password changed successfully',
+        user: {
+          id: userId,
+          email: targetUser.email,
+          name: `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim()
+        }
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+    
+  } catch (error: any) {
+    console.error('Error in handleChangePassword:', error);
+    
+    // Log the error
+    try {
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'password_change_error',
+        details: { 
+          error: error.message,
+          target_user_id: requestBody.userId
+        }
+      });
+    } catch (logError) {
+      console.warn('Failed to log password change error:', logError);
+    }
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to change password',
+        message: error.message || 'An unexpected error occurred'
+      }), 
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

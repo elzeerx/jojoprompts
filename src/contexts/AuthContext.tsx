@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { AuthContextType } from './authTypes';
 import { setupAuthState } from './authStateManager';
-import { computeRolePermissions } from './roles';
+import { computeRolePermissions } from './rolePermissions';
 import { debug } from './authDebugger';
 import { useAuthInitialization } from './auth/useAuthInitialization';
 import { useAuthSignOut } from './auth/useAuthSignOut';
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Role/permission calculation
-  const permissions = computeRolePermissions(userRole);
+  const permissions = computeRolePermissions(userRole, user?.email);
 
   const contextValue = {
     session,
