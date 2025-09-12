@@ -1,16 +1,7 @@
 project_id = "fxkqgjakbyrxkmevkglv"
 
-[functions.auto-generate-prompt]
-verify_jwt = true
-
-[functions.cancel-subscription]
-verify_jwt = true
-
 [functions.translate-prompt]
 verify_jwt = true
-
-[functions.translate-text]
-verify_jwt = false
 
 [functions.generate-use-case]
 verify_jwt = true
