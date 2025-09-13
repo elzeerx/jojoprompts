@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAdminErrorHandler } from "./useAdminErrorHandler";
 
 interface CreateUserData {
   email: string;
@@ -13,6 +14,7 @@ interface CreateUserData {
 
 export function useUserCreation() {
   const [isCreating, setIsCreating] = useState(false);
+  const { handleError } = useAdminErrorHandler();
 
   const createUser = async (userData: CreateUserData) => {
     try {
@@ -34,14 +36,17 @@ export function useUserCreation() {
         }
       );
       
-      if (error) throw error;
-      
-      if (data?.error) {
-        throw new Error(data.error.message || "Failed to create user");
+      if (error) {
+        console.error("Edge function error:", error);
+        throw new Error(error.message || "Failed to invoke user creation function");
       }
       
-      if (!data?.user?.id) {
-        throw new Error("No user ID returned");
+      if (data?.error) {
+        throw new Error(data.error || "Failed to create user");
+      }
+      
+      if (!data?.success || !data?.user?.id) {
+        throw new Error("User creation failed - no user ID returned");
       }
       
       // If role is specified and different from default 'user'
@@ -69,12 +74,7 @@ export function useUserCreation() {
       
       return true;
     } catch (error: any) {
-      console.error("Error creating user:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create user",
-        variant: "destructive",
-      });
+      handleError(error, "create user");
       return false;
     } finally {
       setIsCreating(false);

@@ -92,6 +92,33 @@ serve(async (req) => {
           }
 
           return await handleDeleteUser(supabase, userId, req);
+        } else if (action === 'create') {
+          // Verify create permissions
+          const hasCreatePermission = hasPermission(permissions, 'user:write') || 
+                                     hasPermission(permissions, 'user:manage');
+          
+          if (!hasCreatePermission) {
+            await logSecurityEvent(supabase, {
+              user_id: userId,
+              action: 'permission_denied',
+              details: { 
+                required_permissions: ['user:write', 'user:manage'], 
+                user_permissions: permissions,
+                function: 'get-all-users',
+                action: 'create'
+              }
+            });
+            
+            return new Response(
+              JSON.stringify({ error: 'Insufficient permissions for user creation' }), 
+              { 
+                status: 403, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          return await handleCreateUser(supabase, userId, requestBody);
         } else if (action === 'change-password') {
           // Verify super admin permissions (only nawaf@elzeer.com)
           const { data: adminProfile } = await supabase
@@ -452,12 +479,29 @@ async function handleChangePassword(supabase: any, adminId: string, requestBody:
       );
     }
 
-    // Check if target user exists
-    const { data: targetUser, error: userCheckError } = await supabase
-      .from('profiles')
-      .select('id, first_name, last_name, email')
-      .eq('id', userId)
-      .single();
+    // Check if target user exists in auth system
+    const { data: authUser, error: authCheckError } = await supabase.auth.admin.getUserById(userId);
+    
+    if (authCheckError || !authUser?.user) {
+      console.error(`[changePasswordHandler] User ${userId} not found in auth:`, authCheckError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'User not found', 
+          details: authCheckError?.message || 'User does not exist in authentication system'
+        }), 
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const targetUser = {
+      id: authUser.user.id,
+      email: authUser.user.email,
+      first_name: authUser.user.user_metadata?.first_name || '',
+      last_name: authUser.user.user_metadata?.last_name || ''
+    };
       
     if (userCheckError || !targetUser) {
       console.error(`[changePasswordHandler] User ${userId} not found:`, userCheckError);
@@ -774,6 +818,218 @@ async function handleDeleteUser(supabase: any, adminId: string, req: Request) {
         error: 'Failed to delete user', 
         details: error.message,
         timestamp: new Date().toISOString()
+      }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+// Handle user creation with proper authentication
+async function handleCreateUser(supabase: any, adminId: string, requestBody: any) {
+  try {
+    const { userData } = requestBody;
+
+    // Validate required fields
+    if (!userData?.email || !userData?.password) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid user data', 
+          details: 'email and password are required'
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userData.email)) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid email format', 
+          details: 'Please provide a valid email address'
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Validate password
+    if (userData.password.length < 6) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid password', 
+          details: 'Password must be at least 6 characters long'
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log the user creation attempt
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'user_creation_attempt',
+      details: { 
+        target_email: userData.email,
+        target_first_name: userData.first_name,
+        target_last_name: userData.last_name
+      }
+    });
+
+    console.log(`[createUserHandler] Admin ${adminId} creating user: ${userData.email}`);
+
+    // Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: userData.email,
+      password: userData.password,
+      email_confirm: true,
+      user_metadata: {
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || ''
+      }
+    });
+
+    if (authError) {
+      console.error('Error creating user in auth system:', authError);
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'user_creation_failed',
+        details: { 
+          target_email: userData.email,
+          error: authError.message
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to create user in authentication system', 
+          details: authError.message 
+        }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    if (!authData?.user?.id) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'User creation failed', 
+          details: 'No user ID returned from authentication system'
+        }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Create profile record
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || '',
+        role: 'user'
+      })
+      .select()
+      .single();
+
+    if (profileError) {
+      console.error('Error creating user profile:', profileError);
+      
+      // Clean up auth user if profile creation fails
+      try {
+        await supabase.auth.admin.deleteUser(authData.user.id);
+      } catch (cleanupError) {
+        console.error('Failed to clean up auth user after profile creation error:', cleanupError);
+      }
+      
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'user_creation_failed',
+        details: { 
+          target_email: userData.email,
+          error: 'Profile creation failed: ' + profileError.message
+        }
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to create user profile', 
+          details: profileError.message 
+        }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Log successful user creation
+    await logSecurityEvent(supabase, {
+      user_id: adminId,
+      action: 'user_creation_success',
+      details: { 
+        created_user_id: authData.user.id,
+        created_user_email: userData.email,
+        created_user_name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim()
+      }
+    });
+
+    console.log(`[createUserHandler] Successfully created user ${authData.user.id} (${userData.email})`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'User created successfully',
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
+          first_name: userData.first_name || '',
+          last_name: userData.last_name || '',
+          role: 'user'
+        }
+      }), 
+      { 
+        status: 201, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+    
+  } catch (error: any) {
+    console.error('Error in handleCreateUser:', error);
+    
+    // Log the error
+    try {
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'user_creation_error',
+        details: { 
+          error: error.message,
+          target_email: requestBody.userData?.email
+        }
+      });
+    } catch (logError) {
+      console.warn('Failed to log user creation error:', logError);
+    }
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to create user',
+        message: error.message || 'An unexpected error occurred'
       }), 
       { 
         status: 500, 

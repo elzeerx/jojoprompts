@@ -45,41 +45,73 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
 
   const token = authHeader.replace('Bearer ', '');
   
-  // Verify the JWT token
-  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-  
-  if (userError || !user) {
-    console.error('Authentication failed:', userError);
-    throw new Error('Invalid or expired token');
+  // Enhanced token validation
+  if (!token || token.length < 10) {
+    throw new Error('Invalid token format');
   }
 
-  // Get user profile with role
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  try {
+    // Verify the JWT token with retry logic
+    let user = null;
+    let userError = null;
+    
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const { data, error } = await supabase.auth.getUser(token);
+      user = data?.user;
+      userError = error;
+      
+      if (!userError && user) break;
+      
+      if (attempt === 1) {
+        console.warn(`Token validation attempt ${attempt} failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    if (userError || !user) {
+      console.error('Authentication failed after retries:', userError);
+      throw new Error('Invalid or expired token');
+    }
 
-  if (profileError || !profile) {
-    console.error('Profile fetch failed:', profileError);
-    throw new Error('User profile not found');
+    // Enhanced user validation
+    if (!user.email || !user.email_confirmed_at) {
+      console.error('User email not confirmed', { userId: user.id });
+      throw new Error('Email verification required');
+    }
+
+    // Get user profile with role using service client for better reliability
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, first_name, last_name')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Profile fetch failed:', profileError);
+      throw new Error('User profile not found');
+    }
+
+    // Verify admin privileges
+    const userRole = profile.role;
+    if (!['admin', 'jadmin'].includes(userRole)) {
+      console.error('Non-admin user attempted admin access:', { userId: user.id, role: userRole });
+      throw new Error('Insufficient privileges. Admin access required.');
+    }
+
+    // Get role-based permissions
+    const permissions = ROLE_PERMISSIONS[userRole as keyof typeof ROLE_PERMISSIONS] || [];
+
+    return {
+      supabase,
+      userId: user.id,
+      userRole,
+      permissions
+    };
+  } catch (error: any) {
+    console.error('verifyAdmin error:', error);
+    // Re-throw with original message for better debugging
+    throw error;
   }
-
-  // Verify admin privileges
-  const userRole = profile.role;
-  if (!['admin', 'jadmin'].includes(userRole)) {
-    throw new Error('Insufficient privileges. Admin access required.');
-  }
-
-  // Get role-based permissions
-  const permissions = ROLE_PERMISSIONS[userRole as keyof typeof ROLE_PERMISSIONS] || [];
-
-  return {
-    supabase,
-    userId: user.id,
-    userRole,
-    permissions
-  };
 }
 
 export function hasPermission(permissions: string[], requiredPermission: string): boolean {

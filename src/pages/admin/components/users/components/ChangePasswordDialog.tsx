@@ -14,6 +14,7 @@ import { Loader2, Key, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { UserProfile } from "@/types";
+import { useAdminErrorHandler } from "../hooks/useAdminErrorHandler";
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -33,6 +34,7 @@ export function ChangePasswordDialog({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { handleError } = useAdminErrorHandler();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,12 +86,7 @@ export function ChangePasswordDialog({
         throw new Error(data.error || "Failed to change password");
       }
     } catch (error: any) {
-      console.error("Error changing password:", error);
-      toast({
-        title: "Error changing password",
-        description: error.message || "An unknown error occurred",
-        variant: "destructive",
-      });
+      handleError(error, "change password");
     } finally {
       setLoading(false);
     }
