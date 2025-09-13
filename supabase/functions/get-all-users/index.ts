@@ -1,6 +1,8 @@
 import { serve, corsHeaders, createSupabaseClient, createClient, handleCors } from "../_shared/standardImports.ts";
 import { validateAdminRequest, hasPermission, logSecurityEvent } from "../_shared/adminAuth.ts";
 import { verifyAdmin } from "./auth/adminVerifier.ts";
+import { handleUpdateUser } from "./handlers/updateUserHandler.ts";
+import { handleBulkUserOperations } from "./handlers/bulkUserHandler.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -93,6 +95,61 @@ serve(async (req) => {
           }
 
           return await handleDeleteUser(supabase, userId, req);
+        } else if (action === 'update') {
+          // Verify update permissions
+          const hasUpdatePermission = hasPermission(permissions, 'user:write') || 
+                                     hasPermission(permissions, 'user:manage');
+          
+          if (!hasUpdatePermission) {
+            await logSecurityEvent(supabase, {
+              user_id: userId,
+              action: 'permission_denied',
+              details: { 
+                required_permissions: ['user:write', 'user:manage'], 
+                user_permissions: permissions,
+                function: 'get-all-users',
+                action: 'update'
+              }
+            });
+            
+            return new Response(
+              JSON.stringify({ error: 'Insufficient permissions for user updates' }), 
+              { 
+                status: 403, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          return await handleUpdateUser(supabase, userId, requestBody);
+        } else if (action?.startsWith('bulk-')) {
+          // Verify bulk operation permissions
+          const hasBulkPermission = hasPermission(permissions, 'user:write') || 
+                                   hasPermission(permissions, 'user:manage') ||
+                                   hasPermission(permissions, 'system:admin');
+          
+          if (!hasBulkPermission) {
+            await logSecurityEvent(supabase, {
+              user_id: userId,
+              action: 'permission_denied',
+              details: { 
+                required_permissions: ['user:write', 'user:manage', 'system:admin'], 
+                user_permissions: permissions,
+                function: 'get-all-users',
+                action: action
+              }
+            });
+            
+            return new Response(
+              JSON.stringify({ error: 'Insufficient permissions for bulk operations' }), 
+              { 
+                status: 403, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              }
+            );
+          }
+
+          return await handleBulkUserOperations(supabase, userId, requestBody);
         } else if (action === 'create') {
           // Verify create permissions
           const hasCreatePermission = hasPermission(permissions, 'user:write') || 
