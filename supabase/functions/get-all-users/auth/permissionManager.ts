@@ -6,7 +6,7 @@ export function generatePermissions(role: string): string[] {
   switch (role) {
     case 'admin':
       permissions.push(
-        'user:read', 'user:write', 'user:delete',
+        'user:read', 'user:write', 'user:delete', 'user:password:change',
         'subscription:read', 'subscription:write', 'subscription:cancel',
         'transaction:read', 'transaction:write',
         'system:audit', 'system:config'

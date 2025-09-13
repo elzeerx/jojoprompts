@@ -1,5 +1,6 @@
 import { serve, corsHeaders, createSupabaseClient, createClient, handleCors } from "../_shared/standardImports.ts";
-import { verifyAdmin, validateAdminRequest, hasPermission, logSecurityEvent } from "../_shared/adminAuth.ts";
+import { validateAdminRequest, hasPermission, logSecurityEvent } from "../_shared/adminAuth.ts";
+import { verifyAdmin } from "./auth/adminVerifier.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -120,25 +121,21 @@ serve(async (req) => {
 
           return await handleCreateUser(supabase, userId, requestBody);
         } else if (action === 'change-password') {
-          // Verify super admin permissions (only nawaf@elzeer.com)
-          const { data: adminProfile } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('id', userId)
-            .single();
-
-          if (!adminProfile || adminProfile.email !== 'nawaf@elzeer.com') {
+          // Verify permission via role-based permissions
+          if (!hasPermission(permissions, 'user:password:change')) {
             await logSecurityEvent(supabase, {
               user_id: userId,
-              action: 'unauthorized_password_change_attempt',
-              details: { 
-                attempted_by: adminProfile?.email || 'unknown',
-                target_user: requestBody.userId
+              action: 'permission_denied',
+              details: {
+                required_permission: 'user:password:change',
+                function: 'get-all-users',
+                action: 'change-password',
+                user_permissions: permissions
               }
             });
             
             return new Response(
-              JSON.stringify({ error: 'Only super admin can change user passwords' }), 
+              JSON.stringify({ error: 'Insufficient permissions for password change' }), 
               { 
                 status: 403, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -503,34 +500,7 @@ async function handleChangePassword(supabase: any, adminId: string, requestBody:
       last_name: authUser.user.user_metadata?.last_name || ''
     };
 
-    // Enhanced super admin check - only nawaf@elzeer.com can change passwords
-    const { data: adminUser, error: adminUserError } = await supabase.auth.admin.getUserById(adminId);
-
-    if (adminUserError || !adminUser.user) {
-      console.error('[handleChangePassword] Failed to get admin user:', adminUserError);
-      await logSecurityEvent(supabase, {
-        user_id: adminId,
-        action: 'password_change_admin_lookup_error',
-        details: { error: adminUserError?.message, target_user_id: userId }
-      });
-      return new Response(
-        JSON.stringify({ error: 'Failed to verify admin credentials' }), 
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (adminUser.user.email !== 'nawaf@elzeer.com') {
-      console.error(`[handleChangePassword] Unauthorized password change attempt by ${adminUser.user.email}`);
-      await logSecurityEvent(supabase, {
-        user_id: adminId,
-        action: 'password_change_unauthorized_attempt',
-        details: { admin_email: adminUser.user.email, target_user_id: userId }
-      });
-      return new Response(
-        JSON.stringify({ error: 'Insufficient permissions for password changes' }), 
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Permission for password change already validated at route level.
 
     // Log the password change attempt
     await logSecurityEvent(supabase, {
