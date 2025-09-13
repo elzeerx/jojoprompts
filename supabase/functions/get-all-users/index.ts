@@ -1,8 +1,5 @@
 import { serve, corsHeaders, createSupabaseClient, createClient, handleCors } from "../_shared/standardImports.ts";
-import { validateAdminRequest, hasPermission, logSecurityEvent } from "../_shared/adminAuth.ts";
-import { verifyAdmin } from "./auth/adminVerifier.ts";
-import { handleUpdateUser } from "./handlers/updateUserHandler.ts";
-import { handleBulkUserOperations } from "./handlers/bulkUserHandler.ts";
+import { verifyAdmin, validateAdminRequest, hasPermission, logSecurityEvent } from "../_shared/adminAuth.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -95,61 +92,6 @@ serve(async (req) => {
           }
 
           return await handleDeleteUser(supabase, userId, req);
-        } else if (action === 'update') {
-          // Verify update permissions
-          const hasUpdatePermission = hasPermission(permissions, 'user:write') || 
-                                     hasPermission(permissions, 'user:manage');
-          
-          if (!hasUpdatePermission) {
-            await logSecurityEvent(supabase, {
-              user_id: userId,
-              action: 'permission_denied',
-              details: { 
-                required_permissions: ['user:write', 'user:manage'], 
-                user_permissions: permissions,
-                function: 'get-all-users',
-                action: 'update'
-              }
-            });
-            
-            return new Response(
-              JSON.stringify({ error: 'Insufficient permissions for user updates' }), 
-              { 
-                status: 403, 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-              }
-            );
-          }
-
-          return await handleUpdateUser(supabase, userId, requestBody);
-        } else if (action?.startsWith('bulk-')) {
-          // Verify bulk operation permissions
-          const hasBulkPermission = hasPermission(permissions, 'user:write') || 
-                                   hasPermission(permissions, 'user:manage') ||
-                                   hasPermission(permissions, 'system:admin');
-          
-          if (!hasBulkPermission) {
-            await logSecurityEvent(supabase, {
-              user_id: userId,
-              action: 'permission_denied',
-              details: { 
-                required_permissions: ['user:write', 'user:manage', 'system:admin'], 
-                user_permissions: permissions,
-                function: 'get-all-users',
-                action: action
-              }
-            });
-            
-            return new Response(
-              JSON.stringify({ error: 'Insufficient permissions for bulk operations' }), 
-              { 
-                status: 403, 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-              }
-            );
-          }
-
-          return await handleBulkUserOperations(supabase, userId, requestBody);
         } else if (action === 'create') {
           // Verify create permissions
           const hasCreatePermission = hasPermission(permissions, 'user:write') || 
@@ -178,21 +120,25 @@ serve(async (req) => {
 
           return await handleCreateUser(supabase, userId, requestBody);
         } else if (action === 'change-password') {
-          // Verify permission via role-based permissions
-          if (!hasPermission(permissions, 'user:password:change')) {
+          // Verify super admin permissions (only nawaf@elzeer.com)
+          const { data: adminProfile } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('id', userId)
+            .single();
+
+          if (!adminProfile || adminProfile.email !== 'nawaf@elzeer.com') {
             await logSecurityEvent(supabase, {
               user_id: userId,
-              action: 'permission_denied',
-              details: {
-                required_permission: 'user:password:change',
-                function: 'get-all-users',
-                action: 'change-password',
-                user_permissions: permissions
+              action: 'unauthorized_password_change_attempt',
+              details: { 
+                attempted_by: adminProfile?.email || 'unknown',
+                target_user: requestBody.userId
               }
             });
             
             return new Response(
-              JSON.stringify({ error: 'Insufficient permissions for password change' }), 
+              JSON.stringify({ error: 'Only super admin can change user passwords' }), 
               { 
                 status: 403, 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -557,7 +503,34 @@ async function handleChangePassword(supabase: any, adminId: string, requestBody:
       last_name: authUser.user.user_metadata?.last_name || ''
     };
 
-    // Permission for password change already validated at route level.
+    // Enhanced super admin check - only nawaf@elzeer.com can change passwords
+    const { data: adminUser, error: adminUserError } = await supabase.auth.admin.getUserById(adminId);
+
+    if (adminUserError || !adminUser.user) {
+      console.error('[handleChangePassword] Failed to get admin user:', adminUserError);
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'password_change_admin_lookup_error',
+        details: { error: adminUserError?.message, target_user_id: userId }
+      });
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify admin credentials' }), 
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (adminUser.user.email !== 'nawaf@elzeer.com') {
+      console.error(`[handleChangePassword] Unauthorized password change attempt by ${adminUser.user.email}`);
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'password_change_unauthorized_attempt',
+        details: { admin_email: adminUser.user.email, target_user_id: userId }
+      });
+      return new Response(
+        JSON.stringify({ error: 'Insufficient permissions for password changes' }), 
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Log the password change attempt
     await logSecurityEvent(supabase, {

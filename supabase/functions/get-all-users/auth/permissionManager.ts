@@ -6,15 +6,15 @@ export function generatePermissions(role: string): string[] {
   switch (role) {
     case 'admin':
       permissions.push(
-        'user:read', 'user:write', 'user:delete', 'user:password:change', 'user:manage',
+        'user:read', 'user:write', 'user:delete',
         'subscription:read', 'subscription:write', 'subscription:cancel',
         'transaction:read', 'transaction:write',
-        'system:audit', 'system:config', 'system:admin'
+        'system:audit', 'system:config'
       );
       break;
     case 'jadmin':
       permissions.push(
-        'user:read', 'user:write', 'subscription:read', 'transaction:read'
+        'user:read', 'subscription:read', 'transaction:read'
       );
       break;
   }

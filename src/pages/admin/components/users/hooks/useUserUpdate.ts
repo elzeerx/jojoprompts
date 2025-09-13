@@ -1,72 +1,92 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { useAdminErrorHandler } from "./useAdminErrorHandler";
+import { useUserRoleManagement } from "./useUserRoleManagement";
+import { validateRole, UserRole } from "@/utils/roleValidation";
 
-interface UpdateUserData {
-  userId: string;
-  updates: {
-    first_name?: string;
-    last_name?: string;
-    role?: string;
-    username?: string;
-    bio?: string;
-    country?: string;
-    phone_number?: string;
-    email?: string;
-    password?: string;
-  };
+interface UserUpdateData {
+  first_name?: string | null;
+  last_name?: string | null;
+  role?: UserRole;
+  email?: string;
 }
 
 export function useUserUpdate() {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const { handleError } = useAdminErrorHandler();
+  const { updatingUserId, updateUserRole } = useUserRoleManagement();
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
 
-  const updateUser = async (userData: UpdateUserData) => {
+  const handleUpdateUser = async (userId: string, data: UserUpdateData) => {
+    setProcessingUserId(userId);
+    
     try {
-      setIsUpdating(true);
+      let updated = false;
       
-      // Use edge function to update user
-      const { data, error } = await supabase.functions.invoke(
-        "get-all-users",
-        {
-          body: { 
-            action: "update",
-            userId: userData.userId,
-            updates: userData.updates
-          }
+      // Update roles if changed
+      if (data.role) {
+        const roleValidation = validateRole(data.role);
+        if (!roleValidation.isValid) {
+          throw new Error(roleValidation.error);
         }
-      );
-      
-      if (error) {
-        console.error("Edge function error:", error);
-        throw new Error(error.message || "Failed to invoke user update function");
+        
+        await updateUserRole(userId, data.role);
+        updated = true;
+      }
+
+      // Update user profile data
+      if (data.first_name !== undefined || data.last_name !== undefined) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            first_name: data.first_name,
+            last_name: data.last_name,
+          })
+          .eq('id', userId);
+
+        if (error) throw error;
+        updated = true;
+      }
+
+      // Update user email if provided
+      if (data.email) {
+        const { error } = await supabase.functions.invoke(
+          "get-all-users",
+          {
+            body: {
+              action: 'update',
+              userId,
+              userData: { email: data.email }
+            }
+          }
+        );
+
+        if (error) throw error;
+        updated = true;
       }
       
-      if (data?.error) {
-        throw new Error(data.error || "Failed to update user");
+      if (updated) {
+        toast({
+          title: "User updated",
+          description: "User information has been updated successfully."
+        });
+        
+        return true;
       }
-      
-      if (!data?.success) {
-        throw new Error("User update failed");
-      }
+    } catch (error: any) {
+      console.error("Error updating user:", error);
       
       toast({
-        title: "Success",
-        description: "User updated successfully",
+        title: "Update failed",
+        description: error.message || "Failed to update user information.",
+        variant: "destructive"
       });
-      
-      return true;
-    } catch (error: any) {
-      handleError(error, "update user");
-      return false;
     } finally {
-      setIsUpdating(false);
+      setProcessingUserId(null);
     }
   };
 
   return {
-    isUpdating,
-    updateUser
+    processingUserId: processingUserId || updatingUserId,
+    updateUser: handleUpdateUser
   };
 }
