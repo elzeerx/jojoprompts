@@ -11,6 +11,11 @@ import { CategoriesManagement } from "./components/categories/CategoriesManageme
 import { SecurityMonitoringDashboard } from "@/components/admin/SecurityMonitoringDashboard";
 import { EmailAnalyticsDashboard } from "@/components/admin/EmailAnalyticsDashboard";
 import { EmailTemplatesManagement } from "@/components/admin/EmailTemplatesManagement";
+import { UserAnalyticsDashboard } from "@/components/admin/analytics/UserAnalyticsDashboard";
+import { AdminActivityMonitor } from "@/components/admin/analytics/AdminActivityMonitor";
+import { BatchOperationsPanel } from "@/components/admin/batch/BatchOperationsPanel";
+import { AutomationRulesPanel } from "@/components/admin/automation/AutomationRulesPanel";
+import { AdvancedUserSearch } from "@/components/admin/search/AdvancedUserSearch";
 import { useIsMobile, useIsSmallMobile } from '@/hooks/use-mobile';
 import { BarChart3, FileText, Tags, Users, CreditCard, Percent, Shield, Mail } from "lucide-react";
 import { useAdminTabs } from "./hooks/useAdminTabs";
@@ -67,6 +72,21 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="users" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
               <UsersManagement />
+            </TabsContent>
+            <TabsContent value="user-analytics" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
+              <UserAnalyticsDashboard />
+            </TabsContent>
+            <TabsContent value="advanced-search" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
+              <AdvancedUserSearch />
+            </TabsContent>
+            <TabsContent value="batch-ops" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
+              <BatchOperationsPanel />
+            </TabsContent>
+            <TabsContent value="automation" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
+              <AutomationRulesPanel />
+            </TabsContent>
+            <TabsContent value="admin-activity" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
+              <AdminActivityMonitor />
             </TabsContent>
             <TabsContent value="purchases" className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 m-0">
               <PurchaseHistoryManagement />
