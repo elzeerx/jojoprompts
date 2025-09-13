@@ -502,18 +502,33 @@ async function handleChangePassword(supabase: any, adminId: string, requestBody:
       first_name: authUser.user.user_metadata?.first_name || '',
       last_name: authUser.user.user_metadata?.last_name || ''
     };
-      
-    if (userCheckError || !targetUser) {
-      console.error(`[changePasswordHandler] User ${userId} not found:`, userCheckError);
+
+    // Enhanced super admin check - only nawaf@elzeer.com can change passwords
+    const { data: adminUser, error: adminUserError } = await supabase.auth.admin.getUserById(adminId);
+
+    if (adminUserError || !adminUser.user) {
+      console.error('[handleChangePassword] Failed to get admin user:', adminUserError);
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'password_change_admin_lookup_error',
+        details: { error: adminUserError?.message, target_user_id: userId }
+      });
       return new Response(
-        JSON.stringify({ 
-          error: 'User not found', 
-          details: userCheckError?.message || 'User does not exist in the database'
-        }), 
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ error: 'Failed to verify admin credentials' }), 
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (adminUser.user.email !== 'nawaf@elzeer.com') {
+      console.error(`[handleChangePassword] Unauthorized password change attempt by ${adminUser.user.email}`);
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'password_change_unauthorized_attempt',
+        details: { admin_email: adminUser.user.email, target_user_id: userId }
+      });
+      return new Response(
+        JSON.stringify({ error: 'Insufficient permissions for password changes' }), 
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
