@@ -1,5 +1,5 @@
-import { SimplePromptForm } from "./SimplePromptForm";
+import { EnhancedPromptForm } from "./EnhancedPromptForm";
 
 export function PromptGeneratorForm() {
-  return <SimplePromptForm />;
+  return <EnhancedPromptForm />;
 }

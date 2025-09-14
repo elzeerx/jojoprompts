@@ -9,7 +9,7 @@ import { CheckCircle, AlertCircle, Save, Upload } from 'lucide-react';
 import { DragDropUpload } from './DragDropUpload';
 import { RichTextEditor } from './RichTextEditor';
 import { usePromptValidation } from '@/utils/promptValidation';
-import { usePromptAutoSave } from '@/hooks/useAutoSave';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { toast } from '@/hooks/use-toast';
 
 interface EnhancedPromptDialogProps {
@@ -33,13 +33,12 @@ export function EnhancedPromptDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Auto-save functionality
-  const autoSave = usePromptAutoSave(formData, {
-    onRestore: (data) => {
-      setFormData(data);
-      toast({
-        title: "Draft Restored",
-        description: "Your previous draft has been restored",
-      });
+  const autoSave = useAutoSave({
+    formData,
+    isValid,
+    onSave: async (data) => {
+      // Auto-save implementation would go here
+      console.log("Auto-saving:", data);
     }
   });
 
