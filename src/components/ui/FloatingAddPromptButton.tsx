@@ -3,7 +3,8 @@ import { useState } from "react";
 import { PlusCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
-import { PromptDialog } from "@/pages/admin/components/prompts/PromptDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EnhancedPromptForm } from "@/components/prompt-generator/EnhancedPromptForm";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -68,11 +69,14 @@ export function FloatingAddPromptButton({ reloadPrompts, className }: FloatingAd
         </div>
       </button>
 
-      <PromptDialog
-        open={open}
-        onOpenChange={setOpen}
-        onSuccess={handleSuccess}
-      />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Prompt</DialogTitle>
+          </DialogHeader>
+          <EnhancedPromptForm onSuccess={handleSuccess} />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

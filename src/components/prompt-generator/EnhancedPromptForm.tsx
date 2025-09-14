@@ -29,7 +29,11 @@ interface PromptFormData {
   translations: { arabic?: string; english?: string };
 }
 
-export function EnhancedPromptForm() {
+interface EnhancedPromptFormProps {
+  onSuccess?: () => void;
+}
+
+export function EnhancedPromptForm({ onSuccess }: EnhancedPromptFormProps = {}) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<PromptFormData>({
@@ -126,6 +130,9 @@ export function EnhancedPromptForm() {
         translations: {}
       });
       clearDraft();
+      
+      // Call onSuccess callback if provided
+      onSuccess?.();
       
     } catch (error) {
       console.error("Error saving prompt:", error);
