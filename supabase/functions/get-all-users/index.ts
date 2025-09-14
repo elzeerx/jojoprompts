@@ -876,12 +876,12 @@ async function handleCreateUser(supabase: any, adminId: string, requestBody: any
       );
     }
 
-    // Validate password
-    if (userData.password.length < 6) {
+    // Validate password (match frontend requirement)
+    if (userData.password.length < 8) {
       return new Response(
         JSON.stringify({ 
           error: 'Invalid password', 
-          details: 'Password must be at least 6 characters long'
+          details: 'Password must be at least 8 characters long'
         }), 
         { 
           status: 400, 
@@ -889,6 +889,47 @@ async function handleCreateUser(supabase: any, adminId: string, requestBody: any
         }
       );
     }
+
+    // Generate unique username
+    const generateUsername = async (baseUsername: string): Promise<string> => {
+      let username = baseUsername;
+      let counter = 0;
+      
+      while (true) {
+        const { data: existingUser } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('username', username)
+          .single();
+          
+        if (!existingUser) {
+          return username;
+        }
+        
+        counter++;
+        username = `${baseUsername}${counter}`;
+        
+        if (counter > 999) {
+          throw new Error('Unable to generate unique username');
+        }
+      }
+    };
+
+    // Create base username from available data
+    let baseUsername = '';
+    if (userData.first_name || userData.last_name) {
+      baseUsername = `${userData.first_name || ''}${userData.last_name || ''}`.toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+    }
+    
+    if (!baseUsername) {
+      baseUsername = userData.email.split('@')[0].toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+    }
+    
+    if (!baseUsername) {
+      baseUsername = 'user';
+    }
+
+    const uniqueUsername = await generateUsername(baseUsername);
 
     // Log the user creation attempt
     await logSecurityEvent(supabase, {
@@ -950,47 +991,59 @@ async function handleCreateUser(supabase: any, adminId: string, requestBody: any
       );
     }
 
-    // Create profile record
-    const { data: profileData, error: profileError } = await supabase
+    // Check if profile already exists (defensive programming)
+    const { data: existingProfile } = await supabase
       .from('profiles')
-      .insert({
-        id: authData.user.id,
-        first_name: userData.first_name || '',
-        last_name: userData.last_name || '',
-        role: 'user'
-      })
-      .select()
+      .select('id')
+      .eq('id', authData.user.id)
       .single();
 
-    if (profileError) {
-      console.error('Error creating user profile:', profileError);
-      
-      // Clean up auth user if profile creation fails
-      try {
-        await supabase.auth.admin.deleteUser(authData.user.id);
-      } catch (cleanupError) {
-        console.error('Failed to clean up auth user after profile creation error:', cleanupError);
+    if (existingProfile) {
+      console.log(`[createUserHandler] Profile already exists for user ${authData.user.id}, skipping profile creation`);
+    } else {
+      // Create profile record with username
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          first_name: userData.first_name || '',
+          last_name: userData.last_name || '',
+          username: uniqueUsername,
+          role: 'user'
+        })
+        .select()
+        .single();
+
+      if (profileError) {
+        console.error('Error creating user profile:', profileError);
+        
+        // Clean up auth user if profile creation fails
+        try {
+          await supabase.auth.admin.deleteUser(authData.user.id);
+        } catch (cleanupError) {
+          console.error('Failed to clean up auth user after profile creation error:', cleanupError);
+        }
+        
+        await logSecurityEvent(supabase, {
+          user_id: adminId,
+          action: 'user_creation_failed',
+          details: { 
+            target_email: userData.email,
+            error: 'Profile creation failed: ' + profileError.message
+          }
+        });
+        
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to create user profile', 
+            details: profileError.message 
+          }), 
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
       }
-      
-      await logSecurityEvent(supabase, {
-        user_id: adminId,
-        action: 'user_creation_failed',
-        details: { 
-          target_email: userData.email,
-          error: 'Profile creation failed: ' + profileError.message
-        }
-      });
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to create user profile', 
-          details: profileError.message 
-        }), 
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
     }
 
     // Log successful user creation
@@ -1015,6 +1068,7 @@ async function handleCreateUser(supabase: any, adminId: string, requestBody: any
           email: authData.user.email,
           first_name: userData.first_name || '',
           last_name: userData.last_name || '',
+          username: uniqueUsername,
           role: 'user'
         }
       }), 
