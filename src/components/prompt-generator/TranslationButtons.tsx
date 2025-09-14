@@ -9,14 +9,16 @@ import { callEdgeFunction } from "@/utils/edgeFunctions";
 interface TranslationButtonsProps {
   text: string;
   onTranslated: (translatedText: string) => void;
+  onTranslationStored?: (translations: { arabic?: string; english?: string }) => void;
 }
 
-export function TranslationButtons({ text, onTranslated }: TranslationButtonsProps) {
+export function TranslationButtons({ text, onTranslated, onTranslationStored }: TranslationButtonsProps) {
   const { toast } = useToast();
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [translationDirection, setTranslationDirection] = useState<'ar-en' | 'en-ar' | null>(null);
   const [copied, setCopied] = useState(false);
+  const [storedTranslations, setStoredTranslations] = useState<{ arabic?: string; english?: string }>({});
 
   const detectLanguage = (text: string): 'ar' | 'en' => {
     // Simple language detection based on Arabic characters
@@ -48,6 +50,15 @@ export function TranslationButtons({ text, onTranslated }: TranslationButtonsPro
 
       if (response.translatedText) {
         setTranslatedText(response.translatedText);
+        
+        // Store translation in metadata
+        const newTranslations = {
+          ...storedTranslations,
+          [targetLanguage === 'ar' ? 'arabic' : 'english']: response.translatedText
+        };
+        setStoredTranslations(newTranslations);
+        onTranslationStored?.(newTranslations);
+        
         toast({
           title: "Translation completed",
           description: `Text translated from ${sourceLanguage.toUpperCase()} to ${targetLanguage.toUpperCase()}.`

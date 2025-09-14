@@ -12,6 +12,7 @@ import { CategorySelector } from "./CategorySelector";
 import { ThumbnailManager } from "./ThumbnailManager";
 import { TagsManager } from "./TagsManager";
 import { TranslationButtons } from "./TranslationButtons";
+import { SmartSuggestions } from "./SmartSuggestions";
 
 interface PromptFormData {
   title: string;
@@ -20,6 +21,7 @@ interface PromptFormData {
   category: string;
   thumbnail: string | null;
   tags: string[];
+  translations: { arabic?: string; english?: string };
 }
 
 export function SimplePromptForm() {
@@ -31,7 +33,8 @@ export function SimplePromptForm() {
     promptType: "",
     category: "",
     thumbnail: null,
-    tags: []
+    tags: [],
+    translations: {}
   });
 
   const handleSubmit = async () => {
@@ -61,7 +64,8 @@ export function SimplePromptForm() {
         promptType: "",
         category: "",
         thumbnail: null,
-        tags: []
+        tags: [],
+        translations: {}
       });
       
     } catch (error) {
@@ -154,6 +158,18 @@ export function SimplePromptForm() {
         <TranslationButtons
           text={formData.promptText}
           onTranslated={(translatedText) => updateFormData("promptText", translatedText)}
+          onTranslationStored={(translations) => updateFormData("translations", translations)}
+        />
+
+        <Separator />
+
+        {/* Smart Suggestions */}
+        <SmartSuggestions
+          promptText={formData.promptText}
+          currentCategory={formData.category}
+          currentType={formData.promptType}
+          onCategorySelect={(category) => updateFormData("category", category)}
+          onTypeSelect={(type) => updateFormData("promptType", type)}
         />
 
         {/* Submit Button */}
