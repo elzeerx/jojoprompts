@@ -36,6 +36,7 @@ interface EnhancedPromptFormProps {
 export function EnhancedPromptForm({ onSuccess }: EnhancedPromptFormProps = {}) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [formData, setFormData] = useState<PromptFormData>({
     title: "",
     promptText: "",
@@ -101,6 +102,8 @@ export function EnhancedPromptForm({ onSuccess }: EnhancedPromptFormProps = {}) 
   }, [toast]);
 
   const handleSubmit = async () => {
+    setHasAttemptedSubmit(true);
+    
     if (!isValid) {
       toast({
         variant: "destructive",
@@ -218,7 +221,7 @@ export function EnhancedPromptForm({ onSuccess }: EnhancedPromptFormProps = {}) 
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Validation Errors */}
-        {validationErrors.length > 0 && (
+        {hasAttemptedSubmit && validationErrors.length > 0 && (
           <Card className="border-l-4 border-l-red-500 bg-red-50">
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 text-red-600 mb-2">
