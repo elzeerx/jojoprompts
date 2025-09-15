@@ -21,27 +21,11 @@ export interface SignUpData {
   lastName?: string;
 }
 
-export interface ProfileUpdateData {
-  firstName?: string;
-  lastName?: string;
-  username?: string;
-  avatar_url?: string;
-  bio?: string;
-}
+import { UserProfile, ProfileUpdateData, ExtendedUserProfile, CreateUserData, UserRole } from "@/types/user";
 
-export interface UserProfile {
-  id: string;
-  first_name?: string;
-  last_name?: string;
-  username?: string;
-  role: 'user' | 'admin' | 'prompter' | 'jadmin';
-  avatar_url?: string;
-  bio?: string;
-  created_at: string;
-  updated_at: string;
-}
+export type { UserProfile, ProfileUpdateData, ExtendedUserProfile, CreateUserData, UserRole };
 
-export type UserRole = 'user' | 'admin' | 'prompter' | 'jadmin';
+
 
 export class UserService extends BaseService<UserProfile> {
   constructor() {
@@ -121,8 +105,8 @@ export class UserService extends BaseService<UserProfile> {
       () => supabase
         .from('profiles')
         .update({
-          first_name: data.firstName,
-          last_name: data.lastName,
+          first_name: data.first_name,
+          last_name: data.last_name,
           username: data.username,
           avatar_url: data.avatar_url,
           bio: data.bio,

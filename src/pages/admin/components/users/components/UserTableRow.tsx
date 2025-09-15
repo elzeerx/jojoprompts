@@ -30,8 +30,10 @@ import { TableCell } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionActions } from "../hooks/useSubscriptionActions";
 
+import { ExtendedUserProfile } from "@/types/user";
+
 interface UserTableRowProps {
-  user: UserProfile & { subscription?: { plan_name: string } | null, emailConfirmed?: boolean };
+  user: ExtendedUserProfile & { subscription?: { plan_name: string } | null, emailConfirmed?: boolean };
   isUpdating: boolean;
   onUpdateUser: (userId: string, data: Partial<UserProfile>) => void;
   onAssignPlan: (userId: string, planId: string) => void;

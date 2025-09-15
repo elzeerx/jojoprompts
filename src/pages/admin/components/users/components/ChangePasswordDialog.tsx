@@ -14,12 +14,13 @@ import { Loader2, Key, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { UserProfile } from "@/types";
+import { ExtendedUserProfile } from "@/types/user";
 import { useAdminErrorHandler } from "../hooks/useAdminErrorHandler";
 
 interface ChangePasswordDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user: UserProfile | null;
+  user: ExtendedUserProfile | null;
   onSuccess?: () => void;
 }
 

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, UserPlus } from "lucide-react";
+import { UserRole } from "@/types/user";
 import {
   Select,
   SelectContent,
@@ -51,7 +52,10 @@ export function CreateUserDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await createUser(formData);
+    const result = await createUser({
+      ...formData,
+      role: formData.role as UserRole
+    });
     if (result) {
       onUserCreated();
       onOpenChange(false);

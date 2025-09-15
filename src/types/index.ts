@@ -94,13 +94,5 @@ export interface PromptRow {
   prompt_type: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';
 }
 
-export interface UserProfile {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  username: string;
-  created_at: string;
-  role: string;
-  last_sign_in_at: string | null;
-}
+// UserProfile has been moved to @/types/user.ts for better organization
+export type { UserProfile, ExtendedUserProfile, UserRole } from "@/types/user";

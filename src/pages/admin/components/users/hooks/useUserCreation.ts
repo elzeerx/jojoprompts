@@ -3,14 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAdminErrorHandler } from "./useAdminErrorHandler";
-
-interface CreateUserData {
-  email: string;
-  password: string;
-  first_name?: string;
-  last_name?: string;
-  role?: string;
-}
+import { CreateUserData } from "@/types/user";
 
 export function useUserCreation() {
   const [isCreating, setIsCreating] = useState(false);

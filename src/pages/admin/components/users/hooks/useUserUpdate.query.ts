@@ -1,14 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { validateRole, UserRole } from "@/utils/roleValidation";
-
-interface UserUpdateData {
-  first_name?: string | null;
-  last_name?: string | null;
-  role?: UserRole;
-  email?: string;
-}
+import { validateRole } from "@/utils/roleValidation";
+import { UserUpdateData, UserRole } from "@/types/user";
 
 interface UserUpdateResult {
   success: boolean;

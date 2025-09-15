@@ -5,14 +5,7 @@ import { useUserUpdate } from "./useUserUpdate.query";
 import { usePlanAssignment } from "./usePlanAssignment.query";
 import { usePasswordReset } from "./usePasswordReset";
 import { useUserDeletion } from "./useUserDeletion.query";
-import { UserRole } from "@/utils/roleValidation";
-
-interface UserUpdateData {
-  first_name?: string | null;
-  last_name?: string | null;
-  role?: UserRole;
-  email?: string;
-}
+import { UserUpdateData, UserRole } from "@/types/user";
 
 export function useUserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
