@@ -12,13 +12,26 @@ interface UseFetchUsersParams {
 }
 
 interface UseFetchUsersReturn {
-  users: (UserProfile & { subscription?: { 
-    plan_name: string;
-    status: string;
-    end_date?: string;
-    is_lifetime: boolean;
-    price_usd: number;
-  } | null })[];
+  users: (UserProfile & { 
+    email?: string;
+    email_confirmed_at?: string | null;
+    is_email_confirmed?: boolean;
+    last_sign_in_at?: string | null;
+    auth_created_at?: string | null;
+    auth_updated_at?: string | null;
+    subscription?: { 
+      plan_id?: string;
+      plan_name: string;
+      price_usd: number;
+      is_lifetime: boolean;
+      status: string;
+      start_date?: string;
+      end_date?: string;
+      payment_method?: string;
+      subscription_created_at?: string;
+      duration_days?: number;
+    } | null;
+  })[];
   loading: boolean;
   error: string | null;
   total: number;
@@ -31,6 +44,11 @@ interface UseFetchUsersReturn {
     totalDuration: number;
     cacheHit: boolean;
     searchActive: boolean;
+    dataEnrichment?: {
+      profilesEnriched: number;
+      authDataAvailable: number;
+      subscriptionsAvailable: number;
+    };
   };
 }
 

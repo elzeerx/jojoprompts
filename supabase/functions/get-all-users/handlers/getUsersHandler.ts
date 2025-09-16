@@ -57,357 +57,256 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
     });
     logPerformanceMetrics('Admin action logging', logStartTime);
 
-    // Phase 2: Fixed search implementation - get all users first, then filter and paginate
-    let allUsers: any[] = [];
-    let totalUsers = 0;
-    let totalFilteredUsers = 0;
+    // Optimized approach: Use database-level pagination and search
+    const searchStartTime = Date.now();
     
-    // Phase 5: Check cache first for performance optimization
-    const cacheKey = search || 'all';
-    const now = Date.now();
-    const canUseCache = userCountCache && 
-      (now - userCountCache.timestamp) < CACHE_DURATION &&
-      (search === (userCountCache.search || ''));
+    // Build the comprehensive profile query with all fields
+    let profileQuery = supabase
+      .from('profiles')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        username,
+        role,
+        bio,
+        avatar_url,
+        country,
+        phone_number,
+        timezone,
+        membership_tier,
+        social_links,
+        created_at
+      `, { count: 'exact' });
+
+    // Apply search filter on multiple fields
+    if (search) {
+      profileQuery = profileQuery.or(`
+        first_name.ilike.%${search}%,
+        last_name.ilike.%${search}%,
+        username.ilike.%${search}%,
+        email.ilike.%${search}%
+      `);
+    }
+
+    // Apply pagination at database level
+    const offset = (page - 1) * limit;
+    profileQuery = profileQuery
+      .range(offset, offset + limit - 1)
+      .order('created_at', { ascending: false });
+
+    const { data: profiles, error: profileError, count: totalFilteredUsers } = await profileQuery;
+
+    if (profileError) {
+      console.error(`[${requestId}] Error fetching profiles:`, profileError);
+      throw new Error(`Failed to fetch user profiles: ${profileError.message}`);
+    }
+
+    logPerformanceMetrics('Database profile fetch', searchStartTime, {
+      totalFound: totalFilteredUsers,
+      pageResults: profiles?.length || 0,
+      searchTerm: search || 'none'
+    });
+
+    // Handle empty results
+    if (!profiles || profiles.length === 0) {
+      console.log(`[${requestId}] No profiles found for page ${page}`);
+      return new Response(
+        JSON.stringify({
+          users: [],
+          total: totalFilteredUsers || 0,
+          totalUsers: totalFilteredUsers || 0,
+          page,
+          limit,
+          totalPages: 0,
+          performance: {
+            requestId,
+            totalDuration: Date.now() - startTime,
+            cacheHit: false,
+            searchActive: !!search
+          }
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Get auth data for the users in this page
+    const profileIds = profiles.map(p => p.id);
+    const authDataStartTime = Date.now();
     
-    if (canUseCache && userCountCache) {
-      console.log(`[${requestId}] Using cached user count - total: ${userCountCache.count}, filtered: ${userCountCache.filteredCount}`);
-      totalUsers = userCountCache.count;
-      totalFilteredUsers = userCountCache.filteredCount || userCountCache.count;
-    } else {
-      // Phase 2: Get all users for proper search and pagination
-      console.log(`[${requestId}] Fetching all users for count and filtering`);
-      const countStartTime = Date.now();
+    let authUserMap = new Map();
+    try {
+      // Fetch auth data for specific users only
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
-      // Use multiple requests with pagination to handle large user bases
-      let page_num = 1;
-      let hasMore = true;
-      const perPage = 1000;
-      
-      while (hasMore) {
-        const { data: batchUsers, error: batchError } = await supabase.auth.admin.listUsers({
-          perPage,
-          page: page_num
+      if (authError) {
+        console.warn(`[${requestId}] Error fetching auth data:`, authError);
+      } else if (authUsers?.users) {
+        // Create efficient lookup map
+        authUsers.users.forEach(user => {
+          if (profileIds.includes(user.id)) {
+            authUserMap.set(user.id, user);
+          }
         });
-        
-        if (batchError) {
-          console.error(`[${requestId}] Error fetching user batch ${page_num}:`, batchError);
-          throw new Error(`Failed to fetch users: ${batchError.message}`);
-        }
-        
-        const batchUserList = batchUsers?.users || [];
-        allUsers.push(...batchUserList);
-        
-        hasMore = batchUserList.length === perPage;
-        page_num++;
-        
-        // Safety break to prevent infinite loops
-        if (page_num > 50) {
-          console.warn(`[${requestId}] Breaking pagination loop at page ${page_num} - potential infinite loop`);
-          break;
-        }
       }
-      
-      // Filter out users without profiles - only show users with corresponding profiles
-      const profileFilterStartTime = Date.now();
-      if (allUsers.length > 0) {
-        const allUserIds = allUsers.map(user => user.id);
-        const { data: existingProfiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .in('id', allUserIds);
-        
-        if (profileError) {
-          console.error(`[${requestId}] Error fetching profiles for filtering:`, profileError);
-          // If we can't fetch profiles, continue with all users to avoid breaking functionality
-        } else {
-          const existingProfileIds = new Set(existingProfiles?.map(p => p.id) || []);
-          const originalCount = allUsers.length;
-          allUsers = allUsers.filter(user => existingProfileIds.has(user.id));
-          console.log(`[${requestId}] Filtered users: ${originalCount} -> ${allUsers.length} (removed ${originalCount - allUsers.length} users without profiles)`);
-        }
-      }
-      logPerformanceMetrics('Profile filtering', profileFilterStartTime, { 
-        originalUsers: allUsers.length + (allUsers.length > 0 ? 1 : 0), 
-        filteredUsers: allUsers.length 
-      });
-      
-      totalUsers = allUsers.length;
-      logPerformanceMetrics('Fetch all users', countStartTime, { totalUsers, pagesProcessed: page_num - 1 });
-      
-      // Apply search filter if provided
-      let filteredUsers = allUsers;
-      if (search) {
-        const searchStartTime = Date.now();
-        filteredUsers = allUsers.filter((user: any) => {
-          const email = user.email?.toLowerCase() || '';
-          const searchLower = search.toLowerCase();
-          return email.includes(searchLower);
-        });
-        totalFilteredUsers = filteredUsers.length;
-        logPerformanceMetrics('Search filtering', searchStartTime, { 
-          searchTerm: search, 
-          totalUsers, 
-          filteredUsers: totalFilteredUsers 
-        });
-      } else {
-        totalFilteredUsers = totalUsers;
-      }
-      
-      // Phase 5: Cache the results
-      userCountCache = {
-        count: totalUsers,
-        filteredCount: totalFilteredUsers,
-        timestamp: now,
-        search: search || undefined
-      };
-      
-      console.log(`[${requestId}] Updated cache - total: ${totalUsers}, filtered: ${totalFilteredUsers}`);
+    } catch (authFetchError) {
+      console.warn(`[${requestId}] Auth data fetch failed:`, authFetchError);
     }
     
-    // Phase 4: Validation - ensure page doesn't exceed available pages
-    const totalPages = Math.ceil(totalFilteredUsers / limit);
+    logPerformanceMetrics('Auth data fetch', authDataStartTime, {
+      authUsersFound: authUserMap.size,
+      profileCount: profileIds.length
+    });
+
+    // Get subscription data for the users in this page
+    const subscriptionStartTime = Date.now();
+    let subscriptionMap = new Map();
+    
+    try {
+      const { data: subscriptions, error: subscriptionError } = await supabase
+        .from('user_subscriptions')
+        .select(`
+          user_id,
+          status,
+          start_date,
+          end_date,
+          payment_method,
+          created_at,
+          subscription_plans!inner(
+            id,
+            name,
+            price_usd,
+            is_lifetime,
+            duration_days
+          )
+        `)
+        .in('user_id', profileIds)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (subscriptionError) {
+        console.warn(`[${requestId}] Error fetching subscriptions:`, subscriptionError);
+      } else if (subscriptions) {
+        // Map subscriptions, keeping only the most recent for each user
+        subscriptions.forEach(sub => {
+          if (!subscriptionMap.has(sub.user_id)) {
+            subscriptionMap.set(sub.user_id, sub);
+          }
+        });
+      }
+    } catch (subFetchError) {
+      console.warn(`[${requestId}] Subscription fetch failed:`, subFetchError);
+    }
+    
+    logPerformanceMetrics('Subscription data fetch', subscriptionStartTime, {
+      subscriptionsFound: subscriptionMap.size,
+      profileCount: profileIds.length
+    });
+
+    // Validation - ensure page doesn't exceed available pages
+    const totalPages = Math.ceil((totalFilteredUsers || 0) / limit);
     if (page > totalPages && totalFilteredUsers > 0) {
-      console.warn(`[${requestId}] Page ${page} exceeds available pages ${totalPages}, redirecting to last page`);
-      const correctedPage = Math.max(1, totalPages);
+      console.warn(`[${requestId}] Page ${page} exceeds available pages ${totalPages}`);
       return new Response(
         JSON.stringify({ 
           error: 'Page exceeds available data',
-          redirect: { page: correctedPage, totalPages },
+          redirect: { page: Math.max(1, totalPages), totalPages },
           total: totalFilteredUsers,
-          totalUsers
+          totalUsers: totalFilteredUsers
         }), 
         { 
-          status: 416, // Range Not Satisfiable
+          status: 416,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
     
-    // Now get the actual paginated users for this page
-    const paginationStartTime = Date.now();
-    let paginatedUsers: any[] = [];
-    
-    if (!canUseCache || !allUsers.length) {
-      // If we don't have cached users, fetch the specific page
-      if (search) {
-        // For search, we need all users to filter properly
-        console.log(`[${requestId}] Re-fetching all users for search pagination`);
-        let page_num = 1;
-        let hasMore = true;
-        allUsers = [];
-        
-        while (hasMore) {
-          const { data: batchUsers, error: batchError } = await supabase.auth.admin.listUsers({
-            perPage: 1000,
-            page: page_num
-          });
-          
-          if (batchError) {
-            throw new Error(`Failed to fetch users for pagination: ${batchError.message}`);
-          }
-          
-          const batchUserList = batchUsers?.users || [];
-          allUsers.push(...batchUserList);
-          hasMore = batchUserList.length === 1000;
-          page_num++;
-          
-          if (page_num > 50) break;
-        }
-        
-        // Filter out users without profiles for search pagination as well
-        if (allUsers.length > 0) {
-          const allUserIds = allUsers.map(user => user.id);
-          const { data: existingProfiles, error: profileError } = await supabase
-            .from('profiles')
-            .select('id')
-            .in('id', allUserIds);
-          
-          if (!profileError && existingProfiles) {
-            const existingProfileIds = new Set(existingProfiles.map(p => p.id));
-            allUsers = allUsers.filter(user => existingProfileIds.has(user.id));
-          }
-        }
-        
-        // Filter and paginate
-        const filteredUsers = allUsers.filter((user: any) => 
-          user.email?.toLowerCase().includes(search.toLowerCase())
-        );
-        const startIndex = (page - 1) * limit;
-        paginatedUsers = filteredUsers.slice(startIndex, startIndex + limit);
-      } else {
-        // For non-search, we need to fetch more users and filter by profiles to ensure accurate pagination
-        console.log(`[${requestId}] Fetching users for non-search pagination with profile filtering`);
-        let page_num = 1;
-        let hasMore = true;
-        let allAuthUsers = [];
-        
-        // Get enough users to account for those without profiles
-        const fetchLimit = Math.max(limit * 3, 100); // Fetch more than needed to account for filtered users
-        
-        while (hasMore && allAuthUsers.length < fetchLimit) {
-          const { data: batchUsers, error: batchError } = await supabase.auth.admin.listUsers({
-            perPage: 1000,
-            page: page_num
-          });
-          
-          if (batchError) {
-            console.error(`[${requestId}] Error fetching auth users:`, batchError);
-            throw new Error(`Failed to fetch users: ${batchError.message}`);
-          }
-          
-          const batchUserList = batchUsers?.users || [];
-          allAuthUsers.push(...batchUserList);
-          hasMore = batchUserList.length === 1000;
-          page_num++;
-          
-          if (page_num > 20) break; // Safety break
-        }
-        
-        // Filter by profiles
-        if (allAuthUsers.length > 0) {
-          const allUserIds = allAuthUsers.map(user => user.id);
-          const { data: existingProfiles, error: profileError } = await supabase
-            .from('profiles')
-            .select('id')
-            .in('id', allUserIds);
-          
-          if (!profileError && existingProfiles) {
-            const existingProfileIds = new Set(existingProfiles.map(p => p.id));
-            allAuthUsers = allAuthUsers.filter(user => existingProfileIds.has(user.id));
-          }
-        }
-        
-        // Apply pagination to filtered results
-        const startIndex = (page - 1) * limit;
-        paginatedUsers = allAuthUsers.slice(startIndex, startIndex + limit);
-      }
-    } else {
-      // Use cached data for pagination
-      const filteredUsers = search ? 
-        allUsers.filter((user: any) => user.email?.toLowerCase().includes(search.toLowerCase())) :
-        allUsers;
-      const startIndex = (page - 1) * limit;
-      paginatedUsers = filteredUsers.slice(startIndex, startIndex + limit);
-    }
-    
-    logPerformanceMetrics('Pagination', paginationStartTime, { 
-      resultCount: paginatedUsers.length,
-      page,
-      limit 
-    });
-    
-    // Get user IDs from paginated results for profile enrichment
-    const userIds = paginatedUsers.map((user: any) => user.id);
-    
-    // Phase 4: Enhanced profile fetching with error recovery
-    let profiles = [];
-    let subscriptions = [];
-    if (userIds.length > 0) {
-      const profileStartTime = Date.now();
-      try {
-        // Fetch profiles
-        const { data: profilesData, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, username, role, created_at')
-          .in('id', userIds);
-        
-        if (profileError) {
-          console.error(`[${requestId}] Database error when fetching profiles:`, profileError);
-          // Continue with empty profiles rather than failing completely
-          profiles = [];
-        } else {
-          profiles = profilesData || [];
-        }
-
-        // Fetch active subscriptions with plan details
-        const { data: subscriptionsData, error: subscriptionError } = await supabase
-          .from('user_subscriptions')
-          .select(`
-            user_id, 
-            status,
-            created_at,
-            end_date,
-            plan_id:subscription_plans(id, name, price_usd, is_lifetime)
-          `)
-          .in('user_id', userIds)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
-
-        if (subscriptionError) {
-          console.error(`[${requestId}] Database error when fetching subscriptions:`, subscriptionError);
-          subscriptions = [];
-        } else {
-          subscriptions = subscriptionsData || [];
-        }
-        
-        logPerformanceMetrics('Profile and subscription fetching', profileStartTime, { 
-          userCount: userIds.length,
-          profilesFound: profiles.length,
-          subscriptionsFound: subscriptions.length
-        });
-      } catch (fetchError) {
-        console.error(`[${requestId}] Exception during profile/subscription fetch:`, fetchError);
-        profiles = [];
-        subscriptions = [];
-      }
-    }
-    
-    // Merge profile data and subscription data with auth data
+    // Combine all data efficiently
     const enrichmentStartTime = Date.now();
-    const enrichedUsers = paginatedUsers.map((authUser: any) => {
-      const profile = profiles.find((p: any) => p.id === authUser.id);
-      // Find the most recent active subscription for this user
-      const userSubscriptions = subscriptions.filter((sub: any) => sub.user_id === authUser.id);
-      const latestSubscription = userSubscriptions.sort((a: any, b: any) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )[0];
+    const enrichedUsers = profiles.map((profile: any) => {
+      const authUser = authUserMap.get(profile.id);
+      const subscription = subscriptionMap.get(profile.id);
 
       return {
-        id: authUser.id,
-        email: authUser.email || 'unknown',
-        emailConfirmed: !!authUser.email_confirmed_at,
-        created_at: authUser.created_at,
-        last_sign_in_at: authUser.last_sign_in_at,
-        first_name: profile?.first_name || null,
-        last_name: profile?.last_name || null,
-        role: profile?.role || 'user',
-        username: profile?.username || '',
-        subscription: latestSubscription ? {
-          plan_name: latestSubscription.plan_id?.name || 'Unknown',
-          status: latestSubscription.status,
-          end_date: latestSubscription.end_date,
-          is_lifetime: latestSubscription.plan_id?.is_lifetime || false,
-          price_usd: latestSubscription.plan_id?.price_usd || 0
+        // Core identity
+        id: profile.id,
+        
+        // Profile data (complete set of fields)
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        username: profile.username,
+        role: profile.role || 'user',
+        bio: profile.bio,
+        avatar_url: profile.avatar_url,
+        country: profile.country,
+        phone_number: profile.phone_number,
+        timezone: profile.timezone,
+        membership_tier: profile.membership_tier || 'free',
+        social_links: profile.social_links || {},
+        created_at: profile.created_at,
+        
+        // Auth data (when available)
+        email: authUser?.email || null,
+        email_confirmed_at: authUser?.email_confirmed_at || null,
+        is_email_confirmed: !!authUser?.email_confirmed_at,
+        last_sign_in_at: authUser?.last_sign_in_at || null,
+        auth_created_at: authUser?.created_at || null,
+        auth_updated_at: authUser?.updated_at || null,
+        
+        // Subscription data (when available)
+        subscription: subscription ? {
+          plan_id: subscription.subscription_plans?.id,
+          plan_name: subscription.subscription_plans?.name || 'Unknown',
+          price_usd: subscription.subscription_plans?.price_usd || 0,
+          is_lifetime: subscription.subscription_plans?.is_lifetime || false,
+          duration_days: subscription.subscription_plans?.duration_days,
+          status: subscription.status,
+          start_date: subscription.start_date,
+          end_date: subscription.end_date,
+          payment_method: subscription.payment_method,
+          subscription_created_at: subscription.created_at
         } : null
       };
     });
     
-    logPerformanceMetrics('Data enrichment', enrichmentStartTime, { userCount: enrichedUsers.length });
+    logPerformanceMetrics('Data enrichment', enrichmentStartTime, { 
+      userCount: enrichedUsers.length,
+      authDataAvailable: authUserMap.size,
+      subscriptionDataAvailable: subscriptionMap.size
+    });
     
     // Calculate final pagination info
-    const finalTotalPages = Math.ceil(totalFilteredUsers / limit);
+    const finalTotalPages = Math.ceil((totalFilteredUsers || 0) / limit);
     
-    // Phase 3: Enhanced response with performance metadata
+    // Enhanced response with performance metadata
     const responseData = {
       users: enrichedUsers,
-      total: totalFilteredUsers,
-      totalUsers: totalUsers,
+      total: totalFilteredUsers || 0,
+      totalUsers: totalFilteredUsers || 0,
       page,
       limit,
       totalPages: finalTotalPages,
       performance: {
         requestId,
         totalDuration: Date.now() - startTime,
-        cacheHit: canUseCache,
-        searchActive: !!search
+        cacheHit: false, // We're not using cache in this optimized version
+        searchActive: !!search,
+        dataEnrichment: {
+          profilesEnriched: enrichedUsers.length,
+          authDataAvailable: authUserMap.size,
+          subscriptionsAvailable: subscriptionMap.size
+        }
       }
     };
     
     logPerformanceMetrics('Complete request', startTime, {
-      totalUsers,
-      filteredUsers: totalFilteredUsers,
+      totalFiltered: totalFilteredUsers || 0,
       returnedUsers: enrichedUsers.length,
-      cacheHit: canUseCache
+      searchActive: !!search,
+      databaseOptimized: true
     });
     
     console.log(`[${requestId}] Request completed successfully - returned ${enrichedUsers.length} users`);
