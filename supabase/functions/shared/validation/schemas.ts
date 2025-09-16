@@ -43,10 +43,53 @@ export class ValidationSchemas {
       maxLength: 50, 
       sanitize: true 
     },
+    username: {
+      required: false,
+      type: 'string',
+      minLength: 3,
+      maxLength: 30,
+      pattern: /^[a-zA-Z0-9_-]+$/,
+      sanitize: true
+    },
     role: { 
       required: false, 
       type: 'string', 
       allowedValues: ['user', 'admin', 'jadmin', 'prompter'] 
+    },
+    bio: {
+      required: false,
+      type: 'string',
+      maxLength: 500,
+      sanitize: true
+    },
+    avatarUrl: {
+      required: false,
+      type: 'url'
+    },
+    country: {
+      required: false,
+      type: 'string',
+      minLength: 2,
+      maxLength: 100,
+      sanitize: true
+    },
+    phoneNumber: {
+      required: false,
+      type: 'string',
+      pattern: /^\+?[1-9]\d{1,14}$/,
+      maxLength: 20
+    },
+    timezone: {
+      required: false,
+      type: 'string',
+      maxLength: 50,
+      sanitize: true
+    },
+    membershipTier: {
+      required: false,
+      type: 'string',
+      allowedValues: ['free', 'basic', 'premium', 'enterprise'],
+      sanitize: true
     }
   };
 
