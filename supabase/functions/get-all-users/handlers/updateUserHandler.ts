@@ -1,4 +1,5 @@
 
+// Enhanced updateUserHandler with comprehensive audit logging
 import { corsHeaders } from "../../_shared/standardImports.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
@@ -6,6 +7,10 @@ import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts
 export async function handleUpdateUser(supabase: any, adminId: string, req: Request) {
   try {
     const body = await req.json();
+    
+    // Get client information for audit logging
+    const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
     
     // Validate request parameters
     const validation = ParameterValidator.validateParameters(body, ParameterValidator.SCHEMAS.USER_UPDATE);
@@ -21,10 +26,10 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
 
     const userId = validation.sanitizedData.userId;
     
-    // Check if user exists
+    // Get existing user data for comparison and audit logging
     const { data: existingUser, error: userCheckError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('*')
       .eq('id', userId)
       .maybeSingle();
       
@@ -99,32 +104,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
     }
     if (validation.sanitizedData.membershipTier !== undefined) {
       profileUpdates.membership_tier = validation.sanitizedData.membershipTier;
-    }
-    if (validation.sanitizedData.socialLinks !== undefined) {
-      // Validate social links structure
-      try {
-        const socialLinks = typeof validation.sanitizedData.socialLinks === 'string' 
-          ? JSON.parse(validation.sanitizedData.socialLinks)
-          : validation.sanitizedData.socialLinks;
-          
-        if (socialLinks && typeof socialLinks === 'object') {
-          profileUpdates.social_links = socialLinks;
-        }
-      } catch (error) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'Social links validation failed', 
-            details: ['Invalid social links format'] 
-          }), 
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-    }
-
-    // Update profile if there are changes
+    // Update profile if there are changes with detailed audit logging
     if (Object.keys(profileUpdates).length > 0) {
       const { error: profileUpdateError } = await supabase
         .from('profiles')
@@ -161,6 +141,35 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
+      }
+
+      // Log each individual field change for detailed audit trail
+      for (const [fieldName, newValue] of Object.entries(profileUpdates)) {
+        const oldValue = existingUser[fieldName];
+        
+        // Only log if value actually changed
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+          try {
+            await supabase.rpc('log_user_profile_change', {
+              target_user_id: userId,
+              admin_id: adminId,
+              action_type: 'profile_field_update',
+              field_name: fieldName,
+              old_val: oldValue ? JSON.stringify(oldValue) : null,
+              new_val: JSON.stringify(newValue),
+              additional_metadata: JSON.stringify({
+                admin_action: true,
+                field_type: typeof newValue,
+                change_timestamp: new Date().toISOString()
+              }),
+              client_ip: clientIp,
+              client_user_agent: userAgent
+            });
+          } catch (auditError) {
+            console.error('Failed to log profile change:', auditError);
+            // Don't fail the main operation if audit logging fails
+          }
+        }
       }
     }
 
