@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -33,14 +33,23 @@ import { useSubscriptionActions } from "../hooks/useSubscriptionActions";
 import { ExtendedUserProfile } from "@/types/user";
 
 interface UserTableRowProps {
-  user: ExtendedUserProfile & { subscription?: { plan_name: string } | null, emailConfirmed?: boolean };
+  user: ExtendedUserProfile & { 
+    subscription?: { 
+      plan_name: string;
+      status: string;
+      is_lifetime: boolean;
+      price_usd: number;
+    } | null;
+    is_email_confirmed?: boolean;
+  };
   isUpdating: boolean;
-  onUpdateUser: (userId: string, data: Partial<UserProfile>) => void;
+  onUpdateUser: (userId: string, data: Partial<ExtendedUserProfile>) => void;
   onAssignPlan: (userId: string, planId: string) => void;
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string) => void;
   onResendConfirmation: (userId: string, email: string) => void;
   onRefresh: () => void;
+  onViewProfile?: () => void;
 }
 
 export function UserTableRow({ 
@@ -51,7 +60,8 @@ export function UserTableRow({
   onSendResetEmail,
   onDeleteUser,
   onResendConfirmation,
-  onRefresh
+  onRefresh,
+  onViewProfile
 }: UserTableRowProps) {
   const { canDeleteUsers, canCancelSubscriptions, canChangePasswords, canFullCRUD } = useAuth();
   const { processingUserId, cancelUserSubscription } = useSubscriptionActions();
@@ -106,32 +116,89 @@ export function UserTableRow({
 
   return (
     <tr className="border-b hover:bg-muted/50">
+      {/* User Info */}
       <TableCell className="font-medium">
-        {user.first_name || ''} {user.last_name || ''}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+            {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
+          </div>
+          <div>
+            <div className="font-medium">
+              {user.first_name || ''} {user.last_name || ''}
+            </div>
+            <div className="text-sm text-muted-foreground">@{user.username}</div>
+          </div>
+        </div>
       </TableCell>
-      <TableCell>{user.email}</TableCell>
+
+      {/* Contact */}
       <TableCell>
-        {user.emailConfirmed === false ? (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            Unconfirmed
+        <div>
+          <div className="text-sm">{user.email}</div>
+          {user.phone_number && (
+            <div className="text-xs text-muted-foreground">{user.phone_number}</div>
+          )}
+        </div>
+      </TableCell>
+
+      {/* Role & Status */}
+      <TableCell>
+        <div className="space-y-1">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role || 'user')}`}>
+            {user.role || 'user'}
           </span>
-        ) : (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            Confirmed
+          <div>
+            {user.is_email_confirmed === false ? (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                Unconfirmed
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Confirmed
+              </span>
+            )}
+          </div>
+        </div>
+      </TableCell>
+
+      {/* Subscription */}
+      <TableCell>
+        <div className="space-y-1">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSubscriptionBadgeColor(user.subscription?.plan_name || null)}`}>
+            {user.subscription?.plan_name || 'None'}
           </span>
-        )}
+          {user.subscription && (
+            <div className="text-xs text-muted-foreground">
+              ${user.subscription.price_usd}
+              {user.subscription.is_lifetime ? ' (Lifetime)' : '/mo'}
+            </div>
+          )}
+        </div>
       </TableCell>
+
+      {/* Location */}
       <TableCell>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role || 'user')}`}>
-          {user.role || 'user'}
-        </span>
+        <div className="text-sm">
+          {user.country && (
+            <div>{user.country}</div>
+          )}
+          {user.timezone && (
+            <div className="text-xs text-muted-foreground">{user.timezone}</div>
+          )}
+          {!user.country && !user.timezone && (
+            <span className="text-muted-foreground">N/A</span>
+          )}
+        </div>
       </TableCell>
-      <TableCell>{formatDate(user.created_at)}</TableCell>
-      <TableCell>{formatDate(user.last_sign_in_at)}</TableCell>
+
+      {/* Activity */}
       <TableCell>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSubscriptionBadgeColor(user.subscription?.plan_name || null)}`}>
-          {user.subscription?.plan_name || 'None'}
-        </span>
+        <div className="text-sm space-y-1">
+          <div>Joined {formatDate(user.created_at)}</div>
+          <div className="text-xs text-muted-foreground">
+            Last seen {formatDate(user.last_sign_in_at)}
+          </div>
+        </div>
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
@@ -143,6 +210,11 @@ export function UserTableRow({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            {onViewProfile && (
+              <DropdownMenuItem onClick={onViewProfile}>
+                <UserIcon className="mr-2 h-4 w-4" /> View Profile
+              </DropdownMenuItem>
+            )}
             {canFullCRUD && (
               <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
                 <Edit className="mr-2 h-4 w-4" /> Edit
@@ -161,8 +233,8 @@ export function UserTableRow({
             <DropdownMenuItem onClick={() => onSendResetEmail(user.email)}>
               <Send className="mr-2 h-4 w-4" /> Send Reset Email
             </DropdownMenuItem>
-            {user.emailConfirmed === false && (
-              <DropdownMenuItem onClick={() => onResendConfirmation(user.id, user.email)}>
+            {user.is_email_confirmed === false && (
+              <DropdownMenuItem onClick={() => onResendConfirmation(user.id, user.email!)}>
                 <Send className="mr-2 h-4 w-4" /> Resend Confirmation
               </DropdownMenuItem>
             )}
@@ -214,7 +286,7 @@ export function UserTableRow({
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={() => {
-                    onDeleteUser(user.id, user.email);
+                    onDeleteUser(user.id, user.email!);
                     setDeleteDialogOpen(false);
                   }}
                   className="bg-red-500 hover:bg-red-600 text-white"

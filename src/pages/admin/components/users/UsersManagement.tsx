@@ -98,6 +98,7 @@ export default function UsersManagement() {
                 users={users}
                 currentPage={currentPage}
                 totalPages={totalPages}
+                total={total}
                 onPageChange={onPageChange}
                 updatingUserId={updatingUserId}
                 onUpdateUser={updateUser}
@@ -106,6 +107,8 @@ export default function UsersManagement() {
                 onDeleteUser={deleteUser}
                 onResendConfirmation={resendConfirmationEmail}
                 onRefresh={refetch}
+                searchTerm={searchTerm}
+                onSearchChange={onSearchChange}
               />
               
               {/* Show total count info with performance data */}
