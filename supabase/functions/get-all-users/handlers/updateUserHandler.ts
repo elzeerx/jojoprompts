@@ -164,6 +164,112 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       }
     }
 
+    // Handle account status changes (enable/disable account)
+    if (validation.sanitizedData.accountStatus !== undefined) {
+      const isEnabled = validation.sanitizedData.accountStatus === 'enabled';
+      
+      const { error: statusUpdateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { 
+          user_metadata: { account_disabled: !isEnabled },
+          app_metadata: { account_disabled: !isEnabled }
+        }
+      );
+
+      if (statusUpdateError) {
+        console.error('Error updating account status:', statusUpdateError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update account status', 
+            details: statusUpdateError.message
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    // Handle email confirmation status
+    if (validation.sanitizedData.emailConfirmed !== undefined) {
+      const { error: confirmationError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { 
+          email_confirmed_at: validation.sanitizedData.emailConfirmed 
+            ? new Date().toISOString() 
+            : null
+        }
+      );
+
+      if (confirmationError) {
+        console.error('Error updating email confirmation:', confirmationError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update email confirmation status', 
+            details: confirmationError.message
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    // Handle account status changes (enable/disable account)
+    if (validation.sanitizedData.accountStatus !== undefined) {
+      const isEnabled = validation.sanitizedData.accountStatus === 'enabled';
+      
+      const { error: statusUpdateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { 
+          user_metadata: { account_disabled: !isEnabled },
+          app_metadata: { account_disabled: !isEnabled }
+        }
+      );
+
+      if (statusUpdateError) {
+        console.error('Error updating account status:', statusUpdateError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update account status', 
+            details: statusUpdateError.message
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    // Handle email confirmation status
+    if (validation.sanitizedData.emailConfirmed !== undefined) {
+      const { error: confirmationError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { 
+          email_confirmed_at: validation.sanitizedData.emailConfirmed 
+            ? new Date().toISOString() 
+            : null
+        }
+      );
+
+      if (confirmationError) {
+        console.error('Error updating email confirmation:', confirmationError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update email confirmation status', 
+            details: confirmationError.message
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
     // Update email if provided
     if (validation.sanitizedData.email) {
       const { error: emailUpdateError } = await supabase.auth.admin.updateUserById(

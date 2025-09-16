@@ -15,61 +15,47 @@ export function useUserUpdate() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ userId, data }: { userId: string; data: UserUpdateData }): Promise<UserUpdateResult> => {
-      let updated = false;
-      const updates: any = {};
-
       // Validate role if provided
       if (data.role) {
         const roleValidation = validateRole(data.role);
         if (!roleValidation.isValid) {
           throw new Error(roleValidation.error);
         }
-        updates.role = data.role;
       }
 
-      // Update user profile data
-      if (data.first_name !== undefined || data.last_name !== undefined || data.role) {
-        const profileUpdates: any = {};
-        if (data.first_name !== undefined) profileUpdates.first_name = data.first_name;
-        if (data.last_name !== undefined) profileUpdates.last_name = data.last_name;
-        if (data.role) profileUpdates.role = data.role;
-
-        const { error } = await supabase
-          .from('profiles')
-          .update(profileUpdates)
-          .eq('id', userId);
-
-        if (error) throw error;
-        updated = true;
-        Object.assign(updates, profileUpdates);
-      }
-
-      // Update user email if provided
-      if (data.email) {
-        const { error } = await supabase.functions.invoke(
-          "get-all-users",
-          {
-            body: {
-              action: 'update',
-              userId,
-              userData: { email: data.email }
-            }
+      // Use the comprehensive edge function for all updates
+      const { data: result, error } = await supabase.functions.invoke(
+        "get-all-users",
+        {
+          body: {
+            action: 'update',
+            userId,
+            firstName: data.first_name,
+            lastName: data.last_name,
+            username: data.username,
+            email: data.email,
+            role: data.role,
+            bio: data.bio,
+            avatarUrl: data.avatar_url,
+            country: data.country,
+            phoneNumber: data.phone_number,
+            timezone: data.timezone,
+            membershipTier: data.membership_tier,
+            socialLinks: data.social_links,
+            accountStatus: (data as any).account_status,
+            emailConfirmed: (data as any).email_confirmed
           }
-        );
+        }
+      );
 
-        if (error) throw error;
-        updated = true;
-        updates.email = data.email;
-      }
-
-      if (!updated) {
-        throw new Error("No fields to update");
+      if (error) {
+        throw new Error(error.message || 'Failed to update user');
       }
 
       return {
         success: true,
-        message: "User updated successfully",
-        data: { userId, updates }
+        message: result?.message || "User updated successfully",
+        data: result
       };
     },
     onMutate: async ({ userId, data }) => {

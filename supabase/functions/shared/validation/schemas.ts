@@ -90,6 +90,20 @@ export class ValidationSchemas {
       type: 'string',
       allowedValues: ['free', 'basic', 'premium', 'enterprise'],
       sanitize: true
+    },
+    accountStatus: {
+      required: false,
+      type: 'string',
+      allowedValues: ['enabled', 'disabled'],
+      sanitize: true
+    },
+    emailConfirmed: {
+      required: false,
+      type: 'boolean'
+    },
+    socialLinks: {
+      required: false,
+      type: 'object'
     }
   };
 

@@ -35,10 +35,14 @@ import {
   Save,
   X,
   Plus,
-  Trash2
+  Trash2,
+  CheckCircle,
+  XCircle,
+  AlertCircle
 } from "lucide-react";
 import { ExtendedUserProfile, UserUpdateData, SocialLinks } from "@/types/user";
 import { validateUserProfileFields } from "../utils/fieldValidation";
+import { AvatarUpload } from "@/components/admin/AvatarUpload";
 
 interface UserProfileModalProps {
   open: boolean;
@@ -55,6 +59,8 @@ interface UserProfileModalProps {
       subscription_created_at?: string;
       duration_days?: number;
     } | null;
+    account_disabled?: boolean;
+    email_confirmed_at?: string | null;
   }) | null;
   onSave: (userId: string, data: UserUpdateData) => void;
   isLoading?: boolean;
@@ -328,10 +334,34 @@ export function UserProfileModal({
                             {user.bio || 'No bio available'}
                           </p>
                         )}
-                        {errors.bio && (
-                          <p className="text-xs text-red-500 mt-1">{errors.bio}</p>
-                        )}
-                      </div>
+                         {errors.bio && (
+                           <p className="text-xs text-red-500 mt-1">{errors.bio}</p>
+                         )}
+                       </div>
+                       
+                       <div>
+                         <Label>Profile Picture</Label>
+                         {isEditing ? (
+                           <AvatarUpload
+                             currentAvatarUrl={formData.avatar_url}
+                             userId={user.id}
+                             userName={`${user.first_name} ${user.last_name}`}
+                             onAvatarChange={(url) => handleChange('avatar_url', url)}
+                           />
+                         ) : (
+                           <div className="flex items-center gap-3 mt-2">
+                             <Avatar className="h-12 w-12">
+                               <AvatarImage src={user.avatar_url || undefined} />
+                               <AvatarFallback>
+                                 {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
+                               </AvatarFallback>
+                             </Avatar>
+                             <span className="text-sm text-muted-foreground">
+                               {user.avatar_url ? 'Custom avatar set' : 'Using default avatar'}
+                             </span>
+                           </div>
+                         )}
+                       </div>
                     </div>
                   </div>
 
@@ -398,12 +428,96 @@ export function UserProfileModal({
                         </p>
                       </div>
 
-                      <div>
-                        <Label>Last Sign In</Label>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {formatDate(user.last_sign_in_at)}
-                        </p>
-                      </div>
+                       <div>
+                         <Label>Last Sign In</Label>
+                         <p className="text-sm text-muted-foreground mt-1">
+                           {formatDate(user.last_sign_in_at)}
+                         </p>
+                       </div>
+
+                       <div>
+                         <Label>Account Status</Label>
+                         {isEditing ? (
+                           <Select
+                             value={user.account_disabled ? 'disabled' : 'enabled'}
+                             onValueChange={(value) => handleChange('account_status' as any, value)}
+                           >
+                             <SelectTrigger>
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="enabled">
+                                 <div className="flex items-center gap-2">
+                                   <CheckCircle className="h-4 w-4 text-green-600" />
+                                   Enabled
+                                 </div>
+                               </SelectItem>
+                               <SelectItem value="disabled">
+                                 <div className="flex items-center gap-2">
+                                   <XCircle className="h-4 w-4 text-red-600" />
+                                   Disabled
+                                 </div>
+                               </SelectItem>
+                             </SelectContent>
+                           </Select>
+                         ) : (
+                           <div className="flex items-center gap-2 mt-1">
+                             {user.account_disabled ? (
+                               <>
+                                 <XCircle className="h-4 w-4 text-red-600" />
+                                 <span className="text-sm text-red-600">Disabled</span>
+                               </>
+                             ) : (
+                               <>
+                                 <CheckCircle className="h-4 w-4 text-green-600" />
+                                 <span className="text-sm text-green-600">Enabled</span>
+                               </>
+                             )}
+                           </div>
+                         )}
+                       </div>
+
+                       <div>
+                         <Label>Email Verification</Label>
+                         {isEditing ? (
+                           <Select
+                             value={user.email_confirmed_at ? 'confirmed' : 'unconfirmed'}
+                             onValueChange={(value) => handleChange('email_confirmed' as any, value === 'confirmed')}
+                           >
+                             <SelectTrigger>
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="confirmed">
+                                 <div className="flex items-center gap-2">
+                                   <CheckCircle className="h-4 w-4 text-green-600" />
+                                   Verified
+                                 </div>
+                               </SelectItem>
+                               <SelectItem value="unconfirmed">
+                                 <div className="flex items-center gap-2">
+                                   <AlertCircle className="h-4 w-4 text-orange-600" />
+                                   Unverified
+                                 </div>
+                               </SelectItem>
+                             </SelectContent>
+                           </Select>
+                         ) : (
+                           <div className="flex items-center gap-2 mt-1">
+                             {user.email_confirmed_at ? (
+                               <>
+                                 <CheckCircle className="h-4 w-4 text-green-600" />
+                                 <span className="text-sm text-green-600">Verified</span>
+                               </>
+                             ) : (
+                               <>
+                                 <AlertCircle className="h-4 w-4 text-orange-600" />
+                                 <span className="text-sm text-orange-600">Unverified</span>
+                               </>
+                             )}
+                           </div>
+                         )}
+                       </div>
                     </div>
                   </div>
                 </div>
