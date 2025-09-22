@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_access_tokens: {
+        Row: {
+          admin_user_id: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          ip_address: string | null
+          is_valid: boolean | null
+          metadata: Json | null
+          operation_type: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean | null
+          metadata?: Json | null
+          operation_type: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean | null
+          metadata?: Json | null
+          operation_type?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       admin_audit_log: {
         Row: {
           action: string
@@ -41,6 +80,39 @@ export type Database = {
           metadata?: Json | null
           target_resource?: string
           timestamp?: string | null
+        }
+        Relationships: []
+      }
+      admin_ip_restrictions: {
+        Row: {
+          admin_user_id: string
+          allowed_ip_ranges: string[]
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          restriction_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          allowed_ip_ranges: string[]
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          restriction_type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          allowed_ip_ranges?: string[]
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          restriction_type?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -185,6 +257,78 @@ export type Database = {
           name?: string
           updated_at?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      data_classification_metadata: {
+        Row: {
+          access_roles: string[] | null
+          classification: Database["public"]["Enums"]["data_classification"]
+          column_name: string
+          created_at: string | null
+          encryption_required: boolean | null
+          id: string
+          retention_days: number | null
+          table_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_roles?: string[] | null
+          classification?: Database["public"]["Enums"]["data_classification"]
+          column_name: string
+          created_at?: string | null
+          encryption_required?: boolean | null
+          id?: string
+          retention_days?: number | null
+          table_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_roles?: string[] | null
+          classification?: Database["public"]["Enums"]["data_classification"]
+          column_name?: string
+          created_at?: string | null
+          encryption_required?: boolean | null
+          id?: string
+          retention_days?: number | null
+          table_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      data_retention_policies: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          deletion_criteria: Json | null
+          id: string
+          is_active: boolean | null
+          last_cleanup_at: string | null
+          retention_days: number
+          table_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          deletion_criteria?: Json | null
+          id?: string
+          is_active?: boolean | null
+          last_cleanup_at?: string | null
+          retention_days: number
+          table_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          deletion_criteria?: Json | null
+          id?: string
+          is_active?: boolean | null
+          last_cleanup_at?: string | null
+          retention_days?: number
+          table_name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -985,6 +1129,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_privacy_consent: {
+        Row: {
+          consent_given: boolean
+          consent_type: string
+          consent_version: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string
+          withdrawn_at: string | null
+        }
+        Insert: {
+          consent_given?: boolean
+          consent_type: string
+          consent_version?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id: string
+          withdrawn_at?: string | null
+        }
+        Update: {
+          consent_given?: boolean
+          consent_type?: string
+          consent_version?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string
+          withdrawn_at?: string | null
+        }
+        Relationships: []
+      }
       user_subscriptions: {
         Row: {
           created_at: string | null
@@ -1063,6 +1246,10 @@ export type Database = {
         Args: { _admin_id: string; _user_id: string }
         Returns: Json
       }
+      cleanup_expired_data: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       cleanup_expired_magic_tokens: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1085,6 +1272,10 @@ export type Database = {
       }
       delete_user_account: {
         Args: { _user_id: string }
+        Returns: Json
+      }
+      export_user_data: {
+        Args: { target_user_id: string }
         Returns: Json
       }
       get_public_prompt_previews: {
@@ -1153,7 +1344,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      data_classification: "public" | "internal" | "sensitive" | "restricted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1280,6 +1471,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      data_classification: ["public", "internal", "sensitive", "restricted"],
+    },
   },
 } as const
