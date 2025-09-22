@@ -21,7 +21,7 @@ export function useLoginSubmission(onSuccess?: () => void) {
       return false;
     }
 
-    const validation = SecurityEnforcer.validateUserInput(values);
+    const validation = await SecurityEnforcer.validateUserInput(values);
 
     if (!validation.isValid) {
       toast({

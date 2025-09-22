@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "react-router-dom";
 import { securityLogger } from "@/utils/security/securityLogger";
+import { EnhancedSecurityLogger } from "@/utils/security/enhancedSecurityLogger";
+import { SessionIntegrity } from "@/utils/security/sessionIntegrity";
 import { EnhancedSessionValidator } from "@/utils/security/enhancedSessionValidator";
 import { SecurityHeaders } from "@/utils/security/securityHeaders";
 
@@ -45,21 +47,32 @@ export function useSecurityMonitoring(options: SecurityMonitoringOptions = {}) {
     if (enableSessionValidation) {
       sessionValidator.current = setInterval(async () => {
         if (user) {
-          const result = await EnhancedSessionValidator.validateSession(user.id);
-          
-          if (!result.isValid) {
-            securityLogger.logSecurityEvent({
-              action: 'session_validation_failed',
-              userId: user.id,
-              details: { reason: result.reason }
-            });
-          }
+          try {
+            // Use both enhanced and legacy session validation
+            const [legacyValidation, sessionIntegrityValidation] = await Promise.all([
+              EnhancedSessionValidator.validateSession(user.id),
+              SessionIntegrity.validateSession()
+            ]);
 
-          if (result.securityFlags && result.securityFlags.length > 0) {
-            securityLogger.logSecurityEvent({
-              action: 'security_flags_detected',
-              userId: user.id,
-              details: { flags: result.securityFlags }
+            if (!legacyValidation.isValid || !sessionIntegrityValidation.isValid) {
+              await EnhancedSecurityLogger.logAuthenticationEvent(
+                'session_validation_failed',
+                false,
+                { 
+                  legacyReason: legacyValidation.reason,
+                  integrityReason: sessionIntegrityValidation.reason,
+                  securityFlags: legacyValidation.securityFlags 
+                }
+              );
+
+              // If session integrity fails, invalidate the session
+              if (!sessionIntegrityValidation.isValid) {
+                await SessionIntegrity.invalidateSession();
+              }
+            }
+          } catch (error) {
+            await EnhancedSecurityLogger.logSystemEvent('session_validation_error', 'medium', {
+              error: error instanceof Error ? error.message : 'Unknown error'
             });
           }
         }
