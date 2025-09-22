@@ -768,8 +768,10 @@ export type Database = {
           action: string
           created_at: string | null
           details: Json | null
+          event_category: string | null
           id: string
           ip_address: string | null
+          severity: string | null
           user_agent: string | null
           user_id: string | null
         }
@@ -777,8 +779,10 @@ export type Database = {
           action: string
           created_at?: string | null
           details?: Json | null
+          event_category?: string | null
           id?: string
           ip_address?: string | null
+          severity?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -786,10 +790,48 @@ export type Database = {
           action?: string
           created_at?: string | null
           details?: Json | null
+          event_category?: string | null
           id?: string
           ip_address?: string | null
+          severity?: string | null
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      session_integrity: {
+        Row: {
+          created_at: string | null
+          fingerprint_hash: string
+          id: string
+          ip_address: string | null
+          is_valid: boolean | null
+          last_activity: string | null
+          session_token_hash: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          fingerprint_hash: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean | null
+          last_activity?: string | null
+          session_token_hash: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          fingerprint_hash?: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean | null
+          last_activity?: string | null
+          session_token_hash?: string
+          user_agent?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -888,6 +930,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      unsubscribe_rate_limits: {
+        Row: {
+          attempts: number | null
+          blocked_until: string | null
+          created_at: string | null
+          email: string
+          id: string
+          ip_address: string
+          window_start: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          ip_address: string
+          window_start?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          ip_address?: string
+          window_start?: string | null
+        }
+        Relationships: []
       }
       unsubscribed_emails: {
         Row: {
@@ -992,6 +1064,10 @@ export type Database = {
         Returns: Json
       }
       cleanup_expired_magic_tokens: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
