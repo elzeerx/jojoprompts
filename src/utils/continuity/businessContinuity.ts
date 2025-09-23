@@ -144,10 +144,10 @@ export class BusinessContinuityManager {
           plan_name: planData.planName,
           plan_type: planData.planType,
           scope_description: planData.scopeDescription,
-          recovery_objectives: planData.recoveryObjectives,
-          procedures: planData.procedures,
-          resource_requirements: planData.resourceRequirements,
-          testing_schedule: planData.testingSchedule,
+          recovery_objectives: planData.recoveryObjectives as any,
+          procedures: planData.procedures as any,
+          resource_requirements: planData.resourceRequirements as any,
+          testing_schedule: planData.testingSchedule as any,
           effectiveness_score: 0,
           approval_status: 'draft',
           version_number: '1.0',
@@ -161,14 +161,14 @@ export class BusinessContinuityManager {
       const plan: BusinessContinuityPlan = {
         id: data.id,
         planName: data.plan_name,
-        planType: data.plan_type,
+        planType: data.plan_type as 'disaster_recovery' | 'incident_response' | 'data_backup',
         scopeDescription: data.scope_description,
-        recoveryObjectives: data.recovery_objectives,
-        procedures: data.procedures || [],
-        resourceRequirements: data.resource_requirements || {},
-        testingSchedule: data.testing_schedule || {},
+        recoveryObjectives: (data.recovery_objectives as any) || {},
+        procedures: (data.procedures as any) || [],
+        resourceRequirements: (data.resource_requirements as any) || {},
+        testingSchedule: (data.testing_schedule as any) || {},
         effectivenessScore: data.effectiveness_score,
-        approvalStatus: data.approval_status,
+        approvalStatus: data.approval_status as 'draft' | 'under_review' | 'approved' | 'expired',
         versionNumber: data.version_number,
         isActive: data.is_active
       };
@@ -335,9 +335,9 @@ export class BusinessContinuityManager {
         .update({
           testing_schedule: {
             ...plan.testingSchedule,
-            lastTestDate: testStartTime,
-            nextTestDate
-          }
+            lastTestDate: testStartTime.toISOString(),
+            nextTestDate: nextTestDate.toISOString()
+          } as any
         })
         .eq('id', planId);
 
@@ -457,14 +457,14 @@ export class BusinessContinuityManager {
     return data.length > 0 ? {
       id: data[0].id,
       planName: data[0].plan_name,
-      planType: data[0].plan_type,
+      planType: data[0].plan_type as 'disaster_recovery' | 'incident_response' | 'data_backup',
       scopeDescription: data[0].scope_description,
-      recoveryObjectives: data[0].recovery_objectives || {},
-      procedures: data[0].procedures || [],
-      resourceRequirements: data[0].resource_requirements || {},
-      testingSchedule: data[0].testing_schedule || {},
+      recoveryObjectives: (data[0].recovery_objectives as any) || {},
+      procedures: (data[0].procedures as any) || [],
+      resourceRequirements: (data[0].resource_requirements as any) || {},
+      testingSchedule: (data[0].testing_schedule as any) || {},
       effectivenessScore: data[0].effectiveness_score || 0,
-      approvalStatus: data[0].approval_status,
+      approvalStatus: data[0].approval_status as 'draft' | 'under_review' | 'approved' | 'expired',
       versionNumber: data[0].version_number,
       isActive: data[0].is_active
     } : null;
@@ -602,14 +602,14 @@ export class BusinessContinuityManager {
     return {
       id: data.id,
       planName: data.plan_name,
-      planType: data.plan_type,
+      planType: data.plan_type as 'disaster_recovery' | 'incident_response' | 'data_backup',
       scopeDescription: data.scope_description,
-      recoveryObjectives: data.recovery_objectives || {},
-      procedures: data.procedures || [],
-      resourceRequirements: data.resource_requirements || {},
-      testingSchedule: data.testing_schedule || {},
+      recoveryObjectives: (data.recovery_objectives as any) || {},
+      procedures: (data.procedures as any) || [],
+      resourceRequirements: (data.resource_requirements as any) || {},
+      testingSchedule: (data.testing_schedule as any) || {},
       effectivenessScore: data.effectiveness_score || 0,
-      approvalStatus: data.approval_status,
+      approvalStatus: data.approval_status as 'draft' | 'under_review' | 'approved' | 'expired',
       versionNumber: data.version_number,
       isActive: data.is_active
     };

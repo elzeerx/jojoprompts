@@ -216,7 +216,7 @@ export class SecurityTestingFramework {
           p_assessment_type: 'penetration_test',
           p_target_system: config.scope.targets[0],
           p_scheduled_date: scheduledDate.toISOString(),
-          p_scope: config
+          p_scope: config as any
         });
 
       if (error) throw error;
@@ -264,9 +264,9 @@ export class SecurityTestingFramework {
       await supabase
         .from('security_assessments')
         .update({
-          vulnerabilities,
-          risk_matrix: riskMatrix,
-          remediation_plan: remediationPlan,
+          vulnerabilities: vulnerabilities as any,
+          risk_matrix: riskMatrix as any,
+          remediation_plan: remediationPlan as any,
           status: 'completed',
           completed_at: new Date().toISOString()
         })
@@ -320,10 +320,10 @@ export class SecurityTestingFramework {
         id: data.id,
         assessmentType: data.assessment_type as any,
         targetSystem: data.target_system,
-        scope: data.assessment_scope,
-        vulnerabilities: data.vulnerabilities || [],
-        riskMatrix: data.risk_matrix || { criticalRisk: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0, totalVulnerabilities: 0, riskScore: 0 },
-        remediationPlan: data.remediation_plan || [],
+        scope: (data.assessment_scope as any) || { targets: [], excludedTargets: [], testTypes: [], constraints: {} },
+        vulnerabilities: (data.vulnerabilities as any) || [],
+        riskMatrix: (data.risk_matrix as any) || { criticalRisk: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0, totalVulnerabilities: 0, riskScore: 0 },
+        remediationPlan: (data.remediation_plan as any) || [],
         status: data.status as any,
         metadata: {}
       };

@@ -22,6 +22,14 @@ export interface TrainingContent {
   practicalExercises: PracticalExercise[];
 }
 
+export interface TrainingResource {
+  id: string;
+  title: string;
+  type: 'document' | 'video' | 'link' | 'tool';
+  url: string;
+  description: string;
+}
+
 export interface TrainingSection {
   id: string;
   title: string;
@@ -275,18 +283,21 @@ export class SecurityAwarenessManager {
       const status = result.passed ? 'completed' : 'failed';
       const certificateIssued = result.passed && module.certification !== null;
 
+      const updateData: any = {
+
+        completion_status: status,
+        completion_date: result.passed ? new Date().toISOString() : null,
+        score: result.score,
+        assessment_results: { ...record.assessment_results as any, [Date.now()]: result },
+        certificate_issued: certificateIssued,
+        expiry_date: certificateIssued ? 
+          new Date(Date.now() + module.certification.validityPeriod * 30 * 24 * 60 * 60 * 1000).toISOString() :
+          null
+      };
+
       await supabase
         .from('security_training_records')
-        .update({
-          completion_status: status,
-          completion_date: result.passed ? new Date().toISOString() : null,
-          score: result.score,
-          assessment_results: { ...record.assessment_results, [Date.now()]: result },
-          certificate_issued: certificateIssued,
-          expiry_date: certificateIssued ? 
-            new Date(Date.now() + module.certification.validityPeriod * 30 * 24 * 60 * 60 * 1000).toISOString() :
-            null
-        })
+        .update(updateData)
         .eq('id', recordId);
 
       logger.info('Training assessment submitted', { 
