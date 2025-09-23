@@ -239,6 +239,93 @@ export type Database = {
         }
         Relationships: []
       }
+      automated_responses: {
+        Row: {
+          action_parameters: Json | null
+          action_type: string
+          condition_rules: Json
+          created_at: string | null
+          created_by: string | null
+          execution_count: number | null
+          id: string
+          is_active: boolean | null
+          last_executed: string | null
+          trigger_event: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_parameters?: Json | null
+          action_type: string
+          condition_rules: Json
+          created_at?: string | null
+          created_by?: string | null
+          execution_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_executed?: string | null
+          trigger_event: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_parameters?: Json | null
+          action_type?: string
+          condition_rules?: Json
+          created_at?: string | null
+          created_by?: string | null
+          execution_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_executed?: string | null
+          trigger_event?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      behavioral_anomalies: {
+        Row: {
+          anomaly_details: Json
+          anomaly_type: string
+          baseline_deviation: number | null
+          created_at: string | null
+          detection_algorithm: string
+          false_positive: boolean | null
+          id: string
+          investigated_at: string | null
+          investigated_by: string | null
+          is_confirmed: boolean | null
+          severity_score: number
+          user_id: string | null
+        }
+        Insert: {
+          anomaly_details: Json
+          anomaly_type: string
+          baseline_deviation?: number | null
+          created_at?: string | null
+          detection_algorithm: string
+          false_positive?: boolean | null
+          id?: string
+          investigated_at?: string | null
+          investigated_by?: string | null
+          is_confirmed?: boolean | null
+          severity_score: number
+          user_id?: string | null
+        }
+        Update: {
+          anomaly_details?: Json
+          anomaly_type?: string
+          baseline_deviation?: number | null
+          created_at?: string | null
+          detection_algorithm?: string
+          false_positive?: boolean | null
+          id?: string
+          investigated_at?: string | null
+          investigated_by?: string | null
+          is_confirmed?: boolean | null
+          severity_score?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           bg_gradient: string
@@ -744,6 +831,48 @@ export type Database = {
           },
         ]
       }
+      ml_models: {
+        Row: {
+          accuracy_score: number | null
+          algorithm: string
+          configuration: Json
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          last_trained: string | null
+          model_name: string
+          model_type: string
+          training_data_period: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          accuracy_score?: number | null
+          algorithm: string
+          configuration: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_trained?: string | null
+          model_name: string
+          model_type: string
+          training_data_period?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          accuracy_score?: number | null
+          algorithm?: string
+          configuration?: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_trained?: string | null
+          model_name?: string
+          model_type?: string
+          training_data_period?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1087,6 +1216,114 @@ export type Database = {
         }
         Relationships: []
       }
+      response_executions: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          execution_status: string
+          execution_time_ms: number | null
+          id: string
+          incident_id: string | null
+          response_id: string | null
+          result_details: Json | null
+          triggered_by: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          execution_status?: string
+          execution_time_ms?: number | null
+          id?: string
+          incident_id?: string | null
+          response_id?: string | null
+          result_details?: Json | null
+          triggered_by: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          execution_status?: string
+          execution_time_ms?: number | null
+          id?: string
+          incident_id?: string | null
+          response_id?: string | null
+          result_details?: Json | null
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "response_executions_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "security_incidents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "response_executions_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "automated_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_incidents: {
+        Row: {
+          affected_resources: Json | null
+          affected_users: Json | null
+          assigned_to: string | null
+          containment_actions: Json | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          evidence: Json | null
+          id: string
+          incident_type: string
+          resolved_at: string | null
+          severity: string
+          status: string
+          timeline: Json | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          affected_resources?: Json | null
+          affected_users?: Json | null
+          assigned_to?: string | null
+          containment_actions?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          evidence?: Json | null
+          id?: string
+          incident_type: string
+          resolved_at?: string | null
+          severity: string
+          status?: string
+          timeline?: Json | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          affected_resources?: Json | null
+          affected_users?: Json | null
+          assigned_to?: string | null
+          containment_actions?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          evidence?: Json | null
+          id?: string
+          incident_type?: string
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          timeline?: Json | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       security_logs: {
         Row: {
           action: string
@@ -1118,6 +1355,60 @@ export type Database = {
           id?: string
           ip_address?: string | null
           severity?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      security_monitoring_events: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          is_resolved: boolean | null
+          metadata: Json | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          source: string
+          title: string
+          updated_at: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          is_resolved?: boolean | null
+          metadata?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          source: string
+          title: string
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          is_resolved?: boolean | null
+          metadata?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          source?: string
+          title?: string
+          updated_at?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1192,6 +1483,57 @@ export type Database = {
           is_lifetime?: boolean
           name?: string
           price_usd?: number
+        }
+        Relationships: []
+      }
+      threat_indicators: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          description: string | null
+          first_seen: string | null
+          id: string
+          indicator_type: string
+          indicator_value: string
+          is_active: boolean | null
+          last_seen: string | null
+          metadata: Json | null
+          severity: string
+          source: string
+          threat_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          description?: string | null
+          first_seen?: string | null
+          id?: string
+          indicator_type: string
+          indicator_value: string
+          is_active?: boolean | null
+          last_seen?: string | null
+          metadata?: Json | null
+          severity: string
+          source: string
+          threat_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          description?: string | null
+          first_seen?: string | null
+          id?: string
+          indicator_type?: string
+          indicator_value?: string
+          is_active?: boolean | null
+          last_seen?: string | null
+          metadata?: Json | null
+          severity?: string
+          source?: string
+          threat_type?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1306,6 +1648,36 @@ export type Database = {
           resubscribed_at?: string | null
           unsubscribe_type?: string
           unsubscribed_at?: string
+        }
+        Relationships: []
+      }
+      user_behavior_baselines: {
+        Row: {
+          baseline_data: Json
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          last_updated: string | null
+          metric_type: string
+          user_id: string
+        }
+        Insert: {
+          baseline_data: Json
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          last_updated?: string | null
+          metric_type: string
+          user_id: string
+        }
+        Update: {
+          baseline_data?: Json
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          last_updated?: string | null
+          metric_type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1462,6 +1834,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: Json
       }
+      calculate_anomaly_score: {
+        Args: { p_current_data: Json; p_metric_type: string; p_user_id: string }
+        Returns: number
+      }
       can_access_sensitive_profile_data: {
         Args: { target_user_id?: string }
         Returns: boolean
@@ -1511,6 +1887,19 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      evaluate_response_conditions: {
+        Args: { p_conditions: Json; p_context: Json }
+        Returns: boolean
+      }
+      execute_response_action: {
+        Args: {
+          p_action_type: string
+          p_context: Json
+          p_execution_id: string
+          p_parameters: Json
+        }
+        Returns: undefined
       }
       export_user_data: {
         Args: { target_user_id: string }
@@ -1565,6 +1954,10 @@ export type Database = {
           user_id_param?: string
         }
         Returns: boolean
+      }
+      trigger_automated_response: {
+        Args: { p_context?: Json; p_event_type: string; p_severity: string }
+        Returns: Json
       }
       validate_api_request: {
         Args: {
