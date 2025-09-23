@@ -281,6 +281,81 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_recovery_logs: {
+        Row: {
+          automated: boolean | null
+          backup_location: string | null
+          backup_type: string
+          compression_ratio: number | null
+          created_at: string | null
+          data_size_bytes: number | null
+          data_sources: Json | null
+          duration_seconds: number | null
+          encryption_status: string | null
+          end_time: string | null
+          error_details: Json | null
+          expiry_date: string | null
+          id: string
+          initiated_by: string | null
+          operation_status: string | null
+          operation_type: string
+          recovery_point_objective_met: boolean | null
+          recovery_time_objective_met: boolean | null
+          retention_policy: string | null
+          start_time: string
+          verification_results: Json | null
+          verification_status: string | null
+        }
+        Insert: {
+          automated?: boolean | null
+          backup_location?: string | null
+          backup_type: string
+          compression_ratio?: number | null
+          created_at?: string | null
+          data_size_bytes?: number | null
+          data_sources?: Json | null
+          duration_seconds?: number | null
+          encryption_status?: string | null
+          end_time?: string | null
+          error_details?: Json | null
+          expiry_date?: string | null
+          id?: string
+          initiated_by?: string | null
+          operation_status?: string | null
+          operation_type: string
+          recovery_point_objective_met?: boolean | null
+          recovery_time_objective_met?: boolean | null
+          retention_policy?: string | null
+          start_time?: string
+          verification_results?: Json | null
+          verification_status?: string | null
+        }
+        Update: {
+          automated?: boolean | null
+          backup_location?: string | null
+          backup_type?: string
+          compression_ratio?: number | null
+          created_at?: string | null
+          data_size_bytes?: number | null
+          data_sources?: Json | null
+          duration_seconds?: number | null
+          encryption_status?: string | null
+          end_time?: string | null
+          error_details?: Json | null
+          expiry_date?: string | null
+          id?: string
+          initiated_by?: string | null
+          operation_status?: string | null
+          operation_type?: string
+          recovery_point_objective_met?: boolean | null
+          recovery_time_objective_met?: boolean | null
+          retention_policy?: string | null
+          start_time?: string
+          verification_results?: Json | null
+          verification_status?: string | null
+        }
+        Relationships: []
+      }
       behavioral_anomalies: {
         Row: {
           anomaly_details: Json
@@ -323,6 +398,72 @@ export type Database = {
           is_confirmed?: boolean | null
           severity_score?: number
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      business_continuity_plans: {
+        Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          created_by: string | null
+          effectiveness_score: number | null
+          id: string
+          is_active: boolean | null
+          last_tested: string | null
+          plan_name: string
+          plan_type: string
+          procedures: Json | null
+          recovery_objectives: Json | null
+          resource_requirements: Json | null
+          scope_description: string | null
+          test_results: Json | null
+          testing_schedule: Json | null
+          updated_at: string | null
+          version_number: string | null
+        }
+        Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          effectiveness_score?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_tested?: string | null
+          plan_name: string
+          plan_type: string
+          procedures?: Json | null
+          recovery_objectives?: Json | null
+          resource_requirements?: Json | null
+          scope_description?: string | null
+          test_results?: Json | null
+          testing_schedule?: Json | null
+          updated_at?: string | null
+          version_number?: string | null
+        }
+        Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          effectiveness_score?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_tested?: string | null
+          plan_name?: string
+          plan_type?: string
+          procedures?: Json | null
+          recovery_objectives?: Json | null
+          resource_requirements?: Json | null
+          scope_description?: string | null
+          test_results?: Json | null
+          testing_schedule?: Json | null
+          updated_at?: string | null
+          version_number?: string | null
         }
         Relationships: []
       }
@@ -437,6 +578,132 @@ export type Database = {
           name?: string
           updated_at?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      compliance_audits: {
+        Row: {
+          audit_date: string
+          audit_scope: Json | null
+          audit_type: string
+          auditor_id: string | null
+          completion_date: string | null
+          compliance_framework: string
+          compliance_score: number | null
+          created_at: string | null
+          findings: Json | null
+          id: string
+          next_audit_date: string | null
+          recommendations: Json | null
+          risk_score: number | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          audit_date?: string
+          audit_scope?: Json | null
+          audit_type: string
+          auditor_id?: string | null
+          completion_date?: string | null
+          compliance_framework: string
+          compliance_score?: number | null
+          created_at?: string | null
+          findings?: Json | null
+          id?: string
+          next_audit_date?: string | null
+          recommendations?: Json | null
+          risk_score?: number | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          audit_date?: string
+          audit_scope?: Json | null
+          audit_type?: string
+          auditor_id?: string | null
+          completion_date?: string | null
+          compliance_framework?: string
+          compliance_score?: number | null
+          created_at?: string | null
+          findings?: Json | null
+          id?: string
+          next_audit_date?: string | null
+          recommendations?: Json | null
+          risk_score?: number | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      compliance_controls: {
+        Row: {
+          control_category: string
+          control_id: string
+          control_name: string
+          created_at: string | null
+          description: string | null
+          effectiveness_rating: number | null
+          evidence_artifacts: Json | null
+          exceptions: Json | null
+          framework: string
+          id: string
+          implementation_details: Json | null
+          implementation_status: string | null
+          last_tested: string | null
+          next_review_date: string | null
+          owner_id: string | null
+          remediation_plan: Json | null
+          reviewer_id: string | null
+          risk_rating: string | null
+          test_results: Json | null
+          testing_frequency: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          control_category: string
+          control_id: string
+          control_name: string
+          created_at?: string | null
+          description?: string | null
+          effectiveness_rating?: number | null
+          evidence_artifacts?: Json | null
+          exceptions?: Json | null
+          framework: string
+          id?: string
+          implementation_details?: Json | null
+          implementation_status?: string | null
+          last_tested?: string | null
+          next_review_date?: string | null
+          owner_id?: string | null
+          remediation_plan?: Json | null
+          reviewer_id?: string | null
+          risk_rating?: string | null
+          test_results?: Json | null
+          testing_frequency?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          control_category?: string
+          control_id?: string
+          control_name?: string
+          created_at?: string | null
+          description?: string | null
+          effectiveness_rating?: number | null
+          evidence_artifacts?: Json | null
+          exceptions?: Json | null
+          framework?: string
+          id?: string
+          implementation_details?: Json | null
+          implementation_status?: string | null
+          last_tested?: string | null
+          next_review_date?: string | null
+          owner_id?: string | null
+          remediation_plan?: Json | null
+          reviewer_id?: string | null
+          risk_rating?: string | null
+          test_results?: Json | null
+          testing_frequency?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1267,6 +1534,66 @@ export type Database = {
           },
         ]
       }
+      security_assessments: {
+        Row: {
+          assessment_scope: Json | null
+          assessment_type: string
+          completed_at: string | null
+          compliance_impact: Json | null
+          conducted_by: string | null
+          created_at: string | null
+          id: string
+          next_assessment_date: string | null
+          remediation_plan: Json | null
+          risk_matrix: Json | null
+          scheduled_date: string | null
+          severity_distribution: Json | null
+          started_at: string | null
+          status: string
+          target_system: string
+          updated_at: string | null
+          vulnerabilities: Json | null
+        }
+        Insert: {
+          assessment_scope?: Json | null
+          assessment_type: string
+          completed_at?: string | null
+          compliance_impact?: Json | null
+          conducted_by?: string | null
+          created_at?: string | null
+          id?: string
+          next_assessment_date?: string | null
+          remediation_plan?: Json | null
+          risk_matrix?: Json | null
+          scheduled_date?: string | null
+          severity_distribution?: Json | null
+          started_at?: string | null
+          status?: string
+          target_system: string
+          updated_at?: string | null
+          vulnerabilities?: Json | null
+        }
+        Update: {
+          assessment_scope?: Json | null
+          assessment_type?: string
+          completed_at?: string | null
+          compliance_impact?: Json | null
+          conducted_by?: string | null
+          created_at?: string | null
+          id?: string
+          next_assessment_date?: string | null
+          remediation_plan?: Json | null
+          risk_matrix?: Json | null
+          scheduled_date?: string | null
+          severity_distribution?: Json | null
+          started_at?: string | null
+          status?: string
+          target_system?: string
+          updated_at?: string | null
+          vulnerabilities?: Json | null
+        }
+        Relationships: []
+      }
       security_incidents: {
         Row: {
           affected_resources: Json | null
@@ -1411,6 +1738,66 @@ export type Database = {
           updated_at?: string | null
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      security_training_records: {
+        Row: {
+          assessment_results: Json | null
+          certificate_data: Json | null
+          certificate_issued: boolean | null
+          completion_date: string | null
+          completion_status: string | null
+          created_at: string | null
+          expiry_date: string | null
+          id: string
+          next_training_date: string | null
+          refresher_required: boolean | null
+          score: number | null
+          start_date: string | null
+          training_category: string
+          training_module: string
+          training_provider: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assessment_results?: Json | null
+          certificate_data?: Json | null
+          certificate_issued?: boolean | null
+          completion_date?: string | null
+          completion_status?: string | null
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          next_training_date?: string | null
+          refresher_required?: boolean | null
+          score?: number | null
+          start_date?: string | null
+          training_category: string
+          training_module: string
+          training_provider?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assessment_results?: Json | null
+          certificate_data?: Json | null
+          certificate_issued?: boolean | null
+          completion_date?: string | null
+          completion_status?: string | null
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          next_training_date?: string | null
+          refresher_required?: boolean | null
+          score?: number | null
+          start_date?: string | null
+          training_category?: string
+          training_module?: string
+          training_provider?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -1888,6 +2275,10 @@ export type Database = {
         }
         Returns: Json
       }
+      evaluate_compliance_status: {
+        Args: { p_framework: string; p_scope?: Json }
+        Returns: Json
+      }
       evaluate_response_conditions: {
         Args: { p_conditions: Json; p_context: Json }
         Returns: boolean
@@ -1939,6 +2330,14 @@ export type Database = {
         Args: { _role: string; _user_id: string }
         Returns: boolean
       }
+      initiate_backup_operation: {
+        Args: {
+          p_automated?: boolean
+          p_backup_type: string
+          p_data_sources: Json
+        }
+        Returns: string
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -1954,6 +2353,15 @@ export type Database = {
           user_id_param?: string
         }
         Returns: boolean
+      }
+      schedule_security_assessment: {
+        Args: {
+          p_assessment_type: string
+          p_scheduled_date: string
+          p_scope?: Json
+          p_target_system: string
+        }
+        Returns: string
       }
       trigger_automated_response: {
         Args: { p_context?: Json; p_event_type: string; p_severity: string }
