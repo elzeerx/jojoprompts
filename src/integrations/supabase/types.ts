@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_evaluations: {
+        Row: {
+          action: string
+          context_data: Json | null
+          created_at: string | null
+          decision: string
+          evaluation_factors: Json | null
+          id: string
+          ip_address: string | null
+          resource_id: string | null
+          resource_type: string
+          risk_score: number | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          context_data?: Json | null
+          created_at?: string | null
+          decision: string
+          evaluation_factors?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type: string
+          risk_score?: number | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          context_data?: Json | null
+          created_at?: string | null
+          decision?: string
+          evaluation_factors?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          risk_score?: number | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       admin_access_tokens: {
         Row: {
           admin_user_id: string
@@ -113,6 +158,54 @@ export type Database = {
           is_active?: boolean | null
           restriction_type?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      api_request_logs: {
+        Row: {
+          created_at: string | null
+          endpoint: string
+          id: string
+          ip_address: string | null
+          is_suspicious: boolean | null
+          metadata: Json | null
+          method: string
+          request_signature: string | null
+          response_status: number | null
+          response_time_ms: number | null
+          risk_score: number | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          ip_address?: string | null
+          is_suspicious?: boolean | null
+          metadata?: Json | null
+          method: string
+          request_signature?: string | null
+          response_status?: number | null
+          response_time_ms?: number | null
+          risk_score?: number | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          ip_address?: string | null
+          is_suspicious?: boolean | null
+          metadata?: Json | null
+          method?: string
+          request_signature?: string | null
+          response_status?: number | null
+          response_time_ms?: number | null
+          risk_score?: number | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -329,6 +422,48 @@ export type Database = {
           retention_days?: number
           table_name?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      database_activity_log: {
+        Row: {
+          affected_rows: number | null
+          created_at: string | null
+          execution_time_ms: number | null
+          id: string
+          ip_address: string | null
+          is_suspicious: boolean | null
+          metadata: Json | null
+          operation: string
+          query_hash: string | null
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          affected_rows?: number | null
+          created_at?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          ip_address?: string | null
+          is_suspicious?: boolean | null
+          metadata?: Json | null
+          operation: string
+          query_hash?: string | null
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          affected_rows?: number | null
+          created_at?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          ip_address?: string | null
+          is_suspicious?: boolean | null
+          metadata?: Json | null
+          operation?: string
+          query_hash?: string | null
+          table_name?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -907,6 +1042,51 @@ export type Database = {
           },
         ]
       }
+      rate_limit_patterns: {
+        Row: {
+          blocked_until: string | null
+          created_at: string | null
+          id: string
+          identifier: string
+          is_blocked: boolean | null
+          max_requests: number
+          pattern_type: string
+          requests_count: number | null
+          updated_at: string | null
+          violation_count: number | null
+          window_duration_seconds: number
+          window_start: string | null
+        }
+        Insert: {
+          blocked_until?: string | null
+          created_at?: string | null
+          id?: string
+          identifier: string
+          is_blocked?: boolean | null
+          max_requests: number
+          pattern_type: string
+          requests_count?: number | null
+          updated_at?: string | null
+          violation_count?: number | null
+          window_duration_seconds: number
+          window_start?: string | null
+        }
+        Update: {
+          blocked_until?: string | null
+          created_at?: string | null
+          id?: string
+          identifier?: string
+          is_blocked?: boolean | null
+          max_requests?: number
+          pattern_type?: string
+          requests_count?: number | null
+          updated_at?: string | null
+          violation_count?: number | null
+          window_duration_seconds?: number
+          window_start?: string | null
+        }
+        Relationships: []
+      }
       security_logs: {
         Row: {
           action: string
@@ -1168,6 +1348,54 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          created_at: string | null
+          device_info: Json | null
+          expires_at: string
+          fingerprint_hash: string
+          id: string
+          ip_address: string | null
+          is_active: boolean | null
+          last_activity: string | null
+          location_data: Json | null
+          risk_score: number | null
+          session_token_hash: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          device_info?: Json | null
+          expires_at: string
+          fingerprint_hash: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          location_data?: Json | null
+          risk_score?: number | null
+          session_token_hash: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          device_info?: Json | null
+          expires_at?: string
+          fingerprint_hash?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          location_data?: Json | null
+          risk_score?: number | null
+          session_token_hash?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_subscriptions: {
         Row: {
           created_at: string | null
@@ -1274,6 +1502,16 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Json
       }
+      evaluate_access_request: {
+        Args: {
+          p_action?: string
+          p_context?: Json
+          p_resource_id?: string
+          p_resource_type: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       export_user_data: {
         Args: { target_user_id: string }
         Returns: Json
@@ -1328,6 +1566,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_api_request: {
+        Args: {
+          p_endpoint: string
+          p_ip_address?: string
+          p_method: string
+          p_request_signature?: string
+          p_user_agent?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
       validate_discount_code: {
         Args: {
           code_text: string
@@ -1341,6 +1590,15 @@ export type Database = {
           id: string
           is_valid: boolean
         }[]
+      }
+      validate_session_integrity: {
+        Args: {
+          p_fingerprint_hash: string
+          p_ip_address?: string
+          p_session_token_hash: string
+          p_user_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {
