@@ -123,7 +123,8 @@ export class UserService extends BaseService<UserProfile> {
     return this.executeQuery(
       'getUserProfile',
       async () => {
-        // Use the secure function to get user profile with proper access controls
+        // Use the enhanced secure function with strict access controls and audit logging
+        // Names and sensitive data are masked unless user has proper access
         const { data, error } = await supabase.rpc('get_user_profile_safe', {
           user_id_param: userId
         });
@@ -136,8 +137,8 @@ export class UserService extends BaseService<UserProfile> {
           return { 
             data: {
               id: profile.id,
-              first_name: profile.first_name,
-              last_name: profile.last_name,
+              first_name: profile.first_name, // Masked as '***' if no access
+              last_name: profile.last_name,   // Masked as '***' if no access
               username: profile.username,
               role: profile.role,
               avatar_url: profile.avatar_url,
@@ -154,6 +155,40 @@ export class UserService extends BaseService<UserProfile> {
         }
         
         throw new Error('User profile not found or access denied');
+      },
+      { userId }
+    );
+  }
+
+  /**
+   * Get minimal public profile information only (enhanced security)
+   * For use cases where only basic profile info is needed without exposing personal data
+   */
+  async getPublicProfile(userId: string): Promise<ApiResponse<Partial<UserProfile>>> {
+    return this.executeQuery(
+      'getPublicProfile',
+      async () => {
+        const { data, error } = await supabase.rpc('get_public_profile_safe', {
+          user_id_param: userId
+        });
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const profile = data[0];
+          return { 
+            data: {
+              id: profile.id,
+              username: profile.username,
+              role: profile.role,
+              avatar_url: profile.avatar_url,
+              bio: profile.bio,
+              created_at: profile.created_at
+            }
+          };
+        }
+        
+        throw new Error('Public profile not found');
       },
       { userId }
     );
