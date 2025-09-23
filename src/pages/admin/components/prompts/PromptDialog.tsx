@@ -599,12 +599,12 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="prompt-dialog w-full max-w-7xl h-[95vh] flex flex-col p-0">
+      <DialogContent className="prompt-dialog w-full max-w-[95vw] md:max-w-6xl h-[90vh] md:h-[95vh] flex flex-col p-0 mobile-container-padding">
         {/* Fixed Header */}
-        <div className="flex-shrink-0 p-6 border-b border-border">
-          <div className="flex items-center gap-4">
+        <div className="flex-shrink-0 p-4 md:p-6 border-b border-border mobile-section-padding">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             {/* Step Navigation */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               {selectedTemplate && step !== 'generate' && (
                 <Button 
                   variant="ghost" 
@@ -646,21 +646,21 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
               )}
             </div>
             
-            <div className="flex-1">
+            <div className="flex-1 w-full sm:w-auto">
               {selectedTemplate && (
                 <Badge 
-                  className="text-white text-xs mb-2"
+                  className="text-white text-xs mb-2 inline-flex"
                   style={{ backgroundColor: getCategoryColor(selectedTemplate.category) }}
                 >
                   {selectedTemplate.category} • {selectedTemplate.name}
                 </Badge>
               )}
               <DialogHeader className="text-left p-0">
-                <DialogTitle className="text-2xl sm:text-3xl font-bold text-foreground leading-tight flex items-center gap-2">
-                  <Sparkles className="h-6 w-6 text-[var(--warm-gold)]" />
-                  {editingPrompt ? "Edit Prompt" : (selectedTemplate ? getStepInfo().title : "Create Enhanced Prompt")}
+                <DialogTitle className="text-xl md:text-2xl xl:text-3xl font-bold text-foreground leading-tight flex items-center gap-2 flex-wrap">
+                  <Sparkles className="h-5 w-5 md:h-6 md:w-6 text-[var(--warm-gold)] flex-shrink-0" />
+                  <span className="break-words">{editingPrompt ? "Edit Prompt" : (selectedTemplate ? getStepInfo().title : "Create Enhanced Prompt")}</span>
                 </DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xs md:text-sm text-muted-foreground mt-1 break-words">
                   {selectedTemplate ? getStepInfo().description : "Choose an AI model template to get started"}
                 </p>
               </DialogHeader>
@@ -671,7 +671,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
               <Button
                 onClick={handleNext}
                 disabled={!canProceedToNext()}
-                className="bg-[var(--warm-gold)] hover:bg-[var(--warm-gold)]/90 text-white"
+                className="bg-[var(--warm-gold)] hover:bg-[var(--warm-gold)]/90 text-white w-full sm:w-auto mobile-button-primary"
+                size="sm"
               >
                 Next
               </Button>
@@ -680,8 +681,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
         </div>
         
         {/* Scrollable Content */}
-        <ScrollArea className="flex-1 px-6">
-          <div className="py-6">
+        <ScrollArea className="flex-1 px-4 md:px-6 mobile-container-padding">
+          <div className="py-4 md:py-6 mobile-section-padding">
             {!selectedTemplate ? (
               // Template Selection Step
               <CategorySelector
@@ -691,14 +692,14 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
               />
             ) : step === 'generate' ? (
               // Step 1: Generate
-              <div className="max-w-2xl mx-auto">
-                <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 p-8 rounded-xl border border-purple-200">
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-semibold text-foreground flex items-center justify-center gap-2 mb-2">
-                      <Wand2 className="h-6 w-6 text-purple-600" />
-                      AI Prompt Generator
+              <div className="w-full max-w-2xl mx-auto">
+                <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 p-4 md:p-8 rounded-xl border border-purple-200 mobile-card">
+                  <div className="text-center mb-4 md:mb-6">
+                    <h3 className="text-lg md:text-xl font-semibold text-foreground flex items-center justify-center gap-2 mb-2 flex-wrap">
+                      <Wand2 className="h-5 w-5 md:h-6 md:w-6 text-purple-600 flex-shrink-0" />
+                      <span>AI Prompt Generator</span>
                     </h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-sm md:text-base text-muted-foreground break-words">
                       Describe what you want and let GPT-5 create a professional prompt for you
                     </p>
                   </div>
@@ -713,29 +714,31 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                       placeholder="e.g., Create a prompt for writing engaging blog posts about technology, include SEO best practices and target audience considerations..."
                       value={generatorQuery}
                       onChange={(e) => setGeneratorQuery(e.target.value)}
-                      className="min-h-[120px] resize-none"
+                      className="min-h-[100px] md:min-h-[120px] resize-none text-sm md:text-base"
                       disabled={isGenerating}
                     />
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs text-muted-foreground space-y-1">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div className="text-xs text-muted-foreground space-y-1 order-2 sm:order-1">
                         <p>{generatorQuery.length}/8 characters minimum</p>
-                        <p className="text-green-600">💡 Tip: Be specific about your target audience, tone, and desired outcomes</p>
+                        <p className="text-green-600 break-words">💡 Tip: Be specific about your target audience, tone, and desired outcomes</p>
                       </div>
                       <Button
                         type="button"
                         onClick={handleAutoGenerate}
                         disabled={isGenerating || !selectedTemplate || generatorQuery.trim().length < 8}
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto mobile-button-primary order-1 sm:order-2"
+                        size="sm"
                       >
                         {isGenerating ? (
                           <div className="flex items-center gap-2">
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Generating...
+                            <span className="hidden sm:inline">Generating...</span>
+                            <span className="sm:hidden">...</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
                             <Sparkles className="h-4 w-4" />
-                            Generate
+                            <span>Generate</span>
                           </div>
                         )}
                       </Button>
@@ -901,11 +904,11 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
               </div>
             ) : step === 'edit' ? (
               // Step 2: Review & Edit
-              <form onSubmit={handleEnhancedSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <form onSubmit={handleEnhancedSubmit} className="space-y-4 md:space-y-6">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
                   {/* Left Column - Bilingual Fields */}
-                  <div className="space-y-6">
-                    <div className="bg-background/60 p-6 rounded-xl border border-border">
+                  <div className="space-y-4 md:space-y-6 order-1">
+                    <div className="bg-background/60 p-4 md:p-6 rounded-xl border border-border mobile-card">
                       <BilingualFields
                         title={bilingualData.title}
                         promptText={bilingualData.promptText}
@@ -916,8 +919,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
 
                     {/* Template-specific Fields */}
                     {selectedTemplate && selectedTemplate.fields.length > 0 && (
-                      <div className="bg-background/60 p-6 rounded-xl border border-border">
-                        <h3 className="font-semibold text-foreground mb-4">Template Configuration</h3>
+                      <div className="bg-background/60 p-4 md:p-6 rounded-xl border border-border mobile-card">
+                        <h3 className="font-medium md:font-semibold text-foreground mb-3 md:mb-4 text-sm md:text-base">Template Configuration</h3>
                         <DynamicFormRenderer
                           template={selectedTemplate}
                           formData={templateFormData}
@@ -929,8 +932,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                   </div>
 
                   {/* Right Column - Preview */}
-                  <div className="space-y-6">
-                    <div className="bg-background/60 p-6 rounded-xl border border-border">
+                  <div className="space-y-4 md:space-y-6 order-2">
+                    <div className="bg-background/60 p-4 md:p-6 rounded-xl border border-border mobile-card">
                       <PromptPreview
                         template={selectedTemplate}
                         formData={templateFormData}
@@ -943,14 +946,14 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
               </form>
             ) : step === 'metadata' ? (
               // Step 3: Metadata & Thumbnail
-              <form onSubmit={handleEnhancedSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-6">
+              <form onSubmit={handleEnhancedSubmit} className="space-y-4 md:space-y-6">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
+                  <div className="space-y-4 md:space-y-6 order-1">
                     {/* Image Upload Section */}
-                    <div className="bg-background/60 p-6 rounded-xl border border-border">
-                      <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                        <Upload className="h-5 w-5" />
-                        Prompt Thumbnail
+                    <div className="bg-background/60 p-4 md:p-6 rounded-xl border border-border mobile-card">
+                      <h3 className="font-medium md:font-semibold text-foreground mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base">
+                        <Upload className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+                        <span>Prompt Thumbnail</span>
                       </h3>
                       <SecureImageUploadField
                         imageUrl={imagePath}
@@ -971,8 +974,8 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                   </div>
 
                   {/* Right Column - Preview */}
-                  <div className="space-y-6">
-                    <div className="bg-background/60 p-6 rounded-xl border border-border">
+                  <div className="space-y-4 md:space-y-6 order-2">
+                    <div className="bg-background/60 p-4 md:p-6 rounded-xl border border-border mobile-card">
                       <PromptPreview
                         template={selectedTemplate}
                         formData={templateFormData}
@@ -985,10 +988,10 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
               </form>
             ) : (
               // Step 4: Preview & Save
-              <form onSubmit={handleEnhancedSubmit} className="space-y-6">
-                <div className="max-w-4xl mx-auto">
-                  <div className="bg-background/60 p-8 rounded-xl border border-border">
-                    <h3 className="text-xl font-semibold text-foreground mb-6 text-center">Final Preview</h3>
+              <form onSubmit={handleEnhancedSubmit} className="space-y-4 md:space-y-6">
+                <div className="w-full max-w-4xl mx-auto">
+                  <div className="bg-background/60 p-4 md:p-8 rounded-xl border border-border mobile-card">
+                    <h3 className="text-lg md:text-xl font-semibold text-foreground mb-4 md:mb-6 text-center">Final Preview</h3>
                     <PromptPreview
                       template={selectedTemplate}
                       formData={templateFormData}
@@ -998,20 +1001,20 @@ export function PromptDialog({ open, onOpenChange, onSuccess, editingPrompt, pro
                   </div>
 
                   {/* Form Footer Buttons */}
-                  <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-border mt-6">
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 md:pt-6 border-t border-border mt-4 md:mt-6 mobile-section-padding">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => onOpenChange(false)}
                       disabled={isSubmitting}
-                      className="px-6 py-3 text-base font-semibold rounded-xl order-2 sm:order-1"
+                      className="px-4 md:px-6 py-2 md:py-3 text-sm md:text-base font-medium md:font-semibold rounded-lg md:rounded-xl order-2 sm:order-1 mobile-button-secondary w-full sm:w-auto"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={isSubmitting}
-                      className="px-6 py-3 text-base font-semibold rounded-xl shadow-md order-1 sm:order-2"
+                      className="px-4 md:px-6 py-2 md:py-3 text-sm md:text-base font-medium md:font-semibold rounded-lg md:rounded-xl shadow-md order-1 sm:order-2 mobile-button-primary w-full sm:w-auto"
                       style={{ 
                         backgroundColor: selectedTemplate ? getCategoryColor(selectedTemplate.category) : 'hsl(var(--warm-gold))',
                         color: 'white'

@@ -103,7 +103,7 @@ export function DialogForm({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 mobile-element-spacing">
       <PromptFormField
         id="title"
         label="Title"
@@ -112,15 +112,15 @@ export function DialogForm({
       />
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Prompt Type</label>
+        <label className="text-sm font-medium mobile-input">Prompt Type</label>
         <Select 
           value={formData.promptType} 
           onValueChange={(value) => updateFormData('promptType', value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="mobile-select">
             <SelectValue placeholder="Select prompt type" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white border border-border shadow-lg rounded-lg z-50">
             <SelectItem value="text">Text</SelectItem>
             <SelectItem value="image">Image</SelectItem>
             <SelectItem value="workflow">Workflow</SelectItem>
@@ -139,11 +139,13 @@ export function DialogForm({
       />
 
       {/* Smart Input System */}
-      <SmartInputFields
-        metadata={formData.metadata}
-        onMetadataChange={updateMetadata}
-        promptText={formData.promptText}
-      />
+      <div className="mobile-card">
+        <SmartInputFields
+          metadata={formData.metadata}
+          onMetadataChange={updateMetadata}
+          promptText={formData.promptText}
+        />
+      </div>
 
       <div className="space-y-2">
         <label className="text-sm font-medium">Category</label>
@@ -155,10 +157,10 @@ export function DialogForm({
           }}
           disabled={categoriesLoading}
         >
-          <SelectTrigger>
+          <SelectTrigger className="mobile-select">
             <SelectValue placeholder={categoriesLoading ? "Loading categories..." : "Select category"} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white border border-border shadow-lg rounded-lg z-50">
             {/* Show active categories from database */}
             {activeCategories.map(category => (
               <SelectItem key={category.id} value={category.name}>
@@ -187,56 +189,70 @@ export function DialogForm({
       </div>
 
       {/* Main prompt image selection */}
-      <ImageSelectionField
-        currentImagePath={formData.imagePath}
-        onImagePathChange={handleImagePathChange}
-        onFileChange={onFileChange}
-        label="Main Prompt Image"
-      />
+      <div className="mobile-card">
+        <ImageSelectionField
+          currentImagePath={formData.imagePath}
+          onImagePathChange={handleImagePathChange}
+          onFileChange={onFileChange}
+          label="Main Prompt Image"
+        />
+      </div>
 
       {/* Multi-media upload for additional files */}
-      <MultiMediaUploadField
-        mediaFiles={formData.metadata?.media_files || []}
-        onMediaFilesChange={handleMediaFilesChange}
-        onFilesChange={handleMultipleFilesChange}
-      />
+      <div className="mobile-card">
+        <MultiMediaUploadField
+          mediaFiles={formData.metadata?.media_files || []}
+          onMediaFilesChange={handleMediaFilesChange}
+          onFilesChange={handleMultipleFilesChange}
+        />
+      </div>
 
       {/* n8n Workflow File Upload - Only show for workflow prompts */}
       {isN8nWorkflow && (
-        <WorkflowFileUpload
-          workflowFiles={workflowFiles}
-          onWorkflowFilesChange={handleWorkflowFilesChange}
-          onFilesChange={handleWorkflowFileUpload}
-        />
+        <div className="mobile-card">
+          <WorkflowFileUpload
+            workflowFiles={workflowFiles}
+            onWorkflowFilesChange={handleWorkflowFilesChange}
+            onFilesChange={handleWorkflowFileUpload}
+          />
+        </div>
       )}
 
       {formData.promptType === 'text' && (
-        <TextPromptFields
-          metadata={formData.metadata}
-          onMetadataChange={updateMetadata}
-          promptText={formData.promptText}
-        />
+        <div className="mobile-card">
+          <TextPromptFields
+            metadata={formData.metadata}
+            onMetadataChange={updateMetadata}
+            promptText={formData.promptText}
+          />
+        </div>
       )}
 
       {formData.promptType === 'button' && (
-        <ButtonPromptFields
-          metadata={formData.metadata}
-          onMetadataChange={updateMetadata}
-        />
+        <div className="mobile-card">
+          <ButtonPromptFields
+            metadata={formData.metadata}
+            onMetadataChange={updateMetadata}
+          />
+        </div>
       )}
 
       {formData.promptType === 'image-selection' && (
-        <ImageSelectionFields
-          metadata={formData.metadata}
-          onMetadataChange={updateMetadata}
-        />
+        <div className="mobile-card">
+          <ImageSelectionFields
+            metadata={formData.metadata}
+            onMetadataChange={updateMetadata}
+          />
+        </div>
       )}
 
       {formData.promptType === 'workflow' && (
-        <WorkflowFields
-          metadata={formData.metadata}
-          onMetadataChange={updateMetadata}
-        />
+        <div className="mobile-card">
+          <WorkflowFields
+            metadata={formData.metadata}
+            onMetadataChange={updateMetadata}
+          />
+        </div>
       )}
     </div>
   );
