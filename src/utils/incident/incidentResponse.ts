@@ -138,11 +138,11 @@ export class IncidentResponse {
           severity: incident.severity,
           title: incident.title,
           description: incident.description,
-          affected_users: incident.affectedUsers,
-          affected_resources: incident.affectedResources,
-          timeline: incident.timeline,
-          containment_actions: incident.containmentActions,
-          evidence: incident.evidence,
+          affected_users: incident.affectedUsers as any,
+          affected_resources: incident.affectedResources as any,
+          timeline: incident.timeline as any,
+          containment_actions: incident.containmentActions as any,
+          evidence: incident.evidence as any,
           created_by: incident.createdBy
         })
         .select('id')
@@ -290,7 +290,7 @@ export class IncidentResponse {
       await supabase
         .from('security_incidents')
         .update({
-          containment_actions: [containmentAction], // Simplified
+          containment_actions: [containmentAction] as any, // Simplified
           updated_at: new Date().toISOString()
         })
         .eq('id', incidentId);
@@ -325,7 +325,7 @@ export class IncidentResponse {
         .from('automated_responses')
         .insert({
           trigger_event: response.triggerEvent,
-          condition_rules: response.conditions,
+          condition_rules: response.conditions as any,
           action_type: response.actions[0]?.type || 'alert_admin', // Simplified
           action_parameters: response.actions[0]?.parameters || {},
           is_active: response.isActive

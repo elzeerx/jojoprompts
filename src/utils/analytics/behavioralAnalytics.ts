@@ -234,7 +234,7 @@ export class BehavioralAnalytics {
 
       if (existing) {
         // Update existing baseline with new data
-        const updatedBaseline = this.mergeBaselineData(existing.baseline_data, metric.data);
+        const updatedBaseline = this.mergeBaselineData(existing.baseline_data as Record<string, any>, metric.data);
         
         await supabase
           .from('user_behavior_baselines')
@@ -280,7 +280,7 @@ export class BehavioralAnalytics {
         return 0.5; // Neutral score on error
       }
 
-      return parseFloat(data) || 0.5;
+      return parseFloat(data.toString()) || 0.5;
     } catch (error) {
       logger.error('Error calculating anomaly score', { error });
       return 0.5;
