@@ -29,6 +29,7 @@ export default function UsersManagement() {
     assignPlanToUser,
     sendPasswordResetEmail,
     deleteUser,
+    DeleteDialog,
     retryCount,
     performance
   } = useUserManagement();
@@ -132,6 +133,8 @@ export default function UsersManagement() {
           <MarketingEmailsPanel />
         </TabsContent>
       </Tabs>
+      
+      <DeleteDialog />
     </div>
   );
 }

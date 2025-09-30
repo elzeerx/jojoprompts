@@ -286,7 +286,7 @@ export function UserTableRow({
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={() => {
-                    onDeleteUser(user.id, user.email!);
+                    onDeleteUser(user.id, user.email!, user.first_name, user.last_name, user.role);
                     setDeleteDialogOpen(false);
                   }}
                   className="bg-red-500 hover:bg-red-600 text-white"

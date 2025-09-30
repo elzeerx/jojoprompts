@@ -227,7 +227,7 @@ export function UsersTable({
               onViewProfile={() => handleViewProfile(user)}
               onAssignPlan={() => handleAssignPlan(user)}
               onSendResetEmail={() => onSendResetEmail(user.email!)}
-              onDeleteUser={() => onDeleteUser(user.id, user.email!)}
+              onDeleteUser={() => onDeleteUser(user.id, user.email!, user.first_name, user.last_name, user.role)}
               isUpdating={updatingUserId === user.id}
             />
           ))}
