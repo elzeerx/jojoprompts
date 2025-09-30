@@ -1,40 +1,102 @@
+import { useMemo } from "react";
+import { useSuperAdmin } from "./useSuperAdmin";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Centralized permission system for user management
+ * Provides granular permissions based on user role
+ */
 export function useUserPermissions() {
-  const { session, user } = useAuth();
-  const [canManagePrompts, setCanManagePrompts] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { isSuperAdmin } = useSuperAdmin();
+  const { isAdmin, isJadmin, canManagePrompts: hasManagePromptsPermission } = useAuth();
 
-  useEffect(() => {
-    async function checkPermissions() {
-      if (!user?.id) {
-        setCanManagePrompts(false);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .rpc('can_manage_prompts', { _user_id: user.id });
-        
-        if (error) {
-          console.error('Permission check error:', error);
-          setCanManagePrompts(false);
-        } else {
-          setCanManagePrompts(data || false);
-        }
-      } catch (error) {
-        console.error('Permission check failed:', error);
-        setCanManagePrompts(false);
-      } finally {
-        setLoading(false);
-      }
+  const permissions = useMemo(() => {
+    // Super admin has all permissions
+    if (isSuperAdmin) {
+      return {
+        canCreateUsers: true,
+        canReadUsers: true,
+        canUpdateUsers: true,
+        canDeleteUsers: true,
+        canChangePasswords: true,
+        canManageRoles: true,
+        canDeleteAdmins: true,
+        canViewSensitiveData: true,
+        canBulkOperations: true,
+        canImpersonateUsers: false, // Reserved for future implementation
+        canAccessAuditLogs: true,
+        canManageSubscriptions: true,
+        canExportUserData: true,
+        // Backward compatibility
+        canManagePrompts: hasManagePromptsPermission,
+        loading: false
+      };
     }
 
-    checkPermissions();
-  }, [user?.id, session]);
+    // Regular admin has limited permissions
+    if (isAdmin) {
+      return {
+        canCreateUsers: true,
+        canReadUsers: true,
+        canUpdateUsers: true,
+        canDeleteUsers: false, // Cannot delete users (only super admin)
+        canChangePasswords: false, // Cannot change passwords
+        canManageRoles: false, // Cannot change roles
+        canDeleteAdmins: false,
+        canViewSensitiveData: true,
+        canBulkOperations: false,
+        canImpersonateUsers: false,
+        canAccessAuditLogs: true,
+        canManageSubscriptions: false,
+        canExportUserData: true,
+        // Backward compatibility
+        canManagePrompts: hasManagePromptsPermission,
+        loading: false
+      };
+    }
 
-  return { canManagePrompts, loading };
+    // Junior admin (jadmin) has read-only permissions
+    if (isJadmin) {
+      return {
+        canCreateUsers: false,
+        canReadUsers: true,
+        canUpdateUsers: false,
+        canDeleteUsers: false,
+        canChangePasswords: false,
+        canManageRoles: false,
+        canDeleteAdmins: false,
+        canViewSensitiveData: false,
+        canBulkOperations: false,
+        canImpersonateUsers: false,
+        canAccessAuditLogs: true,
+        canManageSubscriptions: false,
+        canExportUserData: false,
+        // Backward compatibility
+        canManagePrompts: hasManagePromptsPermission,
+        loading: false
+      };
+    }
+
+    // No permissions for regular users
+    return {
+      canCreateUsers: false,
+      canReadUsers: false,
+      canUpdateUsers: false,
+      canDeleteUsers: false,
+      canChangePasswords: false,
+      canManageRoles: false,
+      canDeleteAdmins: false,
+      canViewSensitiveData: false,
+      canBulkOperations: false,
+      canImpersonateUsers: false,
+      canAccessAuditLogs: false,
+      canManageSubscriptions: false,
+      canExportUserData: false,
+      // Backward compatibility
+      canManagePrompts: hasManagePromptsPermission,
+      loading: false
+    };
+  }, [isSuperAdmin, isAdmin, isJadmin, hasManagePromptsPermission]);
+
+  return permissions;
 }

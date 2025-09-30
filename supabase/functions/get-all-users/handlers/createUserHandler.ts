@@ -1,18 +1,23 @@
-
 import { corsHeaders } from "../../_shared/standardImports.ts";
-import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
 
-
-export async function handleCreateUser(supabase: any, adminId: string, req: Request) {
+/**
+ * Create a new user with optional role assignment
+ * Only super admin can create users with admin/jadmin roles
+ */
+export async function handleCreateUser(supabase: any, adminId: string, requestBody: any) {
   try {
-    const body = await req.json();
-    
-    // Validate request parameters for user creation
-    const validation = ParameterValidator.validateParameters(body, ParameterValidator.SCHEMAS.USER_CREATE);
-    if (!validation.isValid) {
+    const { email, password, first_name, last_name, role = 'user' } = requestBody;
+    const ipAddress = requestBody.ip_address || 'unknown';
+    const userAgent = requestBody.user_agent || 'unknown';
+
+    // Validate required fields
+    if (!email || !password) {
       return new Response(
-        JSON.stringify({ error: 'Invalid parameters', details: validation.errors }), 
+        JSON.stringify({ 
+          error: 'Missing required fields', 
+          details: 'Email and password are required'
+        }), 
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -20,126 +25,107 @@ export async function handleCreateUser(supabase: any, adminId: string, req: Requ
       );
     }
 
-    // Generate unique username
-    const generateUsername = async (baseUsername: string): Promise<string> => {
-      let username = baseUsername;
-      let counter = 0;
-      
-      while (true) {
-        const { data: existingUser } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('username', username)
-          .single();
-          
-        if (!existingUser) {
-          return username;
-        }
-        
-        counter++;
-        username = `${baseUsername}${counter}`;
-        
-        if (counter > 999) {
-          throw new Error('Unable to generate unique username');
-        }
-      }
-    };
+    // Check if creating privileged role (admin/jadmin/prompter)
+    if (['admin', 'jadmin', 'prompter'].includes(role)) {
+      // Get admin's email from auth
+      const { data: adminAuth } = await supabase.auth.admin.getUserById(adminId);
+      const adminEmail = adminAuth?.user?.email;
 
-    // Create base username from available data
-    let baseUsername = '';
-    if (validation.sanitizedData.firstName || validation.sanitizedData.lastName) {
-      baseUsername = `${validation.sanitizedData.firstName || ''}${validation.sanitizedData.lastName || ''}`.toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
-    }
-    
-    if (!baseUsername) {
-      baseUsername = validation.sanitizedData.email.split('@')[0].toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
-    }
-    
-    if (!baseUsername) {
-      baseUsername = 'user';
-    }
+      // Only super admin can create privileged users
+      if (adminEmail !== 'nawaf@elzeer.com') {
+        await logSecurityEvent(supabase, {
+          user_id: adminId,
+          action: 'unauthorized_privileged_user_creation_attempt',
+          details: {
+            attempted_role: role,
+            admin_email: adminEmail || 'unknown',
+            target_email: email
+          }
+        });
 
-    const uniqueUsername = await generateUsername(baseUsername);
-
-    // Log the user creation attempt
-    await logAdminAction(supabase, adminId, 'create_user', 'users', {
-      email: validation.sanitizedData.email
-    });
-
-    // Create user in auth system
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: validation.sanitizedData.email,
-      email_confirm: true,
-      user_metadata: {
-        first_name: validation.sanitizedData.firstName,
-        last_name: validation.sanitizedData.lastName
-      },
-      app_metadata: {
-        role: validation.sanitizedData.role || 'user'
-      }
-    });
-
-    if (authError) {
-      console.error('Error creating user in auth system:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to create user', details: authError.message }), 
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Check if profile already exists (defensive programming)
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', authData.user.id)
-      .single();
-
-    if (existingProfile) {
-      console.log(`[createUserHandler] Profile already exists for user ${authData.user.id}, skipping profile creation`);
-    } else {
-      // Create profile record with username
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          first_name: validation.sanitizedData.firstName,
-          last_name: validation.sanitizedData.lastName,
-          username: uniqueUsername,
-          role: validation.sanitizedData.role || 'user'
-        })
-        .select()
-        .single();
-
-      if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        
-        // Attempt to clean up auth user if profile creation fails
-        try {
-          await supabase.auth.admin.deleteUser(authData.user.id);
-        } catch (cleanupError) {
-          console.error('Failed to clean up auth user after profile creation error:', cleanupError);
-        }
-        
         return new Response(
-          JSON.stringify({ error: 'Failed to create user profile', details: profileError.message }), 
+          JSON.stringify({ 
+            error: 'Only super admin can create users with privileged roles',
+            details: `Cannot create ${role} users`
+          }), 
           { 
-            status: 500, 
+            status: 403, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
       }
     }
 
+    // Log user creation attempt
+    await logAdminAction(supabase, adminId, 'create_user', 'users', {
+      target_email: email,
+      role,
+      ip_address: ipAddress,
+      user_agent: userAgent
+    }, ipAddress);
+
+    // Create user in auth
+    const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true, // Auto-confirm email for admin-created users
+      user_metadata: {
+        first_name: first_name || 'User',
+        last_name: last_name || ''
+      }
+    });
+
+    if (createError) {
+      console.error('[createUserHandler] Failed to create user:', createError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to create user', 
+          details: createError.message
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Create profile with specified role
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: newUser.user.id,
+        first_name: first_name || 'User',
+        last_name: last_name || '',
+        username: email.split('@')[0],
+        role
+      });
+
+    if (profileError) {
+      console.error('[createUserHandler] Failed to create profile:', profileError);
+      // If profile creation fails, delete the auth user
+      await supabase.auth.admin.deleteUser(newUser.user.id);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to create user profile', 
+          details: profileError.message
+        }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     // Log successful user creation
     await logSecurityEvent(supabase, {
       user_id: adminId,
       action: 'user_created',
-      details: { 
-        created_user_id: authData.user.id,
-        role: validation.sanitizedData.role || 'user'
+      details: {
+        new_user_id: newUser.user.id,
+        email,
+        role,
+        created_by_admin: true
       }
     });
 
@@ -148,24 +134,25 @@ export async function handleCreateUser(supabase: any, adminId: string, req: Requ
         success: true, 
         message: 'User created successfully',
         user: {
-          id: authData.user.id,
-          email: authData.user.email,
-          firstName: validation.sanitizedData.firstName,
-          lastName: validation.sanitizedData.lastName,
-          username: uniqueUsername,
-          role: validation.sanitizedData.role || 'user'
+          id: newUser.user.id,
+          email,
+          role
         }
       }), 
       { 
-        status: 201, 
+        status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
     
-  } catch (error) {
-    console.error('Error in handleCreateUser:', error);
+  } catch (error: any) {
+    console.error('[createUserHandler] Critical error:', error);
+    
     return new Response(
-      JSON.stringify({ error: 'Failed to create user' }), 
+      JSON.stringify({ 
+        error: 'Failed to create user', 
+        details: error.message
+      }), 
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
