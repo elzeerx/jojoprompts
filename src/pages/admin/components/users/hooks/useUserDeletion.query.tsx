@@ -1,6 +1,8 @@
+import React, { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { DeleteUserDialog } from "@/components/admin/DeleteUserDialog";
 
 interface UserDeletionResult {
   success: boolean;
@@ -10,6 +12,14 @@ interface UserDeletionResult {
 
 export function useUserDeletion() {
   const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  } | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: async ({ userId, email }: { userId: string; email: string }): Promise<UserDeletionResult> => {
@@ -18,7 +28,9 @@ export function useUserDeletion() {
       const { data, error } = await supabase.functions.invoke('get-all-users', {
         body: {
           action: 'delete',
-          userId
+          userId,
+          ip_address: window.location.hostname,
+          user_agent: navigator.userAgent
         }
       });
       
@@ -40,6 +52,13 @@ export function useUserDeletion() {
       };
     },
     retry: (failureCount, error) => {
+      // Don't retry rate limit or permission errors
+      if (error?.message?.includes("Too many deletion attempts") ||
+          error?.message?.includes("Only super admin") ||
+          error?.message?.includes("Permission denied")) {
+        return false;
+      }
+
       // Implement retry logic for transient failures
       const isTransientError = error?.message?.includes("Edge Function returned a non-2xx status code") ||
                               error?.message?.includes("network") ||
@@ -83,14 +102,18 @@ export function useUserDeletion() {
       let errorMessage = "Failed to delete user.";
       
       if (error.message) {
-        if (error.message.includes("Edge Function returned a non-2xx status code")) {
+        if (error.message.includes("Too many deletion attempts")) {
+          errorMessage = "Rate limit exceeded. Please wait before deleting more users.";
+        } else if (error.message.includes("Only super admin")) {
+          errorMessage = "Only the super administrator can delete admin accounts.";
+        } else if (error.message.includes("Permission denied")) {
+          errorMessage = "You don't have permission to delete this user.";
+        } else if (error.message.includes("Edge Function returned a non-2xx status code")) {
           errorMessage = "Server error occurred. Please try again or contact support.";
         } else if (error.message.includes("User not found")) {
           errorMessage = "User not found in database.";
         } else if (error.message.includes("Invalid user ID")) {
           errorMessage = "Invalid user ID provided.";
-        } else if (error.message.includes("Cannot delete another administrator")) {
-          errorMessage = "Cannot delete another administrator for security reasons.";
         } else if (error.message.includes("transaction")) {
           errorMessage = "Database transaction failed. Please try again.";
         } else {
@@ -115,9 +138,39 @@ export function useUserDeletion() {
     },
   });
 
+  const showDeleteDialog = useCallback((user: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  }) => {
+    setUserToDelete(user);
+    setDialogOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (userToDelete) {
+      deleteMutation.mutate({ userId: userToDelete.id, email: userToDelete.email });
+      setDialogOpen(false);
+    }
+  }, [userToDelete, deleteMutation]);
+
+  const DeleteDialogComponent = () => (
+    <DeleteUserDialog
+      open={dialogOpen}
+      onOpenChange={setDialogOpen}
+      user={userToDelete}
+      onConfirm={handleConfirmDelete}
+      isDeleting={deleteMutation.isPending}
+    />
+  );
+
   return {
     deleteUser: (userId: string, email: string) => 
       deleteMutation.mutateAsync({ userId, email }),
+    showDeleteDialog,
+    DeleteDialog: DeleteDialogComponent,
     processingUserId: deleteMutation.isPending ? deleteMutation.variables?.userId : null,
     isLoading: deleteMutation.isPending,
     error: deleteMutation.error?.message || null

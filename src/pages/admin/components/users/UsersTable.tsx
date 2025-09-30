@@ -44,7 +44,7 @@ interface UsersTableProps {
   onUpdateUser: (userId: string, data: Partial<ExtendedUserProfile>) => void;
   onAssignPlan: (userId: string, planId: string) => void;
   onSendResetEmail: (email: string) => void;
-  onDeleteUser: (userId: string, email: string) => void;
+  onDeleteUser: (userId: string, email: string, firstName: string, lastName: string, role: string) => void;
   onResendConfirmation: (userId: string, email: string) => void;
   onRefresh: () => void;
   searchTerm?: string;

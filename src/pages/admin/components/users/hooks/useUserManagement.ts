@@ -21,7 +21,11 @@ export function useUserManagement() {
   const { processingUserId: updateProcessingUserId, updateUser } = useUserUpdate();
   const { processingUserId: planProcessingUserId, assignPlanToUser } = usePlanAssignment();
   const { sendPasswordResetEmail } = usePasswordReset();
-  const { processingUserId: deleteProcessingUserId, deleteUser } = useUserDeletion();
+  const { 
+    processingUserId: deleteProcessingUserId, 
+    showDeleteDialog, 
+    DeleteDialog 
+  } = useUserDeletion();
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -50,13 +54,15 @@ export function useUserManagement() {
     }
   };
 
-  const handleDeleteUser = async (userId: string, email: string) => {
-    try {
-      await deleteUser(userId, email);
-      return true;
-    } catch (error) {
-      return false;
-    }
+  const handleDeleteUser = async (userId: string, email: string, firstName: string, lastName: string, role: string) => {
+    showDeleteDialog({
+      id: userId,
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      role
+    });
+    return true;
   };
 
   // Combine processing states from different hooks
@@ -78,6 +84,7 @@ export function useUserManagement() {
     assignPlanToUser: handleAssignPlanToUser,
     sendPasswordResetEmail,
     deleteUser: handleDeleteUser,
+    DeleteDialog,
     retryCount,
     performance
   };
