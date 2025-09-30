@@ -12,37 +12,50 @@ async function canDeleteUser(
   adminId: string,
   targetUserId: string
 ): Promise<{ allowed: boolean; reason?: string }> {
-  // Get admin profile
-  const { data: adminProfile } = await supabase
+  // Get admin profile (role only; email is not stored on profiles)
+  const { data: adminProfile, error: adminProfileError } = await supabase
     .from('profiles')
-    .select('email, role')
+    .select('role, first_name, last_name')
     .eq('id', adminId)
     .single();
 
-  if (!adminProfile || adminProfile.role !== 'admin') {
+  if (adminProfileError || !adminProfile) {
+    console.warn('[canDeleteUser] Admin profile not found or error:', adminProfileError);
     return { allowed: false, reason: 'Admin privileges required' };
   }
 
+  if (adminProfile.role !== 'admin') {
+    return { allowed: false, reason: 'Admin privileges required' };
+  }
+
+  // Resolve admin email from auth (not from profiles)
+  const { data: adminAuthUser, error: adminAuthError } = await supabase.auth.admin.getUserById(adminId);
+  const adminEmail: string | undefined = adminAuthUser?.user?.email || undefined;
+
+  if (adminAuthError) {
+    console.warn('[canDeleteUser] Failed to resolve admin auth user/email:', adminAuthError);
+  }
+
   // Get target user profile
-  const { data: targetProfile } = await supabase
+  const { data: targetProfile, error: targetErr } = await supabase
     .from('profiles')
     .select('role, first_name, last_name')
     .eq('id', targetUserId)
     .single();
 
-  if (!targetProfile) {
+  if (targetErr || !targetProfile) {
     return { allowed: false, reason: 'Target user not found' };
   }
 
   // Only super admin (nawaf@elzeer.com) can delete other admins
-  if (targetProfile.role === 'admin' && adminProfile.email !== 'nawaf@elzeer.com') {
+  if (targetProfile.role === 'admin' && adminEmail !== 'nawaf@elzeer.com') {
     await logSecurityEvent(supabase, {
       user_id: adminId,
       action: 'unauthorized_admin_deletion_attempt',
       details: {
         target_user_id: targetUserId,
         target_name: `${targetProfile.first_name} ${targetProfile.last_name}`,
-        admin_email: adminProfile.email
+        admin_email: adminEmail || 'unknown'
       }
     });
     return { allowed: false, reason: 'Only super admin can delete administrator accounts' };
