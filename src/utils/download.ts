@@ -5,15 +5,54 @@ import { FILE_BUCKET } from "@/utils/buckets";
 
 export async function downloadWorkflowFile(filePath: string, fileName: string) {
   try {
+    // First, check if the file exists
+    const { data: fileList, error: listError } = await supabase.storage
+      .from(FILE_BUCKET)
+      .list('', {
+        search: filePath
+      });
+
+    if (listError) {
+      console.error('File check error:', listError);
+      toast({
+        title: "Download failed",
+        description: "Unable to verify file existence. Please check your permissions.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!fileList || fileList.length === 0) {
+      console.error('File not found in storage:', filePath);
+      toast({
+        title: "File not found",
+        description: `The workflow file "${fileName}" could not be found in storage. It may have been deleted or moved.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Download the file
     const { data, error } = await supabase.storage
       .from(FILE_BUCKET)
       .download(filePath);
 
     if (error) {
       console.error('Download error:', error);
+      
+      // Provide specific error messages based on error type
+      let errorMessage = "Failed to download the workflow file";
+      if (error.message.includes('not found')) {
+        errorMessage = `File "${fileName}" not found in storage`;
+      } else if (error.message.includes('permission')) {
+        errorMessage = "You don't have permission to download this file";
+      } else if (error.message.includes('unauthorized')) {
+        errorMessage = "Please log in to download files";
+      }
+      
       toast({
         title: "Download failed",
-        description: "Failed to download the workflow file",
+        description: errorMessage,
         variant: "destructive"
       });
       return;
@@ -41,7 +80,7 @@ export async function downloadWorkflowFile(filePath: string, fileName: string) {
     console.error('Unexpected download error:', error);
     toast({
       title: "Download failed",
-      description: "An unexpected error occurred while downloading",
+      description: `An unexpected error occurred: ${error.message}`,
       variant: "destructive"
     });
   }

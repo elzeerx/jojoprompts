@@ -75,19 +75,41 @@ export function usePromptSubmission({
         }));
       }
 
-      // Upload workflow files
+      // Upload workflow files with enhanced error handling
       if (workflowFiles.length > 0) {
-        const uploadedWorkflowPaths = await uploadFiles(workflowFiles, FILE_BUCKET);
-        const newWorkflowFiles = workflowFiles.map((file, index) => {
-          const fileExt = file.name.split('.').pop()?.toLowerCase() as 'json' | 'zip';
-          return {
-            type: fileExt,
-            path: uploadedWorkflowPaths[index],
-            name: file.name
-          };
-        });
-        const existingFiles = Array.isArray(workflowFilesData) ? workflowFilesData.filter((wf: any) => wf.path) : [];
-        workflowFilesData = [...existingFiles, ...newWorkflowFiles];
+        try {
+          const uploadedWorkflowPaths = await uploadFiles(workflowFiles, FILE_BUCKET);
+          
+          // Verify all files were uploaded successfully
+          if (uploadedWorkflowPaths.length !== workflowFiles.length) {
+            throw new Error(`Failed to upload all workflow files. Expected ${workflowFiles.length}, got ${uploadedWorkflowPaths.length}`);
+          }
+          
+          const newWorkflowFiles = workflowFiles.map((file, index) => {
+            const fileExt = file.name.split('.').pop()?.toLowerCase() as 'json' | 'zip';
+            return {
+              type: fileExt,
+              path: uploadedWorkflowPaths[index],
+              name: file.name
+            };
+          });
+          
+          const existingFiles = Array.isArray(workflowFilesData) ? workflowFilesData.filter((wf: any) => wf.path) : [];
+          workflowFilesData = [...existingFiles, ...newWorkflowFiles];
+          
+          toast({
+            title: "Workflow files uploaded",
+            description: `Successfully uploaded ${workflowFiles.length} workflow file(s)`
+          });
+        } catch (uploadError) {
+          console.error("Workflow file upload error:", uploadError);
+          toast({
+            title: "Upload Failed",
+            description: `Failed to upload workflow files: ${uploadError.message}. Please ensure you have proper permissions.`,
+            variant: "destructive"
+          });
+          throw uploadError; // Prevent saving prompt with invalid file references
+        }
       } else {
         workflowFilesData = Array.isArray(workflowFilesData) ? workflowFilesData.map((wf: any) => ({
           type: wf.type,
