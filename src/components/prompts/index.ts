@@ -23,6 +23,7 @@ export { PromptPreview } from './PromptPreview';
 export { PromptPreviewCard } from './PromptPreviewCard';
 export { PromptSummary } from './PromptSummary';
 export { LivePreviewSidebar } from './LivePreviewSidebar';
+export { PromptErrorBoundary } from './PromptErrorBoundary';
 
 // Re-export all individual field components
 export * from './fields';
