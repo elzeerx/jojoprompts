@@ -18,8 +18,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
-import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog, PromptPreview, LivePreviewSidebar, PromptPreviewCard, PromptSummary } from '@/components/prompts';
+import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog, PromptPreview, LivePreviewSidebar, PromptPreviewCard, PromptSummary, PromptSuccessDialog } from '@/components/prompts';
 import { formatPromptForPlatform, exportAsText, exportAsMarkdown, exportAsJSON } from '@/lib/formatters';
+import type { PromptFormData } from '@/types/prompt-form';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import { useDynamicForm } from '@/hooks/useDynamicForm';
 import { useCategories } from '@/hooks/useCategories';
@@ -39,6 +40,10 @@ export default function PlatformTest() {
   
   // Full page wizard state
   const [showFullPageWizard, setShowFullPageWizard] = useState(false);
+  
+  // Success dialog state
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [createdPromptId, setCreatedPromptId] = useState<string>('');
   
   // Base prompt fields state
   const [baseFields, setBaseFields] = useState<BasePromptFields>({
@@ -499,6 +504,31 @@ export default function PlatformTest() {
     }
   };
 
+  // Handlers for complete flow demo
+  const handlePromptComplete = async (data: PromptFormData) => {
+    console.log('Prompt completed:', data);
+    // The actual saving is handled by the wizard's submission hook
+    // Just wait for success callback
+  };
+
+  const handleViewPrompt = (promptId: string) => {
+    console.log('View prompt:', promptId);
+    toast({
+      title: "Navigate to Prompt",
+      description: `Would navigate to /prompts/${promptId}`,
+    });
+    // In production: router.push(`/prompts/${promptId}`);
+  };
+
+  const handleCreateAnother = () => {
+    setShowSuccess(false);
+    toast({
+      title: "Create Another",
+      description: "Wizard would open again",
+    });
+    // Reset or reopen wizard
+  };
+
   // Map database categories to simple CategorySelector format
   const simplifiedCategories = categories.map(cat => ({
     id: cat.id,
@@ -551,6 +581,155 @@ export default function PlatformTest() {
             </AlertDescription>
           </Alert>
         </div>
+
+        {/* ========================================
+            PHASE 3.4: COMPLETE SUBMISSION FLOW
+            ======================================== */}
+        <Card className="border-4 border-green-500">
+          <CardHeader className="bg-green-50 dark:bg-green-950">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs bg-green-600">🚀 COMPLETE FLOW - Phase 3.4</Badge>
+              <CardTitle>Complete Prompt Creation & Submission</CardTitle>
+            </div>
+            <CardDescription>
+              Full end-to-end flow: Creation → Validation → Submission → Success
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-6">
+              <Alert>
+                <AlertDescription>
+                  <strong>⚠️ This creates REAL data in your Supabase database!</strong> Make sure you have authentication enabled and RLS policies configured.
+                </AlertDescription>
+              </Alert>
+
+              <Card className="bg-muted/50">
+                <CardHeader>
+                  <CardTitle className="text-lg">Try the Complete Flow</CardTitle>
+                  <CardDescription>
+                    Test the full creation, validation, thumbnail upload, and submission process
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PromptWizardDialog
+                    trigger={
+                      <Button size="lg" className="w-full">
+                        <LucideIcons.Plus className="h-5 w-5 mr-2" />
+                        Create Prompt (Full Flow with Database Save)
+                      </Button>
+                    }
+                    onComplete={handlePromptComplete}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Features List */}
+              <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">✨ Complete Flow Features</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <div>
+                        <strong>Client-Side Validation:</strong>
+                        <p className="text-muted-foreground">Validates all fields before submission</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <div>
+                        <strong>Thumbnail Upload:</strong>
+                        <p className="text-muted-foreground">Uploads to Supabase Storage</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <div>
+                        <strong>Database Save:</strong>
+                        <p className="text-muted-foreground">Creates prompt in Supabase table</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <div>
+                        <strong>Loading States:</strong>
+                        <p className="text-muted-foreground">Full-screen overlay during submission</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <div>
+                        <strong>Error Handling:</strong>
+                        <p className="text-muted-foreground">User-friendly error messages</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <div>
+                        <strong>Success Feedback:</strong>
+                        <p className="text-muted-foreground">Toast notifications and dialog</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <div>
+                        <strong>Error Boundary:</strong>
+                        <p className="text-muted-foreground">Catches unexpected errors</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <div>
+                        <strong>Authentication:</strong>
+                        <p className="text-muted-foreground">Respects RLS policies</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Test Instructions */}
+              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">📝 Testing Steps</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ol className="text-sm space-y-2 list-decimal list-inside">
+                    <li>Click "Create Prompt" button above</li>
+                    <li><strong>Step 1:</strong> Select a platform (e.g., ChatGPT)</li>
+                    <li><strong>Step 2:</strong> Fill in title and prompt text (required)</li>
+                    <li><strong>Step 2:</strong> Optionally add category and thumbnail image</li>
+                    <li><strong>Step 3:</strong> Configure platform-specific settings</li>
+                    <li><strong>Step 4:</strong> Review all data in preview</li>
+                    <li>Click "Create Prompt" and wait for overlay</li>
+                    <li>See success toast notification</li>
+                    <li>Check your Supabase <code className="bg-muted px-1 py-0.5 rounded">prompts</code> table for new entry</li>
+                    <li>Check <code className="bg-muted px-1 py-0.5 rounded">prompt-images</code> storage bucket (if thumbnail uploaded)</li>
+                  </ol>
+                </CardContent>
+              </Card>
+
+              {/* Error Testing */}
+              <Card className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">🧪 Error Scenarios to Test</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="text-sm space-y-2 list-disc list-inside">
+                    <li>Submit without title → See validation error</li>
+                    <li>Submit without prompt text → See validation error</li>
+                    <li>Upload file &gt; 5MB → See size validation error</li>
+                    <li>Upload non-image file → See type validation error</li>
+                    <li>Submit without authentication → See auth error</li>
+                    <li>Try with network disconnected → See network error</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* ========================================
             PHASE 3.2: PROMPT CREATION WIZARD - MAIN DEMO
@@ -4148,6 +4327,16 @@ const result = generatePrompt({
             </div>
           </CardContent>
         </Card>
+
+        {/* Success Dialog */}
+        <PromptSuccessDialog
+          open={showSuccess}
+          onOpenChange={setShowSuccess}
+          promptId={createdPromptId}
+          mode="create"
+          onViewPrompt={handleViewPrompt}
+          onCreateAnother={handleCreateAnother}
+        />
       </div>
     </Container>
   );
