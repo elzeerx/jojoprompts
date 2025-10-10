@@ -18,7 +18,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField } from '@/components/prompts/fields';
-import { useFieldValidation, formatErrorsForToast, hasErrors } from '@/lib/validation';
+import { ValidationErrorList } from '@/components/prompts/ValidationErrorList';
+import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import type { PlatformField } from '@/types/platform';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -1295,7 +1296,7 @@ export default function PlatformTest() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Validation Summary</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center justify-between">
                         <span>Total Fields Tested:</span>
@@ -1314,6 +1315,12 @@ export default function PlatformTest() {
                         </Badge>
                       </div>
                     </div>
+
+                    {/* Display all validation errors */}
+                    <ValidationErrorList 
+                      errors={getFormErrors(validation.validationResults)}
+                      className="mt-4"
+                    />
                   </CardContent>
                 </Card>
               </CardContent>
