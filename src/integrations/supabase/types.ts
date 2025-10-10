@@ -1140,6 +1140,107 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_fields: {
+        Row: {
+          conditional_logic: Json | null
+          created_at: string | null
+          default_value: string | null
+          display_order: number | null
+          field_key: string
+          field_type: string
+          help_text: string | null
+          id: string
+          is_required: boolean | null
+          label: string
+          options: Json | null
+          placeholder: string | null
+          platform_id: string
+          updated_at: string | null
+          validation_rules: Json | null
+        }
+        Insert: {
+          conditional_logic?: Json | null
+          created_at?: string | null
+          default_value?: string | null
+          display_order?: number | null
+          field_key: string
+          field_type: string
+          help_text?: string | null
+          id?: string
+          is_required?: boolean | null
+          label: string
+          options?: Json | null
+          placeholder?: string | null
+          platform_id: string
+          updated_at?: string | null
+          validation_rules?: Json | null
+        }
+        Update: {
+          conditional_logic?: Json | null
+          created_at?: string | null
+          default_value?: string | null
+          display_order?: number | null
+          field_key?: string
+          field_type?: string
+          help_text?: string | null
+          id?: string
+          is_required?: boolean | null
+          label?: string
+          options?: Json | null
+          placeholder?: string | null
+          platform_id?: string
+          updated_at?: string | null
+          validation_rules?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_fields_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platforms: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1352,6 +1453,44 @@ export type Database = {
           },
         ]
       }
+      prompt_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_featured: boolean | null
+          name: string
+          platform_id: string
+          template_values: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_featured?: boolean | null
+          name: string
+          platform_id: string
+          template_values?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_featured?: boolean | null
+          name?: string
+          platform_id?: string
+          template_values?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_templates_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prompt_usage_history: {
         Row: {
           action_type: string
@@ -1394,10 +1533,15 @@ export type Database = {
           id: string
           image_path: string | null
           metadata: Json | null
+          platform_fields: Json | null
+          platform_id: string | null
           prompt_text: string
+          prompt_text_ar: string | null
           prompt_type: string
           title: string
+          title_ar: string | null
           user_id: string
+          version: number | null
         }
         Insert: {
           created_at?: string | null
@@ -1405,10 +1549,15 @@ export type Database = {
           id?: string
           image_path?: string | null
           metadata?: Json | null
+          platform_fields?: Json | null
+          platform_id?: string | null
           prompt_text: string
+          prompt_text_ar?: string | null
           prompt_type?: string
           title: string
+          title_ar?: string | null
           user_id: string
+          version?: number | null
         }
         Update: {
           created_at?: string | null
@@ -1416,10 +1565,15 @@ export type Database = {
           id?: string
           image_path?: string | null
           metadata?: Json | null
+          platform_fields?: Json | null
+          platform_id?: string | null
           prompt_text?: string
+          prompt_text_ar?: string | null
           prompt_type?: string
           title?: string
+          title_ar?: string | null
           user_id?: string
+          version?: number | null
         }
         Relationships: [
           {
@@ -1427,6 +1581,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "platforms"
             referencedColumns: ["id"]
           },
           {
