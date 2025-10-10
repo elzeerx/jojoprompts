@@ -4,6 +4,12 @@ export { DynamicFieldGroup } from './fields/DynamicFieldGroup';
 export { FieldSection } from './FieldSection';
 export { ValidationErrorList } from './ValidationErrorList';
 
+// Platform selector components
+export { PlatformCard } from './PlatformCard';
+export { PlatformSelector } from './PlatformSelector';
+export { PlatformSelectorDialog } from './PlatformSelectorDialog';
+export { PlatformBadge } from './PlatformBadge';
+
 // Re-export all individual field components
 export * from './fields';
 
@@ -11,3 +17,7 @@ export * from './fields';
 export type { DynamicFieldRendererProps } from './fields/DynamicFieldRenderer';
 export type { DynamicFieldGroupProps } from './fields/DynamicFieldGroup';
 export type { FieldSectionProps } from './FieldSection';
+export type { PlatformCardProps } from './PlatformCard';
+export type { PlatformSelectorProps } from './PlatformSelector';
+export type { PlatformSelectorDialogProps } from './PlatformSelectorDialog';
+export type { PlatformBadgeProps } from './PlatformBadge';
