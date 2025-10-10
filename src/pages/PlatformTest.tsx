@@ -18,29 +18,25 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField } from '@/components/prompts/fields';
+import { useFieldValidation, formatErrorsForToast, hasErrors } from '@/lib/validation';
 import type { PlatformField } from '@/types/platform';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PlatformTest() {
   const [selectedPlatformId, setSelectedPlatformId] = useState<string>('');
+  const { toast } = useToast();
   
   // Test field values
   const [testValues, setTestValues] = useState<Record<string, any>>({
     test_text: '',
     test_textarea: '',
     test_number: 50,
-    test_text_error: '',
-    test_textarea_error: '',
-    test_number_error: 150,
     test_select: '',
     test_slider: 50,
     test_toggle: false,
     test_code: '',
-    test_select_error: '',
-    test_slider_error: 150,
-    test_toggle_error: false,
-    test_code_error: '{"invalid": json}',
   });
 
   // Test error states
@@ -282,8 +278,27 @@ export default function PlatformTest() {
     },
   };
 
+  // Initialize validation hook with all sample fields
+  const sampleFieldsArray = Object.values(sampleFields);
+  const validation = useFieldValidation(sampleFieldsArray, {
+    validateOnBlur: true,
+    validateOnChange: false
+  });
+
   const handleValueChange = (key: string, value: any) => {
     setTestValues(prev => ({ ...prev, [key]: value }));
+    validation.handleChange(key, value);
+  };
+
+  const handleValidateAll = () => {
+    const isValid = validation.validateAllFields(testValues);
+    const errorMessage = formatErrorsForToast(validation.errors);
+    
+    toast({
+      variant: isValid ? "default" : "destructive",
+      title: errorMessage.title,
+      description: errorMessage.description,
+    });
   };
 
   return (
@@ -527,6 +542,18 @@ export default function PlatformTest() {
             {/* Global Controls */}
             <div className="flex flex-wrap items-center gap-4 p-4 bg-muted rounded-lg">
               <Button 
+                onClick={handleValidateAll}
+                variant="default"
+              >
+                Validate All Fields
+              </Button>
+              <Button 
+                onClick={validation.clearErrors}
+                variant="outline"
+              >
+                Clear Validation Errors
+              </Button>
+              <Button 
                 onClick={() => setTestValues({
                   test_text: 'Sample text',
                   test_textarea: 'This is a longer sample text that demonstrates the textarea component with multiple lines of content.',
@@ -536,24 +563,35 @@ export default function PlatformTest() {
                   test_toggle: true,
                   test_code: '{\n  "name": "Example",\n  "value": 123,\n  "active": true\n}',
                 })}
-                variant="default"
+                variant="secondary"
               >
                 Fill Sample Data
               </Button>
               <Button 
-                onClick={() => setTestValues({
-                  test_text: '',
-                  test_textarea: '',
-                  test_number: 50,
-                  test_select: '',
-                  test_slider: 50,
-                  test_toggle: false,
-                  test_code: '',
-                })}
+                onClick={() => {
+                  setTestValues({
+                    test_text: '',
+                    test_textarea: '',
+                    test_number: 50,
+                    test_select: '',
+                    test_slider: 50,
+                    test_toggle: false,
+                    test_code: '',
+                  });
+                  validation.clearErrors();
+                }}
                 variant="outline"
               >
                 Clear All Fields
               </Button>
+              <div className="flex items-center gap-2 ml-auto">
+                <Badge variant={validation.isValid ? "default" : "destructive"}>
+                  {validation.isValid ? '✓ Valid' : '✗ Invalid'}
+                </Badge>
+                {validation.isDirty && (
+                  <Badge variant="outline">Modified</Badge>
+                )}
+              </div>
             </div>
 
             {/* Basic Input Fields Section */}
@@ -591,8 +629,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_text}
                     value={testValues.test_text}
                     onChange={(value) => handleValueChange('test_text', value)}
-                    error={fieldStates.test_text.showError ? 'This field is required' : undefined}
+                    error={validation.getFieldError('test_text')}
                     disabled={fieldStates.test_text.disabled}
+                    onBlur={() => validation.handleBlur('test_text', testValues.test_text)}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -629,8 +668,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_textarea}
                     value={testValues.test_textarea}
                     onChange={(value) => handleValueChange('test_textarea', value)}
-                    error={fieldStates.test_textarea.showError ? 'Text exceeds maximum length' : undefined}
+                    error={validation.getFieldError('test_textarea')}
                     disabled={fieldStates.test_textarea.disabled}
+                    onBlur={() => validation.handleBlur('test_textarea', testValues.test_textarea)}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -669,8 +709,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_number}
                     value={testValues.test_number}
                     onChange={(value) => handleValueChange('test_number', value)}
-                    error={fieldStates.test_number.showError ? 'Value must be between 0 and 100' : undefined}
+                    error={validation.getFieldError('test_number')}
                     disabled={fieldStates.test_number.disabled}
+                    onBlur={() => validation.handleBlur('test_number', testValues.test_number)}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -715,8 +756,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_select}
                     value={testValues.test_select}
                     onChange={(value) => handleValueChange('test_select', value)}
-                    error={fieldStates.test_select.showError ? 'Please select an option' : undefined}
+                    error={validation.getFieldError('test_select')}
                     disabled={fieldStates.test_select.disabled}
+                    onBlur={() => validation.handleBlur('test_select', testValues.test_select)}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -753,8 +795,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_slider}
                     value={testValues.test_slider}
                     onChange={(value) => handleValueChange('test_slider', value)}
-                    error={fieldStates.test_slider.showError ? 'Value must be within range' : undefined}
+                    error={validation.getFieldError('test_slider')}
                     disabled={fieldStates.test_slider.disabled}
+                    onBlur={() => validation.handleBlur('test_slider', testValues.test_slider)}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -791,7 +834,7 @@ export default function PlatformTest() {
                     field={sampleFields.test_toggle}
                     value={testValues.test_toggle}
                     onChange={(value) => handleValueChange('test_toggle', value)}
-                    error={fieldStates.test_toggle.showError ? 'This option must be enabled' : undefined}
+                    error={validation.getFieldError('test_toggle')}
                     disabled={fieldStates.test_toggle.disabled}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
@@ -831,8 +874,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_code}
                     value={testValues.test_code}
                     onChange={(value) => handleValueChange('test_code', value)}
-                    error={fieldStates.test_code.showError ? 'Invalid JSON syntax' : undefined}
+                    error={validation.getFieldError('test_code')}
                     disabled={fieldStates.test_code.disabled}
+                    onBlur={() => validation.handleBlur('test_code', testValues.test_code)}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
