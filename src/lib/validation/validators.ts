@@ -25,147 +25,126 @@ export function validateRequired(value: any, field: PlatformField): ValidationRe
 }
 
 /**
- * Validates minimum value for numbers
+ * Validates number range (min/max)
  */
-export function validateMin(value: any, field: PlatformField): ValidationResult {
-  const min = field.validation_rules?.min;
+export function validateNumberRange(value: any, field: PlatformField): ValidationResult {
+  const errors: string[] = [];
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
   
-  if (min === undefined || value === null || value === undefined || value === '') {
-    return { isValid: true, errors: [] };
+  if (value === null || value === undefined || value === '') {
+    return { isValid: true, errors: [] }; // Skip if empty (required validator handles this)
   }
-
-  const numValue = typeof value === 'number' ? value : parseFloat(value);
   
-  if (isNaN(numValue) || numValue < min) {
-    return {
-      isValid: false,
-      errors: [`${field.label} must be at least ${min}`]
-    };
+  if (isNaN(numValue)) {
+    errors.push(`${field.label} must be a valid number`);
+    return { isValid: false, errors };
   }
-
-  return { isValid: true, errors: [] };
+  
+  const rules = field.validation_rules;
+  if (!rules) return { isValid: true, errors: [] };
+  
+  if (rules.min !== undefined && numValue < rules.min) {
+    errors.push(`${field.label} must be at least ${rules.min}`);
+  }
+  
+  if (rules.max !== undefined && numValue > rules.max) {
+    errors.push(`${field.label} must be at most ${rules.max}`);
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
 }
 
 /**
- * Validates maximum value for numbers
+ * Validates string length (minLength/maxLength)
  */
-export function validateMax(value: any, field: PlatformField): ValidationResult {
-  const max = field.validation_rules?.max;
+export function validateStringLength(value: any, field: PlatformField): ValidationResult {
+  const errors: string[] = [];
+  const strValue = String(value || '');
   
-  if (max === undefined || value === null || value === undefined || value === '') {
-    return { isValid: true, errors: [] };
+  if (!value) {
+    return { isValid: true, errors: [] }; // Skip if empty
   }
-
-  const numValue = typeof value === 'number' ? value : parseFloat(value);
   
-  if (isNaN(numValue) || numValue > max) {
-    return {
-      isValid: false,
-      errors: [`${field.label} must be at most ${max}`]
-    };
-  }
-
-  return { isValid: true, errors: [] };
-}
-
-/**
- * Validates minimum length for strings
- */
-export function validateMinLength(value: any, field: PlatformField): ValidationResult {
-  const minLength = field.validation_rules?.minLength;
+  const rules = field.validation_rules;
+  if (!rules) return { isValid: true, errors: [] };
   
-  if (minLength === undefined || value === null || value === undefined) {
-    return { isValid: true, errors: [] };
+  if (rules.minLength !== undefined && strValue.length < rules.minLength) {
+    errors.push(`${field.label} must be at least ${rules.minLength} characters`);
   }
-
-  const strValue = String(value);
   
-  if (strValue.length < minLength) {
-    return {
-      isValid: false,
-      errors: [`${field.label} must be at least ${minLength} characters`]
-    };
+  if (rules.maxLength !== undefined && strValue.length > rules.maxLength) {
+    errors.push(`${field.label} must be at most ${rules.maxLength} characters`);
   }
-
-  return { isValid: true, errors: [] };
-}
-
-/**
- * Validates maximum length for strings
- */
-export function validateMaxLength(value: any, field: PlatformField): ValidationResult {
-  const maxLength = field.validation_rules?.max;
   
-  if (maxLength === undefined || value === null || value === undefined) {
-    return { isValid: true, errors: [] };
+  // For backward compatibility, also check 'max' for string length
+  if (rules.max !== undefined && strValue.length > rules.max) {
+    errors.push(`${field.label} must be at most ${rules.max} characters`);
   }
-
-  const strValue = String(value);
   
-  if (strValue.length > maxLength) {
-    return {
-      isValid: false,
-      errors: [`${field.label} must be at most ${maxLength} characters`]
-    };
-  }
-
-  return { isValid: true, errors: [] };
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
 }
 
 /**
  * Validates regex pattern
  */
 export function validatePattern(value: any, field: PlatformField): ValidationResult {
-  const pattern = field.validation_rules?.pattern;
+  const strValue = String(value || '');
   
-  if (!pattern || value === null || value === undefined || value === '') {
+  if (!value || !field.validation_rules?.pattern) {
     return { isValid: true, errors: [] };
   }
-
-  const regex = new RegExp(pattern);
-  const strValue = String(value);
   
-  if (!regex.test(strValue)) {
+  try {
+    const regex = new RegExp(field.validation_rules.pattern);
+    const isValid = regex.test(strValue);
+    
     return {
-      isValid: false,
-      errors: [`${field.label} format is invalid`]
+      isValid,
+      errors: isValid ? [] : [`${field.label} format is invalid`]
     };
+  } catch (error) {
+    console.error('Invalid regex pattern:', field.validation_rules.pattern);
+    return { isValid: true, errors: [] }; // Don't fail on invalid regex
   }
-
-  return { isValid: true, errors: [] };
 }
 
 /**
  * Validates email format
  */
 export function validateEmail(value: any, field: PlatformField): ValidationResult {
-  if (value === null || value === undefined || value === '') {
+  const strValue = String(value || '');
+  
+  if (!value) {
     return { isValid: true, errors: [] };
   }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const strValue = String(value);
   
-  if (!emailRegex.test(strValue)) {
-    return {
-      isValid: false,
-      errors: [`${field.label} must be a valid email address`]
-    };
-  }
-
-  return { isValid: true, errors: [] };
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isValid = emailRegex.test(strValue);
+  
+  return {
+    isValid,
+    errors: isValid ? [] : [`${field.label} must be a valid email address`]
+  };
 }
 
 /**
  * Validates URL format
  */
-export function validateUrl(value: any, field: PlatformField): ValidationResult {
-  if (value === null || value === undefined || value === '') {
+export function validateURL(value: any, field: PlatformField): ValidationResult {
+  const strValue = String(value || '');
+  
+  if (!value) {
     return { isValid: true, errors: [] };
   }
-
+  
   try {
-    new URL(String(value));
+    new URL(strValue);
     return { isValid: true, errors: [] };
   } catch {
     return {
@@ -236,13 +215,11 @@ export function validateField(value: any, field: PlatformField): ValidationResul
   // Run validators in order
   const validators = [
     validateRequired,
-    validateMin,
-    validateMax,
-    validateMinLength,
-    validateMaxLength,
+    validateNumberRange,
+    validateStringLength,
     validatePattern,
     validateEmail,
-    validateUrl,
+    validateURL,
     validateJson,
     validateOptions
   ];
