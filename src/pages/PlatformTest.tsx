@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
-import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField } from '@/components/prompts/fields';
+import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer } from '@/components/prompts/fields';
 import { ValidationErrorList } from '@/components/prompts/ValidationErrorList';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import type { PlatformField } from '@/types/platform';
@@ -1321,6 +1321,96 @@ export default function PlatformTest() {
                       errors={getFormErrors(validation.validationResults)}
                       className="mt-4"
                     />
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+
+            {/* DynamicFieldRenderer Demo */}
+            <Card className="border-2 border-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>🎯 DynamicFieldRenderer Demo</span>
+                  <Badge variant="outline">Phase 2.4</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Demonstrates the intelligent field renderer that automatically selects the correct component based on field type
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Alert>
+                  <AlertDescription>
+                    The DynamicFieldRenderer automatically renders the appropriate field component based on the <code className="px-1.5 py-0.5 bg-muted rounded">field_type</code> property. 
+                    This is the core component that powers dynamic form generation from database configurations.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* Demonstrate rendering all field types through DynamicFieldRenderer */}
+                  {Object.entries(sampleFields)
+                    .filter(([key]) => !key.includes('error')) // Only show main fields, not error state examples
+                    .slice(0, 7) // First 7 fields (one of each type)
+                    .map(([key, field]) => (
+                      <Card key={key} className="border">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm">
+                              {field.label}
+                            </CardTitle>
+                            <Badge variant="secondary" className="text-xs">
+                              {field.field_type}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <DynamicFieldRenderer
+                            field={field}
+                            value={testValues[field.field_key]}
+                            onChange={(value) => handleValueChange(field.field_key, value)}
+                            error={validation.getError(field.field_key)}
+                            onBlur={() => validation.touchField(field.field_key)}
+                            allValues={testValues}
+                          />
+                          <div className="text-xs text-muted-foreground mt-2">
+                            Rendered via DynamicFieldRenderer
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+
+                {/* Benefits section */}
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Key Benefits</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Automatic Routing:</strong> Renders correct component based on field_type</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Conditional Logic:</strong> Supports show/hide based on other field values</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Type Safe:</strong> Full TypeScript support with proper typing</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Memoized:</strong> Performance optimized with React.memo</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Fallback Handling:</strong> Gracefully handles unknown field types</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Unified Interface:</strong> Single component API for all field types</span>
+                      </li>
+                    </ul>
                   </CardContent>
                 </Card>
               </CardContent>
