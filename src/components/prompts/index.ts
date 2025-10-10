@@ -24,6 +24,7 @@ export { PromptPreviewCard } from './PromptPreviewCard';
 export { PromptSummary } from './PromptSummary';
 export { LivePreviewSidebar } from './LivePreviewSidebar';
 export { PromptErrorBoundary } from './PromptErrorBoundary';
+export { SubmissionOverlay } from './SubmissionOverlay';
 
 // Re-export all individual field components
 export * from './fields';

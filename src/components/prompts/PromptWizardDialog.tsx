@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PromptWizard } from './PromptWizard';
+import { PromptErrorBoundary } from './PromptErrorBoundary';
 import { PromptFormData } from '@/types/prompt-form';
 import {
   Dialog,
@@ -65,12 +66,14 @@ export function PromptWizardDialog({
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-120px)] px-6 pb-6">
-          <PromptWizard
-            mode={mode}
-            initialData={initialData}
-            onComplete={handleComplete}
-            onCancel={handleCancel}
-          />
+          <PromptErrorBoundary>
+            <PromptWizard
+              mode={mode}
+              initialData={initialData}
+              onComplete={handleComplete}
+              onCancel={handleCancel}
+            />
+          </PromptErrorBoundary>
         </ScrollArea>
       </DialogContent>
     </Dialog>
