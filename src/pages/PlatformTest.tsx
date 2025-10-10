@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
-import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard } from '@/components/prompts';
+import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog } from '@/components/prompts';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import { useDynamicForm } from '@/hooks/useDynamicForm';
 import { useCategories } from '@/hooks/useCategories';
@@ -3212,6 +3212,125 @@ return (
                     <div className="flex items-start gap-2">
                       <span className="text-primary font-bold">7.</span>
                       <span>Test "Cancel" button to exit the wizard</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ========================================
+            PHASE 3.2b: WIZARD DIALOG TEST
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">NEW - Phase 3.2</Badge>
+              <CardTitle>Prompt Wizard Dialog (Modal Version)</CardTitle>
+            </div>
+            <CardDescription>
+              Same wizard flow but in a modal dialog - useful for creating prompts from any page
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  Click the button below to open the wizard in a dialog. All features work the same as the full-page version.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex gap-4 flex-wrap">
+                {/* Create Mode */}
+                <PromptWizardDialog
+                  trigger={
+                    <Button size="lg">
+                      <LucideIcons.Plus className="h-5 w-5 mr-2" />
+                      Create New Prompt (Dialog)
+                    </Button>
+                  }
+                  mode="create"
+                  onComplete={async (data) => {
+                    console.log('Dialog wizard completed with data:', data);
+                    toast({
+                      title: "Prompt Created!",
+                      description: "The dialog will close automatically. Check console for data.",
+                    });
+                  }}
+                />
+
+                {/* Edit Mode Example */}
+                <PromptWizardDialog
+                  trigger={
+                    <Button size="lg" variant="outline">
+                      <LucideIcons.Edit className="h-5 w-5 mr-2" />
+                      Edit Existing Prompt (Dialog)
+                    </Button>
+                  }
+                  mode="edit"
+                  initialData={{
+                    title: "Sample Prompt Title",
+                    prompt_text: "This is a sample prompt that you can edit...",
+                    category_id: categories[0]?.id,
+                  }}
+                  onComplete={async (data) => {
+                    console.log('Edit dialog completed with data:', data);
+                    toast({
+                      title: "Prompt Updated!",
+                      description: "Changes saved successfully.",
+                    });
+                  }}
+                />
+              </div>
+
+              <Card className="bg-primary/5 border-primary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">✨ Dialog Features</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Modal Overlay:</strong>
+                        <p className="text-muted-foreground">Creates focus on the wizard flow</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Auto-close:</strong>
+                        <p className="text-muted-foreground">Dialog closes automatically on completion</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Scrollable Content:</strong>
+                        <p className="text-muted-foreground">Large forms scroll inside the dialog</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Controlled/Uncontrolled:</strong>
+                        <p className="text-muted-foreground">Can be controlled externally or self-managed</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Same Wizard:</strong>
+                        <p className="text-muted-foreground">Uses the exact same PromptWizard component</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Cancel Handling:</strong>
+                        <p className="text-muted-foreground">Closes dialog when user cancels</p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
