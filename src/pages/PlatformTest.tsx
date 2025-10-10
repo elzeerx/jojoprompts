@@ -18,9 +18,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
-import { FieldSection } from '@/components/prompts/FieldSection';
-import { ValidationErrorList } from '@/components/prompts/ValidationErrorList';
+import { FieldSection, ValidationErrorList } from '@/components/prompts';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
+import { useDynamicForm } from '@/hooks/useDynamicForm';
 import type { PlatformField } from '@/types/platform';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -1824,6 +1824,200 @@ export default function PlatformTest() {
                     </div>
                   </CardContent>
                 </Card>
+              </CardContent>
+            </Card>
+
+            {/* useDynamicForm Hook Demo */}
+            <Card className="border-2 border-purple-500">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>🎣 useDynamicForm Hook Demo</span>
+                  <Badge variant="outline" className="bg-purple-500/10">Phase 2.4</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Complete form management with built-in validation and state handling
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Alert>
+                  <AlertDescription>
+                    The <code className="px-1.5 py-0.5 bg-muted rounded">useDynamicForm</code> hook provides a complete solution for managing dynamic forms, including state, validation, submission, and reset functionality.
+                  </AlertDescription>
+                </Alert>
+
+                {/* Demo Form Using useDynamicForm */}
+                {(() => {
+                  // Create a separate form instance for this demo
+                  const demoFields = [
+                    sampleFields.test_text,
+                    sampleFields.test_select,
+                    sampleFields.test_number,
+                    sampleFields.test_toggle
+                  ];
+
+                  const form = useDynamicForm({
+                    fields: demoFields,
+                    initialValues: {
+                      test_text: 'Initial value',
+                      test_select: 'opt2',
+                      test_number: 50,
+                      test_toggle: true
+                    },
+                    onSubmit: async (values) => {
+                      // Simulate API call
+                      await new Promise(resolve => setTimeout(resolve, 1000));
+                      toast({
+                        title: 'Form Submitted!',
+                        description: `Values: ${JSON.stringify(values, null, 2)}`
+                      });
+                    }
+                  });
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Form Status */}
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge variant={form.hasErrors ? "destructive" : "default"}>
+                          {form.hasErrors ? '✗ Has Errors' : '✓ Valid'}
+                        </Badge>
+                        <Badge variant={form.isDirty ? "secondary" : "outline"}>
+                          {form.isDirty ? '📝 Modified' : '✓ Saved'}
+                        </Badge>
+                        <Badge variant={form.isSubmitting ? "default" : "outline"}>
+                          {form.isSubmitting ? '⏳ Submitting...' : '🎯 Ready'}
+                        </Badge>
+                      </div>
+
+                      {/* Form Fields */}
+                      <form onSubmit={form.handleSubmit} className="space-y-6">
+                        <FieldSection
+                          title="Demo Form"
+                          description="Managed by useDynamicForm hook"
+                          collapsible={false}
+                        >
+                          <DynamicFieldGroup
+                            fields={demoFields}
+                            values={form.values}
+                            onChange={form.setValue}
+                            errors={Object.fromEntries(
+                              demoFields.map(field => [
+                                field.field_key,
+                                form.getError(field.field_key)
+                              ])
+                            )}
+                            onBlur={form.handleBlur}
+                            layout="grid"
+                          />
+                        </FieldSection>
+
+                        {/* Form Actions */}
+                        <div className="flex gap-3 pt-4 border-t">
+                          <Button 
+                            type="submit" 
+                            disabled={form.isSubmitting}
+                          >
+                            {form.isSubmitting ? 'Submitting...' : 'Submit Form'}
+                          </Button>
+                          <Button 
+                            type="button"
+                            variant="outline"
+                            onClick={form.reset}
+                            disabled={form.isSubmitting}
+                          >
+                            Reset Form
+                          </Button>
+                          <Button 
+                            type="button"
+                            variant="secondary"
+                            onClick={() => form.validateAll()}
+                            disabled={form.isSubmitting}
+                          >
+                            Validate All
+                          </Button>
+                        </div>
+                      </form>
+
+                      {/* Current Values Display */}
+                      <Card className="bg-muted/50">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm">Current Form State</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <pre className="text-xs bg-background p-3 rounded overflow-auto max-h-40">
+                            {JSON.stringify(form.values, null, 2)}
+                          </pre>
+                        </CardContent>
+                      </Card>
+
+                      {/* Hook Features */}
+                      <Card className="bg-muted/50">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">useDynamicForm Features</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="space-y-2 text-sm">
+                            <li className="flex items-start gap-2">
+                              <span className="text-primary mt-0.5">✓</span>
+                              <span><strong>State Management:</strong> Handles all form values automatically</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-primary mt-0.5">✓</span>
+                              <span><strong>Default Values:</strong> Parses field defaults by type</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-primary mt-0.5">✓</span>
+                              <span><strong>Validation:</strong> Built-in validation integration</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-primary mt-0.5">✓</span>
+                              <span><strong>Submission:</strong> Async submit handler with loading state</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-primary mt-0.5">✓</span>
+                              <span><strong>Dirty Tracking:</strong> Detects unsaved changes</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-primary mt-0.5">✓</span>
+                              <span><strong>Reset:</strong> One-click form reset functionality</span>
+                            </li>
+                          </ul>
+                        </CardContent>
+                      </Card>
+
+                      {/* Code Example */}
+                      <Card className="bg-muted/50">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm">Code Example</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <pre className="text-xs bg-background p-3 rounded overflow-auto">
+{`const form = useDynamicForm({
+  fields: platformFields,
+  initialValues: { name: 'John' },
+  onSubmit: async (values) => {
+    await saveToDatabase(values);
+  }
+});
+
+return (
+  <form onSubmit={form.handleSubmit}>
+    <DynamicFieldGroup
+      fields={fields}
+      values={form.values}
+      onChange={form.setValue}
+      onBlur={form.handleBlur}
+    />
+    <button disabled={form.isSubmitting}>
+      Submit
+    </button>
+  </form>
+);`}
+                          </pre>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </CardContent>
