@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { PlatformField } from '@/types/platform';
-import { validateField, validateFields } from './validators';
+import { validateField, validateFields } from './validateField';
 import { FieldValidationResult, FormValidationState, ValidationOptions } from './types';
 
 /**
