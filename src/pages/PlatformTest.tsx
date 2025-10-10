@@ -46,6 +46,31 @@ export default function PlatformTest() {
   // Test error states
   const [showErrors, setShowErrors] = useState(false);
   
+  // Individual field states for disabled and error
+  const [fieldStates, setFieldStates] = useState<Record<string, { disabled: boolean; showError: boolean }>>({
+    test_text: { disabled: false, showError: false },
+    test_textarea: { disabled: false, showError: false },
+    test_number: { disabled: false, showError: false },
+    test_select: { disabled: false, showError: false },
+    test_slider: { disabled: false, showError: false },
+    test_toggle: { disabled: false, showError: false },
+    test_code: { disabled: false, showError: false },
+  });
+
+  const toggleDisabled = (fieldKey: string) => {
+    setFieldStates(prev => ({
+      ...prev,
+      [fieldKey]: { ...prev[fieldKey], disabled: !prev[fieldKey].disabled }
+    }));
+  };
+
+  const toggleError = (fieldKey: string) => {
+    setFieldStates(prev => ({
+      ...prev,
+      [fieldKey]: { ...prev[fieldKey], showError: !prev[fieldKey].showError }
+    }));
+  };
+  
   // Fetch all platforms
   const { data: platforms, isLoading: platformsLoading, error: platformsError } = usePlatforms();
   
@@ -493,38 +518,25 @@ export default function PlatformTest() {
         {/* Field Components Test */}
         <Card>
           <CardHeader>
-            <CardTitle>Field Components Test</CardTitle>
+            <CardTitle>Field Components Showcase</CardTitle>
             <CardDescription>
-              Test the TextField, TextareaField, and NumberField components with live interactions
+              Interactive showcase of all 7 field components with individual controls
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Controls */}
-            <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-              <Button 
-                onClick={() => setShowErrors(!showErrors)}
-                variant={showErrors ? "destructive" : "default"}
-              >
-                {showErrors ? 'Hide' : 'Show'} Error States
-              </Button>
+          <CardContent className="space-y-8">
+            {/* Global Controls */}
+            <div className="flex flex-wrap items-center gap-4 p-4 bg-muted rounded-lg">
               <Button 
                 onClick={() => setTestValues({
                   test_text: 'Sample text',
                   test_textarea: 'This is a longer sample text that demonstrates the textarea component with multiple lines of content.',
                   test_number: 75,
-                  test_text_error: '',
-                  test_textarea_error: '',
-                  test_number_error: 150,
                   test_select: 'opt2',
                   test_slider: 75,
                   test_toggle: true,
-                  test_code: '{\n  "key": "value",\n  "array": [1, 2, 3]\n}',
-                  test_select_error: '',
-                  test_slider_error: 150,
-                  test_toggle_error: false,
-                  test_code_error: '{"invalid": json}',
+                  test_code: '{\n  "name": "Example",\n  "value": 123,\n  "active": true\n}',
                 })}
-                variant="secondary"
+                variant="default"
               >
                 Fill Sample Data
               </Button>
@@ -533,240 +545,339 @@ export default function PlatformTest() {
                   test_text: '',
                   test_textarea: '',
                   test_number: 50,
-                  test_text_error: '',
-                  test_textarea_error: '',
-                  test_number_error: 150,
                   test_select: '',
                   test_slider: 50,
                   test_toggle: false,
                   test_code: '',
-                  test_select_error: '',
-                  test_slider_error: 150,
-                  test_toggle_error: false,
-                  test_code_error: '{"invalid": json}',
                 })}
                 variant="outline"
               >
-                Reset Fields
+                Clear All Fields
               </Button>
             </div>
 
-            {/* Normal Fields */}
-            <div className="space-y-6 border-t pt-6">
-              <h3 className="text-lg font-semibold">Basic Input Fields</h3>
-              
-              <TextField
-                field={sampleFields.test_text}
-                value={testValues.test_text}
-                onChange={(value) => handleValueChange('test_text', value)}
-              />
-
-              <TextareaField
-                field={sampleFields.test_textarea}
-                value={testValues.test_textarea}
-                onChange={(value) => handleValueChange('test_textarea', value)}
-              />
-
-              <NumberField
-                field={sampleFields.test_number}
-                value={testValues.test_number}
-                onChange={(value) => handleValueChange('test_number', value)}
-              />
-            </div>
-
-            {/* Advanced Fields */}
-            <div className="space-y-6 border-t pt-6">
-              <h3 className="text-lg font-semibold">Advanced Input Fields</h3>
-              
-              <SelectField
-                field={sampleFields.test_select}
-                value={testValues.test_select}
-                onChange={(value) => handleValueChange('test_select', value)}
-              />
-
-              <SliderField
-                field={sampleFields.test_slider}
-                value={testValues.test_slider}
-                onChange={(value) => handleValueChange('test_slider', value)}
-              />
-
-              <ToggleField
-                field={sampleFields.test_toggle}
-                value={testValues.test_toggle}
-                onChange={(value) => handleValueChange('test_toggle', value)}
-              />
-
-              <CodeField
-                field={sampleFields.test_code}
-                value={testValues.test_code}
-                onChange={(value) => handleValueChange('test_code', value)}
-              />
-            </div>
-
-            {/* Error State Fields */}
-            <div className="space-y-6 border-t pt-6">
-              <h3 className="text-lg font-semibold">Error State Fields</h3>
-              
-              <TextField
-                field={sampleFields.test_text_error}
-                value={testValues.test_text_error}
-                onChange={(value) => handleValueChange('test_text_error', value)}
-                error={showErrors ? 'This field is required' : undefined}
-              />
-
-              <TextareaField
-                field={sampleFields.test_textarea_error}
-                value={testValues.test_textarea_error}
-                onChange={(value) => handleValueChange('test_textarea_error', value)}
-                error={showErrors ? 'Text is too long (max 200 characters)' : undefined}
-              />
-
-              <NumberField
-                field={sampleFields.test_number_error}
-                value={testValues.test_number_error}
-                onChange={(value) => handleValueChange('test_number_error', value)}
-                error={showErrors ? 'Value must be between 0 and 100' : undefined}
-              />
-
-              <SelectField
-                field={sampleFields.test_select_error}
-                value={testValues.test_select_error}
-                onChange={(value) => handleValueChange('test_select_error', value)}
-                error={showErrors ? 'Please select an option' : undefined}
-              />
-
-              <SliderField
-                field={sampleFields.test_slider_error}
-                value={testValues.test_slider_error}
-                onChange={(value) => handleValueChange('test_slider_error', value)}
-                error={showErrors ? 'Value exceeds maximum (100)' : undefined}
-              />
-
-              <ToggleField
-                field={sampleFields.test_toggle_error}
-                value={testValues.test_toggle_error}
-                onChange={(value) => handleValueChange('test_toggle_error', value)}
-                error={showErrors ? 'This option must be enabled' : undefined}
-              />
-
-              <CodeField
-                field={sampleFields.test_code_error}
-                value={testValues.test_code_error}
-                onChange={(value) => handleValueChange('test_code_error', value)}
-                error={showErrors ? 'Invalid JSON syntax' : undefined}
-              />
-            </div>
-
-            {/* Current Values Display */}
-            <div className="space-y-4 border-t pt-6">
-              <h3 className="text-lg font-semibold">Current Field Values</h3>
-              <div className="bg-muted p-4 rounded-lg">
-                <pre className="text-xs overflow-auto">
-                  {JSON.stringify(testValues, null, 2)}
-                </pre>
+            {/* Basic Input Fields Section */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 pb-2 border-b">
+                <Badge variant="default">Basic Input Fields</Badge>
+                <span className="text-sm text-muted-foreground">Simple text, number, and textarea inputs</span>
               </div>
+
+              {/* TextField Component */}
+              <Card className="border-2">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">TextField Component</CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_text.showError ? "destructive" : "outline"}
+                        onClick={() => toggleError('test_text')}
+                      >
+                        {fieldStates.test_text.showError ? 'Hide Error' : 'Show Error'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_text.disabled ? "secondary" : "outline"}
+                        onClick={() => toggleDisabled('test_text')}
+                      >
+                        {fieldStates.test_text.disabled ? 'Enable' : 'Disable'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <TextField
+                    field={sampleFields.test_text}
+                    value={testValues.test_text}
+                    onChange={(value) => handleValueChange('test_text', value)}
+                    error={fieldStates.test_text.showError ? 'This field is required' : undefined}
+                    disabled={fieldStates.test_text.disabled}
+                  />
+                  <div className="p-3 bg-muted rounded text-sm">
+                    <span className="font-semibold">Current Value:</span> 
+                    <code className="ml-2 px-2 py-1 bg-background rounded">{testValues.test_text || '(empty)'}</code>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* TextareaField Component */}
+              <Card className="border-2">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">TextareaField Component</CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_textarea.showError ? "destructive" : "outline"}
+                        onClick={() => toggleError('test_textarea')}
+                      >
+                        {fieldStates.test_textarea.showError ? 'Hide Error' : 'Show Error'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_textarea.disabled ? "secondary" : "outline"}
+                        onClick={() => toggleDisabled('test_textarea')}
+                      >
+                        {fieldStates.test_textarea.disabled ? 'Enable' : 'Disable'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <TextareaField
+                    field={sampleFields.test_textarea}
+                    value={testValues.test_textarea}
+                    onChange={(value) => handleValueChange('test_textarea', value)}
+                    error={fieldStates.test_textarea.showError ? 'Text exceeds maximum length' : undefined}
+                    disabled={fieldStates.test_textarea.disabled}
+                  />
+                  <div className="p-3 bg-muted rounded text-sm">
+                    <span className="font-semibold">Current Value:</span> 
+                    <code className="ml-2 px-2 py-1 bg-background rounded block mt-2 max-h-20 overflow-auto">
+                      {testValues.test_textarea || '(empty)'}
+                    </code>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* NumberField Component */}
+              <Card className="border-2">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">NumberField Component</CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_number.showError ? "destructive" : "outline"}
+                        onClick={() => toggleError('test_number')}
+                      >
+                        {fieldStates.test_number.showError ? 'Hide Error' : 'Show Error'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_number.disabled ? "secondary" : "outline"}
+                        onClick={() => toggleDisabled('test_number')}
+                      >
+                        {fieldStates.test_number.disabled ? 'Enable' : 'Disable'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <NumberField
+                    field={sampleFields.test_number}
+                    value={testValues.test_number}
+                    onChange={(value) => handleValueChange('test_number', value)}
+                    error={fieldStates.test_number.showError ? 'Value must be between 0 and 100' : undefined}
+                    disabled={fieldStates.test_number.disabled}
+                  />
+                  <div className="p-3 bg-muted rounded text-sm">
+                    <span className="font-semibold">Current Value:</span> 
+                    <code className="ml-2 px-2 py-1 bg-background rounded">{testValues.test_number ?? '(empty)'}</code>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Feature Checklist */}
-            <div className="space-y-4 border-t pt-6">
-              <h3 className="text-lg font-semibold">Component Features Checklist</h3>
-              <div className="grid gap-2 text-sm md:grid-cols-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>TextField component</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>TextareaField component</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>NumberField component</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>SelectField component</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>SliderField component</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>ToggleField component</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>CodeField component</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>Required field indicators</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>Help text tooltips</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>Error message display</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>Placeholder text</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>Character counter</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>Min/Max validation</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>JSON validation</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>Value change handling</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">✓</Badge>
-                  <span>Accessible ARIA labels</span>
-                </div>
+            {/* Advanced Input Fields Section */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 pb-2 border-b">
+                <Badge variant="secondary">Advanced Input Fields</Badge>
+                <span className="text-sm text-muted-foreground">Dropdowns, sliders, toggles, and code editors</span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Testing Summary */}
-        <Card className="bg-muted">
-          <CardHeader>
-            <CardTitle>Test Results Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className={`h-3 w-3 rounded-full ${platforms && platforms.length > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className="text-sm">
-                  Platforms Loaded: {platforms?.length || 0}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`h-3 w-3 rounded-full ${platformWithFields && platformWithFields.fields.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`} />
-                <span className="text-sm">
-                  Fields Loaded: {platformWithFields?.fields.length || 0} 
-                  {selectedPlatformId ? ` (${platformWithFields?.name || 'Loading...'})` : ' (Select a platform)'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`h-3 w-3 rounded-full ${!platformsError && !fieldsError ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className="text-sm">
-                  No Errors: {!platformsError && !fieldsError ? 'Pass ✓' : 'Fail ✗'}
-                </span>
-              </div>
+              {/* SelectField Component */}
+              <Card className="border-2">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">SelectField Component</CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_select.showError ? "destructive" : "outline"}
+                        onClick={() => toggleError('test_select')}
+                      >
+                        {fieldStates.test_select.showError ? 'Hide Error' : 'Show Error'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_select.disabled ? "secondary" : "outline"}
+                        onClick={() => toggleDisabled('test_select')}
+                      >
+                        {fieldStates.test_select.disabled ? 'Enable' : 'Disable'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <SelectField
+                    field={sampleFields.test_select}
+                    value={testValues.test_select}
+                    onChange={(value) => handleValueChange('test_select', value)}
+                    error={fieldStates.test_select.showError ? 'Please select an option' : undefined}
+                    disabled={fieldStates.test_select.disabled}
+                  />
+                  <div className="p-3 bg-muted rounded text-sm">
+                    <span className="font-semibold">Current Value:</span> 
+                    <code className="ml-2 px-2 py-1 bg-background rounded">{testValues.test_select || '(empty)'}</code>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* SliderField Component */}
+              <Card className="border-2">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">SliderField Component</CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_slider.showError ? "destructive" : "outline"}
+                        onClick={() => toggleError('test_slider')}
+                      >
+                        {fieldStates.test_slider.showError ? 'Hide Error' : 'Show Error'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_slider.disabled ? "secondary" : "outline"}
+                        onClick={() => toggleDisabled('test_slider')}
+                      >
+                        {fieldStates.test_slider.disabled ? 'Enable' : 'Disable'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <SliderField
+                    field={sampleFields.test_slider}
+                    value={testValues.test_slider}
+                    onChange={(value) => handleValueChange('test_slider', value)}
+                    error={fieldStates.test_slider.showError ? 'Value must be within range' : undefined}
+                    disabled={fieldStates.test_slider.disabled}
+                  />
+                  <div className="p-3 bg-muted rounded text-sm">
+                    <span className="font-semibold">Current Value:</span> 
+                    <code className="ml-2 px-2 py-1 bg-background rounded">{testValues.test_slider}</code>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ToggleField Component */}
+              <Card className="border-2">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">ToggleField Component</CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_toggle.showError ? "destructive" : "outline"}
+                        onClick={() => toggleError('test_toggle')}
+                      >
+                        {fieldStates.test_toggle.showError ? 'Hide Error' : 'Show Error'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_toggle.disabled ? "secondary" : "outline"}
+                        onClick={() => toggleDisabled('test_toggle')}
+                      >
+                        {fieldStates.test_toggle.disabled ? 'Enable' : 'Disable'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ToggleField
+                    field={sampleFields.test_toggle}
+                    value={testValues.test_toggle}
+                    onChange={(value) => handleValueChange('test_toggle', value)}
+                    error={fieldStates.test_toggle.showError ? 'This option must be enabled' : undefined}
+                    disabled={fieldStates.test_toggle.disabled}
+                  />
+                  <div className="p-3 bg-muted rounded text-sm">
+                    <span className="font-semibold">Current Value:</span> 
+                    <code className="ml-2 px-2 py-1 bg-background rounded">
+                      {testValues.test_toggle ? 'true (On)' : 'false (Off)'}
+                    </code>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* CodeField Component */}
+              <Card className="border-2">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">CodeField Component</CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_code.showError ? "destructive" : "outline"}
+                        onClick={() => toggleError('test_code')}
+                      >
+                        {fieldStates.test_code.showError ? 'Hide Error' : 'Show Error'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant={fieldStates.test_code.disabled ? "secondary" : "outline"}
+                        onClick={() => toggleDisabled('test_code')}
+                      >
+                        {fieldStates.test_code.disabled ? 'Enable' : 'Disable'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <CodeField
+                    field={sampleFields.test_code}
+                    value={testValues.test_code}
+                    onChange={(value) => handleValueChange('test_code', value)}
+                    error={fieldStates.test_code.showError ? 'Invalid JSON syntax' : undefined}
+                    disabled={fieldStates.test_code.disabled}
+                  />
+                  <div className="p-3 bg-muted rounded text-sm">
+                    <span className="font-semibold">Current Value:</span> 
+                    <pre className="ml-2 px-2 py-1 bg-background rounded text-xs mt-2 max-h-40 overflow-auto">
+{testValues.test_code || '(empty)'}
+                    </pre>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Feature Summary */}
+            <Card className="bg-muted/50">
+              <CardHeader>
+                <CardTitle className="text-lg">Component Features Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">All Components Support:</h4>
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>✓ Required field indicators (*)</li>
+                      <li>✓ Help text tooltips (info icon)</li>
+                      <li>✓ Error state display</li>
+                      <li>✓ Disabled state</li>
+                      <li>✓ Placeholder text</li>
+                      <li>✓ Real-time value updates</li>
+                      <li>✓ Accessible ARIA labels</li>
+                      <li>✓ Mobile responsive design</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">Special Features:</h4>
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>✓ TextareaField: Character counter</li>
+                      <li>✓ NumberField: Min/Max validation</li>
+                      <li>✓ SelectField: Dropdown with options</li>
+                      <li>✓ SliderField: Real-time value display</li>
+                      <li>✓ ToggleField: On/Off indicator</li>
+                      <li>✓ CodeField: Line count & JSON formatter</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </CardContent>
         </Card>
       </div>
