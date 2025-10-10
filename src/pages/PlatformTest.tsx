@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
-import { TextField, TextareaField, NumberField } from '@/components/prompts/fields';
+import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField } from '@/components/prompts/fields';
 import type { PlatformField } from '@/types/platform';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -33,6 +33,14 @@ export default function PlatformTest() {
     test_text_error: '',
     test_textarea_error: '',
     test_number_error: 150,
+    test_select: '',
+    test_slider: 50,
+    test_toggle: false,
+    test_code: '',
+    test_select_error: '',
+    test_slider_error: 150,
+    test_toggle_error: false,
+    test_code_error: '{"invalid": json}',
   });
 
   // Test error states
@@ -131,6 +139,119 @@ export default function PlatformTest() {
       is_required: true,
       display_order: 5,
       validation_rules: { min: 0, max: 100 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_select: {
+      id: 'test-7',
+      platform_id: 'test-platform',
+      field_key: 'test_select',
+      field_type: 'select',
+      label: 'Sample Select Field',
+      placeholder: 'Choose an option...',
+      is_required: true,
+      help_text: 'Select from dropdown options',
+      display_order: 6,
+      options: [
+        { label: 'Option 1', value: 'opt1' },
+        { label: 'Option 2', value: 'opt2' },
+        { label: 'Option 3', value: 'opt3' },
+        { label: 'Option 4', value: 'opt4' },
+      ],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_slider: {
+      id: 'test-8',
+      platform_id: 'test-platform',
+      field_key: 'test_slider',
+      field_type: 'slider',
+      label: 'Sample Slider Field',
+      is_required: false,
+      help_text: 'Adjust the slider value',
+      display_order: 7,
+      validation_rules: { min: 0, max: 100, step: 5 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_toggle: {
+      id: 'test-9',
+      platform_id: 'test-platform',
+      field_key: 'test_toggle',
+      field_type: 'toggle',
+      label: 'Sample Toggle Field',
+      placeholder: 'Enable or disable this feature',
+      is_required: false,
+      help_text: 'Toggle this on or off',
+      display_order: 8,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_code: {
+      id: 'test-10',
+      platform_id: 'test-platform',
+      field_key: 'test_code',
+      field_type: 'code',
+      label: 'Sample Code Field',
+      placeholder: 'Enter JSON code...',
+      is_required: false,
+      help_text: 'Enter valid JSON code',
+      display_order: 9,
+      validation_rules: { max: 1000, min: 5 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_select_error: {
+      id: 'test-11',
+      platform_id: 'test-platform',
+      field_key: 'test_select_error',
+      field_type: 'select',
+      label: 'Select Field (with error state)',
+      placeholder: 'Choose an option...',
+      is_required: true,
+      display_order: 10,
+      options: [
+        { label: 'Red', value: 'red' },
+        { label: 'Blue', value: 'blue' },
+        { label: 'Green', value: 'green' },
+      ],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_slider_error: {
+      id: 'test-12',
+      platform_id: 'test-platform',
+      field_key: 'test_slider_error',
+      field_type: 'slider',
+      label: 'Slider Field (with error state)',
+      is_required: true,
+      display_order: 11,
+      validation_rules: { min: 0, max: 100, step: 1 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_toggle_error: {
+      id: 'test-13',
+      platform_id: 'test-platform',
+      field_key: 'test_toggle_error',
+      field_type: 'toggle',
+      label: 'Toggle Field (with error state)',
+      placeholder: 'Must be enabled',
+      is_required: true,
+      display_order: 12,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_code_error: {
+      id: 'test-14',
+      platform_id: 'test-platform',
+      field_key: 'test_code_error',
+      field_type: 'code',
+      label: 'Code Field (with error state)',
+      placeholder: 'Enter valid JSON...',
+      is_required: true,
+      display_order: 13,
+      validation_rules: { max: 500 },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -394,6 +515,14 @@ export default function PlatformTest() {
                   test_text_error: '',
                   test_textarea_error: '',
                   test_number_error: 150,
+                  test_select: 'opt2',
+                  test_slider: 75,
+                  test_toggle: true,
+                  test_code: '{\n  "key": "value",\n  "array": [1, 2, 3]\n}',
+                  test_select_error: '',
+                  test_slider_error: 150,
+                  test_toggle_error: false,
+                  test_code_error: '{"invalid": json}',
                 })}
                 variant="secondary"
               >
@@ -407,6 +536,14 @@ export default function PlatformTest() {
                   test_text_error: '',
                   test_textarea_error: '',
                   test_number_error: 150,
+                  test_select: '',
+                  test_slider: 50,
+                  test_toggle: false,
+                  test_code: '',
+                  test_select_error: '',
+                  test_slider_error: 150,
+                  test_toggle_error: false,
+                  test_code_error: '{"invalid": json}',
                 })}
                 variant="outline"
               >
@@ -416,7 +553,7 @@ export default function PlatformTest() {
 
             {/* Normal Fields */}
             <div className="space-y-6 border-t pt-6">
-              <h3 className="text-lg font-semibold">Normal State Fields</h3>
+              <h3 className="text-lg font-semibold">Basic Input Fields</h3>
               
               <TextField
                 field={sampleFields.test_text}
@@ -434,6 +571,35 @@ export default function PlatformTest() {
                 field={sampleFields.test_number}
                 value={testValues.test_number}
                 onChange={(value) => handleValueChange('test_number', value)}
+              />
+            </div>
+
+            {/* Advanced Fields */}
+            <div className="space-y-6 border-t pt-6">
+              <h3 className="text-lg font-semibold">Advanced Input Fields</h3>
+              
+              <SelectField
+                field={sampleFields.test_select}
+                value={testValues.test_select}
+                onChange={(value) => handleValueChange('test_select', value)}
+              />
+
+              <SliderField
+                field={sampleFields.test_slider}
+                value={testValues.test_slider}
+                onChange={(value) => handleValueChange('test_slider', value)}
+              />
+
+              <ToggleField
+                field={sampleFields.test_toggle}
+                value={testValues.test_toggle}
+                onChange={(value) => handleValueChange('test_toggle', value)}
+              />
+
+              <CodeField
+                field={sampleFields.test_code}
+                value={testValues.test_code}
+                onChange={(value) => handleValueChange('test_code', value)}
               />
             </div>
 
@@ -461,6 +627,34 @@ export default function PlatformTest() {
                 onChange={(value) => handleValueChange('test_number_error', value)}
                 error={showErrors ? 'Value must be between 0 and 100' : undefined}
               />
+
+              <SelectField
+                field={sampleFields.test_select_error}
+                value={testValues.test_select_error}
+                onChange={(value) => handleValueChange('test_select_error', value)}
+                error={showErrors ? 'Please select an option' : undefined}
+              />
+
+              <SliderField
+                field={sampleFields.test_slider_error}
+                value={testValues.test_slider_error}
+                onChange={(value) => handleValueChange('test_slider_error', value)}
+                error={showErrors ? 'Value exceeds maximum (100)' : undefined}
+              />
+
+              <ToggleField
+                field={sampleFields.test_toggle_error}
+                value={testValues.test_toggle_error}
+                onChange={(value) => handleValueChange('test_toggle_error', value)}
+                error={showErrors ? 'This option must be enabled' : undefined}
+              />
+
+              <CodeField
+                field={sampleFields.test_code_error}
+                value={testValues.test_code_error}
+                onChange={(value) => handleValueChange('test_code_error', value)}
+                error={showErrors ? 'Invalid JSON syntax' : undefined}
+              />
             </div>
 
             {/* Current Values Display */}
@@ -476,14 +670,42 @@ export default function PlatformTest() {
             {/* Feature Checklist */}
             <div className="space-y-4 border-t pt-6">
               <h3 className="text-lg font-semibold">Component Features Checklist</h3>
-              <div className="grid gap-2 text-sm">
+              <div className="grid gap-2 text-sm md:grid-cols-2">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">✓</Badge>
-                  <span>Required field indicators (*)</span>
+                  <span>TextField component</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">✓</Badge>
-                  <span>Help text tooltips (hover info icon)</span>
+                  <span>TextareaField component</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>NumberField component</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>SelectField component</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>SliderField component</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>ToggleField component</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>CodeField component</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Required field indicators</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Help text tooltips</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">✓</Badge>
@@ -495,11 +717,15 @@ export default function PlatformTest() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">✓</Badge>
-                  <span>Character counter (TextareaField)</span>
+                  <span>Character counter</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">✓</Badge>
-                  <span>Min/Max validation (NumberField)</span>
+                  <span>Min/Max validation</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>JSON validation</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">✓</Badge>
