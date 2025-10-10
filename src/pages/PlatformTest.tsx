@@ -2020,6 +2020,495 @@ return (
                 })()}
               </CardContent>
             </Card>
+
+            {/* Real Platform Demo */}
+            <Card className="border-2 border-blue-500">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>🌐 Real Platform Demo</span>
+                  <Badge variant="outline" className="bg-blue-500/10">Production Ready</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Complete dynamic form using real platform data from database
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Alert>
+                  <AlertDescription>
+                    This demonstrates the complete system working with actual platform data from Supabase, including all validation, conditional logic, and form management.
+                  </AlertDescription>
+                </Alert>
+
+                {/* Platform Selector */}
+                <Card className="bg-muted/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Select a Platform</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {platformsLoading ? (
+                      <Skeleton className="h-10 w-full" />
+                    ) : platformsError ? (
+                      <Alert variant="destructive">
+                        <AlertDescription>Error loading platforms</AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Select value={selectedPlatformId} onValueChange={setSelectedPlatformId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a platform to test..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {platforms?.map((platform) => (
+                            <SelectItem key={platform.id} value={platform.id}>
+                              {platform.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Platform Form */}
+                {selectedPlatformId && platformWithFields && !fieldsLoading && (
+                  (() => {
+                    const platformForm = useDynamicForm({
+                      fields: platformWithFields.fields || [],
+                      initialValues: {},
+                      onSubmit: async (values) => {
+                        // Simulate API call
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        toast({
+                          title: 'Form Submitted Successfully! 🎉',
+                          description: `${Object.keys(values).length} fields submitted for ${platformWithFields.name}`,
+                        });
+                      }
+                    });
+
+                    return (
+                      <div className="space-y-6">
+                        {/* Platform Info */}
+                        <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/20">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              {(() => {
+                                const IconComponent = getIconComponent(platformWithFields.icon);
+                                return <IconComponent className="h-5 w-5" />;
+                              })()}
+                              {platformWithFields.name}
+                            </CardTitle>
+                            <CardDescription>
+                              {platformWithFields.description}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-sm space-y-1">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Total Fields:</span>
+                                <Badge variant="secondary">{platformWithFields.fields.length}</Badge>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Required Fields:</span>
+                                <Badge variant="secondary">
+                                  {platformWithFields.fields.filter(f => f.is_required).length}
+                                </Badge>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Form Status */}
+                        <div className="flex gap-2 flex-wrap">
+                          <Badge variant={platformForm.hasErrors ? "destructive" : "default"}>
+                            {platformForm.hasErrors ? '✗ Has Validation Errors' : '✓ All Fields Valid'}
+                          </Badge>
+                          <Badge variant={platformForm.isDirty ? "secondary" : "outline"}>
+                            {platformForm.isDirty ? '📝 Unsaved Changes' : '✓ No Changes'}
+                          </Badge>
+                          <Badge variant={platformForm.isSubmitting ? "default" : "outline"}>
+                            {platformForm.isSubmitting ? '⏳ Submitting...' : '🎯 Ready'}
+                          </Badge>
+                        </div>
+
+                        {/* The Form */}
+                        <form onSubmit={platformForm.handleSubmit} className="space-y-6">
+                          <FieldSection
+                            title={`${platformWithFields.name} Configuration`}
+                            description="Configure your prompt settings below"
+                            collapsible={platformWithFields.fields.length > 5}
+                            defaultOpen={true}
+                          >
+                            <DynamicFieldGroup
+                              fields={platformWithFields.fields}
+                              values={platformForm.values}
+                              onChange={platformForm.setValue}
+                              errors={Object.fromEntries(
+                                platformWithFields.fields.map(f => [
+                                  f.field_key,
+                                  platformForm.getError(f.field_key)
+                                ])
+                              )}
+                              onBlur={platformForm.handleBlur}
+                              layout={platformWithFields.fields.length > 6 ? "grid" : "vertical"}
+                            />
+                          </FieldSection>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-3 pt-4 border-t">
+                            <Button 
+                              type="submit" 
+                              disabled={platformForm.isSubmitting}
+                              className="min-w-[120px]"
+                            >
+                              {platformForm.isSubmitting ? (
+                                <>⏳ Submitting...</>
+                              ) : (
+                                <>✓ Submit Form</>
+                              )}
+                            </Button>
+                            <Button 
+                              type="button"
+                              variant="outline"
+                              onClick={platformForm.reset}
+                              disabled={!platformForm.isDirty || platformForm.isSubmitting}
+                            >
+                              Reset
+                            </Button>
+                            <Button 
+                              type="button"
+                              variant="secondary"
+                              onClick={() => platformForm.validateAll()}
+                              disabled={platformForm.isSubmitting}
+                            >
+                              Validate All
+                            </Button>
+                          </div>
+                        </form>
+
+                        {/* Live Values Display */}
+                        <Card className="bg-muted/50">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm flex items-center justify-between">
+                              <span>Form Values (Live Preview)</span>
+                              <Badge variant="outline" className="text-xs">
+                                {Object.keys(platformForm.values).length} fields
+                              </Badge>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <pre className="text-xs bg-background p-3 rounded overflow-auto max-h-60">
+                              {JSON.stringify(platformForm.values, null, 2)}
+                            </pre>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    );
+                  })()
+                )}
+
+                {selectedPlatformId && fieldsLoading && (
+                  <div className="space-y-4">
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                )}
+
+                {!selectedPlatformId && (
+                  <Card className="bg-muted/30">
+                    <CardContent className="py-12 text-center">
+                      <p className="text-muted-foreground">
+                        Select a platform above to see the dynamic form in action
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Conditional Logic Demo */}
+            <Card className="border-2 border-orange-500">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>🔀 Conditional Logic Demo</span>
+                  <Badge variant="outline" className="bg-orange-500/10">Smart Rendering</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Fields that appear/disappear based on other field values
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Alert>
+                  <AlertDescription>
+                    Conditional logic allows fields to show or hide based on other field values. Toggle the switch below to see advanced options appear!
+                  </AlertDescription>
+                </Alert>
+
+                {(() => {
+                  // Define conditional test fields
+                  const conditionalFields: PlatformField[] = [
+                    {
+                      id: 'cond-1',
+                      platform_id: 'test',
+                      field_key: 'enable_advanced',
+                      field_type: 'toggle',
+                      label: 'Enable Advanced Options',
+                      placeholder: 'Turn on to reveal advanced settings',
+                      is_required: false,
+                      display_order: 1,
+                      help_text: 'Toggle this to show/hide advanced options',
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    },
+                    {
+                      id: 'cond-2',
+                      platform_id: 'test',
+                      field_key: 'model_type',
+                      field_type: 'select',
+                      label: 'Model Type',
+                      placeholder: 'Select a model',
+                      is_required: true,
+                      display_order: 2,
+                      options: [
+                        { label: 'Fast (GPT-3.5)', value: 'gpt-3.5' },
+                        { label: 'Balanced (GPT-4)', value: 'gpt-4' },
+                        { label: 'Advanced (GPT-4 Turbo)', value: 'gpt-4-turbo' }
+                      ],
+                      help_text: 'Choose the AI model to use',
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    },
+                    {
+                      id: 'cond-3',
+                      platform_id: 'test',
+                      field_key: 'advanced_temperature',
+                      field_type: 'slider',
+                      label: 'Advanced Temperature Control',
+                      is_required: false,
+                      display_order: 3,
+                      validation_rules: { min: 0, max: 2, step: 0.01 },
+                      default_value: '0.7',
+                      help_text: 'Fine-tune creativity (only visible when advanced mode is on)',
+                      conditional_logic: {
+                        field: 'enable_advanced',
+                        operator: 'equals',
+                        value: true
+                      },
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    },
+                    {
+                      id: 'cond-4',
+                      platform_id: 'test',
+                      field_key: 'advanced_tokens',
+                      field_type: 'number',
+                      label: 'Max Tokens (Advanced)',
+                      placeholder: '2000',
+                      is_required: false,
+                      display_order: 4,
+                      validation_rules: { min: 100, max: 4000 },
+                      help_text: 'Maximum response length (advanced only)',
+                      conditional_logic: {
+                        field: 'enable_advanced',
+                        operator: 'equals',
+                        value: true
+                      },
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    },
+                    {
+                      id: 'cond-5',
+                      platform_id: 'test',
+                      field_key: 'turbo_settings',
+                      field_type: 'textarea',
+                      label: 'Turbo-Specific Settings',
+                      placeholder: 'Enter custom turbo settings...',
+                      is_required: false,
+                      display_order: 5,
+                      help_text: 'Only shown when GPT-4 Turbo is selected',
+                      conditional_logic: {
+                        field: 'model_type',
+                        operator: 'equals',
+                        value: 'gpt-4-turbo'
+                      },
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    }
+                  ];
+
+                  const conditionalForm = useDynamicForm({
+                    fields: conditionalFields,
+                    initialValues: {
+                      enable_advanced: false,
+                      model_type: 'gpt-4',
+                      advanced_temperature: 0.7,
+                      advanced_tokens: 2000,
+                      turbo_settings: ''
+                    },
+                    onSubmit: async (values) => {
+                      await new Promise(resolve => setTimeout(resolve, 1000));
+                      toast({
+                        title: 'Conditional Form Submitted!',
+                        description: `Submitted ${Object.keys(values).length} field values`,
+                      });
+                    }
+                  });
+
+                  // Count visible fields
+                  const visibleFields = conditionalFields.filter(field => {
+                    if (!field.conditional_logic) return true;
+                    
+                    const { field: depField, operator, value } = field.conditional_logic;
+                    const depValue = conditionalForm.values[depField];
+                    
+                    switch (operator) {
+                      case 'equals':
+                        return depValue === value;
+                      case 'not_equals':
+                        return depValue !== value;
+                      default:
+                        return true;
+                    }
+                  });
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Status Display */}
+                      <Card className="bg-muted/30">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm">Conditional Logic Status</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between items-center">
+                              <span>Total Fields Defined:</span>
+                              <Badge variant="secondary">{conditionalFields.length}</Badge>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Currently Visible:</span>
+                              <Badge variant="default">{visibleFields.length}</Badge>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Hidden by Conditions:</span>
+                              <Badge variant="outline">{conditionalFields.length - visibleFields.length}</Badge>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 border-t">
+                              <span>Advanced Mode:</span>
+                              <Badge variant={conditionalForm.values.enable_advanced ? "default" : "secondary"}>
+                                {conditionalForm.values.enable_advanced ? 'ON' : 'OFF'}
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Selected Model:</span>
+                              <Badge variant="secondary">
+                                {conditionalForm.values.model_type || 'None'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Form */}
+                      <form onSubmit={conditionalForm.handleSubmit} className="space-y-6">
+                        <FieldSection
+                          title="Conditional Fields Demo"
+                          description="Watch fields appear and disappear as you change values"
+                          collapsible={false}
+                        >
+                          <DynamicFieldGroup
+                            fields={conditionalFields}
+                            values={conditionalForm.values}
+                            onChange={conditionalForm.setValue}
+                            errors={Object.fromEntries(
+                              conditionalFields.map(f => [
+                                f.field_key,
+                                conditionalForm.getError(f.field_key)
+                              ])
+                            )}
+                            onBlur={conditionalForm.handleBlur}
+                            layout="vertical"
+                          />
+                        </FieldSection>
+
+                        {/* Form Actions */}
+                        <div className="flex gap-3 pt-4 border-t">
+                          <Button 
+                            type="submit" 
+                            disabled={conditionalForm.isSubmitting}
+                          >
+                            {conditionalForm.isSubmitting ? 'Submitting...' : 'Submit'}
+                          </Button>
+                          <Button 
+                            type="button"
+                            variant="outline"
+                            onClick={conditionalForm.reset}
+                          >
+                            Reset
+                          </Button>
+                        </div>
+                      </form>
+
+                      {/* Visible Fields List */}
+                      <Card className="bg-muted/50">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm">Currently Visible Fields</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="space-y-1 text-xs">
+                            {visibleFields.map(field => (
+                              <li key={field.id} className="flex items-center gap-2">
+                                <span className="text-primary">✓</span>
+                                <span className="font-medium">{field.label}</span>
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  {field.field_type}
+                                </Badge>
+                                {field.conditional_logic && (
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                    conditional
+                                  </Badge>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+
+                      {/* How It Works */}
+                      <Card className="bg-muted/50">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm">How Conditional Logic Works</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3 text-xs">
+                            <div>
+                              <strong>1. Advanced Options:</strong>
+                              <p className="text-muted-foreground mt-1">
+                                When "Enable Advanced" toggle is ON, the "Advanced Temperature" and "Max Tokens" fields appear.
+                              </p>
+                            </div>
+                            <div>
+                              <strong>2. Model-Specific Fields:</strong>
+                              <p className="text-muted-foreground mt-1">
+                                When "GPT-4 Turbo" is selected, the "Turbo-Specific Settings" field appears.
+                              </p>
+                            </div>
+                            <div>
+                              <strong>3. Conditional Logic Config:</strong>
+                              <pre className="bg-background p-2 rounded mt-1 overflow-auto">
+{`conditional_logic: {
+  field: 'enable_advanced',
+  operator: 'equals',
+  value: true
+}`}
+                              </pre>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
           </CardContent>
         </Card>
       </div>
