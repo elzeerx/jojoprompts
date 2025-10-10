@@ -35,6 +35,7 @@ const PrompterDashboard = lazy(() => import("@/pages/prompter/PrompterDashboard"
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const PromptsManagement = lazy(() => import("@/pages/admin/PromptsManagement"));
 const PromptGeneratorPage = lazy(() => import("@/pages/PromptGeneratorPage"));
+const PlatformTest = lazy(() => import("@/pages/PlatformTest"));
 const AboutPage = lazy(() => import("@/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));
 const FAQPage = lazy(() => import("@/pages/FAQPage"));
@@ -260,6 +261,12 @@ export const routes: RouteConfig[] = [
   {
     path: "admin/prompts",
     component: PromptsManagement,
+    protection: "admin",
+    fallbackRoute: "/prompts"
+  },
+  {
+    path: "admin/platform-test",
+    component: PlatformTest,
     protection: "admin",
     fallbackRoute: "/prompts"
   },
