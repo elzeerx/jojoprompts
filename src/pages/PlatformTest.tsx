@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
-import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection } from '@/components/prompts';
+import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard } from '@/components/prompts';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import { useDynamicForm } from '@/hooks/useDynamicForm';
 import { useCategories } from '@/hooks/useCategories';
@@ -3066,6 +3066,156 @@ return (
                   </CardContent>
                 </Card>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ========================================
+            PHASE 3.2: MULTI-STEP WIZARD TEST
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">NEW - Phase 3.2</Badge>
+              <CardTitle>Multi-Step Prompt Creation Wizard</CardTitle>
+            </div>
+            <CardDescription>
+              Complete flow: Platform Selection → Base Fields → Platform Fields → Preview & Submit
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {/* Instructions */}
+              <Alert>
+                <AlertDescription>
+                  This wizard demonstrates the complete prompt creation flow. Navigate through steps using the progress indicator or back/next buttons.
+                </AlertDescription>
+              </Alert>
+
+              {/* Wizard Component */}
+              <PromptWizard
+                mode="create"
+                onComplete={async (data) => {
+                  console.log('Wizard completed with data:', data);
+                  toast({
+                    title: "Prompt Created!",
+                    description: "Check the console for the submitted data.",
+                  });
+                }}
+                onCancel={() => {
+                  toast({
+                    variant: "destructive",
+                    title: "Cancelled",
+                    description: "Prompt creation cancelled.",
+                  });
+                }}
+              />
+
+              {/* Features List */}
+              <Card className="bg-primary/5 border-primary/20 mt-6">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">✨ Wizard Features</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Visual Progress Indicator:</strong>
+                        <p className="text-muted-foreground">Step-by-step navigation with completion status</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Step Validation:</strong>
+                        <p className="text-muted-foreground">Each step validates before allowing progression</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Back Navigation:</strong>
+                        <p className="text-muted-foreground">Go back to edit previous steps</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>State Management:</strong>
+                        <p className="text-muted-foreground">All data persists when navigating between steps</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Clickable Steps:</strong>
+                        <p className="text-muted-foreground">Jump to completed or previous steps</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Loading States:</strong>
+                        <p className="text-muted-foreground">Disabled buttons during submission</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Cancel Support:</strong>
+                        <p className="text-muted-foreground">Exit wizard at any step</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Edit Mode:</strong>
+                        <p className="text-muted-foreground">Pre-populate with existing data (Phase 3.5)</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Test Instructions */}
+              <Card className="bg-muted/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">How to Test</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">1.</span>
+                      <span>Click on step numbers to see if completed steps are accessible</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">2.</span>
+                      <span>Try clicking "Next" without completing a step (should be disabled)</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">3.</span>
+                      <span>Complete each step and watch the progress indicator update</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">4.</span>
+                      <span>Use "Back" button to navigate to previous steps</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">5.</span>
+                      <span>Verify data persists when moving between steps</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">6.</span>
+                      <span>Check console output on final submit</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">7.</span>
+                      <span>Test "Cancel" button to exit the wizard</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </CardContent>
         </Card>

@@ -15,6 +15,9 @@ export { PlatformSelector } from './PlatformSelector';
 export { PlatformSelectorDialog } from './PlatformSelectorDialog';
 export { PlatformBadge } from './PlatformBadge';
 
+// Wizard components
+export { PromptWizard } from './PromptWizard';
+
 // Re-export all individual field components
 export * from './fields';
 
@@ -27,3 +30,4 @@ export type { PlatformCardProps } from './PlatformCard';
 export type { PlatformSelectorProps } from './PlatformSelector';
 export type { PlatformSelectorDialogProps } from './PlatformSelectorDialog';
 export type { PlatformBadgeProps } from './PlatformBadge';
+export type { PromptWizardProps } from './PromptWizard';
