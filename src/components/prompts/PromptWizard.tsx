@@ -8,7 +8,10 @@ import { cn } from '@/lib/utils';
 import { StepIndicator } from './StepIndicator';
 import { PlatformSelector } from './PlatformSelector';
 import { BasePromptFieldsSection } from './BasePromptFields';
+import { DynamicFieldGroup } from './fields/DynamicFieldGroup';
 import { useCategories } from '@/hooks/useCategories';
+import { usePlatformWithFields } from '@/hooks/usePlatforms';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
 export interface PromptWizardProps {
   mode?: 'create' | 'edit';
@@ -58,6 +61,12 @@ export function PromptWizard({
 
   // Categories for base fields
   const { categories, createCategory } = useCategories();
+
+  // Platform fields
+  const { data: platformWithFields, isLoading: fieldsLoading } = usePlatformWithFields(
+    selectedPlatform?.id || ''
+  );
+  const platformFieldsList = platformWithFields?.fields || [];
 
   // Define wizard steps
   const steps: PromptFormStep[] = useMemo(() => [
@@ -149,6 +158,15 @@ export function PromptWizard({
     }
   }, [selectedPlatform, baseFields, platformFields, onComplete]);
 
+  // Keyboard navigation
+  useKeyboardNavigation({
+    onNext: handleNext,
+    onBack: handleBack,
+    canGoNext,
+    canGoBack,
+    enabled: !isSubmitting
+  });
+
   return (
     <div className={cn("space-y-6", className)}>
       {/* Progress Steps Indicator */}
@@ -160,6 +178,10 @@ export function PromptWizard({
 
       {/* Step Content */}
       <Card className="p-6 min-h-[500px]">
+        {/* Keyboard shortcuts hint */}
+        <div className="mb-4 text-xs text-muted-foreground text-right">
+          💡 Tip: Use <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Alt</kbd> + <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">←</kbd>/<kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">→</kbd> to navigate
+        </div>
         {/* Step 1: Platform Selection */}
         {currentStep === 0 && (
           <div>
@@ -218,10 +240,37 @@ export function PromptWizard({
             <h2 className="text-2xl font-semibold mb-2">{steps[2].title}</h2>
             <p className="text-muted-foreground mb-6">{steps[2].description}</p>
             
-            {/* Dynamic fields will be added here */}
-            <div className="text-center py-12 text-muted-foreground">
-              Dynamic Platform Fields Component (will be integrated)
-            </div>
+            {selectedPlatform && (
+              <>
+                {fieldsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+                      <p className="text-muted-foreground">Loading platform fields...</p>
+                    </div>
+                  </div>
+                ) : platformFieldsList && platformFieldsList.length > 0 ? (
+                  <DynamicFieldGroup
+                    fields={platformFieldsList}
+                    values={platformFields}
+                    onChange={(fieldKey, value) => {
+                      setPlatformFields(prev => ({ ...prev, [fieldKey]: value }));
+                    }}
+                    errors={{}} // Will add validation later
+                    layout="vertical"
+                  />
+                ) : (
+                  <div className="text-center py-12 border-2 border-dashed border-muted rounded-lg">
+                    <p className="text-muted-foreground">
+                      No additional configuration needed for {selectedPlatform.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Click Next to proceed to the preview step
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
