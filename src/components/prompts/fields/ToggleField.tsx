@@ -26,45 +26,48 @@ export function ToggleField({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {/* Toggle with label */}
-      <div className="flex items-center justify-between space-x-4 p-4 border rounded-lg bg-card">
-        <div className="flex-1 space-y-1">
-          <div className="flex items-center gap-2">
-            <Label htmlFor={field.field_key} className="text-sm font-medium cursor-pointer">
-              {field.label}
-              {field.is_required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            {field.help_text && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs">{field.help_text}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          {field.placeholder && (
-            <p className="text-sm text-muted-foreground">
-              {field.placeholder}
-            </p>
+      {/* Label and switch in flex layout */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Label htmlFor={field.field_key} className="text-sm font-medium">
+            {field.label}
+            {field.is_required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {field.help_text && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">{field.help_text}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
-        
-        <Switch
-          id={field.field_key}
-          checked={isChecked}
-          onCheckedChange={handleChange}
-          disabled={disabled}
-          aria-invalid={hasError}
-          aria-describedby={hasError ? `${field.field_key}-error` : undefined}
-          onBlur={onBlur}
-          onFocus={onFocus}
-        />
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {isChecked ? 'On' : 'Off'}
+          </span>
+          <Switch
+            id={field.field_key}
+            checked={isChecked}
+            onCheckedChange={handleChange}
+            disabled={disabled}
+            aria-invalid={hasError}
+            aria-describedby={hasError ? `${field.field_key}-error` : undefined}
+          />
+        </div>
       </div>
+
+      {/* Placeholder text if provided */}
+      {field.placeholder && (
+        <p className="text-sm text-muted-foreground">
+          {field.placeholder}
+        </p>
+      )}
 
       {/* Error message */}
       {hasError && (
