@@ -3,7 +3,8 @@ import { Platform } from '@/types/platform';
 import { BasePromptFields, PromptFormData, PromptFormStep } from '@/types/prompt-form';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StepIndicator } from './StepIndicator';
 import { PlatformSelector } from './PlatformSelector';
@@ -13,6 +14,7 @@ import { PromptPreview } from './PromptPreview';
 import { useCategories } from '@/hooks/useCategories';
 import { usePlatformWithFields } from '@/hooks/usePlatforms';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
+import { usePromptSubmission } from '@/hooks/usePromptSubmission';
 
 export interface PromptWizardProps {
   mode?: 'create' | 'edit';
@@ -56,9 +58,6 @@ export function PromptWizard({
 
   // Step validation states
   const [stepErrors, setStepErrors] = useState<Record<number, string[]>>({});
-  
-  // Submission state
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Categories for base fields
   const { categories, createCategory } = useCategories();
@@ -68,6 +67,30 @@ export function PromptWizard({
     selectedPlatform?.id || ''
   );
   const platformFieldsList = platformWithFields?.fields || [];
+
+  // Submission hook
+  const {
+    submit,
+    isSubmitting,
+    validationErrors,
+    clearValidationErrors
+  } = usePromptSubmission({
+    mode,
+    existingPromptId: (initialData as any)?.id,
+    existingThumbnailUrl: initialData?.thumbnail_url,
+    platformFields: platformFieldsList,
+    onSuccess: async (promptId) => {
+      console.log('Prompt saved with ID:', promptId);
+      await onComplete({
+        ...baseFields,
+        platform_id: selectedPlatform!.id,
+        platform_fields: platformFields
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to save prompt:', error);
+    }
+  });
 
   // Define wizard steps
   const steps: PromptFormStep[] = useMemo(() => [
@@ -148,16 +171,12 @@ export function PromptWizard({
       platform_fields: platformFields
     };
 
-    setIsSubmitting(true);
-    try {
-      await onComplete(formData);
-    } catch (error) {
-      console.error('Submission error:', error);
-      // Handle error (will add error display in Phase 3.4)
-    } finally {
-      setIsSubmitting(false);
+    const result = await submit(formData);
+    
+    if (result.success) {
+      // Success handled by onSuccess callback
     }
-  }, [selectedPlatform, baseFields, platformFields, onComplete]);
+  }, [selectedPlatform, baseFields, platformFields, submit]);
 
   // Keyboard navigation
   useKeyboardNavigation({
@@ -299,6 +318,21 @@ export function PromptWizard({
           </div>
         )}
       </Card>
+
+      {/* Validation Errors */}
+      {validationErrors.length > 0 && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <p className="font-semibold mb-2">Please fix the following errors:</p>
+            <ul className="list-disc list-inside space-y-1">
+              {validationErrors.map((error, index) => (
+                <li key={index}>{error.message}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Navigation Buttons */}
       <div className="flex justify-between items-center">
