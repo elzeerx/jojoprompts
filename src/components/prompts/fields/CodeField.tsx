@@ -1,5 +1,6 @@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { InfoIcon, Code2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FieldComponentProps } from './types';
@@ -17,78 +18,81 @@ export function CodeField({
 }: FieldComponentProps) {
   const hasError = !!error;
   const errorMessage = Array.isArray(error) ? error[0] : error;
-  const maxLength = field.validation_rules?.max;
-  const currentLength = value?.length || 0;
+  const currentValue = value || '';
+  const lineCount = currentValue.split('\n').length;
 
-  // Validate JSON if needed
-  const validateJSON = (text: string) => {
-    if (!text) return null;
+  const handleFormatJSON = () => {
     try {
-      JSON.parse(text);
-      return null;
+      const formatted = JSON.stringify(JSON.parse(currentValue), null, 2);
+      onChange(formatted);
     } catch (e) {
-      return 'Invalid JSON format';
+      // If not valid JSON, do nothing
+      console.error('Invalid JSON');
     }
   };
 
-  const jsonError = field.placeholder?.toLowerCase().includes('json') ? validateJSON(value) : null;
+  const looksLikeJSON = currentValue.trim().startsWith('{') || currentValue.trim().startsWith('[');
 
   return (
     <div className={cn("space-y-2", className)}>
-      {/* Label with optional help text tooltip */}
-      <div className="flex items-center gap-2">
-        <Code2 className="h-4 w-4 text-muted-foreground" />
-        <Label htmlFor={field.field_key} className="text-sm font-medium">
-          {field.label}
-          {field.is_required && <span className="text-destructive ml-1">*</span>}
-        </Label>
-        {field.help_text && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-xs">{field.help_text}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      {/* Label with help text and format button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Label htmlFor={field.field_key} className="text-sm font-medium">
+            {field.label}
+            {field.is_required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {field.help_text && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">{field.help_text}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+
+        {looksLikeJSON && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleFormatJSON}
+            disabled={disabled}
+            className="h-7"
+          >
+            <Code2 className="h-3 w-3 mr-1" />
+            Format JSON
+          </Button>
         )}
       </div>
 
-      {/* Code textarea with monospace font */}
+      {/* Code textarea */}
       <Textarea
         id={field.field_key}
-        value={value || ''}
+        value={currentValue}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
         onFocus={onFocus}
-        placeholder={field.placeholder || 'Enter code...'}
+        placeholder={field.placeholder || "Paste your code here..."}
         disabled={disabled}
-        maxLength={maxLength}
         className={cn(
-          "min-h-[200px] font-mono text-sm",
+          "font-mono text-sm min-h-[200px] resize-y",
           hasError && "border-destructive focus-visible:ring-destructive"
         )}
         aria-invalid={hasError}
         aria-describedby={hasError ? `${field.field_key}-error` : undefined}
-        rows={field.validation_rules?.min || 8}
         spellCheck={false}
       />
 
-      {/* Character count and JSON validation */}
-      <div className="flex items-center justify-between text-xs">
-        {maxLength && (
-          <p className="text-muted-foreground">
-            {currentLength}/{maxLength} characters
-          </p>
-        )}
-        {jsonError && !hasError && (
-          <p className="text-yellow-600 dark:text-yellow-500">
-            ⚠️ {jsonError}
-          </p>
-        )}
-      </div>
+      {/* Line count */}
+      <p className="text-xs text-muted-foreground text-right">
+        {lineCount} {lineCount === 1 ? 'line' : 'lines'}
+      </p>
 
       {/* Error message */}
       {hasError && (
