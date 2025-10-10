@@ -22,6 +22,7 @@ export { PromptWizardDialog } from './PromptWizardDialog';
 export { PromptPreview } from './PromptPreview';
 export { PromptPreviewCard } from './PromptPreviewCard';
 export { PromptSummary } from './PromptSummary';
+export { LivePreviewSidebar } from './LivePreviewSidebar';
 
 // Re-export all individual field components
 export * from './fields';
@@ -41,4 +42,5 @@ export type { PromptWizardDialogProps } from './PromptWizardDialog';
 export type { PromptPreviewProps } from './PromptPreview';
 export type { PromptPreviewCardProps } from './PromptPreviewCard';
 export type { PromptSummaryProps } from './PromptSummary';
+export type { LivePreviewSidebarProps } from './LivePreviewSidebar';
 
