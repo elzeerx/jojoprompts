@@ -30,35 +30,31 @@ export function SliderField({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {/* Label with optional help text tooltip */}
-      <div className="flex items-center gap-2">
-        <Label htmlFor={field.field_key} className="text-sm font-medium">
-          {field.label}
-          {field.is_required && <span className="text-destructive ml-1">*</span>}
-        </Label>
-        {field.help_text && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-xs">{field.help_text}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+      {/* Label with value and help text */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Label htmlFor={field.field_key} className="text-sm font-medium">
+            {field.label}
+            {field.is_required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {field.help_text && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">{field.help_text}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        <span className="text-sm font-semibold">{currentValue}</span>
       </div>
 
-      {/* Slider with value display */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Value: {currentValue}</span>
-          <span className="text-muted-foreground text-xs">
-            Range: {min} - {max}
-          </span>
-        </div>
-        
+      {/* Slider with min/max labels */}
+      <div className="space-y-1">
         <Slider
           id={field.field_key}
           value={[currentValue]}
@@ -70,8 +66,6 @@ export function SliderField({
           className={cn(hasError && "opacity-75")}
           aria-invalid={hasError}
           aria-describedby={hasError ? `${field.field_key}-error` : undefined}
-          onBlur={onBlur}
-          onFocus={onFocus}
         />
 
         {/* Min/Max labels */}
