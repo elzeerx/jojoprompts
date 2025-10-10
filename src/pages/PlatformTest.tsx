@@ -15,12 +15,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
+import { TextField, TextareaField, NumberField } from '@/components/prompts/fields';
+import type { PlatformField } from '@/types/platform';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export default function PlatformTest() {
   const [selectedPlatformId, setSelectedPlatformId] = useState<string>('');
+  
+  // Test field values
+  const [testValues, setTestValues] = useState<Record<string, any>>({
+    test_text: '',
+    test_textarea: '',
+    test_number: 50,
+    test_text_error: '',
+    test_textarea_error: '',
+    test_number_error: 150,
+  });
+
+  // Test error states
+  const [showErrors, setShowErrors] = useState(false);
   
   // Fetch all platforms
   const { data: platforms, isLoading: platformsLoading, error: platformsError } = usePlatforms();
@@ -34,6 +50,94 @@ export default function PlatformTest() {
   const getIconComponent = (iconName: string): LucideIcon => {
     const Icon = (LucideIcons as any)[iconName];
     return Icon || LucideIcons.Sparkles;
+  };
+
+  // Sample field configurations for testing
+  const sampleFields: Record<string, PlatformField> = {
+    test_text: {
+      id: 'test-1',
+      platform_id: 'test-platform',
+      field_key: 'test_text',
+      field_type: 'text',
+      label: 'Sample Text Field',
+      placeholder: 'Enter some text here...',
+      is_required: true,
+      help_text: 'This is a sample text field with help text tooltip',
+      display_order: 0,
+      validation_rules: { max: 100 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_textarea: {
+      id: 'test-2',
+      platform_id: 'test-platform',
+      field_key: 'test_textarea',
+      field_type: 'textarea',
+      label: 'Sample Textarea Field',
+      placeholder: 'Enter multiple lines of text...',
+      is_required: false,
+      help_text: 'This textarea has a character counter',
+      display_order: 1,
+      validation_rules: { max: 500, min: 3 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_number: {
+      id: 'test-3',
+      platform_id: 'test-platform',
+      field_key: 'test_number',
+      field_type: 'number',
+      label: 'Sample Number Field',
+      placeholder: '0',
+      is_required: true,
+      help_text: 'Enter a number between 0 and 100',
+      display_order: 2,
+      validation_rules: { min: 0, max: 100, step: 1 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_text_error: {
+      id: 'test-4',
+      platform_id: 'test-platform',
+      field_key: 'test_text_error',
+      field_type: 'text',
+      label: 'Text Field (with error state)',
+      placeholder: 'This field shows an error',
+      is_required: true,
+      display_order: 3,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_textarea_error: {
+      id: 'test-5',
+      platform_id: 'test-platform',
+      field_key: 'test_textarea_error',
+      field_type: 'textarea',
+      label: 'Textarea (with error state)',
+      placeholder: 'This field shows an error',
+      is_required: false,
+      display_order: 4,
+      validation_rules: { max: 200 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    test_number_error: {
+      id: 'test-6',
+      platform_id: 'test-platform',
+      field_key: 'test_number_error',
+      field_type: 'number',
+      label: 'Number Field (with error state)',
+      placeholder: '0',
+      is_required: true,
+      display_order: 5,
+      validation_rules: { min: 0, max: 100 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  };
+
+  const handleValueChange = (key: string, value: any) => {
+    setTestValues(prev => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -262,6 +366,151 @@ export default function PlatformTest() {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Field Components Test */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Field Components Test</CardTitle>
+            <CardDescription>
+              Test the TextField, TextareaField, and NumberField components with live interactions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Controls */}
+            <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+              <Button 
+                onClick={() => setShowErrors(!showErrors)}
+                variant={showErrors ? "destructive" : "default"}
+              >
+                {showErrors ? 'Hide' : 'Show'} Error States
+              </Button>
+              <Button 
+                onClick={() => setTestValues({
+                  test_text: 'Sample text',
+                  test_textarea: 'This is a longer sample text that demonstrates the textarea component with multiple lines of content.',
+                  test_number: 75,
+                  test_text_error: '',
+                  test_textarea_error: '',
+                  test_number_error: 150,
+                })}
+                variant="secondary"
+              >
+                Fill Sample Data
+              </Button>
+              <Button 
+                onClick={() => setTestValues({
+                  test_text: '',
+                  test_textarea: '',
+                  test_number: 50,
+                  test_text_error: '',
+                  test_textarea_error: '',
+                  test_number_error: 150,
+                })}
+                variant="outline"
+              >
+                Reset Fields
+              </Button>
+            </div>
+
+            {/* Normal Fields */}
+            <div className="space-y-6 border-t pt-6">
+              <h3 className="text-lg font-semibold">Normal State Fields</h3>
+              
+              <TextField
+                field={sampleFields.test_text}
+                value={testValues.test_text}
+                onChange={(value) => handleValueChange('test_text', value)}
+              />
+
+              <TextareaField
+                field={sampleFields.test_textarea}
+                value={testValues.test_textarea}
+                onChange={(value) => handleValueChange('test_textarea', value)}
+              />
+
+              <NumberField
+                field={sampleFields.test_number}
+                value={testValues.test_number}
+                onChange={(value) => handleValueChange('test_number', value)}
+              />
+            </div>
+
+            {/* Error State Fields */}
+            <div className="space-y-6 border-t pt-6">
+              <h3 className="text-lg font-semibold">Error State Fields</h3>
+              
+              <TextField
+                field={sampleFields.test_text_error}
+                value={testValues.test_text_error}
+                onChange={(value) => handleValueChange('test_text_error', value)}
+                error={showErrors ? 'This field is required' : undefined}
+              />
+
+              <TextareaField
+                field={sampleFields.test_textarea_error}
+                value={testValues.test_textarea_error}
+                onChange={(value) => handleValueChange('test_textarea_error', value)}
+                error={showErrors ? 'Text is too long (max 200 characters)' : undefined}
+              />
+
+              <NumberField
+                field={sampleFields.test_number_error}
+                value={testValues.test_number_error}
+                onChange={(value) => handleValueChange('test_number_error', value)}
+                error={showErrors ? 'Value must be between 0 and 100' : undefined}
+              />
+            </div>
+
+            {/* Current Values Display */}
+            <div className="space-y-4 border-t pt-6">
+              <h3 className="text-lg font-semibold">Current Field Values</h3>
+              <div className="bg-muted p-4 rounded-lg">
+                <pre className="text-xs overflow-auto">
+                  {JSON.stringify(testValues, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            {/* Feature Checklist */}
+            <div className="space-y-4 border-t pt-6">
+              <h3 className="text-lg font-semibold">Component Features Checklist</h3>
+              <div className="grid gap-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Required field indicators (*)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Help text tooltips (hover info icon)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Error message display</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Placeholder text</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Character counter (TextareaField)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Min/Max validation (NumberField)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Value change handling</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">✓</Badge>
+                  <span>Accessible ARIA labels</span>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
