@@ -41,41 +41,42 @@ export function PlatformCard({
     <Card
       className={cn(
         "cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105",
+        "mobile-card mobile-optimize-rendering",
         isSelected && "ring-2 ring-primary shadow-lg",
         className
       )}
       onClick={() => onSelect(platform)}
     >
-      <CardHeader className="space-y-3">
+      <CardHeader className="space-y-3 p-4 sm:p-6">
         <div className="flex items-start justify-between">
           {/* Icon */}
           <div className={cn(
-            "p-3 rounded-lg",
+            "p-2 sm:p-3 rounded-lg",
             isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
           )}>
-            <IconComponent className="h-6 w-6" />
+            <IconComponent className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
 
           {/* Selected indicator */}
           {isSelected && (
-            <div className="bg-primary text-primary-foreground rounded-full p-1">
-              <Check className="h-4 w-4" />
+            <div className="bg-primary text-primary-foreground rounded-full p-1 animate-scale-in">
+              <Check className="h-3 w-3 sm:h-4 sm:w-4" />
             </div>
           )}
         </div>
 
         {/* Platform name and category */}
         <div className="space-y-2">
-          <CardTitle className="text-xl">{platform.name}</CardTitle>
-          <Badge variant="secondary" className={categoryColor}>
+          <CardTitle className="text-base sm:text-lg md:text-xl">{platform.name}</CardTitle>
+          <Badge variant="secondary" className={cn(categoryColor, "text-xs")}>
             {platform.category.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
           </Badge>
         </div>
       </CardHeader>
 
       {platform.description && (
-        <CardContent>
-          <CardDescription className="text-sm">
+        <CardContent className="pt-0 p-4 sm:p-6">
+          <CardDescription className="text-xs sm:text-sm line-clamp-2">
             {platform.description}
           </CardDescription>
         </CardContent>

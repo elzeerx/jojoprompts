@@ -54,33 +54,37 @@ export function PlatformSelectorDialog({
     <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Select a Platform</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col sm:max-h-[80vh] p-0 sm:rounded-lg">
+        <DialogHeader className="px-4 py-6 sm:px-6 border-b">
+          <DialogTitle className="text-lg sm:text-xl">Select a Platform</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Choose the AI platform or tool you want to create a prompt for
           </DialogDescription>
         </DialogHeader>
 
-        <PlatformSelector
-          onSelect={handleSelect}
-          selectedPlatformId={selectedPlatform?.id}
-          showSearch={true}
-          showCategoryTabs={true}
-        />
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+          <PlatformSelector
+            onSelect={handleSelect}
+            selectedPlatformId={selectedPlatform?.id}
+            showSearch={true}
+            showCategoryTabs={true}
+          />
+        </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
+        <div className="flex justify-end gap-3 p-4 sm:p-6 border-t bg-background">
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
+            className="flex-1 sm:flex-none"
           >
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={!selectedPlatform}
+            className="flex-1 sm:flex-none"
           >
-            Continue with {selectedPlatform?.name || 'Selected Platform'}
+            Continue with {selectedPlatform?.name || 'Platform'}
           </Button>
         </div>
       </DialogContent>

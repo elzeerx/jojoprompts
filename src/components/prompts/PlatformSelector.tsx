@@ -3,6 +3,7 @@ import { Platform } from '@/types/platform';
 import { usePlatforms } from '@/hooks/usePlatforms';
 import { PlatformCard } from './PlatformCard';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -94,17 +95,17 @@ export function PlatformSelector({
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4 sm:space-y-6", className)}>
       {/* Search Bar */}
       {showSearch && (
-        <div className="relative">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search platforms..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 w-full mobile-optimize-rendering"
           />
         </div>
       )}
@@ -112,19 +113,23 @@ export function PlatformSelector({
       {/* Category Tabs */}
       {showCategoryTabs ? (
         <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-          <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap scrollbar-hide">
             {categories.map(category => (
-              <TabsTrigger key={category as string} value={category as string} className="flex-shrink-0">
+              <TabsTrigger 
+                key={category as string} 
+                value={category as string} 
+                className="flex-shrink-0 text-xs sm:text-sm whitespace-nowrap"
+              >
                 {categoryLabels[category as string] || category}
               </TabsTrigger>
             ))}
           </TabsList>
 
           {categories.map(category => (
-            <TabsContent key={category as string} value={category as string} className="mt-6">
+            <TabsContent key={category as string} value={category as string} className="mt-4 sm:mt-6 animate-fade-in">
               {/* Platform Grid */}
               {filteredPlatforms.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {filteredPlatforms.map(platform => (
                     <PlatformCard
                       key={platform.id}
@@ -135,8 +140,28 @@ export function PlatformSelector({
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <p>No platforms found matching "{searchQuery}"</p>
+                <div className="text-center py-12 space-y-4 animate-fade-in">
+                  <div className="text-4xl">🔍</div>
+                  <div className="space-y-2">
+                    <p className="text-base font-medium text-foreground">No platforms found</p>
+                    <p className="text-sm text-muted-foreground">
+                      {searchQuery ? (
+                        <>No results for "{searchQuery}"</>
+                      ) : (
+                        <>No platforms available in this category</>
+                      )}
+                    </p>
+                  </div>
+                  {searchQuery && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setSearchQuery('')}
+                      className="mt-4"
+                    >
+                      Clear search
+                    </Button>
+                  )}
                 </div>
               )}
             </TabsContent>
@@ -144,9 +169,9 @@ export function PlatformSelector({
         </Tabs>
       ) : (
         // Simple grid without tabs
-        <div>
+        <div className="animate-fade-in">
           {filteredPlatforms.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {filteredPlatforms.map(platform => (
                 <PlatformCard
                   key={platform.id}
@@ -157,17 +182,39 @@ export function PlatformSelector({
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No platforms found matching "{searchQuery}"</p>
+            <div className="text-center py-12 space-y-4">
+              <div className="text-4xl">🔍</div>
+              <div className="space-y-2">
+                <p className="text-base font-medium text-foreground">No platforms found</p>
+                <p className="text-sm text-muted-foreground">
+                  {searchQuery ? (
+                    <>No results for "{searchQuery}"</>
+                  ) : (
+                    <>No platforms are currently available</>
+                  )}
+                </p>
+              </div>
+              {searchQuery && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="mt-4"
+                >
+                  Clear search
+                </Button>
+              )}
             </div>
           )}
         </div>
       )}
 
       {/* Results count */}
-      <div className="text-sm text-muted-foreground text-center">
-        Showing {filteredPlatforms.length} of {platforms.length} platforms
-      </div>
+      {filteredPlatforms.length > 0 && (
+        <div className="text-xs sm:text-sm text-muted-foreground text-center pt-2 border-t">
+          Showing {filteredPlatforms.length} of {platforms.length} platform{platforms.length !== 1 ? 's' : ''}
+        </div>
+      )}
     </div>
   );
 }
