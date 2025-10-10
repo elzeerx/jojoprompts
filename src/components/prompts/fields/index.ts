@@ -6,4 +6,5 @@ export { SliderField } from './SliderField';
 export { ToggleField } from './ToggleField';
 export { CodeField } from './CodeField';
 export { DynamicFieldRenderer } from './DynamicFieldRenderer';
+export { DynamicFieldGroup } from './DynamicFieldGroup';
 export * from './types';

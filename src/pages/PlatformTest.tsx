@@ -17,7 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
-import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer } from '@/components/prompts/fields';
+import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
+import { FieldSection } from '@/components/prompts/FieldSection';
 import { ValidationErrorList } from '@/components/prompts/ValidationErrorList';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import type { PlatformField } from '@/types/platform';
@@ -1411,6 +1412,416 @@ export default function PlatformTest() {
                         <span><strong>Unified Interface:</strong> Single component API for all field types</span>
                       </li>
                     </ul>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+
+            {/* DynamicFieldGroup Demo */}
+            <Card className="border-2 border-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>📦 DynamicFieldGroup Demo</span>
+                  <Badge variant="outline">Phase 2.4</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Renders multiple fields together with automatic sorting and flexible layout options
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Alert>
+                  <AlertDescription>
+                    DynamicFieldGroup handles rendering multiple fields at once, automatically sorting by <code className="px-1.5 py-0.5 bg-muted rounded">display_order</code> and applying layout classes.
+                  </AlertDescription>
+                </Alert>
+
+                {/* Vertical Layout Example */}
+                <FieldSection
+                  title="Vertical Layout"
+                  description="Fields stacked vertically (default layout)"
+                  collapsible
+                  defaultOpen={true}
+                >
+                  <DynamicFieldGroup
+                    fields={[
+                      sampleFields.test_text,
+                      sampleFields.test_number,
+                      sampleFields.test_toggle
+                    ]}
+                    values={testValues}
+                    onChange={handleValueChange}
+                    errors={Object.fromEntries(
+                      Object.entries(validation.validationResults).map(([key, result]) => [
+                        key,
+                        result.isValid ? undefined : result.errors
+                      ])
+                    )}
+                    onBlur={(key) => validation.touchField(key)}
+                    layout="vertical"
+                  />
+                </FieldSection>
+
+                {/* Grid Layout Example */}
+                <FieldSection
+                  title="Grid Layout"
+                  description="Two-column responsive grid layout"
+                  collapsible
+                  defaultOpen={true}
+                >
+                  <DynamicFieldGroup
+                    fields={[
+                      sampleFields.test_select,
+                      sampleFields.test_slider,
+                      sampleFields.test_textarea,
+                      sampleFields.test_code
+                    ]}
+                    values={testValues}
+                    onChange={handleValueChange}
+                    errors={Object.fromEntries(
+                      Object.entries(validation.validationResults).map(([key, result]) => [
+                        key,
+                        result.isValid ? undefined : result.errors
+                      ])
+                    )}
+                    onBlur={(key) => validation.touchField(key)}
+                    layout="grid"
+                  />
+                </FieldSection>
+
+                {/* Features */}
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">DynamicFieldGroup Features</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Auto-sorting:</strong> Sorts fields by display_order</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Layout Options:</strong> vertical, grid, two-column</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Responsive:</strong> Grid layouts adapt to mobile</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Error Handling:</strong> Passes validation errors to fields</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Unified API:</strong> Single onChange handler for all fields</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+
+            {/* FieldSection Demo */}
+            <Card className="border-2 border-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>📂 FieldSection Demo</span>
+                  <Badge variant="outline">Phase 2.4</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Organizes fields into collapsible sections with titles and descriptions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Alert>
+                  <AlertDescription>
+                    FieldSection provides visual organization for field groups with optional collapse/expand functionality.
+                  </AlertDescription>
+                </Alert>
+
+                {/* Collapsible Section Example */}
+                <FieldSection
+                  title="Basic Configuration"
+                  description="Essential fields for prompt configuration"
+                  collapsible={true}
+                  defaultOpen={true}
+                >
+                  <DynamicFieldGroup
+                    fields={[sampleFields.test_text, sampleFields.test_select]}
+                    values={testValues}
+                    onChange={handleValueChange}
+                    errors={Object.fromEntries(
+                      Object.entries(validation.validationResults).map(([key, result]) => [
+                        key,
+                        result.isValid ? undefined : result.errors
+                      ])
+                    )}
+                    onBlur={(key) => validation.touchField(key)}
+                    layout="vertical"
+                  />
+                </FieldSection>
+
+                {/* Non-collapsible Section Example */}
+                <FieldSection
+                  title="Advanced Settings"
+                  description="Fine-tune advanced parameters"
+                  collapsible={false}
+                >
+                  <DynamicFieldGroup
+                    fields={[sampleFields.test_slider, sampleFields.test_toggle]}
+                    values={testValues}
+                    onChange={handleValueChange}
+                    errors={Object.fromEntries(
+                      Object.entries(validation.validationResults).map(([key, result]) => [
+                        key,
+                        result.isValid ? undefined : result.errors
+                      ])
+                    )}
+                    onBlur={(key) => validation.touchField(key)}
+                    layout="grid"
+                  />
+                </FieldSection>
+
+                {/* Another Collapsible Section */}
+                <FieldSection
+                  title="Code & Text"
+                  description="Large text inputs and code fields"
+                  collapsible={true}
+                  defaultOpen={false}
+                >
+                  <DynamicFieldGroup
+                    fields={[sampleFields.test_textarea, sampleFields.test_code]}
+                    values={testValues}
+                    onChange={handleValueChange}
+                    errors={Object.fromEntries(
+                      Object.entries(validation.validationResults).map(([key, result]) => [
+                        key,
+                        result.isValid ? undefined : result.errors
+                      ])
+                    )}
+                    onBlur={(key) => validation.touchField(key)}
+                    layout="vertical"
+                  />
+                </FieldSection>
+
+                {/* Features */}
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">FieldSection Features</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Visual Organization:</strong> Groups related fields together</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Collapsible:</strong> Optional collapse/expand functionality</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Descriptions:</strong> Support for section descriptions</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Default State:</strong> Control initial open/closed state</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">✓</span>
+                        <span><strong>Flexible Content:</strong> Works with any child components</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </CardContent>
+            </Card>
+
+            {/* Complete Form Example */}
+            <Card className="border-2 border-green-500">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>🎨 Complete Form Example</span>
+                  <Badge variant="outline" className="bg-green-500/10">All Components</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Real-world example combining DynamicFieldRenderer, DynamicFieldGroup, and FieldSection
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Alert>
+                  <AlertDescription>
+                    This demonstrates how all Phase 2 components work together to create a fully functional dynamic form system.
+                  </AlertDescription>
+                </Alert>
+
+                {/* Complete Form with Sections */}
+                <div className="space-y-6">
+                  <FieldSection
+                    title="🔧 Basic Settings"
+                    description="Configure the fundamental parameters"
+                    collapsible={true}
+                    defaultOpen={true}
+                  >
+                    <DynamicFieldGroup
+                      fields={[
+                        sampleFields.test_text,
+                        sampleFields.test_select,
+                        sampleFields.test_number
+                      ]}
+                      values={testValues}
+                      onChange={handleValueChange}
+                      errors={Object.fromEntries(
+                        Object.entries(validation.validationResults).map(([key, result]) => [
+                          key,
+                          result.isValid ? undefined : result.errors
+                        ])
+                      )}
+                      onBlur={(key) => validation.touchField(key)}
+                      layout="grid"
+                    />
+                  </FieldSection>
+
+                  <FieldSection
+                    title="⚙️ Advanced Configuration"
+                    description="Fine-tune advanced parameters and toggles"
+                    collapsible={true}
+                    defaultOpen={true}
+                  >
+                    <DynamicFieldGroup
+                      fields={[
+                        sampleFields.test_slider,
+                        sampleFields.test_toggle
+                      ]}
+                      values={testValues}
+                      onChange={handleValueChange}
+                      errors={Object.fromEntries(
+                        Object.entries(validation.validationResults).map(([key, result]) => [
+                          key,
+                          result.isValid ? undefined : result.errors
+                        ])
+                      )}
+                      onBlur={(key) => validation.touchField(key)}
+                      layout="two-column"
+                    />
+                  </FieldSection>
+
+                  <FieldSection
+                    title="📝 Content & Code"
+                    description="Large text areas and code editors"
+                    collapsible={true}
+                    defaultOpen={false}
+                  >
+                    <DynamicFieldGroup
+                      fields={[
+                        sampleFields.test_textarea,
+                        sampleFields.test_code
+                      ]}
+                      values={testValues}
+                      onChange={handleValueChange}
+                      errors={Object.fromEntries(
+                        Object.entries(validation.validationResults).map(([key, result]) => [
+                          key,
+                          result.isValid ? undefined : result.errors
+                        ])
+                      )}
+                      onBlur={(key) => validation.touchField(key)}
+                      layout="vertical"
+                    />
+                  </FieldSection>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button 
+                    onClick={() => {
+                      const isValid = validation.validateAll(testValues);
+                      const errorMessage = formatErrorsForToast(validation.validationResults);
+                      
+                      toast({
+                        variant: isValid ? "default" : "destructive",
+                        title: errorMessage.title,
+                        description: errorMessage.description,
+                      });
+                    }}
+                  >
+                    Validate Form
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={validation.clearValidation}
+                  >
+                    Clear Validation
+                  </Button>
+                  <Button 
+                    variant="secondary"
+                    onClick={() => {
+                      setTestValues({
+                        test_text: '',
+                        test_textarea: '',
+                        test_number: 50,
+                        test_select: '',
+                        test_slider: 50,
+                        test_toggle: false,
+                        test_code: '',
+                        required_field: '',
+                        age_field: '',
+                        bio_field: '',
+                        email_field: '',
+                        url_field: '',
+                        pattern_field: '',
+                      });
+                      validation.clearValidation();
+                    }}
+                  >
+                    Reset Form
+                  </Button>
+                </div>
+
+                {/* Summary */}
+                <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Phase 2 Complete! 🎉</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 text-sm">
+                      <p className="font-semibold">You now have a complete dynamic field system with:</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div>
+                          <strong>Phase 2.1:</strong> Basic Fields
+                          <ul className="text-xs text-muted-foreground ml-4 mt-1">
+                            <li>• TextField</li>
+                            <li>• TextareaField</li>
+                            <li>• NumberField</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Phase 2.2:</strong> Advanced Fields
+                          <ul className="text-xs text-muted-foreground ml-4 mt-1">
+                            <li>• SelectField</li>
+                            <li>• SliderField</li>
+                            <li>• ToggleField</li>
+                            <li>• CodeField</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Phase 2.3:</strong> Validation
+                          <ul className="text-xs text-muted-foreground ml-4 mt-1">
+                            <li>• Validation utilities</li>
+                            <li>• Error formatting</li>
+                            <li>• Validation hooks</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Phase 2.4:</strong> Orchestration
+                          <ul className="text-xs text-muted-foreground ml-4 mt-1">
+                            <li>• DynamicFieldRenderer</li>
+                            <li>• DynamicFieldGroup</li>
+                            <li>• FieldSection</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </CardContent>
