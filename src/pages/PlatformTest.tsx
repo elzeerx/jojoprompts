@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
-import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog } from '@/components/prompts';
+import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog, PromptPreview } from '@/components/prompts';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import { useDynamicForm } from '@/hooks/useDynamicForm';
 import { useCategories } from '@/hooks/useCategories';
@@ -3504,6 +3504,119 @@ return (
                       <div>
                         <strong>Cancel Handling:</strong>
                         <p className="text-muted-foreground">Closes dialog when user cancels</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ========================================
+            PHASE 3.3: PROMPT PREVIEW DEMO
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">NEW - Phase 3.3</Badge>
+              <CardTitle>Prompt Preview Component</CardTitle>
+            </div>
+            <CardDescription>
+              Step 4 preview with formatting, statistics, and copy functionality
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  This is what users see in Step 4 of the wizard before submitting their prompt.
+                </AlertDescription>
+              </Alert>
+
+              {/* Sample Preview */}
+              <PromptPreview
+                data={{
+                  title: "Professional Email Generator",
+                  prompt_text: "Write a professional email to {recipient} about {topic}. The tone should be {tone} and include a clear call-to-action.",
+                  platform_id: platforms?.[0]?.id || 'chatgpt',
+                  platform_fields: {
+                    system_message: "You are a professional business communication expert.",
+                    temperature: 0.7,
+                    max_tokens: 500,
+                    model: "gpt-4"
+                  },
+                  category_id: categories[0]?.id,
+                  thumbnail_url: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop"
+                }}
+                platform={platforms?.[0] || {
+                  id: 'chatgpt',
+                  name: 'ChatGPT',
+                  slug: 'chatgpt',
+                  category: 'text-to-text',
+                  description: 'OpenAI ChatGPT',
+                  icon: 'MessageSquare',
+                  is_active: true,
+                  display_order: 1,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }}
+                categoryName={categories[0]?.name || 'Business'}
+                onEdit={(stepId) => {
+                  toast({
+                    title: "Edit Step",
+                    description: `Navigating to ${stepId} step...`,
+                  });
+                }}
+              />
+
+              {/* Features List */}
+              <Card className="bg-primary/5 border-primary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">✨ Preview Features</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Formatted Display:</strong>
+                        <p className="text-muted-foreground">Platform-specific prompt formatting</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Copy to Clipboard:</strong>
+                        <p className="text-muted-foreground">One-click copy for entire prompt</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Statistics:</strong>
+                        <p className="text-muted-foreground">Characters, words, lines, token estimate</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Edit Navigation:</strong>
+                        <p className="text-muted-foreground">Jump back to any previous step</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Configuration Display:</strong>
+                        <p className="text-muted-foreground">Show all platform-specific settings</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Thumbnail Preview:</strong>
+                        <p className="text-muted-foreground">Display uploaded thumbnail image</p>
                       </div>
                     </div>
                   </div>

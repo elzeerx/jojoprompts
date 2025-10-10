@@ -9,6 +9,7 @@ import { StepIndicator } from './StepIndicator';
 import { PlatformSelector } from './PlatformSelector';
 import { BasePromptFieldsSection } from './BasePromptFields';
 import { DynamicFieldGroup } from './fields/DynamicFieldGroup';
+import { PromptPreview } from './PromptPreview';
 import { useCategories } from '@/hooks/useCategories';
 import { usePlatformWithFields } from '@/hooks/usePlatforms';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
@@ -275,15 +276,33 @@ export function PromptWizard({
         )}
 
         {/* Step 4: Preview */}
-        {currentStep === 3 && (
+        {currentStep === 3 && selectedPlatform && (
           <div>
             <h2 className="text-2xl font-semibold mb-2">{steps[3].title}</h2>
             <p className="text-muted-foreground mb-6">{steps[3].description}</p>
             
-            {/* Preview will be added in Phase 3.3 */}
-            <div className="text-center py-12 text-muted-foreground">
-              Preview Component (will be added in Phase 3.3)
-            </div>
+            <PromptPreview
+              data={{
+                ...baseFields,
+                platform_id: selectedPlatform.id,
+                platform_fields: platformFields
+              }}
+              platform={selectedPlatform}
+              categoryName={categories.find(c => c.id === baseFields.category_id)?.name}
+              onEdit={(stepId) => {
+                // Map step IDs to indices
+                const stepMap: Record<string, number> = {
+                  'platform': 0,
+                  'base-fields': 1,
+                  'platform-fields': 2,
+                  'preview': 3
+                };
+                const stepIndex = stepMap[stepId];
+                if (stepIndex !== undefined && stepIndex < currentStep) {
+                  setCurrentStep(stepIndex);
+                }
+              }}
+            />
           </div>
         )}
       </Card>

@@ -19,6 +19,7 @@ export { PlatformBadge } from './PlatformBadge';
 export { PromptWizard } from './PromptWizard';
 export { StepIndicator } from './StepIndicator';
 export { PromptWizardDialog } from './PromptWizardDialog';
+export { PromptPreview } from './PromptPreview';
 
 // Re-export all individual field components
 export * from './fields';
@@ -35,4 +36,5 @@ export type { PlatformBadgeProps } from './PlatformBadge';
 export type { PromptWizardProps } from './PromptWizard';
 export type { StepIndicatorProps } from './StepIndicator';
 export type { PromptWizardDialogProps } from './PromptWizardDialog';
+export type { PromptPreviewProps } from './PromptPreview';
 
