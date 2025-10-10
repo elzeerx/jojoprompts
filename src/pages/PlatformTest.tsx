@@ -18,10 +18,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
-import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge } from '@/components/prompts';
+import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection } from '@/components/prompts';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import { useDynamicForm } from '@/hooks/useDynamicForm';
+import { useCategories } from '@/hooks/useCategories';
 import type { PlatformField, Platform } from '@/types/platform';
+import type { BasePromptFields } from '@/types/prompt-form';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +34,20 @@ export default function PlatformTest() {
   const [step, setStep] = useState(1);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
   const { toast } = useToast();
+  const { categories, loading: categoriesLoading, createCategory } = useCategories();
+  
+  // Base prompt fields state
+  const [baseFields, setBaseFields] = useState<BasePromptFields>({
+    title: '',
+    title_ar: '',
+    prompt_text: '',
+    prompt_text_ar: '',
+    category_id: '',
+    thumbnail: null,
+    thumbnail_url: ''
+  });
+
+  const [baseFieldErrors, setBaseFieldErrors] = useState<Partial<Record<keyof BasePromptFields, string>>>({});
   
   // Test field values
   const [testValues, setTestValues] = useState<Record<string, any>>({
@@ -424,6 +440,95 @@ export default function PlatformTest() {
       setStep(1);
       setSelectedPlatform(null);
       flowForm.reset();
+    }
+  };
+
+  // Base fields handlers
+  const handleBaseFieldChange = (field: keyof BasePromptFields, value: any) => {
+    setBaseFields(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error when field is changed
+    if (baseFieldErrors[field]) {
+      setBaseFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateBaseFields = () => {
+    const newErrors: Partial<Record<keyof BasePromptFields, string>> = {};
+
+    if (!baseFields.title.trim()) {
+      newErrors.title = 'Title is required';
+    } else if (baseFields.title.length > 100) {
+      newErrors.title = 'Title must be 100 characters or less';
+    }
+
+    if (!baseFields.prompt_text.trim()) {
+      newErrors.prompt_text = 'Prompt text is required';
+    } else if (baseFields.prompt_text.length > 5000) {
+      newErrors.prompt_text = 'Prompt text must be 5000 characters or less';
+    }
+
+    setBaseFieldErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleBaseFieldsSubmit = () => {
+    if (validateBaseFields()) {
+      console.log('Base fields valid:', baseFields);
+      toast({
+        title: "Validation Passed!",
+        description: "All base fields are valid. Check console for output.",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Validation Failed",
+        description: "Please fix the errors before continuing",
+      });
+    }
+  };
+
+  // Map database categories to simple CategorySelector format
+  const simplifiedCategories = categories.map(cat => ({
+    id: cat.id,
+    name: cat.name,
+    slug: cat.link_path || cat.name.toLowerCase().replace(/\s+/g, '-')
+  }));
+
+  // Wrap createCategory to match expected signature
+  const handleCreateSimpleCategory = async (name: string) => {
+    try {
+      const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      await createCategory({
+        name,
+        description: '',
+        image_path: '',
+        required_plan: 'free',
+        icon_name: 'Folder',
+        features: [],
+        bg_gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        link_path: slug,
+        is_active: true,
+        display_order: 999
+      });
+      toast({
+        title: "Category Created",
+        description: `Successfully created "${name}" category`,
+      });
+    } catch (error) {
+      console.error('Error creating category:', error);
+      toast({
+        variant: "destructive",
+        title: "Creation Failed",
+        description: "Failed to create category. Please try again.",
+      });
     }
   };
 
@@ -2805,6 +2910,163 @@ return (
                 })()}
               </CardContent>
             </Card>
+          </CardContent>
+        </Card>
+
+        {/* ========================================
+            PHASE 3.3: BASE PROMPT FIELDS TEST
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">NEW - Phase 3.3</Badge>
+              <CardTitle>Base Prompt Fields Test</CardTitle>
+            </div>
+            <CardDescription>
+              Testing title, prompt text, category, and thumbnail fields with bilingual support
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Form Section */}
+              <div className="space-y-6">
+                <BasePromptFieldsSection
+                  values={baseFields}
+                  onChange={handleBaseFieldChange}
+                  errors={baseFieldErrors}
+                  categories={simplifiedCategories}
+                  onCreateCategory={handleCreateSimpleCategory}
+                  showBilingualSupport={true}
+                  disabled={categoriesLoading}
+                />
+
+                <Button 
+                  onClick={handleBaseFieldsSubmit} 
+                  className="w-full"
+                  size="lg"
+                >
+                  Validate Fields
+                </Button>
+              </div>
+
+              {/* Preview Section */}
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Current Values</CardTitle>
+                    <CardDescription>
+                      Live preview of field values (check console on submit)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="bg-muted p-4 rounded-lg text-xs overflow-auto max-h-96">
+                      {JSON.stringify({
+                        ...baseFields,
+                        thumbnail: baseFields.thumbnail ? `File: ${baseFields.thumbnail.name}` : null
+                      }, null, 2)}
+                    </pre>
+                  </CardContent>
+                </Card>
+
+                {/* Test Instructions */}
+                <Card className="bg-muted/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Test Instructions</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold">1.</span>
+                        <span>Fill in title → character count updates</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold">2.</span>
+                        <span>Fill in prompt text → character count updates</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold">3.</span>
+                        <span>Select category from dropdown</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold">4.</span>
+                        <span>Click + to create new category → dialog opens</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold">5.</span>
+                        <span>Click thumbnail upload → file picker opens</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold">6.</span>
+                        <span>Select image → preview appears</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold">7.</span>
+                        <span>Leave required fields empty → validation errors</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold">8.</span>
+                        <span>Test bilingual fields (Arabic)</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-bold">9.</span>
+                        <span>Click validate → check console output</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Features List */}
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">✨ Features Tested</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Character counter</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Field validation</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Error display</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Category selector</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Category creation</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Thumbnail upload</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Image preview</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Bilingual support</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Mobile responsive</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-primary">✓</span>
+                        <span>Accessibility</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

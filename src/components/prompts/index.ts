@@ -4,6 +4,11 @@ export { DynamicFieldGroup } from './fields/DynamicFieldGroup';
 export { FieldSection } from './FieldSection';
 export { ValidationErrorList } from './ValidationErrorList';
 
+// Base prompt fields components
+export { BasePromptFieldsSection } from './BasePromptFields';
+export { CategorySelector } from './CategorySelector';
+export { ThumbnailUpload } from './ThumbnailUpload';
+
 // Platform selector components
 export { PlatformCard } from './PlatformCard';
 export { PlatformSelector } from './PlatformSelector';
@@ -17,6 +22,7 @@ export * from './fields';
 export type { DynamicFieldRendererProps } from './fields/DynamicFieldRenderer';
 export type { DynamicFieldGroupProps } from './fields/DynamicFieldGroup';
 export type { FieldSectionProps } from './FieldSection';
+export type { BasePromptFieldsProps } from './BasePromptFields';
 export type { PlatformCardProps } from './PlatformCard';
 export type { PlatformSelectorProps } from './PlatformSelector';
 export type { PlatformSelectorDialogProps } from './PlatformSelectorDialog';
