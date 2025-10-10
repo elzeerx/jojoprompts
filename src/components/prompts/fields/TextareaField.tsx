@@ -17,6 +17,8 @@ export function TextareaField({
 }: FieldComponentProps) {
   const hasError = !!error;
   const errorMessage = Array.isArray(error) ? error[0] : error;
+  const maxLength = field.validation_rules?.max;
+  const currentLength = value?.length || 0;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -49,11 +51,19 @@ export function TextareaField({
         onFocus={onFocus}
         placeholder={field.placeholder}
         disabled={disabled}
-        className={cn(hasError && "border-destructive focus-visible:ring-destructive")}
+        maxLength={maxLength}
+        className={cn("min-h-[150px]", hasError && "border-destructive focus-visible:ring-destructive")}
         aria-invalid={hasError}
         aria-describedby={hasError ? `${field.field_key}-error` : undefined}
         rows={field.validation_rules?.min || 4}
       />
+
+      {/* Character count */}
+      {maxLength && (
+        <p className="text-xs text-muted-foreground text-right">
+          {currentLength}/{maxLength} characters
+        </p>
+      )}
 
       {/* Error message */}
       {hasError && (

@@ -17,12 +17,22 @@ export function NumberField({
 }: FieldComponentProps) {
   const hasError = !!error;
   const errorMessage = Array.isArray(error) ? error[0] : error;
+  
+  const min = field.validation_rules?.min;
+  const max = field.validation_rules?.max;
+  const step = field.validation_rules?.step || 1;
+  
+  // Generate range info for help text if not provided
+  const rangeInfo = !field.help_text && (min !== undefined || max !== undefined)
+    ? `Value between ${min ?? '-∞'} and ${max ?? '∞'}`
+    : null;
+  const displayHelpText = field.help_text || rangeInfo;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     // Allow empty string or valid number
     if (val === '') {
-      onChange(null);
+      onChange('');
     } else {
       const numValue = parseFloat(val);
       if (!isNaN(numValue)) {
@@ -39,14 +49,14 @@ export function NumberField({
           {field.label}
           {field.is_required && <span className="text-destructive ml-1">*</span>}
         </Label>
-        {field.help_text && (
+        {displayHelpText && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent>
-                <p className="max-w-xs">{field.help_text}</p>
+                <p className="max-w-xs">{displayHelpText}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -63,9 +73,9 @@ export function NumberField({
         onFocus={onFocus}
         placeholder={field.placeholder}
         disabled={disabled}
-        min={field.validation_rules?.min}
-        max={field.validation_rules?.max}
-        step={field.validation_rules?.step || 1}
+        min={min}
+        max={max}
+        step={step}
         className={cn(hasError && "border-destructive focus-visible:ring-destructive")}
         aria-invalid={hasError}
         aria-describedby={hasError ? `${field.field_key}-error` : undefined}
