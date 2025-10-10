@@ -15,12 +15,18 @@ The validation system provides:
 ```
 src/lib/validation/
 ├── types.ts              # TypeScript type definitions
-├── validators.ts         # Validation functions
+├── validators.ts         # Individual validation functions
+├── validateField.ts      # Main validation orchestrator
+├── validateForm.ts       # Form-level validation utilities
 ├── errorFormatters.ts    # Error message formatting utilities
-├── useFieldValidation.ts # React hook for form validation
+├── useFieldValidation.ts # Advanced validation hook (deprecated)
 ├── index.ts             # Main exports
+├── tests/
+│   └── validators.test.ts # Test suite (commented)
 └── README.md            # This file
 ```
+
+**Note:** The main validation hook is now in `src/hooks/useFieldValidation.ts` for better organization.
 
 ## Quick Start
 
@@ -57,13 +63,10 @@ import { TextField } from '@/components/prompts/fields';
 function MyForm({ fields }: { fields: PlatformField[] }) {
   const [values, setValues] = useState<Record<string, any>>({});
   
-  const validation = useFieldValidation(fields, {
-    validateOnBlur: true,
-    validateOnChange: false
-  });
+  const validation = useFieldValidation(fields);
 
   const handleSubmit = () => {
-    const isValid = validation.validateAllFields(values);
+    const isValid = validation.validateAll(values);
     if (!isValid) {
       toast({
         variant: "destructive",
@@ -84,10 +87,10 @@ function MyForm({ fields }: { fields: PlatformField[] }) {
           value={values[field.field_key]}
           onChange={(value) => {
             setValues(prev => ({ ...prev, [field.field_key]: value }));
-            validation.handleChange(field.field_key, value);
+            validation.validateSingle(field.field_key, value);
           }}
-          error={validation.getFieldError(field.field_key)}
-          onBlur={() => validation.handleBlur(field.field_key, values[field.field_key])}
+          error={validation.getError(field.field_key)}
+          onBlur={() => validation.touchField(field.field_key)}
         />
       ))}
       <button onClick={handleSubmit}>Submit</button>
@@ -170,33 +173,24 @@ Validates multiple fields at once.
 
 **Returns:** `Record<string, ValidationResult>`
 
-### `useFieldValidation(fields, options)`
+### `useFieldValidation(fields)`
 
 React hook for form validation with state management.
 
 **Parameters:**
 - `fields: PlatformField[]` - Array of field configurations
-- `options?: ValidationOptions`
-  - `validateOnBlur?: boolean` - Validate when field loses focus (default: true)
-  - `validateOnChange?: boolean` - Validate on every change (default: false)
-  - `stopOnFirstError?: boolean` - Stop validation on first error (default: false)
 
 **Returns:**
 ```typescript
 {
-  errors: FieldValidationResult;
-  isValid: boolean;
-  isDirty: boolean;
-  touchedFields: Set<string>;
-  validationState: FormValidationState;
-  validateSingleField: (fieldKey: string, value: any) => boolean;
-  validateAllFields: (values: Record<string, any>) => boolean;
+  validateAll: (values: Record<string, any>) => boolean;
+  validateSingle: (fieldKey: string, value: any) => boolean;
   touchField: (fieldKey: string) => void;
-  handleBlur: (fieldKey: string, value: any) => void;
-  handleChange: (fieldKey: string, value: any) => void;
-  clearErrors: () => void;
-  clearFieldError: (fieldKey: string) => void;
-  getFieldError: (fieldKey: string) => string | string[] | undefined;
+  getError: (fieldKey: string) => string | undefined;
+  hasErrors: () => boolean;
+  validationResults: FieldValidationResult;
+  clearValidation: () => void;
+  touched: Record<string, boolean>;
 }
 ```
 
@@ -241,33 +235,34 @@ Formats errors for display in toast notifications.
 
 ## Best Practices
 
-### 1. Validate on Blur for Better UX
+### 1. Touch Fields Before Showing Errors
 ```typescript
-const validation = useFieldValidation(fields, {
-  validateOnBlur: true,
-  validateOnChange: false  // Don't validate on every keystroke
-});
+error={validation.getError(field.field_key)}
+onBlur={() => validation.touchField(field.field_key)}
+// Only shows error if field has been touched
 ```
 
-### 2. Show Errors Only After User Interaction
+### 2. Validate Single Fields on Change
 ```typescript
-error={validation.getFieldError(field.field_key)}
-// Only shows error if field has been touched
+onChange={(value) => {
+  setValues(prev => ({ ...prev, [key]: value }));
+  validation.validateSingle(key, value);
+}}
 ```
 
 ### 3. Clear Errors When Appropriate
 ```typescript
-validation.clearErrors();  // Clear all errors
-validation.clearFieldError('temperature');  // Clear specific field error
+validation.clearValidation();  // Clear all validation state
 ```
 
 ### 4. Validate Before Submission
 ```typescript
 const handleSubmit = () => {
-  if (!validation.validateAllFields(values)) {
+  if (!validation.validateAll(values)) {
+    const errorMessage = formatErrorsForToast(validation.validationResults);
     toast({
       variant: "destructive",
-      ...formatErrorsForToast(validation.errors)
+      ...errorMessage
     });
     return;
   }

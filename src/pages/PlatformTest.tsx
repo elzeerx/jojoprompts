@@ -37,6 +37,13 @@ export default function PlatformTest() {
     test_slider: 50,
     test_toggle: false,
     test_code: '',
+    // Validation test fields
+    required_field: '',
+    age_field: '',
+    bio_field: '',
+    email_field: '',
+    url_field: '',
+    pattern_field: '',
   });
 
   // Test error states
@@ -51,6 +58,13 @@ export default function PlatformTest() {
     test_slider: { disabled: false, showError: false },
     test_toggle: { disabled: false, showError: false },
     test_code: { disabled: false, showError: false },
+    // Validation test fields
+    required_field: { disabled: false, showError: false },
+    age_field: { disabled: false, showError: false },
+    bio_field: { disabled: false, showError: false },
+    email_field: { disabled: false, showError: false },
+    url_field: { disabled: false, showError: false },
+    pattern_field: { disabled: false, showError: false },
   });
 
   const toggleDisabled = (fieldKey: string) => {
@@ -273,6 +287,82 @@ export default function PlatformTest() {
       is_required: true,
       display_order: 13,
       validation_rules: { max: 500 },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    // Validation test fields
+    required_field: {
+      id: 'test-required',
+      platform_id: 'test',
+      field_key: 'required_field',
+      field_type: 'text',
+      label: 'Required Field',
+      placeholder: 'This field is required',
+      is_required: true,
+      display_order: 14,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    age_field: {
+      id: 'test-number-range',
+      platform_id: 'test',
+      field_key: 'age_field',
+      field_type: 'number',
+      label: 'Age (18-100)',
+      placeholder: 'Enter age between 18 and 100',
+      validation_rules: { min: 18, max: 100 },
+      is_required: false,
+      display_order: 15,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    bio_field: {
+      id: 'test-string-length',
+      platform_id: 'test',
+      field_key: 'bio_field',
+      field_type: 'textarea',
+      label: 'Bio (10-200 chars)',
+      placeholder: 'Enter at least 10 characters',
+      validation_rules: { minLength: 10, maxLength: 200 },
+      is_required: false,
+      display_order: 16,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    email_field: {
+      id: 'test-email',
+      platform_id: 'test',
+      field_key: 'email_field',
+      field_type: 'text',
+      label: 'Email Address',
+      placeholder: 'user@example.com',
+      is_required: false,
+      display_order: 17,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    url_field: {
+      id: 'test-url',
+      platform_id: 'test',
+      field_key: 'url_field',
+      field_type: 'text',
+      label: 'Website URL',
+      placeholder: 'https://example.com',
+      is_required: false,
+      display_order: 18,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    pattern_field: {
+      id: 'test-pattern',
+      platform_id: 'test',
+      field_key: 'pattern_field',
+      field_type: 'text',
+      label: 'Code Pattern',
+      placeholder: 'ABC-123',
+      validation_rules: { pattern: '^[A-Z]{3}-\\d{3}$' },
+      is_required: false,
+      display_order: 19,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -914,6 +1004,318 @@ export default function PlatformTest() {
                     </ul>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Validation Testing Section */}
+            <Card className="border-2 border-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span>🧪 Validation Testing</span>
+                  <Badge variant="outline">Phase 2.3</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Test all validation rules - required, ranges, length, patterns, email, and URL validation
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Validation Test Controls */}
+                <div className="flex flex-wrap gap-2 items-center p-4 bg-muted/50 rounded-lg border">
+                  <Button 
+                    onClick={() => {
+                      const isValid = validation.validateAll(testValues);
+                      const errorMessage = formatErrorsForToast(validation.validationResults);
+                      
+                      toast({
+                        variant: isValid ? "default" : "destructive",
+                        title: errorMessage.title,
+                        description: errorMessage.description,
+                      });
+                    }}
+                    variant="default"
+                  >
+                    Validate All
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setTestValues(prev => ({
+                        ...prev,
+                        required_field: '',
+                        age_field: '',
+                        bio_field: '',
+                        email_field: '',
+                        url_field: '',
+                        pattern_field: '',
+                      }));
+                      validation.clearValidation();
+                    }}
+                    variant="outline"
+                  >
+                    Clear Validation Tests
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setTestValues(prev => ({
+                        ...prev,
+                        required_field: 'Sample value',
+                        age_field: 25,
+                        bio_field: 'This is a valid bio with enough characters to pass validation',
+                        email_field: 'user@example.com',
+                        url_field: 'https://example.com',
+                        pattern_field: 'ABC-123',
+                      }));
+                    }}
+                    variant="secondary"
+                  >
+                    Fill Valid Data
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setTestValues(prev => ({
+                        ...prev,
+                        required_field: '', // Empty (invalid)
+                        age_field: 150, // Out of range (invalid)
+                        bio_field: 'Short', // Too short (invalid)
+                        email_field: 'notanemail', // Invalid format
+                        url_field: 'not-a-url', // Invalid format
+                        pattern_field: '123-ABC', // Wrong pattern
+                      }));
+                    }}
+                    variant="destructive"
+                  >
+                    Fill Invalid Data
+                  </Button>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Required Field Test */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Required Field Test</CardTitle>
+                      <CardDescription className="text-xs">
+                        Leave empty and validate to see required error
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <TextField
+                        field={{
+                          id: 'test-required',
+                          platform_id: 'test',
+                          field_key: 'required_field',
+                          field_type: 'text',
+                          label: 'Required Field',
+                          placeholder: 'This field is required',
+                          is_required: true,
+                          display_order: 0,
+                          created_at: '',
+                          updated_at: ''
+                        }}
+                        value={testValues.required_field}
+                        onChange={(value) => handleValueChange('required_field', value)}
+                        error={validation.getError('required_field')}
+                        onBlur={() => validation.touchField('required_field')}
+                      />
+                      <div className="text-xs p-2 bg-muted rounded">
+                        <strong>Value:</strong> {testValues.required_field || '(empty)'}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Number Range Test */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Number Range Test</CardTitle>
+                      <CardDescription className="text-xs">
+                        Try values outside 18-100 range
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <NumberField
+                        field={{
+                          id: 'test-number-range',
+                          platform_id: 'test',
+                          field_key: 'age_field',
+                          field_type: 'number',
+                          label: 'Age (18-100)',
+                          placeholder: 'Enter age between 18 and 100',
+                          validation_rules: { min: 18, max: 100 },
+                          is_required: false,
+                          display_order: 0,
+                          created_at: '',
+                          updated_at: ''
+                        }}
+                        value={testValues.age_field}
+                        onChange={(value) => handleValueChange('age_field', value)}
+                        error={validation.getError('age_field')}
+                        onBlur={() => validation.touchField('age_field')}
+                      />
+                      <div className="text-xs p-2 bg-muted rounded">
+                        <strong>Value:</strong> {testValues.age_field || '(empty)'}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* String Length Test */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">String Length Test</CardTitle>
+                      <CardDescription className="text-xs">
+                        Min 10, Max 200 characters
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <TextareaField
+                        field={{
+                          id: 'test-string-length',
+                          platform_id: 'test',
+                          field_key: 'bio_field',
+                          field_type: 'textarea',
+                          label: 'Bio (10-200 chars)',
+                          placeholder: 'Enter at least 10 characters',
+                          validation_rules: { minLength: 10, maxLength: 200 },
+                          is_required: false,
+                          display_order: 0,
+                          created_at: '',
+                          updated_at: ''
+                        }}
+                        value={testValues.bio_field}
+                        onChange={(value) => handleValueChange('bio_field', value)}
+                        error={validation.getError('bio_field')}
+                        onBlur={() => validation.touchField('bio_field')}
+                      />
+                      <div className="text-xs p-2 bg-muted rounded">
+                        <strong>Length:</strong> {testValues.bio_field?.length || 0} chars
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Email Validation Test */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Email Format Test</CardTitle>
+                      <CardDescription className="text-xs">
+                        Validates email format automatically
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <TextField
+                        field={{
+                          id: 'test-email',
+                          platform_id: 'test',
+                          field_key: 'email_field',
+                          field_type: 'text',
+                          label: 'Email Address',
+                          placeholder: 'user@example.com',
+                          is_required: false,
+                          display_order: 0,
+                          created_at: '',
+                          updated_at: ''
+                        }}
+                        value={testValues.email_field}
+                        onChange={(value) => handleValueChange('email_field', value)}
+                        error={validation.getError('email_field')}
+                        onBlur={() => validation.touchField('email_field')}
+                      />
+                      <div className="text-xs p-2 bg-muted rounded">
+                        <strong>Value:</strong> {testValues.email_field || '(empty)'}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* URL Validation Test */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">URL Format Test</CardTitle>
+                      <CardDescription className="text-xs">
+                        Validates URL format automatically
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <TextField
+                        field={{
+                          id: 'test-url',
+                          platform_id: 'test',
+                          field_key: 'url_field',
+                          field_type: 'text',
+                          label: 'Website URL',
+                          placeholder: 'https://example.com',
+                          is_required: false,
+                          display_order: 0,
+                          created_at: '',
+                          updated_at: ''
+                        }}
+                        value={testValues.url_field}
+                        onChange={(value) => handleValueChange('url_field', value)}
+                        error={validation.getError('url_field')}
+                        onBlur={() => validation.touchField('url_field')}
+                      />
+                      <div className="text-xs p-2 bg-muted rounded">
+                        <strong>Value:</strong> {testValues.url_field || '(empty)'}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Pattern Validation Test */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Pattern Test</CardTitle>
+                      <CardDescription className="text-xs">
+                        Must match: ABC-### (e.g., ABC-123)
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <TextField
+                        field={{
+                          id: 'test-pattern',
+                          platform_id: 'test',
+                          field_key: 'pattern_field',
+                          field_type: 'text',
+                          label: 'Code Pattern',
+                          placeholder: 'ABC-123',
+                          validation_rules: { pattern: '^[A-Z]{3}-\\d{3}$' },
+                          is_required: false,
+                          display_order: 0,
+                          created_at: '',
+                          updated_at: ''
+                        }}
+                        value={testValues.pattern_field}
+                        onChange={(value) => handleValueChange('pattern_field', value)}
+                        error={validation.getError('pattern_field')}
+                        onBlur={() => validation.touchField('pattern_field')}
+                      />
+                      <div className="text-xs p-2 bg-muted rounded">
+                        <strong>Value:</strong> {testValues.pattern_field || '(empty)'}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Validation Summary */}
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Validation Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span>Total Fields Tested:</span>
+                        <Badge>6</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Fields with Errors:</span>
+                        <Badge variant={validation.hasErrors() ? "destructive" : "default"}>
+                          {Object.values(validation.validationResults).filter(r => !r.isValid).length}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Form Status:</span>
+                        <Badge variant={validation.hasErrors() ? "destructive" : "default"}>
+                          {validation.hasErrors() ? 'Invalid' : 'Valid'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </CardContent>
             </Card>
           </CardContent>
