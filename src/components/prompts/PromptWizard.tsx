@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StepIndicator } from './StepIndicator';
+import { PlatformSelector } from './PlatformSelector';
+import { BasePromptFieldsSection } from './BasePromptFields';
+import { useCategories } from '@/hooks/useCategories';
 
 export interface PromptWizardProps {
   mode?: 'create' | 'edit';
@@ -52,6 +55,9 @@ export function PromptWizard({
   
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Categories for base fields
+  const { categories, createCategory } = useCategories();
 
   // Define wizard steps
   const steps: PromptFormStep[] = useMemo(() => [
@@ -160,10 +166,12 @@ export function PromptWizard({
             <h2 className="text-2xl font-semibold mb-2">{steps[0].title}</h2>
             <p className="text-muted-foreground mb-6">{steps[0].description}</p>
             
-            {/* Platform selector will be added here */}
-            <div className="text-center py-12 text-muted-foreground">
-              Platform Selector Component (will be integrated)
-            </div>
+            <PlatformSelector
+              onSelect={setSelectedPlatform}
+              selectedPlatformId={selectedPlatform?.id}
+              showSearch={true}
+              showCategoryTabs={true}
+            />
           </div>
         )}
 
@@ -173,10 +181,34 @@ export function PromptWizard({
             <h2 className="text-2xl font-semibold mb-2">{steps[1].title}</h2>
             <p className="text-muted-foreground mb-6">{steps[1].description}</p>
             
-            {/* Base fields will be added here */}
-            <div className="text-center py-12 text-muted-foreground">
-              Base Prompt Fields Component (will be integrated)
-            </div>
+            <BasePromptFieldsSection
+              values={baseFields}
+              onChange={(field, value) => {
+                setBaseFields(prev => ({ ...prev, [field]: value }));
+              }}
+              errors={{}} // Will add validation in Phase 3.4
+              categories={categories.map(cat => ({
+                id: cat.id,
+                name: cat.name,
+                slug: cat.link_path || cat.name.toLowerCase().replace(/\s+/g, '-')
+              }))}
+              onCreateCategory={async (name: string) => {
+                const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                await createCategory({
+                  name,
+                  description: '',
+                  image_path: '',
+                  required_plan: 'free',
+                  icon_name: 'Folder',
+                  features: [],
+                  bg_gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  link_path: slug,
+                  is_active: true,
+                  display_order: 999
+                });
+              }}
+              showBilingualSupport={false} // Can be made configurable
+            />
           </div>
         )}
 
