@@ -18,16 +18,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
-import { FieldSection, ValidationErrorList } from '@/components/prompts';
+import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge } from '@/components/prompts';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import { useDynamicForm } from '@/hooks/useDynamicForm';
-import type { PlatformField } from '@/types/platform';
+import type { PlatformField, Platform } from '@/types/platform';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 export default function PlatformTest() {
   const [selectedPlatformId, setSelectedPlatformId] = useState<string>('');
+  const [step, setStep] = useState(1);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
   const { toast } = useToast();
   
   // Test field values
@@ -390,6 +393,40 @@ export default function PlatformTest() {
     });
   };
 
+  // Multi-step flow state and logic
+  const { data: platformWithFieldsForFlow, isLoading: flowFieldsLoading } = usePlatformWithFields(
+    selectedPlatform?.id || ''
+  );
+
+  const flowForm = useDynamicForm({
+    fields: platformWithFieldsForFlow?.fields || [],
+    initialValues: {},
+    onSubmit: async (values) => {
+      console.log('Form submitted:', values);
+      toast({
+        title: "Success!",
+        description: `Prompt created successfully for ${selectedPlatform?.name}`,
+      });
+      // Reset and go back to step 1
+      setStep(1);
+      setSelectedPlatform(null);
+      flowForm.reset();
+    }
+  });
+
+  const handlePlatformSelect = (platform: Platform) => {
+    setSelectedPlatform(platform);
+    setStep(2);
+  };
+
+  const handleBack = () => {
+    if (step === 2) {
+      setStep(1);
+      setSelectedPlatform(null);
+      flowForm.reset();
+    }
+  };
+
   return (
     <Container className="py-12">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -405,6 +442,265 @@ export default function PlatformTest() {
             </AlertDescription>
           </Alert>
         </div>
+
+        {/* ========================================
+            PHASE 2.5: COMPREHENSIVE PLATFORM SELECTOR DEMO
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">NEW - Phase 2.5</Badge>
+              <CardTitle>Complete Platform Selection & Dynamic Forms Flow</CardTitle>
+            </div>
+            <CardDescription>
+              Multi-step workflow: Platform Selection → Dynamic Form → Submit
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-8">
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-center gap-3">
+              <div className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                step === 1 ? 'bg-primary text-primary-foreground shadow-lg scale-105' : 'bg-muted text-muted-foreground'
+              }`}>
+                Step 1: Select Platform
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              <div className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                step === 2 ? 'bg-primary text-primary-foreground shadow-lg scale-105' : 'bg-muted text-muted-foreground'
+              }`}>
+                Step 2: Configure Prompt
+              </div>
+            </div>
+
+            {/* Step 1: Platform Selection */}
+            {step === 1 && (
+              <div className="space-y-6">
+                {/* Full Platform Selector */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Choose Your Platform</CardTitle>
+                    <CardDescription>
+                      Browse platforms by category and search by name or description
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <PlatformSelector
+                      onSelect={handlePlatformSelect}
+                      selectedPlatformId={selectedPlatform?.id}
+                      showSearch={true}
+                      showCategoryTabs={true}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Platform Selector Dialog Example */}
+                <Card className="bg-muted/30">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Or Use Dialog Version</CardTitle>
+                    <CardDescription>
+                      Same functionality in a modal dialog
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <PlatformSelectorDialog
+                      trigger={
+                        <Button variant="outline" size="lg">
+                          <LucideIcons.Grid3x3 className="h-4 w-4 mr-2" />
+                          Open Platform Selector Dialog
+                        </Button>
+                      }
+                      onSelect={handlePlatformSelect}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Simple Selector Example */}
+                <Card className="bg-muted/30">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Simple Grid View (No Tabs)</CardTitle>
+                    <CardDescription>
+                      Compact version without category tabs
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <PlatformSelector
+                      onSelect={handlePlatformSelect}
+                      selectedPlatformId={selectedPlatform?.id}
+                      showSearch={true}
+                      showCategoryTabs={false}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Platform Badge Examples */}
+                {selectedPlatform && (
+                  <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/20">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Platform Badges</CardTitle>
+                      <CardDescription>
+                        Different sizes and configurations
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="text-sm font-medium mb-2">Small:</div>
+                          <PlatformBadge platform={selectedPlatform} size="sm" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium mb-2">Medium with category:</div>
+                          <PlatformBadge platform={selectedPlatform} size="md" showCategory />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium mb-2">Large with category:</div>
+                          <PlatformBadge platform={selectedPlatform} size="lg" showCategory />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium mb-2">Without icon:</div>
+                          <PlatformBadge platform={selectedPlatform} size="md" showIcon={false} showCategory />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Step 2: Dynamic Form */}
+            {step === 2 && selectedPlatform && (
+              <div className="space-y-6">
+                {/* Selected Platform Info */}
+                <Card className="bg-gradient-to-br from-green-500/10 to-blue-500/10 border-green-500/20">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="text-lg font-semibold">Configure Your Prompt</div>
+                        <PlatformBadge platform={selectedPlatform} showCategory size="lg" />
+                      </div>
+                      <Button variant="outline" onClick={handleBack}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Change Platform
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Dynamic Form */}
+                {flowFieldsLoading ? (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : platformWithFieldsForFlow && platformWithFieldsForFlow.fields.length > 0 ? (
+                  (() => {
+                    // Compute error state once to avoid type issues
+                    const formHasErrors = Object.values(platformWithFieldsForFlow.fields).some(field => 
+                      !!flowForm.getError(field.field_key)
+                    );
+                    
+                    return (
+                      <form onSubmit={flowForm.handleSubmit} className="space-y-6">
+                        <FieldSection
+                          title={`${selectedPlatform.name} Configuration`}
+                          description={selectedPlatform.description || 'Configure the fields below'}
+                          collapsible={false}
+                        >
+                          <DynamicFieldGroup
+                            fields={platformWithFieldsForFlow.fields}
+                            values={flowForm.values}
+                            onChange={flowForm.setValue}
+                            errors={platformWithFieldsForFlow.fields.reduce((acc, field) => {
+                              const error = flowForm.getError(field.field_key);
+                              if (error) acc[field.field_key] = error;
+                              return acc;
+                            }, {} as Record<string, string>)}
+                            onBlur={flowForm.handleBlur}
+                            layout="vertical"
+                          />
+                        </FieldSection>
+
+                        {/* Form Status */}
+                        <Card className="bg-muted/30">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm">Form Status</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            <div className="flex gap-2 flex-wrap">
+                              <Badge variant={formHasErrors ? "destructive" : "default"}>
+                                {formHasErrors ? '✗ Has Errors' : '✓ Valid'}
+                              </Badge>
+                              <Badge variant={flowForm.isDirty ? "secondary" : "outline"}>
+                                {flowForm.isDirty ? '● Unsaved Changes' : '○ No Changes'}
+                              </Badge>
+                              <Badge variant={flowForm.isSubmitting ? "secondary" : "outline"}>
+                                {flowForm.isSubmitting ? '⏳ Submitting...' : '○ Ready'}
+                              </Badge>
+                            </div>
+                        <div className="text-xs text-muted-foreground">
+                          {Object.keys(flowForm.values).length} field values captured
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Live JSON Preview */}
+                    <Card className="bg-muted/30">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">Live Form Values</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <pre className="bg-background p-4 rounded-lg text-xs overflow-auto max-h-64 border">
+                          {JSON.stringify(flowForm.values, null, 2)}
+                        </pre>
+                      </CardContent>
+                    </Card>
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-end gap-3 pt-4 border-t">
+                          <Button type="button" variant="outline" onClick={handleBack}>
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back
+                          </Button>
+                          <Button 
+                            type="submit" 
+                            disabled={flowForm.isSubmitting || (formHasErrors && flowForm.isDirty)}
+                            size="lg"
+                          >
+                        {flowForm.isSubmitting ? (
+                          <>
+                            <LucideIcons.Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          <>
+                            <LucideIcons.Check className="h-4 w-4 mr-2" />
+                            Create Prompt
+                          </>
+                        )}
+                          </Button>
+                        </div>
+                      </form>
+                    );
+                  })()
+                ) : (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <Alert>
+                        <AlertDescription>
+                          No fields configured for this platform yet.
+                        </AlertDescription>
+                      </Alert>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Platform Overview */}
         <Card>
