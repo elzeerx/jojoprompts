@@ -289,16 +289,9 @@ export function PromptWizard({
               }}
               platform={selectedPlatform}
               categoryName={categories.find(c => c.id === baseFields.category_id)?.name}
-              onEdit={(stepId) => {
-                // Map step IDs to indices
-                const stepMap: Record<string, number> = {
-                  'platform': 0,
-                  'base-fields': 1,
-                  'platform-fields': 2,
-                  'preview': 3
-                };
-                const stepIndex = stepMap[stepId];
-                if (stepIndex !== undefined && stepIndex < currentStep) {
+              onEdit={(stepIndex) => {
+                // Allow navigating to previous steps only
+                if (stepIndex < currentStep) {
                   setCurrentStep(stepIndex);
                 }
               }}

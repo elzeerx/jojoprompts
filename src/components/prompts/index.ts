@@ -20,6 +20,8 @@ export { PromptWizard } from './PromptWizard';
 export { StepIndicator } from './StepIndicator';
 export { PromptWizardDialog } from './PromptWizardDialog';
 export { PromptPreview } from './PromptPreview';
+export { PromptPreviewCard } from './PromptPreviewCard';
+export { PromptSummary } from './PromptSummary';
 
 // Re-export all individual field components
 export * from './fields';
@@ -37,4 +39,6 @@ export type { PromptWizardProps } from './PromptWizard';
 export type { StepIndicatorProps } from './StepIndicator';
 export type { PromptWizardDialogProps } from './PromptWizardDialog';
 export type { PromptPreviewProps } from './PromptPreview';
+export type { PromptPreviewCardProps } from './PromptPreviewCard';
+export type { PromptSummaryProps } from './PromptSummary';
 
