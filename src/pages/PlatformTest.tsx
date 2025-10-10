@@ -18,7 +18,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
-import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog, PromptPreview } from '@/components/prompts';
+import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog, PromptPreview, LivePreviewSidebar, PromptPreviewCard, PromptSummary } from '@/components/prompts';
+import { formatPromptForPlatform } from '@/lib/formatters/promptFormatter';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import { useDynamicForm } from '@/hooks/useDynamicForm';
 import { useCategories } from '@/hooks/useCategories';
@@ -3622,6 +3623,362 @@ return (
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ========================================
+            PHASE 3.3: PROMPT PREVIEW CARD DEMO
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">NEW - Phase 3.3</Badge>
+              <CardTitle>Prompt Preview Card Component</CardTitle>
+            </div>
+            <CardDescription>
+              Reusable card for displaying formatted code/text with copy functionality
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  This component is used within the PromptPreview to display formatted prompts with optional line numbers.
+                </AlertDescription>
+              </Alert>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Without Line Numbers */}
+                <PromptPreviewCard
+                  title="Formatted Prompt"
+                  content={`Write a blog post about AI in healthcare.
+
+The post should:
+- Be 500-700 words
+- Include 3 real-world examples
+- Have a compelling introduction
+- End with a call-to-action
+
+Tone: Professional yet accessible`}
+                  showCopy={true}
+                  showLineNumbers={false}
+                  maxHeight="300px"
+                />
+
+                {/* With Line Numbers */}
+                <PromptPreviewCard
+                  title="Code Example"
+                  content={`function generatePrompt(data) {
+  const { title, content } = data;
+  return \`\${title}\n\n\${content}\`;
+}
+
+const result = generatePrompt({
+  title: "Hello World",
+  content: "This is a test"
+});`}
+                  language="javascript"
+                  showCopy={true}
+                  showLineNumbers={true}
+                  maxHeight="300px"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ========================================
+            PHASE 3.3: PROMPT SUMMARY DEMO
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">NEW - Phase 3.3</Badge>
+              <CardTitle>Prompt Summary Component</CardTitle>
+            </div>
+            <CardDescription>
+              Summary sidebar showing all prompt details with edit buttons
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  This component appears as a sidebar in the preview step, showing a compact summary of all selections.
+                </AlertDescription>
+              </Alert>
+
+              <div className="max-w-sm">
+                <PromptSummary
+                  data={{
+                    title: "Email Campaign Generator",
+                    prompt_text: "Create a marketing email for our summer sale with 30% discount. Include urgency and clear CTA.",
+                    platform_id: platforms?.[0]?.id || 'chatgpt',
+                    platform_fields: {
+                      model: "gpt-4o",
+                      temperature: 0.7,
+                      max_tokens: 1000,
+                      system_message: "You are an expert marketing copywriter."
+                    },
+                    category_id: categories[0]?.id,
+                    thumbnail_url: ""
+                  }}
+                  platform={platforms?.[0] || {
+                    id: 'chatgpt',
+                    name: 'ChatGPT',
+                    slug: 'chatgpt',
+                    category: 'text-to-text',
+                    description: 'OpenAI ChatGPT',
+                    icon: 'MessageSquare',
+                    is_active: true,
+                    display_order: 1,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  }}
+                  categoryName={categories[0]?.name || 'Marketing'}
+                  onEdit={(step) => {
+                    toast({
+                      title: "Edit Step",
+                      description: `Navigating to step ${step}...`,
+                    });
+                  }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ========================================
+            PHASE 3.3: LIVE PREVIEW SIDEBAR DEMO
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">NEW - Phase 3.3</Badge>
+              <CardTitle>Live Preview Sidebar Component</CardTitle>
+            </div>
+            <CardDescription>
+              Real-time preview sidebar that updates as users fill the form
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  This optional component can be added to any step to show a live preview of what's being created.
+                </AlertDescription>
+              </Alert>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Simulated Form Area */}
+                <div className="lg:col-span-2">
+                  <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Form Content (Simulated)</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium">Title</label>
+                        <p className="text-muted-foreground mt-1">Email Campaign Generator</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Prompt Text</label>
+                        <p className="text-muted-foreground mt-1">
+                          Create a compelling email for our summer sale campaign. 
+                          The email should highlight our 30% discount, create urgency 
+                          with a limited-time offer, and include a clear call-to-action button.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Platform Settings</label>
+                        <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                          <p>• Model: gpt-4o</p>
+                          <p>• Temperature: 0.7</p>
+                          <p>• Max Tokens: 1000</p>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Live Preview Sidebar */}
+                <div className="lg:col-span-1">
+                  <LivePreviewSidebar
+                    platform={platforms?.[0] || {
+                      id: 'chatgpt',
+                      name: 'ChatGPT',
+                      slug: 'chatgpt',
+                      category: 'text-to-text',
+                      description: 'OpenAI ChatGPT',
+                      icon: 'MessageSquare',
+                      is_active: true,
+                      display_order: 1,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    }}
+                    baseFields={{
+                      title: 'Email Campaign Generator',
+                      prompt_text: 'Create a compelling email for our summer sale campaign. The email should highlight our 30% discount, create urgency with a limited-time offer, and include a clear call-to-action button.',
+                      category_id: categories[0]?.id || '',
+                      thumbnail: null,
+                      thumbnail_url: ''
+                    }}
+                    platformFields={{
+                      model: 'gpt-4o',
+                      temperature: 0.7,
+                      max_tokens: 1000
+                    }}
+                    show={true}
+                  />
+                </div>
+              </div>
+
+              {/* Features List */}
+              <Card className="bg-primary/5 border-primary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">✨ Live Preview Features</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Real-Time Updates:</strong>
+                        <p className="text-muted-foreground">Updates as form fields change</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Live Statistics:</strong>
+                        <p className="text-muted-foreground">Character, word, token counts</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Sticky Positioning:</strong>
+                        <p className="text-muted-foreground">Stays visible while scrolling</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <strong>Empty State:</strong>
+                        <p className="text-muted-foreground">Helpful message when no data</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ========================================
+            PHASE 3.3: FORMATTER UTILITY DEMO
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">NEW - Phase 3.3</Badge>
+              <CardTitle>Prompt Formatter Utility</CardTitle>
+            </div>
+            <CardDescription>
+              Platform-specific prompt formatting with metadata
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  The formatter utility generates platform-specific prompt text based on configuration.
+                </AlertDescription>
+              </Alert>
+
+              {platforms?.[0] && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* ChatGPT Example */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">ChatGPT Format</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                        {JSON.stringify(
+                          formatPromptForPlatform(
+                            {
+                              title: "Test Prompt",
+                              prompt_text: "Write a poem about AI",
+                              platform_id: "chatgpt",
+                              platform_fields: {
+                                system_message: "You are a creative poet",
+                                temperature: 0.9,
+                                max_tokens: 150
+                              },
+                              category_id: ""
+                            },
+                            {
+                              id: 'chatgpt',
+                              name: 'ChatGPT',
+                              slug: 'chatgpt',
+                              category: 'text-to-text',
+                              description: 'OpenAI ChatGPT',
+                              icon: 'MessageSquare',
+                              is_active: true,
+                              display_order: 1,
+                              created_at: '',
+                              updated_at: ''
+                            }
+                          ),
+                          null,
+                          2
+                        )}
+                      </pre>
+                    </CardContent>
+                  </Card>
+
+                  {/* Midjourney Example */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Midjourney Format</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                        {JSON.stringify(
+                          formatPromptForPlatform(
+                            {
+                              title: "Sci-Fi Landscape",
+                              prompt_text: "futuristic city at sunset",
+                              platform_id: "midjourney",
+                              platform_fields: {
+                                version: "6.0",
+                                aspect_ratio: "16:9",
+                                stylize: 100,
+                                quality: 1
+                              },
+                              category_id: ""
+                            },
+                            {
+                              id: 'midjourney',
+                              name: 'Midjourney',
+                              slug: 'midjourney',
+                              category: 'text-to-image',
+                              description: 'Midjourney AI',
+                              icon: 'Image',
+                              is_active: true,
+                              display_order: 2,
+                              created_at: '',
+                              updated_at: ''
+                            }
+                          ),
+                          null,
+                          2
+                        )}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
