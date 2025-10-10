@@ -3,8 +3,9 @@ import { Platform } from '@/types/platform';
 import { BasePromptFields, PromptFormData, PromptFormStep } from '@/types/prompt-form';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { StepIndicator } from './StepIndicator';
 
 export interface PromptWizardProps {
   mode?: 'create' | 'edit';
@@ -255,87 +256,5 @@ export function PromptWizard({
         </div>
       </div>
     </div>
-  );
-}
-
-// Step Indicator Component
-interface StepIndicatorProps {
-  steps: PromptFormStep[];
-  currentStep: number;
-  onStepClick: (index: number) => void;
-}
-
-function StepIndicator({ steps, currentStep, onStepClick }: StepIndicatorProps) {
-  return (
-    <nav aria-label="Progress">
-      <ol className="flex items-center justify-between">
-        {steps.map((step, index) => {
-          const isActive = index === currentStep;
-          const isCompleted = step.isComplete;
-          const isPast = index < currentStep;
-          const isClickable = isPast || isCompleted;
-
-          return (
-            <li key={step.id} className="relative flex-1">
-              {/* Connector Line */}
-              {index !== 0 && (
-                <div
-                  className={cn(
-                    "absolute top-5 -left-1/2 w-full h-0.5 -translate-y-1/2",
-                    isPast || isCompleted ? "bg-primary" : "bg-muted"
-                  )}
-                  aria-hidden="true"
-                />
-              )}
-
-              {/* Step Button */}
-              <button
-                type="button"
-                onClick={() => isClickable && onStepClick(index)}
-                disabled={!isClickable}
-                className={cn(
-                  "relative flex flex-col items-center group w-full",
-                  isClickable ? "cursor-pointer" : "cursor-not-allowed"
-                )}
-                aria-current={isActive ? "step" : undefined}
-              >
-                {/* Step Circle */}
-                <span
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all",
-                    isActive && "border-primary bg-primary text-primary-foreground shadow-lg scale-110",
-                    isCompleted && !isActive && "border-primary bg-primary text-primary-foreground",
-                    !isActive && !isCompleted && "border-muted bg-background text-muted-foreground",
-                    isClickable && !isActive && "hover:border-primary/50 hover:bg-primary/10"
-                  )}
-                >
-                  {isCompleted && !isActive ? (
-                    <Check className="h-5 w-5" aria-hidden="true" />
-                  ) : (
-                    <span className="text-sm font-semibold">{index + 1}</span>
-                  )}
-                </span>
-
-                {/* Step Label */}
-                <span className="mt-2 text-center">
-                  <span
-                    className={cn(
-                      "block text-xs font-medium transition-colors",
-                      isActive && "text-primary",
-                      !isActive && "text-muted-foreground"
-                    )}
-                  >
-                    {step.title}
-                  </span>
-                  <span className="hidden sm:block text-xs text-muted-foreground mt-0.5">
-                    {step.description}
-                  </span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
   );
 }

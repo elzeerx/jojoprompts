@@ -17,6 +17,7 @@ export { PlatformBadge } from './PlatformBadge';
 
 // Wizard components
 export { PromptWizard } from './PromptWizard';
+export { StepIndicator } from './StepIndicator';
 
 // Re-export all individual field components
 export * from './fields';
@@ -31,3 +32,5 @@ export type { PlatformSelectorProps } from './PlatformSelector';
 export type { PlatformSelectorDialogProps } from './PlatformSelectorDialog';
 export type { PlatformBadgeProps } from './PlatformBadge';
 export type { PromptWizardProps } from './PromptWizard';
+export type { StepIndicatorProps } from './StepIndicator';
+
