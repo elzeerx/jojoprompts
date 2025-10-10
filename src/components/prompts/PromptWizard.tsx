@@ -11,6 +11,7 @@ import { PlatformSelector } from './PlatformSelector';
 import { BasePromptFieldsSection } from './BasePromptFields';
 import { DynamicFieldGroup } from './fields/DynamicFieldGroup';
 import { PromptPreview } from './PromptPreview';
+import { SubmissionOverlay } from './SubmissionOverlay';
 import { useCategories } from '@/hooks/useCategories';
 import { usePlatformWithFields } from '@/hooks/usePlatforms';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
@@ -188,13 +189,14 @@ export function PromptWizard({
   });
 
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Progress Steps Indicator */}
-      <StepIndicator
-        steps={steps}
-        currentStep={currentStep}
-        onStepClick={handleStepClick}
-      />
+    <>
+      <div className={cn("space-y-6", className)}>
+        {/* Progress Steps Indicator */}
+        <StepIndicator
+          steps={steps}
+          currentStep={currentStep}
+          onStepClick={handleStepClick}
+        />
 
       {/* Step Content */}
       <Card className="p-6 min-h-[500px]">
@@ -382,6 +384,13 @@ export function PromptWizard({
           )}
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* Submission Overlay */}
+      <SubmissionOverlay
+        isSubmitting={isSubmitting}
+        message={mode === 'edit' ? 'Updating your prompt...' : 'Creating your prompt...'}
+      />
+    </>
   );
 }

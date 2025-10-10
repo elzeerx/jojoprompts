@@ -25,6 +25,7 @@ export { PromptSummary } from './PromptSummary';
 export { LivePreviewSidebar } from './LivePreviewSidebar';
 export { PromptErrorBoundary } from './PromptErrorBoundary';
 export { SubmissionOverlay } from './SubmissionOverlay';
+export { PromptSuccessDialog } from './PromptSuccessDialog';
 
 // Re-export all individual field components
 export * from './fields';
@@ -45,4 +46,6 @@ export type { PromptPreviewProps } from './PromptPreview';
 export type { PromptPreviewCardProps } from './PromptPreviewCard';
 export type { PromptSummaryProps } from './PromptSummary';
 export type { LivePreviewSidebarProps } from './LivePreviewSidebar';
+export type { SubmissionOverlayProps } from './SubmissionOverlay';
+export type { PromptSuccessDialogProps } from './PromptSuccessDialog';
 
