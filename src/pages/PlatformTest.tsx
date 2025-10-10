@@ -280,19 +280,16 @@ export default function PlatformTest() {
 
   // Initialize validation hook with all sample fields
   const sampleFieldsArray = Object.values(sampleFields);
-  const validation = useFieldValidation(sampleFieldsArray, {
-    validateOnBlur: true,
-    validateOnChange: false
-  });
+  const validation = useFieldValidation(sampleFieldsArray);
 
   const handleValueChange = (key: string, value: any) => {
     setTestValues(prev => ({ ...prev, [key]: value }));
-    validation.handleChange(key, value);
+    validation.validateSingle(key, value);
   };
 
   const handleValidateAll = () => {
-    const isValid = validation.validateAllFields(testValues);
-    const errorMessage = formatErrorsForToast(validation.errors);
+    const isValid = validation.validateAll(testValues);
+    const errorMessage = formatErrorsForToast(validation.validationResults);
     
     toast({
       variant: isValid ? "default" : "destructive",
@@ -548,7 +545,7 @@ export default function PlatformTest() {
                 Validate All Fields
               </Button>
               <Button 
-                onClick={validation.clearErrors}
+                onClick={validation.clearValidation}
                 variant="outline"
               >
                 Clear Validation Errors
@@ -578,19 +575,16 @@ export default function PlatformTest() {
                     test_toggle: false,
                     test_code: '',
                   });
-                  validation.clearErrors();
+                  validation.clearValidation();
                 }}
                 variant="outline"
               >
                 Clear All Fields
               </Button>
               <div className="flex items-center gap-2 ml-auto">
-                <Badge variant={validation.isValid ? "default" : "destructive"}>
-                  {validation.isValid ? '✓ Valid' : '✗ Invalid'}
+                <Badge variant={!validation.hasErrors() ? "default" : "destructive"}>
+                  {!validation.hasErrors() ? '✓ Valid' : '✗ Invalid'}
                 </Badge>
-                {validation.isDirty && (
-                  <Badge variant="outline">Modified</Badge>
-                )}
               </div>
             </div>
 
@@ -629,9 +623,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_text}
                     value={testValues.test_text}
                     onChange={(value) => handleValueChange('test_text', value)}
-                    error={validation.getFieldError('test_text')}
+                    error={validation.getError('test_text')}
                     disabled={fieldStates.test_text.disabled}
-                    onBlur={() => validation.handleBlur('test_text', testValues.test_text)}
+                    onBlur={() => validation.touchField('test_text')}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -668,9 +662,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_textarea}
                     value={testValues.test_textarea}
                     onChange={(value) => handleValueChange('test_textarea', value)}
-                    error={validation.getFieldError('test_textarea')}
+                    error={validation.getError('test_textarea')}
                     disabled={fieldStates.test_textarea.disabled}
-                    onBlur={() => validation.handleBlur('test_textarea', testValues.test_textarea)}
+                    onBlur={() => validation.touchField('test_textarea')}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -709,9 +703,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_number}
                     value={testValues.test_number}
                     onChange={(value) => handleValueChange('test_number', value)}
-                    error={validation.getFieldError('test_number')}
+                    error={validation.getError('test_number')}
                     disabled={fieldStates.test_number.disabled}
-                    onBlur={() => validation.handleBlur('test_number', testValues.test_number)}
+                    onBlur={() => validation.touchField('test_number')}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -756,9 +750,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_select}
                     value={testValues.test_select}
                     onChange={(value) => handleValueChange('test_select', value)}
-                    error={validation.getFieldError('test_select')}
+                    error={validation.getError('test_select')}
                     disabled={fieldStates.test_select.disabled}
-                    onBlur={() => validation.handleBlur('test_select', testValues.test_select)}
+                    onBlur={() => validation.touchField('test_select')}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -795,9 +789,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_slider}
                     value={testValues.test_slider}
                     onChange={(value) => handleValueChange('test_slider', value)}
-                    error={validation.getFieldError('test_slider')}
+                    error={validation.getError('test_slider')}
                     disabled={fieldStates.test_slider.disabled}
-                    onBlur={() => validation.handleBlur('test_slider', testValues.test_slider)}
+                    onBlur={() => validation.touchField('test_slider')}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
@@ -834,7 +828,7 @@ export default function PlatformTest() {
                     field={sampleFields.test_toggle}
                     value={testValues.test_toggle}
                     onChange={(value) => handleValueChange('test_toggle', value)}
-                    error={validation.getFieldError('test_toggle')}
+                    error={validation.getError('test_toggle')}
                     disabled={fieldStates.test_toggle.disabled}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
@@ -874,9 +868,9 @@ export default function PlatformTest() {
                     field={sampleFields.test_code}
                     value={testValues.test_code}
                     onChange={(value) => handleValueChange('test_code', value)}
-                    error={validation.getFieldError('test_code')}
+                    error={validation.getError('test_code')}
                     disabled={fieldStates.test_code.disabled}
-                    onBlur={() => validation.handleBlur('test_code', testValues.test_code)}
+                    onBlur={() => validation.touchField('test_code')}
                   />
                   <div className="p-3 bg-muted rounded text-sm">
                     <span className="font-semibold">Current Value:</span> 
