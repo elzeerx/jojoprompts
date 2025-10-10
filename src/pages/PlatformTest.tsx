@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
 import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog, PromptPreview, LivePreviewSidebar, PromptPreviewCard, PromptSummary } from '@/components/prompts';
-import { formatPromptForPlatform } from '@/lib/formatters/promptFormatter';
+import { formatPromptForPlatform, exportAsText, exportAsMarkdown, exportAsJSON } from '@/lib/formatters';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import { useDynamicForm } from '@/hooks/useDynamicForm';
 import { useCategories } from '@/hooks/useCategories';
@@ -3975,6 +3975,172 @@ const result = generatePrompt({
                           2
                         )}
                       </pre>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ========================================
+            PHASE 3.3: EXPORT UTILITIES DEMO
+            ======================================== */}
+        <Card className="border-4 border-primary">
+          <CardHeader className="bg-primary/5">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs">BONUS - Phase 3.3</Badge>
+              <CardTitle>Prompt Export Utilities</CardTitle>
+            </div>
+            <CardDescription>
+              Export prompts in multiple formats: Text, Markdown, JSON
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  Export utilities allow users to download prompts in different formats for use in external tools.
+                </AlertDescription>
+              </Alert>
+
+              {platforms?.[0] && (
+                <div className="space-y-4">
+                  {/* Sample Data */}
+                  <Card className="bg-muted/50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Sample Prompt Data</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-xs">
+                        <p><strong>Title:</strong> Marketing Email Generator</p>
+                        <p><strong>Platform:</strong> ChatGPT</p>
+                        <p><strong>Prompt:</strong> Create a compelling email for our summer sale...</p>
+                        <p><strong>Config:</strong> model: gpt-4o, temperature: 0.7</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Export Format Examples */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* Text Format */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <LucideIcons.FileText className="h-4 w-4" />
+                          Text Export
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto max-h-48">
+                          {exportAsText(
+                            {
+                              title: "Marketing Email",
+                              prompt_text: "Create a compelling email for our summer sale...",
+                              platform_id: "chatgpt",
+                              platform_fields: {
+                                model: "gpt-4o",
+                                temperature: 0.7
+                              },
+                              category_id: ""
+                            },
+                            platforms[0]
+                          )}
+                        </pre>
+                      </CardContent>
+                    </Card>
+
+                    {/* Markdown Format */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <LucideIcons.FileCode className="h-4 w-4" />
+                          Markdown Export
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto max-h-48">
+                          {exportAsMarkdown(
+                            {
+                              title: "Marketing Email",
+                              prompt_text: "Create a compelling email for our summer sale...",
+                              platform_id: "chatgpt",
+                              platform_fields: {
+                                model: "gpt-4o",
+                                temperature: 0.7
+                              },
+                              category_id: ""
+                            },
+                            platforms[0]
+                          )}
+                        </pre>
+                      </CardContent>
+                    </Card>
+
+                    {/* JSON Format */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <LucideIcons.FileJson className="h-4 w-4" />
+                          JSON Export
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto max-h-48">
+                          {exportAsJSON(
+                            {
+                              title: "Marketing Email",
+                              prompt_text: "Create a compelling email for our summer sale...",
+                              platform_id: "chatgpt",
+                              platform_fields: {
+                                model: "gpt-4o",
+                                temperature: 0.7
+                              },
+                              category_id: ""
+                            },
+                            platforms[0]
+                          )}
+                        </pre>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Features List */}
+                  <Card className="bg-primary/5 border-primary/20">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">✨ Export Features</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary font-bold">✓</span>
+                          <div>
+                            <strong>Multiple Formats:</strong>
+                            <p className="text-muted-foreground">Text, Markdown, JSON</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary font-bold">✓</span>
+                          <div>
+                            <strong>File Download:</strong>
+                            <p className="text-muted-foreground">Downloads with proper extensions</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary font-bold">✓</span>
+                          <div>
+                            <strong>Platform Formatting:</strong>
+                            <p className="text-muted-foreground">Includes platform-specific config</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary font-bold">✓</span>
+                          <div>
+                            <strong>Toast Notifications:</strong>
+                            <p className="text-muted-foreground">Confirms successful export</p>
+                          </div>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
