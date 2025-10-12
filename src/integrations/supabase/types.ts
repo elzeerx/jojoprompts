@@ -2443,6 +2443,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_orphaned_security_logs: {
+        Args: { days_old?: number }
+        Returns: Json
+      }
       cleanup_unverified_accounts: {
         Args: Record<PropertyKey, never>
         Returns: number
