@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 export interface PromptWizardDialogProps {
   trigger?: React.ReactNode;
   mode?: 'create' | 'edit';
+  promptId?: string; // For edit mode
   initialData?: Partial<PromptFormData>;
   onComplete: (data: PromptFormData) => Promise<void>;
   open?: boolean;
@@ -24,6 +25,7 @@ export interface PromptWizardDialogProps {
 export function PromptWizardDialog({
   trigger,
   mode = 'create',
+  promptId,
   initialData,
   onComplete,
   open,
@@ -61,7 +63,10 @@ export function PromptWizardDialog({
             {mode === 'edit' ? 'Edit Prompt' : 'Create New Prompt'}
           </DialogTitle>
           <DialogDescription>
-            Follow the steps below to {mode === 'edit' ? 'update your' : 'create a new'} AI prompt
+            {mode === 'edit' 
+              ? 'Update your prompt details below'
+              : 'Follow the steps below to create a new AI prompt'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -69,6 +74,7 @@ export function PromptWizardDialog({
           <PromptErrorBoundary>
             <PromptWizard
               mode={mode}
+              promptId={promptId}
               initialData={initialData}
               onComplete={handleComplete}
               onCancel={handleCancel}

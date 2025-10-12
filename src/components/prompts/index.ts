@@ -17,6 +17,7 @@ export { PlatformBadge } from './PlatformBadge';
 
 // Wizard components
 export { PromptWizard } from './PromptWizard';
+export { EditPromptButton } from './EditPromptButton';
 export { StepIndicator } from './StepIndicator';
 export { PromptWizardDialog } from './PromptWizardDialog';
 export { PromptPreview } from './PromptPreview';
