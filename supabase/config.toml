@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.validate-signup]
 verify_jwt = false
+
+[functions.admin-users-v2]
+verify_jwt = true
