@@ -50,7 +50,11 @@ export async function verifyProfile(
     const userRole = profile.role?.toLowerCase();
     
     if (!adminRoles.includes(userRole)) {
-      console.error(`User ${user.id} has role '${profile.role}', admin required`);
+      const errorDetail = `User ${user.id} (${user.email}) has role '${profile.role}', admin/jadmin required`;
+      console.error(`[AUTH FAILURE] ${errorDetail}`);
+      console.error(`[AUTH FAILURE] Required roles: ${adminRoles.join(', ')}`);
+      console.error(`[AUTH FAILURE] User role: ${userRole}`);
+      console.error(`[AUTH FAILURE] Profile data:`, JSON.stringify(profile));
       
       // Log potential privilege escalation attempt
       await logSecurityEvent(serviceClient, {
@@ -59,7 +63,9 @@ export async function verifyProfile(
         details: { 
           attemptedRole: userRole,
           requiredRoles: adminRoles,
-          endpoint: 'get-all-users'
+          endpoint: 'get-all-users',
+          userEmail: user.email,
+          profileCreated: profile.created_at
         }
       });
       
@@ -67,7 +73,7 @@ export async function verifyProfile(
         profile: null, 
         permissions: [], 
         isValid: false, 
-        error: 'Administrative privileges required' 
+        error: `Access denied: User role is '${profile.role}', requires 'admin' or 'jadmin' role` 
       };
     }
 

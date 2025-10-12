@@ -196,10 +196,12 @@ serve(async (req) => {
     }
 
   } catch (error: any) {
-    console.error('Critical error in get-all-users function:', {
+    console.error('[CRITICAL ERROR] get-all-users function failed:', {
       message: error.message,
       stack: error.stack?.substring(0, 500),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      method: req.method,
+      hasAuthHeader: !!req.headers.get('authorization')
     });
 
     // Try to log the error if we have a supabase client
@@ -210,7 +212,8 @@ serve(async (req) => {
         details: { 
           function: 'get-all-users',
           error: error.message,
-          method: req.method
+          method: req.method,
+          errorType: error.constructor.name
         },
         ip_address: req.headers.get('x-forwarded-for') || 'unknown'
       });
@@ -218,13 +221,29 @@ serve(async (req) => {
       console.warn('Failed to log error event:', logError);
     }
 
+    // Determine appropriate status code and error message
+    let statusCode = 500;
+    let errorMessage = 'Internal server error';
+    let detailedMessage = 'An unexpected error occurred';
+    
+    if (error.message.includes('Unauthorized')) {
+      statusCode = 401;
+      errorMessage = 'Unauthorized';
+      detailedMessage = error.message;
+    } else if (error.message.includes('Forbidden') || error.message.includes('Access denied')) {
+      statusCode = 403;
+      errorMessage = 'Forbidden';
+      detailedMessage = error.message;
+    }
+
     return new Response(
       JSON.stringify({ 
-        error: 'Internal server error',
-        message: 'An unexpected error occurred' 
+        error: errorMessage,
+        message: detailedMessage,
+        code: errorMessage.toUpperCase().replace(/\s+/g, '_')
       }), 
       { 
-        status: 500, 
+        status: statusCode, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );

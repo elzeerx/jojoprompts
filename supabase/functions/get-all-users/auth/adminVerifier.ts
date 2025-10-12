@@ -75,20 +75,23 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
 
   } catch (error: any) {
     // Enhanced error logging with security context
-    console.error('Authentication error:', {
+    console.error('[AUTH ERROR] Authentication failed:', {
       message: error.message,
       stack: error.stack?.substring(0, 500),
       timestamp: new Date().toISOString(),
       userAgent: req.headers.get('user-agent')?.substring(0, 200),
       origin: req.headers.get('origin'),
-      referer: req.headers.get('referer')
+      referer: req.headers.get('referer'),
+      hasAuthHeader: !!req.headers.get('authorization')
     });
     
-    // Re-throw with sanitized error message
-    if (error.message.includes('Unauthorized') || error.message.includes('Forbidden')) {
-      throw error; // These are safe to expose
+    // Re-throw with more detailed error message
+    if (error.message.includes('Unauthorized')) {
+      throw new Error(`Unauthorized: ${error.message}`);
+    } else if (error.message.includes('Forbidden') || error.message.includes('Access denied')) {
+      throw new Error(`Forbidden: ${error.message}`);
     } else {
-      throw new Error('Authentication failed'); // Generic error for security
+      throw new Error(`Authentication failed: ${error.message}`);
     }
   }
 }
