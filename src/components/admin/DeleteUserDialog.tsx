@@ -12,7 +12,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, ExternalLink, Info } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface DeleteUserDialogProps {
   open: boolean;
@@ -36,10 +38,15 @@ export function DeleteUserDialog({
   isDeleting,
 }: DeleteUserDialogProps) {
   const [confirmText, setConfirmText] = useState("");
+  const [showManualSteps, setShowManualSteps] = useState(false);
   const isAdmin = user?.role === "admin";
   const requiresDoubleConfirm = isAdmin;
   const expectedText = requiresDoubleConfirm ? "DELETE ADMIN" : "DELETE";
   const isConfirmValid = confirmText === expectedText;
+
+  const openSupabaseDashboard = () => {
+    window.open('https://supabase.com/dashboard/project/fxkqgjakbyrxkmevkglv/auth/users', '_blank');
+  };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -111,6 +118,46 @@ export function DeleteUserDialog({
                 disabled={isDeleting}
               />
             </div>
+
+            <Collapsible open={showManualSteps} onOpenChange={setShowManualSteps}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  type="button"
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  {showManualSteps ? "Hide" : "Show"} Manual Deletion Instructions
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="space-y-3">
+                    <p className="font-medium">If automatic deletion fails, delete manually from Supabase:</p>
+                    <ol className="list-decimal list-inside space-y-2 text-sm">
+                      <li>Click "Open Supabase Dashboard" below</li>
+                      <li>Navigate to Authentication → Users</li>
+                      <li>Find user: <span className="font-mono text-xs bg-muted px-1 rounded">{user.email}</span></li>
+                      <li>Click the three dots (•••) next to the user</li>
+                      <li>Select "Delete User"</li>
+                      <li>Confirm the deletion</li>
+                    </ol>
+                    <Button
+                      onClick={openSupabaseDashboard}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full mt-2"
+                      type="button"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open Supabase Dashboard
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              </CollapsibleContent>
+            </Collapsible>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
