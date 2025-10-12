@@ -79,24 +79,31 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
       throw new Error('Email verification required');
     }
 
-    // Get user profile with role using service client for better reliability
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role, first_name, last_name')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      console.error('Profile fetch failed:', profileError);
-      throw new Error('User profile not found');
+    // Get user role using new secure user_roles system
+    // Check if user has admin or jadmin role using security definer function
+    const { data: hasAdmin, error: adminCheckError } = await supabase.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'admin'
+    });
+    
+    const { data: hasJadmin, error: jadminCheckError } = await supabase.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'jadmin'
+    });
+    
+    if (adminCheckError || jadminCheckError) {
+      console.error('Role check failed:', { adminCheckError, jadminCheckError });
+      throw new Error('Failed to verify user role');
     }
 
-    // Verify admin privileges
-    const userRole = profile.role;
-    if (!['admin', 'jadmin'].includes(userRole)) {
-      console.error('Non-admin user attempted admin access:', { userId: user.id, role: userRole });
+    // User must have either admin or jadmin role
+    if (!hasAdmin && !hasJadmin) {
+      console.error('Non-admin user attempted admin access:', { userId: user.id });
       throw new Error('Insufficient privileges. Admin access required.');
     }
+
+    // Determine the actual role for permission assignment
+    const userRole = hasAdmin ? 'admin' : 'jadmin';
 
     // Get role-based permissions
     const permissions = ROLE_PERMISSIONS[userRole as keyof typeof ROLE_PERMISSIONS] || [];

@@ -437,10 +437,10 @@ export function PremiumGuard({ children, ...props }: Omit<GuardProps, 'requireSu
   );
 }
 
-// Admin guard
-export function AdminGuard({ children, ...props }: Omit<GuardProps, 'requireRole'>) {
+// Admin guard - allows both admin and jadmin roles
+export function AdminGuard({ children, ...props }: Omit<GuardProps, 'allowedRoles'>) {
   return (
-    <Guard requireRole="admin" {...props}>
+    <Guard allowedRoles={['admin', 'jadmin']} {...props}>
       {children}
     </Guard>
   );
