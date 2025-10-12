@@ -1,10 +1,9 @@
 
 import { useState } from "react";
-import { useFetchUsers } from "./useFetchUsers.query";
+import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useUserUpdate } from "./useUserUpdate.query";
 import { usePlanAssignment } from "./usePlanAssignment.query";
 import { usePasswordReset } from "./usePasswordReset";
-import { useUserDeletion } from "./useUserDeletion.query";
 import { UserUpdateData, UserRole } from "@/types/user";
 
 export function useUserManagement() {
@@ -12,20 +11,21 @@ export function useUserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const pageSize = 10;
   
-  const { users, loading, error, total, totalPages, refetch, performance } = useFetchUsers({
-    page: currentPage,
-    limit: pageSize,
-    search: searchTerm
-  });
+  // Use direct database queries instead of edge function
+  const { 
+    users, 
+    loading, 
+    error, 
+    total, 
+    totalPages, 
+    refetch, 
+    deleteUser: deleteUserFn,
+    isDeleting 
+  } = useAdminUsers(currentPage, pageSize, searchTerm);
   
   const { processingUserId: updateProcessingUserId, updateUser } = useUserUpdate();
   const { processingUserId: planProcessingUserId, assignPlanToUser } = usePlanAssignment();
   const { sendPasswordResetEmail } = usePasswordReset();
-  const { 
-    processingUserId: deleteProcessingUserId, 
-    showDeleteDialog, 
-    DeleteDialog 
-  } = useUserDeletion();
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -54,19 +54,16 @@ export function useUserManagement() {
     }
   };
 
-  const handleDeleteUser = async (userId: string, email: string, firstName: string, lastName: string, role: string) => {
-    showDeleteDialog({
-      id: userId,
-      email,
-      first_name: firstName,
-      last_name: lastName,
-      role
-    });
-    return true;
+  const handleDeleteUser = async (userId: string) => {
+    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      deleteUserFn(userId);
+      return true;
+    }
+    return false;
   };
 
   // Combine processing states from different hooks
-  const processingUserId = updateProcessingUserId || planProcessingUserId || deleteProcessingUserId;
+  const processingUserId = updateProcessingUserId || planProcessingUserId || (isDeleting ? 'deleting' : null);
 
   return {
     users,
@@ -84,7 +81,7 @@ export function useUserManagement() {
     assignPlanToUser: handleAssignPlanToUser,
     sendPasswordResetEmail,
     deleteUser: handleDeleteUser,
-    DeleteDialog,
-    performance
+    DeleteDialog: null, // No longer using dialog
+    performance: undefined // No performance metrics without edge function
   };
 }
