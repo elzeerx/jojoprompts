@@ -68,84 +68,129 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
         throw new Error("No admin session token; please log in or refresh.");
       }
 
-      console.log('[UserFetch] Using direct database queries (bypassing edge functions)...');
-      
+      // PRIMARY METHOD: Try edge function first
       try {
-        // Calculate pagination
-        const offset = (page - 1) * limit;
+        console.log(`[UserFetch] Calling edge function - page: ${page}, limit: ${limit}, search: "${search}"`);
         
-        // Build query for profiles with subscriptions
-        let profileQuery = supabase
-          .from('profiles')
-          .select('*, user_subscriptions(*, subscription_plans(*))', { count: 'exact' })
-          .order('created_at', { ascending: false })
-          .range(offset, offset + limit - 1);
-        
-        // Add search filter if provided
+        const supabaseUrl = 'https://fxkqgjakbyrxkmevkglv.supabase.co';
+        const url = new URL(`${supabaseUrl}/functions/v1/get-all-users`);
+        url.searchParams.set('page', page.toString());
+        url.searchParams.set('limit', limit.toString());
         if (search) {
-          profileQuery = profileQuery.or(`email.ilike.%${search}%,username.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+          url.searchParams.set('search', search);
         }
-        
-        const { data: profiles, error: profileError, count } = await profileQuery;
-        
-        if (profileError) {
-          console.error('[UserFetch] Database query error:', profileError);
-          throw new Error(`Database error: ${profileError.message}`);
+
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('[UserFetch] Edge function error:', { 
+            status: response.status, 
+            statusText: response.statusText,
+            error: errorData 
+          });
+          throw new Error(`Edge function failed: ${response.status} ${errorData.error || response.statusText}`);
         }
-        
-        console.log(`[UserFetch] Fetched ${profiles?.length || 0} profiles from database`);
-        
-        // Enrich with auth data (email, confirmation status, last sign in)
-        // Note: This requires proper RLS policies or service role access
-        const enrichedUsers = profiles?.map(profile => {
-          const subscriptions = Array.isArray(profile.user_subscriptions) 
-            ? profile.user_subscriptions 
-            : (profile.user_subscriptions ? [profile.user_subscriptions] : []);
-          const subscription = subscriptions[0];
-          const plan = subscription?.subscription_plans;
-          
-          return {
-            ...profile,
-            role: profile.role as UserRole,
-            social_links: profile.social_links as any,
-            email: profile.email || 'No email',
-            email_confirmed_at: null, // Would need service role to fetch
-            is_email_confirmed: false,
-            last_sign_in_at: null,
-            auth_created_at: profile.created_at,
-            auth_updated_at: profile.created_at,
-            subscription: subscription ? {
-              plan_id: subscription.plan_id,
-              plan_name: plan?.name || 'Unknown',
-              price_usd: plan?.price_usd || 0,
-              is_lifetime: plan?.is_lifetime || false,
-              status: subscription.status,
-              start_date: subscription.start_date,
-              end_date: subscription.end_date,
-              payment_method: subscription.payment_method,
-              subscription_created_at: subscription.created_at,
-              duration_days: plan?.duration_days
-            } : null
-          };
-        }) || [];
-        
-        console.log(`[UserFetch] Successfully enriched ${enrichedUsers.length} users`);
+
+        const result = await response.json();
+        console.log(`[UserFetch] Edge function success - fetched ${result.users?.length || 0} users`);
         
         return {
-          users: enrichedUsers,
-          total: count || 0,
-          totalPages: Math.ceil((count || 0) / limit),
-          performance: {
-            requestId: `direct-db-${Date.now()}`,
-            totalDuration: 0,
-            cacheHit: false,
-            searchActive: !!search
-          }
+          users: result.users || [],
+          total: result.total || 0,
+          totalPages: result.totalPages || 0,
+          performance: result.performance
         };
+
+      } catch (edgeFunctionError: any) {
+        console.warn('[UserFetch] Edge function failed, falling back to direct database queries:', edgeFunctionError.message);
         
-      } catch (dbError: any) {
-        console.error('[UserFetch] Database query failed:', dbError);
-        throw new Error(`Failed to fetch users: ${dbError.message}`);
+        // Show toast to inform user of fallback
+        toast({
+          title: "Using Fallback Method",
+          description: "Edge function unavailable, using direct database access.",
+          variant: "default"
+        });
+        
+        // FALLBACK METHOD: Direct database queries
+        try {
+          console.log('[UserFetch] Using direct database queries as fallback...');
+          
+          const offset = (page - 1) * limit;
+          
+          let profileQuery = supabase
+            .from('profiles')
+            .select('*, user_subscriptions(*, subscription_plans(*))', { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+          
+          if (search) {
+            profileQuery = profileQuery.or(`email.ilike.%${search}%,username.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+          }
+          
+          const { data: profiles, error: profileError, count } = await profileQuery;
+          
+          if (profileError) {
+            console.error('[UserFetch] Database query error:', profileError);
+            throw new Error(`Database error: ${profileError.message}`);
+          }
+          
+          console.log(`[UserFetch] Fallback successful - fetched ${profiles?.length || 0} profiles from database`);
+          
+          const enrichedUsers = profiles?.map(profile => {
+            const subscriptions = Array.isArray(profile.user_subscriptions) 
+              ? profile.user_subscriptions 
+              : (profile.user_subscriptions ? [profile.user_subscriptions] : []);
+            const subscription = subscriptions[0];
+            const plan = subscription?.subscription_plans;
+            
+            return {
+              ...profile,
+              role: profile.role as UserRole,
+              social_links: profile.social_links as any,
+              email: profile.email || 'No email',
+              email_confirmed_at: null,
+              is_email_confirmed: false,
+              last_sign_in_at: null,
+              auth_created_at: profile.created_at,
+              auth_updated_at: profile.created_at,
+              subscription: subscription ? {
+                plan_id: subscription.plan_id,
+                plan_name: plan?.name || 'Unknown',
+                price_usd: plan?.price_usd || 0,
+                is_lifetime: plan?.is_lifetime || false,
+                status: subscription.status,
+                start_date: subscription.start_date,
+                end_date: subscription.end_date,
+                payment_method: subscription.payment_method,
+                subscription_created_at: subscription.created_at,
+                duration_days: plan?.duration_days
+              } : null
+            };
+          }) || [];
+          
+          return {
+            users: enrichedUsers,
+            total: count || 0,
+            totalPages: Math.ceil((count || 0) / limit),
+            performance: {
+              requestId: `fallback-db-${Date.now()}`,
+              totalDuration: 0,
+              cacheHit: false,
+              searchActive: !!search
+            }
+          };
+          
+        } catch (dbError: any) {
+          console.error('[UserFetch] Fallback database query also failed:', dbError);
+          throw new Error(`Both edge function and database fallback failed: ${dbError.message}`);
+        }
       }
     },
     enabled: !authLoading && !!session?.access_token,
