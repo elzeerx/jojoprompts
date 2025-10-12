@@ -31,64 +31,110 @@ interface Template {
 }
 
 export function usePromptGenerator() {
-  const { user } = useAuth();
+  const { user, canManagePrompts } = useAuth();
   const [models, setModels] = useState<Model[]>([]);
   const [fields, setFields] = useState<Field[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchModels = async () => {
+    if (!canManagePrompts) {
+      console.warn("User does not have permission to manage prompts");
+      setError("Permission denied: You need admin, prompter, or jadmin role to access this feature");
+      return;
+    }
+
     try {
+      setError(null);
+      console.log("[usePromptGenerator] Fetching models...", { userId: user?.id, canManagePrompts });
+      
       const { data, error } = await supabase
         .from("prompt_generator_models")
         .select("*")
         .order("name");
 
-      if (error) throw error;
+      if (error) {
+        console.error("[usePromptGenerator] Error fetching models:", error);
+        throw error;
+      }
+      
+      console.log("[usePromptGenerator] Models fetched successfully:", data?.length || 0);
       setModels((data || []).map(item => ({
         ...item,
         type: item.type as "image" | "video",
         parameters: item.parameters as Record<string, any>
       })));
-    } catch (error) {
-      console.error("Error fetching models:", error);
+    } catch (error: any) {
+      console.error("[usePromptGenerator] Error fetching models:", error);
+      setError(error.message || "Failed to fetch models");
     }
   };
 
   const fetchFields = async () => {
+    if (!canManagePrompts) {
+      console.warn("User does not have permission to manage prompts");
+      setError("Permission denied: You need admin, prompter, or jadmin role to access this feature");
+      return;
+    }
+
     try {
+      setError(null);
+      console.log("[usePromptGenerator] Fetching fields...", { userId: user?.id, canManagePrompts });
+      
       const { data, error } = await supabase
         .from("prompt_generator_fields")
         .select("*")
         .order("field_category, display_order, field_name");
 
-      if (error) throw error;
+      if (error) {
+        console.error("[usePromptGenerator] Error fetching fields:", error);
+        throw error;
+      }
+      
+      console.log("[usePromptGenerator] Fields fetched successfully:", data?.length || 0);
       setFields((data || []).map(item => ({
         ...item,
         field_category: item.field_category as "style" | "subject" | "effects",
         field_type: item.field_type as "dropdown" | "text" | "textarea" | "multiselect",
         options: Array.isArray(item.options) ? item.options as string[] : []
       })));
-    } catch (error) {
-      console.error("Error fetching fields:", error);
+    } catch (error: any) {
+      console.error("[usePromptGenerator] Error fetching fields:", error);
+      setError(error.message || "Failed to fetch fields");
     }
   };
 
   const fetchTemplates = async () => {
+    if (!canManagePrompts) {
+      console.warn("User does not have permission to manage prompts");
+      setError("Permission denied: You need admin, prompter, or jadmin role to access this feature");
+      return;
+    }
+
     try {
+      setError(null);
+      console.log("[usePromptGenerator] Fetching templates...", { userId: user?.id, canManagePrompts });
+      
       const { data, error } = await supabase
         .from("prompt_generator_templates")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[usePromptGenerator] Error fetching templates:", error);
+        throw error;
+      }
+      
+      console.log("[usePromptGenerator] Templates fetched successfully:", data?.length || 0);
       setTemplates((data || []).map(item => ({
         ...item,
         model_type: item.model_type as "image" | "video",
         template_data: item.template_data as Record<string, any>
       })));
-    } catch (error) {
-      console.error("Error fetching templates:", error);
+    } catch (error: any) {
+      console.error("[usePromptGenerator] Error fetching templates:", error);
+      setError(error.message || "Failed to fetch templates");
     }
   };
 
@@ -283,16 +329,23 @@ export function usePromptGenerator() {
   };
 
   useEffect(() => {
-    fetchModels();
-    fetchFields();
-    fetchTemplates();
-  }, []);
+    if (canManagePrompts) {
+      fetchModels();
+      fetchFields();
+      fetchTemplates();
+    } else {
+      console.warn("[usePromptGenerator] User does not have permission to manage prompts");
+      setError("Permission denied: You need admin, prompter, or jadmin role to access this feature");
+    }
+  }, [canManagePrompts]);
 
   return {
     models,
     fields,
     templates,
     loading,
+    error,
+    canManagePrompts,
     generatePrompt,
     saveTemplate,
     addModel,

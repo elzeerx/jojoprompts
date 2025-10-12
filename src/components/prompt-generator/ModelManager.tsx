@@ -20,8 +20,30 @@ interface ModelFormData {
 }
 
 export function ModelManager() {
-  const { models, addModel, updateModel, deleteModel } = usePromptGenerator();
+  const { models, addModel, updateModel, deleteModel, error, canManagePrompts } = usePromptGenerator();
   const { toast } = useToast();
+
+  if (!canManagePrompts) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Access Denied</CardTitle>
+          <CardDescription>You need admin, prompter, or jadmin role to manage models.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Error Loading Models</CardTitle>
+          <CardDescription className="text-destructive">{error}</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<string | null>(null);

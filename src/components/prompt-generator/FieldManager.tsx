@@ -22,8 +22,30 @@ interface FieldFormData {
 }
 
 export function FieldManager() {
-  const { fields } = usePromptGenerator();
+  const { fields, error, canManagePrompts } = usePromptGenerator();
   const { toast } = useToast();
+
+  if (!canManagePrompts) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Access Denied</CardTitle>
+          <CardDescription>You need admin, prompter, or jadmin role to manage fields.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Error Loading Fields</CardTitle>
+          <CardDescription className="text-destructive">{error}</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);

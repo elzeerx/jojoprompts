@@ -10,8 +10,30 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function TemplateManager() {
-  const { templates } = usePromptGenerator();
+  const { templates, error, canManagePrompts } = usePromptGenerator();
   const { toast } = useToast();
+
+  if (!canManagePrompts) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Access Denied</CardTitle>
+          <CardDescription>You need admin, prompter, or jadmin role to manage templates.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Error Loading Templates</CardTitle>
+          <CardDescription className="text-destructive">{error}</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
   
   const [previewTemplate, setPreviewTemplate] = useState<any>(null);
 
