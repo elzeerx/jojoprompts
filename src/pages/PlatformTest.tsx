@@ -18,18 +18,20 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePlatforms, usePlatformWithFields } from '@/hooks/usePlatforms';
 import { TextField, TextareaField, NumberField, SelectField, SliderField, ToggleField, CodeField, DynamicFieldRenderer, DynamicFieldGroup } from '@/components/prompts/fields';
-import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog, PromptPreview, LivePreviewSidebar, PromptPreviewCard, PromptSummary, PromptSuccessDialog } from '@/components/prompts';
+import { FieldSection, ValidationErrorList, PlatformSelector, PlatformSelectorDialog, PlatformBadge, BasePromptFieldsSection, PromptWizard, PromptWizardDialog, PromptPreview, LivePreviewSidebar, PromptPreviewCard, PromptSummary, PromptSuccessDialog, EditPromptButton } from '@/components/prompts';
 import { formatPromptForPlatform, exportAsText, exportAsMarkdown, exportAsJSON } from '@/lib/formatters';
 import type { PromptFormData } from '@/types/prompt-form';
 import { useFieldValidation, formatErrorsForToast, hasErrors, getFormErrors } from '@/lib/validation';
 import { useDynamicForm } from '@/hooks/useDynamicForm';
 import { useCategories } from '@/hooks/useCategories';
+import { usePromptList } from '@/hooks/usePromptList';
 import type { PlatformField, Platform } from '@/types/platform';
 import type { BasePromptFields } from '@/types/prompt-form';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Plus, Loader2, RefreshCw } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function PlatformTest() {
   const [selectedPlatformId, setSelectedPlatformId] = useState<string>('');
@@ -38,12 +40,16 @@ export default function PlatformTest() {
   const { toast } = useToast();
   const { categories, loading: categoriesLoading, createCategory } = useCategories();
   
+  // Prompt list for CRUD demo
+  const { prompts, loading: promptsLoading, refetch: refetchPrompts } = usePromptList(10);
+  
   // Full page wizard state
   const [showFullPageWizard, setShowFullPageWizard] = useState(false);
   
   // Success dialog state
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdPromptId, setCreatedPromptId] = useState<string>('');
+  const [successMode, setSuccessMode] = useState<'create' | 'edit'>('create');
   
   // Base prompt fields state
   const [baseFields, setBaseFields] = useState<BasePromptFields>({
@@ -4328,12 +4334,178 @@ const result = generatePrompt({
           </CardContent>
         </Card>
 
+        {/* CRUD Demo Section */}
+        <Card className="mt-8">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>📝 Complete CRUD Operations</CardTitle>
+                <CardDescription>
+                  Create, Read, Update operations for prompts
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="icon" onClick={refetchPrompts}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Prompts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{prompts.length}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Create Mode
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm">Add new prompts to your collection</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Edit Mode
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm">Update existing prompts easily</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Prompts List */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Your Prompts</h3>
+              {promptsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : prompts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No prompts yet. Create your first one using the wizard above!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {prompts.map((prompt) => (
+                    <Card key={prompt.id}>
+                      <CardHeader>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <CardTitle className="text-lg">{prompt.title}</CardTitle>
+                              {prompt.platform && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {prompt.platform.name}
+                                </Badge>
+                              )}
+                            </div>
+                            <CardDescription className="line-clamp-2">
+                              {prompt.prompt_text}
+                            </CardDescription>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>
+                                Created {formatDistanceToNow(new Date(prompt.created_at), { addSuffix: true })}
+                              </span>
+                            </div>
+                          </div>
+
+                          <EditPromptButton
+                            promptId={prompt.id}
+                            onSuccess={() => {
+                              setSuccessMode('edit');
+                              refetchPrompts();
+                              toast({
+                                title: 'Prompt Updated',
+                                description: 'Your prompt has been updated successfully.',
+                              });
+                            }}
+                          />
+                        </div>
+                      </CardHeader>
+
+                      {prompt.image_path && (
+                        <CardContent>
+                          <img
+                            src={prompt.image_path}
+                            alt={prompt.title}
+                            className="w-full h-32 object-cover rounded-lg"
+                          />
+                        </CardContent>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Instructions */}
+            <Card className="bg-muted">
+              <CardHeader>
+                <CardTitle>🎉 Phase 3.5 Complete - Full CRUD System!</CardTitle>
+                <CardDescription>
+                  The unified prompt creation system now supports complete CRUD operations
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">What's Working:</h4>
+                  <ul className="text-sm space-y-1 list-disc list-inside">
+                    <li>✅ Create new prompts with multi-step wizard</li>
+                    <li>✅ Platform selection with search and filters</li>
+                    <li>✅ Dynamic form fields based on platform</li>
+                    <li>✅ Validation before submission</li>
+                    <li>✅ Thumbnail upload to Supabase storage</li>
+                    <li>✅ Preview with formatted output</li>
+                    <li>✅ Edit existing prompts</li>
+                    <li>✅ Load and pre-populate form data</li>
+                    <li>✅ Update prompts in database</li>
+                    <li>✅ Loading states with skeletons</li>
+                    <li>✅ Error handling and user feedback</li>
+                    <li>✅ Data transformation utilities</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Test the Complete System:</h4>
+                  <ol className="text-sm space-y-1 list-decimal list-inside">
+                    <li>Scroll to "Complete Prompt Creation & Submission" section above</li>
+                    <li>Click "Create Prompt (Full Flow)" to add a new prompt</li>
+                    <li>Fill in all steps and submit</li>
+                    <li>See the new prompt appear in this list</li>
+                    <li>Click "Edit" on any prompt</li>
+                    <li>Wizard loads with existing data pre-filled</li>
+                    <li>Make changes and update</li>
+                    <li>See changes reflected immediately</li>
+                    <li>Test error cases (invalid ID, missing data)</li>
+                    <li>Test with different platforms and field types</li>
+                  </ol>
+                </div>
+              </CardContent>
+            </Card>
+          </CardContent>
+        </Card>
+
         {/* Success Dialog */}
         <PromptSuccessDialog
           open={showSuccess}
           onOpenChange={setShowSuccess}
           promptId={createdPromptId}
-          mode="create"
+          mode={successMode}
           onViewPrompt={handleViewPrompt}
           onCreateAnother={handleCreateAnother}
         />
