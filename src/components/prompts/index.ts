@@ -42,6 +42,7 @@ export type { PlatformSelectorProps } from './PlatformSelector';
 export type { PlatformSelectorDialogProps } from './PlatformSelectorDialog';
 export type { PlatformBadgeProps } from './PlatformBadge';
 export type { PromptWizardProps } from './PromptWizard';
+export type { EditPromptButtonProps } from './EditPromptButton';
 export type { StepIndicatorProps } from './StepIndicator';
 export type { PromptWizardDialogProps } from './PromptWizardDialog';
 export type { PromptPreviewProps } from './PromptPreview';
@@ -50,4 +51,5 @@ export type { PromptSummaryProps } from './PromptSummary';
 export type { LivePreviewSidebarProps } from './LivePreviewSidebar';
 export type { SubmissionOverlayProps } from './SubmissionOverlay';
 export type { PromptSuccessDialogProps } from './PromptSuccessDialog';
+
 
