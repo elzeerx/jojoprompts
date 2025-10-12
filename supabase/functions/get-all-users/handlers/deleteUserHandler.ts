@@ -70,7 +70,7 @@ async function canDeleteUser(
 async function checkDeletionRateLimit(
   supabase: any,
   adminId: string
-): Promise<{ allowed: boolean; retryAfter?: number }> {
+): Promise<{ allowed: boolean; message?: string; retryAfter?: number }> {
   const windowMinutes = 60;
   const maxDeletions = 10;
   const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
@@ -84,11 +84,12 @@ async function checkDeletionRateLimit(
     .gte('timestamp', windowStart);
 
   if (error) {
-    console.error('Error checking rate limit:', error);
+    console.error('[checkDeletionRateLimit] Error checking rate limit:', error);
     return { allowed: true }; // Fail open to not block legitimate deletions
   }
 
   const deletionCount = recentDeletions?.length || 0;
+  console.log(`[checkDeletionRateLimit] Admin ${adminId} has ${deletionCount}/${maxDeletions} deletions in the last ${windowMinutes} minutes`);
 
   if (deletionCount >= maxDeletions) {
     const retryAfterSeconds = windowMinutes * 60;
@@ -101,19 +102,28 @@ async function checkDeletionRateLimit(
         window_minutes: windowMinutes
       }
     });
-    return { allowed: false, retryAfter: retryAfterSeconds };
+    return { 
+      allowed: false, 
+      message: `Too many deletion attempts. Maximum ${maxDeletions} deletions per ${windowMinutes} minutes.`,
+      retryAfter: retryAfterSeconds 
+    };
   }
 
   return { allowed: true };
 }
 
 export async function handleDeleteUser(supabase: any, adminId: string, requestBody: any) {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  console.log(`[${requestId}] Starting user deletion request from admin ${adminId}`);
+
   try {
     // Extract userId from the already-parsed request body
     const userId = requestBody.userId;
     const ipAddress = requestBody.ip_address || 'unknown';
     const userAgent = requestBody.user_agent || 'unknown';
     
+    console.log(`[${requestId}] Request details:`, { userId, adminId, ipAddress });
+
     // Validate userId parameter
     const validation = ParameterValidator.validateParameters(
       { userId },
@@ -121,10 +131,12 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     );
     
     if (!validation.isValid) {
-      console.error(`[deleteUserHandler] Validation failed for userId ${userId}:`, validation.errors);
+      console.error(`[${requestId}] Validation failed for userId ${userId}:`, validation.errors);
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid user ID format', 
+          success: false,
+          error: 'Invalid user ID format',
+          code: 'INVALID_INPUT', 
           details: validation.errors.join(', '),
           received: userId 
         }), 
@@ -136,34 +148,61 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     }
 
     // Check rate limiting
+    console.log(`[${requestId}] Checking rate limits for admin ${adminId}`);
     const rateLimitCheck = await checkDeletionRateLimit(supabase, adminId);
     if (!rateLimitCheck.allowed) {
-      console.warn(`[deleteUserHandler] Rate limit exceeded for admin ${adminId}`);
+      console.warn(`[${requestId}] Rate limit exceeded for admin ${adminId}`);
       return new Response(
         JSON.stringify({
-          error: 'Too many deletion attempts. Please try again later.',
+          success: false,
+          error: rateLimitCheck.message || 'Too many deletion attempts. Please try again later.',
+          code: 'RATE_LIMIT_EXCEEDED',
           retryAfter: rateLimitCheck.retryAfter
         }),
         {
           status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': rateLimitCheck.retryAfter?.toString() || '3600'
+          }
         }
       );
     }
 
     // Check if user exists BEFORE deletion
+    console.log(`[${requestId}] Verifying target user ${userId} exists`);
     const { data: existingUser, error: userCheckError } = await supabase
       .from('profiles')
-      .select('id, role, first_name, last_name')
+      .select('id, role, first_name, last_name, email')
       .eq('id', userId)
       .maybeSingle();
       
-    if (userCheckError || !existingUser) {
-      console.error(`[deleteUserHandler] User ${userId} not found:`, userCheckError);
+    if (userCheckError) {
+      console.error(`[${requestId}] Database error checking user:`, userCheckError);
       return new Response(
         JSON.stringify({ 
-          error: 'User not found', 
-          details: userCheckError?.message || 'User does not exist in the database',
+          success: false,
+          error: 'Database error while fetching user',
+          code: 'DATABASE_ERROR', 
+          details: userCheckError.message,
+          userId: userId 
+        }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    if (!existingUser) {
+      console.warn(`[${requestId}] User ${userId} not found`);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'User not found',
+          code: 'USER_NOT_FOUND', 
+          details: 'User does not exist in the database',
           userId: userId 
         }), 
         { 
@@ -173,15 +212,22 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       );
     }
 
-    console.log(`[deleteUserHandler] Found user to delete: ${existingUser.first_name} ${existingUser.last_name} (${existingUser.role})`);
+    console.log(`[${requestId}] Found user to delete:`, {
+      id: existingUser.id,
+      name: `${existingUser.first_name} ${existingUser.last_name}`,
+      role: existingUser.role
+    });
 
     // Check if admin has permission to delete this user
+    console.log(`[${requestId}] Checking deletion permissions`);
     const permissionCheck = await canDeleteUser(supabase, adminId, userId);
     if (!permissionCheck.allowed) {
-      console.warn(`[deleteUserHandler] Permission denied: ${permissionCheck.reason}`);
+      console.warn(`[${requestId}] Permission denied: ${permissionCheck.reason}`);
       return new Response(
         JSON.stringify({
-          error: permissionCheck.reason || 'Permission denied'
+          success: false,
+          error: permissionCheck.reason || 'Permission denied',
+          code: 'INSUFFICIENT_PERMISSIONS'
         }),
         {
           status: 403,
@@ -189,15 +235,19 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
         }
       );
     }
+    console.log(`[${requestId}] Permission check passed`);
 
     // Log the user deletion attempt (critical action) with enhanced details
+    console.log(`[${requestId}] Logging admin action before deletion`);
     await logAdminAction(supabase, adminId, 'delete_user', 'users', {
       target_user_id: userId,
       target_user_name: `${existingUser.first_name} ${existingUser.last_name}`,
       target_user_role: existingUser.role,
+      target_user_email: existingUser.email,
       severity: 'critical',
       ip_address: ipAddress,
-      user_agent: userAgent
+      user_agent: userAgent,
+      request_id: requestId
     }, ipAddress);
 
     // Additional security check for user deletion
@@ -208,24 +258,29 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
         target_user_id: userId,
         target_user_role: existingUser.role,
         ip_address: ipAddress,
-        user_agent: userAgent
+        user_agent: userAgent,
+        request_id: requestId
       }
     });
 
     // Enhanced logging before deletion
-    console.log(`[deleteUserHandler] Starting deletion process for user ${userId} (${existingUser.first_name} ${existingUser.last_name}) by admin ${adminId} from IP ${ipAddress}`);
+    console.log(`[${requestId}] Starting deletion process for user ${userId} (${existingUser.first_name} ${existingUser.last_name}) by admin ${adminId} from IP ${ipAddress}`);
     
-    // Use the comprehensive deleteUser function from userDeletion.ts
+    // Use the comprehensive deleteUser function from userDeletion.ts (with retry logic)
     const deletionResult = await deleteUser(supabase, userId, adminId);
 
     // Log successful user deletion with enhanced details
+    console.log(`[${requestId}] Deletion successful, logging result`);
     await logAdminAction(supabase, adminId, 'user_deletion_success', 'users', {
       target_user_id: userId,
       target_user_name: `${existingUser.first_name} ${existingUser.last_name}`,
       target_user_role: existingUser.role,
       transaction_duration: deletionResult.transactionDuration,
+      attempts_required: deletionResult.attemptsRequired,
+      security_logs_preserved: deletionResult.securityLogsPreserved,
       ip_address: ipAddress,
       user_agent: userAgent,
+      request_id: requestId,
       timestamp: new Date().toISOString()
     }, ipAddress);
 
@@ -234,23 +289,29 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       action: 'user_deleted',
       details: { 
         target_user_id: userId,
-        target_user_email: `${existingUser.first_name} ${existingUser.last_name}`,
+        target_user_name: `${existingUser.first_name} ${existingUser.last_name}`,
         transaction_duration: deletionResult.transactionDuration,
+        attempts_required: deletionResult.attemptsRequired,
         success: true,
         ip_address: ipAddress,
-        user_agent: userAgent
+        user_agent: userAgent,
+        request_id: requestId
       }
     });
 
-    console.log(`[deleteUserHandler] User ${userId} (${existingUser.first_name} ${existingUser.last_name}) successfully deleted by admin ${adminId} in ${deletionResult.transactionDuration}ms`);
+    console.log(`[${requestId}] ✅ User ${userId} (${existingUser.first_name} ${existingUser.last_name}) successfully deleted by admin ${adminId} in ${deletionResult.transactionDuration}ms after ${deletionResult.attemptsRequired} attempt(s)`);
 
     return new Response(
       JSON.stringify({
-        ...deletionResult,
-        deletedUser: {
-          id: userId,
-          name: `${existingUser.first_name} ${existingUser.last_name}`,
-          role: existingUser.role
+        success: true,
+        message: 'User deleted successfully',
+        data: {
+          ...deletionResult,
+          deletedUser: {
+            id: userId,
+            name: `${existingUser.first_name} ${existingUser.last_name}`,
+            role: existingUser.role
+          }
         }
       }), 
       { 
@@ -259,31 +320,54 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       }
     );
     
-  } catch (error) {
+  } catch (error: any) {
     const ipAddress = requestBody.ip_address || 'unknown';
     const userAgent = requestBody.user_agent || 'unknown';
 
-    console.error(`[deleteUserHandler] Critical error deleting user ${requestBody.userId}:`, error);
+    // Determine error details from structured error or raw error
+    const errorCode = error.code || 'UNKNOWN_ERROR';
+    const httpStatus = error.httpStatus || 500;
+    const errorMessage = error.message || 'Failed to delete user';
+    const isRetryable = error.isRetryable || false;
+
+    console.error(`[${requestId}] ❌ Critical error deleting user ${requestBody.userId}:`, {
+      code: errorCode,
+      message: errorMessage,
+      httpStatus,
+      isRetryable,
+      stack: error.stack?.substring(0, 500)
+    });
     
     // Log the failure with enhanced details
-    await logAdminAction(supabase, adminId, 'user_deletion_failure', 'users', {
-      target_user_id: requestBody.userId,
-      error: error.message,
-      stack: error.stack?.substring(0, 500),
-      ip_address: ipAddress,
-      user_agent: userAgent,
-      timestamp: new Date().toISOString()
-    }, ipAddress);
+    try {
+      await logAdminAction(supabase, adminId, 'user_deletion_failure', 'users', {
+        target_user_id: requestBody.userId,
+        error: errorMessage,
+        error_code: errorCode,
+        http_status: httpStatus,
+        is_retryable: isRetryable,
+        stack: error.stack?.substring(0, 500),
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        request_id: requestId,
+        timestamp: new Date().toISOString()
+      }, ipAddress);
+    } catch (logError) {
+      console.error(`[${requestId}] Error logging failed deletion:`, logError);
+    }
 
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to delete user', 
-        details: error.message,
+        success: false,
+        error: errorMessage,
+        code: errorCode,
+        isRetryable,
+        details: error.details || null,
         userId: requestBody.userId,
         timestamp: new Date().toISOString()
       }), 
       { 
-        status: 500, 
+        status: httpStatus, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
