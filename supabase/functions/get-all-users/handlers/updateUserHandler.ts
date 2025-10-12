@@ -104,6 +104,8 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
     }
     if (validation.sanitizedData.membershipTier !== undefined) {
       profileUpdates.membership_tier = validation.sanitizedData.membershipTier;
+    }
+    
     // Update profile if there are changes with detailed audit logging
     if (Object.keys(profileUpdates).length > 0) {
       const { error: profileUpdateError } = await supabase
