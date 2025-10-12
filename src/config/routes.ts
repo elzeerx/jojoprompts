@@ -44,6 +44,7 @@ const TermsOfServicePage = lazy(() => import("@/pages/TermsOfServicePage"));
 const ExamplesPage = lazy(() => import("@/pages/ExamplesPage"));
 const EnhancedPromptDemo = lazy(() => import("@/pages/EnhancedPromptDemo"));
 const MagicLinkSentPage = lazy(() => import("@/pages/MagicLinkSentPage"));
+const DemoHub = lazy(() => import("@/pages/demos"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
 /**
@@ -267,6 +268,12 @@ export const routes: RouteConfig[] = [
   {
     path: "admin/platform-test",
     component: PlatformTest,
+    protection: "admin",
+    fallbackRoute: "/prompts"
+  },
+  {
+    path: "demos",
+    component: DemoHub,
     protection: "admin",
     fallbackRoute: "/prompts"
   },
