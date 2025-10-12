@@ -3,16 +3,45 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { DeleteUserDialog } from "@/components/admin/DeleteUserDialog";
+import { Button } from "@/components/ui/button";
 
 interface UserDeletionResult {
   success: boolean;
   message?: string;
   data?: any;
+  code?: string;
+  isRetryable?: boolean;
+}
+
+interface DeletionError {
+  code?: string;
+  message: string;
+  isRetryable?: boolean;
+  httpStatus?: number;
+}
+
+/**
+ * Categorize deletion errors from backend
+ */
+function categorizeDeletionError(error: any): DeletionError {
+  const errorData = error?.message ? JSON.parse(error.message || '{}') : {};
+  const code = errorData.code || error.code;
+  const message = errorData.error || error.message || 'Unknown error occurred';
+  const isRetryable = errorData.isRetryable ?? true;
+  const httpStatus = errorData.status || 500;
+
+  return {
+    code,
+    message,
+    isRetryable,
+    httpStatus
+  };
 }
 
 export function useUserDeletion() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [lastError, setLastError] = useState<DeletionError | null>(null);
   const [userToDelete, setUserToDelete] = useState<{
     id: string;
     email: string;
@@ -42,16 +71,23 @@ export function useUserDeletion() {
         }
         
         // Check if the response indicates an error
-        if (data && data.error) {
-          console.error("[UserDeletion] Delete operation error:", data.error);
-          throw new Error(data.error);
+        if (data && !data.success) {
+          console.error("[UserDeletion] Delete operation error:", data);
+          const errorObj = new Error(JSON.stringify({
+            code: data.code || 'UNKNOWN_ERROR',
+            error: data.error || 'Deletion failed',
+            isRetryable: data.isRetryable || false,
+            status: 500
+          }));
+          throw errorObj;
         }
 
         console.log(`[UserDeletion] Successfully deleted user ${userId} via Edge Function`);
         return {
           success: true,
-          message: `User ${email} has been deleted successfully${data?.transactionDuration ? ` (${data.transactionDuration}ms)` : ''}`,
-          data
+          message: data.message || `User ${email} has been deleted successfully${data?.data?.transactionDuration ? ` (${data.data.transactionDuration}ms)` : ''}`,
+          data: data.data,
+          code: 'SUCCESS'
         };
       } catch (edgeFunctionError: any) {
         console.warn('[UserDeletion] Edge Function failed, attempting fallback to Admin API:', edgeFunctionError.message);
@@ -97,23 +133,32 @@ export function useUserDeletion() {
         }
       }
     },
-    retry: (failureCount, error) => {
-      // Don't retry rate limit or permission errors
-      if (error?.message?.includes("Too many deletion attempts") ||
-          error?.message?.includes("Only super admin") ||
-          error?.message?.includes("Permission denied")) {
+    retry: (failureCount, error: any) => {
+      const categorized = categorizeDeletionError(error);
+      
+      // Don't retry non-retryable errors
+      if (!categorized.isRetryable) {
+        console.log(`[UserDeletion] Not retrying non-retryable error: ${categorized.code}`);
         return false;
       }
 
-      // Implement retry logic for transient failures
-      const isTransientError = error?.message?.includes("Edge Function returned a non-2xx status code") ||
-                              error?.message?.includes("network") ||
-                              error?.message?.includes("timeout") ||
-                              error?.message?.includes("connection");
-      
-      return isTransientError && failureCount < 2;
+      // Don't retry permission, rate limit, or user not found errors
+      const nonRetryableCodes = ['INSUFFICIENT_PERMISSIONS', 'RATE_LIMIT_EXCEEDED', 'USER_NOT_FOUND', 'INVALID_INPUT'];
+      if (nonRetryableCodes.includes(categorized.code || '')) {
+        console.log(`[UserDeletion] Not retrying error code: ${categorized.code}`);
+        return false;
+      }
+
+      // Retry transient errors up to 2 times
+      const shouldRetry = failureCount < 2;
+      console.log(`[UserDeletion] Retry decision for ${categorized.code}: ${shouldRetry} (attempt ${failureCount + 1})`);
+      return shouldRetry;
     },
-    retryDelay: (attemptIndex) => Math.pow(2, attemptIndex) * 1000, // 1s, 2s, 4s
+    retryDelay: (attemptIndex) => {
+      const delay = Math.pow(2, attemptIndex) * 1000; // 1s, 2s, 4s
+      console.log(`[UserDeletion] Retrying in ${delay}ms...`);
+      return delay;
+    },
     onMutate: async ({ userId }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['admin-users'] });
@@ -144,46 +189,71 @@ export function useUserDeletion() {
 
       console.error(`[UserDeletion] Error deleting user ${userId}:`, error);
       
-      // Parse error message more specifically
-      let errorMessage = "Failed to delete user.";
-      let showManualSteps = false;
+      // Categorize the error for better UX
+      const categorizedError = categorizeDeletionError(error);
+      setLastError(categorizedError);
       
-      if (error.message) {
-        if (error.message.includes("Too many deletion attempts")) {
-          errorMessage = "Rate limit exceeded. Please wait before deleting more users.";
-        } else if (error.message.includes("Only super admin")) {
-          errorMessage = "Only the super administrator can delete admin accounts.";
-        } else if (error.message.includes("Permission denied")) {
-          errorMessage = "You don't have permission to delete this user.";
-        } else if (error.message.includes("Edge Function returned a non-2xx status code")) {
-          errorMessage = "Server error occurred. Try manual deletion via Supabase Dashboard.";
-          showManualSteps = true;
-        } else if (error.message.includes("User not found")) {
-          errorMessage = "User not found in database.";
-        } else if (error.message.includes("Invalid user ID")) {
-          errorMessage = "Invalid user ID provided.";
-        } else if (error.message.includes("transaction")) {
-          errorMessage = "Database transaction failed. Try manual deletion via Supabase Dashboard.";
-          showManualSteps = true;
-        } else if (error.message.includes("Fallback also failed")) {
-          errorMessage = "Both automatic and fallback deletion methods failed. Please use manual deletion.";
-          showManualSteps = true;
-        } else {
-          errorMessage = error.message;
-        }
+      // Map error codes to user-friendly messages and actions
+      let toastTitle = "Deletion failed";
+      let toastDescription = categorizedError.message;
+      let toastDuration = 7000;
+      
+      switch (categorizedError.code) {
+        case 'FK_VIOLATION':
+          toastTitle = "Database Constraint Error";
+          toastDescription = "Cannot delete due to database references. Open the deletion dialog to see SQL commands for manual deletion.";
+          break;
+          
+        case 'USER_NOT_FOUND':
+          toastTitle = "User Not Found";
+          toastDescription = "User may have been deleted already or doesn't exist.";
+          toastDuration = 5000;
+          break;
+          
+        case 'INSUFFICIENT_PERMISSIONS':
+          toastTitle = "Permission Denied";
+          toastDescription = "Only super admin can delete this user. Contact support@jojoprompts.com for assistance.";
+          break;
+          
+        case 'RATE_LIMIT_EXCEEDED':
+          toastTitle = "Too Many Requests";
+          toastDescription = "Rate limit exceeded. Please wait a few minutes before trying again.";
+          toastDuration = 5000;
+          break;
+          
+        case 'DATABASE_ERROR':
+          toastTitle = "Database Error";
+          toastDescription = "Database error occurred. Open the deletion dialog for manual deletion instructions.";
+          break;
+          
+        case 'NETWORK_ERROR':
+          toastTitle = "Network Error";
+          toastDescription = categorizedError.isRetryable 
+            ? "Connection failed. The system will retry automatically."
+            : "Connection failed. Please check your internet and try again.";
+          toastDuration = 5000;
+          break;
+          
+        default:
+          // For unknown errors, provide helpful fallback
+          toastDescription = `${categorizedError.message}. ${categorizedError.isRetryable ? 'You can try again.' : 'Open the deletion dialog for manual steps or contact support@jojoprompts.com'}`;
       }
       
       toast({
-        title: "Deletion failed",
-        description: errorMessage + (showManualSteps ? " Check the deletion dialog for manual instructions." : ""),
+        title: toastTitle,
+        description: toastDescription,
         variant: "destructive",
-        duration: 7000
+        duration: toastDuration
       });
     },
     onSuccess: (result) => {
+      // Clear any previous errors on success
+      setLastError(null);
+      
       toast({
-        title: "User deleted",
-        description: result.message
+        title: "✅ User deleted successfully",
+        description: result.message || "User has been permanently removed from the system.",
+        duration: 5000
       });
 
       // Invalidate and refetch users query
@@ -212,10 +282,17 @@ export function useUserDeletion() {
   const DeleteDialogComponent = () => (
     <DeleteUserDialog
       open={dialogOpen}
-      onOpenChange={setDialogOpen}
+      onOpenChange={(open) => {
+        setDialogOpen(open);
+        // Clear error when dialog is closed
+        if (!open) {
+          setLastError(null);
+        }
+      }}
       user={userToDelete}
       onConfirm={handleConfirmDelete}
       isDeleting={deleteMutation.isPending}
+      lastError={lastError}
     />
   );
 
