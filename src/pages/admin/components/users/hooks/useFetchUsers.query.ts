@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { UserProfile, UserRole } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminUserDTO, AdminUsersResponse } from "@/types/admin-user.dto";
 
 interface UseFetchUsersParams {
   page?: number;
@@ -10,43 +10,17 @@ interface UseFetchUsersParams {
 }
 
 interface UseFetchUsersReturn {
-  users: (UserProfile & { 
-    email?: string;
-    email_confirmed_at?: string | null;
-    is_email_confirmed?: boolean;
-    last_sign_in_at?: string | null;
-    auth_created_at?: string | null;
-    auth_updated_at?: string | null;
-    subscription?: { 
-      plan_id?: string;
-      plan_name: string;
-      price_usd: number;
-      is_lifetime: boolean;
-      status: string;
-      start_date?: string;
-      end_date?: string;
-      payment_method?: string;
-      subscription_created_at?: string;
-      duration_days?: number;
-    } | null;
-  })[];
+  users: AdminUserDTO[];
   loading: boolean;
   error: string | null;
   total: number;
   totalPages: number;
   currentPage: number;
   refetch: () => void;
-  retryCount?: number;
   performance?: {
-    requestId: string;
-    totalDuration: number;
-    cacheHit: boolean;
-    searchActive: boolean;
-    dataEnrichment?: {
-      profilesEnriched: number;
-      authDataAvailable: number;
-      subscriptionsAvailable: number;
-    };
+    duration_ms: number;
+    query_count?: number;
+    cached?: boolean;
   };
 }
 
@@ -99,31 +73,9 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
 
       console.log(`[UserFetch] Success - fetched ${result.users?.length || 0} users (cached: ${result.performance?.cached || false})`);
       
-      // Map the response to match our interface
-      const enrichedUsers = result.users?.map((user: any) => ({
-        ...user,
-        role: user.role as UserRole,
-        social_links: user.social_links || {},
-        email_confirmed_at: user.email_confirmed_at,
-        is_email_confirmed: !!user.email_confirmed_at,
-        auth_created_at: user.created_at,
-        auth_updated_at: user.created_at,
-        subscription: user.subscription ? {
-          plan_id: user.subscription.plan_id,
-          plan_name: user.subscription.plan_name || 'Unknown',
-          price_usd: user.subscription.price_usd || 0,
-          is_lifetime: user.subscription.is_lifetime || false,
-          status: user.subscription.status,
-          start_date: user.subscription.start_date,
-          end_date: user.subscription.end_date,
-          payment_method: user.subscription.payment_method,
-          subscription_created_at: user.subscription.created_at,
-          duration_days: user.subscription.duration_days
-        } : null
-      })) || [];
-
+      // Response already matches AdminUsersResponse structure
       return {
-        users: enrichedUsers,
+        users: result.users || [],
         total: result.pagination?.total || 0,
         totalPages: result.pagination?.totalPages || 0,
         performance: result.performance
@@ -143,7 +95,6 @@ export function useFetchUsers({ page = 1, limit = 10, search = "" }: UseFetchUse
     totalPages: data?.totalPages || 0,
     currentPage: page,
     refetch,
-    retryCount: 0, // React Query handles retries internally
     performance: data?.performance
   };
 }

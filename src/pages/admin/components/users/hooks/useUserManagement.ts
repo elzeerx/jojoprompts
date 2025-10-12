@@ -12,7 +12,7 @@ export function useUserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const pageSize = 10;
   
-  const { users, loading, error, total, totalPages, refetch, retryCount, performance } = useFetchUsers({
+  const { users, loading, error, total, totalPages, refetch, performance } = useFetchUsers({
     page: currentPage,
     limit: pageSize,
     search: searchTerm
@@ -85,7 +85,6 @@ export function useUserManagement() {
     sendPasswordResetEmail,
     deleteUser: handleDeleteUser,
     DeleteDialog,
-    retryCount,
     performance
   };
 }

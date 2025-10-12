@@ -96,3 +96,18 @@ export interface PromptRow {
 
 // UserProfile has been moved to @/types/user.ts for better organization
 export type { UserProfile, ExtendedUserProfile, UserRole } from "@/types/user";
+
+// Admin User Management DTOs for consistent data structure
+export type { 
+  AdminUserDTO, 
+  AdminUserSubscriptionDTO,
+  AdminUsersResponse,
+  AdminUsersRequest 
+} from "@/types/admin-user.dto";
+export { 
+  isValidUserRole, 
+  getRoleDisplayName, 
+  getRoleColor,
+  getSubscriptionStatusColor 
+} from "@/types/admin-user.dto";
+
