@@ -21,6 +21,7 @@ export { EditPromptButton } from './EditPromptButton';
 export { StepIndicator } from './StepIndicator';
 export { PromptWizardDialog } from './PromptWizardDialog';
 export { PromptPreview } from './PromptPreview';
+export { PromptWizardSkeleton } from './PromptWizardSkeleton';
 export { PromptPreviewCard } from './PromptPreviewCard';
 export { PromptSummary } from './PromptSummary';
 export { LivePreviewSidebar } from './LivePreviewSidebar';
