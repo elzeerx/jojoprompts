@@ -14,6 +14,7 @@ const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 const SignupPage = lazy(() => import("@/pages/SignupPage"));
 const EmailConfirmationPage = lazy(() => import("@/pages/EmailConfirmationPage"));
+const VerifyEmailPage = lazy(() => import("@/pages/auth/VerifyEmail"));
 const PromptsPage = lazy(() => import("@/pages/PromptsPage"));
 const ChatGPTPromptsPage = lazy(() => import("@/pages/prompts/ChatGPTPromptsPage"));
 const MidjourneyPromptsPage = lazy(() => import("@/pages/prompts/MidjourneyPromptsPage"));
@@ -118,6 +119,11 @@ export const routes: RouteConfig[] = [
   {
     path: "email-confirmation",
     component: EmailConfirmationPage,
+    protection: "public"
+  },
+  {
+    path: "auth/verify-email",
+    component: VerifyEmailPage,
     protection: "public"
   },
   {

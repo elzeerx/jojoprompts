@@ -1247,6 +1247,7 @@ export type Database = {
           bio: string | null
           country: string | null
           created_at: string | null
+          email: string | null
           first_name: string
           id: string
           last_name: string
@@ -1262,6 +1263,7 @@ export type Database = {
           bio?: string | null
           country?: string | null
           created_at?: string | null
+          email?: string | null
           first_name: string
           id: string
           last_name: string
@@ -1277,6 +1279,7 @@ export type Database = {
           bio?: string | null
           country?: string | null
           created_at?: string | null
+          email?: string | null
           first_name?: string
           id?: string
           last_name?: string
@@ -1998,6 +2001,36 @@ export type Database = {
         }
         Relationships: []
       }
+      signup_audit_log: {
+        Row: {
+          created_at: string
+          email: string
+          error_messages: string[] | null
+          id: string
+          ip_address: string
+          success: boolean
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          error_messages?: string[] | null
+          id?: string
+          ip_address: string
+          success?: boolean
+          username: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          error_messages?: string[] | null
+          id?: string
+          ip_address?: string
+          success?: boolean
+          username?: string
+        }
+        Relationships: []
+      }
       subscription_plans: {
         Row: {
           created_at: string | null
@@ -2409,6 +2442,10 @@ export type Database = {
       cleanup_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      cleanup_unverified_accounts: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       confirm_user_email: {
         Args: { email_confirmed?: boolean; user_id: string }
