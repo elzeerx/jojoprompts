@@ -20,7 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Heart, Trash, AlertTriangle, Workflow, Languages, Loader2 } from "lucide-react";
+import { Heart, Trash, AlertTriangle, Workflow, Languages, Loader2, Edit } from "lucide-react";
 import { type PromptRow } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,19 +36,22 @@ import { extractPromptMetadata, isWorkflowPrompt } from "@/utils/promptUtils";
 import { PromptService } from "@/services/PromptService";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { EditPromptButton } from "@/components/prompts";
 
 interface AdminPromptCardProps {
   prompt: PromptRow;
   onEdit: (promptId: string) => void;
   onDelete: (promptId: string) => void;
   initiallyFavorited?: boolean;
+  onEditSuccess?: () => void;
 }
 
 export function AdminPromptCard({ 
   prompt, 
   onEdit, 
   onDelete,
-  initiallyFavorited = false
+  initiallyFavorited = false,
+  onEditSuccess
 }: AdminPromptCardProps) {
   const { session } = useAuth();
   const { favorited, toggleFavorite } = useFavoriteLogic(prompt, initiallyFavorited);
@@ -59,11 +62,7 @@ export function AdminPromptCard({
 
 
 
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onEdit(prompt.id);
-  };
+  // Removed handleEditClick - using EditPromptButton instead
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -281,14 +280,14 @@ export function AdminPromptCard({
           )}
           
           <div className="flex justify-between w-full">
-            <Button
+            <EditPromptButton
+              promptId={prompt.id}
+              onSuccess={onEditSuccess}
+              showIcon={true}
+              buttonText="Edit"
               variant="secondary"
               size="sm"
-              onClick={handleEditClick}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
+            />
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
               <AlertDialogTrigger asChild>
                 <Button 

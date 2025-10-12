@@ -4,11 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { PromptGeneratorForm } from "@/components/prompt-generator/PromptGeneratorForm";
+import { PromptWizardDialog } from "@/components/prompts";
 import { ModelManager } from "@/components/prompt-generator/ModelManager";
 import { FieldManager } from "@/components/prompt-generator/FieldManager";
 import { TemplateManager } from "@/components/prompt-generator/TemplateManager";
-import { Wand2, Settings, Database, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Wand2, Settings, Database, BookOpen, Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 export default function PromptGeneratorPage() {
   const { canManagePrompts, loading } = useAuth();
@@ -65,7 +67,31 @@ export default function PromptGeneratorPage() {
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <TabsContent value="generator" className="m-0">
-              <PromptGeneratorForm />
+              <Card className="border-0 shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-dark-base">Create New Prompt</CardTitle>
+                  <CardDescription>
+                    Use the multi-step wizard to create AI prompts with platform-specific configurations
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center py-8">
+                  <PromptWizardDialog
+                    trigger={
+                      <Button size="lg" className="bg-warm-gold hover:bg-warm-gold/90">
+                        <Plus className="mr-2 h-5 w-5" />
+                        Create Prompt with Wizard
+                      </Button>
+                    }
+                    mode="create"
+                    onComplete={async () => {
+                      toast({
+                        title: "Success",
+                        description: "Prompt created successfully",
+                      });
+                    }}
+                  />
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="models" className="m-0">
