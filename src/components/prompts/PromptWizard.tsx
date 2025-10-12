@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Platform } from '@/types/platform';
 import { BasePromptFields, PromptFormData, PromptFormStep } from '@/types/prompt-form';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StepIndicator } from './StepIndicator';
@@ -16,9 +17,11 @@ import { useCategories } from '@/hooks/useCategories';
 import { usePlatformWithFields } from '@/hooks/usePlatforms';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { usePromptSubmission } from '@/hooks/usePromptSubmission';
+import { usePromptLoader } from '@/hooks/usePromptLoader';
 
 export interface PromptWizardProps {
   mode?: 'create' | 'edit';
+  promptId?: string; // For edit mode
   initialData?: Partial<PromptFormData>;
   onComplete: (data: PromptFormData) => Promise<void>;
   onCancel?: () => void;
@@ -27,38 +30,92 @@ export interface PromptWizardProps {
 
 export function PromptWizard({
   mode = 'create',
+  promptId,
   initialData,
   onComplete,
   onCancel,
   className
 }: PromptWizardProps) {
   
+  // Load prompt data if in edit mode
+  const {
+    data: loadedData,
+    formData: loadedFormData,
+    loading: loadingPrompt,
+    error: loadError
+  } = usePromptLoader(mode === 'edit' ? promptId : undefined);
+
   // Current step index (0-based)
   const [currentStep, setCurrentStep] = useState(0);
   
   // Selected platform
-  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(
-    initialData?.platform_id ? null : null // Will load from initialData in Phase 3.5
-  );
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
 
   // Base fields state
   const [baseFields, setBaseFields] = useState<BasePromptFields>({
-    title: initialData?.title || '',
-    title_ar: initialData?.title_ar || '',
-    prompt_text: initialData?.prompt_text || '',
-    prompt_text_ar: initialData?.prompt_text_ar || '',
-    category_id: initialData?.category_id || '',
+    title: '',
+    title_ar: '',
+    prompt_text: '',
+    prompt_text_ar: '',
+    category_id: '',
     thumbnail: null,
-    thumbnail_url: initialData?.thumbnail_url || ''
+    thumbnail_url: ''
   });
 
   // Platform-specific fields state
-  const [platformFields, setPlatformFields] = useState<Record<string, any>>(
-    initialData?.platform_fields || {}
-  );
+  const [platformFields, setPlatformFields] = useState<Record<string, any>>({});
 
   // Step validation states
   const [stepErrors, setStepErrors] = useState<Record<number, string[]>>({});
+
+  // Track if form has been initialized from loaded data
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize form when data loads
+  useEffect(() => {
+    if (mode === 'edit' && loadedData && loadedFormData && !isInitialized) {
+      // Set platform
+      if (loadedData.platform) {
+        setSelectedPlatform(loadedData.platform);
+      }
+
+      // Set base fields
+      setBaseFields({
+        title: loadedFormData.title,
+        title_ar: loadedFormData.title_ar || '',
+        prompt_text: loadedFormData.prompt_text,
+        prompt_text_ar: loadedFormData.prompt_text_ar || '',
+        category_id: loadedFormData.category_id || '',
+        thumbnail: null,
+        thumbnail_url: loadedFormData.thumbnail_url || ''
+      });
+
+      // Set platform fields
+      setPlatformFields(loadedFormData.platform_fields);
+
+      // Start on step 1 (base fields) in edit mode since platform is already set
+      setCurrentStep(1);
+      
+      setIsInitialized(true);
+    } else if (mode === 'create' && initialData && !isInitialized) {
+      // Handle initial data for create mode
+      if (initialData.title) {
+        setBaseFields(prev => ({
+          ...prev,
+          title: initialData.title || '',
+          title_ar: initialData.title_ar || '',
+          prompt_text: initialData.prompt_text || '',
+          prompt_text_ar: initialData.prompt_text_ar || '',
+          category_id: initialData.category_id || '',
+          thumbnail_url: initialData.thumbnail_url || ''
+        }));
+      }
+      if (initialData.platform_fields) {
+        setPlatformFields(initialData.platform_fields);
+      }
+      setIsInitialized(true);
+    }
+  }, [mode, loadedData, loadedFormData, initialData, isInitialized]);
 
   // Categories for base fields
   const { categories, createCategory } = useCategories();
@@ -77,8 +134,8 @@ export function PromptWizard({
     clearValidationErrors
   } = usePromptSubmission({
     mode,
-    existingPromptId: (initialData as any)?.id,
-    existingThumbnailUrl: initialData?.thumbnail_url,
+    existingPromptId: promptId,
+    existingThumbnailUrl: baseFields.thumbnail_url,
     platformFields: platformFieldsList,
     onSuccess: async (promptId) => {
       console.log('Prompt saved with ID:', promptId);
@@ -187,6 +244,67 @@ export function PromptWizard({
     canGoBack,
     enabled: !isSubmitting
   });
+
+  // Show loading state while fetching data
+  if (mode === 'edit' && loadingPrompt) {
+    return (
+      <div className={cn("space-y-6", className)}>
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+        <Card className="p-6">
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show error state if loading failed
+  if (mode === 'edit' && loadError) {
+    return (
+      <div className={cn("space-y-6", className)}>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Failed to Load Prompt</AlertTitle>
+          <AlertDescription>
+            {loadError.message || 'Could not load the prompt data. Please try again.'}
+          </AlertDescription>
+        </Alert>
+        {onCancel && (
+          <Button variant="outline" onClick={onCancel}>
+            Go Back
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  // Show error if edit mode but no prompt found
+  if (mode === 'edit' && !loadingPrompt && !loadedData && isInitialized) {
+    return (
+      <div className={cn("space-y-6", className)}>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Prompt Not Found</AlertTitle>
+          <AlertDescription>
+            The prompt you're trying to edit could not be found.
+          </AlertDescription>
+        </Alert>
+        {onCancel && (
+          <Button variant="outline" onClick={onCancel}>
+            Go Back
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
