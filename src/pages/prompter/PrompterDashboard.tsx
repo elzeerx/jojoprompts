@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, BarChart } from "lucide-react";
 import { AdminPromptCard } from "../admin/components/prompts/AdminPromptCard";
-import { PromptDialog } from "../admin/components/prompts/PromptDialog";
+import { PromptWizardDialog } from "@/components/prompts";
 import { type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -15,8 +15,6 @@ export default function PrompterDashboard() {
   const { user } = useAuth();
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<PromptRow | null>(null);
 
   const fetchMyPrompts = async () => {
     if (!user) return;
@@ -53,20 +51,6 @@ export default function PrompterDashboard() {
     }
   }, [user]);
   
-  const handleAddPrompt = () => {
-    setEditing(null);
-    setDialogOpen(true);
-  };
-  
-  const handleEditPrompt = (promptId: string) => {
-    const prompt = prompts.find(p => p.id === promptId);
-    if (prompt) {
-      console.log("PrompterDashboard - Editing prompt with metadata:", prompt.metadata);
-      setEditing(prompt);
-      setDialogOpen(true);
-    }
-  };
-  
   const handleDeletePrompt = async (promptId: string) => {
     try {
       setPrompts((prev) => prev.filter(p => p.id !== promptId));
@@ -96,10 +80,9 @@ export default function PrompterDashboard() {
     }
   };
   
-  const handleSuccess = async () => {
+  const handlePromptComplete = async () => {
     console.log("PrompterDashboard - Prompt saved successfully, refreshing prompts...");
     await fetchMyPrompts();
-    setDialogOpen(false);
   };
 
   
@@ -110,10 +93,16 @@ export default function PrompterDashboard() {
           <h1 className="text-3xl font-bold text-dark-base">Prompter Dashboard</h1>
           <p className="text-muted-foreground">Create, manage, and track your prompts</p>
         </div>
-        <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Prompt
-        </Button>
+        <PromptWizardDialog
+          trigger={
+            <Button className="bg-warm-gold hover:bg-warm-gold/90">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Prompt
+            </Button>
+          }
+          mode="create"
+          onComplete={handlePromptComplete}
+        />
       </div>
       
       <Tabs defaultValue="prompts" className="space-y-6">
@@ -135,7 +124,15 @@ export default function PrompterDashboard() {
           ) : prompts.length === 0 ? (
             <div className="text-center py-8 bg-soft-bg/30 rounded-xl border border-warm-gold/20 p-8">
               <p className="text-muted-foreground mb-4">You haven't created any prompts yet</p>
-              <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">Create Your First Prompt</Button>
+              <PromptWizardDialog
+                trigger={
+                  <Button className="bg-warm-gold hover:bg-warm-gold/90">
+                    Create Your First Prompt
+                  </Button>
+                }
+                mode="create"
+                onComplete={handlePromptComplete}
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -143,9 +140,10 @@ export default function PrompterDashboard() {
                 <AdminPromptCard
                   key={prompt.id}
                   prompt={prompt}
-                  onEdit={handleEditPrompt}
+                  onEdit={() => {}} // Edit is handled by EditPromptButton in AdminPromptCard
                   onDelete={handleDeletePrompt}
                   initiallyFavorited={false}
+                  onEditSuccess={handlePromptComplete}
                 />
               ))}
             </div>
@@ -156,14 +154,6 @@ export default function PrompterDashboard() {
           <PromptStatistics userId={user?.id} isAdminView={false} />
         </TabsContent>
       </Tabs>
-      
-      <PromptDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSuccess={handleSuccess}
-        editingPrompt={editing}
-        promptType={editing?.prompt_type === 'button' || editing?.prompt_type === 'image-selection' ? 'text' : editing?.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound'}
-      />
     </div>
   );
 }
