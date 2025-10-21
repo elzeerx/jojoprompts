@@ -22,7 +22,7 @@ export function useAdminUsers() {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('v_admin_users')
         .select('*')
         .order('created_at', { ascending: false });
@@ -36,7 +36,7 @@ export function useAdminUsers() {
         last_name: row.last_name,
         username: row.username,
         email: row.email,
-        role: row.role as any, // Already cast to text in view
+        role: row.role,
         avatar_url: row.avatar_url,
         bio: row.bio,
         country: row.country,

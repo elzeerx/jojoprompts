@@ -43,16 +43,10 @@ export function useUserUpdate() {
 
       // Update user email if provided
       if (data.email) {
-        const { error } = await supabase.functions.invoke(
-          "get-all-users",
-          {
-            body: {
-              action: 'update',
-              userId,
-              userData: { email: data.email }
-            }
-          }
-        );
+        const { error } = await supabase
+          .from('profiles')
+          .update({ email: data.email })
+          .eq('id', userId);
 
         if (error) throw error;
         updated = true;

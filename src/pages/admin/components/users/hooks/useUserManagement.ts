@@ -1,8 +1,8 @@
 
 import { useState } from "react";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
-import { useUserUpdate } from "./useUserUpdate.query";
-import { usePlanAssignment } from "./usePlanAssignment.query";
+import { useUserUpdate } from "./useUserUpdate";
+import { usePlanAssignment } from "./usePlanAssignment";
 import { usePasswordReset } from "./usePasswordReset";
 import { UserUpdateData, UserRole } from "@/types/user";
 
@@ -11,13 +11,28 @@ export function useUserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const pageSize = 10;
   
-  // Use unified view-based hook (no pagination/search server-side)
+  // Use unified view-based hook
   const { 
-    users,
+    users: allUsers,
     loading,
     error,
     refetch
   } = useAdminUsers();
+  
+  // Client-side filtering and pagination
+  const filteredUsers = searchTerm 
+    ? allUsers.filter(user => 
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.username?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : allUsers;
+  
+  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const users = filteredUsers.slice(startIndex, endIndex);
   
   const { processingUserId: updateProcessingUserId, updateUser } = useUserUpdate();
   const { processingUserId: planProcessingUserId, assignPlanToUser } = usePlanAssignment();
@@ -61,9 +76,9 @@ export function useUserManagement() {
     users,
     loading,
     error: error || null,
-    total: users.length,
+    total: filteredUsers.length,
     currentPage,
-    totalPages: 1,
+    totalPages,
     searchTerm,
     onPageChange: handlePageChange,
     onSearchChange: handleSearchChange,
@@ -73,7 +88,7 @@ export function useUserManagement() {
     assignPlanToUser: handleAssignPlanToUser,
     sendPasswordResetEmail,
     deleteUser: handleDeleteUser,
-    DeleteDialog: null, // No longer using dialog
-    performance: undefined // No performance metrics without edge function
+    DeleteDialog: null,
+    performance: undefined
   };
 }

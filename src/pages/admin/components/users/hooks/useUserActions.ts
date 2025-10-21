@@ -165,15 +165,12 @@ export function useUserActions() {
         return false;
       }
       
-      // Call edge function using supabase.functions.invoke() for proper authentication
-      const { data, error } = await supabase.functions.invoke('get-all-users', {
-        body: { 
-          userId, 
-          action: "delete"
-        }
+      // Call RPC function for user deletion
+      const { data, error } = await supabase.rpc('admin_delete_user_data', {
+        target_user_id: userId
       });
 
-      if (error || (data && data.error)) {
+      if (error || (data && !data.success)) {
         const errorMessage = error?.message || data?.error || "Error deleting user";
         
         logError("User deletion failed", "admin", { error: errorMessage }, user?.id);

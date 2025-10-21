@@ -13,51 +13,22 @@ export function useUserCreation() {
     try {
       setIsCreating(true);
       
-      // Use edge function to create user with service role
-      const { data, error } = await supabase.functions.invoke(
-        "get-all-users",
-        {
-          body: { 
-            action: "create",
-            userData: {
-              email: userData.email,
-              password: userData.password,
-              first_name: userData.first_name,
-              last_name: userData.last_name
-            }
-          }
-        }
-      );
+      // Use Supabase RPC to create user (admin function)
+      const { data, error } = await supabase.rpc('admin_create_user', {
+        user_email: userData.email,
+        user_password: userData.password,
+        user_first_name: userData.first_name || 'User',
+        user_last_name: userData.last_name || '',
+        user_role: userData.role || 'user'
+      });
       
       if (error) {
-        console.error("Edge function error:", error);
-        throw new Error(error.message || "Failed to invoke user creation function");
+        console.error("RPC error:", error);
+        throw new Error(error.message || "Failed to create user");
       }
       
-      if (data?.error) {
-        throw new Error(data.error || "Failed to create user");
-      }
-      
-      if (!data?.success || !data?.user?.id) {
+      if (!data) {
         throw new Error("User creation failed - no user ID returned");
-      }
-      
-      // If role is specified and different from default 'user'
-      if (userData.role && userData.role !== 'user') {
-        const { error: roleError } = await supabase
-          .from('profiles')
-          .update({ role: userData.role })
-          .eq('id', data.user.id);
-          
-        if (roleError) {
-          console.error("Error setting user role:", roleError);
-          // Don't throw, as user is already created
-          toast({
-            title: "Warning",
-            description: "User created, but role could not be set",
-            variant: "destructive",
-          });
-        }
       }
       
       toast({

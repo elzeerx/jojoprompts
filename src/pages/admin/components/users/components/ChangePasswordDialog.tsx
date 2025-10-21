@@ -62,30 +62,23 @@ export function ChangePasswordDialog({
     setLoading(true);
 
     try {
-      // Call the Edge Function to change password
-      const { data, error } = await supabase.functions.invoke('get-all-users', {
-        body: {
-          action: 'change-password',
-          userId: user.id,
-          newPassword: newPassword
-        }
+      // Use Supabase RPC to change password (admin function)
+      const { error } = await supabase.rpc('admin_change_user_password', {
+        user_id: user.id,
+        new_password: newPassword
       });
 
       if (error) throw error;
 
-      if (data.success) {
-        toast({
-          title: "Password changed successfully! 🎉",
-          description: `Password has been updated for ${user.email}`,
-        });
-        
-        setNewPassword("");
-        setConfirmPassword("");
-        onOpenChange(false);
-        onSuccess?.();
-      } else {
-        throw new Error(data.error || "Failed to change password");
-      }
+      toast({
+        title: "Password changed successfully! 🎉",
+        description: `Password has been updated for ${user.email}`,
+      });
+      
+      setNewPassword("");
+      setConfirmPassword("");
+      onOpenChange(false);
+      onSuccess?.();
     } catch (error: any) {
       handleError(error, "change password");
     } finally {
