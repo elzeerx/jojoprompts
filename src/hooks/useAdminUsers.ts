@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ExtendedUserProfile } from "@/types/user";
 
-// Minimal DTO matching v_admin_users view rows
-export interface AdminUser {
-  id: string;
-  [key: string]: any;
+// AdminUser extends ExtendedUserProfile with subscription data
+export interface AdminUser extends ExtendedUserProfile {
+  subscription?: {
+    plan_name: string;
+    status: string;
+    is_lifetime: boolean;
+    price_usd: number;
+  } | null;
 }
 
 export function useAdminUsers() {
