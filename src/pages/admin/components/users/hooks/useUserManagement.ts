@@ -11,17 +11,13 @@ export function useUserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const pageSize = 10;
   
-  // Use direct database queries instead of edge function
+  // Use unified view-based hook (no pagination/search server-side)
   const { 
-    users, 
-    loading, 
-    error, 
-    total, 
-    totalPages, 
-    refetch, 
-    deleteUser: deleteUserFn,
-    isDeleting 
-  } = useAdminUsers(currentPage, pageSize, searchTerm);
+    users,
+    loading,
+    error,
+    refetch
+  } = useAdminUsers();
   
   const { processingUserId: updateProcessingUserId, updateUser } = useUserUpdate();
   const { processingUserId: planProcessingUserId, assignPlanToUser } = usePlanAssignment();
@@ -54,24 +50,20 @@ export function useUserManagement() {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      deleteUserFn(userId);
-      return true;
-    }
+  const handleDeleteUser = async (_userId: string) => {
+    // Deletion via dashboard is temporarily disabled in this view-only mode
     return false;
   };
 
-  // Combine processing states from different hooks
-  const processingUserId = updateProcessingUserId || planProcessingUserId || (isDeleting ? 'deleting' : null);
+  const processingUserId = updateProcessingUserId || planProcessingUserId || null;
 
   return {
     users,
     loading,
-    error,
-    total,
+    error: error || null,
+    total: users.length,
     currentPage,
-    totalPages,
+    totalPages: 1,
     searchTerm,
     onPageChange: handlePageChange,
     onSearchChange: handleSearchChange,
