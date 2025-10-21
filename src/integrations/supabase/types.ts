@@ -1337,6 +1337,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "prompt_generator_fields_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_admin_users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       prompt_generator_models: {
@@ -1376,6 +1383,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_generator_models_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_admin_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1420,6 +1434,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_generator_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_admin_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1587,6 +1608,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_prompts_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "prompts_platform_id_fkey"
             columns: ["platform_id"]
             isOneToOne: false
@@ -1598,6 +1626,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_users"
             referencedColumns: ["id"]
           },
         ]
@@ -2432,7 +2467,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_admin_users: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          country: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string | null
+          id: string | null
+          is_email_confirmed: boolean | null
+          last_name: string | null
+          last_sign_in_at: string | null
+          membership_tier: string | null
+          phone_number: string | null
+          role: string | null
+          social_links: Json | null
+          subscription_is_lifetime: boolean | null
+          subscription_plan_name: string | null
+          subscription_price_usd: number | null
+          subscription_status: string | null
+          timezone: string | null
+          updated_at: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_delete_user_data: {
