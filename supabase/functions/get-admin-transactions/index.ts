@@ -1,54 +1,16 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0'
-import { corsHeaders } from '../_shared/cors.ts'
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
+import { verifyAdmin } from "../_shared/adminAuth.ts";
 
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return handleCors();
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Verify the user is authenticated and is an admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    )
-
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Check if user is admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // Admin authentication using shared module
+    const { supabase, userId } = await verifyAdmin(req);
+    console.log(`[AUTH SUCCESS] Admin verified: ${userId}`);
 
     // Parse query parameters
     const url = new URL(req.url)
@@ -93,10 +55,7 @@ serve(async (req) => {
 
     if (queryError) {
       console.error('Query error:', queryError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch transactions' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return createErrorResponse('Failed to fetch transactions', 500);
     }
 
     // Get user data for each transaction
@@ -151,24 +110,18 @@ serve(async (req) => {
       }
     }) || []
 
-    return new Response(
-      JSON.stringify({
-        transactions: formattedTransactions,
-        pagination: {
-          page,
-          limit,
-          total: count || 0,
-          totalPages: Math.ceil((count || 0) / limit)
-        }
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return createSuccessResponse({
+      transactions: formattedTransactions,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit)
+      }
+    });
 
   } catch (error) {
     console.error('Error in get-admin-transactions:', error)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return createErrorResponse('Internal server error', 500);
   }
 })

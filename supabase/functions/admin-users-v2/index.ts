@@ -1,5 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
+import { verifyAdmin } from "../_shared/adminAuth.ts";
 
 // Simple in-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -26,66 +26,15 @@ interface UserResponse {
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCors();
   }
 
   const startTime = Date.now();
 
   try {
-    // Initialize Supabase client with auth
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
-
-    // Verify authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      console.error('[AUTH ERROR]', authError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[AUTH] User authenticated: ${user.id} (${user.email})`);
-
-    // Check admin role using enum-based function
-    const { data: isAdmin, error: roleError } = await supabase.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
-    });
-
-    if (roleError) {
-      console.error('[ROLE CHECK ERROR]', roleError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to verify admin role' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!isAdmin) {
-      console.warn(`[UNAUTHORIZED] User ${user.email} attempted admin access`);
-      return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[AUTH SUCCESS] Admin verified: ${user.email}`);
+    // Admin authentication using shared module
+    const { supabase, userId, userRole } = await verifyAdmin(req);
+    console.log(`[AUTH SUCCESS] Admin verified: ${userId}, role: ${userRole}`);
 
     // Route based on method
     if (req.method === 'GET') {
@@ -93,21 +42,12 @@ Deno.serve(async (req) => {
     } else if (req.method === 'POST') {
       return await handlePostOperation(supabase, req, startTime);
     } else {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createErrorResponse('Method not allowed', 405);
     }
 
   } catch (error) {
     console.error('[ERROR] admin-users-v2 failed:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error',
-        timestamp: new Date().toISOString()
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse(error.message || 'Internal server error', 500);
   }
 });
 

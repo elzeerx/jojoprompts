@@ -1,20 +1,15 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { verifyAdminSimple } from "./simpleAuth.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
+import { verifyAdmin } from "../_shared/adminAuth.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCors();
   }
 
   try {
-    // Simple admin authentication using new secure role system
-    const { supabase, userId } = await verifyAdminSimple(req);
+    // Admin authentication using shared module
+    const { supabase, userId } = await verifyAdmin(req);
     
     // Handle GET - list users with pagination and search
     if (req.method === 'GET') {
@@ -47,14 +42,11 @@ serve(async (req) => {
       
       console.log(`[GET USERS SUCCESS] Found ${count} total users, returning ${profiles?.length || 0} users`);
       
-      return new Response(
-        JSON.stringify({
-          users: profiles,
-          total: count,
-          totalPages: Math.ceil((count || 0) / limit)
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createSuccessResponse({
+        users: profiles,
+        total: count,
+        totalPages: Math.ceil((count || 0) / limit)
+      });
     }
     
     // Handle POST - delete/update operations
@@ -77,22 +69,13 @@ serve(async (req) => {
         
         console.log('[DELETE USER SUCCESS]', data);
         
-        return new Response(
-          JSON.stringify(data),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return createSuccessResponse(data);
       }
       
-      return new Response(
-        JSON.stringify({ error: 'Invalid action' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createErrorResponse('Invalid action', 400);
     }
     
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse('Method not allowed', 405);
 
   } catch (error: any) {
     console.error('[ERROR] get-all-users function failed:', {
@@ -106,15 +89,6 @@ serve(async (req) => {
     const status = error.message === 'UNAUTHORIZED' ? 401 :
                    error.message === 'FORBIDDEN' ? 403 : 500;
     
-    const errorCode = error.message === 'UNAUTHORIZED' ? 'UNAUTHORIZED' :
-                      error.message === 'FORBIDDEN' ? 'FORBIDDEN' : 'INTERNAL_ERROR';
-    
-    return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        code: errorCode
-      }),
-      { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse(error.message, status);
   }
 });

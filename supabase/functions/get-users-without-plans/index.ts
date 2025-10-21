@@ -1,10 +1,5 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
+import { verifyAdmin } from "../_shared/adminAuth.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -13,47 +8,18 @@ const logStep = (step: string, details?: any) => {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handleCors();
   }
 
   try {
     logStep("Function started");
 
-    // Create Supabase client with service role key
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
-
-    // Verify admin authentication
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header provided");
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-
-    // Check if user is admin
-    const { data: profile, error: profileError } = await supabaseClient
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError || profile?.role !== "admin") {
-      throw new Error("Insufficient permissions");
-    }
-
-    logStep("Admin authenticated", { adminId: user.id });
+    // Admin authentication using shared module
+    const { supabase, userId } = await verifyAdmin(req);
+    logStep("Admin authenticated", { adminId: userId });
 
     // First get users with active subscriptions
-    const { data: activeSubscriptions, error: subscriptionError } = await supabaseClient
+    const { data: activeSubscriptions, error: subscriptionError } = await supabase
       .from("user_subscriptions")
       .select("user_id")
       .eq("status", "active");
@@ -67,7 +33,7 @@ serve(async (req) => {
     logStep("Active subscription users found", { count: activeUserIds.length });
 
     // Get all users without active subscriptions
-    let query = supabaseClient
+    let query = supabase
       .from("profiles")
       .select(`
         id,
@@ -96,7 +62,7 @@ serve(async (req) => {
 
     for (const userProfile of usersWithoutPlans || []) {
       // Get email from auth metadata or use a placeholder
-      const { data: authUser } = await supabaseClient.auth.admin.getUserById(userProfile.id);
+      const { data: authUser } = await supabase.auth.admin.getUserById(userProfile.id);
       
       usersWithEmails.push({
         ...userProfile,
@@ -106,31 +72,15 @@ serve(async (req) => {
 
     logStep("Users without plans fetched", { count: usersWithEmails.length });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        users: usersWithEmails,
-        total: usersWithEmails.length
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
+    return createSuccessResponse({
+      success: true,
+      users: usersWithEmails,
+      total: usersWithEmails.length
+    });
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
-    
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: errorMessage 
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      }
-    );
+    return createErrorResponse(errorMessage, 500);
   }
 });
