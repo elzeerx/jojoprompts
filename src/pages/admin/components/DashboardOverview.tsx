@@ -86,41 +86,21 @@ export default function DashboardOverview() {
       
       if (promptsError) throw promptsError;
       
-      // Fetch users count from the edge function that accesses auth.users
-      let usersCount = 0;
+      // Fetch users count directly from profiles table
+      const { count: usersCount, error: usersError } = await supabase
+        .from("profiles")
+        .select("id", { count: 'exact', head: true });
       
-      if (session?.access_token) {
-        try {
-          console.log('Fetching users from edge function...');
-          const { data: allUsers, error: usersError } = await supabase.functions.invoke(
-            "get-all-users",
-            {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              method: "GET"
-            }
-          );
-          
-          if (usersError) {
-            console.error("Error fetching users from edge function:", usersError);
-          } else {
-            console.log("Users response from edge function:", allUsers);
-            usersCount = allUsers?.total || 0;
-          }
-        } catch (err) {
-          console.error("Failed to call get-all-users edge function:", err);
-        }
-      } else {
-        console.log('No session access token available');
+      if (usersError) {
+        console.error("Error fetching users count:", usersError);
       }
       
-      console.log('Final users count:', usersCount);
+      console.log('Users count from profiles:', usersCount);
       
       setStats({
         prompts: prompts?.length ?? 0,
-        users: usersCount,
-        signups: usersCount, // Same as users count
+        users: usersCount || 0,
+        signups: usersCount || 0, // Same as users count
         aiRuns: 0 // placeholder for future AI run tracking
       });
       
