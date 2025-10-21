@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import HomePage from "./HomePage";
+import { getDefaultRoute } from "@/utils/auth";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -28,11 +29,10 @@ export default function Index() {
 
   useEffect(() => {
     if (!loading && user && userRole) {
-      // Redirect users based on their role
-      if (userRole === 'admin' || userRole === 'jadmin') {
-        navigate('/admin');
-      } else if (userRole === 'prompter') {
-        navigate('/dashboard/prompter');
+      // Redirect users based on their role using centralized logic
+      const route = getDefaultRoute(userRole);
+      if (route !== '/prompts') {
+        navigate(route);
       }
       // Regular users stay on the home page
     }

@@ -8,6 +8,7 @@ import { logInfo, logWarn, logError } from "@/utils/secureLogging";
 import { SecurityEnforcer } from "@/utils/enhancedSecurity";
 import { InputValidator } from "@/utils/inputValidation";
 import { RateLimiter, RateLimitConfigs } from "@/utils/rateLimiting";
+import { isAdmin } from "@/utils/auth";
 
 export function useUserActions() {
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export function useUserActions() {
       }
 
       // Check if user has admin permissions
-      if (!user || user.role !== 'admin') {
+      if (!user || !isAdmin(user.role)) {
         logWarn("Password reset attempted without admin permissions", "admin", undefined, user?.id);
         securityMonitor.logEvent('access_denied', {
           action: 'password_reset',
@@ -100,7 +101,7 @@ export function useUserActions() {
     }
 
     // Check permissions
-    if (!user || user.role !== 'admin') {
+    if (!user || !isAdmin(user.role)) {
       logWarn("User deletion attempted without admin permissions", "admin", undefined, user?.id);
       securityMonitor.logEvent('access_denied', {
         action: 'delete_user',

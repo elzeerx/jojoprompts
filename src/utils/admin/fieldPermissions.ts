@@ -1,4 +1,5 @@
 import { UserRole } from "@/types/user";
+import { isAdmin } from "@/utils/auth";
 
 // Define field-level permissions for different admin roles
 export interface FieldPermission {
@@ -156,5 +157,5 @@ export function getEditableFields(userRole: UserRole, isSuperAdmin: boolean = fa
 export function isSuperAdmin(userRole: UserRole, userId?: string): boolean {
   // For now, all full admins are considered super admins
   // This could be extended to check specific user IDs or additional metadata
-  return userRole === 'admin';
+  return isAdmin(userRole);
 }

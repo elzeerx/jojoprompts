@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserSubscription } from "./useUserSubscription";
+import { isPrivilegedUser, isRegularUser } from "@/utils/auth";
 
 export function useSubscriptionRedirect() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export function useSubscriptionRedirect() {
     if (authLoading || subscriptionLoading || !user) return;
     
     // Don't redirect admins, prompters, or jadmins
-    if (userRole === 'admin' || userRole === 'prompter' || userRole === 'jadmin') return;
+    if (isPrivilegedUser(userRole)) return;
     
     // Don't redirect if user already has an active subscription
     if (userSubscription) return;
@@ -32,7 +33,7 @@ export function useSubscriptionRedirect() {
     const premiumPaths = ['/dashboard', '/favorites', '/payment-dashboard'];
     const isPremiumRoute = premiumPaths.some(path => currentPath.startsWith(path));
     
-    if (userRole === 'user' && isPremiumRoute) {
+    if (isRegularUser(userRole) && isPremiumRoute) {
       console.log('Redirecting user without subscription from premium route to pricing page');
       navigate('/pricing', { replace: true });
     }
