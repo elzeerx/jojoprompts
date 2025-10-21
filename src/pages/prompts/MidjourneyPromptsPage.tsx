@@ -10,13 +10,12 @@ import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, hasFeatureInPlan } from "@/utils/subscription";
 
 export default function MidjourneyPromptsPage() {
-  const { user, session } = useAuth();
+  const { user, session, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userTier, setUserTier] = useState<string>('none');
-  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     const checkAccess = async () => {
@@ -26,19 +25,8 @@ export default function MidjourneyPromptsPage() {
       }
       
       try {
-        // Check if user is admin
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
-          
-        if (profileError) throw profileError;
-        
-        const isUserAdmin = profileData?.role === "admin";
-        setIsAdmin(isUserAdmin);
-        
-        if (isUserAdmin) {
+        // Admins have full access
+        if (isAdmin) {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
@@ -119,7 +107,7 @@ export default function MidjourneyPromptsPage() {
     };
     
     checkAccess();
-  }, [user, navigate]);
+  }, [user, navigate, isAdmin]);
   
   if (loading) {
     return (

@@ -11,13 +11,12 @@ import { getSubscriptionTier, hasFeatureInPlan } from "@/utils/subscription";
 import { PromptService } from "@/services/PromptService";
 
 export default function ChatGPTPromptsPage() {
-  const { user, session } = useAuth();
+  const { user, session, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userTier, setUserTier] = useState<string>('none');
-  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     const checkAccess = async () => {
@@ -27,19 +26,8 @@ export default function ChatGPTPromptsPage() {
       }
       
       try {
-        // Check if user is admin
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
-          
-        if (profileError) throw profileError;
-        
-        const isUserAdmin = profileData?.role === "admin";
-        setIsAdmin(isUserAdmin);
-        
-        if (isUserAdmin) {
+        // Admins have full access
+        if (isAdmin) {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
@@ -116,7 +104,7 @@ export default function ChatGPTPromptsPage() {
     };
     
     checkAccess();
-  }, [user, navigate]);
+  }, [user, navigate, isAdmin]);
   
   if (loading) {
     return (

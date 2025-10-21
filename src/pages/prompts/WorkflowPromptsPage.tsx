@@ -11,13 +11,12 @@ import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, isCategoryLocked } from "@/utils/subscription";
 
 export default function WorkflowPromptsPage() {
-  const { user, session } = useAuth();
+  const { user, session, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userTier, setUserTier] = useState<string>('none');
-  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     const checkAccess = async () => {
@@ -27,19 +26,8 @@ export default function WorkflowPromptsPage() {
       }
       
       try {
-        // Check if user is admin
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
-          
-        if (profileError) throw profileError;
-        
-        const isUserAdmin = profileData?.role === "admin";
-        setIsAdmin(isUserAdmin);
-        
-        if (isUserAdmin) {
+        // Admins have full access
+        if (isAdmin) {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
@@ -64,7 +52,7 @@ export default function WorkflowPromptsPage() {
           setUserTier(tier);
           
           // Check if user has access to workflow prompts (premium plan requirement)
-          const hasAccess = !isCategoryLocked('premium', tier, isUserAdmin);
+          const hasAccess = !isCategoryLocked('premium', tier, isAdmin);
           setHasAccess(hasAccess);
         }
         
@@ -101,7 +89,7 @@ export default function WorkflowPromptsPage() {
     };
     
     checkAccess();
-  }, [user, navigate]);
+  }, [user, navigate, isAdmin]);
   
   if (loading) {
     return (
