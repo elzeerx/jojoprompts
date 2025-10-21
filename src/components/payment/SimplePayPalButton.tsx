@@ -31,7 +31,8 @@ export function SimplePayPalButton({
 
   // Amount is already final amount after discount calculation from PaymentMethodsCard
   // NO FURTHER DISCOUNT CALCULATIONS SHOULD BE DONE HERE
-  const finalAmount = amount;
+  // Round to cents to prevent floating point precision issues
+  const finalAmount = Math.round(amount * 100) / 100;
   const is100PercentDiscount = finalAmount === 0;
 
   // Logging will be handled by the payment processing functions

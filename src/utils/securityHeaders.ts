@@ -1,5 +1,6 @@
 
 import { getCSPHeader } from "./security";
+import { createLogger } from "./logging";
 
 // Apply security headers to the application
 export const applySecurityHeaders = (): void => {
@@ -9,11 +10,7 @@ export const applySecurityHeaders = (): void => {
   cspMeta.content = getCSPHeader();
   document.head.appendChild(cspMeta);
 
-  // X-Frame-Options
-  const frameMeta = document.createElement('meta');
-  frameMeta.httpEquiv = 'X-Frame-Options';
-  frameMeta.content = 'DENY';
-  document.head.appendChild(frameMeta);
+  // Skip X-Frame-Options meta tag - use CSP frame-ancestors instead
 
   // X-Content-Type-Options
   const contentTypeMeta = document.createElement('meta');
@@ -36,32 +33,13 @@ export const applySecurityHeaders = (): void => {
 
 // Initialize security headers when the app loads
 export const initializeSecurity = (): void => {
+  const logger = createLogger('SECURITY');
+  
   // Apply security headers
   applySecurityHeaders();
 
-  // Disable right-click context menu in production
-  if (import.meta.env.PROD) {
-    document.addEventListener('contextmenu', (e) => e.preventDefault());
-  }
+  // Remove anti-debugging features as they can break legitimate embedding
 
-  // Disable F12 and other developer tools shortcuts in production
-  if (import.meta.env.PROD) {
-    document.addEventListener('keydown', (e) => {
-      if (
-        e.key === 'F12' ||
-        (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-        (e.ctrlKey && e.shiftKey && e.key === 'C') ||
-        (e.ctrlKey && e.shiftKey && e.key === 'J') ||
-        (e.ctrlKey && e.key === 'U')
-      ) {
-        e.preventDefault();
-        return false;
-      }
-    });
-  }
-
-    // Only log in development
-    if (import.meta.env.DEV) {
-      console.log('Security measures initialized');
-    }
+  // Log initialization
+  logger.info('Security measures initialized');
 };

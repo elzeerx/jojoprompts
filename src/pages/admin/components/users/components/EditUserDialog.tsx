@@ -20,12 +20,13 @@ import {
 } from "@/components/ui/select";
 import { Loader2, User, Shield } from "lucide-react";
 import { UserProfile } from "@/types";
+import { ExtendedUserProfile } from "@/types/user";
 
 interface EditUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user: UserProfile | null;
-  onSave: (userId: string, data: Partial<UserProfile>) => void;
+  user: ExtendedUserProfile | null;
+  onSave: (userId: string, data: Partial<ExtendedUserProfile>) => void;
   isLoading?: boolean;
 }
 
@@ -58,7 +59,7 @@ export function EditUserDialog({
     e.preventDefault();
     if (!user) return;
 
-    const changes: Partial<UserProfile> = {};
+    const changes: Partial<ExtendedUserProfile> = {};
     
     if (formData.first_name !== (user.first_name || "")) {
       changes.first_name = formData.first_name;

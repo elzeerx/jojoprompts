@@ -6,7 +6,7 @@ import { logError, logWarn } from '../secureLogging';
 
 interface ValidationRule {
   required?: boolean;
-  type: 'string' | 'number' | 'boolean' | 'uuid' | 'email' | 'url';
+  type: 'string' | 'number' | 'boolean' | 'uuid' | 'email' | 'url' | 'phone' | 'jsonb';
   minLength?: number;
   maxLength?: number;
   pattern?: RegExp;
@@ -161,6 +161,25 @@ export class ParameterValidator {
           }
           break;
 
+        case 'phone':
+          const phoneValidation = InputValidator.validatePhoneNumber(value);
+          if (!phoneValidation.isValid) {
+            errors.push(`Field '${fieldName}': ${phoneValidation.error}`);
+          }
+          break;
+
+        case 'jsonb':
+          try {
+            if (typeof value === 'string') {
+              JSON.parse(value);
+            } else if (typeof value !== 'object') {
+              errors.push(`Field '${fieldName}' must be valid JSON`);
+            }
+          } catch {
+            errors.push(`Field '${fieldName}' must be valid JSON`);
+          }
+          break;
+
         default:
           errors.push(`Unknown validation type for field '${fieldName}'`);
       }
@@ -207,10 +226,56 @@ export class ParameterValidator {
         maxLength: 50, 
         sanitize: true 
       },
+      username: {
+        required: false,
+        type: 'string' as const,
+        minLength: 3,
+        maxLength: 30,
+        pattern: /^[a-zA-Z0-9_-]+$/,
+        sanitize: true
+      },
       role: { 
         required: false, 
         type: 'string' as const, 
         allowedValues: ['user', 'admin', 'jadmin', 'prompter'] 
+      },
+      bio: {
+        required: false,
+        type: 'string' as const,
+        maxLength: 500,
+        sanitize: true
+      },
+      avatarUrl: {
+        required: false,
+        type: 'url' as const
+      },
+      country: {
+        required: false,
+        type: 'string' as const,
+        minLength: 2,
+        maxLength: 100,
+        sanitize: true
+      },
+      phoneNumber: {
+        required: false,
+        type: 'phone' as const,
+        maxLength: 20
+      },
+      timezone: {
+        required: false,
+        type: 'string' as const,
+        maxLength: 50,
+        sanitize: true
+      },
+      membershipTier: {
+        required: false,
+        type: 'string' as const,
+        allowedValues: ['free', 'basic', 'premium', 'enterprise'],
+        sanitize: true
+      },
+      socialLinks: {
+        required: false,
+        type: 'jsonb' as const
       }
     },
     ADMIN_ACTION: {

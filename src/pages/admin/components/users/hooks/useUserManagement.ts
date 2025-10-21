@@ -1,34 +1,31 @@
 
 import { useState } from "react";
-import { useFetchUsers } from "./useFetchUsers";
-import { useUserUpdate } from "./useUserUpdate";
-import { usePlanAssignment } from "./usePlanAssignment";
+import { useAdminUsers } from "@/hooks/useAdminUsers";
+import { useUserUpdate } from "./useUserUpdate.query";
+import { usePlanAssignment } from "./usePlanAssignment.query";
 import { usePasswordReset } from "./usePasswordReset";
-import { useUserDeletion } from "./useUserDeletion";
-import { UserRole } from "@/utils/roleValidation";
-
-interface UserUpdateData {
-  first_name?: string | null;
-  last_name?: string | null;
-  role?: UserRole;
-  email?: string;
-}
+import { UserUpdateData, UserRole } from "@/types/user";
 
 export function useUserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const pageSize = 10;
   
-  const { users, loading, error, total, totalPages, fetchUsers, retryCount, performance } = useFetchUsers({
-    page: currentPage,
-    limit: pageSize,
-    search: searchTerm
-  });
+  // Use direct database queries instead of edge function
+  const { 
+    users, 
+    loading, 
+    error, 
+    total, 
+    totalPages, 
+    refetch, 
+    deleteUser: deleteUserFn,
+    isDeleting 
+  } = useAdminUsers(currentPage, pageSize, searchTerm);
   
   const { processingUserId: updateProcessingUserId, updateUser } = useUserUpdate();
   const { processingUserId: planProcessingUserId, assignPlanToUser } = usePlanAssignment();
   const { sendPasswordResetEmail } = usePasswordReset();
-  const { processingUserId: deleteProcessingUserId, deleteUser } = useUserDeletion();
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -40,28 +37,33 @@ export function useUserManagement() {
   };
 
   const handleUpdateUser = async (userId: string, data: UserUpdateData) => {
-    const success = await updateUser(userId, data);
-    if (success) {
-      fetchUsers();
+    try {
+      await updateUser(userId, data);
+      return true;
+    } catch (error) {
+      return false;
     }
   };
 
   const handleAssignPlanToUser = async (userId: string, planId: string) => {
-    const success = await assignPlanToUser(userId, planId);
-    if (success) {
-      fetchUsers();
+    try {
+      await assignPlanToUser(userId, planId);
+      return true;
+    } catch (error) {
+      return false;
     }
   };
 
-  const handleDeleteUser = async (userId: string, email: string) => {
-    const success = await deleteUser(userId, email);
-    if (success) {
-      fetchUsers();
+  const handleDeleteUser = async (userId: string) => {
+    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      deleteUserFn(userId);
+      return true;
     }
+    return false;
   };
 
   // Combine processing states from different hooks
-  const processingUserId = updateProcessingUserId || planProcessingUserId || deleteProcessingUserId;
+  const processingUserId = updateProcessingUserId || planProcessingUserId || (isDeleting ? 'deleting' : null);
 
   return {
     users,
@@ -74,12 +76,12 @@ export function useUserManagement() {
     onPageChange: handlePageChange,
     onSearchChange: handleSearchChange,
     updatingUserId: processingUserId,
-    fetchUsers,
+    refetch: refetch,
     updateUser: handleUpdateUser,
     assignPlanToUser: handleAssignPlanToUser,
     sendPasswordResetEmail,
     deleteUser: handleDeleteUser,
-    retryCount,
-    performance
+    DeleteDialog: null, // No longer using dialog
+    performance: undefined // No performance metrics without edge function
   };
 }

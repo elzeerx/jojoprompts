@@ -1,7 +1,7 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
-import { AuthContext } from './types.ts';
-import { logSecurityEvent } from '../../shared/securityLogger.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import type { AuthContext } from '../../_shared/adminAuth.ts';
+import { logSecurityEvent } from '../../_shared/adminAuth.ts';
 import { validateEnvironment } from './environmentValidator.ts';
 import { parseAuthHeader } from './authHeaderParser.ts';
 import { validateToken } from './tokenValidator.ts';
@@ -75,20 +75,23 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
 
   } catch (error: any) {
     // Enhanced error logging with security context
-    console.error('Authentication error:', {
+    console.error('[AUTH ERROR] Authentication failed:', {
       message: error.message,
       stack: error.stack?.substring(0, 500),
       timestamp: new Date().toISOString(),
       userAgent: req.headers.get('user-agent')?.substring(0, 200),
       origin: req.headers.get('origin'),
-      referer: req.headers.get('referer')
+      referer: req.headers.get('referer'),
+      hasAuthHeader: !!req.headers.get('authorization')
     });
     
-    // Re-throw with sanitized error message
-    if (error.message.includes('Unauthorized') || error.message.includes('Forbidden')) {
-      throw error; // These are safe to expose
+    // Re-throw with more detailed error message
+    if (error.message.includes('Unauthorized')) {
+      throw new Error(`Unauthorized: ${error.message}`);
+    } else if (error.message.includes('Forbidden') || error.message.includes('Access denied')) {
+      throw new Error(`Forbidden: ${error.message}`);
     } else {
-      throw new Error('Authentication failed'); // Generic error for security
+      throw new Error(`Authentication failed: ${error.message}`);
     }
   }
 }

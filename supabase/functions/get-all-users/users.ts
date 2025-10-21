@@ -8,61 +8,214 @@ import { createUser as createUserFn } from './userCreate.ts';
 /**
  * List all users with their profile info.
  */
-export async function listUsers(supabase: ReturnType<typeof createClient>, adminId: string) {
-  console.log(`Admin ${adminId} is fetching all users`);
+export async function listUsers(
+  supabase: ReturnType<typeof createClient>, 
+  adminId: string,
+  options: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    includeAuth?: boolean;
+  } = {}
+) {
+  console.log(`Admin ${adminId} is fetching users with options:`, options);
+  
+  const { page = 1, limit = 10, search = '', includeAuth = true } = options;
   
   try {
-    // First get all users from auth
-    const { data: users, error: authError } = await supabase.auth.admin.listUsers();
+    let authUsers: any[] = [];
+    let totalAuthUsers = 0;
+    
+    if (includeAuth) {
+      // Get auth users with pagination for performance
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000 // Get more users in batches for efficient processing
+      });
 
-    if (authError) {
-      console.error('Error listing auth users:', authError);
-      throw new Error(`Error fetching auth users: ${authError.message}`);
+      if (authError) {
+        console.error('Error listing auth users:', authError);
+        throw new Error(`Error fetching auth users: ${authError.message}`);
+      }
+
+      authUsers = authData?.users || [];
+      totalAuthUsers = authUsers.length;
+      
+      // If we need more users, fetch additional pages
+      if (authUsers.length === 1000) {
+        let currentPage = 2;
+        let hasMore = true;
+        
+        while (hasMore && currentPage <= 10) { // Limit to 10 pages for safety
+          const { data: moreBatch, error: moreError } = await supabase.auth.admin.listUsers({
+            page: currentPage,
+            perPage: 1000
+          });
+          
+          if (moreError) break;
+          
+          const moreBatchUsers = moreBatch?.users || [];
+          authUsers.push(...moreBatchUsers);
+          totalAuthUsers += moreBatchUsers.length;
+          
+          hasMore = moreBatchUsers.length === 1000;
+          currentPage++;
+        }
+      }
     }
 
-    // Handle empty users array properly
-    if (!users || !users.users || users.users.length === 0) {
-      console.log('No users found in auth.users');
-      return { users: [] };
-    }
-
-    // Get all profiles in one query
-    const { data: profiles, error: profileError } = await supabase
+    // Get comprehensive profile data with all fields
+    const profileQuery = supabase
       .from('profiles')
-      .select('id, role, first_name, last_name');
+      .select(`
+        id,
+        first_name,
+        last_name,
+        username,
+        role,
+        bio,
+        avatar_url,
+        country,
+        phone_number,
+        timezone,
+        membership_tier,
+        social_links,
+        created_at
+      `);
+
+    // Apply search filter if provided
+    if (search) {
+      profileQuery.or(`
+        first_name.ilike.%${search}%,
+        last_name.ilike.%${search}%,
+        username.ilike.%${search}%
+      `);
+    }
+
+    // Apply pagination
+    const offset = (page - 1) * limit;
+    profileQuery.range(offset, offset + limit - 1);
+    
+    const { data: profiles, error: profileError, count: totalProfiles } = await profileQuery;
 
     if (profileError) {
       console.error('Error fetching profiles:', profileError);
       throw new Error(`Error fetching profiles: ${profileError.message}`);
     }
 
-    // Create a map of profiles for efficient lookup
-    const profileMap = new Map(profiles?.map(profile => [profile.id, profile]) || []);
+    if (!profiles || profiles.length === 0) {
+      console.log('No profiles found');
+      return { 
+        users: [], 
+        total: 0, 
+        totalPages: 0,
+        page,
+        limit
+      };
+    }
 
-    // Combine the data - only include users who have profiles
-    const combinedUsers = users.users
-      .filter(user => profileMap.has(user.id)) // Only include users with profiles
-      .map(user => {
-        const profile = profileMap.get(user.id);
-        
-        console.log(`Combining data for user ${user.id}:`, { 
-          auth: user,
-          profile: profile 
-        });
-        
-        return {
-          id: user.id,
-          email: user.email,
-          created_at: user.created_at,
-          last_sign_in_at: user.last_sign_in_at,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          role: profile.role || 'user'
-        };
+    // Get user subscriptions for the profiles in this page
+    const profileIds = profiles.map(p => p.id);
+    const { data: subscriptions, error: subError } = await supabase
+      .from('user_subscriptions')
+      .select(`
+        user_id,
+        status,
+        start_date,
+        end_date,
+        payment_method,
+        created_at,
+        subscription_plans!inner(
+          id,
+          name,
+          price_usd,
+          is_lifetime
+        )
+      `)
+      .in('user_id', profileIds)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (subError) {
+      console.warn('Error fetching subscriptions:', subError);
+    }
+
+    // Create subscription map for efficient lookup
+    const subscriptionMap = new Map();
+    if (subscriptions) {
+      subscriptions.forEach(sub => {
+        if (!subscriptionMap.has(sub.user_id)) {
+          subscriptionMap.set(sub.user_id, sub);
+        }
       });
+    }
 
-    console.log('Final combined users data:', combinedUsers);
-    return { users: combinedUsers };
+    // Create auth user map for efficient lookup
+    const authUserMap = new Map();
+    if (includeAuth && authUsers.length > 0) {
+      authUsers.forEach(user => {
+        authUserMap.set(user.id, user);
+      });
+    }
+
+    // Combine all data efficiently
+    const combinedUsers = profiles.map(profile => {
+      const authUser = authUserMap.get(profile.id);
+      const subscription = subscriptionMap.get(profile.id);
+      
+      return {
+        // Profile data (complete)
+        id: profile.id,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        username: profile.username,
+        role: profile.role || 'user',
+        bio: profile.bio,
+        avatar_url: profile.avatar_url,
+        country: profile.country,
+        phone_number: profile.phone_number,
+        timezone: profile.timezone,
+        membership_tier: profile.membership_tier || 'free',
+        social_links: profile.social_links || {},
+        created_at: profile.created_at,
+        
+        // Auth data (when available)
+        ...(authUser && {
+          email: authUser.email,
+          email_confirmed_at: authUser.email_confirmed_at,
+          last_sign_in_at: authUser.last_sign_in_at,
+          is_email_confirmed: !!authUser.email_confirmed_at,
+          auth_created_at: authUser.created_at,
+          auth_updated_at: authUser.updated_at
+        }),
+        
+        // Subscription data (when available)
+        subscription: subscription ? {
+          plan_id: subscription.subscription_plans.id,
+          plan_name: subscription.subscription_plans.name,
+          price_usd: subscription.subscription_plans.price_usd,
+          is_lifetime: subscription.subscription_plans.is_lifetime,
+          status: subscription.status,
+          start_date: subscription.start_date,
+          end_date: subscription.end_date,
+          payment_method: subscription.payment_method,
+          subscription_created_at: subscription.created_at
+        } : null
+      };
+    });
+
+    const totalPages = Math.ceil((totalProfiles || 0) / limit);
+
+    console.log(`Successfully fetched ${combinedUsers.length} users (page ${page}/${totalPages})`);
+    
+    return { 
+      users: combinedUsers,
+      total: totalProfiles || 0,
+      totalPages,
+      page,
+      limit,
+      totalAuthUsers: includeAuth ? totalAuthUsers : undefined
+    };
   } catch (error) {
     console.error('Error in listUsers:', error);
     throw error;

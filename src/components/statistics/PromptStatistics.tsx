@@ -66,14 +66,23 @@ export function PromptStatistics({ userId, isAdminView = false }: PromptStatisti
 
       if (promptsError) throw promptsError;
 
-      // Get user profiles for the uploaders
-      const userIds = [...new Set(prompts?.map(p => p.user_id) || [])];
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name")
-        .in("id", userIds);
+      // Get user profiles for the uploaders (admin only)
+      let profiles: any[] = [];
+      if (isAdminView && isAdmin) {
+        try {
+          const userIds = [...new Set(prompts?.map(p => p.user_id) || [])];
+          const { data: profileData, error: profilesError } = await supabase
+            .from("profiles")
+            .select("id, first_name, last_name")
+            .in("id", userIds);
 
-      if (profilesError) throw profilesError;
+          if (!profilesError && profileData) {
+            profiles = profileData;
+          }
+        } catch (profileError) {
+          console.debug('Profile fetch failed (expected for non-admin users):', profileError);
+        }
+      }
 
       // Get usage statistics
       let usageQuery = supabase

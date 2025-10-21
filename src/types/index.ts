@@ -7,6 +7,11 @@ export interface User {
   last_name?: string | null;
 }
 
+export interface LocalePrompt {
+  title?: string;
+  prompt_text?: string;
+}
+
 export interface Prompt {
   id: string;
   user_id: string;
@@ -25,6 +30,10 @@ export interface Prompt {
     button_text?: string;
     button_action?: string;
     image_options?: string[];
+    translations?: {
+      arabic?: LocalePrompt;
+      english?: LocalePrompt;
+    };
     media_files?: Array<{
       type: 'image' | 'video' | 'audio';
       path: string;
@@ -62,6 +71,10 @@ export interface PromptRow {
     button_text?: string;
     button_action?: string;
     image_options?: string[];
+    translations?: {
+      arabic?: LocalePrompt;
+      english?: LocalePrompt;
+    };
     media_files?: Array<{
       type: 'image' | 'video' | 'audio';
       path: string;
@@ -81,13 +94,20 @@ export interface PromptRow {
   prompt_type: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';
 }
 
-export interface UserProfile {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  username: string;
-  created_at: string;
-  role: string;
-  last_sign_in_at: string | null;
-}
+// UserProfile has been moved to @/types/user.ts for better organization
+export type { UserProfile, ExtendedUserProfile, UserRole } from "@/types/user";
+
+// Admin User Management DTOs for consistent data structure
+export type { 
+  AdminUserDTO, 
+  AdminUserSubscriptionDTO,
+  AdminUsersResponse,
+  AdminUsersRequest 
+} from "@/types/admin-user.dto";
+export { 
+  isValidUserRole, 
+  getRoleDisplayName, 
+  getRoleColor,
+  getSubscriptionStatusColor 
+} from "@/types/admin-user.dto";
+

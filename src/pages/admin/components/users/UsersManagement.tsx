@@ -1,38 +1,33 @@
-
-import { Loader2 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUserManagement } from "./hooks/useUserManagement";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useUserCRUD } from "@/hooks/useUserCRUD";
+import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useUserActions } from "./hooks/useUserActions";
-import { UsersHeader } from "./components/UsersHeader";
 import { UsersTable } from "./UsersTable";
+import { UsersHeader } from "./components/UsersHeader";
 import { UserPerformanceStats } from "./UserPerformanceStats";
 import { MarketingEmailsPanel } from "./components/MarketingEmailsPanel";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 export default function UsersManagement() {
+  const { isSuperAdmin } = useSuperAdmin();
   const {
     users,
-    loading,
-    error,
     total,
-    currentPage,
     totalPages,
+    currentPage,
     searchTerm,
-    onPageChange,
-    onSearchChange,
-    updatingUserId,
-    fetchUsers,
+    isLoading,
+    error,
     updateUser,
-    assignPlanToUser,
-    sendPasswordResetEmail,
     deleteUser,
-    retryCount,
-    performance
-  } = useUserManagement();
-
+    setPage,
+    setSearch,
+    refetch
+  } = useUserCRUD();
+  
   const { resendConfirmationEmail } = useUserActions();
 
   return (
@@ -44,91 +39,87 @@ export default function UsersManagement() {
         </p>
       </div>
 
-      <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="marketing">Marketing Emails</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="users" className="space-y-6">
-          <UsersHeader 
-            searchTerm={searchTerm}
-            onSearchChange={onSearchChange}
-            onUserCreated={fetchUsers}
-          />
+      <div className="space-y-6">
+        {isSuperAdmin && (
+          <Alert className="border-warm-gold bg-warm-gold/5">
+            <AlertCircle className="h-4 w-4 text-warm-gold" />
+            <AlertDescription>
+              Super Admin Mode Active - You have complete control over all user operations
+            </AlertDescription>
+          </Alert>
+        )}
 
+        <Tabs defaultValue="users" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+            <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="marketing">Marketing Emails</TabsTrigger>
+          </TabsList>
 
-          <UserPerformanceStats 
-            performance={performance}
-            retryCount={retryCount}
-            total={total}
-            loading={loading}
-          />
+          <TabsContent value="users" className="space-y-6 mt-6">
+            <UsersHeader 
+              searchTerm={searchTerm}
+              onSearchChange={setSearch}
+              onUserCreated={refetch}
+            />
 
-          {error && (
-            <Alert variant="destructive" className="mb-6 border-red-400/30 bg-red-50">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription className="flex flex-col gap-2">
-                <p>{error}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={fetchUsers}
-                  className="w-fit flex items-center gap-2 border-warm-gold/30 text-warm-gold hover:bg-warm-gold/10"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Retry {retryCount > 0 && `(${retryCount} attempts)`}
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
+            <UserPerformanceStats 
+              total={total}
+              performance={null}
+              retryCount={0}
+              loading={isLoading}
+            />
 
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-warm-gold" />
-              <div className="ml-3 text-sm text-muted-foreground">
-                Loading users...
-                {retryCount > 0 && ` (Attempt ${retryCount + 1})`}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="flex items-center justify-between">
+                  <span>Failed to load users</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetch()}
+                    className="ml-4"
+                  >
+                    Try Again
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            </div>
-          ) : (
-            <div className="rounded-md border border-warm-gold/20 overflow-visible bg-white/80 shadow-sm">
-              <UsersTable 
-                users={users}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={onPageChange}
-                updatingUserId={updatingUserId}
-                onUpdateUser={updateUser}
-                onAssignPlan={assignPlanToUser}
-                onSendResetEmail={sendPasswordResetEmail}
-                onDeleteUser={deleteUser}
-                onResendConfirmation={resendConfirmationEmail}
-                onRefresh={fetchUsers}
-              />
-              
-              {/* Show total count info with performance data */}
-              {total > 0 && (
-                <div className="px-4 py-3 border-t border-warm-gold/20 bg-gray-50/50 text-sm text-muted-foreground">
-                  Showing {users.length} of {total} users total
-                  {performance && (
-                    <span className="ml-4 text-xs">
-                      • {performance.cacheHit ? 'Cached' : 'Fresh'} data
-                      • {performance.totalDuration}ms response
-                      {performance.searchActive && ' • Search active'}
-                    </span>
-                  )}
+            ) : (
+              <>
+                <UsersTable
+                  users={users}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  total={total}
+                  onPageChange={setPage}
+                  updatingUserId={null}
+                  onUpdateUser={updateUser}
+                  onAssignPlan={async () => {}}
+                  onSendResetEmail={async () => {}}
+                  onSearchChange={setSearch}
+                  searchTerm={searchTerm}
+                  onDeleteUser={deleteUser}
+                  onResendConfirmation={resendConfirmationEmail}
+                  onRefresh={refetch}
+                />
+                <div className="text-sm text-muted-foreground">
+                  Total users: {total}
                 </div>
-              )}
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="marketing" className="space-y-6">
-          <MarketingEmailsPanel />
-        </TabsContent>
-      </Tabs>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="marketing" className="mt-6">
+            <MarketingEmailsPanel />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

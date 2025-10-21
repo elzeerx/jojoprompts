@@ -33,6 +33,42 @@ export function useSignupForm() {
     setIsLoading(true);
 
     try {
+      // Call validation edge function first
+      console.log('[Signup] Validating signup data...');
+      
+      const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-signup', {
+        body: {
+          email: values.email,
+          username: values.username,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          ipAddress: window.location.hostname
+        }
+      });
+
+      if (validationError) {
+        console.error('[Signup] Validation edge function error:', validationError);
+        toast({
+          variant: "destructive",
+          title: "Validation failed",
+          description: validationError.message || "Unable to validate signup data. Please try again.",
+        });
+        return;
+      }
+
+      if (!validationData?.valid) {
+        console.error('[Signup] Validation failed:', validationData?.errors);
+        const errorMessage = validationData?.errors?.[0] || "Signup validation failed";
+        toast({
+          variant: "destructive",
+          title: "Signup validation failed",
+          description: errorMessage,
+        });
+        return;
+      }
+
+      console.log('[Signup] Validation passed, proceeding with signup...');
+
       // Direct email/password signup with Supabase
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
@@ -43,13 +79,13 @@ export function useSignupForm() {
             last_name: values.lastName,
             username: values.username,
           },
-          // Skip email confirmation for faster checkout
-          emailRedirectTo: undefined
+          // Enable email confirmation for security
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
 
       if (error) {
-        console.error("Signup error:", error);
+        console.error("[Signup] Supabase signup error:", error);
         toast({
           variant: "destructive",
           title: "Signup failed",
@@ -64,6 +100,16 @@ export function useSignupForm() {
           title: "Signup failed",
           description: "Failed to create account. Please try again.",
         });
+        return;
+      }
+
+      // Check if email confirmation is required
+      if (!data.session && data.user) {
+        toast({
+          title: "Verify your email",
+          description: "We've sent you a verification email. Please check your inbox and click the link to activate your account.",
+        });
+        navigate('/auth/verify-email');
         return;
       }
 

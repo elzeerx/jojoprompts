@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
 import { AdminPromptCard } from "./components/prompts/AdminPromptCard";
-import { PromptDialog } from "./components/prompts/PromptDialog";
+import { PromptWizardDialog, EditPromptButton } from "@/components/prompts";
 import { type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -16,8 +16,6 @@ interface PromptsManagementProps {
 export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsManagementProps) {
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<PromptRow | null>(null);
   const { user } = useAuth();
   
   const fetchPrompts = async () => {
@@ -67,19 +65,11 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     return () => { mounted = false; };
   }, []);
   
-  const handleAddPrompt = () => {
-    console.log("PromptsManagement - Adding new prompt");
-    setEditing(null);
-    setDialogOpen(true);
-  };
-  
-  const handleEditPrompt = (promptId: string) => {
-    const prompt = prompts.find(p => p.id === promptId);
-    if (prompt) {
-      console.log("PromptsManagement - Editing prompt:", prompt.id, "with metadata:", prompt.metadata);
-      setEditing(prompt);
-      setDialogOpen(true);
-    }
+  const handlePromptComplete = async () => {
+    console.log("PromptsManagement - Prompt saved successfully, refreshing prompts...");
+    const freshPrompts = await fetchPrompts();
+    console.log("PromptsManagement - Fresh prompts after save:", freshPrompts);
+    updatePromptsState(freshPrompts);
   };
   
   const handleDeletePrompt = async (promptId: string) => {
@@ -111,25 +101,21 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     }
   };
   
-  const handleSuccess = async () => {
-    console.log("PromptsManagement - Prompt saved successfully, refreshing prompts...");
-    const freshPrompts = await fetchPrompts();
-    console.log("PromptsManagement - Fresh prompts after save:", freshPrompts);
-    updatePromptsState(freshPrompts);
-    setDialogOpen(false);
-  };
-
-  // Create a unique dialog key that changes when editing different prompts
-  const dialogKey = editing ? `edit-${editing.id}` : 'new-prompt';
   
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-dark-base">Prompts Management</h2>
-        <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Prompt
-        </Button>
+        <PromptWizardDialog
+          trigger={
+            <Button className="bg-warm-gold hover:bg-warm-gold/90">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Prompt
+            </Button>
+          }
+          mode="create"
+          onComplete={handlePromptComplete}
+        />
       </div>
       
       {isLoading ? (
@@ -141,7 +127,15 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       ) : prompts.length === 0 ? (
         <div className="text-center py-8 bg-soft-bg/30 rounded-xl border border-warm-gold/20 p-8">
           <p className="text-muted-foreground mb-4">No prompts found</p>
-          <Button onClick={handleAddPrompt} className="bg-warm-gold hover:bg-warm-gold/90">Add Your First Prompt</Button>
+          <PromptWizardDialog
+            trigger={
+              <Button className="bg-warm-gold hover:bg-warm-gold/90">
+                Add Your First Prompt
+              </Button>
+            }
+            mode="create"
+            onComplete={handlePromptComplete}
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -149,22 +143,14 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
             <AdminPromptCard
               key={prompt.id}
               prompt={prompt}
-              onEdit={handleEditPrompt}
+              onEdit={() => {}} // No longer needed, EditPromptButton handles it
               onDelete={handleDeletePrompt}
               initiallyFavorited={favoritedPromptIds.includes(prompt.id)}
+              onEditSuccess={handlePromptComplete}
             />
           ))}
         </div>
       )}
-      
-      <PromptDialog
-        key={dialogKey}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSuccess={handleSuccess}
-        editingPrompt={editing}
-        promptType={editing?.prompt_type === 'button' || editing?.prompt_type === 'image-selection' ? 'text' : editing?.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound'}
-      />
     </div>
   );
 }

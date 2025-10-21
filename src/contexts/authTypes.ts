@@ -8,9 +8,12 @@ export interface AuthContextType {
   isAdmin: boolean;
   isJadmin: boolean;
   isPrompter: boolean;
+  isSuperAdmin: boolean;
   canDeleteUsers: boolean;
   canCancelSubscriptions: boolean;
   canManagePrompts: boolean;
+  canChangePasswords: boolean;
+  canFullCRUD: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 }

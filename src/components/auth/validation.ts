@@ -19,10 +19,30 @@ export const magicLinkSchema = z.object({
 
 // Email/password signup schema - traditional registration
 export const signupSchema = z.object({
-  firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
-  username: z.string().min(3, "Username must be at least 3 characters").max(20, "Username must be less than 20 characters").regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
-  email: z.string().email("Please enter a valid email address"),
+  firstName: z.string()
+    .min(2, "First name must be at least 2 characters")
+    .max(50, "First name must be less than 50 characters")
+    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "First name can only contain letters and spaces"),
+  lastName: z.string()
+    .min(2, "Last name must be at least 2 characters")
+    .max(50, "Last name must be less than 50 characters")
+    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "Last name can only contain letters and spaces"),
+  username: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(20, "Username must be less than 20 characters")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and dashes")
+    .refine((val) => !val.startsWith('@'), "Username cannot start with @")
+    .refine((val) => {
+      const reserved = ['admin', 'administrator', 'root', 'system', 'superadmin', 'support', 'help', 'info', 'contact', 'jojo', 'jojoprompts', 'moderator', 'mod'];
+      return !reserved.includes(val.toLowerCase());
+    }, "This username is reserved and cannot be used"),
+  email: z.string()
+    .email("Please enter a valid email address")
+    .refine((email) => {
+      const domain = email.split('@')[1]?.toLowerCase();
+      const blocked = ['.local', '.test', '.invalid', '.localhost', '.example'];
+      return !blocked.some(b => domain?.endsWith(b) || domain === b.substring(1));
+    }, "This email domain is not allowed for registration"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
   role: z.enum(VALID_ROLES as [UserRole, ...UserRole[]]).optional(),
@@ -33,9 +53,21 @@ export const signupSchema = z.object({
 
 // Checkout-specific email/password signup schema
 export const checkoutSignupSchema = z.object({
-  firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
+  firstName: z.string()
+    .min(2, "First name must be at least 2 characters")
+    .max(50, "First name must be less than 50 characters")
+    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "First name can only contain letters and spaces"),
+  lastName: z.string()
+    .min(2, "Last name must be at least 2 characters")
+    .max(50, "Last name must be less than 50 characters")
+    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "Last name can only contain letters and spaces"),
+  email: z.string()
+    .email("Please enter a valid email address")
+    .refine((email) => {
+      const domain = email.split('@')[1]?.toLowerCase();
+      const blocked = ['.local', '.test', '.invalid', '.localhost', '.example'];
+      return !blocked.some(b => domain?.endsWith(b) || domain === b.substring(1));
+    }, "This email domain is not allowed for registration"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {

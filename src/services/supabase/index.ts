@@ -4,8 +4,7 @@
 
 export { BaseService } from './BaseService';
 export { userService } from './UserService';
-export { paymentService } from './PaymentService'; 
-export { promptService } from './PromptService';
+export { paymentService } from './PaymentService';
 
 // Re-export common types for convenience
 export type {
@@ -25,8 +24,4 @@ export type {
   PaymentVerificationParams
 } from './PaymentService';
 
-export type {
-  CreatePromptData,
-  UpdatePromptData,
-  PromptSearchOptions
-} from './PromptService';
+// Note: PromptService types now exported from main PromptService

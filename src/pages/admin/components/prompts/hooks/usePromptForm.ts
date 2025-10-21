@@ -33,6 +33,13 @@ interface FormData {
     media_files?: MediaFile[];
     workflow_files?: WorkflowFile[];
     workflow_steps?: Array<{ name: string; description: string; type?: string }>;
+    // Enhanced bilingual support
+    translations?: {
+      title: { en: string; ar: string };
+      promptText: { en: string; ar: string };
+    };
+    // Template-based form data
+    templateData?: Record<string, any>;
   };
 }
 

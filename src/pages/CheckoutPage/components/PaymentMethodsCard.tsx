@@ -45,9 +45,13 @@ export function PaymentMethodsCard({
     
     if (appliedDiscount.discount_type === 'percentage') {
       const discountAmount = (price * appliedDiscount.discount_value) / 100;
-      return Math.max(0, price - discountAmount);
+      const result = Math.max(0, price - discountAmount);
+      // Round to cents to prevent floating point precision issues
+      return Math.round(result * 100) / 100;
     } else if (appliedDiscount.discount_type === 'fixed_amount') {
-      return Math.max(0, price - appliedDiscount.discount_value);
+      const result = Math.max(0, price - appliedDiscount.discount_value);
+      // Round to cents to prevent floating point precision issues
+      return Math.round(result * 100) / 100;
     }
     
     return price;

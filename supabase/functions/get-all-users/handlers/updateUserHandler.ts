@@ -1,11 +1,16 @@
 
-import { corsHeaders } from "../cors.ts";
+// Enhanced updateUserHandler with comprehensive audit logging
+import { corsHeaders } from "../../_shared/standardImports.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
 
 export async function handleUpdateUser(supabase: any, adminId: string, req: Request) {
   try {
     const body = await req.json();
+    
+    // Get client information for audit logging
+    const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
     
     // Validate request parameters
     const validation = ParameterValidator.validateParameters(body, ParameterValidator.SCHEMAS.USER_UPDATE);
@@ -21,10 +26,10 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
 
     const userId = validation.sanitizedData.userId;
     
-    // Check if user exists
+    // Get existing user data for comparison and audit logging
     const { data: existingUser, error: userCheckError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('*')
       .eq('id', userId)
       .maybeSingle();
       
@@ -44,13 +49,64 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       updated_fields: Object.keys(validation.sanitizedData).filter(k => k !== 'userId')
     });
 
-    // Prepare profile updates
+    // Prepare profile updates with comprehensive field mapping
     const profileUpdates: Record<string, any> = {};
-    if (validation.sanitizedData.firstName) profileUpdates.first_name = validation.sanitizedData.firstName;
-    if (validation.sanitizedData.lastName) profileUpdates.last_name = validation.sanitizedData.lastName;
-    if (validation.sanitizedData.role) profileUpdates.role = validation.sanitizedData.role;
-
-    // Update profile if there are changes
+    
+    // Basic profile fields
+    if (validation.sanitizedData.firstName !== undefined) {
+      profileUpdates.first_name = validation.sanitizedData.firstName;
+    }
+    if (validation.sanitizedData.lastName !== undefined) {
+      profileUpdates.last_name = validation.sanitizedData.lastName;
+    }
+    if (validation.sanitizedData.username !== undefined) {
+      // Check username uniqueness before updating
+      const { data: existingUsername } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', validation.sanitizedData.username)
+        .neq('id', userId)
+        .maybeSingle();
+        
+      if (existingUsername) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Username validation failed', 
+            details: ['Username already exists'] 
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      profileUpdates.username = validation.sanitizedData.username;
+    }
+    if (validation.sanitizedData.role !== undefined) {
+      profileUpdates.role = validation.sanitizedData.role;
+    }
+    
+    // Extended profile fields
+    if (validation.sanitizedData.bio !== undefined) {
+      profileUpdates.bio = validation.sanitizedData.bio;
+    }
+    if (validation.sanitizedData.avatarUrl !== undefined) {
+      profileUpdates.avatar_url = validation.sanitizedData.avatarUrl;
+    }
+    if (validation.sanitizedData.country !== undefined) {
+      profileUpdates.country = validation.sanitizedData.country;
+    }
+    if (validation.sanitizedData.phoneNumber !== undefined) {
+      profileUpdates.phone_number = validation.sanitizedData.phoneNumber;
+    }
+    if (validation.sanitizedData.timezone !== undefined) {
+      profileUpdates.timezone = validation.sanitizedData.timezone;
+    }
+    if (validation.sanitizedData.membershipTier !== undefined) {
+      profileUpdates.membership_tier = validation.sanitizedData.membershipTier;
+    }
+    
+    // Update profile if there are changes with detailed audit logging
     if (Object.keys(profileUpdates).length > 0) {
       const { error: profileUpdateError } = await supabase
         .from('profiles')
@@ -59,10 +115,166 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
 
       if (profileUpdateError) {
         console.error('Error updating user profile:', profileUpdateError);
+        
+        // Provide specific error messages for common profile update failures
+        let errorMessage = 'Failed to update user profile';
+        let errorDetails = profileUpdateError.message;
+        
+        if (profileUpdateError.code === '23505') {
+          // Unique constraint violation
+          if (profileUpdateError.message.includes('username')) {
+            errorMessage = 'Username validation failed';
+            errorDetails = 'Username already exists';
+          }
+        } else if (profileUpdateError.code === '23514') {
+          // Check constraint violation
+          errorMessage = 'Profile validation failed';
+          errorDetails = 'One or more profile fields contain invalid values';
+        }
+        
         return new Response(
-          JSON.stringify({ error: 'Failed to update user profile', details: profileUpdateError.message }), 
+          JSON.stringify({ 
+            error: errorMessage, 
+            details: errorDetails,
+            field_errors: profileUpdateError.details ? [profileUpdateError.details] : []
+          }), 
           { 
-            status: 500, 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      // Log each individual field change for detailed audit trail
+      for (const [fieldName, newValue] of Object.entries(profileUpdates)) {
+        const oldValue = existingUser[fieldName];
+        
+        // Only log if value actually changed
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+          try {
+            await supabase.rpc('log_user_profile_change', {
+              target_user_id: userId,
+              admin_id: adminId,
+              action_type: 'profile_field_update',
+              field_name: fieldName,
+              old_val: oldValue ? JSON.stringify(oldValue) : null,
+              new_val: JSON.stringify(newValue),
+              additional_metadata: JSON.stringify({
+                admin_action: true,
+                field_type: typeof newValue,
+                change_timestamp: new Date().toISOString()
+              }),
+              client_ip: clientIp,
+              client_user_agent: userAgent
+            });
+          } catch (auditError) {
+            console.error('Failed to log profile change:', auditError);
+            // Don't fail the main operation if audit logging fails
+          }
+        }
+      }
+    }
+
+    // Handle account status changes (enable/disable account)
+    if (validation.sanitizedData.accountStatus !== undefined) {
+      const isEnabled = validation.sanitizedData.accountStatus === 'enabled';
+      
+      const { error: statusUpdateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { 
+          user_metadata: { account_disabled: !isEnabled },
+          app_metadata: { account_disabled: !isEnabled }
+        }
+      );
+
+      if (statusUpdateError) {
+        console.error('Error updating account status:', statusUpdateError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update account status', 
+            details: statusUpdateError.message
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    // Handle email confirmation status
+    if (validation.sanitizedData.emailConfirmed !== undefined) {
+      const { error: confirmationError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { 
+          email_confirmed_at: validation.sanitizedData.emailConfirmed 
+            ? new Date().toISOString() 
+            : null
+        }
+      );
+
+      if (confirmationError) {
+        console.error('Error updating email confirmation:', confirmationError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update email confirmation status', 
+            details: confirmationError.message
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    // Handle account status changes (enable/disable account)
+    if (validation.sanitizedData.accountStatus !== undefined) {
+      const isEnabled = validation.sanitizedData.accountStatus === 'enabled';
+      
+      const { error: statusUpdateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { 
+          user_metadata: { account_disabled: !isEnabled },
+          app_metadata: { account_disabled: !isEnabled }
+        }
+      );
+
+      if (statusUpdateError) {
+        console.error('Error updating account status:', statusUpdateError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update account status', 
+            details: statusUpdateError.message
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    // Handle email confirmation status
+    if (validation.sanitizedData.emailConfirmed !== undefined) {
+      const { error: confirmationError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { 
+          email_confirmed_at: validation.sanitizedData.emailConfirmed 
+            ? new Date().toISOString() 
+            : null
+        }
+      );
+
+      if (confirmationError) {
+        console.error('Error updating email confirmation:', confirmationError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update email confirmation status', 
+            details: confirmationError.message
+          }), 
+          { 
+            status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
@@ -78,10 +290,27 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
 
       if (emailUpdateError) {
         console.error('Error updating user email:', emailUpdateError);
+        
+        // Provide specific error messages for email update failures
+        let errorMessage = 'Failed to update user email';
+        let errorDetails = emailUpdateError.message;
+        
+        if (emailUpdateError.message.includes('duplicate') || emailUpdateError.message.includes('already exists')) {
+          errorMessage = 'Email validation failed';
+          errorDetails = 'Email address already in use';
+        } else if (emailUpdateError.message.includes('invalid') || emailUpdateError.message.includes('format')) {
+          errorMessage = 'Email validation failed';
+          errorDetails = 'Invalid email format';
+        }
+        
         return new Response(
-          JSON.stringify({ error: 'Failed to update user email', details: emailUpdateError.message }), 
+          JSON.stringify({ 
+            error: errorMessage, 
+            details: errorDetails,
+            field_errors: ['email']
+          }), 
           { 
-            status: 500, 
+            status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );

@@ -1,5 +1,8 @@
 project_id = "fxkqgjakbyrxkmevkglv"
 
+[functions.translate-prompt]
+verify_jwt = true
+
 [functions.generate-use-case]
 verify_jwt = true
 
@@ -37,4 +40,13 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.send-bulk-plan-reminders]
+verify_jwt = true
+
+[functions.translate-text]
+verify_jwt = false
+
+[functions.validate-signup]
+verify_jwt = false
+
+[functions.admin-users-v2]
 verify_jwt = true

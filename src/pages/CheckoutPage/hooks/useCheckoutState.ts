@@ -1,15 +1,9 @@
 
 import { useState } from 'react';
+import type { SelectedPlan, AppliedDiscount, CheckoutState } from '../types';
 
-interface AppliedDiscount {
-  id: string;
-  code: string;
-  discount_type: string;
-  discount_value: number;
-}
-
-export function useCheckoutState() {
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+export function useCheckoutState(): CheckoutState {
+  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);

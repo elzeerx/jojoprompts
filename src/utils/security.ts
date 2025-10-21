@@ -70,7 +70,7 @@ export class SecurityUtils {
   }
 }
 
-// Content Security Policy header
+// Content Security Policy header with frame-ancestors protection
 export const getCSPHeader = (): string => {
   return [
     "default-src 'self'",
@@ -80,6 +80,7 @@ export const getCSPHeader = (): string => {
     "img-src 'self' data: https://*.supabase.co https://*.supabase.io blob:",
     "connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://api.jojoprompts.com",
     "frame-src 'none'",
+    "frame-ancestors 'self'", // Replace X-Frame-Options functionality
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'"

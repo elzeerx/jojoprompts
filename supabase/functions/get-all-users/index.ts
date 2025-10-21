@@ -1,219 +1,120 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
-import { corsHeaders } from "./cors.ts";
-import { verifyAdmin, validateAdminRequest, hasPermission } from "./auth.ts";
-import { logSecurityEvent } from "../shared/securityLogger.ts";
-import { handleGetUsers } from "./handlers/getUsersHandler.ts";
-import { handleCreateUser } from "./handlers/createUserHandler.ts";
-import { handleUpdateUser } from "./handlers/updateUserHandler.ts";
-import { handleDeleteUser } from "./handlers/deleteUserHandler.ts";
+import { verifyAdminSimple } from "./simpleAuth.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Enhanced request validation
-    const validation = validateAdminRequest(req);
-    if (!validation.isValid) {
-      console.error('Request validation failed:', validation.error);
+    // Simple admin authentication using new secure role system
+    const { supabase, userId } = await verifyAdminSimple(req);
+    
+    // Handle GET - list users with pagination and search
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const page = parseInt(url.searchParams.get('page') || '1');
+      const limit = parseInt(url.searchParams.get('limit') || '10');
+      const search = url.searchParams.get('search') || '';
+      
+      const offset = (page - 1) * limit;
+      
+      console.log(`[GET USERS] Fetching users - page: ${page}, limit: ${limit}, search: "${search}"`);
+      
+      // Build query
+      let query = supabase
+        .from('profiles')
+        .select('*, user_subscriptions(*, subscription_plans(*))', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+      
+      if (search) {
+        query = query.or(`email.ilike.%${search}%,username.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+      }
+      
+      const { data: profiles, error, count } = await query;
+      
+      if (error) {
+        console.error('[GET USERS ERROR]', error);
+        throw error;
+      }
+      
+      console.log(`[GET USERS SUCCESS] Found ${count} total users, returning ${profiles?.length || 0} users`);
+      
       return new Response(
-        JSON.stringify({ error: validation.error }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({
+          users: profiles,
+          total: count,
+          totalPages: Math.ceil((count || 0) / limit)
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Enhanced admin authentication with comprehensive security
-    const authContext = await verifyAdmin(req);
-    const { supabase, userId, userRole, permissions } = authContext;
-
-    // Log successful admin access
-    await logSecurityEvent(supabase, {
-      user_id: userId,
-      action: 'admin_function_accessed',
-      details: { 
-        function: 'get-all-users',
-        method: req.method,
-        role: userRole
-      },
-      ip_address: req.headers.get('x-forwarded-for') || 'unknown',
-      user_agent: req.headers.get('user-agent')?.substring(0, 200)
-    });
-
-    // Handle different HTTP methods with enhanced security
-    switch (req.method) {
-      case 'GET':
-        // Verify read permissions
-        if (!hasPermission(permissions, 'user:read')) {
-          await logSecurityEvent(supabase, {
-            user_id: userId,
-            action: 'permission_denied',
-            details: { required_permission: 'user:read', function: 'get-all-users' }
-          });
-          
-          return new Response(
-            JSON.stringify({ error: 'Insufficient permissions for user read operations' }), 
-            { 
-              status: 403, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          );
+    
+    // Handle POST - delete/update operations
+    if (req.method === 'POST') {
+      const body = await req.json();
+      const { action, userId: targetUserId } = body;
+      
+      console.log(`[POST ACTION] Action: ${action}, Target User: ${targetUserId}`);
+      
+      if (action === 'delete') {
+        // Call the existing admin_delete_user_data function
+        const { data, error } = await supabase.rpc('admin_delete_user_data', {
+          target_user_id: targetUserId
+        });
+        
+        if (error) {
+          console.error('[DELETE USER ERROR]', error);
+          throw error;
         }
-
-        return await handleGetUsers(supabase, userId, req);
-
-      case 'POST':
-        try {
-          // Parse request body to check for action type
-          const postRequestBody = await req.json();
-          
-          console.log('[POST] Received request body:', { action: postRequestBody.action, userId: postRequestBody.userId });
-          
-          // Handle delete actions sent via POST
-          if (postRequestBody.action === 'delete') {
-            console.log('[POST] Processing delete action for user:', postRequestBody.userId);
-            console.log('[POST] Request headers:', Object.fromEntries(req.headers.entries()));
-            console.log('[POST] Admin permissions:', permissions);
-            
-            // Verify delete permissions for delete actions
-            if (!hasPermission(permissions, 'user:delete')) {
-              await logSecurityEvent(supabase, {
-                user_id: userId,
-                action: 'permission_denied',
-                details: { required_permission: 'user:delete', function: 'get-all-users' }
-              });
-
-              return new Response(
-                JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
-                { 
-                  status: 403, 
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-                }
-              );
-            }
-
-            return await handleDeleteUser(supabase, userId, postRequestBody);
-          }
-          
-          // For non-delete actions, verify write permissions
-          if (!hasPermission(permissions, 'user:write')) {
-            await logSecurityEvent(supabase, {
-              user_id: userId,
-              action: 'permission_denied',
-              details: { required_permission: 'user:write', function: 'get-all-users' }
-            });
-
-            return new Response(
-              JSON.stringify({ error: 'Insufficient permissions for user write operations' }), 
-              { 
-                status: 403, 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-              }
-            );
-          }
-
-          // Clone the request with the already parsed body for create user handler
-          const createRequest = new Request(req.url, {
-            method: req.method,
-            headers: req.headers,
-            body: JSON.stringify(postRequestBody)
-          });
-          
-          return await handleCreateUser(supabase, userId, createRequest);
-        } catch (error: any) {
-          console.error('[POST] Error processing POST request:', error);
-          return new Response(
-            JSON.stringify({ error: 'Failed to process POST request', details: error.message }), 
-            { 
-              status: 500, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          );
-        }
-
-      case 'PUT':
-        // Verify write permissions
-        if (!hasPermission(permissions, 'user:write')) {
-          return new Response(
-            JSON.stringify({ error: 'Insufficient permissions for user update operations' }), 
-            { 
-              status: 403, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          );
-        }
-
-        return await handleUpdateUser(supabase, userId, req);
-
-      case 'DELETE':
-        // Verify delete permissions
-        if (!hasPermission(permissions, 'user:delete')) {
-          return new Response(
-            JSON.stringify({ error: 'Insufficient permissions for user delete operations' }), 
-            { 
-              status: 403, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          );
-        }
-
-        // Parse the request body for DELETE requests
-        const requestBody = await req.json();
-        return await handleDeleteUser(supabase, userId, requestBody);
-
-      default:
+        
+        console.log('[DELETE USER SUCCESS]', data);
+        
         return new Response(
-          JSON.stringify({ error: 'Method not allowed' }), 
-          { 
-            status: 405, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
+          JSON.stringify(data),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+      
+      return new Response(
+        JSON.stringify({ error: 'Invalid action' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+    
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error: any) {
-    console.error('Critical error in get-all-users function:', {
+    console.error('[ERROR] get-all-users function failed:', {
       message: error.message,
-      stack: error.stack?.substring(0, 500),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      method: req.method,
+      hasAuthHeader: !!req.headers.get('authorization')
     });
 
-    // Try to log the error if we have a supabase client
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
-      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
-      
-      if (supabaseUrl && serviceRoleKey) {
-        const errorClient = createClient(supabaseUrl, serviceRoleKey);
-        await logSecurityEvent(errorClient, {
-          action: 'function_error',
-          details: { 
-            function: 'get-all-users',
-            error: error.message,
-            method: req.method
-          },
-          ip_address: req.headers.get('x-forwarded-for') || 'unknown'
-        });
-      }
-    } catch (logError) {
-      console.warn('Failed to log error event:', logError);
-    }
-
+    // Determine appropriate status code based on error
+    const status = error.message === 'UNAUTHORIZED' ? 401 :
+                   error.message === 'FORBIDDEN' ? 403 : 500;
+    
+    const errorCode = error.message === 'UNAUTHORIZED' ? 'UNAUTHORIZED' :
+                      error.message === 'FORBIDDEN' ? 'FORBIDDEN' : 'INTERNAL_ERROR';
+    
     return new Response(
       JSON.stringify({ 
-        error: 'Internal server error',
-        message: 'An unexpected error occurred' 
-      }), 
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+        error: error.message,
+        code: errorCode
+      }),
+      { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

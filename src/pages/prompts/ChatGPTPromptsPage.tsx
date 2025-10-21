@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Prompt } from "@/types";
 import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, hasFeatureInPlan } from "@/utils/subscription";
+import { PromptService } from "@/services/PromptService";
 
 export default function ChatGPTPromptsPage() {
   const { user, session } = useAuth();
@@ -86,18 +87,12 @@ export default function ChatGPTPromptsPage() {
           setHasAccess(hasAccess);
         }
         
-        // Fetch ChatGPT prompts regardless of access (we'll filter display later)
-        const { data, error: promptsError } = await supabase
-          .from("prompts")
-          .select("*")
-          .eq("prompt_type", "text")
-          .order("created_at", { ascending: false });
+        // Fetch ChatGPT prompts using unified service
+        const result = await PromptService.getPublicPrompts(100, 0, 'text');
         
-        if (promptsError) {
-          console.error("Error fetching prompts:", promptsError);
-        } else if (data) {
-          // Transform data to ensure it matches the Prompt type
-          const transformedData: Prompt[] = data.map(item => ({
+        if (result.success && result.data) {
+          // Transform to match existing Prompt interface
+          const transformedData: Prompt[] = result.data.map(item => ({
             id: item.id,
             user_id: item.user_id,
             title: item.title,
@@ -110,6 +105,8 @@ export default function ChatGPTPromptsPage() {
           }));
           
           setPrompts(transformedData);
+        } else {
+          console.error("Error fetching prompts:", result.error);
         }
       } catch (err) {
         console.error("Error checking access:", err);

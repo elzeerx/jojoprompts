@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import { PromptCard } from '@/components/ui/prompt-card';
 import { Loader2 } from 'lucide-react';
 import { type PromptRow } from '@/types';
+import { PromptService } from '@/services/PromptService';
 
 interface SearchFilters {
   promptTypes: string[];
@@ -35,37 +35,20 @@ export default function SearchPage() {
     setLoading(true);
 
     try {
-      let supabaseQuery = supabase
-        .from('prompts')
-        .select('*');
+      // Use unified PromptService for search
+      const result = await PromptService.getPrompts({
+        search: query.trim() || undefined,
+        type: filters.promptTypes.length > 0 ? filters.promptTypes[0] as any : 'all',
+        limit: 50,
+        orderBy: 'created_at',
+        orderDirection: 'desc'
+      });
 
-      // Add text search
-      if (query.trim()) {
-        supabaseQuery = supabaseQuery.or(`title.ilike.%${query}%,prompt_text.ilike.%${query}%`);
+      if (result.error) {
+        throw new Error(result.error);
       }
 
-      // Add prompt type filter
-      if (filters.promptTypes.length > 0) {
-        supabaseQuery = supabaseQuery.in('prompt_type', filters.promptTypes);
-      }
-
-      // Add premium filter (this would need to be implemented based on your premium logic)
-      // For now, we'll skip this filter since it's not in the current schema
-
-      const { data, error } = await supabaseQuery
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      // Cast the data to PromptRow type to handle the metadata Json type
-      const promptRows: PromptRow[] = (data || []).map(item => ({
-        ...item,
-        metadata: item.metadata || {},
-        created_at: item.created_at || null
-      } as PromptRow));
-
-      setSearchResults(promptRows);
+      setSearchResults(result.data);
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);

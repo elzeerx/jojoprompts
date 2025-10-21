@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Heart, Workflow } from "lucide-react";
+import { Heart, Workflow, Languages, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PromptDetailsHeaderProps {
@@ -12,6 +12,11 @@ interface PromptDetailsHeaderProps {
   favorited: boolean;
   onToggleFavorite: () => void;
   getCategoryColor: (category: string) => string;
+  canManagePrompts?: boolean;
+  hasTranslation?: boolean;
+  selectedLanguage?: 'arabic' | 'english';
+  isTranslating?: boolean;
+  onTranslate?: (language: 'arabic' | 'english') => void;
 }
 
 export function PromptDetailsHeader({
@@ -21,7 +26,12 @@ export function PromptDetailsHeader({
   session,
   favorited,
   onToggleFavorite,
-  getCategoryColor
+  getCategoryColor,
+  canManagePrompts = false,
+  hasTranslation = false,
+  selectedLanguage = 'english',
+  isTranslating = false,
+  onTranslate
 }: PromptDetailsHeaderProps) {
   return (
     <div className="flex items-start justify-between mb-6">
@@ -41,21 +51,39 @@ export function PromptDetailsHeader({
               )}
             </DialogTitle>
           </DialogHeader>
-          {session && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleFavorite}
-              className={cn(
-                "h-10 w-10 rounded-full hover:bg-white/30",
-                favorited 
-                  ? "text-[#c49d68]" 
-                  : "text-gray-400 hover:text-[#c49d68]"
-              )}
-            >
-              <Heart className={cn("h-5 w-5", favorited && "fill-current")} />
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canManagePrompts && !hasTranslation && onTranslate && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onTranslate(selectedLanguage)}
+                disabled={isTranslating}
+                className="text-xs"
+              >
+                {isTranslating ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <Languages className="h-3 w-3 mr-1" />
+                )}
+                Generate with AI
+              </Button>
+            )}
+            {session && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleFavorite}
+                className={cn(
+                  "h-10 w-10 rounded-full hover:bg-white/30",
+                  favorited 
+                    ? "text-[#c49d68]" 
+                    : "text-gray-400 hover:text-[#c49d68]"
+                )}
+              >
+                <Heart className={cn("h-5 w-5", favorited && "fill-current")} />
+              </Button>
+            )}
+          </div>
         </div>
         <p className="text-sm text-gray-500 mt-2">
           May 05, 2025

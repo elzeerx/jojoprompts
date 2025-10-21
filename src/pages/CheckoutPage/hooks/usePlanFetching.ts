@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logInfo, logError, logDebug } from '@/utils/secureLogging';
+import type { UsePlanFetchingParams } from '../types';
 
-export function usePlanFetching(planId: string | null, user: any, setSelectedPlan: any, setError: any, setLoading: any) {
+export function usePlanFetching({ planId, user, setSelectedPlan, setError, setLoading }: UsePlanFetchingParams) {
   const navigate = useNavigate();
 
   useEffect(() => {

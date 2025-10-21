@@ -42,7 +42,7 @@ const CSP_DIRECTIVES = {
   'object-src': ["'none'"],
   'base-uri': ["'self'"],
   'form-action': ["'self'"],
-  'frame-ancestors': ["'none'"],
+  'frame-ancestors': ["'self'"], // Allow self-embedding but prevent external frames
   'upgrade-insecure-requests': []
 };
 
@@ -82,52 +82,33 @@ export class SecurityHeaders {
   }
 
   private static preventClickjacking() {
-    // Add X-Frame-Options equivalent for client-side protection
-    const style = document.createElement('style');
-    style.textContent = `
-      html { 
-        display: none; 
-      }
-      html[data-frame-safe="true"] { 
-        display: block; 
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Check if we're in a frame
+    // Check if we're in a trusted frame (Lovable preview)
     if (window.self === window.top) {
-      document.documentElement.setAttribute('data-frame-safe', 'true');
-    } else {
-      // Check if we're in a trusted iframe (like Lovable's preview)
-      let isTrustedFrame = false;
+      return; // Not in a frame, no action needed
+    }
+    
+    try {
+      // Trusted domains for iframe embedding
+      const trustedDomains = [
+        'lovable.dev',
+        'lovableproject.com', 
+        'app.lovable.dev',
+        'preview.lovable.dev'
+      ];
       
-      try {
-        // Trusted domains for iframe embedding
-        const trustedDomains = [
-          'lovable.dev',
-          'lovableproject.com',
-          'app.lovable.dev',
-          'preview.lovable.dev'
-        ];
-        
-        // Try to access parent location
-        const parentOrigin = window.parent.location.hostname;
-        isTrustedFrame = trustedDomains.some(domain => 
-          parentOrigin.includes(domain)
-        );
-      } catch (e) {
-        // Cross-origin access blocked - check if we're in development
-        if (import.meta.env.DEV) {
-          // In development, allow iframe embedding for easier testing
-          isTrustedFrame = true;
-        }
-      }
+      // Try to access parent location
+      const parentOrigin = window.parent.location.hostname;
+      const isTrustedFrame = trustedDomains.some(domain => 
+        parentOrigin.includes(domain)
+      );
       
-      if (isTrustedFrame) {
-        document.documentElement.setAttribute('data-frame-safe', 'true');
-      } else {
-        // Log potential clickjacking attempt
+      if (!isTrustedFrame) {
         console.warn('Application loaded in untrusted iframe - potential clickjacking attempt');
+      }
+    } catch (e) {
+      // Cross-origin access blocked - allow in development
+      if (!import.meta.env.DEV) {
+        console.warn('Application loaded in cross-origin iframe');
       }
     }
   }

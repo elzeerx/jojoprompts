@@ -20,7 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Heart, Trash, AlertTriangle, Workflow } from "lucide-react";
+import { Heart, Trash, AlertTriangle, Workflow, Languages, Loader2, Edit } from "lucide-react";
 import { type PromptRow } from "@/types";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,33 +33,36 @@ import { useImageLoading } from "@/components/ui/prompt-card/hooks/useImageLoadi
 import { getCategoryBadgeStyle } from "@/components/ui/prompt-card/utils/categoryUtils";
 import { useFavoriteLogic } from "@/components/ui/prompt-card/hooks/useFavoriteLogic";
 import { extractPromptMetadata, isWorkflowPrompt } from "@/utils/promptUtils";
+import { PromptService } from "@/services/PromptService";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { EditPromptButton } from "@/components/prompts";
 
 interface AdminPromptCardProps {
   prompt: PromptRow;
   onEdit: (promptId: string) => void;
   onDelete: (promptId: string) => void;
   initiallyFavorited?: boolean;
+  onEditSuccess?: () => void;
 }
 
 export function AdminPromptCard({ 
   prompt, 
   onEdit, 
   onDelete,
-  initiallyFavorited = false
+  initiallyFavorited = false,
+  onEditSuccess
 }: AdminPromptCardProps) {
   const { session } = useAuth();
   const { favorited, toggleFavorite } = useFavoriteLogic(prompt, initiallyFavorited);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const imageUrl = useImageLoading(prompt);
 
 
 
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onEdit(prompt.id);
-  };
+  // Removed handleEditClick - using EditPromptButton instead
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -76,9 +79,59 @@ export function AdminPromptCard({
     setDetailsOpen(true);
   };
 
+  // Handle AI translation
+  const handleTranslate = async (targetLanguage: 'arabic' | 'english', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Check if user has a valid session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        variant: "destructive",
+        title: "Authentication required",
+        description: "Please log in to translate prompts",
+      });
+      return;
+    }
+    
+    setIsTranslating(true);
+    try {
+      const result = await PromptService.translatePrompt(prompt.id, targetLanguage);
+      
+      if (result.success) {
+        toast({
+          title: "Translation completed",
+          description: `Successfully translated to ${targetLanguage}`,
+        });
+      } else {
+        toast({
+          title: "Translation failed",
+          description: result.error || "Failed to translate prompt",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast({
+        title: "Translation failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   // Extract metadata for display using utility
   const { category, style, tags, workflowSteps, workflowFiles } = extractPromptMetadata(prompt);
   const isN8nWorkflow = isWorkflowPrompt(prompt);
+
+  // Check translation status
+  const isAIPrompt = category?.toLowerCase().includes('chatgpt') || category?.toLowerCase().includes('claude');
+  const translations = prompt.metadata?.translations;
+  const hasArabic = !!(translations?.arabic?.title && translations?.arabic?.prompt_text);
+  const hasEnglish = !!(translations?.english?.title && translations?.english?.prompt_text);
 
   return (
     <>
@@ -99,6 +152,16 @@ export function AdminPromptCard({
                 <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
                   Style: {style}
                 </Badge>
+              )}
+              {isAIPrompt && (
+                <div className="flex gap-1">
+                  <Badge variant={hasArabic ? "default" : "outline"} className="text-xs">
+                    AR {hasArabic ? "✓" : "✗"}
+                  </Badge>
+                  <Badge variant={hasEnglish ? "default" : "outline"} className="text-xs">
+                    EN {hasEnglish ? "✓" : "✗"}
+                  </Badge>
+                </div>
               )}
             </div>
             {/* Display tags if they exist */}
@@ -181,15 +244,50 @@ export function AdminPromptCard({
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
           <CopyButton value={prompt.prompt_text} className="w-full" />
+          
+          {/* Translation buttons for AI prompts */}
+          {isAIPrompt && (
+            <div className="flex gap-2 w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => handleTranslate('arabic', e)}
+                disabled={isTranslating || hasArabic}
+                className="flex-1 text-xs"
+              >
+                {isTranslating ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Languages className="h-3 w-3 mr-1" />
+                )}
+                {hasArabic ? "Arabic ✓" : "Translate to Arabic"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => handleTranslate('english', e)}
+                disabled={isTranslating || hasEnglish}
+                className="flex-1 text-xs"
+              >
+                {isTranslating ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Languages className="h-3 w-3 mr-1" />
+                )}
+                {hasEnglish ? "English ✓" : "Translate to English"}
+              </Button>
+            </div>
+          )}
+          
           <div className="flex justify-between w-full">
-            <Button
+            <EditPromptButton
+              promptId={prompt.id}
+              onSuccess={onEditSuccess}
+              showIcon={true}
+              buttonText="Edit"
               variant="secondary"
               size="sm"
-              onClick={handleEditClick}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
+            />
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
               <AlertDialogTrigger asChild>
                 <Button 

@@ -8,20 +8,7 @@ import { ProfileDetailsSection } from "./ProfileDetailsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { User, Shield, UserCircle } from "lucide-react";
-
-interface UserProfile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  username: string;
-  role: string;
-  bio?: string;
-  avatar_url?: string;
-  country?: string;
-  phone_number?: string;
-  social_links?: any;
-  timezone?: string;
-}
+import { UserProfile } from "@/types/user";
 
 export function ProfileSettings() {
   const { user } = useAuth();
@@ -43,7 +30,7 @@ export function ProfileSettings() {
         .single();
 
       if (error) throw error;
-      setUserProfile(data);
+      setUserProfile(data as UserProfile);
     } catch (error) {
       console.error("Error fetching profile:", error);
       toast({

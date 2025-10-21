@@ -138,6 +138,8 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="prompter">Prompter</SelectItem>
+                    <SelectItem value="jadmin">Junior Admin</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>

@@ -5,6 +5,9 @@ import { InputValidator } from './inputValidation';
 import { enhancedRateLimiter, EnhancedRateLimitConfigs } from './enhancedRateLimiting';
 import { logWarn, logError, logInfo } from './secureLogging';
 import { securityMonitor } from './monitoring';
+import { EnhancedSecurityLogger } from './security/enhancedSecurityLogger';
+import { EnhancedInputValidator } from './security/enhancedInputValidation';
+import { SecurityUtils } from './security';
 
 export class SecurityEnforcer {
   // Enhanced authentication attempt logging with IP tracking
@@ -84,85 +87,82 @@ export class SecurityEnforcer {
   }
 
   // Enhanced input validation with comprehensive security checks
-  static validateUserInput(data: {
+  static async validateUserInput(data: {
     email?: string;
     password?: string;
     firstName?: string;
     lastName?: string;
     [key: string]: any;
-  }): { isValid: boolean; errors: string[] } {
+  }): Promise<{ isValid: boolean; errors: string[]; sanitizedData: Record<string, any>; securityFlags: string[] }> {
     const errors: string[] = [];
+    const securityFlags: string[] = [];
+    const sanitizedData: Record<string, any> = {};
 
     try {
-      // Email validation
-      if (data.email !== undefined) {
-        if (typeof data.email !== 'string') {
-          errors.push('Email must be a string');
-        } else {
-          const emailValidation = InputValidator.validateEmail(data.email);
-          if (!emailValidation.isValid && emailValidation.error) {
-            errors.push(emailValidation.error);
+      // Use enhanced input validation for each field
+      for (const [key, value] of Object.entries(data)) {
+        if (value === undefined || value === null) continue;
+
+        let validationType: 'string' | 'email' | 'url' | 'html' | 'number' | 'boolean' = 'string';
+        
+        if (key === 'email') {
+          validationType = 'email';
+        } else if (key.includes('url') || key.includes('link')) {
+          validationType = 'url';
+        } else if (key === 'password') {
+          // Handle password separately for strength validation
+          if (!SecurityUtils.isStrongPassword(value as string)) {
+            errors.push('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
           }
-          
-          // Additional email security checks
-          if (data.email.length > 320) { // RFC 5321 limit
-            errors.push('Email address too long');
-          }
+          continue; // Don't sanitize passwords
+        }
+
+        const validationResult = await EnhancedInputValidator.validateAndSanitize(
+          value,
+          validationType,
+          { maxLength: 500, strictMode: true }
+        );
+
+        if (!validationResult.isValid) {
+          errors.push(...validationResult.errors);
+        }
+
+        if (validationResult.securityFlags.length > 0) {
+          securityFlags.push(...validationResult.securityFlags);
+        }
+
+        if (validationResult.sanitizedValue !== undefined) {
+          sanitizedData[key] = validationResult.sanitizedValue;
         }
       }
 
-      // Password validation
-      if (data.password !== undefined) {
-        if (typeof data.password !== 'string') {
-          errors.push('Password must be a string');
-        } else {
-          const passwordValidation = InputValidator.validatePassword(data.password);
-          if (!passwordValidation.isValid && passwordValidation.error) {
-            errors.push(passwordValidation.error);
-          }
-        }
+      // Log security events if threats detected
+      if (securityFlags.length > 0) {
+        await EnhancedSecurityLogger.logSuspiciousActivity(
+          'input_validation_threats_detected',
+          { securityFlags, sanitizedFields: Object.keys(sanitizedData) }
+        );
       }
 
-      // Name validation with enhanced security
-      ['firstName', 'lastName'].forEach(field => {
-        if (data[field] !== undefined) {
-          if (typeof data[field] !== 'string') {
-            errors.push(`${field} must be a string`);
-          } else {
-            const value = data[field] as string;
-            if (value.length > 50) {
-              errors.push(`${field} must be less than 50 characters`);
-            }
-            
-            // Check for potentially malicious content
-            if (this.containsSuspiciousContent(value)) {
-              errors.push(`${field} contains invalid characters`);
-            }
-            
-            // Sanitize the field
-            data[field] = InputValidator.sanitizeText(value, 50);
-          }
-        }
-      });
-
-      // Additional field validation for any extra fields
-      Object.keys(data).forEach(key => {
-        if (!['email', 'password', 'firstName', 'lastName'].includes(key) && data[key]) {
-          if (typeof data[key] === 'string' && this.containsSuspiciousContent(data[key])) {
-            errors.push(`Field ${key} contains invalid content`);
-          }
-        }
-      });
-
+      return {
+        isValid: errors.length === 0,
+        errors,
+        sanitizedData,
+        securityFlags
+      };
     } catch (error) {
-      logError('Error during input validation', 'security', { error: String(error) });
-      errors.push('Validation error occurred');
+      logError('Input validation error', 'security', { error: String(error) });
+      await EnhancedSecurityLogger.logSystemEvent('input_validation_error', 'medium', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      return {
+        isValid: false,
+        errors: ['Validation failed'],
+        sanitizedData: {},
+        securityFlags: ['validation_error']
+      };
     }
-
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
   }
 
   // Enhanced security ID generation

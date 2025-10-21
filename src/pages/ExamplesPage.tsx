@@ -10,6 +10,7 @@ import { type Prompt } from '@/types';
 import { useCategories } from '@/hooks/useCategories';
 import { ImageWrapper } from '@/components/ui/prompt-card/ImageWrapper';
 import { useImageLoading } from '@/components/ui/prompt-card/hooks/useImageLoading';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ExamplePrompt extends Prompt {
   previewText: string;
@@ -111,41 +112,65 @@ export default function ExamplesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const { categories: dbCategories } = useCategories();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchExamplePrompts();
-  }, []);
+  }, [user]); // Re-fetch when authentication state changes
 
   const fetchExamplePrompts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('prompts')
-        .select(`
-          *,
-          profiles!fk_prompts_user_id(username)
-        `)
-        .limit(12)
-        .order('created_at', { ascending: false });
+      
+      let data, error;
+      
+      if (user) {
+        // Authenticated users can access full prompt data
+        const response = await supabase
+          .from('prompts')
+          .select(`
+            *,
+            profiles!fk_prompts_user_id(username)
+          `)
+          .limit(12)
+          .order('created_at', { ascending: false });
+        
+        data = response.data;
+        error = response.error;
+      } else {
+        // Unauthenticated users get preview data through secure function
+        const response = await supabase.rpc('get_public_prompt_previews', { limit_count: 12 });
+        data = response.data;
+        error = response.error;
+      }
 
       if (error) throw error;
 
-      const transformedData: ExamplePrompt[] = (data || []).map((item) => {
-        const metadata = typeof item.metadata === 'object' && item.metadata !== null ? item.metadata : {};
-        const metadataObj = metadata as Record<string, any>;
-        const category = metadataObj.category || "";
-        const profile = item.profiles as any;
+      const transformedData: ExamplePrompt[] = (data || []).map((item: any) => {
+        let metadata, category, profile, prompt_text, previewText;
         
-        // Create preview text (first 100 characters)
-        const previewText = item.prompt_text.length > 100 
-          ? item.prompt_text.substring(0, 100) + "..."
-          : item.prompt_text;
+        if (user) {
+          // Full data for authenticated users
+          metadata = typeof item.metadata === 'object' && item.metadata !== null ? item.metadata : {};
+          const metadataObj = metadata as Record<string, any>;
+          category = metadataObj.category || "";
+          profile = item.profiles as any;
+          prompt_text = item.prompt_text;
+          previewText = prompt_text.length > 100 ? prompt_text.substring(0, 100) + "..." : prompt_text;
+        } else {
+          // Limited preview data for unauthenticated users
+          metadata = { category: item.category || "" };
+          category = item.category || "";
+          profile = null;
+          prompt_text = item.prompt_preview || "";
+          previewText = prompt_text;
+        }
 
         return {
           id: item.id,
-          user_id: item.user_id,
+          user_id: item.user_id || '',
           title: item.title,
-          prompt_text: item.prompt_text,
+          prompt_text: prompt_text,
           image_path: item.image_path,
           default_image_path: item.default_image_path,
           image_url: null,
@@ -154,20 +179,20 @@ export default function ExamplesPage() {
           uploader_name: profile?.username || 'Expert Creator',
           metadata: {
             category: category,
-            style: metadataObj.style ?? undefined,
-            tags: Array.isArray(metadataObj.tags) ? metadataObj.tags : [],
-            media_files: Array.isArray(metadataObj.media_files) ? metadataObj.media_files : [],
-            target_model: metadataObj.target_model ?? undefined,
-            use_case: metadataObj.use_case ?? undefined,
-            workflow_steps: metadataObj.workflow_steps ?? undefined,
-            workflow_files: Array.isArray(metadataObj.workflow_files) ? metadataObj.workflow_files : [],
-            buttons: metadataObj.buttons ?? undefined,
-            image_options: metadataObj.image_options ?? undefined,
-            button_text: metadataObj.button_text ?? undefined,
-            button_action: metadataObj.button_action ?? undefined,
+            style: undefined,
+            tags: [],
+            media_files: [],
+            target_model: undefined,
+            use_case: undefined,
+            workflow_steps: undefined,
+            workflow_files: [],
+            buttons: undefined,
+            image_options: undefined,
+            button_text: undefined,
+            button_action: undefined,
           },
           previewText,
-          isLocked: true // All prompts are locked for non-users
+          isLocked: !user // Prompts are locked for unauthenticated users
         };
       });
 

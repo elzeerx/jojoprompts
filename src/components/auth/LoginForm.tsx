@@ -19,6 +19,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock } from "lucide-react";
 import { LoginFormValues, MagicLinkFormValues, loginSchema, magicLinkSchema } from "./validation";
 import { CheckoutContextManager } from "@/utils/checkoutContext";
+import { createLogger } from "@/utils/logging";
+import { securityLogger } from "@/utils/logging/security";
 
 type AuthMode = 'password' | 'magic-link';
 
@@ -30,6 +32,8 @@ export function LoginForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  
+  const logger = createLogger('LOGIN_FORM');
   
   // Check for redirect and plan parameters
   const redirectTo = searchParams.get('redirect');
@@ -52,20 +56,29 @@ export function LoginForm() {
 
   const onPasswordSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
+    
+    // Log login attempt
+    securityLogger.loginAttempt(undefined, { email: values.email, method: 'password' });
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
 
       if (error) {
+        // Log failed login
+        securityLogger.loginFailure(error.message, { email: values.email, method: 'password' });
+        
         toast({
           variant: "destructive",
           title: "Error",
           description: error.message,
         });
       } else {
+        // Log successful login
+        securityLogger.loginSuccess(data.user?.id || '', { email: values.email, method: 'password' });
+        
         toast({
           title: "Success!",
           description: "You have been logged in.",
@@ -83,8 +96,11 @@ export function LoginForm() {
           navigate("/prompts");
         }
       }
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch (error: any) {
+      // Log unexpected error
+      securityLogger.loginFailure('Unexpected login error', { email: values.email, error: error.message });
+      logger.error("Login error", error);
+      
       toast({
         variant: "destructive",
         title: "Error",
@@ -130,7 +146,7 @@ export function LoginForm() {
         });
       }
     } catch (error) {
-      console.error("Magic link error:", error);
+      logger.error("Magic link error", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -172,7 +188,7 @@ export function LoginForm() {
         });
       }
     } catch (error) {
-      console.error("Google sign-in error:", error);
+      logger.error("Google sign-in error", error);
       toast({
         variant: "destructive",
         title: "Error",
