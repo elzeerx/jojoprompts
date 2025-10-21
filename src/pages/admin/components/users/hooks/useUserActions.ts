@@ -168,10 +168,10 @@ export function useUserActions() {
       // Call RPC function for user deletion
       const { data, error } = await supabase.rpc('admin_delete_user_data', {
         target_user_id: userId
-      });
+      }) as { data: any, error: any };
 
-      if (error || (data && !data.success)) {
-        const errorMessage = error?.message || data?.error || "Error deleting user";
+      if (error || (data && !(data as any).success)) {
+        const errorMessage = error?.message || (data as any)?.error || "Error deleting user";
         
         logError("User deletion failed", "admin", { error: errorMessage }, user?.id);
         securityMonitor.logEvent('access_denied', {

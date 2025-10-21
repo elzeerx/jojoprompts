@@ -14,13 +14,13 @@ export function useUserCreation() {
       setIsCreating(true);
       
       // Use Supabase RPC to create user (admin function)
-      const { data, error } = await supabase.rpc('admin_create_user', {
+      const { data, error } = await supabase.rpc('admin_create_user' as any, {
         user_email: userData.email,
         user_password: userData.password,
         user_first_name: userData.first_name || 'User',
         user_last_name: userData.last_name || '',
         user_role: userData.role || 'user'
-      });
+      }) as { data: any, error: any };
       
       if (error) {
         console.error("RPC error:", error);

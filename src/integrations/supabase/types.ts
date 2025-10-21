@@ -2495,6 +2495,20 @@ export type Database = {
       }
     }
     Functions: {
+      admin_change_user_password: {
+        Args: { new_password: string; user_id: string }
+        Returns: Json
+      }
+      admin_create_user: {
+        Args: {
+          user_email: string
+          user_first_name?: string
+          user_last_name?: string
+          user_password: string
+          user_role?: string
+        }
+        Returns: Json
+      }
       admin_delete_user_data: {
         Args: { target_user_id: string }
         Returns: Json

@@ -63,10 +63,10 @@ export function ChangePasswordDialog({
 
     try {
       // Use Supabase RPC to change password (admin function)
-      const { error } = await supabase.rpc('admin_change_user_password', {
+      const { error } = await supabase.rpc('admin_change_user_password' as any, {
         user_id: user.id,
         new_password: newPassword
-      });
+      }) as { data: any, error: any };
 
       if (error) throw error;
 
