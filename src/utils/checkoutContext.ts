@@ -1,3 +1,7 @@
+import { createLogger } from './logging';
+
+const logger = createLogger('CHECKOUT_CONTEXT');
+
 // Context preservation utilities for checkout flow
 interface CheckoutContext {
   planId?: string;
@@ -25,7 +29,7 @@ export class CheckoutContextManager {
       sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(contextWithTimestamp));
       localStorage.setItem(CONTEXT_KEY + '_backup', JSON.stringify(contextWithTimestamp));
     } catch (error) {
-      console.warn('Failed to save checkout context:', error);
+      logger.warn('Failed to save checkout context', { error });
     }
   }
 
@@ -51,7 +55,7 @@ export class CheckoutContextManager {
 
       return context;
     } catch (error) {
-      console.warn('Failed to retrieve checkout context:', error);
+      logger.warn('Failed to retrieve checkout context', { error });
       return null;
     }
   }
@@ -61,7 +65,7 @@ export class CheckoutContextManager {
       sessionStorage.removeItem(CONTEXT_KEY);
       localStorage.removeItem(CONTEXT_KEY + '_backup');
     } catch (error) {
-      console.warn('Failed to clear checkout context:', error);
+      logger.warn('Failed to clear checkout context', { error });
     }
   }
 

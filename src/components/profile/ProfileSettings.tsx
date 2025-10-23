@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { User, Shield, UserCircle } from "lucide-react";
 import { UserProfile } from "@/types/user";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PROFILE_SETTINGS');
 
 export function ProfileSettings() {
   const { user } = useAuth();
@@ -32,7 +35,7 @@ export function ProfileSettings() {
       if (error) throw error;
       setUserProfile(data as UserProfile);
     } catch (error) {
-      console.error("Error fetching profile:", error);
+      logger.error('Error fetching profile', { error, userId: user?.id });
       toast({
         title: "Error",
         description: "Failed to load profile information",
