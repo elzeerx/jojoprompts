@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { createEdgeLogger } from '../_shared/logger.ts';
 
+const logger = createEdgeLogger('send-purchase-confirmation');
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -57,12 +59,12 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Purchase confirmation email sent:", emailResponse);
+    logger.info('Purchase confirmation email sent', { email, planName, paymentId, emailResponse });
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
-    console.error("Error sending purchase confirmation:", error);
+    logger.error('Error sending purchase confirmation', { error: error.message });
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

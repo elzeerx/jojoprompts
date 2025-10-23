@@ -1,7 +1,9 @@
-
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('suggest-prompt');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -86,7 +88,7 @@ serve(async (req) => {
       .single();
 
     if (insErr) {
-      console.error("Error inserting prompt:", insErr);
+      logger.error('Error inserting prompt', { error: insErr.message, userId: user.id });
       return new Response(
         JSON.stringify({ error: insErr.message }), 
         { status: 500, headers: corsHeaders }
@@ -98,7 +100,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error:', error);
+    logger.error('Error in suggest-prompt', { error });
     return new Response(
       JSON.stringify({ error: error.message }), 
       { status: 500, headers: corsHeaders }

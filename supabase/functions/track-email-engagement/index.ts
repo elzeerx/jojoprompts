@@ -1,5 +1,8 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('track-email-engagement');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -91,7 +94,7 @@ export default async function handler(req: Request) {
         .eq('id', existingRecord.id);
 
       if (error) {
-        console.error('Error updating email engagement:', error);
+        logger.error('Error updating email engagement', { error: error.message, email: email_address });
         return new Response('Error updating engagement data', { status: 500 });
       }
     } else {
@@ -110,7 +113,7 @@ export default async function handler(req: Request) {
         .insert([insertData]);
 
       if (error) {
-        console.error('Error inserting email engagement:', error);
+        logger.error('Error inserting email engagement', { error: error.message, email: email_address });
         return new Response('Error saving engagement data', { status: 500 });
       }
     }
@@ -149,7 +152,7 @@ export default async function handler(req: Request) {
     );
     
   } catch (error: any) {
-    console.error('Email engagement tracking error:', error);
+    logger.error('Email engagement tracking error', { error: error.message });
     
     return new Response(
       JSON.stringify({ 
