@@ -2,6 +2,10 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('PLAN_ASSIGNMENT');
 
 export function usePlanAssignment() {
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
@@ -85,7 +89,8 @@ export function usePlanAssignment() {
       
       return true;
     } catch (error: any) {
-      console.error("Error assigning plan:", error);
+      const appError = handleError(error, { component: 'usePlanAssignment', action: 'assignPlan' });
+      logger.error('Error assigning plan', { error: appError, userId, planId });
       
       toast({
         title: "Assignment failed",

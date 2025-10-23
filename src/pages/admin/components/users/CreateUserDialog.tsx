@@ -8,6 +8,10 @@ import { UserPlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useWelcomeEmail } from "@/hooks/useWelcomeEmail";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('CREATE_USER');
 
 interface CreateUserDialogProps {
   onUserCreated: () => void;
@@ -37,7 +41,7 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
       const origin = window.location.origin;
       const loginUrl = `${origin}/login`;
       
-      console.log(`Creating user with email ${email} and redirect URL: ${loginUrl}`);
+      logger.info('Creating user', { email, loginUrl });
       
       // Register the user using signUp method
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -78,7 +82,8 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
       onUserCreated();
       
     } catch (error: any) {
-      console.error("Error creating user:", error);
+      const appError = handleError(error, { component: 'CreateUserDialog', action: 'createUser' });
+      logger.error('Error creating user', { error: appError, email });
       toast({
         title: "Error creating user",
         description: error.message || "An unknown error occurred",

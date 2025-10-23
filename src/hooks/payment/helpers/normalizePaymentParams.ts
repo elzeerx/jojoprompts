@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PAYMENT_PARAMS');
 
 // Stronger extraction for all possible PayPal return/callback params styles
 export function normalizePaymentParams(params: Record<string, any>) {
@@ -23,9 +26,14 @@ export function normalizePaymentParams(params: Record<string, any>) {
     allParams: params,
   };
 
-  console.log('Normalized payment params:', {
-    input: params,
-    normalized: normalized
+  logger.debug('Normalized payment params', {
+    paramKeys: Object.keys(params),
+    normalized: {
+      planId: normalized.planId,
+      userId: normalized.userId,
+      hasToken: !!normalized.token,
+      hasPayerId: !!normalized.payerId
+    }
   });
 
   return normalized;

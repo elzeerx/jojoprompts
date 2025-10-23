@@ -12,6 +12,9 @@ import { ImageSelectionField } from "./ImageSelectionField";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { useCategories } from "@/hooks/useCategories";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('DIALOG_FORM');
 
 interface DialogFormProps {
   formData: {
@@ -48,7 +51,7 @@ export function DialogForm({
 
 
   const updateFormData = (field: string, value: any) => {
-    console.log("DialogForm - Updating form field:", field, "with value:", value);
+    logger.debug('Updating form field', { field, valueType: typeof value });
     onChange({
       ...formData,
       [field]: value
@@ -56,7 +59,7 @@ export function DialogForm({
   };
 
   const updateMetadata = (metadata: any) => {
-    console.log("DialogForm - Updating metadata:", metadata);
+    logger.debug('Updating metadata', { metadataKeys: Object.keys(metadata || {}) });
     onChange({
       ...formData,
       metadata
@@ -71,7 +74,7 @@ export function DialogForm({
   };
 
   const handleWorkflowFilesChange = (workflowFiles: any[]) => {
-    console.log("DialogForm - Workflow files changed:", workflowFiles);
+    logger.debug('Workflow files changed', { count: workflowFiles.length });
     setWorkflowFiles(workflowFiles);
     updateMetadata({
       ...formData.metadata,
@@ -90,7 +93,7 @@ export function DialogForm({
   };
 
   const handleWorkflowFileUpload = (files: File[]) => {
-    console.log("DialogForm - Workflow files for upload:", files);
+    logger.debug('Workflow files for upload', { count: files.length });
     // Pass workflow files to parent for upload
     if (onWorkflowFilesChange) {
       onWorkflowFilesChange(files);
@@ -152,7 +155,7 @@ export function DialogForm({
         <Select 
           value={formData.metadata?.category || "ChatGPT"} 
           onValueChange={(value) => {
-            console.log("DialogForm - Manual category selection:", value);
+            logger.info('Manual category selection', { category: value });
             updateMetadata({ ...formData.metadata, category: value });
           }}
           disabled={categoriesLoading}

@@ -37,6 +37,10 @@ import { PromptService } from "@/services/PromptService";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SimplifiedPromptDialog } from "@/components/prompts/SimplifiedPromptDialog";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('ADMIN_PROMPT_CARD');
 
 interface AdminPromptCardProps {
   prompt: PromptRow;
@@ -113,7 +117,8 @@ export function AdminPromptCard({
         });
       }
     } catch (error) {
-      console.error('Translation error:', error);
+      const appError = handleError(error, { component: 'AdminPromptCard', action: 'translate' });
+      logger.error('Translation failed', { error: appError, promptId: prompt.id, targetLanguage });
       toast({
         title: "Translation failed",
         description: "An unexpected error occurred",

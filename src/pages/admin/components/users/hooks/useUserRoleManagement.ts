@@ -2,6 +2,10 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { UserRole, validateRole } from "@/utils/roleValidation";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('USER_ROLE_MGMT');
 
 export function useUserRoleManagement() {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
@@ -24,13 +28,14 @@ export function useUserRoleManagement() {
         .maybeSingle();
         
       if (fetchError) {
-        console.error("Error fetching current role:", fetchError);
+        const appError = handleError(fetchError, { component: 'useUserRoleManagement', action: 'fetchCurrentRole' });
+        logger.error('Error fetching current role', { error: appError, userId });
         throw new Error(`Failed to verify current role: ${fetchError.message}`);
       }
       
       // If profile doesn't exist, create it
       if (!currentData) {
-        console.log(`Profile for user ${userId} not found, creating it with role ${newRole}`);
+        logger.info('Profile not found, creating new profile', { userId, newRole });
         
         const { error: insertError } = await supabase
           .from('profiles')
@@ -43,7 +48,8 @@ export function useUserRoleManagement() {
           });
           
         if (insertError) {
-          console.error("Error creating profile:", insertError);
+          const appError = handleError(insertError, { component: 'useUserRoleManagement', action: 'createProfile' });
+          logger.error('Error creating profile', { error: appError, userId });
           throw new Error(`Failed to create user profile: ${insertError.message}`);
         }
         
@@ -55,11 +61,11 @@ export function useUserRoleManagement() {
         return true;
       }
       
-      console.log("Current role data:", currentData);
+      logger.debug('Current role data', { currentRole: currentData.role, userId });
       
       // Only update if the role is actually different
       if (currentData.role !== newRole) {
-        console.log(`Updating role for user ${userId} from ${currentData.role} to ${newRole}`);
+        logger.info('Updating role', { userId, fromRole: currentData.role, toRole: newRole });
         
         const { error: updateError } = await supabase
           .from('profiles')
@@ -67,11 +73,12 @@ export function useUserRoleManagement() {
           .eq('id', userId);
           
         if (updateError) {
-          console.error("Error updating role:", updateError);
+          const appError = handleError(updateError, { component: 'useUserRoleManagement', action: 'updateRole' });
+          logger.error('Error updating role', { error: appError, userId });
           throw new Error(`Failed to update role: ${updateError.message}`);
         }
         
-        console.log("Role update success, verifying...");
+        logger.debug('Role update success, verifying');
         
         // Wait a moment before verifying to ensure database consistency
         await new Promise(resolve => setTimeout(resolve, 300));
@@ -84,7 +91,8 @@ export function useUserRoleManagement() {
           .maybeSingle();
           
         if (verifyError) {
-          console.error("Error verifying role update:", verifyError);
+          const appError = handleError(verifyError, { component: 'useUserRoleManagement', action: 'verifyRoleUpdate' });
+          logger.error('Error verifying role update', { error: appError, userId });
           throw new Error(`Failed to verify role update: ${verifyError.message}`);
         }
         
@@ -92,7 +100,7 @@ export function useUserRoleManagement() {
           throw new Error("User profile not found after update");
         }
         
-        console.log("Verification data:", verifyData);
+        logger.debug('Verification data', { role: verifyData.role });
         
         if (verifyData.role !== newRole) {
           throw new Error(`Role update failed: Database shows role as ${verifyData.role}`);
@@ -113,7 +121,8 @@ export function useUserRoleManagement() {
         return true;
       }
     } catch (error: any) {
-      console.error("Error updating user role:", error);
+      const appError = handleError(error, { component: 'useUserRoleManagement', action: 'updateUserRole' });
+      logger.error('Error updating user role', { error: appError, userId });
       toast({
         title: "Error updating role",
         description: error.message || "Failed to update user role",

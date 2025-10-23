@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAdminErrorHandler } from "./useAdminErrorHandler";
 import { CreateUserData } from "@/types/user";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('USER_CREATION');
 
 export function useUserCreation() {
   const [isCreating, setIsCreating] = useState(false);
@@ -23,7 +26,7 @@ export function useUserCreation() {
       }) as { data: any, error: any };
       
       if (error) {
-        console.error("RPC error:", error);
+        logger.error('RPC error', { error: error.message, email: userData.email });
         throw new Error(error.message || "Failed to create user");
       }
       

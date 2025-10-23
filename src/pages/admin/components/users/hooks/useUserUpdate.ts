@@ -5,6 +5,10 @@ import { toast } from "@/hooks/use-toast";
 import { useUserRoleManagement } from "./useUserRoleManagement";
 import { validateRole } from "@/utils/roleValidation";
 import { UserUpdateData, UserRole } from "@/types/user";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('USER_UPDATE');
 
 export function useUserUpdate() {
   const { updatingUserId, updateUserRole } = useUserRoleManagement();
@@ -61,7 +65,8 @@ export function useUserUpdate() {
         return true;
       }
     } catch (error: any) {
-      console.error("Error updating user:", error);
+      const appError = handleError(error, { component: 'useUserUpdate', action: 'updateUser' });
+      logger.error('Error updating user', { error: appError, userId });
       
       toast({
         title: "Update failed",

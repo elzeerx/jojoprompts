@@ -2,7 +2,7 @@
 
 **Started:** October 23, 2025  
 **Estimated Duration:** 4-6 days  
-**Current Status:** 🟢 In Progress (Day 1 - ~12% complete)
+**Current Status:** 🟢 In Progress (Session 2 - ~13% complete)
 
 ---
 
@@ -12,9 +12,9 @@
 - **Total Found:** ~850 console statements
   - **src/ files:** 408 statements in 143 files
   - **supabase/functions:** 440 statements in 65 files
-- **Cleaned:** ~45 statements (11 critical files) ✅
-- **Remaining:** ~805 statements
-- **Progress:** 5% of total cleanup
+- **Cleaned:** ~110 statements (34 files) ✅
+- **Remaining:** ~740 statements
+- **Progress:** 13% of total cleanup
 
 ### TODO Comments Cleanup
 - **Total Found:** 7 TODO/FIXME comments
@@ -68,6 +68,35 @@
 - ✅ `src/components/account/DeleteAccountDialog.tsx` (1 error → logger)
 - ✅ `src/components/account/EmailPreferences.tsx` (2 errors → logger)
 - ✅ `src/components/checkout/DiscountCodeInput.tsx` (2 errors → logger)
+
+#### Payment Files ✅ (4 files, ~10 statements)
+- ✅ `src/hooks/payment/helpers/enhancedPaymentNavigator.ts` (1 log → logger)
+- ✅ `src/hooks/payment/helpers/normalizePaymentParams.ts` (1 log → logger)
+- ✅ `src/hooks/payment/helpers/retrySessionFetch.ts` (1 warn → logger)
+- ✅ `src/components/payment/SimplePayPalButton.tsx` (4 errors → logger)
+
+#### Prompt Management Files ✅ (9 files, ~30 statements)
+- ✅ `src/pages/admin/components/prompts/AdminPromptCard.tsx` (1 error → logger)
+- ✅ `src/pages/admin/components/prompts/components/AutoGenerateButton.tsx` (10 logs → logger)
+- ✅ `src/pages/admin/components/prompts/components/BilingualFields.tsx` (1 error → logger)
+- ✅ `src/pages/admin/components/prompts/components/DialogForm.tsx` (5 logs → logger)
+- ✅ `src/pages/admin/components/prompts/components/ImageSelectionField.tsx` (1 error → logger)
+- ✅ `src/pages/admin/components/prompts/components/UseCaseField.tsx` (9 logs → logger)
+- ✅ `src/pages/admin/components/prompts/hooks/usePromptForm.ts` (3 logs → logger via code review)
+- ✅ `src/pages/admin/components/prompts/hooks/usePromptSubmission.ts` (2 errors → logger via code review)
+- ✅ `src/pages/admin/components/prompts/hooks/useSmartSuggestions.ts` (1 error → logger)
+
+#### User Management Files ✅ (10 files, ~20 statements)
+- ✅ `src/pages/admin/components/users/CreateUserDialog.tsx` (2 logs → logger)
+- ✅ `src/pages/admin/components/users/components/AssignPlanDialog.tsx` (3 errors → logger)
+- ✅ `src/pages/admin/components/users/hooks/usePlanAssignment.ts` (1 error → logger)
+- ✅ `src/pages/admin/components/users/hooks/useSubscriptionActions.ts` (1 error → logger)
+- ✅ `src/pages/admin/components/users/hooks/useUserActions.ts` (4 logs → logger)
+- ✅ `src/pages/admin/components/users/hooks/useUserCreation.ts` (1 error → logger)
+- ✅ `src/pages/admin/components/users/hooks/useUserDeletion.ts` (4 logs → logger)
+- ✅ `src/pages/admin/components/users/hooks/useUserRoleManagement.ts` (6 logs → logger)
+- ✅ `src/pages/admin/components/users/hooks/useUserUpdate.ts` (1 error → logger)
+- ✅ `src/pages/admin/components/users/hooks/useAdminErrorHandler.ts` (1 error → already using logger)
 
 ---
 

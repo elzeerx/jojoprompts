@@ -3,6 +3,10 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('SUBSCRIPTION_ACTIONS');
 
 export function useSubscriptionActions() {
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
@@ -51,7 +55,8 @@ export function useSubscriptionActions() {
 
       return true;
     } catch (error: any) {
-      console.error("Error cancelling subscription:", error);
+      const appError = handleError(error, { component: 'useSubscriptionActions', action: 'cancelSubscription' });
+      logger.error('Error cancelling subscription', { error: appError, userId });
       toast({
         title: "Cancellation Failed",
         description: error.message || "Failed to cancel subscription",
