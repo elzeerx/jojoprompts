@@ -6,6 +6,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Menu, X, User, LogOut, Settings, Heart, Edit } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('HEADER');
 
 export function Header() {
   const navigate = useNavigate();
@@ -26,16 +29,16 @@ export function Header() {
     isPrompter = authContext.isPrompter;
     canManagePrompts = authContext.canManagePrompts;
   } catch (error) {
-    console.warn('Auth context unavailable in Header:', error);
+    logger.warn('Auth context unavailable in Header', error);
   }
 
   const handleLogout = async () => {
     try {
-      console.log("[HEADER] Starting logout process");
+      logger.info('Starting logout process');
       await signOut();
-      console.log("[HEADER] Logout completed");
+      logger.info('Logout completed');
     } catch (error) {
-      console.error("[HEADER] Logout error:", error);
+      logger.error('Logout error', error);
     }
   };
 

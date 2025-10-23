@@ -6,6 +6,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { signupSchema, type SignupFormValues } from "../validation";
 import { useWelcomeEmail } from "@/hooks/useWelcomeEmail";
+import { createLogger } from '@/utils/logging';
+import { handleError, ErrorTypes } from '@/utils/errorHandler';
+
+const logger = createLogger('SIGNUP_FORM');
 
 export function useSignupForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +38,7 @@ export function useSignupForm() {
 
     try {
       // Call validation edge function first
-      console.log('[Signup] Validating signup data...');
+      logger.info('Validating signup data');
       
       const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-signup', {
         body: {
@@ -47,7 +51,7 @@ export function useSignupForm() {
       });
 
       if (validationError) {
-        console.error('[Signup] Validation edge function error:', validationError);
+        logger.error('Validation edge function error', validationError);
         toast({
           variant: "destructive",
           title: "Validation failed",
@@ -57,7 +61,7 @@ export function useSignupForm() {
       }
 
       if (!validationData?.valid) {
-        console.error('[Signup] Validation failed:', validationData?.errors);
+        logger.warn('Validation failed', { errors: validationData?.errors });
         const errorMessage = validationData?.errors?.[0] || "Signup validation failed";
         toast({
           variant: "destructive",
@@ -67,7 +71,7 @@ export function useSignupForm() {
         return;
       }
 
-      console.log('[Signup] Validation passed, proceeding with signup...');
+      logger.info('Validation passed, proceeding with signup');
 
       // Direct email/password signup with Supabase
       const { data, error } = await supabase.auth.signUp({
@@ -85,48 +89,27 @@ export function useSignupForm() {
       });
 
       if (error) {
-        console.error("[Signup] Supabase signup error:", error);
-        toast({
-          variant: "destructive",
-          title: "Signup failed",
-          description: error.message || "Failed to create account. Please try again.",
+        logger.error('Supabase signup error', error);
+        throw ErrorTypes.AUTH_INVALID({ 
+          component: 'useSignupForm', 
+          action: 'signup' 
         });
-        return;
       }
 
-      if (!data.user) {
-        toast({
-          variant: "destructive",
-          title: "Signup failed",
-          description: "Failed to create account. Please try again.",
-        });
-        return;
-      }
-
-      // Check if email confirmation is required
-      if (!data.session && data.user) {
-        toast({
-          title: "Verify your email",
-          description: "We've sent you a verification email. Please check your inbox and click the link to activate your account.",
-        });
-        navigate('/auth/verify-email');
-        return;
-      }
-
-      // Success! User is now logged in
-      toast({
-        title: "Account created! 🎉",
-        description: "Welcome! You can now complete your purchase.",
-      });
-
-      // Send welcome email in the background (post-signup)
-      setTimeout(async () => {
+      if (data?.user) {
         try {
-          await sendWelcomeEmail(values.firstName, values.email);
+          await supabase.functions.invoke('send-welcome-email', {
+            body: { 
+              email: data.user.email, 
+              userId: data.user.id,
+              firstName: values.firstName,
+              lastName: values.lastName
+            }
+          });
         } catch (error) {
-          console.log('Welcome email failed (non-critical):', error);
+          logger.warn('Welcome email failed (non-critical)', error);
         }
-      }, 1000);
+      }
 
       // Navigate directly to checkout if from checkout flow
       if (selectedPlan) {
@@ -137,7 +120,8 @@ export function useSignupForm() {
         navigate('/prompts');
       }
     } catch (error) {
-      console.error("Signup error:", error);
+      const appError = handleError(error, { component: 'useSignupForm', action: 'signup' });
+      logger.error('Signup error', appError);
       toast({
         variant: "destructive",
         title: "Error",
@@ -149,7 +133,7 @@ export function useSignupForm() {
   };
 
   const handleFormError = (errors: any) => {
-    console.log("Form validation errors:", errors);
+    logger.debug('Form validation errors', { errors });
     const firstErrorField = Object.keys(errors)[0];
     const firstError = errors[firstErrorField];
     
