@@ -1,6 +1,9 @@
+import { createEdgeLogger } from '../../_shared/logger.ts';
 import { corsHeaders } from "../../_shared/standardImports.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
+
+const logger = createEdgeLogger('get-all-users:bulk-operations');
 
 export async function handleBulkOperations(supabase: any, adminId: string, req: Request) {
   try {
@@ -63,7 +66,7 @@ export async function handleBulkOperations(supabase: any, adminId: string, req: 
     );
 
   } catch (error) {
-    console.error('Error in bulk operations:', error);
+    logger.error('Error in bulk operations', { error });
     return new Response(
       JSON.stringify({ error: 'Internal server error during bulk operation' }), 
       { 
@@ -160,7 +163,7 @@ async function handleBulkUpdate(
 
       results.successCount++;
     } catch (error: any) {
-      console.error(`Bulk update error for user ${userId}:`, error);
+      logger.error('Bulk update error for user', { userId, error: error.message });
       results.errorCount++;
       results.errors.push(`User ${userId}: ${error.message || 'Unknown error'}`);
     }
@@ -205,7 +208,7 @@ async function handleBulkDelete(
         throw new Error(deleteResult?.error || 'Unknown deletion error');
       }
     } catch (error: any) {
-      console.error(`Bulk delete error for user ${userId}:`, error);
+      logger.error('Bulk delete error for user', { userId, error: error.message });
       results.errorCount++;
       results.errors.push(`User ${userId}: ${error.message || 'Unknown error'}`);
     }
@@ -283,7 +286,7 @@ async function handleBulkExport(
     };
 
   } catch (error: any) {
-    console.error('Bulk export error:', error);
+    logger.error('Bulk export error', { error: error.message });
     return {
       successCount: 0,
       errorCount: userIds.length,
