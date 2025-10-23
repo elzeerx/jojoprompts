@@ -1,6 +1,8 @@
-
+import { createEdgeLogger } from '../../_shared/logger.ts';
 import { corsHeaders } from "../../_shared/standardImports.ts";
 import { logAdminAction } from "../../shared/securityLogger.ts";
+
+const logger = createEdgeLogger('get-all-users:get-users');
 
 // Cache for user counts to reduce expensive queries
 let userCountCache: { 
@@ -15,7 +17,7 @@ const CACHE_DURATION = 30000; // 30 seconds cache
 // Performance monitoring utilities
 function logPerformanceMetrics(operation: string, startTime: number, metadata?: any) {
   const duration = Date.now() - startTime;
-  console.log(`[PERF] ${operation}: ${duration}ms`, metadata ? JSON.stringify(metadata) : '');
+  logger.debug('Performance metric', { operation, duration_ms: duration, ...metadata });
 }
 
 export async function handleGetUsers(supabase: any, adminId: string, req: Request) {
@@ -28,11 +30,11 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '10'), 100);
     const search = url.searchParams.get('search') || '';
     
-    console.log(`[${requestId}] Starting getUsersHandler - page: ${page}, limit: ${limit}, search: "${search}"`);
+    logger.info('Starting getUsersHandler', { requestId, page, limit, search });
     
     // Phase 4: Enhanced validation
     if (page < 1 || limit < 1) {
-      console.warn(`[${requestId}] Invalid pagination parameters: page=${page}, limit=${limit}`);
+      logger.warn('Invalid pagination parameters', { requestId, page, limit });
       return new Response(
         JSON.stringify({ 
           error: 'Invalid pagination parameters',
@@ -98,7 +100,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
     const { data: profiles, error: profileError, count: totalFilteredUsers } = await profileQuery;
 
     if (profileError) {
-      console.error(`[${requestId}] Error fetching profiles:`, profileError);
+      logger.error('Error fetching profiles', { requestId, error: profileError });
       throw new Error(`Failed to fetch user profiles: ${profileError.message}`);
     }
 
@@ -110,7 +112,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
 
     // Handle empty results
     if (!profiles || profiles.length === 0) {
-      console.log(`[${requestId}] No profiles found for page ${page}`);
+      logger.info('No profiles found for page', { requestId, page });
       return new Response(
         JSON.stringify({
           users: [],
@@ -143,7 +145,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
       const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
       if (authError) {
-        console.warn(`[${requestId}] Error fetching auth data:`, authError);
+        logger.warn('Error fetching auth data', { requestId, error: authError });
       } else if (authUsers?.users) {
         // Create efficient lookup map
         authUsers.users.forEach(user => {
@@ -153,7 +155,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
         });
       }
     } catch (authFetchError) {
-      console.warn(`[${requestId}] Auth data fetch failed:`, authFetchError);
+      logger.warn('Auth data fetch failed', { requestId, error: authFetchError });
     }
     
     logPerformanceMetrics('Auth data fetch', authDataStartTime, {
@@ -188,7 +190,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
         .order('created_at', { ascending: false });
 
       if (subscriptionError) {
-        console.warn(`[${requestId}] Error fetching subscriptions:`, subscriptionError);
+        logger.warn('Error fetching subscriptions', { requestId, error: subscriptionError });
       } else if (subscriptions) {
         // Map subscriptions, keeping only the most recent for each user
         subscriptions.forEach(sub => {
@@ -198,7 +200,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
         });
       }
     } catch (subFetchError) {
-      console.warn(`[${requestId}] Subscription fetch failed:`, subFetchError);
+      logger.warn('Subscription fetch failed', { requestId, error: subFetchError });
     }
     
     logPerformanceMetrics('Subscription data fetch', subscriptionStartTime, {
@@ -209,7 +211,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
     // Validation - ensure page doesn't exceed available pages
     const totalPages = Math.ceil((totalFilteredUsers || 0) / limit);
     if (page > totalPages && totalFilteredUsers > 0) {
-      console.warn(`[${requestId}] Page ${page} exceeds available pages ${totalPages}`);
+      logger.warn('Page exceeds available pages', { requestId, page, totalPages });
       return new Response(
         JSON.stringify({ 
           error: 'Page exceeds available data',
@@ -309,7 +311,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
       databaseOptimized: true
     });
     
-    console.log(`[${requestId}] Request completed successfully - returned ${enrichedUsers.length} users`);
+    logger.info('Request completed successfully', { requestId, returnedUsers: enrichedUsers.length });
     
     return new Response(
       JSON.stringify(responseData),
@@ -321,7 +323,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
     
   } catch (error: any) {
     const errorDuration = Date.now() - startTime;
-    console.error(`[${requestId}] Error in handleGetUsers (${errorDuration}ms):`, error);
+    logger.error('Error in handleGetUsers', { requestId, duration_ms: errorDuration, error: error.message });
     
     // Phase 4: Enhanced error response with more context
     const errorResponse = {

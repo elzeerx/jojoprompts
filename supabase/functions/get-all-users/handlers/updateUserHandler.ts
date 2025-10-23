@@ -1,8 +1,10 @@
-
+import { createEdgeLogger } from '../../_shared/logger.ts';
 // Enhanced updateUserHandler with comprehensive audit logging
 import { corsHeaders } from "../../_shared/standardImports.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
+
+const logger = createEdgeLogger('get-all-users:update-user');
 
 export async function handleUpdateUser(supabase: any, adminId: string, req: Request) {
   try {
@@ -114,7 +116,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
         .eq('id', userId);
 
       if (profileUpdateError) {
-        console.error('Error updating user profile:', profileUpdateError);
+        logger.error('Error updating user profile', { error: profileUpdateError });
         
         // Provide specific error messages for common profile update failures
         let errorMessage = 'Failed to update user profile';
@@ -168,7 +170,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
               client_user_agent: userAgent
             });
           } catch (auditError) {
-            console.error('Failed to log profile change:', auditError);
+            logger.error('Failed to log profile change', { error: auditError });
             // Don't fail the main operation if audit logging fails
           }
         }
@@ -188,7 +190,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       );
 
       if (statusUpdateError) {
-        console.error('Error updating account status:', statusUpdateError);
+        logger.error('Error updating account status', { error: statusUpdateError });
         return new Response(
           JSON.stringify({ 
             error: 'Failed to update account status', 
@@ -214,7 +216,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       );
 
       if (confirmationError) {
-        console.error('Error updating email confirmation:', confirmationError);
+        logger.error('Error updating email confirmation', { error: confirmationError });
         return new Response(
           JSON.stringify({ 
             error: 'Failed to update email confirmation status', 
@@ -241,7 +243,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       );
 
       if (statusUpdateError) {
-        console.error('Error updating account status:', statusUpdateError);
+        logger.error('Error updating account status (duplicate section)', { error: statusUpdateError });
         return new Response(
           JSON.stringify({ 
             error: 'Failed to update account status', 
@@ -267,7 +269,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       );
 
       if (confirmationError) {
-        console.error('Error updating email confirmation:', confirmationError);
+        logger.error('Error updating email confirmation (duplicate section)', { error: confirmationError });
         return new Response(
           JSON.stringify({ 
             error: 'Failed to update email confirmation status', 
@@ -289,7 +291,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       );
 
       if (emailUpdateError) {
-        console.error('Error updating user email:', emailUpdateError);
+        logger.error('Error updating user email', { error: emailUpdateError });
         
         // Provide specific error messages for email update failures
         let errorMessage = 'Failed to update user email';
@@ -340,7 +342,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
     );
     
   } catch (error) {
-    console.error('Error in handleUpdateUser:', error);
+    logger.error('Error in handleUpdateUser', { error });
     return new Response(
       JSON.stringify({ error: 'Failed to update user' }), 
       { 
