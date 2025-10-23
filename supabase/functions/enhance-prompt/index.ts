@@ -1,7 +1,9 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { createEdgeLogger } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('ENHANCE_PROMPT');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,26 +18,26 @@ serve(async (req) => {
 
   try {
     const { prompt_description, model_type = 'image', style_preferences = [] } = await req.json()
-    console.log("Received prompt enhancement request:", { prompt_description, model_type, style_preferences });
+    logger.info('Prompt enhancement request received', { model_type, hasStylePreferences: style_preferences.length > 0 });
     
     const authHeader = req.headers.get('Authorization')
-    console.log("Authorization header present:", !!authHeader);
+    logger.debug('Authorization header check', { present: !!authHeader });
     
     if (!authHeader) {
-      console.error("No authorization header provided");
+      logger.error('No authorization header provided');
       throw new Error('No authorization header')
     }
 
     // Extract JWT token from Authorization header
     const token = authHeader.replace('Bearer ', '')
-    console.log("JWT token extracted:", token.substring(0, 20) + '...');
+    logger.debug('JWT token extracted');
 
     // Get environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://fxkqgjakbyrxkmevkglv.supabase.co';
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseServiceRoleKey) {
-      console.error("SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
+      logger.error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set');
       throw new Error('Server configuration error');
     }
 
@@ -44,14 +46,13 @@ serve(async (req) => {
 
     // Validate JWT token using service role client
     const { data: { user }, error: userError } = await serviceRoleClient.auth.getUser(token);
-    console.log("User authentication check:", { 
+    logger.debug('User authentication check', { 
       userExists: !!user, 
-      userId: user?.id?.substring(0, 8) + '***',
-      error: userError?.message 
+      hasError: !!userError
     });
     
     if (userError || !user) {
-      console.error("Authentication failed:", userError?.message);
+      logger.error('Authentication failed', { error: userError?.message });
       throw new Error(`Authentication failed: ${userError?.message || 'No user found'}`)
     }
 
@@ -62,14 +63,14 @@ serve(async (req) => {
       .eq('id', user.id)
       .single();
     
-    console.log("User profile check:", { 
+    logger.debug('User profile check', { 
       profileExists: !!profile,
       role: profile?.role,
-      profileError: profileError?.message 
+      hasError: !!profileError
     });
     
     if (profileError || !profile) {
-      console.error("Profile check failed:", profileError?.message);
+      logger.error('Profile check failed', { error: profileError?.message });
       throw new Error(`Profile check failed: ${profileError?.message || 'No profile found'}`);
     }
     
@@ -78,7 +79,7 @@ serve(async (req) => {
     const userRole = profile.role?.toLowerCase();
     
     if (!allowedRoles.includes(userRole)) {
-      console.error("User lacks permissions for prompt enhancement", { userRole, allowedRoles });
+      logger.warn('User lacks permissions for prompt enhancement', { userRole });
       return new Response(
         JSON.stringify({ 
           error: 'Insufficient permissions. Only admins, prompters, and jadmins can enhance prompts.',
@@ -90,10 +91,10 @@ serve(async (req) => {
 
     // Validate OpenAI API key
     const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
-    console.log("OpenAI API key check:", { hasKey: !!openAiApiKey, keyLength: openAiApiKey?.length || 0 });
+    logger.debug('OpenAI API key check', { hasKey: !!openAiApiKey });
     
     if (!openAiApiKey || openAiApiKey.trim() === '') {
-      console.error("OPENAI_API_KEY environment variable is not set or empty");
+      logger.error('OPENAI_API_KEY environment variable is not set or empty');
       throw new Error('OpenAI API key is not configured. Please contact the administrator.');
     }
 
@@ -125,7 +126,7 @@ Keep the core subject but expand with rich visual details that would help AI gen
       userPrompt += `\n\nStyle preferences to consider: ${style_preferences.join(', ')}`;
     }
 
-    console.log("Calling OpenAI API for prompt enhancement...");
+    logger.info('Calling OpenAI API for prompt enhancement', { model_type });
     
     // Call OpenAI API
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -151,19 +152,19 @@ Keep the core subject but expand with rich visual details that would help AI gen
       }),
     })
     
-    console.log("OpenAI API response status:", openAiResponse.status);
+    logger.debug('OpenAI API response received', { status: openAiResponse.status });
 
     if (!openAiResponse.ok) {
       const errorDetails = await openAiResponse.text();
-      console.error("OpenAI API error:", openAiResponse.status, errorDetails);
+      logger.error('OpenAI API error', { status: openAiResponse.status, errorDetails });
       throw new Error(`OpenAI API error: ${openAiResponse.status} ${errorDetails}`);
     }
 
     const openAiData = await openAiResponse.json()
-    console.log("Received response from OpenAI");
+    logger.debug('OpenAI response parsed successfully');
     
     const enhancedPrompt = openAiData.choices[0].message.content.trim();
-    console.log("Enhanced prompt generated:", enhancedPrompt.substring(0, 100) + "...");
+    logger.info('Enhanced prompt generated', { promptLength: enhancedPrompt.length });
     
     return new Response(
       JSON.stringify({ 
@@ -173,7 +174,7 @@ Keep the core subject but expand with rich visual details that would help AI gen
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    console.error('Error:', error)
+    logger.error('Error in enhance-prompt function', { error: error.message })
     return new Response(
       JSON.stringify({ 
         error: error.message,

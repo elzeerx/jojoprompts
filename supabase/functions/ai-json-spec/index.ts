@@ -1,6 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { createEdgeLogger } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('AI_JSON_SPEC');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -72,7 +75,7 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    console.log('Generating JSON spec for:', { user_prompt, duration_sec });
+    logger.info('Generating JSON spec', { user_prompt, duration_sec });
 
     // The exact metaprompt JSON provided by the user
     const systemMessage = {
@@ -171,14 +174,14 @@ Please generate a complete JSON specification following the structure_fields out
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('OpenAI API error:', errorData);
+      logger.error('OpenAI API error', { status: response.status, statusText: response.statusText, errorData });
       throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     const content = data.choices[0].message.content;
 
-    console.log('Raw OpenAI response:', content);
+    logger.debug('Raw OpenAI response received', { contentLength: content?.length });
 
     // Clean JSON response (similar pattern from generate-metadata)
     function cleanJsonResponse(text: string): any {
@@ -198,7 +201,7 @@ Please generate a complete JSON specification following the structure_fields out
         try {
           return JSON.parse(cleanText);
         } catch (parseError) {
-          console.error('Failed to parse JSON:', parseError, 'Text:', cleanText);
+          logger.error('Failed to parse JSON from OpenAI', { error: parseError, textLength: cleanText?.length });
           throw new Error('Invalid JSON response from AI');
         }
       }
@@ -211,7 +214,7 @@ Please generate a complete JSON specification following the structure_fields out
     const missingFields = requiredFields.filter(field => !jsonSpec.hasOwnProperty(field));
     
     if (missingFields.length > 0) {
-      console.warn('Missing required fields:', missingFields);
+      logger.warn('Missing required fields in JSON spec', { missingFields });
     }
 
     // Ensure visual_rules has physics_weight
@@ -223,14 +226,14 @@ Please generate a complete JSON specification following the structure_fields out
       json_spec: jsonSpec
     };
 
-    console.log('Generated JSON spec result:', result);
+    logger.info('Generated JSON spec successfully', { duration_sec });
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in ai-json-spec function:', error);
+    logger.error('Error in ai-json-spec function', { error: error.message });
     return new Response(JSON.stringify({ 
       error: error.message || 'Internal server error' 
     }), {
