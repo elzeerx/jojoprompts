@@ -1,6 +1,8 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 import { safeDelete, logStep } from './dbUtils.ts';
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('get-all-users:userDeletion');
 
 /**
  * Enhanced error types for better error handling
@@ -96,17 +98,17 @@ export async function deleteUser(
   adminId: string,
   maxRetries = 3
 ) {
-  console.log(`[userDeletion] Admin ${adminId} is attempting to delete user ${userId}`);
+  logger.info('Admin attempting to delete user', { adminId, userId });
   
   const transactionStart = Date.now();
-  console.log(`[userDeletion] Transaction started for user ${userId} at ${new Date(transactionStart).toISOString()}`);
+  logger.info('Transaction started', { userId, startTime: new Date(transactionStart).toISOString() });
 
   let lastError: DeletionError | null = null;
 
   // Retry loop with exponential backoff
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`[userDeletion] Deletion attempt ${attempt}/${maxRetries} for user ${userId}`);
+      logger.info('Starting deletion attempt', { attempt, maxRetries, userId });
 
       // Enhanced validation before starting deletion
       const { data: userCheck, error: userCheckError } = await supabase
@@ -116,7 +118,7 @@ export async function deleteUser(
         .maybeSingle();
       
       if (userCheckError) {
-        console.error(`[userDeletion] Error checking user existence:`, userCheckError);
+        logger.error('Error checking user existence', { error: userCheckError.message, userId });
         throw userCheckError;
       }
         
@@ -126,7 +128,11 @@ export async function deleteUser(
         throw notFoundError;
       }
       
-      console.log(`[userDeletion] Validated user exists: ${userCheck.first_name} ${userCheck.last_name} (${userCheck.role})`);
+      logger.info('Validated user exists', { 
+        userId, 
+        userName: `${userCheck.first_name} ${userCheck.last_name}`,
+        role: userCheck.role 
+      });
       
       // Use the database function that bypasses RLS
       logStep('Deleting all user data via database function', userId);
@@ -134,34 +140,39 @@ export async function deleteUser(
         .rpc('admin_delete_user_data', { target_user_id: userId });
 
       if (deletionError) {
-        console.error(`[userDeletion] Database deletion RPC error:`, {
-          message: deletionError.message,
+        logger.error('Database deletion RPC error', {
+          error: deletionError.message,
           code: deletionError.code,
           details: deletionError.details,
-          hint: deletionError.hint
+          hint: deletionError.hint,
+          userId
         });
         throw deletionError;
       }
 
       if (!deletionResult?.success) {
-        console.error(`[userDeletion] Database deletion returned failure:`, deletionResult);
+        logger.error('Database deletion returned failure', { deletionResult, userId });
         const dbError = new Error(deletionResult?.error || 'Database deletion failed');
         (dbError as any).code = deletionResult?.error_code || 'DATABASE_ERROR';
         throw dbError;
       }
 
-      console.log(`[userDeletion] Database deletion completed in ${deletionResult.duration_ms}ms`);
-      console.log(`[userDeletion] Security logs preserved: ${deletionResult.security_logs_preserved || 0}`);
+      logger.info('Database deletion completed', { 
+        duration_ms: deletionResult.duration_ms,
+        securityLogsPreserved: deletionResult.security_logs_preserved || 0,
+        userId 
+      });
 
       // Finally delete from auth.users
       logStep('Deleting user from Auth', userId);
       const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
 
       if (deleteError) {
-        console.error(`[userDeletion] Auth deletion error:`, {
-          message: deleteError.message,
+        logger.error('Auth deletion error', {
+          error: deleteError.message,
           status: deleteError.status,
-          name: deleteError.name
+          name: deleteError.name,
+          userId
         });
         throw deleteError;
       }
@@ -171,7 +182,12 @@ export async function deleteUser(
       // Log transaction completion
       const transactionEnd = Date.now();
       const duration = transactionEnd - transactionStart;
-      console.log(`[userDeletion] ✅ Transaction completed successfully for user ${userId} in ${duration}ms after ${attempt} attempt(s)`);
+      logger.info('Transaction completed successfully', { 
+        userId, 
+        duration_ms: duration, 
+        attempts: attempt,
+        securityLogsPreserved: deletionResult.security_logs_preserved || 0
+      });
       
       return { 
         success: true, 
@@ -186,7 +202,9 @@ export async function deleteUser(
       // Categorize the error
       lastError = categorizeDeletionError(error);
       
-      console.error(`[userDeletion] Attempt ${attempt}/${maxRetries} failed:`, {
+      logger.error('Deletion attempt failed', {
+        attempt,
+        maxRetries,
         errorCode: lastError.code,
         errorMessage: lastError.message,
         isRetryable: lastError.isRetryable,
@@ -200,7 +218,13 @@ export async function deleteUser(
         const transactionEnd = Date.now();
         const duration = transactionEnd - transactionStart;
         
-        console.error(`[userDeletion] ❌ Transaction failed permanently for user ${userId} after ${duration}ms and ${attempt} attempt(s)`);
+        logger.error('Transaction failed permanently', { 
+          userId, 
+          duration_ms: duration, 
+          attempts: attempt,
+          errorCode: lastError.code,
+          errorMessage: lastError.message
+        });
         
         throw {
           success: false,
@@ -216,7 +240,7 @@ export async function deleteUser(
 
       // Calculate exponential backoff delay: 1s, 2s, 4s
       const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-      console.log(`[userDeletion] Retrying in ${delayMs}ms...`);
+      logger.info('Retrying deletion', { delayMs, attempt, userId });
       await sleep(delayMs);
     }
   }
