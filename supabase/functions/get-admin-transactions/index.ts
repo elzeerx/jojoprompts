@@ -1,5 +1,8 @@
 import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
 import { verifyAdmin } from "../_shared/adminAuth.ts";
+import { createEdgeLogger } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('GET_ADMIN_TRANSACTIONS');
 
 serve(async (req) => {
   // Handle CORS
@@ -10,7 +13,7 @@ serve(async (req) => {
   try {
     // Admin authentication using shared module
     const { supabase, userId } = await verifyAdmin(req);
-    console.log(`[AUTH SUCCESS] Admin verified: ${userId}`);
+    logger.info("Admin verified", { userId });
 
     // Parse query parameters
     const url = new URL(req.url)
@@ -54,7 +57,7 @@ serve(async (req) => {
     const { data: transactions, error: queryError, count } = await query
 
     if (queryError) {
-      console.error('Query error:', queryError)
+      logger.error('Transaction query failed', { error: queryError.message });
       return createErrorResponse('Failed to fetch transactions', 500);
     }
 
@@ -121,7 +124,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error in get-admin-transactions:', error)
+    logger.error('Transaction fetch error', { error: error.message });
     return createErrorResponse('Internal server error', 500);
   }
 })

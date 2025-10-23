@@ -1,5 +1,8 @@
 import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
 import { verifyAdmin } from "../_shared/adminAuth.ts";
+import { createEdgeLogger } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('GET_ALL_USERS');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -20,7 +23,7 @@ serve(async (req) => {
       
       const offset = (page - 1) * limit;
       
-      console.log(`[GET USERS] Fetching users - page: ${page}, limit: ${limit}, search: "${search}"`);
+      logger.info("Fetching users", { page, limit, search });
       
       // Build query
       let query = supabase
@@ -36,11 +39,11 @@ serve(async (req) => {
       const { data: profiles, error, count } = await query;
       
       if (error) {
-        console.error('[GET USERS ERROR]', error);
+        logger.error('User fetch error', { error: error.message });
         throw error;
       }
       
-      console.log(`[GET USERS SUCCESS] Found ${count} total users, returning ${profiles?.length || 0} users`);
+      logger.info("Users fetched successfully", { count, returned: profiles?.length || 0 });
       
       return createSuccessResponse({
         users: profiles,
@@ -54,7 +57,7 @@ serve(async (req) => {
       const body = await req.json();
       const { action, userId: targetUserId } = body;
       
-      console.log(`[POST ACTION] Action: ${action}, Target User: ${targetUserId}`);
+      logger.info("User action requested", { action, targetUserId });
       
       if (action === 'delete') {
         // Call the existing admin_delete_user_data function
@@ -63,11 +66,11 @@ serve(async (req) => {
         });
         
         if (error) {
-          console.error('[DELETE USER ERROR]', error);
+          logger.error('User deletion failed', { error: error.message, targetUserId });
           throw error;
         }
         
-        console.log('[DELETE USER SUCCESS]', data);
+        logger.info("User deleted successfully", { targetUserId });
         
         return createSuccessResponse(data);
       }
@@ -78,11 +81,10 @@ serve(async (req) => {
     return createErrorResponse('Method not allowed', 405);
 
   } catch (error: any) {
-    console.error('[ERROR] get-all-users function failed:', {
-      message: error.message,
-      timestamp: new Date().toISOString(),
+    logger.error('Function error', {
+      error: error.message,
       method: req.method,
-      hasAuthHeader: !!req.headers.get('authorization')
+      hasAuth: !!req.headers.get('authorization')
     });
 
     // Determine appropriate status code based on error
