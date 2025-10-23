@@ -25,7 +25,7 @@ export function useSubscriptionRedirect() {
     const excludedPaths = [
       '/pricing', '/checkout', '/auth', '/signup', '/login',
       '/prompts', '/examples', '/about', '/contact', '/faq', 
-      '/privacy', '/terms', '/search', '/prompt-generator'
+      '/privacy', '/terms', '/search'
     ];
     if (excludedPaths.some(path => currentPath.startsWith(path))) return;
     
