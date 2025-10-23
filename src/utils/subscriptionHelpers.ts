@@ -1,7 +1,9 @@
 /**
  * Subscription and Access Control Helpers
  * 
- * Utilities for checking user subscription tiers and feature access
+ * Utilities for checking user subscription tiers and feature access.
+ * These functions determine what features users can access based on their
+ * role and membership tier.
  */
 
 export interface UserProfile {
@@ -12,7 +14,22 @@ export interface UserProfile {
 
 /**
  * Check if user can download prompt attachments
- * Only admins, jadmins, and lifetime members have access
+ * 
+ * File download access is restricted to:
+ * - Admins (full access)
+ * - Jadmins (full access)
+ * - Lifetime members (premium feature)
+ * 
+ * @param profile - User profile object with role and membership_tier
+ * @returns true if user has download access, false otherwise
+ * 
+ * @example
+ * ```tsx
+ * const canDownload = canDownloadAttachments(userProfile);
+ * if (canDownload) {
+ *   // Show download button
+ * }
+ * ```
  */
 export function canDownloadAttachments(profile: UserProfile | null): boolean {
   if (!profile) return false;
@@ -28,6 +45,9 @@ export function canDownloadAttachments(profile: UserProfile | null): boolean {
 
 /**
  * Get message explaining attachment access
+ * 
+ * @param canAccess - Whether user has access to attachments
+ * @returns Descriptive message for UI display
  */
 export function getAttachmentAccessMessage(canAccess: boolean): string {
   if (canAccess) {
@@ -38,6 +58,14 @@ export function getAttachmentAccessMessage(canAccess: boolean): string {
 
 /**
  * Check if user can upload prompts
+ * 
+ * Upload access is granted to:
+ * - Admins
+ * - Jadmins
+ * - Prompters (content creators)
+ * 
+ * @param profile - User profile object
+ * @returns true if user can upload prompts
  */
 export function canUploadPrompts(profile: UserProfile | null): boolean {
   if (!profile) return false;
@@ -47,6 +75,14 @@ export function canUploadPrompts(profile: UserProfile | null): boolean {
 
 /**
  * Check if user can manage prompts (create, edit, delete)
+ * 
+ * Management access is granted to:
+ * - Admins (full access)
+ * - Jadmins (full access)
+ * - Prompters (own prompts only)
+ * 
+ * @param profile - User profile object
+ * @returns true if user has prompt management access
  */
 export function canManagePrompts(profile: UserProfile | null): boolean {
   if (!profile) return false;

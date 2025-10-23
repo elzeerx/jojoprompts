@@ -1,3 +1,28 @@
+/**
+ * SimplifiedPromptDialog - Unified Prompt Creation and Editing Component
+ * 
+ * A streamlined dialog for creating and editing prompts with all essential features
+ * including title, prompt text, category selection, AI-generated tags, thumbnail upload,
+ * translation support, and file attachments.
+ * 
+ * @example
+ * ```tsx
+ * // Create new prompt
+ * <SimplifiedPromptDialog
+ *   open={isOpen}
+ *   onOpenChange={setIsOpen}
+ *   onSuccess={() => console.log('Prompt created')}
+ * />
+ * 
+ * // Edit existing prompt
+ * <SimplifiedPromptDialog
+ *   open={isOpen}
+ *   onOpenChange={setIsOpen}
+ *   editingPrompt={prompt}
+ *   onSuccess={() => console.log('Prompt updated')}
+ * />
+ * ```
+ */
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -17,10 +42,17 @@ import { CategorySelector } from "@/components/prompt-generator/CategorySelector
 import { Badge } from "@/components/ui/badge";
 import { type PromptRow } from "@/types";
 
+/**
+ * Props for SimplifiedPromptDialog component
+ */
 interface SimplifiedPromptDialogProps {
+  /** Controls dialog visibility */
   open: boolean;
+  /** Callback to control dialog open/close state */
   onOpenChange: (open: boolean) => void;
+  /** Optional prompt data for edit mode */
   editingPrompt?: PromptRow | null;
+  /** Callback fired on successful creation/update */
   onSuccess?: () => void;
 }
 
@@ -98,6 +130,10 @@ export function SimplifiedPromptDialog({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  /**
+   * Handle file selection with validation
+   * Validates file size (max 20MB) and total count (max 10 files)
+   */
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     
@@ -139,6 +175,13 @@ export function SimplifiedPromptDialog({
     }));
   };
 
+  /**
+   * Upload file attachments to Supabase storage
+   * Files are organized by prompt ID in the prompt-attachments bucket
+   * 
+   * @param promptId - The ID of the prompt to associate files with
+   * @returns Array of uploaded file paths
+   */
   const uploadAttachments = async (promptId: string): Promise<string[]> => {
     if (formData.attachedFiles.length === 0) return [];
 
@@ -175,7 +218,14 @@ export function SimplifiedPromptDialog({
     return uploadedPaths;
   };
 
+  /**
+   * Validate form data before submission
+   * Checks for required fields and length constraints
+   * 
+   * @returns true if validation passes, false otherwise
+   */
   const validateForm = (): boolean => {
+    // Title validation
     if (!formData.title.trim()) {
       toast({
         variant: "destructive",
@@ -194,6 +244,7 @@ export function SimplifiedPromptDialog({
       return false;
     }
 
+    // Prompt text validation
     if (!formData.promptText.trim()) {
       toast({
         variant: "destructive",
@@ -212,6 +263,7 @@ export function SimplifiedPromptDialog({
       return false;
     }
 
+    // Category validation
     if (!formData.category) {
       toast({
         variant: "destructive",
