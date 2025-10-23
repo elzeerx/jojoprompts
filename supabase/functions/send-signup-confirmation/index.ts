@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('send-signup-confirmation');
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +27,7 @@ serve(async (req: Request) => {
   try {
     const { email, firstName, lastName, userId, redirectUrl }: SignupConfirmationRequest = await req.json();
 
-    console.log(`Sending signup confirmation email to: ${email}`);
+    logger.info('Sending signup confirmation email', { email, userId });
 
     // Create admin client to generate confirmation link
     const supabaseAdmin = createClient(
@@ -40,7 +43,7 @@ serve(async (req: Request) => {
     const url = new URL(baseRedirectUrl);
     url.searchParams.set('from_signup', 'true');
     
-    console.log('Magic link redirect URL:', { 
+    logger.debug('Magic link redirect URL', { 
       original: baseRedirectUrl, 
       final: url.toString(),
       hasPlanId: url.searchParams.has('plan_id'),
@@ -56,12 +59,12 @@ serve(async (req: Request) => {
     });
 
     if (linkError || !linkData?.properties?.action_link) {
-      console.error("Error generating confirmation link:", linkError);
+      logger.error('Error generating confirmation link', { error: linkError?.message, email });
       throw new Error(`Failed to generate confirmation link: ${linkError?.message || 'No action link returned'}`);
     }
 
     const confirmationLink = linkData.properties.action_link;
-    console.log(`Generated confirmation link for ${email}`);
+    logger.info('Generated confirmation link', { email });
 
     const userName = `${firstName} ${lastName}`.trim() || email.split('@')[0];
 
@@ -78,11 +81,10 @@ serve(async (req: Request) => {
       }
     };
 
-    console.log('Sending email with payload:', { 
+    logger.debug('Sending email with payload', { 
       to: emailPayload.to, 
       template: emailPayload.template, 
       email_type: emailPayload.email_type,
-      userName: userName,
       hasConfirmationLink: !!emailPayload.data.confirmationLink
     });
 
@@ -90,15 +92,14 @@ serve(async (req: Request) => {
       body: emailPayload
     });
 
-    console.log('Email function raw response:', { emailData, emailError });
+    logger.debug('Email function response', { emailData, hasError: !!emailError });
 
     if (emailError) {
-      console.error("Error sending confirmation email:", emailError);
+      logger.error('Error sending confirmation email', { error: emailError.message, email });
       throw new Error(`Failed to send confirmation email: ${emailError.message || 'Unknown error from send-email function'}`);
     }
 
-    console.log("Email function response:", emailData);
-    console.log(`Successfully sent confirmation email to ${email}`);
+    logger.info('Confirmation email sent successfully', { email, emailData });
 
     return new Response(
       JSON.stringify({ 
@@ -112,7 +113,7 @@ serve(async (req: Request) => {
     );
 
   } catch (error: any) {
-    console.error("Error in send-signup-confirmation function:", error);
+    logger.error('Error in send-signup-confirmation', { error: error.message });
     
     return new Response(
       JSON.stringify({ 
