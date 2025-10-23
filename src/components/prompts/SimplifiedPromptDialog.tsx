@@ -108,7 +108,13 @@ export function SimplifiedPromptDialog({
         category: editingPrompt.metadata?.category || "",
         tags: editingPrompt.metadata?.tags || [],
         thumbnail: editingPrompt.image_path || null,
-        translations: editingPrompt.metadata?.translations || {},
+        translations: {
+          arabic: {
+            title: editingPrompt.title_ar || "",
+            prompt_text: editingPrompt.prompt_text_ar || ""
+          },
+          ...editingPrompt.metadata?.translations
+        },
         attachedFiles: []
       });
     } else {
@@ -304,15 +310,16 @@ export function SimplifiedPromptDialog({
         attached_files: []
       };
 
-      // Create or update prompt
+      // Create or update prompt with correct schema
       const promptData: any = {
         title: formData.title,
+        title_ar: formData.translations.arabic?.title || null,
         prompt_text: formData.promptText,
-        category_id: categoryId,
+        prompt_text_ar: formData.translations.arabic?.prompt_text || null,
+        prompt_type: 'text',
         image_path: formData.thumbnail,
         metadata,
-        user_id: user.id,
-        prompt_type: 'text'
+        user_id: user.id
       };
 
       let promptId: string;

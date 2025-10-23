@@ -16,7 +16,9 @@ export interface Prompt {
   id: string;
   user_id: string;
   title: string;
+  title_ar?: string | null;
   prompt_text: string;
+  prompt_text_ar?: string | null;
   image_path: string | null;
   image_url?: string | null;
   default_image_path?: string | null;
@@ -57,7 +59,9 @@ export interface PromptRow {
   id: string;
   user_id: string;
   title: string;
+  title_ar?: string | null;
   prompt_text: string;
+  prompt_text_ar?: string | null;
   image_path: string | null;
   image_url?: string | null;
   default_image_path?: string | null;
