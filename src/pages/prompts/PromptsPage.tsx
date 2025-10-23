@@ -7,6 +7,9 @@ import { RefactoredPromptsContent } from "./components/RefactoredPromptsContent"
 import { usePromptFilters } from "@/hooks/usePromptFilters";
 import { PromptService } from "@/services/PromptService";
 import type { PromptRow } from "@/types/prompts";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PROMPTS_PAGE');
 
 export default function PromptsPage() {
   const { loading: authLoading, session } = useAuth();
@@ -45,9 +48,9 @@ export default function PromptsPage() {
       } else {
         setPrompts(result.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       setError('Failed to load prompts');
-      console.error('Error loading prompts:', err);
+      logger.error('Error loading prompts', { error: err.message || err });
     } finally {
       setIsLoading(false);
     }

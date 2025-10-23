@@ -9,6 +9,9 @@ import { Prompt } from "@/types";
 import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, hasFeatureInPlan } from "@/utils/subscription";
 import { PromptService } from "@/services/PromptService";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('CHATGPT_PROMPTS');
 
 export default function ChatGPTPromptsPage() {
   const { user, session, isAdmin } = useAuth();
@@ -41,13 +44,13 @@ export default function ChatGPTPromptsPage() {
             .limit(1);
           
           if (error && error.code !== "PGRST116") {
-            console.error("Error checking subscription:", error);
+            logger.error('Error checking subscription', { error: error.message });
           }
           
           let tier = 'none';
           let hasAccess = false;
           
-          console.log('Raw subscription data:', subscriptions);
+          logger.debug('Subscription data loaded', { count: subscriptions?.length || 0 });
           
           if (subscriptions && subscriptions.length > 0) {
             const subscription = subscriptions[0];
@@ -55,9 +58,8 @@ export default function ChatGPTPromptsPage() {
             const planFeatures = subscription.subscription_plans?.features;
             tier = getSubscriptionTier(planName);
             
-            console.log('ChatGPT access check:', { 
+            logger.debug('Access check', { 
               planName, 
-              planFeatures, 
               tier,
               userId: user.id,
               subscriptionCount: subscriptions.length
@@ -66,9 +68,9 @@ export default function ChatGPTPromptsPage() {
             // Check if user's plan includes ChatGPT prompts feature
             hasAccess = hasFeatureInPlan(planFeatures, 'ChatGPT prompts');
             
-            console.log('ChatGPT access result:', { hasAccess, featureCheck: planFeatures });
+            logger.debug('Access result', { hasAccess });
           } else {
-            console.log('No active subscriptions found for user:', user.id);
+            logger.debug('No active subscriptions', { userId: user.id });
           }
           
           setUserTier(tier);
@@ -94,10 +96,10 @@ export default function ChatGPTPromptsPage() {
           
           setPrompts(transformedData);
         } else {
-          console.error("Error fetching prompts:", result.error);
+          logger.error('Error fetching prompts', { error: result.error });
         }
-      } catch (err) {
-        console.error("Error checking access:", err);
+      } catch (err: any) {
+        logger.error('Error checking access', { error: err.message || err });
       } finally {
         setLoading(false);
       }

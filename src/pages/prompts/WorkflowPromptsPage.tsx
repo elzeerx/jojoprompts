@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Prompt } from "@/types";
 import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, isCategoryLocked } from "@/utils/subscription";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('WORKFLOW_PROMPTS');
 
 export default function WorkflowPromptsPage() {
   const { user, session, isAdmin } = useAuth();
@@ -40,7 +43,7 @@ export default function WorkflowPromptsPage() {
             .maybeSingle();
           
           if (error && error.code !== "PGRST116") {
-            console.error("Error checking subscription:", error);
+            logger.error('Error checking subscription', { error: error.message });
           }
           
           let tier = 'none';
@@ -64,7 +67,7 @@ export default function WorkflowPromptsPage() {
           .order("created_at", { ascending: false });
         
         if (promptsError) {
-          console.error("Error fetching prompts:", promptsError);
+          logger.error('Error fetching prompts', { error: promptsError.message });
         } else if (data) {
           // Transform data to ensure it matches the Prompt type
           const transformedData: Prompt[] = data.map(item => ({
@@ -81,8 +84,8 @@ export default function WorkflowPromptsPage() {
           
           setPrompts(transformedData);
         }
-      } catch (err) {
-        console.error("Error checking access:", err);
+      } catch (err: any) {
+        logger.error('Error checking access', { error: err.message || err });
       } finally {
         setLoading(false);
       }
