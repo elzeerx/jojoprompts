@@ -1,7 +1,9 @@
-
+import { createEdgeLogger } from '../../_shared/logger.ts';
 import { generatePermissions } from './permissionManager.ts';
 import { performSecurityChecks } from './securityChecks.ts';
 import { logSecurityEvent } from '../../shared/securityLogger.ts';
+
+const logger = createEdgeLogger('get-all-users:auth:profile-verifier');
 
 export interface ProfileVerificationResult {
   profile: any;
@@ -26,8 +28,8 @@ export async function verifyProfile(
       .maybeSingle();
 
     if (profileError) {
-      console.error('Error fetching user profile:', profileError.message);
-      return { 
+      logger.error('Error fetching user profile', { error: profileError.message });
+      return {
         profile: null, 
         permissions: [], 
         isValid: false, 
@@ -36,8 +38,8 @@ export async function verifyProfile(
     }
 
     if (!profile) {
-      console.error(`No profile found for user ${user.id}`);
-      return { 
+      logger.error('No profile found for user', { userId: user.id });
+      return {
         profile: null, 
         permissions: [], 
         isValid: false, 
@@ -50,11 +52,13 @@ export async function verifyProfile(
     const userRole = profile.role?.toLowerCase();
     
     if (!adminRoles.includes(userRole)) {
-      const errorDetail = `User ${user.id} (${user.email}) has role '${profile.role}', admin/jadmin required`;
-      console.error(`[AUTH FAILURE] ${errorDetail}`);
-      console.error(`[AUTH FAILURE] Required roles: ${adminRoles.join(', ')}`);
-      console.error(`[AUTH FAILURE] User role: ${userRole}`);
-      console.error(`[AUTH FAILURE] Profile data:`, JSON.stringify(profile));
+      logger.error('Auth failure - insufficient role', {
+        userId: user.id,
+        email: user.email,
+        actualRole: profile.role,
+        requiredRoles: adminRoles.join(', '),
+        profile: JSON.stringify(profile)
+      });
       
       // Log potential privilege escalation attempt
       await logSecurityEvent(serviceClient, {
@@ -85,8 +89,8 @@ export async function verifyProfile(
 
     return { profile, permissions, isValid: true };
   } catch (error: any) {
-    console.error('Profile verification error:', error.message);
-    return { 
+    logger.error('Profile verification error', { error: error.message });
+    return {
       profile: null, 
       permissions: [], 
       isValid: false, 

@@ -1,3 +1,6 @@
+import { createEdgeLogger } from '../../_shared/logger.ts';
+
+const logger = createEdgeLogger('get-all-users:auth:header-parser');
 
 export interface AuthHeaderResult {
   token: string;
@@ -12,7 +15,7 @@ export function parseAuthHeader(req: Request): AuthHeaderResult {
   const authHeader = req.headers.get('Authorization');
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.error('Missing or invalid Authorization header format');
+    logger.error('Missing or invalid Authorization header format');
     return {
       token: '',
       isValid: false,
@@ -23,7 +26,7 @@ export function parseAuthHeader(req: Request): AuthHeaderResult {
   const token = authHeader.slice(7); // Remove 'Bearer ' prefix
   
   if (!token || token.length < 10) {
-    console.error('Invalid token format or length');
+    logger.error('Invalid token format or length');
     return {
       token: '',
       isValid: false,

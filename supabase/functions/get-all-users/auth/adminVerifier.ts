@@ -1,11 +1,13 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 import type { AuthContext } from '../../_shared/adminAuth.ts';
 import { logSecurityEvent } from '../../_shared/adminAuth.ts';
+import { createEdgeLogger } from '../../_shared/logger.ts';
 import { validateEnvironment } from './environmentValidator.ts';
 import { parseAuthHeader } from './authHeaderParser.ts';
 import { validateToken } from './tokenValidator.ts';
 import { verifyProfile } from './profileVerifier.ts';
+
+const logger = createEdgeLogger('get-all-users:auth:admin-verifier');
 
 /**
  * Enhanced auth logic for admin functions with comprehensive security:
@@ -53,7 +55,7 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
     const { profile, permissions } = profileResult;
 
     // Step 6: Log successful authentication
-    console.log(`Successfully authenticated admin user ${user.id} with role ${profile.role}`);
+    logger.info('Successfully authenticated admin user', { userId: user.id, role: profile.role });
     
     await logSecurityEvent(serviceClient, {
       user_id: user.id,
@@ -75,7 +77,7 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
 
   } catch (error: any) {
     // Enhanced error logging with security context
-    console.error('[AUTH ERROR] Authentication failed:', {
+    logger.error('Authentication failed', {
       message: error.message,
       stack: error.stack?.substring(0, 500),
       timestamp: new Date().toISOString(),

@@ -1,3 +1,6 @@
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('verify-paypal-payment:email-logger');
 
 // Email logging utility for tracking email attempts
 export async function logEmailAttempt(
@@ -24,11 +27,11 @@ export async function logEmailAttempt(
       .insert(logData);
 
     if (error) {
-      console.error('[EMAIL LOG] Failed to log email attempt:', error);
+      logger.error('Failed to log email attempt', { error });
     } else {
-      console.log('[EMAIL LOG] Email attempt logged successfully');
+      logger.debug('Email attempt logged successfully');
     }
   } catch (error) {
-    console.error('[EMAIL LOG] Exception logging email attempt:', error);
+    logger.error('Exception logging email attempt', { error });
   }
 }

@@ -1,5 +1,7 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('verify-paypal-payment:db-operations');
 
 export function makeSupabaseClient() {
   return createClient(
@@ -37,14 +39,14 @@ export async function getTransaction(
   }
   
   const result = await query.limit(1).maybeSingle();
-  console.log('Transaction lookup result:', { orderId, paymentId, found: !!result.data });
+  logger.info('Transaction lookup result', { orderId, paymentId, found: !!result.data });
   return result;
 }
 
 // Enhanced subscription creation with retry logic and proper error handling
 export async function insertUserSubscriptionIfMissing(supabaseClient: any, { user_id, plan_id, payment_id, transaction_id }: any) {
   try {
-    console.log('Checking for existing subscription:', { user_id, plan_id, payment_id });
+    logger.info('Checking for existing subscription', { user_id, plan_id, payment_id });
     
     // Check if subscription already exists by payment_id or transaction_id
     const { data: existingSubs } = await supabaseClient
@@ -54,7 +56,7 @@ export async function insertUserSubscriptionIfMissing(supabaseClient: any, { use
       .eq('status', 'active');
 
     if (existingSubs && existingSubs.length > 0) {
-      console.log('Subscription already exists:', existingSubs[0]);
+      logger.info('Subscription already exists', { subscriptionId: existingSubs[0].id });
       return { data: existingSubs[0], error: null };
     }
 
@@ -69,7 +71,7 @@ export async function insertUserSubscriptionIfMissing(supabaseClient: any, { use
       .limit(1);
 
     if (userPlanSubs && userPlanSubs.length > 0) {
-      console.log('User already has active subscription for this plan:', userPlanSubs[0]);
+      logger.info('User already has active subscription for this plan', { subscriptionId: userPlanSubs[0].id });
       // Update existing subscription with new payment info instead of creating duplicate
       const { data: updatedSub, error: updateError } = await supabaseClient
         .from('user_subscriptions')
@@ -100,7 +102,7 @@ export async function insertUserSubscriptionIfMissing(supabaseClient: any, { use
     }
 
     // Create new subscription
-    console.log('Creating new subscription:', { user_id, plan_id, payment_id, transaction_id, is_lifetime: planData?.is_lifetime });
+    logger.info('Creating new subscription', { user_id, plan_id, payment_id, transaction_id, is_lifetime: planData?.is_lifetime });
     const subscriptionData = {
       user_id,
       plan_id,
@@ -119,15 +121,15 @@ export async function insertUserSubscriptionIfMissing(supabaseClient: any, { use
       .single();
 
     if (insertError) {
-      console.error('Failed to create subscription:', insertError);
+      logger.error('Failed to create subscription', { error: insertError });
       return { data: null, error: insertError };
     }
 
-    console.log('Successfully created subscription:', newSub);
+    logger.info('Successfully created subscription', { subscriptionId: newSub.id });
     return { data: newSub, error: null };
 
   } catch (error) {
-    console.error('Subscription creation failed with exception:', error);
+    logger.error('Subscription creation failed with exception', { error });
     return { data: null, error };
   }
 }
@@ -135,7 +137,7 @@ export async function insertUserSubscriptionIfMissing(supabaseClient: any, { use
 // Enhanced transaction completion with proper subscription handling
 export async function updateTransactionCompleted(supabaseClient: any, { id, paypal_payment_id }: { id: string, paypal_payment_id: string }) {
   try {
-    console.log('Updating transaction as completed:', { id, paypal_payment_id });
+    logger.info('Updating transaction as completed', { id, paypal_payment_id });
     
     const { data: transaction, error: updateError } = await supabaseClient
       .from('transactions')
@@ -150,7 +152,7 @@ export async function updateTransactionCompleted(supabaseClient: any, { id, payp
       .single();
 
     if (updateError) {
-      console.error('Failed to update transaction:', updateError);
+      logger.error('Failed to update transaction', { error: updateError });
       return { data: null, error: updateError };
     }
 
@@ -164,7 +166,7 @@ export async function updateTransactionCompleted(supabaseClient: any, { id, payp
       });
 
       if (subscriptionResult.error) {
-        console.error('Failed to create subscription for completed transaction:', subscriptionResult.error);
+        logger.error('Failed to create subscription for completed transaction', { error: subscriptionResult.error });
         // Don't fail the transaction update if subscription creation fails
         // The transaction is still marked as completed
       }
@@ -172,7 +174,7 @@ export async function updateTransactionCompleted(supabaseClient: any, { id, payp
 
     return { data: transaction, error: null };
   } catch (error) {
-    console.error('Transaction completion failed:', error);
+    logger.error('Transaction completion failed', { error });
     return { data: null, error };
   }
 }
@@ -180,7 +182,7 @@ export async function updateTransactionCompleted(supabaseClient: any, { id, payp
 // New function to find and recover orphaned completed transactions
 export async function findAndRecoverOrphanedTransactions(supabaseClient: any, { user_id, plan_id }: { user_id?: string, plan_id?: string }) {
   try {
-    console.log('Looking for orphaned transactions to recover:', { user_id, plan_id });
+    logger.info('Looking for orphaned transactions to recover', { user_id, plan_id });
     
     let query = supabaseClient
       .from('transactions')
@@ -200,7 +202,7 @@ export async function findAndRecoverOrphanedTransactions(supabaseClient: any, { 
       return { recovered: 0, errors: [] };
     }
 
-    console.log(`Found ${orphanedTransactions.length} orphaned transactions`);
+    logger.info('Found orphaned transactions', { count: orphanedTransactions.length });
     
     const recoveryResults = [];
     for (const transaction of orphanedTransactions) {
@@ -221,11 +223,11 @@ export async function findAndRecoverOrphanedTransactions(supabaseClient: any, { 
     const successCount = recoveryResults.filter(r => r.success).length;
     const errors = recoveryResults.filter(r => !r.success).map(r => r.error);
 
-    console.log(`Recovered ${successCount} orphaned transactions`);
+    logger.info('Recovered orphaned transactions', { successCount });
     return { recovered: successCount, errors };
 
   } catch (error) {
-    console.error('Error during orphaned transaction recovery:', error);
+    logger.error('Error during orphaned transaction recovery', { error });
     return { recovered: 0, errors: [error] };
   }
 }
