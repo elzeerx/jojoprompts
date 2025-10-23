@@ -3,6 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserSubscription } from "./useUserSubscription";
 import { isPrivilegedUser, isRegularUser } from "@/utils/auth";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SUBSCRIPTION_REDIRECT');
 
 export function useSubscriptionRedirect() {
   const navigate = useNavigate();
@@ -34,7 +37,7 @@ export function useSubscriptionRedirect() {
     const isPremiumRoute = premiumPaths.some(path => currentPath.startsWith(path));
     
     if (isRegularUser(userRole) && isPremiumRoute) {
-      console.log('Redirecting user without subscription from premium route to pricing page');
+      logger.info('Redirecting user without subscription', { path: currentPath, userRole });
       navigate('/pricing', { replace: true });
     }
   }, [authLoading, subscriptionLoading, user, userRole, userSubscription, location.pathname, navigate]);

@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('USER_STATS');
 
 export function useUserStats(userId?: string) {
   const [favoriteCount, setFavoriteCount] = useState(0);
@@ -37,7 +40,7 @@ export function useUserStats(userId?: string) {
       setFavoriteCount(favCount || 0);
       setPromptCount(promptsCount || 0);
     } catch (error) {
-      console.error("Error fetching user stats:", error);
+      logger.error('Failed to fetch user stats', { error, userId });
       setError("Failed to load statistics");
     } finally {
       setIsLoading(false);

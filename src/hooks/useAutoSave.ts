@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('AUTO_SAVE');
 
 interface FormData {
   title: string;
@@ -38,7 +41,7 @@ export function useAutoSave({ formData, isValid, onSave }: UseAutoSaveProps) {
           description: "Your prompt has been automatically saved.",
         });
       } catch (error) {
-        console.error("Auto-save failed:", error);
+        logger.error('Auto-save failed', { error });
       } finally {
         setIsSaving(false);
       }
@@ -59,9 +62,9 @@ export function useAutoSave({ formData, isValid, onSave }: UseAutoSaveProps) {
       try {
         const parsed = JSON.parse(savedData);
         // This would be handled by the parent component
-        console.log("Loaded draft:", parsed);
+        logger.debug('Loaded draft', { draft: parsed });
       } catch (error) {
-        console.error("Failed to load draft:", error);
+        logger.error('Failed to load draft', { error });
       }
     }
   }, []);
@@ -92,7 +95,7 @@ export function useAutoSave({ formData, isValid, onSave }: UseAutoSaveProps) {
         description: "Your prompt has been saved successfully.",
       });
     } catch (error) {
-      console.error("Manual save failed:", error);
+      logger.error('Manual save failed', { error });
       toast({
         variant: "destructive",
         title: "Save failed",

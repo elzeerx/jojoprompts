@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ExtendedUserProfile } from "@/types/user";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('ADMIN_USERS');
 
 // AdminUser extends ExtendedUserProfile with subscription data
 export interface AdminUser extends ExtendedUserProfile {
@@ -60,7 +63,7 @@ export function useAdminUsers() {
 
       setUsers(transformedUsers);
     } catch (err: any) {
-      console.error('[ADMIN_USERS_ERROR]', err);
+      logger.error('Failed to load users', { error: err.message || err });
       setError(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
