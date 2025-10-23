@@ -15,15 +15,8 @@ export { PlatformSelector } from './PlatformSelector';
 export { PlatformSelectorDialog } from './PlatformSelectorDialog';
 export { PlatformBadge } from './PlatformBadge';
 
-// Wizard components
-export { PromptWizard } from './PromptWizard';
-export { EditPromptButton } from './EditPromptButton';
-export { StepIndicator } from './StepIndicator';
-export { PromptWizardDialog } from './PromptWizardDialog';
-export { PromptPreview } from './PromptPreview';
-export { PromptWizardSkeleton } from './PromptWizardSkeleton';
-export { PromptPreviewCard } from './PromptPreviewCard';
-export { PromptSummary } from './PromptSummary';
+// Simplified prompt dialog (new system)
+export { SimplifiedPromptDialog } from './SimplifiedPromptDialog';
 export { LivePreviewSidebar } from './LivePreviewSidebar';
 export { PromptErrorBoundary } from './PromptErrorBoundary';
 export { SubmissionOverlay } from './SubmissionOverlay';
@@ -41,13 +34,6 @@ export type { PlatformCardProps } from './PlatformCard';
 export type { PlatformSelectorProps } from './PlatformSelector';
 export type { PlatformSelectorDialogProps } from './PlatformSelectorDialog';
 export type { PlatformBadgeProps } from './PlatformBadge';
-export type { PromptWizardProps } from './PromptWizard';
-export type { EditPromptButtonProps } from './EditPromptButton';
-export type { StepIndicatorProps } from './StepIndicator';
-export type { PromptWizardDialogProps } from './PromptWizardDialog';
-export type { PromptPreviewProps } from './PromptPreview';
-export type { PromptPreviewCardProps } from './PromptPreviewCard';
-export type { PromptSummaryProps } from './PromptSummary';
 export type { LivePreviewSidebarProps } from './LivePreviewSidebar';
 export type { SubmissionOverlayProps } from './SubmissionOverlay';
 export type { PromptSuccessDialogProps } from './PromptSuccessDialog';
