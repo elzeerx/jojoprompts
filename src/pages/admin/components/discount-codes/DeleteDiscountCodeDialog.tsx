@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('DELETE_DISCOUNT_CODE');
 
 interface DiscountCode {
   id: string;
@@ -42,7 +46,8 @@ export function DeleteDiscountCodeDialog({ open, onClose, onSuccess, discountCod
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error("Error deleting discount code:", error);
+      const appError = handleError(error, { component: 'DeleteDiscountCodeDialog', action: 'deleteCode' });
+      logger.error('Error deleting discount code', { error: appError, codeId: discountCode.id });
       toast({
         title: "Error",
         description: "Failed to delete discount code",

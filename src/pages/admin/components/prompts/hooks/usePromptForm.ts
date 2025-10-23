@@ -2,6 +2,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { type PromptRow } from "@/types";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PROMPT_FORM');
 
 interface MediaFile {
   type: 'image' | 'video' | 'audio';
@@ -46,7 +49,7 @@ interface FormData {
 export function usePromptForm(editingPrompt?: PromptRow | null) {
   const [formData, setFormData] = useState<FormData>(() => {
     if (editingPrompt) {
-      console.log("usePromptForm - Initial form data from editing prompt:", editingPrompt.metadata);
+      logger.debug('Initial form data from editing prompt', { metadata: editingPrompt.metadata });
       return {
         title: editingPrompt.title || "",
         promptText: editingPrompt.prompt_text || "",
@@ -90,7 +93,7 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
   // Handle editingPrompt changes - this fixes the double-click edit issue
   useEffect(() => {
     if (editingPrompt) {
-      console.log("usePromptForm - Editing prompt changed, updating form data:", editingPrompt.metadata);
+      logger.debug('Editing prompt changed, updating form data', { metadata: editingPrompt.metadata });
       setFormData({
         title: editingPrompt.title || "",
         promptText: editingPrompt.prompt_text || "",
@@ -113,7 +116,7 @@ export function usePromptForm(editingPrompt?: PromptRow | null) {
   }, [editingPrompt]);
 
   const resetForm = useCallback(() => {
-    console.log("usePromptForm - Resetting form");
+    logger.debug('Resetting form');
     setFormData({
       title: "",
       promptText: "",

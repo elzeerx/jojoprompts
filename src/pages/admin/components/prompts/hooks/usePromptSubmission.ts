@@ -6,6 +6,10 @@ import { toast } from "@/hooks/use-toast";
 import { uploadFiles } from "./useFileUpload";
 import { IMAGE_BUCKET, FILE_BUCKET } from "@/utils/buckets";
 import { type PromptRow } from "@/types";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('PROMPT_SUBMISSION');
 
 interface UsePromptSubmissionProps {
   onSuccess: () => void;
@@ -102,7 +106,8 @@ export function usePromptSubmission({
             description: `Successfully uploaded ${workflowFiles.length} workflow file(s)`
           });
         } catch (uploadError) {
-          console.error("Workflow file upload error:", uploadError);
+          const appError = handleError(uploadError, { component: 'usePromptSubmission', action: 'uploadWorkflowFiles' });
+          logger.error('Workflow file upload error', { error: appError });
           toast({
             title: "Upload Failed",
             description: `Failed to upload workflow files: ${uploadError.message}. Please ensure you have proper permissions.`,
@@ -164,7 +169,8 @@ export function usePromptSubmission({
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error("usePromptSubmission - Error saving prompt:", error);
+      const appError = handleError(error, { component: 'usePromptSubmission', action: 'savePrompt' });
+      logger.error('Error saving prompt', { error: appError });
       const errorMessage = error.message || "Failed to save prompt";
       toast({
         title: "Error",

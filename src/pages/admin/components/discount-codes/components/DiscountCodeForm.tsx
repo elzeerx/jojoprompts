@@ -5,6 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { DiscountCodeFormFields } from "./DiscountCodeFormFields";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('DISCOUNT_CODE_FORM');
 
 interface DiscountCode {
   id: string;
@@ -161,7 +165,8 @@ export function DiscountCodeForm({ onSuccess, onCancel, initialData, isEditing =
 
       onSuccess();
     } catch (error: any) {
-      console.error("Error creating discount code:", error);
+      const appError = handleError(error, { component: 'DiscountCodeForm', action: isEditing ? 'updateCode' : 'createCode' });
+      logger.error(`Error ${isEditing ? 'updating' : 'creating'} discount code`, { error: appError });
       toast({
         title: "Error",
         description: error.message.includes('duplicate') ? 

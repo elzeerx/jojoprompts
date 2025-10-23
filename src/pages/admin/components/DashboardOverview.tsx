@@ -11,6 +11,10 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('DASHBOARD_OVERVIEW');
 
 interface Stats {
   prompts: number;
@@ -49,7 +53,7 @@ export default function DashboardOverview() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'prompts' },
         () => {
-          console.log('Prompts table changed, refreshing stats');
+          logger.info('Prompts table changed, refreshing stats');
           fetchStats();
           fetchRecentActivity();
         }
@@ -62,7 +66,7 @@ export default function DashboardOverview() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
         () => {
-          console.log('Profiles table changed, refreshing stats');
+          logger.info('Profiles table changed, refreshing stats');
           fetchStats();
         }
       )
@@ -92,10 +96,11 @@ export default function DashboardOverview() {
         .select("id", { count: 'exact', head: true });
       
       if (usersError) {
-        console.error("Error fetching users count:", usersError);
+        const appError = handleError(usersError, { component: 'DashboardOverview', action: 'fetchUsersCount' });
+        logger.error('Error fetching users count', { error: appError });
       }
       
-      console.log('Users count from profiles:', usersCount);
+      logger.debug('Users count from profiles', { usersCount });
       
       setStats({
         prompts: prompts?.length ?? 0,
@@ -106,7 +111,8 @@ export default function DashboardOverview() {
       
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
+      const appError = handleError(error, { component: 'DashboardOverview', action: 'fetchStats' });
+      logger.error('Error fetching dashboard stats', { error: appError });
       toast({
         title: "Error loading dashboard data",
         description: "Failed to fetch dashboard statistics.",
@@ -140,7 +146,8 @@ export default function DashboardOverview() {
         .in("id", userIds);
         
       if (profilesError) {
-        console.error("Error fetching profiles:", profilesError);
+        const appError = handleError(profilesError, { component: 'DashboardOverview', action: 'fetchProfiles' });
+        logger.error('Error fetching profiles', { error: appError });
       }
       
       // Create a map of user IDs to emails
@@ -161,7 +168,8 @@ export default function DashboardOverview() {
       
       setRecentActivity(formattedActivity);
     } catch (error) {
-      console.error("Error fetching recent activity:", error);
+      const appError = handleError(error, { component: 'DashboardOverview', action: 'fetchRecentActivity' });
+      logger.error('Error fetching recent activity', { error: appError });
     }
   };
 

@@ -4,6 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { TransactionRecord } from "@/types/transaction";
 import { DateRange } from "react-day-picker";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('PURCHASE_HISTORY');
 
 interface PaginationInfo {
   page: number;
@@ -78,7 +82,8 @@ export function usePurchaseHistory(itemsPerPage = 20) {
       setTotalPages(data.pagination?.totalPages || 1);
 
     } catch (error) {
-      console.error("Error fetching transactions:", error);
+      const appError = handleError(error, { component: 'usePurchaseHistory', action: 'fetchTransactions' });
+      logger.error('Error fetching transactions', { error: appError });
       toast({
         title: "Error",
         description: "Failed to fetch transaction history",

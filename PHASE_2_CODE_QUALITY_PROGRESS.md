@@ -2,7 +2,7 @@
 
 **Started:** October 23, 2025  
 **Estimated Duration:** 4-6 days  
-**Current Status:** 🟢 In Progress (Session 5 - ~30% complete)
+**Current Status:** 🟢 In Progress (Session 6 - ~32% complete)
 
 ---
 
@@ -12,9 +12,9 @@
 - **Total Found:** ~850 console statements
   - **src/ files:** 408 statements in 143 files
   - **supabase/functions:** 440 statements in 65 files
-- **Cleaned:** ~251 statements (76 files) ✅
-- **Remaining:** ~599 statements
-- **Progress:** 30% of total cleanup
+- **Cleaned:** ~273 statements (87 files) ✅
+- **Remaining:** ~577 statements
+- **Progress:** 32% of total cleanup
 
 ### Sessions Completed
 - ✅ **Session 1:** 11 files, ~45 statements (Auth, Layout, Dashboard, Admin basics)
@@ -22,7 +22,8 @@
 - ✅ **Session 3:** 9 files, ~60 statements (Utils + Components)
 - ✅ **Session 4:** 15 files, ~31 statements (Hooks)
 - ✅ **Session 5:** 18 files, ~50 statements (Pages)
-- 🎯 **Next:** Session 6 - Prompts pages + remaining components
+- ✅ **Session 6:** 11 files, ~22 statements (Admin Components)
+- 🎯 **Next:** Session 7 - Remaining components and contexts
 
 ### TODO Comments Cleanup
 - **Total Found:** 7 TODO/FIXME comments
@@ -106,6 +107,19 @@
 - ✅ `src/pages/admin/components/users/hooks/useUserUpdate.ts` (1 error → logger)
 - ✅ `src/pages/admin/components/users/hooks/useAdminErrorHandler.ts` (1 error → already using logger)
 
+#### Admin Dashboard & Management Files ✅ (11 files, ~22 statements)
+- ✅ `src/pages/admin/components/DashboardOverview.tsx` (8 logs → logger)
+- ✅ `src/pages/admin/components/categories/CategoryDialog.tsx` (1 error → logger)
+- ✅ `src/pages/admin/components/discount-codes/DeleteDiscountCodeDialog.tsx` (1 error → logger)
+- ✅ `src/pages/admin/components/discount-codes/DiscountCodeDetailsDialog.tsx` (1 error → logger)
+- ✅ `src/pages/admin/components/discount-codes/DiscountCodesManagement.tsx` (2 errors → logger)
+- ✅ `src/pages/admin/components/discount-codes/components/DiscountCodeForm.tsx` (1 error → logger)
+- ✅ `src/pages/admin/components/discount-codes/hooks/useSubscriptionPlans.ts` (1 error → logger)
+- ✅ `src/pages/admin/components/prompts/hooks/usePromptForm.ts` (3 logs → logger)
+- ✅ `src/pages/admin/components/prompts/hooks/usePromptSubmission.ts` (2 errors → logger)
+- ✅ `src/pages/admin/components/purchases/hooks/usePurchaseHistory.ts` (1 error → logger)
+- ✅ `src/components/admin/LifetimeSubscriptionValidator.tsx` (1 error → logger)
+
 ---
 
 ## 🎯 Next Steps
@@ -182,10 +196,10 @@
 - Structured logging: Minimal
 - Error handling: Inconsistent
 
-### Current (Session 5)
-- Console statements: ~599 (-251)
+### Current (Session 6)
+- Console statements: ~577 (-273)
 - TODO comments: 7 (unchanged)
-- Structured logging: 76 files migrated
+- Structured logging: 87 files migrated
 - Error handling: Framework applied across codebase ✅
 
 ### Target (End of Phase 2)
