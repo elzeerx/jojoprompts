@@ -1,10 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, Image as ImageIcon, X, Database } from "lucide-react";
+import { Upload, Image as ImageIcon, X, Database, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { getPromptImage } from "@/utils/image";
 
 interface ThumbnailManagerProps {
   value: string | null;
@@ -22,8 +24,40 @@ const databaseImages = [
 export function ThumbnailManager({ value, onChange }: ThumbnailManagerProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(value);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Load preview URL when value changes (for editing existing prompts)
+  useEffect(() => {
+    const loadPreview = async () => {
+      if (value) {
+        // If it's already a full URL, use it directly
+        if (value.startsWith('http://') || value.startsWith('https://')) {
+          setPreviewUrl(value);
+        } else {
+          // Otherwise, it's a storage path - get the signed URL
+          try {
+            const imageUrl = await getPromptImage(value, 400, 85);
+            setPreviewUrl(imageUrl);
+          } catch (error) {
+            console.error('Error loading preview:', error);
+            setPreviewUrl(null);
+          }
+        }
+      } else {
+        setPreviewUrl(null);
+      }
+    };
+    
+    loadPreview();
+  }, [value]);
+
+  const generateUniqueFileName = (originalName: string): string => {
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 11);
+    const extension = originalName.split('.').pop();
+    return `${timestamp}-${randomStr}.${extension}`;
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -51,17 +85,29 @@ export function ThumbnailManager({ value, onChange }: ThumbnailManagerProps) {
 
     setIsUploading(true);
     try {
-      // Create preview URL
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      onChange(url);
+      // Generate unique filename
+      const fileName = generateUniqueFileName(file.name);
       
-      // TODO: Upload to Supabase storage
-      console.log("Uploading file:", file.name);
+      // Upload to Supabase storage
+      const { data, error } = await supabase.storage
+        .from('prompt-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get preview URL for display
+      const imageUrl = await getPromptImage(fileName, 400, 85);
+      setPreviewUrl(imageUrl);
+      
+      // Pass storage path (not URL) to parent
+      onChange(fileName);
       
       toast({
         title: "Image uploaded",
-        description: "Thumbnail has been set successfully."
+        description: "Thumbnail has been uploaded successfully."
       });
       
     } catch (error) {
@@ -86,9 +132,6 @@ export function ThumbnailManager({ value, onChange }: ThumbnailManagerProps) {
   };
 
   const removeThumbnail = () => {
-    if (previewUrl && previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
-    }
     setPreviewUrl(null);
     onChange(null);
     if (fileInputRef.current) {
@@ -163,6 +206,7 @@ export function ThumbnailManager({ value, onChange }: ThumbnailManagerProps) {
               disabled={isUploading}
               variant="outline"
             >
+              {isUploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {isUploading ? "Uploading..." : "Choose File"}
             </Button>
           </div>
