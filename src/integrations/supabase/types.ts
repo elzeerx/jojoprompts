@@ -1341,6 +1341,13 @@ export type Database = {
             foreignKeyName: "prompt_generator_fields_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_generator_fields_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "v_admin_users"
             referencedColumns: ["id"]
           },
@@ -1383,6 +1390,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_generator_models_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
           {
@@ -1434,6 +1448,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_generator_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
           {
@@ -1611,6 +1632,13 @@ export type Database = {
             foreignKeyName: "fk_prompts_user_id"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_prompts_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "v_admin_users"
             referencedColumns: ["id"]
           },
@@ -1626,6 +1654,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
           {
@@ -2467,6 +2502,45 @@ export type Database = {
       }
     }
     Views: {
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          country: string | null
+          created_at: string | null
+          first_name: string | null
+          id: string | null
+          last_name: string | null
+          membership_tier: string | null
+          role: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          country?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          id?: string | null
+          last_name?: string | null
+          membership_tier?: string | null
+          role?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          country?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          id?: string | null
+          last_name?: string | null
+          membership_tier?: string | null
+          role?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
       v_admin_users: {
         Row: {
           avatar_url: string | null
@@ -2521,34 +2595,20 @@ export type Database = {
         Args: { target_user_id?: string }
         Returns: boolean
       }
-      can_manage_prompts: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
+      can_manage_prompts: { Args: { _user_id: string }; Returns: boolean }
       cancel_user_subscription: {
         Args: { _admin_id: string; _user_id: string }
         Returns: Json
       }
-      cleanup_expired_data: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      cleanup_expired_magic_tokens: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_expired_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_data: { Args: never; Returns: Json }
+      cleanup_expired_magic_tokens: { Args: never; Returns: undefined }
+      cleanup_expired_sessions: { Args: never; Returns: undefined }
+      cleanup_old_logs: { Args: never; Returns: undefined }
       cleanup_orphaned_security_logs: {
         Args: { days_old?: number }
         Returns: Json
       }
-      cleanup_unverified_accounts: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      cleanup_unverified_accounts: { Args: never; Returns: number }
       confirm_user_email: {
         Args: { email_confirmed?: boolean; user_id: string }
         Returns: undefined
@@ -2561,10 +2621,7 @@ export type Database = {
         }
         Returns: Json
       }
-      delete_user_account: {
-        Args: { _user_id: string }
-        Returns: Json
-      }
+      delete_user_account: { Args: { _user_id: string }; Returns: Json }
       evaluate_access_request: {
         Args: {
           p_action?: string
@@ -2592,10 +2649,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      export_user_data: {
-        Args: { target_user_id: string }
-        Returns: Json
-      }
+      export_user_data: { Args: { target_user_id: string }; Returns: Json }
       get_public_profile_safe: {
         Args: { user_id_param: string }
         Returns: {
@@ -2652,20 +2706,20 @@ export type Database = {
         }
         Returns: string
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_admin_user: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_verified_admin: {
-        Args: { action_context?: string }
-        Returns: boolean
-      }
+      is_admin: { Args: never; Returns: boolean }
+      is_admin_user: { Args: never; Returns: boolean }
+      is_verified_admin: { Args: { action_context?: string }; Returns: boolean }
       log_profile_access_attempt: {
         Args: { access_type: string; granted: boolean; target_user_id: string }
+        Returns: undefined
+      }
+      log_sensitive_data_access: {
+        Args: {
+          p_accessed_user_id: string
+          p_fields: string[]
+          p_table_name: string
+          p_user_id: string
+        }
         Returns: undefined
       }
       record_discount_usage: {
