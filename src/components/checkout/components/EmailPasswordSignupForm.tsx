@@ -8,6 +8,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { checkoutSignupSchema, type CheckoutSignupFormValues } from "@/components/auth/validation";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('CHECKOUT_SIGNUP');
 
 interface EmailPasswordSignupFormProps {
   onSuccess: () => void;
@@ -40,7 +43,7 @@ export function EmailPasswordSignupForm({
     setIsLoading(true);
 
     try {
-      console.log("Starting direct email/password signup for checkout...");
+      logger.debug('Starting email/password signup', { email: values.email });
 
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
@@ -56,7 +59,7 @@ export function EmailPasswordSignupForm({
       });
 
       if (error) {
-        console.error("Checkout signup error:", error);
+        logger.error('Signup failed', { error: error.message });
         toast({
           variant: "destructive",
           title: "Signup failed",
@@ -74,7 +77,7 @@ export function EmailPasswordSignupForm({
         return;
       }
 
-      console.log("Checkout signup successful:", data.user.id);
+      logger.info('Signup successful', { userId: data.user.id });
       
       toast({
         title: "Account created! 🎉",
@@ -82,8 +85,8 @@ export function EmailPasswordSignupForm({
       });
 
       onSuccess();
-    } catch (error) {
-      console.error("Unexpected signup error:", error);
+    } catch (error: any) {
+      logger.error('Unexpected signup error', { error: error.message || error });
       toast({
         variant: "destructive",
         title: "Error",

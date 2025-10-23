@@ -13,6 +13,9 @@ import { ThumbnailManager } from "./ThumbnailManager";
 import { TagsManager } from "./TagsManager";
 import { TranslationButtons } from "./TranslationButtons";
 import { SmartSuggestions } from "./SmartSuggestions";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SIMPLE_PROMPT_FORM');
 
 interface PromptFormData {
   title: string;
@@ -50,7 +53,7 @@ export function SimplePromptForm() {
     setIsLoading(true);
     try {
       // TODO: Implement prompt saving logic
-      console.log("Saving prompt:", formData);
+      logger.debug('Saving prompt', { title: formData.title, category: formData.category });
       
       toast({
         title: "Prompt saved!",
@@ -68,8 +71,8 @@ export function SimplePromptForm() {
         translations: {}
       });
       
-    } catch (error) {
-      console.error("Error saving prompt:", error);
+    } catch (error: any) {
+      logger.error('Error saving prompt', { error: error.message || error });
       toast({
         variant: "destructive",
         title: "Save failed",
