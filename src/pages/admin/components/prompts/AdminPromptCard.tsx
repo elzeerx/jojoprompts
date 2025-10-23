@@ -36,7 +36,7 @@ import { extractPromptMetadata, isWorkflowPrompt } from "@/utils/promptUtils";
 import { PromptService } from "@/services/PromptService";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { EditPromptButton } from "@/components/prompts";
+import { SimplifiedPromptDialog } from "@/components/prompts/SimplifiedPromptDialog";
 
 interface AdminPromptCardProps {
   prompt: PromptRow;
@@ -58,6 +58,7 @@ export function AdminPromptCard({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const imageUrl = useImageLoading(prompt);
 
 
@@ -280,14 +281,18 @@ export function AdminPromptCard({
           )}
           
           <div className="flex justify-between w-full">
-            <EditPromptButton
-              promptId={prompt.id}
-              onSuccess={onEditSuccess}
-              showIcon={true}
-              buttonText="Edit"
+            <Button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setEditDialogOpen(true);
+              }}
               variant="secondary"
               size="sm"
-            />
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
               <AlertDialogTrigger asChild>
                 <Button 
@@ -337,6 +342,16 @@ export function AdminPromptCard({
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         prompt={prompt}
+      />
+
+      <SimplifiedPromptDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        editingPrompt={prompt}
+        onSuccess={() => {
+          setEditDialogOpen(false);
+          onEditSuccess?.();
+        }}
       />
     </>
   );
