@@ -24,7 +24,8 @@
  * ```
  */
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +42,7 @@ import { ThumbnailManager } from "@/components/prompt-generator/ThumbnailManager
 import { CategorySelector } from "@/components/prompt-generator/CategorySelector";
 import { Badge } from "@/components/ui/badge";
 import { type PromptRow } from "@/types";
+import { PromptDialogHeader } from "./components/PromptDialogHeader";
 
 /**
  * Props for SimplifiedPromptDialog component
@@ -407,177 +409,175 @@ export function SimplifiedPromptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {editingPrompt ? "Edit Prompt" : "Create New Prompt"}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-6 py-4">
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title" className="text-sm font-medium">
-              Title <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="title"
-              placeholder="Enter prompt title..."
-              value={formData.title}
-              onChange={(e) => updateFormField("title", e.target.value)}
-              maxLength={200}
-              disabled={isSubmitting}
-            />
-            <p className="text-xs text-muted-foreground">
-              {formData.title.length}/200 characters
-            </p>
-          </div>
-
-          <Separator />
-
-          {/* Prompt Text */}
-          <div className="space-y-2">
-            <Label htmlFor="promptText" className="text-sm font-medium">
-              Prompt Text <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="promptText"
-              placeholder="Enter your prompt text here..."
-              value={formData.promptText}
-              onChange={(e) => updateFormField("promptText", e.target.value)}
-              rows={6}
-              disabled={isSubmitting}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground">
-              Minimum 10 characters
-            </p>
-          </div>
-
-          <Separator />
-
-          {/* Translation */}
-          <TranslationButtons
-            text={formData.promptText}
-            onTranslated={(translatedText) => updateFormField("promptText", translatedText)}
-            onTranslationStored={(translations) => {
-              // Convert from simple strings to proper translation objects
-              const formattedTranslations: FormData['translations'] = {};
-              if (translations.arabic) {
-                formattedTranslations.arabic = { prompt_text: translations.arabic };
-              }
-              if (translations.english) {
-                formattedTranslations.english = { prompt_text: translations.english };
-              }
-              updateFormField("translations", formattedTranslations);
-            }}
-          />
-
-          <Separator />
-
-          {/* Category */}
-          <CategorySelector
-            value={formData.category}
-            onChange={(value) => updateFormField("category", value)}
-          />
-
-          <Separator />
-
-          {/* Tags */}
-          <TagsManager
-            promptText={formData.promptText}
-            tags={formData.tags}
-            onChange={(tags) => updateFormField("tags", tags)}
-          />
-
-          <Separator />
-
-          {/* Thumbnail */}
-          <ThumbnailManager
-            value={formData.thumbnail}
-            onChange={(value) => updateFormField("thumbnail", value)}
-          />
-
-          <Separator />
-
-          {/* File Attachments */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-medium">Attached Files</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Upload files for lifetime plan members to download
-                </p>
-              </div>
-              <Badge variant="outline" className="text-warm-gold border-warm-gold">
-                Lifetime Plan Feature
-              </Badge>
-            </div>
-
-            {/* File Upload */}
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
-              <input
-                type="file"
-                multiple
-                onChange={handleFileSelect}
-                className="hidden"
-                id="file-upload"
-                disabled={isSubmitting || formData.attachedFiles.length >= 10}
+      <DialogContent className="w-full max-w-3xl h-[90vh] flex flex-col p-0">
+        <PromptDialogHeader isEditing={!!editingPrompt} />
+        
+        <ScrollArea className="flex-1 px-6">
+          <div className="py-6 space-y-6">
+            {/* Title */}
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-sm font-medium">
+                Title <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="title"
+                placeholder="Enter prompt title..."
+                value={formData.title}
+                onChange={(e) => updateFormField("title", e.target.value)}
+                maxLength={200}
+                disabled={isSubmitting}
               />
-              <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-sm font-medium mb-2">Upload attachments</p>
-              <p className="text-xs text-muted-foreground mb-4">
-                PDF, JSON, TXT, ZIP up to 20MB per file (Max 10 files)
+              <p className="text-xs text-muted-foreground">
+                {formData.title.length}/200 characters
               </p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => document.getElementById('file-upload')?.click()}
-                disabled={isSubmitting || formData.attachedFiles.length >= 10}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Choose Files
-              </Button>
             </div>
 
-            {/* Attached Files List */}
-            {formData.attachedFiles.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">
-                  Selected files ({formData.attachedFiles.length}/10)
-                </p>
-                {formData.attachedFiles.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <FileText className="h-4 w-4 text-warm-gold flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{file.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatFileSize(file.size)}
-                          {uploadProgress[file.name] !== undefined && 
-                            ` - ${uploadProgress[file.name]}%`}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeFile(index)}
-                      disabled={isSubmitting}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+            <Separator />
 
-        <DialogFooter>
+            {/* Prompt Text */}
+            <div className="space-y-2">
+              <Label htmlFor="promptText" className="text-sm font-medium">
+                Prompt Text <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="promptText"
+                placeholder="Enter your prompt text here..."
+                value={formData.promptText}
+                onChange={(e) => updateFormField("promptText", e.target.value)}
+                rows={6}
+                disabled={isSubmitting}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                Minimum 10 characters
+              </p>
+            </div>
+
+            <Separator />
+
+            {/* Translation */}
+            <TranslationButtons
+              text={formData.promptText}
+              onTranslated={(translatedText) => updateFormField("promptText", translatedText)}
+              onTranslationStored={(translations) => {
+                // Convert from simple strings to proper translation objects
+                const formattedTranslations: FormData['translations'] = {};
+                if (translations.arabic) {
+                  formattedTranslations.arabic = { prompt_text: translations.arabic };
+                }
+                if (translations.english) {
+                  formattedTranslations.english = { prompt_text: translations.english };
+                }
+                updateFormField("translations", formattedTranslations);
+              }}
+            />
+
+            <Separator />
+
+            {/* Category */}
+            <CategorySelector
+              value={formData.category}
+              onChange={(value) => updateFormField("category", value)}
+            />
+
+            <Separator />
+
+            {/* Tags */}
+            <TagsManager
+              promptText={formData.promptText}
+              tags={formData.tags}
+              onChange={(tags) => updateFormField("tags", tags)}
+            />
+
+            <Separator />
+
+            {/* Thumbnail */}
+            <ThumbnailManager
+              value={formData.thumbnail}
+              onChange={(value) => updateFormField("thumbnail", value)}
+            />
+
+            <Separator />
+
+            {/* File Attachments */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">Attached Files</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload files for lifetime plan members to download
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-warm-gold border-warm-gold">
+                  Lifetime Plan Feature
+                </Badge>
+              </div>
+
+              {/* File Upload */}
+              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="file-upload"
+                  disabled={isSubmitting || formData.attachedFiles.length >= 10}
+                />
+                <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-sm font-medium mb-2">Upload attachments</p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  PDF, JSON, TXT, ZIP up to 20MB per file (Max 10 files)
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                  disabled={isSubmitting || formData.attachedFiles.length >= 10}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Choose Files
+                </Button>
+              </div>
+
+              {/* Attached Files List */}
+              {formData.attachedFiles.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    Selected files ({formData.attachedFiles.length}/10)
+                  </p>
+                  {formData.attachedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <FileText className="h-4 w-4 text-warm-gold flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{file.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(file.size)}
+                            {uploadProgress[file.name] !== undefined && 
+                              ` - ${uploadProgress[file.name]}%`}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeFile(index)}
+                        disabled={isSubmitting}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="flex-shrink-0 p-6 border-t border-gray-200">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
