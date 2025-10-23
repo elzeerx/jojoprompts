@@ -1,14 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('smart-unsubscribe');
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[SMART-UNSUBSCRIBE] ${step}${detailsStr}`);
 };
 
 // Helper function to construct URLs safely
@@ -38,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    logStep("Function started");
+    logger.info('Function started');
 
     // Create Supabase client with service role key
     const supabaseClient = createClient(
@@ -53,7 +51,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (token) {
       // Handle unsubscribe with token
-      logStep("Processing unsubscribe with token", { tokenLength: token.length });
+      logger.info('Processing unsubscribe with token', { tokenLength: token.length });
 
       // Find and validate the magic token
       const { data: magicTokenData, error: tokenError } = await supabaseClient
@@ -66,7 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
         .single();
 
       if (tokenError || !magicTokenData) {
-        logStep("Invalid or expired unsubscribe token", { error: tokenError?.message });
+        logger.warn('Invalid or expired unsubscribe token', { error: tokenError?.message });
         return new Response(`
           <html>
             <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
@@ -97,10 +95,10 @@ const handler = async (req: Request): Promise<Response> => {
         });
 
       if (unsubscribeError) {
-        logStep("Failed to record unsubscribe", { error: unsubscribeError.message });
+        logger.warn('Failed to record unsubscribe', { error: unsubscribeError.message });
       }
 
-      logStep("User successfully unsubscribed", { email: magicTokenData.email });
+      logger.info('User successfully unsubscribed', { email: magicTokenData.email });
 
       return new Response(`
         <html>
@@ -173,7 +171,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   } catch (error: any) {
     const errorMessage = error.message || String(error);
-    logStep("ERROR", { message: errorMessage });
+    logger.error('Error in smart-unsubscribe', { error: errorMessage });
     
     return new Response(
       JSON.stringify({ 

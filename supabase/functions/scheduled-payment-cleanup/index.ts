@@ -1,5 +1,8 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('scheduled-payment-cleanup');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,8 +14,6 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const logger = (...args: any[]) => console.log(`[SCHEDULED-CLEANUP][${new Date().toISOString()}]`, ...args);
-
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -20,7 +21,7 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    logger('Starting scheduled payment cleanup');
+    logger.info('Starting scheduled payment cleanup');
 
     // Call the auto-capture function
     const { data: captureResult, error: captureError } = await supabase.functions.invoke('auto-capture-paypal', {
@@ -28,11 +29,11 @@ serve(async (req) => {
     });
 
     if (captureError) {
-      logger('Error in auto-capture:', captureError);
+      logger.error('Error in auto-capture', { error: captureError });
       throw captureError;
     }
 
-    logger('Auto-capture completed:', captureResult);
+    logger.info('Auto-capture completed', { result: captureResult });
 
     // Clean up very old pending transactions (older than 7 days)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -44,9 +45,9 @@ serve(async (req) => {
       .lt('created_at', sevenDaysAgo.toISOString());
 
     if (fetchError) {
-      logger('Error fetching old transactions:', fetchError);
+      logger.error('Error fetching old transactions', { error: fetchError });
     } else if (oldTransactions && oldTransactions.length > 0) {
-      logger(`Found ${oldTransactions.length} transactions older than 7 days, marking as expired`);
+      logger.info('Found old transactions to mark as expired', { count: oldTransactions.length });
       
       const { error: updateError } = await supabase
         .from('transactions')
@@ -58,9 +59,9 @@ serve(async (req) => {
         .in('id', oldTransactions.map(tx => tx.id));
 
       if (updateError) {
-        logger('Error updating old transactions:', updateError);
+        logger.error('Error updating old transactions', { error: updateError });
       } else {
-        logger(`Successfully marked ${oldTransactions.length} old transactions as expired`);
+        logger.info('Successfully marked old transactions as expired', { count: oldTransactions.length });
       }
     }
 
@@ -74,7 +75,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    logger('Scheduled cleanup error:', error);
+    logger.error('Scheduled cleanup error', { error });
     return new Response(JSON.stringify({
       success: false,
       error: error.message
