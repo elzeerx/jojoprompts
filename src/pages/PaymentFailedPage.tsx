@@ -4,19 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { XCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PAYMENT_FAILED_PAGE');
 
 export default function PaymentFailedPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   
   useEffect(() => {
-    console.log('PaymentFailedPage accessed', {
+    logger.info('PaymentFailedPage accessed', {
       hasUser: !!user,
       userId: user?.id,
-      searchParams: window.location.search,
-      fullUrl: window.location.href
+      searchParams: window.location.search
     });
-    
   }, [user, searchParams]);
 
   const planId = searchParams.get('planId');
@@ -101,13 +102,7 @@ export default function PaymentFailedPage() {
 
   const errorDetails = getErrorDetails();
   
-  // Log all parameters for debugging
-  console.log('PaymentFailedPage parameters:', {
-    planId,
-    userId,
-    reason,
-    errorDetails
-  });
+  logger.debug('Payment failure details', { planId, userId, reason, errorType: errorDetails.title });
   
   return (
     <div className="mobile-container-padding mobile-section-padding relative">

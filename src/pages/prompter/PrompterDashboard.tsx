@@ -10,6 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PromptStatistics } from "@/components/statistics/PromptStatistics";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PROMPTER_DASHBOARD');
 
 export default function PrompterDashboard() {
   const { user } = useAuth();
@@ -22,7 +25,7 @@ export default function PrompterDashboard() {
     
     setIsLoading(true);
     try {
-      console.log("PrompterDashboard - Fetching user's prompts...");
+      logger.debug('Fetching user prompts', { userId: user?.id });
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
@@ -32,10 +35,10 @@ export default function PrompterDashboard() {
       
       if (error) throw error;
       
-      console.log("PrompterDashboard - Fetched prompts:", data);
+      logger.debug('Prompts fetched', { count: data?.length });
       setPrompts(data || []);
     } catch (error) {
-      console.error("PrompterDashboard - Error fetching prompts:", error);
+      logger.error('Failed to fetch prompts', { error, userId: user?.id });
       toast({
         title: "Error",
         description: "Failed to load your prompts",
@@ -68,7 +71,7 @@ export default function PrompterDashboard() {
         description: "Prompt deleted successfully",
       });
     } catch (error) {
-      console.error("PrompterDashboard - Error deleting prompt:", error);
+      logger.error('Failed to delete prompt', { error, promptId });
       
       // Reload the prompts to restore the state
       fetchMyPrompts();
@@ -82,7 +85,7 @@ export default function PrompterDashboard() {
   };
   
   const handlePromptComplete = async () => {
-    console.log("PrompterDashboard - Prompt saved successfully, refreshing prompts...");
+    logger.info('Prompt saved, refreshing list');
     await fetchMyPrompts();
   };
 

@@ -6,6 +6,9 @@ import { SimplePaymentSelection } from "@/components/payment/SimplePaymentSelect
 import { CreditCard, X } from "lucide-react";
 import { DiscountErrorBoundary } from "@/components/checkout/DiscountErrorBoundary";
 import { useNavigate } from "react-router-dom";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PAYMENT_METHODS_CARD');
 
 interface PaymentMethodsCardProps {
   processing: boolean;
@@ -60,12 +63,12 @@ export function PaymentMethodsCard({
   const finalAmount = calculateFinalAmount();
   const discountAmount = price - finalAmount;
 
-  console.log('=== PAYMENT METHODS CARD DEBUG ===');
-  console.log('Original price:', price);
-  console.log('Applied discount:', appliedDiscount);
-  console.log('Final amount (after discount):', finalAmount);
-  console.log('Discount amount:', discountAmount);
-  console.log('===============================');
+  logger.debug('Payment calculation', { 
+    originalPrice: price, 
+    appliedDiscount, 
+    finalAmount, 
+    discountAmount 
+  });
 
   return (
     <Card className="w-full">

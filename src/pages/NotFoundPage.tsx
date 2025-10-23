@@ -4,15 +4,15 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { FileText, Home, Sparkles } from "lucide-react";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('NOT_FOUND_PAGE');
 
 export default function NotFoundPage() {
   const location = useLocation();
 
   useEffect(() => {
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
-      location.pathname
-    );
+    logger.error('404 Error: Non-existent route accessed', { path: location.pathname });
   }, [location.pathname]);
 
   return (

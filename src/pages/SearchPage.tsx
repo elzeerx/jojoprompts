@@ -6,6 +6,9 @@ import { PromptCard } from '@/components/ui/prompt-card';
 import { Loader2 } from 'lucide-react';
 import { type PromptRow } from '@/types';
 import { PromptService } from '@/services/PromptService';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SEARCH_PAGE');
 
 interface SearchFilters {
   promptTypes: string[];
@@ -50,7 +53,7 @@ export default function SearchPage() {
 
       setSearchResults(result.data);
     } catch (error) {
-      console.error('Search error:', error);
+      logger.error('Search failed', { error, query });
       setSearchResults([]);
     } finally {
       setLoading(false);

@@ -14,6 +14,9 @@ import { Link } from "react-router-dom";
 import { SessionManager } from "@/hooks/payment/helpers/sessionManager";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PAYMENT_SUCCESS_PAGE');
 
 export default function PaymentSuccessPage() {
   const [verifying, setVerifying] = useState(true);
@@ -31,21 +34,21 @@ export default function PaymentSuccessPage() {
     const handleAuthenticationRecovery = async () => {
       // If user is not logged in but we have payment parameters, try recovery
       if (!user && !authLoading && (params.orderId || params.paymentId || (params.planId && params.userId))) {
-        console.log('No user session but payment params detected, attempting recovery');
+        logger.info('No user session but payment params detected, attempting recovery');
         
         // First try session restoration
         if (SessionManager.hasBackup()) {
-          console.log('Attempting session recovery');
+          logger.info('Attempting session recovery');
           const result = await SessionManager.restoreSession();
           if (result.success) {
-            console.log('Session recovered successfully, refreshing page');
+            logger.info('Session recovered successfully, refreshing page');
             window.location.reload();
             return;
           }
         }
         
         // If session restoration fails, show payment recovery UI
-        console.log('Session restoration failed, showing payment recovery');
+        logger.warn('Session restoration failed, showing payment recovery');
         setShowRecovery(true);
       }
     };

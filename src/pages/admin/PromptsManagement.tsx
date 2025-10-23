@@ -8,6 +8,9 @@ import { type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PROMPTS_MANAGEMENT');
 
 interface PromptsManagementProps {
   favoritedPromptIds?: string[];
@@ -22,7 +25,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   const fetchPrompts = async () => {
     setIsLoading(true);
     try {
-      console.log("PromptsManagement - Fetching prompts...");
+      logger.debug('Fetching prompts');
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
@@ -31,11 +34,10 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       
       if (error) throw error;
       
-      console.log("PromptsManagement - Fetched prompts:", data);
-      console.log("PromptsManagement - Sample prompt metadata:", data?.[0]?.metadata);
+      logger.debug('Prompts fetched', { count: data?.length, sampleMetadata: data?.[0]?.metadata });
       return data || [];
     } catch (error) {
-      console.error("PromptsManagement - Error fetching prompts:", error);
+      logger.error('Failed to fetch prompts', { error });
       toast({
         title: "Error",
         description: "Failed to load prompts",
@@ -49,8 +51,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   
   const updatePromptsState = (data: PromptRow[] | null) => {
     if (data) {
-      console.log("PromptsManagement - Updating prompts state with:", data);
-      console.log("PromptsManagement - First prompt metadata in update:", data[0]?.metadata);
+      logger.debug('Updating prompts state', { count: data.length, sampleMetadata: data[0]?.metadata });
       setPrompts(data);
     }
   };
@@ -67,9 +68,9 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   }, []);
   
   const handlePromptComplete = async () => {
-    console.log("PromptsManagement - Prompt saved successfully, refreshing prompts...");
+    logger.info('Prompt saved, refreshing list');
     const freshPrompts = await fetchPrompts();
-    console.log("PromptsManagement - Fresh prompts after save:", freshPrompts);
+    logger.debug('Refreshed prompts', { count: freshPrompts.length });
     updatePromptsState(freshPrompts);
   };
   
@@ -89,7 +90,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         description: "Prompt deleted successfully",
       });
     } catch (error) {
-      console.error("PromptsManagement - Error deleting prompt:", error);
+      logger.error('Failed to delete prompt', { error, promptId });
       
       // Reload the prompts to restore the state
       fetchPrompts().then(updatePromptsState);
