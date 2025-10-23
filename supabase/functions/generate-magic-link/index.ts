@@ -1,14 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+import { createEdgeLogger } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('GENERATE_MAGIC_LINK');
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[GENERATE-MAGIC-LINK] ${step}${detailsStr}`);
 };
 
 // Helper function to construct URLs safely
@@ -39,7 +37,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    logStep("Function started");
+    logger.info('Function started');
 
     // Create Supabase client with service role key
     const supabaseClient = createClient(
@@ -78,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
       expirationHours = 48 
     }: MagicLinkRequest = await req.json();
 
-    logStep("Generating magic link", { email, redirectTo, expirationHours });
+    logger.info('Generating magic link', { email, redirectTo, expirationHours });
 
     // Find the user by email
     const { data: targetUser, error: targetUserError } = await supabaseClient.auth.admin.listUsers();
@@ -121,7 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Construct the magic link
     const magicLink = `${getSiteUrl()}/auth/magic-login?token=${magicToken}&redirect=${encodeURIComponent(redirectTo)}`;
 
-    logStep("Magic link generated successfully", { 
+    logger.info('Magic link generated successfully', { 
       userId: foundUser.id, 
       tokenLength: magicToken.length,
       expiresAt: expiresAt.toISOString()
@@ -142,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   } catch (error: any) {
     const errorMessage = error.message || String(error);
-    logStep("ERROR", { message: errorMessage });
+    logger.error('Magic link generation error', { error: errorMessage });
     
     return new Response(
       JSON.stringify({ 

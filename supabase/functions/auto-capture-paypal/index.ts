@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+import { createEdgeLogger, generateRequestId } from "../_shared/logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,8 +85,8 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const requestId = crypto.randomUUID();
-  const logger = (...args: any[]) => console.log(`[AUTO-CAPTURE][${requestId}]`, ...args);
+  const requestId = generateRequestId();
+  const logger = createEdgeLogger('AUTO_CAPTURE_PAYPAL', requestId);
 
   try {
     const supabase = createClient(
@@ -97,7 +98,7 @@ serve(async (req) => {
     const { clientId, clientSecret, baseUrl } = getPayPalConfig();
     const accessToken = await getPayPalAccessToken(baseUrl, clientId, clientSecret);
 
-    logger('Starting automatic PayPal capture process');
+    logger.info('Starting automatic PayPal capture process');
 
     // Get all pending transactions with PayPal order IDs
     const { data: pendingTransactions, error: fetchError } = await supabase
@@ -110,12 +111,12 @@ serve(async (req) => {
       .limit(50); // Process up to 50 at a time
 
     if (fetchError) {
-      logger('Error fetching pending transactions:', fetchError);
+      logger.error('Error fetching pending transactions', { error: fetchError.message });
       throw new Error('Failed to fetch pending transactions');
     }
 
     if (!pendingTransactions || pendingTransactions.length === 0) {
-      logger('No pending transactions found');
+      logger.info('No pending transactions found');
       return new Response(JSON.stringify({
         success: true,
         message: 'No pending transactions to process',
@@ -125,7 +126,7 @@ serve(async (req) => {
       });
     }
 
-    logger(`Found ${pendingTransactions.length} pending transactions to process`);
+    logger.info('Pending transactions found', { count: pendingTransactions.length });
 
     const results = {
       processed: 0,
@@ -138,7 +139,7 @@ serve(async (req) => {
 
     // Process each pending transaction
     for (const transaction of pendingTransactions) {
-      const txLogger = (...args: any[]) => logger(`[TX:${transaction.id.slice(0, 8)}]`, ...args);
+      const txLogger = logger.child({ txId: transaction.id.slice(0, 8) });
       
       try {
         results.processed++;
@@ -148,7 +149,7 @@ serve(async (req) => {
         const isOlderThan24Hours = transactionAge > 24 * 60 * 60 * 1000;
         
         if (isOlderThan24Hours) {
-          txLogger('Transaction older than 24 hours, marking as expired');
+          txLogger.warn('Transaction older than 24 hours, marking as expired');
           await supabase
             .from('transactions')
             .update({
@@ -169,11 +170,11 @@ serve(async (req) => {
         }
 
         // Check PayPal order status
-        txLogger('Checking PayPal order status:', transaction.paypal_order_id);
+        txLogger.debug('Checking PayPal order status', { orderId: transaction.paypal_order_id });
         const orderResult = await checkPayPalOrder(baseUrl, accessToken, transaction.paypal_order_id);
         
         if (!orderResult.ok) {
-          txLogger('Failed to check PayPal order status');
+          txLogger.error('Failed to check PayPal order status');
           results.failed++;
           results.details.push({
             transactionId: transaction.id,
@@ -185,11 +186,11 @@ serve(async (req) => {
         }
 
         const orderData = orderResult.data;
-        txLogger('PayPal order status:', orderData.status);
+        txLogger.info('PayPal order status retrieved', { status: orderData.status });
 
         if (orderData.status === 'APPROVED') {
           // Attempt to capture the order
-          txLogger('Order approved, attempting capture');
+          txLogger.info('Order approved, attempting capture');
           const captureResult = await capturePayPalOrder(baseUrl, accessToken, transaction.paypal_order_id);
           
           if (captureResult.ok && captureResult.data) {
@@ -197,7 +198,7 @@ serve(async (req) => {
             const paymentId = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.id;
             
             if (paymentId && captureData.status === 'COMPLETED') {
-              txLogger('Payment captured successfully:', paymentId);
+              txLogger.info('Payment captured successfully', { paymentId });
               
               // Update transaction
               const { error: updateError } = await supabase
@@ -210,7 +211,7 @@ serve(async (req) => {
                 .eq('id', transaction.id);
 
               if (updateError) {
-                txLogger('Error updating transaction:', updateError);
+                txLogger.error('Error updating transaction', { error: updateError.message });
                 results.failed++;
                 continue;
               }
@@ -225,7 +226,7 @@ serve(async (req) => {
                 .maybeSingle();
 
               if (!existingSubscription) {
-                txLogger('Creating user subscription');
+                txLogger.info('Creating user subscription');
                 const { error: subscriptionError } = await supabase
                   .from('user_subscriptions')
                   .insert({
@@ -239,7 +240,7 @@ serve(async (req) => {
                   });
 
                 if (subscriptionError) {
-                  txLogger('Error creating subscription:', subscriptionError);
+                  txLogger.error('Error creating subscription', { error: subscriptionError.message });
                   // Don't fail the capture, just log
                 }
               }
@@ -253,7 +254,7 @@ serve(async (req) => {
                 amount: transaction.amount_usd
               });
             } else {
-              txLogger('Capture failed or incomplete');
+              txLogger.error('Capture failed or incomplete');
               results.failed++;
               results.details.push({
                 transactionId: transaction.id,
@@ -263,7 +264,7 @@ serve(async (req) => {
               });
             }
           } else {
-            txLogger('Failed to capture order');
+            txLogger.error('Failed to capture order');
             results.failed++;
             results.details.push({
               transactionId: transaction.id,
@@ -276,7 +277,7 @@ serve(async (req) => {
           // Already completed, check if we have the payment ID
           const paymentId = orderData.purchase_units?.[0]?.payments?.captures?.[0]?.id;
           if (paymentId) {
-            txLogger('Order already completed, updating transaction');
+            txLogger.info('Order already completed, updating transaction');
             await supabase
               .from('transactions')
               .update({
@@ -295,7 +296,7 @@ serve(async (req) => {
             });
           }
         } else if (['CANCELLED', 'VOIDED', 'EXPIRED'].includes(orderData.status)) {
-          txLogger('Order cancelled/voided/expired, marking transaction as failed');
+          txLogger.warn('Order cancelled/voided/expired, marking transaction as failed');
           await supabase
             .from('transactions')
             .update({
@@ -313,7 +314,7 @@ serve(async (req) => {
             reason: `order ${orderData.status.toLowerCase()}`
           });
         } else {
-          txLogger('Order in unexpected status:', orderData.status);
+          txLogger.warn('Order in unexpected status', { status: orderData.status });
           results.skipped++;
           results.details.push({
             transactionId: transaction.id,
@@ -324,7 +325,7 @@ serve(async (req) => {
         }
 
       } catch (error) {
-        txLogger('Error processing transaction:', error);
+        txLogger.error('Error processing transaction', { error: error.message });
         results.failed++;
         results.details.push({
           transactionId: transaction.id,
@@ -338,7 +339,7 @@ serve(async (req) => {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    logger('Auto-capture completed:', results);
+    logger.info('Auto-capture completed', results);
 
     return new Response(JSON.stringify({
       success: true,
@@ -349,7 +350,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    logger('Auto-capture error:', error);
+    logger.error('Auto-capture error', { error: error.message });
     return new Response(JSON.stringify({
       success: false,
       error: error.message

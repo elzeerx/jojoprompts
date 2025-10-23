@@ -1,10 +1,8 @@
 import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
 import { verifyAdmin } from "../_shared/adminAuth.ts";
+import { createEdgeLogger } from "../_shared/logger.ts";
 
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[GET-USERS-WITHOUT-PLANS] ${step}${detailsStr}`);
-};
+const logger = createEdgeLogger('GET_USERS_WITHOUT_PLANS');
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,11 +10,11 @@ serve(async (req) => {
   }
 
   try {
-    logStep("Function started");
+    logger.info('Function started');
 
     // Admin authentication using shared module
     const { supabase, userId } = await verifyAdmin(req);
-    logStep("Admin authenticated", { adminId: userId });
+    logger.debug('Admin authenticated', { adminId: userId });
 
     // First get users with active subscriptions
     const { data: activeSubscriptions, error: subscriptionError } = await supabase
@@ -30,7 +28,7 @@ serve(async (req) => {
 
     const activeUserIds = activeSubscriptions?.map(sub => sub.user_id) || [];
     
-    logStep("Active subscription users found", { count: activeUserIds.length });
+    logger.debug('Active subscription users found', { count: activeUserIds.length });
 
     // Get all users without active subscriptions
     let query = supabase
@@ -70,7 +68,7 @@ serve(async (req) => {
       });
     }
 
-    logStep("Users without plans fetched", { count: usersWithEmails.length });
+    logger.info('Users without plans fetched', { count: usersWithEmails.length });
 
     return createSuccessResponse({
       success: true,
@@ -80,7 +78,7 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message: errorMessage });
+    logger.error('Function error', { error: errorMessage });
     return createErrorResponse(errorMessage, 500);
   }
 });

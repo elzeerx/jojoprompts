@@ -8,6 +8,7 @@ import { getAllParams } from "./parameterExtractor.ts";
 import { databaseFirstVerification } from "./databaseVerification.ts";
 import { getTransaction, updateTransactionCompleted, insertUserSubscriptionIfMissing } from "./dbOperations.ts";
 import { logEmailAttempt } from "./emailLogger.ts";
+import { createEdgeLogger, generateRequestId } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,7 @@ const corsHeaders = {
 // Simplified email sending helper - removed complex duplicate prevention
 async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: string, userName: string, planName: string, amount: number, transactionId: string, logger: any) {
   try {
-    logger(`[EMAIL] Sending payment confirmation email to ${userEmail}`);
+    logger.info('Sending payment confirmation email', { email: userEmail });
     
     const emailData = {
       to: userEmail,
@@ -77,16 +78,16 @@ async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: stri
     });
 
     if (emailError || !emailResponse?.success) {
-      logger(`[EMAIL] Error sending email:`, emailError || emailResponse);
+      logger.error('Error sending email', { error: emailError?.message || emailResponse?.error });
       await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, emailError?.message || emailResponse?.error);
       return { success: false, error: emailError?.message || emailResponse?.error };
     }
 
-    logger(`[EMAIL] Payment confirmation email sent successfully to ${userEmail}`);
+    logger.info('Payment confirmation email sent successfully', { email: userEmail });
     await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', true, transactionId);
     return { success: true };
   } catch (error: any) {
-    logger(`[EMAIL] Exception sending email:`, error);
+    logger.error('Exception sending email', { error: error.message });
     await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, error.message);
     return { success: false, error: error.message };
   }
@@ -95,8 +96,8 @@ async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: stri
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const requestId = crypto.randomUUID();
-  const logger = (...args: any[]) => console.log(`[${requestId}]`, ...args);
+  const requestId = generateRequestId();
+  const logger = createEdgeLogger('VERIFY_PAYPAL_PAYMENT', requestId);
 
   try {
     const supabaseClient = makeSupabaseClient();
@@ -128,10 +129,10 @@ serve(async (req: Request) => {
     const userId = extract(["user_id", "userId", "USER_ID"]);
 
     const debugParams = { ...params, orderId, paymentId, planId, userId };
-    logger(`Payment verification params:`, debugParams);
+    logger.info('Payment verification started', { params: debugParams });
 
     if (!orderId && !paymentId) {
-      logger(`Missing both orderId and paymentId. Params:`, debugParams);
+      logger.error('Missing both orderId and paymentId', { params: debugParams });
       return new Response(JSON.stringify({
         error: "No order_id or payment_id supplied.",
         status: PAYMENT_STATES.ERROR,
@@ -158,7 +159,7 @@ serve(async (req: Request) => {
         .maybeSingle();
         
       if (existingSubscription && existingSubscription.status === "active") {
-        logger("SUCCESS: Database shows completed transaction and active subscription.");
+        logger.info('SUCCESS: Database shows completed transaction and active subscription');
         
         // Get plan and user data for email
         const { data: planData } = await supabaseClient
@@ -191,7 +192,7 @@ serve(async (req: Request) => {
           );
           
           if (!emailResult.success) {
-            logger(`[EMAIL] Failed to send confirmation email:`, emailResult.error);
+            logger.warn('Failed to send confirmation email', { error: emailResult.error });
           }
         }
 
@@ -213,41 +214,41 @@ serve(async (req: Request) => {
     }
 
     // Simplified PayPal API verification (removed complex capture logic)
-    logger(`PayPal API verification for order: ${orderId || 'none'}, payment: ${paymentId || 'none'}`);
+    logger.info('PayPal API verification', { orderId: orderId || 'none', paymentId: paymentId || 'none' });
     
     let orderIdToUse = orderId || localTx?.paypal_order_id;
     let payPalStatus: string | null = null;
     let payPalRawResponse: any = null;
 
     if (orderIdToUse) {
-      logger(`Fetching PayPal order:`, orderIdToUse);
+      logger.debug('Fetching PayPal order', { orderId: orderIdToUse });
       const { data: orderData, ok: orderOk } = await fetchPaypalOrder(baseUrl, accessToken, orderIdToUse);
       
       if (orderOk) {
         payPalRawResponse = orderData;
         payPalStatus = orderData.status || PAYMENT_STATES.UNKNOWN;
-        logger(`PayPal order status:`, payPalStatus);
+        logger.info('PayPal order status retrieved', { status: payPalStatus });
       } else {
-        logger(`Failed to fetch PayPal order:`, orderData);
+        logger.error('Failed to fetch PayPal order', { error: orderData });
         payPalStatus = PAYMENT_STATES.ERROR;
       }
     } else if (paymentId) {
-      logger(`Fetching PayPal payment capture:`, paymentId);
+      logger.debug('Fetching PayPal payment capture', { paymentId });
       const { data: paymentData, ok: paymentOk } = await fetchPaypalPaymentCapture(baseUrl, accessToken, paymentId);
       
       if (paymentOk) {
         payPalRawResponse = paymentData;
         payPalStatus = paymentData.status || PAYMENT_STATES.UNKNOWN;
-        logger(`PayPal payment status:`, payPalStatus);
+        logger.info('PayPal payment status retrieved', { status: payPalStatus });
       } else {
-        logger(`Failed to fetch PayPal payment:`, paymentData);
+        logger.error('Failed to fetch PayPal payment', { error: paymentData });
         payPalStatus = PAYMENT_STATES.ERROR;
       }
     }
 
     // If payment is completed, send confirmation email
     if (payPalStatus === "COMPLETED" && userId && planId) {
-      logger(`Payment completed successfully, sending confirmation email`);
+      logger.info('Payment completed successfully, sending confirmation email');
       
       // Get user and plan details for email
       const { data: userProfile } = await supabaseClient
@@ -301,7 +302,7 @@ serve(async (req: Request) => {
     });
 
   } catch (error: any) {
-    logger("Verification error:", error);
+    logger.error('Verification error', { error: error.message });
     return new Response(JSON.stringify({
       error: error.message,
       status: PAYMENT_STATES.ERROR,
