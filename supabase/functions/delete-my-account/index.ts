@@ -1,6 +1,9 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { createEdgeLogger } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('DELETE_MY_ACCOUNT');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,7 +45,7 @@ serve(async (req) => {
       throw new Error('Confirmation email does not match your account email');
     }
 
-    console.log(`Starting account deletion for user: ${user.id}`);
+    logger.info('Starting account deletion', { userId: user.id });
 
     // Call the database function to delete the account using user client
     const { data, error } = await userClient.rpc('delete_user_account', {
@@ -57,13 +60,13 @@ serve(async (req) => {
       throw new Error(data.error || 'Failed to delete account');
     }
 
-    console.log(`Account deletion completed for user: ${user.id}`, data);
+    logger.info('Account deletion completed', { userId: user.id, subscription_cancelled: data.subscription_cancelled });
 
     // Now delete the auth user using admin client
     const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(user.id);
     
     if (deleteAuthError) {
-      console.error('Error deleting auth user:', deleteAuthError);
+      logger.error('Error deleting auth user', { error: deleteAuthError.message });
       // Don't throw here as the main data cleanup was successful
     }
 
@@ -75,8 +78,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
-    console.error('Error:', error);
+  } catch (error: any) {
+    logger.error('Account deletion failed', { error: error.message });
     return new Response(JSON.stringify({ 
       success: false,
       error: error.message 
