@@ -8,6 +8,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Shield, AlertTriangle, Activity, Eye, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SECURITY_MONITORING');
 
 interface SecurityLog {
   id: string;
@@ -52,7 +55,7 @@ export function SecurityMonitoringDashboard() {
       setSecurityLogs(data || []);
       calculateMetrics(data || []);
     } catch (error) {
-      console.error('Error fetching security logs:', error);
+      logger.error('Error fetching security logs', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

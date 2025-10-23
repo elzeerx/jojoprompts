@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Mail, MailCheck, MailX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('EMAIL_PREFERENCES');
 
 export function EmailPreferences() {
   const { user } = useAuth();
@@ -35,7 +38,7 @@ export function EmailPreferences() {
       const isCurrentlyUnsubscribed = data && (!data.resubscribed_at || data.resubscribed_at < data.unsubscribed_at);
       setIsUnsubscribed(!!isCurrentlyUnsubscribed);
     } catch (error) {
-      console.error('Error checking subscription status:', error);
+      logger.error('Error checking subscription status', error);
       // Don't show error toast for this, just assume subscribed
       setIsUnsubscribed(false);
     } finally {
@@ -64,7 +67,7 @@ export function EmailPreferences() {
         description: "You've been resubscribed to emails",
       });
     } catch (error: any) {
-      console.error('Error resubscribing:', error);
+      logger.error('Error resubscribing', error);
       toast({
         title: "Error",
         description: error.message || "Failed to resubscribe. Please try again.",
