@@ -115,7 +115,7 @@ export const useAuthSignOut = ({
             localStorage.removeItem(key);
             debug(`Cleared localStorage key: ${key}`);
           } catch (err) {
-            console.warn(`Failed to clear localStorage key ${key}:`, err);
+            logger.warn('Failed to clear localStorage key', { key, error: err });
           }
         });
 
@@ -130,7 +130,7 @@ export const useAuthSignOut = ({
             sessionStorage.removeItem(key);
             debug(`Cleared sessionStorage key: ${key}`);
           } catch (err) {
-            console.warn(`Failed to clear sessionStorage key ${key}:`, err);
+            logger.warn('Failed to clear sessionStorage key', { key, error: err });
           }
         });
       } catch (cleanupError) {

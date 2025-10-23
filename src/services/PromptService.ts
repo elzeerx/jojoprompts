@@ -1,5 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { PromptQuery, PromptQueryResult, PromptRow, PromptMetadata, PromptType } from '@/types/prompts';
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('PROMPT_SERVICE');
 
 // Enhanced prompt service interfaces for CRUD operations
 export interface CreatePromptData {
@@ -90,7 +94,8 @@ export class PromptService {
       const { data, error, count } = await supabaseQuery;
 
       if (error) {
-        console.error('Error fetching prompts:', error);
+        const appError = handleError(error, { component: 'PromptService', action: 'fetchPrompts' });
+        logger.error('Error fetching prompts', { error: appError });
         return {
           data: [],
           count: 0,
@@ -115,7 +120,7 @@ export class PromptService {
             return acc;
           }, {} as Record<string, string>);
         } catch (profileError) {
-          console.debug('Batch profile fetch failed:', profileError);
+          logger.debug('Batch profile fetch failed', { error: profileError });
         }
       }
 
@@ -134,7 +139,8 @@ export class PromptService {
         count: count || transformedData.length
       };
     } catch (error) {
-      console.error('Service error fetching prompts:', error);
+      const appError = handleError(error, { component: 'PromptService', action: 'fetchPrompts' });
+      logger.error('Service error fetching prompts', { error: appError });
       return {
         data: [],
         count: 0,
@@ -162,7 +168,8 @@ export class PromptService {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching prompt:', error);
+        const appError = handleError(error, { component: 'PromptService', action: 'getPromptById' });
+        logger.error('Error fetching prompt', { error: appError, promptId: id });
         return null;
       }
 
@@ -186,7 +193,7 @@ export class PromptService {
           uploader_username = profile.username;
         }
       } catch (profileError) {
-        console.debug('Profile fetch failed (expected for non-admin users):', profileError);
+        logger.debug('Profile fetch failed (expected for non-admin users)', { error: profileError });
       }
 
       return {
@@ -203,7 +210,8 @@ export class PromptService {
         uploader_username
       };
     } catch (error) {
-      console.error('Service error fetching prompt:', error);
+      const appError = handleError(error, { component: 'PromptService', action: 'getPromptById' });
+      logger.error('Service error fetching prompt', { error: appError, promptId: id });
       return null;
     }
   }
@@ -491,7 +499,8 @@ export class PromptService {
 
       return { success: true, data };
     } catch (error) {
-      console.error('Error translating prompt:', error);
+      const appError = handleError(error, { component: 'PromptService', action: 'translatePrompt' });
+      logger.error('Error translating prompt', { error: appError, promptId });
       // Extract the actual error message from the edge function response
       const errorMessage = error instanceof Error ? error.message : 'Failed to translate prompt';
       return { 

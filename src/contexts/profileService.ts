@@ -1,6 +1,9 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('PROFILE_SERVICE');
 
 export async function fetchUserProfile(currentUser: any, setUserRole: (role: string) => void) {
   try {
@@ -18,7 +21,8 @@ export async function fetchUserProfile(currentUser: any, setUserRole: (role: str
     // Set role from user_roles table, default to "user" if no role found
     setUserRole(userRoles?.role || "user");
   } catch (error: any) {
-    console.error("[AUTH] Error fetching user role:", error);
+    const appError = handleError(error, { component: 'profileService', action: 'fetchUserRole' });
+    logger.error('Error fetching user role', { error: appError, userId: currentUser.id });
     setUserRole("user");
     toast({
       title: "Warning",
