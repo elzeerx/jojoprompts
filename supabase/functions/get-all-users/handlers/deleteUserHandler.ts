@@ -26,7 +26,15 @@ async function canDeleteUser(
     return { allowed: false, reason: 'Admin privileges required' };
   }
 
-  if (adminProfile.role !== 'admin') {
+  // Check admin role from user_roles table
+  const { data: adminRoleCheck } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', adminId)
+    .eq('role', 'admin')
+    .maybeSingle();
+  
+  if (!adminRoleCheck) {
     return { allowed: false, reason: 'Admin privileges required' };
   }
 
@@ -50,7 +58,15 @@ async function canDeleteUser(
   }
 
   // Only super admin (nawaf@elzeer.com) can delete other admins
-  if (targetProfile.role === 'admin' && adminEmail !== 'nawaf@elzeer.com') {
+  // Check if target user is admin
+  const { data: targetRoleCheck } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .maybeSingle();
+  
+  if (targetRoleCheck && adminEmail !== 'nawaf@elzeer.com') {
     await logSecurityEvent(supabase, {
       user_id: adminId,
       action: 'unauthorized_admin_deletion_attempt',

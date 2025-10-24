@@ -216,12 +216,24 @@ export class UserService extends BaseService<UserProfile> {
         const { data, error } = await query;
         
         if (error) throw error;
+        if (!data) return { data: [] };
         
-        // Map to include updated_at field
-        const profiles = data?.map(profile => ({
+        // Fetch roles separately from user_roles table
+        const profileIds = data.map(p => p.id);
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', profileIds);
+        
+        // Create role map
+        const roleMap = new Map((roleData || []).map(r => [r.user_id, r.role]));
+        
+        // Map to include role and updated_at field
+        const profiles = data.map(profile => ({
           ...profile,
-          updated_at: new Date().toISOString() // Default since not queried for performance
-        })) || [];
+          role: roleMap.get(profile.id) || 'user',
+          updated_at: new Date().toISOString()
+        }));
         
         return { data: profiles };
       },
@@ -260,12 +272,30 @@ export class UserService extends BaseService<UserProfile> {
           throw new Error('Admin verification failed - insufficient permissions to change user roles');
         }
 
-        // Update user role - this will use the new secure RLS policies
+        // Update user role in user_roles table
+        const { error: deleteError } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId);
+        
+        if (deleteError) throw deleteError;
+        
+        const { error: insertError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: newRole,
+            assigned_by: adminId,
+            assigned_at: new Date().toISOString()
+          });
+        
+        if (insertError) throw insertError;
+        
+        // Fetch updated profile with new role
         const { data, error } = await supabase
           .from('profiles')
-          .update({ role: newRole })
+          .select('id, first_name, last_name, username, avatar_url, bio, country, membership_tier, created_at')
           .eq('id', userId)
-          .select('id, first_name, last_name, username, role, avatar_url, bio, country, membership_tier, created_at')
           .single();
 
         if (error) throw error;
@@ -276,9 +306,10 @@ export class UserService extends BaseService<UserProfile> {
           adminId 
         });
 
-        // Add updated_at field
+        // Add role and updated_at field
         const profile = {
           ...data,
+          role: newRole,
           updated_at: new Date().toISOString()
         };
 
@@ -372,22 +403,26 @@ export class UserService extends BaseService<UserProfile> {
           throw new Error('Admin verification failed - insufficient permissions to access user statistics');
         }
 
-        const { data: users } = await supabase
+        const { data: profiles } = await supabase
           .from('profiles')
-          .select('role, created_at');
+          .select('id, created_at');
+        
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('user_id, role');
 
-        const usersByRole = users?.reduce((acc, user) => {
-          acc[user.role] = (acc[user.role] || 0) + 1;
+        const usersByRole = roles?.reduce((acc, userRole) => {
+          acc[userRole.role] = (acc[userRole.role] || 0) + 1;
           return acc;
         }, {} as Record<string, number>) || {};
 
-        const recentUsers = users?.filter(user => 
-          new Date(user.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        const recentUsers = profiles?.filter(profile => 
+          new Date(profile.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
         ).length || 0;
 
         return {
           data: {
-            totalUsers: users?.length || 0,
+            totalUsers: profiles?.length || 0,
             usersByRole,
             recentUsers
           }

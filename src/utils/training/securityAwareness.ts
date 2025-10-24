@@ -807,13 +807,13 @@ export class SecurityAwarenessManager {
 
   private async getUserRole(userId: string): Promise<string> {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('user_roles')
       .select('role')
-      .eq('id', userId)
-      .single();
+      .eq('user_id', userId)
+      .maybeSingle();
 
     if (error) return 'user';
-    return data.role || 'user';
+    return data?.role || 'user';
   }
 
   private findModulesByTopic(topic: string): string[] {

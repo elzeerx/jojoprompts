@@ -140,9 +140,10 @@ export class EnhancedSessionValidator {
 
       // Verify user profile consistency
       if (userId) {
+        // Fetch profile without role (role is in user_roles table now)
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, role')
+          .select('id')
           .eq('id', userId)
           .single();
 

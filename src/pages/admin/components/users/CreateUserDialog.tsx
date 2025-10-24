@@ -58,13 +58,15 @@ export function CreateUserDialog({ onUserCreated }: CreateUserDialogProps) {
         throw new Error("Failed to create user");
       }
       
-      // Update the user's role in the profiles table
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ role })
-        .eq('id', signUpData.user.id);
+      // Insert role into user_roles table
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: signUpData.user.id,
+          role: role as any
+        });
 
-      if (profileError) throw profileError;
+      if (roleError) throw roleError;
       
       // Send welcome email
       const userName = email.split('@')[0]; // Use email prefix as name fallback

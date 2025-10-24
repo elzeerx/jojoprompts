@@ -70,7 +70,6 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
         first_name,
         last_name,
         username,
-        role,
         bio,
         avatar_url,
         country,
@@ -135,9 +134,32 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
       );
     }
 
-    // Get auth data for the users in this page
+    // Get auth data and roles for the users in this page
     const profileIds = profiles.map(p => p.id);
     const authDataStartTime = Date.now();
+    
+    // Fetch user roles from user_roles table
+    const { data: userRoleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .in('user_id', profileIds);
+    
+    // Create role map (get highest priority role for each user)
+    const roleMap = new Map();
+    if (userRoleData) {
+      userRoleData.forEach(ur => {
+        if (!roleMap.has(ur.user_id)) {
+          roleMap.set(ur.user_id, ur.role);
+        } else {
+          // Keep highest priority role
+          const currentRole = roleMap.get(ur.user_id);
+          const rolePriority = { admin: 1, jadmin: 2, prompter: 3, user: 4 };
+          if ((rolePriority[ur.role] || 5) < (rolePriority[currentRole] || 5)) {
+            roleMap.set(ur.user_id, ur.role);
+          }
+        }
+      });
+    }
     
     let authUserMap = new Map();
     try {
@@ -231,6 +253,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
     const enrichedUsers = profiles.map((profile: any) => {
       const authUser = authUserMap.get(profile.id);
       const subscription = subscriptionMap.get(profile.id);
+      const userRole = roleMap.get(profile.id) || 'user';
 
       return {
         // Core identity
@@ -240,7 +263,7 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
         first_name: profile.first_name,
         last_name: profile.last_name,
         username: profile.username,
-        role: profile.role || 'user',
+        role: userRole,
         bio: profile.bio,
         avatar_url: profile.avatar_url,
         country: profile.country,

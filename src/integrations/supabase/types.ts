@@ -1253,7 +1253,6 @@ export type Database = {
           last_name: string
           membership_tier: string | null
           phone_number: string | null
-          role: string
           social_links: Json | null
           timezone: string | null
           username: string
@@ -1269,7 +1268,6 @@ export type Database = {
           last_name: string
           membership_tier?: string | null
           phone_number?: string | null
-          role?: string
           social_links?: Json | null
           timezone?: string | null
           username: string
@@ -1285,7 +1283,6 @@ export type Database = {
           last_name?: string
           membership_tier?: string | null
           phone_number?: string | null
-          role?: string
           social_links?: Json | null
           timezone?: string | null
           username?: string
@@ -1341,6 +1338,13 @@ export type Database = {
             foreignKeyName: "prompt_generator_fields_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "profiles_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_generator_fields_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "v_admin_users"
             referencedColumns: ["id"]
           },
@@ -1383,6 +1387,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_generator_models_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_role"
             referencedColumns: ["id"]
           },
           {
@@ -1434,6 +1445,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_generator_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_role"
             referencedColumns: ["id"]
           },
           {
@@ -1611,6 +1629,13 @@ export type Database = {
             foreignKeyName: "fk_prompts_user_id"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profiles_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_prompts_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "v_admin_users"
             referencedColumns: ["id"]
           },
@@ -1626,6 +1651,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_role"
             referencedColumns: ["id"]
           },
           {
@@ -2467,6 +2499,57 @@ export type Database = {
       }
     }
     Views: {
+      profiles_with_role: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          country: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string | null
+          id: string | null
+          last_name: string | null
+          membership_tier: string | null
+          phone_number: string | null
+          role: string | null
+          social_links: Json | null
+          timezone: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string | null
+          last_name?: string | null
+          membership_tier?: string | null
+          phone_number?: string | null
+          role?: never
+          social_links?: Json | null
+          timezone?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string | null
+          last_name?: string | null
+          membership_tier?: string | null
+          phone_number?: string | null
+          role?: never
+          social_links?: Json | null
+          timezone?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
       v_admin_users: {
         Row: {
           avatar_url: string | null
@@ -2669,6 +2752,7 @@ export type Database = {
         Args: { p_context?: Json; p_event_type: string; p_severity: string }
         Returns: Json
       }
+      user_has_any_role: { Args: { _user_id: string }; Returns: boolean }
       validate_api_request: {
         Args: {
           p_endpoint: string

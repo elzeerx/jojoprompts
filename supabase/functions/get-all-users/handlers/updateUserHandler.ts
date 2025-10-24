@@ -84,8 +84,26 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       }
       profileUpdates.username = validation.sanitizedData.username;
     }
+    // Role updates are handled separately via user_roles table
     if (validation.sanitizedData.role !== undefined) {
-      profileUpdates.role = validation.sanitizedData.role;
+      // Update role in user_roles table
+      const newRole = validation.sanitizedData.role;
+      
+      // Delete existing roles for this user
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+      
+      // Insert new role
+      await supabase
+        .from('user_roles')
+        .insert({
+          user_id: userId,
+          role: newRole,
+          assigned_by: auth.uid(),
+          assigned_at: new Date().toISOString()
+        });
     }
     
     // Extended profile fields

@@ -38,28 +38,28 @@ export class AdminAuthenticator {
 
       const userId = session.user.id;
 
-      // Step 3: Fetch and validate user role
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+      // Step 3: Fetch and validate user role from user_roles table
+      const { data: userRole, error: roleError } = await supabase
+        .from('user_roles')
         .select('role')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .maybeSingle();
 
-      if (profileError) {
-        logError('Profile fetch failed', 'admin_auth', { 
-          error: profileError.message, 
+      if (roleError) {
+        logError('Role fetch failed', 'admin_auth', { 
+          error: roleError.message, 
           userId 
         });
-        return { isAuthenticated: false, permissions: [], error: 'Profile access denied' };
+        return { isAuthenticated: false, permissions: [], error: 'Role access denied' };
       }
 
-      if (!profile) {
-        logWarn('No profile found for user', 'admin_auth', { userId });
-        return { isAuthenticated: false, permissions: [], error: 'Profile not found' };
+      if (!userRole) {
+        logWarn('No role found for user', 'admin_auth', { userId });
+        return { isAuthenticated: false, permissions: [], error: 'User role not found' };
       }
 
       // Step 4: Validate admin role
-      const role = profile.role;
+      const role = userRole.role;
       if (!this.isAdminRole(role)) {
         logWarn('Non-admin access attempt', 'admin_auth', { userId, role });
         return { 

@@ -20,11 +20,24 @@ export function useUserRoleManagement() {
         throw new Error(roleValidation.error);
       }
       
-      // First check if profile exists
-      const { data: currentData, error: fetchError } = await supabase
+      // First check if user exists in profiles
+      const { data: profileData, error: profileFetchError } = await supabase
         .from('profiles')
-        .select('role')
+        .select('id')
         .eq('id', userId)
+        .maybeSingle();
+        
+      if (profileFetchError) {
+        const appError = handleError(profileFetchError, { component: 'useUserRoleManagement', action: 'fetchProfile' });
+        logger.error('Error fetching profile', { error: appError, userId });
+        throw new Error(`Failed to verify user profile: ${profileFetchError.message}`);
+      }
+      
+      // Check current role from user_roles table
+      const { data: currentRole, error: fetchError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
         .maybeSingle();
         
       if (fetchError) {
@@ -33,49 +46,62 @@ export function useUserRoleManagement() {
         throw new Error(`Failed to verify current role: ${fetchError.message}`);
       }
       
-      // If profile doesn't exist, create it
-      if (!currentData) {
-        logger.info('Profile not found, creating new profile', { userId, newRole });
+      // If no role exists, insert new role
+      if (!currentRole) {
+        logger.info('No role found, creating new role entry', { userId, newRole });
         
         const { error: insertError } = await supabase
-          .from('profiles')
+          .from('user_roles')
           .insert({ 
-            id: userId, 
+            user_id: userId, 
             role: newRole,
-            first_name: 'User', // Default first name for new profile
-            last_name: '', // Default empty last name for new profile
-            username: `user_${userId.substring(0, 8)}` // Generate username from user ID
+            assigned_at: new Date().toISOString()
           });
           
         if (insertError) {
-          const appError = handleError(insertError, { component: 'useUserRoleManagement', action: 'createProfile' });
-          logger.error('Error creating profile', { error: appError, userId });
-          throw new Error(`Failed to create user profile: ${insertError.message}`);
+          const appError = handleError(insertError, { component: 'useUserRoleManagement', action: 'createRole' });
+          logger.error('Error creating role', { error: appError, userId });
+          throw new Error(`Failed to create user role: ${insertError.message}`);
         }
         
         toast({
-          title: "Profile created",
-          description: `New user profile has been created with role ${newRole}`,
+          title: "Role assigned",
+          description: `User has been assigned the role ${newRole}`,
         });
         
         return true;
       }
       
-      logger.debug('Current role data', { currentRole: currentData.role, userId });
+      logger.debug('Current role data', { currentRole: currentRole.role, userId });
       
       // Only update if the role is actually different
-      if (currentData.role !== newRole) {
-        logger.info('Updating role', { userId, fromRole: currentData.role, toRole: newRole });
+      if (currentRole.role !== newRole) {
+        logger.info('Updating role', { userId, fromRole: currentRole.role, toRole: newRole });
         
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ role: newRole })
-          .eq('id', userId);
+        // Delete existing role and insert new one for clean transition
+        const { error: deleteError } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId);
           
-        if (updateError) {
-          const appError = handleError(updateError, { component: 'useUserRoleManagement', action: 'updateRole' });
-          logger.error('Error updating role', { error: appError, userId });
-          throw new Error(`Failed to update role: ${updateError.message}`);
+        if (deleteError) {
+          const appError = handleError(deleteError, { component: 'useUserRoleManagement', action: 'deleteOldRole' });
+          logger.error('Error deleting old role', { error: appError, userId });
+          throw new Error(`Failed to update role: ${deleteError.message}`);
+        }
+        
+        const { error: insertError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: newRole,
+            assigned_at: new Date().toISOString()
+          });
+          
+        if (insertError) {
+          const appError = handleError(insertError, { component: 'useUserRoleManagement', action: 'insertNewRole' });
+          logger.error('Error inserting new role', { error: appError, userId });
+          throw new Error(`Failed to update role: ${insertError.message}`);
         }
         
         logger.debug('Role update success, verifying');
@@ -83,11 +109,11 @@ export function useUserRoleManagement() {
         // Wait a moment before verifying to ensure database consistency
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Verify the update was successful - use maybeSingle() to avoid JSON errors
+        // Verify the update was successful
         const { data: verifyData, error: verifyError } = await supabase
-          .from('profiles')
+          .from('user_roles')
           .select('role')
-          .eq('id', userId)
+          .eq('user_id', userId)
           .maybeSingle();
           
         if (verifyError) {
@@ -97,7 +123,7 @@ export function useUserRoleManagement() {
         }
         
         if (!verifyData) {
-          throw new Error("User profile not found after update");
+          throw new Error("User role not found after update");
         }
         
         logger.debug('Verification data', { role: verifyData.role });
