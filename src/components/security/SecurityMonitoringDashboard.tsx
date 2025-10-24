@@ -13,6 +13,9 @@ import { SecurityMetricsCards } from './components/SecurityMetricsCards';
 import { PolicyConflictsSection } from './components/PolicyConflictsSection';
 import { RecommendationsSection } from './components/RecommendationsSection';
 import { SecurityLoadingState } from './components/SecurityLoadingState';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SecurityMonitoringDashboard');
 
 interface SecurityMetrics {
   totalEvents: number;
@@ -101,7 +104,7 @@ export function SecurityMonitoringDashboard() {
       }
       
     } catch (error) {
-      console.error('Error loading security metrics:', error);
+      logger.error('Error loading security metrics', { error: error instanceof Error ? error.message : error });
     } finally {
       setLoading(false);
     }
@@ -147,7 +150,7 @@ export function SecurityMonitoringDashboard() {
       setRecommendations(auditResults.recommendations);
       
     } catch (error) {
-      console.error('Security audit failed:', error);
+      logger.error('Security audit failed', { error: error instanceof Error ? error.message : error });
     } finally {
       setAuditLoading(false);
     }

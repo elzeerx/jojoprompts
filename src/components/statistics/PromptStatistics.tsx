@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, Heart, Share, TrendingUp } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PromptStatistics');
 
 interface PromptStats {
   total_prompts: number;
@@ -80,7 +83,7 @@ export function PromptStatistics({ userId, isAdminView = false }: PromptStatisti
             profiles = profileData;
           }
         } catch (profileError) {
-          console.debug('Profile fetch failed (expected for non-admin users):', profileError);
+          logger.debug('Profile fetch failed (expected for non-admin users)', { error: profileError instanceof Error ? profileError.message : profileError });
         }
       }
 
@@ -193,7 +196,7 @@ export function PromptStatistics({ userId, isAdminView = false }: PromptStatisti
 
       setStats(calculatedStats);
     } catch (error) {
-      console.error("Error fetching prompt statistics:", error);
+      logger.error('Error fetching prompt statistics', { error: error instanceof Error ? error.message : error, isAdminView, userId: targetUserId });
     } finally {
       setLoading(false);
     }
