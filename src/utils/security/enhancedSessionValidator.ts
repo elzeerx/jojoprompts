@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { securityLogger } from "./securityLogger";
+import { createLogger } from "../logging";
+
+const logger = createLogger('EnhancedSessionValidator');
 
 interface SessionValidationResult {
   isValid: boolean;
@@ -74,7 +77,7 @@ export class EnhancedSessionValidator {
       };
 
     } catch (error) {
-      console.error('Session validation error:', error);
+      logger.error('Session validation error', { error: error instanceof Error ? error.message : error, userId });
       securityLogger.logSecurityEvent({
         action: 'session_validation_exception',
         userId,
@@ -164,7 +167,7 @@ export class EnhancedSessionValidator {
       }
 
     } catch (error) {
-      console.warn('Security check error:', error);
+      logger.warn('Security check error', { error: error instanceof Error ? error.message : error });
       flags.add('security_check_failed');
     }
 
