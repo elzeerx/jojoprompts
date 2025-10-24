@@ -202,10 +202,10 @@ export class UserService extends BaseService<UserProfile> {
     return this.executeQuery(
       'getAllUsers',
       async () => {
-        // Use secure query with proper admin verification
+        // Use secure query with proper admin verification (role is fetched separately from user_roles)
         let query = supabase
           .from('profiles')
-          .select('id, first_name, last_name, username, role, avatar_url, bio, country, membership_tier, created_at')
+          .select('id, first_name, last_name, username, avatar_url, bio, country, membership_tier, created_at')
           .order('created_at', { ascending: false })
           .range((page - 1) * pageSize, page * pageSize - 1);
 
@@ -219,21 +219,21 @@ export class UserService extends BaseService<UserProfile> {
         if (!data) return { data: [] };
         
         // Fetch roles separately from user_roles table
-        const profileIds = data.map(p => p.id);
+        const profileIds = data.map((p: any) => p.id);
         const { data: roleData } = await supabase
           .from('user_roles')
           .select('user_id, role')
           .in('user_id', profileIds);
         
         // Create role map
-        const roleMap = new Map((roleData || []).map(r => [r.user_id, r.role]));
+        const roleMap = new Map((roleData || []).map((r: any) => [r.user_id, r.role]));
         
         // Map to include role and updated_at field
-        const profiles = data.map(profile => ({
+        const profiles = data.map((profile: any) => ({
           ...profile,
           role: roleMap.get(profile.id) || 'user',
           updated_at: new Date().toISOString()
-        }));
+        })) as UserProfile[];
         
         return { data: profiles };
       },
@@ -244,11 +244,32 @@ export class UserService extends BaseService<UserProfile> {
   async searchUsers(searchTerm: string, limit = 10): Promise<ApiResponse<UserProfile[]>> {
     return this.executeQuery(
       'searchUsers',
-      () => supabase
-        .from('profiles')
-        .select('*')
-        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,username.ilike.%${searchTerm}%`)
-        .limit(limit),
+      async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, username, avatar_url, bio, country, membership_tier, created_at')
+          .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,username.ilike.%${searchTerm}%`)
+          .limit(limit);
+        
+        if (error) throw error;
+        if (!data) return { data: [] };
+        
+        // Fetch roles separately
+        const profileIds = data.map((p: any) => p.id);
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', profileIds);
+        
+        const roleMap = new Map((roleData || []).map((r: any) => [r.user_id, r.role]));
+        
+        const profiles = data.map((profile: any) => ({
+          ...profile,
+          role: roleMap.get(profile.id) || 'user'
+        })) as UserProfile[];
+        
+        return { data: profiles };
+      },
       { searchTerm, limit }
     );
   }
