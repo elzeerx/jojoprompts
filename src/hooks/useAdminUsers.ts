@@ -25,16 +25,16 @@ export function useAdminUsers() {
       setLoading(true);
       setError(null);
 
-      // Call get-all-users edge function for enriched auth data
-      const { data: response, error: functionError } = await supabase.functions.invoke('get-all-users', {
-        body: { action: 'list' }
-      });
+      // Call get-all-users edge function using GET with query params
+      const { data: response, error: functionError } = await supabase.functions.invoke(
+        'get-all-users?page=1&limit=10000'
+      );
 
       if (functionError) throw functionError;
-      if (!response?.success) throw new Error(response?.message || 'Failed to fetch users');
+      if (!response?.users) throw new Error('Failed to fetch users');
       
       // Transform response data to AdminUser format
-      const transformedUsers: AdminUser[] = (response.data?.users || []).map((user: any) => ({
+      const transformedUsers: AdminUser[] = (response.users || []).map((user: any) => ({
         id: user.id,
         first_name: user.first_name,
         last_name: user.last_name,
