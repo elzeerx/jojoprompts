@@ -1,6 +1,9 @@
 import React, { Component, ReactNode } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('DISCOUNT_ERROR_BOUNDARY');
 
 interface Props {
   children: ReactNode;
@@ -26,7 +29,7 @@ export class DiscountErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Discount Error Boundary caught an error:', error, errorInfo);
+    logger.error('Discount Error Boundary caught an error', { error: error.message, errorInfo: errorInfo.componentStack });
   }
 
   render() {

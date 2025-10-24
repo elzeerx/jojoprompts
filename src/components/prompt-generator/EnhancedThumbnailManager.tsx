@@ -8,6 +8,9 @@ import { Upload, Image as ImageIcon, X, Database, Crop, Loader2, Search } from "
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('ENHANCED_THUMBNAIL_MANAGER');
 
 interface ThumbnailManagerProps {
   value: string | null;
@@ -87,8 +90,8 @@ export function ThumbnailManager({ value, onChange }: ThumbnailManagerProps) {
       }
 
       setDatabaseImages(imageList);
-    } catch (error) {
-      console.error("Error loading database images:", error);
+    } catch (error: any) {
+      logger.error('Error loading database images', { error: error.message });
       toast({
         variant: "destructive",
         title: "Failed to load images",
@@ -165,8 +168,8 @@ export function ThumbnailManager({ value, onChange }: ThumbnailManagerProps) {
       // Refresh database images
       loadDatabaseImages();
       
-    } catch (error) {
-      console.error("Upload error:", error);
+    } catch (error: any) {
+      logger.error('Upload error', { error: error.message });
       toast({
         variant: "destructive",
         title: "Upload failed",
