@@ -1,6 +1,7 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { Resend } from 'npm:resend@2.0.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { createEdgeLogger } from '../_shared/logger.ts';
 
 const emailTemplates = {
   emailConfirmation: (data: { name: string; email: string; confirmationLink: string; email_type?: string }) => {
@@ -195,7 +196,7 @@ async function logEmailAttempt(supabase: any, emailData: {
   success: boolean;
   error_message?: string;
   user_id?: string;
-}) {
+}, logger: any) {
   try {
     const { error } = await supabase
       .from('email_logs')
@@ -211,10 +212,10 @@ async function logEmailAttempt(supabase: any, emailData: {
       }]);
     
     if (error) {
-      console.log('Error logging email attempt:', error);
+      logger.error('Failed to insert email log', { error });
     }
   } catch (error) {
-    console.log('Error in logEmailAttempt:', error);
+    logger.error('Exception in logEmailAttempt', { error });
   }
 }
 
@@ -224,7 +225,9 @@ export default async function handler(req: Request) {
   }
 
   const requestId = crypto.randomUUID();
-  console.log(`[send-email:${requestId}] Processing request`);
+  const logger = createEdgeLogger('send-email', requestId);
+  
+  logger.info('Processing email request');
 
   // Initialize Supabase client for logging
   const supabase = createClient(
@@ -253,7 +256,7 @@ export default async function handler(req: Request) {
       vars.unsubscribe_link = vars.unsubscribe_link || `https://jojoprompts.com/unsubscribe?email=${encodeURIComponent(email_address)}&type=${email_type}`;
     }
     
-    console.log(`[send-email:${requestId}] Sending ${email_type} email to ${email_address}`);
+    logger.info('Sending email', { email_type, email_address });
     
     // Check if user has unsubscribed
     const { data: unsubData } = await supabase
@@ -263,7 +266,7 @@ export default async function handler(req: Request) {
       .maybeSingle();
     
     if (unsubData) {
-      console.log(`[send-email:${requestId}] User ${email_address} has unsubscribed - skipping email`);
+      logger.info('Email blocked - user unsubscribed', { email_address });
       
       // Log the blocked email attempt
       await logEmailAttempt(supabase, {
@@ -272,7 +275,7 @@ export default async function handler(req: Request) {
         success: true,
         error_message: 'Email blocked - user unsubscribed',
         user_id
-      });
+      }, logger);
       
       return new Response(
         JSON.stringify({ 
@@ -294,7 +297,7 @@ export default async function handler(req: Request) {
 
     // Load and render DB-managed template by slug if provided
     if (template_slug) {
-      console.log(`[send-email:${requestId}] Loading template slug: ${template_slug}`);
+      logger.debug('Loading template slug', { template_slug });
       const { data: tmpl, error: tmplErr } = await supabase
         .from('email_templates')
         .select('subject, html, text, is_active')
@@ -303,7 +306,7 @@ export default async function handler(req: Request) {
         .maybeSingle();
 
       if (tmplErr) {
-        console.log(`[send-email:${requestId}] DB template load error:`, tmplErr);
+        logger.error('DB template load error', { template_slug, error: tmplErr });
       }
       if (tmpl) {
         const htmlInterpolated = interpolate(tmpl.html, vars);
@@ -311,12 +314,12 @@ export default async function handler(req: Request) {
         finalHtml = htmlInterpolated + buildTrackingPixel(email_address);
         finalText = interpolate(tmpl.text || stripTags(htmlInterpolated), vars);
       } else {
-        console.log(`[send-email:${requestId}] Template slug not found or inactive: ${template_slug}`);
+        logger.warn('Template slug not found or inactive', { template_slug });
       }
     }
 
     if (template && (data || variables)) {
-      console.log(`[send-email:${requestId}] Processing legacy template: ${template}`);
+      logger.debug('Processing legacy template', { template });
       if (emailTemplates[template as keyof typeof emailTemplates]) {
         const templateFn = emailTemplates[template as keyof typeof emailTemplates];
         const templateResult = templateFn({ ...(vars || {}), email_type });
@@ -324,7 +327,7 @@ export default async function handler(req: Request) {
         finalHtml = templateResult.html;
         finalText = templateResult.text || finalHtml.replace(/<[^>]*>/g, '');
       } else {
-        console.log(`[send-email:${requestId}] Template not found: ${template}`);
+        logger.warn('Template not found', { template });
       }
     }
 
@@ -376,7 +379,7 @@ export default async function handler(req: Request) {
       throw new Error(`Resend API error: ${result.error.name} - ${result.error.message}`);
     }
 
-    console.log(`[send-email:${requestId}] Email sent successfully:`, result);
+    logger.info('Email sent successfully', { messageId: result.data?.id || result.id });
     
     // Log successful attempt
     await logEmailAttempt(supabase, {
@@ -384,7 +387,7 @@ export default async function handler(req: Request) {
       email_type,
       success: true,
       user_id
-    });
+    }, logger);
     
     return new Response(
       JSON.stringify({ 
@@ -399,7 +402,7 @@ export default async function handler(req: Request) {
     );
     
   } catch (error: any) {
-    console.error(`[send-email:${requestId}] Email error:`, error);
+    logger.error('Email sending failed', { error: error.message });
     
     // Log failed attempt if we have email info
     const requestData = await req.json().catch(() => ({}));
@@ -410,7 +413,7 @@ export default async function handler(req: Request) {
         success: false,
         error_message: error.message,
         user_id: requestData.user_id
-      });
+      }, logger);
     }
     
     // Still return 200 to prevent edge function errors

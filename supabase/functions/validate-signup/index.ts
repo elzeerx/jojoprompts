@@ -1,5 +1,6 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { createEdgeLogger } from '../_shared/logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -153,7 +154,7 @@ async function checkSignupRateLimit(
     .gte('created_at', windowStart);
   
   if (error) {
-    console.error('Error checking rate limit:', error);
+    // Note: Logging handled at call site
     return { allowed: true }; // Fail open to not block legitimate signups
   }
   
@@ -172,7 +173,8 @@ async function logSignupAttempt(
   supabase: any,
   request: SignupValidationRequest,
   success: boolean,
-  errors: string[]
+  errors: string[],
+  logger: any
 ) {
   try {
     await supabase
@@ -186,11 +188,13 @@ async function logSignupAttempt(
         created_at: new Date().toISOString()
       });
   } catch (error) {
-    console.warn('Failed to log signup attempt:', error);
+    logger.warn('Failed to log signup attempt', { error });
   }
 }
 
 serve(async (req) => {
+  const logger = createEdgeLogger('validate-signup');
+  
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -204,7 +208,7 @@ serve(async (req) => {
     const requestBody: SignupValidationRequest = await req.json();
     const { email, username, firstName, lastName, ipAddress } = requestBody;
     
-    console.log(`[SignupValidation] Validating signup for ${email}, username: ${username}`);
+    logger.info('Validating signup', { email, username });
     
     const allErrors: string[] = [];
     const allWarnings: string[] = [];
@@ -257,11 +261,11 @@ serve(async (req) => {
     const isValid = allErrors.length === 0;
     
     // Log the attempt
-    await logSignupAttempt(supabase, requestBody, isValid, allErrors);
+    await logSignupAttempt(supabase, requestBody, isValid, allErrors, logger);
     
     // If validation failed, return errors
     if (!isValid) {
-      console.log(`[SignupValidation] Validation failed for ${email}:`, allErrors);
+      logger.info('Validation failed', { email, errors: allErrors });
       return new Response(
         JSON.stringify({
           valid: false,
@@ -275,7 +279,7 @@ serve(async (req) => {
       );
     }
     
-    console.log(`[SignupValidation] Validation passed for ${email}`);
+    logger.info('Validation passed', { email });
     
     return new Response(
       JSON.stringify({
@@ -290,7 +294,7 @@ serve(async (req) => {
     );
     
   } catch (error) {
-    console.error('[SignupValidation] Error:', error);
+    logger.error('Signup validation error', { error });
     return new Response(
       JSON.stringify({
         valid: false,
