@@ -4,6 +4,7 @@ import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useUserUpdate } from "./useUserUpdate";
 import { usePlanAssignment } from "./usePlanAssignment";
 import { usePasswordReset } from "./usePasswordReset";
+import { useUserDeletion } from "./useUserDeletion";
 import { UserUpdateData, UserRole } from "@/types/user";
 
 export function useUserManagement() {
@@ -65,12 +66,17 @@ export function useUserManagement() {
     }
   };
 
-  const handleDeleteUser = async (_userId: string) => {
-    // Deletion via dashboard is temporarily disabled in this view-only mode
-    return false;
+  const { processingUserId: deletionProcessingUserId, deleteUser: performDelete } = useUserDeletion();
+
+  const handleDeleteUser = async (userId: string, email: string, firstName: string, lastName: string, role: string) => {
+    const success = await performDelete(userId, email);
+    if (success) {
+      await refetch(); // Refresh user list after successful deletion
+    }
+    return success;
   };
 
-  const processingUserId = updateProcessingUserId || planProcessingUserId || null;
+  const processingUserId = updateProcessingUserId || planProcessingUserId || deletionProcessingUserId || null;
 
   return {
     users,

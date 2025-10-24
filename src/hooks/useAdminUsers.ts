@@ -25,42 +25,44 @@ export function useAdminUsers() {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from('v_admin_users')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Call get-all-users edge function for enriched auth data
+      const { data: response, error: functionError } = await supabase.functions.invoke('get-all-users', {
+        body: { action: 'list' }
+      });
 
-      if (error) throw error;
+      if (functionError) throw functionError;
+      if (!response?.success) throw new Error(response?.message || 'Failed to fetch users');
       
-      // Transform view data to AdminUser format
-      const transformedUsers: AdminUser[] = (data || []).map((row: any) => ({
-        id: row.id,
-        first_name: row.first_name,
-        last_name: row.last_name,
-        username: row.username,
-        email: row.email,
-        role: row.role,
-        avatar_url: row.avatar_url,
-        bio: row.bio,
-        country: row.country,
-        phone_number: row.phone_number,
-        timezone: row.timezone,
-        membership_tier: row.membership_tier,
-        social_links: row.social_links,
-        created_at: row.created_at,
-        last_sign_in_at: row.last_sign_in_at,
-        updated_at: row.updated_at,
-        is_email_confirmed: row.is_email_confirmed,
+      // Transform response data to AdminUser format
+      const transformedUsers: AdminUser[] = (response.data?.users || []).map((user: any) => ({
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatar_url: user.avatar_url,
+        bio: user.bio,
+        country: user.country,
+        phone_number: user.phone_number,
+        timezone: user.timezone,
+        membership_tier: user.membership_tier,
+        social_links: user.social_links,
+        created_at: user.created_at,
+        last_sign_in_at: user.last_sign_in_at,
+        updated_at: user.auth_updated_at || user.updated_at,
+        is_email_confirmed: user.is_email_confirmed || false,
         
         // Build subscription object if subscription data exists
-        subscription: row.subscription_plan_name ? {
-          plan_name: row.subscription_plan_name,
-          status: row.subscription_status,
-          is_lifetime: row.subscription_is_lifetime || false,
-          price_usd: row.subscription_price_usd || 0
+        subscription: user.subscription ? {
+          plan_name: user.subscription.plan_name,
+          status: user.subscription.status,
+          is_lifetime: user.subscription.is_lifetime || false,
+          price_usd: user.subscription.price_usd || 0
         } : null
       }));
 
+      logger.info('Loaded users successfully', { count: transformedUsers.length });
       setUsers(transformedUsers);
     } catch (err: any) {
       logger.error('Failed to load users', { error: err.message || err });
