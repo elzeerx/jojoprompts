@@ -20,44 +20,28 @@ export async function verifyProfile(
   user: any
 ): Promise<ProfileVerificationResult> {
   try {
-    // Fetch user profile with comprehensive security checks
-    const { data: profile, error: profileError } = await serviceClient
-      .from('profiles')
-      .select('role, created_at')
-      .eq('id', user.id)
+    // Fetch user role from user_roles table with comprehensive security checks
+    const { data: userRoleData, error: roleError } = await serviceClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'jadmin'])
       .maybeSingle();
 
-    if (profileError) {
-      logger.error('Error fetching user profile', { error: profileError.message });
+    if (roleError) {
+      logger.error('Error fetching user role', { error: roleError.message });
       return {
         profile: null, 
         permissions: [], 
         isValid: false, 
-        error: `Database error: ${profileError.message}` 
+        error: `Database error: ${roleError.message}` 
       };
     }
 
-    if (!profile) {
-      logger.error('No profile found for user', { userId: user.id });
-      return {
-        profile: null, 
-        permissions: [], 
-        isValid: false, 
-        error: 'User profile not found' 
-      };
-    }
-
-    // Enhanced admin role validation
-    const adminRoles = ['admin', 'jadmin'];
-    const userRole = profile.role?.toLowerCase();
-    
-    if (!adminRoles.includes(userRole)) {
-      logger.error('Auth failure - insufficient role', {
+    if (!userRoleData) {
+      logger.error('Auth failure - user has no admin role', {
         userId: user.id,
-        email: user.email,
-        actualRole: profile.role,
-        requiredRoles: adminRoles.join(', '),
-        profile: JSON.stringify(profile)
+        email: user.email
       });
       
       // Log potential privilege escalation attempt
@@ -65,11 +49,10 @@ export async function verifyProfile(
         user_id: user.id,
         action: 'unauthorized_admin_access_attempt',
         details: { 
-          attemptedRole: userRole,
-          requiredRoles: adminRoles,
+          attemptedAccess: 'get-all-users',
+          requiredRoles: ['admin', 'jadmin'],
           endpoint: 'get-all-users',
-          userEmail: user.email,
-          profileCreated: profile.created_at
+          userEmail: user.email
         }
       });
       
@@ -77,12 +60,20 @@ export async function verifyProfile(
         profile: null, 
         permissions: [], 
         isValid: false, 
-        error: `Access denied: User role is '${profile.role}', requires 'admin' or 'jadmin' role` 
+        error: `Access denied: User does not have admin or jadmin role` 
       };
     }
 
+    const userRole = userRoleData.role.toLowerCase();
+
     // Generate role-based permissions
     const permissions = generatePermissions(userRole);
+
+    // Create a profile object for compatibility
+    const profile = {
+      role: userRole,
+      created_at: null
+    };
 
     // Additional security checks
     await performSecurityChecks({ supabase: serviceClient, userId: user.id, profile });

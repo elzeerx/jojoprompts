@@ -84,21 +84,22 @@ serve(async (req: Request) => {
     }
     logger.debug('User authenticated', { userId: user.id });
 
-    // Check if user is admin
+    // Check if user is admin via user_roles table
     logger.debug('Checking admin privileges');
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
+    const { data: userRole, error: roleError } = await supabaseAdmin
+      .from("user_roles")
       .select("role")
-      .eq("id", user.id)
+      .eq("user_id", user.id)
+      .eq("role", "admin")
       .maybeSingle();
 
-    if (profileError) {
-      logger.error('Error checking admin role', { error: profileError });
+    if (roleError) {
+      logger.error('Error checking admin role', { error: roleError });
       throw new Error("Failed to verify admin privileges");
     }
 
-    if (!profile || profile.role !== "admin") {
-      logger.error('Access denied', { userRole: profile?.role || 'unknown' });
+    if (!userRole) {
+      logger.error('Access denied - user is not admin');
       throw new Error("Admin access required");
     }
     logger.info('Admin access verified');

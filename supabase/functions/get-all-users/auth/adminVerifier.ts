@@ -54,8 +54,17 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
 
     const { profile, permissions } = profileResult;
 
-    // Step 6: Log successful authentication
-    logger.info('Successfully authenticated admin user', { userId: user.id, role: profile.role });
+    // Step 6: Get user role from user_roles table for logging
+    const { data: userRoleData } = await serviceClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    const userRole = userRoleData?.role || 'unknown';
+    
+    // Step 7: Log successful authentication
+    logger.info('Successfully authenticated admin user', { userId: user.id, role: userRole });
     
     await logSecurityEvent(serviceClient, {
       user_id: user.id,
@@ -63,7 +72,7 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
       details: { 
         function: 'get-all-users', 
         success: true,
-        role: profile.role,
+        role: userRole,
         permissions: permissions
       }
     });

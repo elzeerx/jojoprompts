@@ -2373,6 +2373,7 @@ export type Database = {
           assigned_at: string | null
           assigned_by: string | null
           id: string
+          is_super_admin: boolean | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -2380,6 +2381,7 @@ export type Database = {
           assigned_at?: string | null
           assigned_by?: string | null
           id?: string
+          is_super_admin?: boolean | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -2387,6 +2389,7 @@ export type Database = {
           assigned_at?: string | null
           assigned_by?: string | null
           id?: string
+          is_super_admin?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
@@ -2717,6 +2720,7 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_admin_user: { Args: never; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_verified_admin: { Args: { action_context?: string }; Returns: boolean }
       log_profile_access_attempt: {
         Args: { access_type: string; granted: boolean; target_user_id: string }

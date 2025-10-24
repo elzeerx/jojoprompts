@@ -67,7 +67,7 @@ export async function listUsers(
       }
     }
 
-    // Get comprehensive profile data with all fields
+    // Get comprehensive profile data with all fields (excluding role which is in user_roles)
     const profileQuery = supabase
       .from('profiles')
       .select(`
@@ -75,7 +75,6 @@ export async function listUsers(
         first_name,
         last_name,
         username,
-        role,
         bio,
         avatar_url,
         country,
@@ -117,8 +116,28 @@ export async function listUsers(
       };
     }
 
-    // Get user subscriptions for the profiles in this page
+    // Get user roles for the profiles in this page
     const profileIds = profiles.map(p => p.id);
+    const { data: userRoles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .in('user_id', profileIds);
+
+    if (rolesError) {
+      logger.warn('Error fetching roles', { error: rolesError.message });
+    }
+
+    // Create role map for efficient lookup
+    const roleMap = new Map();
+    if (userRoles) {
+      userRoles.forEach(ur => {
+        if (!roleMap.has(ur.user_id)) {
+          roleMap.set(ur.user_id, ur.role);
+        }
+      });
+    }
+
+    // Get user subscriptions for the profiles in this page
     const { data: subscriptions, error: subError } = await supabase
       .from('user_subscriptions')
       .select(`
@@ -165,6 +184,7 @@ export async function listUsers(
     const combinedUsers = profiles.map(profile => {
       const authUser = authUserMap.get(profile.id);
       const subscription = subscriptionMap.get(profile.id);
+      const role = roleMap.get(profile.id) || 'user';
       
       return {
         // Profile data (complete)
@@ -172,7 +192,7 @@ export async function listUsers(
         first_name: profile.first_name,
         last_name: profile.last_name,
         username: profile.username,
-        role: profile.role || 'user',
+        role: role,
         bio: profile.bio,
         avatar_url: profile.avatar_url,
         country: profile.country,

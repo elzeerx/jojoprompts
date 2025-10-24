@@ -56,34 +56,36 @@ serve(async (req) => {
       throw new Error(`Authentication failed: ${userError?.message || 'No user found'}`)
     }
 
-    // Check user permissions by querying profiles table with service role client
-    const { data: profile, error: profileError } = await serviceRoleClient
-      .from('profiles')
+    // Check user permissions by querying user_roles table with service role client
+    const { data: userRole, error: roleError } = await serviceRoleClient
+      .from('user_roles')
       .select('role')
-      .eq('id', user.id)
-      .single();
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'prompter', 'jadmin'])
+      .maybeSingle();
     
-    logger.debug('User profile check', { 
-      profileExists: !!profile,
-      role: profile?.role,
-      hasError: !!profileError
+    logger.debug('User role check', { 
+      hasRole: !!userRole,
+      role: userRole?.role,
+      hasError: !!roleError
     });
     
-    if (profileError || !profile) {
-      logger.error('Profile check failed', { error: profileError?.message });
-      throw new Error(`Profile check failed: ${profileError?.message || 'No profile found'}`);
+    if (roleError) {
+      logger.error('Role check failed', { error: roleError?.message });
+      throw new Error(`Role check failed: ${roleError?.message}`);
     }
     
     // Check if user has permission to manage prompts
     const allowedRoles = ['admin', 'prompter', 'jadmin'];
-    const userRole = profile.role?.toLowerCase();
+    const currentRole = userRole?.role?.toLowerCase();
     
-    if (!allowedRoles.includes(userRole)) {
-      logger.warn('User lacks permissions for prompt enhancement', { userRole });
+    if (!currentRole || !allowedRoles.includes(currentRole)) {
+      logger.warn('User lacks permissions for prompt enhancement', { userRole: currentRole });
       return new Response(
         JSON.stringify({ 
           error: 'Insufficient permissions. Only admins, prompters, and jadmins can enhance prompts.',
-          enhanced_prompt: prompt_description
+          enhanced_prompt: prompt_description,
+          user_role: currentRole || 'none'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );

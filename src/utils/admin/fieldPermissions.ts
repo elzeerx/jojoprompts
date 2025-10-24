@@ -154,8 +154,9 @@ export function getEditableFields(userRole: UserRole, isSuperAdmin: boolean = fa
 }
 
 // Check if user is a super admin (highest level admin)
-export function isSuperAdmin(userRole: UserRole, userId?: string): boolean {
-  // For now, all full admins are considered super admins
-  // This could be extended to check specific user IDs or additional metadata
+export function isSuperAdmin(userRole: UserRole, _userId?: string): boolean {
+  // Note: Actual super admin status should be queried from database
+  // via useSuperAdmin hook or is_super_admin() function
+  // This simplified check just verifies admin role
   return isAdmin(userRole);
 }

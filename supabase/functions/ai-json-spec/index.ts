@@ -45,19 +45,19 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    // Check if user can manage prompts
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
+    // Check if user can manage prompts via user_roles table
+    const { data: userRole, error: roleError } = await supabase
+      .from('user_roles')
       .select('role')
-      .eq('id', user.id)
-      .single();
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'prompter', 'jadmin'])
+      .maybeSingle();
 
-    if (profileError || !profile) {
-      throw new Error('Profile not found');
+    if (roleError) {
+      throw new Error('Role check failed');
     }
 
-    const canManagePrompts = ['admin', 'prompter', 'jadmin'].includes(profile.role);
-    if (!canManagePrompts) {
+    if (!userRole) {
       throw new Error('Insufficient permissions');
     }
 

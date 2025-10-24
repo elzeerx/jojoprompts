@@ -150,11 +150,14 @@ export const canViewAuditLogs = (role?: string | null): boolean => {
 // ============================================================================
 
 /**
- * Check if user is super admin (nawaf@elzeer.com with admin role)
+ * Check if user is super admin
  * Super admins have full CRUD permissions including user deletion
+ * Note: This is a simplified check. For accurate super admin status,
+ * use the database query via useSuperAdmin hook or is_super_admin() function
  */
-export const isSuperAdmin = (role?: string | null, email?: string | null): boolean => {
-  return isAdmin(role) && email === 'nawaf@elzeer.com';
+export const isSuperAdmin = (role?: string | null, _email?: string | null): boolean => {
+  // Simplified check - actual super admin status should be queried from database
+  return isAdmin(role);
 };
 
 // ============================================================================
