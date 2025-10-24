@@ -54,7 +54,59 @@ serve(async (req) => {
     
     // Handle POST - delete/update operations
     if (req.method === 'POST') {
-      const body = await req.json();
+      // Check if POST has a body
+      const contentLength = req.headers.get('content-length');
+      const hasBody = contentLength && parseInt(contentLength) > 0;
+      
+      if (!hasBody) {
+        // Empty POST body - treat as GET request for user list
+        logger.info("POST request with no body, redirecting to GET logic");
+        
+        const url = new URL(req.url);
+        const page = parseInt(url.searchParams.get('page') || '1');
+        const limit = parseInt(url.searchParams.get('limit') || '10');
+        const search = url.searchParams.get('search') || '';
+        
+        const offset = (page - 1) * limit;
+        
+        logger.info("Fetching users", { page, limit, search });
+        
+        // Build query
+        let query = supabase
+          .from('profiles')
+          .select('*, user_subscriptions(*, subscription_plans(*))', { count: 'exact' })
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+        
+        if (search) {
+          query = query.or(`email.ilike.%${search}%,username.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+        }
+        
+        const { data: profiles, error, count } = await query;
+        
+        if (error) {
+          logger.error('User fetch error', { error: error.message });
+          throw error;
+        }
+        
+        logger.info("Users fetched successfully", { count, returned: profiles?.length || 0 });
+        
+        return createSuccessResponse({
+          users: profiles,
+          total: count,
+          totalPages: Math.ceil((count || 0) / limit)
+        });
+      }
+      
+      // Safely parse body
+      let body;
+      try {
+        body = await req.json();
+      } catch (parseError: any) {
+        logger.error('Failed to parse POST body', { error: parseError.message });
+        return createErrorResponse('Invalid JSON body', 400);
+      }
+      
       const { action, userId: targetUserId } = body;
       
       logger.info("User action requested", { action, targetUserId });
