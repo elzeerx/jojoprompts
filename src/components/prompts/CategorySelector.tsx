@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('CATEGORY_SELECTOR');
 
 export interface Category {
   id: string;
@@ -44,8 +47,8 @@ export function CategorySelector({
       await onCreateCategory(newCategoryName.trim());
       setNewCategoryName('');
       setIsDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to create category:', error);
+    } catch (error: any) {
+      logger.error('Failed to create category', { error: error.message });
     } finally {
       setIsCreating(false);
     }

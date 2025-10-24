@@ -43,6 +43,9 @@ import { CategorySelector } from "@/components/prompt-generator/CategorySelector
 import { Badge } from "@/components/ui/badge";
 import { type PromptRow } from "@/types";
 import { PromptDialogHeader } from "./components/PromptDialogHeader";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SIMPLIFIED_PROMPT_DIALOG');
 
 /**
  * Props for SimplifiedPromptDialog component
@@ -213,8 +216,8 @@ export function SimplifiedPromptDialog({
 
         setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
         uploadedPaths.push(data.path);
-      } catch (error) {
-        console.error(`Error uploading ${file.name}:`, error);
+      } catch (error: any) {
+        logger.error('Error uploading file', { fileName: file.name, error: error.message });
         toast({
           variant: "destructive",
           title: "Upload failed",
@@ -395,8 +398,8 @@ export function SimplifiedPromptDialog({
         translations: {},
         attachedFiles: []
       });
-    } catch (error) {
-      console.error("Error saving prompt:", error);
+    } catch (error: any) {
+      logger.error('Error saving prompt', { error: error.message, isEditing: !!editingPrompt });
       toast({
         variant: "destructive",
         title: "Save failed",
