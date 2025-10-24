@@ -7,6 +7,9 @@ import { Upload, Image as ImageIcon, X, Database, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getPromptImage } from "@/utils/image";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('THUMBNAIL_MANAGER');
 
 interface ThumbnailManagerProps {
   value: string | null;
@@ -39,8 +42,8 @@ export function ThumbnailManager({ value, onChange }: ThumbnailManagerProps) {
           try {
             const imageUrl = await getPromptImage(value, 400, 85);
             setPreviewUrl(imageUrl);
-          } catch (error) {
-            console.error('Error loading preview:', error);
+          } catch (error: any) {
+            logger.error('Error loading preview', { error: error.message });
             setPreviewUrl(null);
           }
         }
@@ -110,8 +113,8 @@ export function ThumbnailManager({ value, onChange }: ThumbnailManagerProps) {
         description: "Thumbnail has been uploaded successfully."
       });
       
-    } catch (error) {
-      console.error("Upload error:", error);
+    } catch (error: any) {
+      logger.error('Upload error', { error: error.message });
       toast({
         variant: "destructive",
         title: "Upload failed",

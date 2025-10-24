@@ -6,6 +6,9 @@ import { Sparkles, Brain, Loader2, Plus } from "lucide-react";
 import { useSmartSuggestions } from "@/pages/admin/components/prompts/hooks/useSmartSuggestions";
 import { callEdgeFunction } from "@/utils/edgeFunctions";
 import { useToast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SMART_SUGGESTIONS');
 
 interface SmartSuggestionsProps {
   promptText: string;
@@ -48,8 +51,8 @@ export function SmartSuggestions({
         const contentTypes = analyzeTypesFromContent(promptText);
         setSuggestedTypes(contentTypes);
       }
-    } catch (error) {
-      console.error("Error analyzing prompt:", error);
+    } catch (error: any) {
+      logger.error('Error analyzing prompt', { error: error.message });
     } finally {
       setIsAnalyzing(false);
     }
