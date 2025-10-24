@@ -99,14 +99,43 @@ async function handleBulkUpdate(
         .eq('id', userId)
         .single();
 
-      // Prepare profile updates
+      // Prepare profile updates (excluding role which is in user_roles table)
       const profileUpdates: Record<string, any> = {};
       
-      if (updateData.role !== undefined) {
-        profileUpdates.role = updateData.role;
-      }
       if (updateData.membership_tier !== undefined) {
         profileUpdates.membership_tier = updateData.membership_tier;
+      }
+
+      // Handle role updates separately via user_roles table
+      if (updateData.role !== undefined) {
+        const newRole = updateData.role;
+        
+        // Delete existing roles for this user
+        await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId);
+        
+        // Insert new role
+        await supabase
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: newRole,
+            assigned_by: adminId,
+            assigned_at: new Date().toISOString()
+          });
+
+        // Log role change
+        await supabase.rpc('log_user_profile_change', {
+          target_user_id: userId,
+          admin_id: adminId,
+          action_type: 'bulk_role_update',
+          field_name: 'role',
+          old_val: null,
+          new_val: JSON.stringify(newRole),
+          additional_metadata: JSON.stringify({ operation_id: operationId, bulk_operation: true })
+        }).catch(() => {});
       }
 
       // Update profile
@@ -225,7 +254,7 @@ async function handleBulkExport(
   operationId: string
 ) {
   try {
-    // Get user data for export
+    // Get user data for export (excluding role which is in user_roles table)
     const { data: users, error } = await supabase
       .from('profiles')
       .select(`
@@ -233,7 +262,6 @@ async function handleBulkExport(
         first_name,
         last_name,
         username,
-        role,
         email,
         membership_tier,
         country,
@@ -251,12 +279,27 @@ async function handleBulkExport(
       throw error;
     }
 
+    // Fetch roles separately from user_roles table
+    const { data: userRoles } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .in('user_id', userIds);
+
+    // Create a role map
+    const roleMap = new Map(userRoles?.map((r: any) => [r.user_id, r.role]) || []);
+
+    // Merge roles with user data
+    const usersWithRoles = users.map((user: any) => ({
+      ...user,
+      role: roleMap.get(user.id) || 'user'
+    }));
+
     // Filter fields based on export options
     const fieldsToInclude = exportOptions?.fields || [
       'first_name', 'last_name', 'username', 'email', 'role'
     ];
 
-    const exportData = users.map((user: any) => {
+    const exportData = usersWithRoles.map((user: any) => {
       const filtered: Record<string, any> = {};
       fieldsToInclude.forEach((field: string) => {
         if (user[field] !== undefined) {

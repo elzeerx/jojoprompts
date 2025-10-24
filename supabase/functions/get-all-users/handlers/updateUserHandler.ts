@@ -101,7 +101,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
         .insert({
           user_id: userId,
           role: newRole,
-          assigned_by: auth.uid(),
+          assigned_by: adminId,
           assigned_at: new Date().toISOString()
         });
     }
@@ -248,58 +248,6 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       }
     }
 
-    // Handle account status changes (enable/disable account)
-    if (validation.sanitizedData.accountStatus !== undefined) {
-      const isEnabled = validation.sanitizedData.accountStatus === 'enabled';
-      
-      const { error: statusUpdateError } = await supabase.auth.admin.updateUserById(
-        userId,
-        { 
-          user_metadata: { account_disabled: !isEnabled },
-          app_metadata: { account_disabled: !isEnabled }
-        }
-      );
-
-      if (statusUpdateError) {
-        logger.error('Error updating account status (duplicate section)', { error: statusUpdateError });
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to update account status', 
-            details: statusUpdateError.message
-          }), 
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-    }
-
-    // Handle email confirmation status
-    if (validation.sanitizedData.emailConfirmed !== undefined) {
-      const { error: confirmationError } = await supabase.auth.admin.updateUserById(
-        userId,
-        { 
-          email_confirmed_at: validation.sanitizedData.emailConfirmed 
-            ? new Date().toISOString() 
-            : null
-        }
-      );
-
-      if (confirmationError) {
-        logger.error('Error updating email confirmation (duplicate section)', { error: confirmationError });
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to update email confirmation status', 
-            details: confirmationError.message
-          }), 
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-    }
 
     // Update email if provided
     if (validation.sanitizedData.email) {
