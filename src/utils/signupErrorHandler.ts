@@ -1,6 +1,29 @@
 /**
  * Signup-specific error handler with enhanced error detection and user feedback
  * Part of Phase 2: Robustness Improvements
+ * 
+ * @module signupErrorHandler
+ * @description Provides comprehensive error handling for signup operations with:
+ * - Automatic error type detection
+ * - Smart retry logic for transient failures
+ * - User-friendly error messages
+ * - Structured error codes for debugging
+ * 
+ * @example
+ * ```typescript
+ * // Basic error handling
+ * const result = handleSignupError(error, {
+ *   email: "user@example.com",
+ *   operation: "validation"
+ * });
+ * 
+ * // With retry logic
+ * const result = await retrySignupOperation(
+ *   async () => await validateUser(),
+ *   { email, operation: "validation" },
+ *   2 // max retries
+ * );
+ * ```
  */
 
 import { toast } from "@/hooks/use-toast";
@@ -53,6 +76,25 @@ export enum SignupErrorCode {
 
 /**
  * Detect error type from error object or message
+ * 
+ * @param error - The error object or message to analyze
+ * @returns SignupErrorCode - Categorized error code
+ * 
+ * @description
+ * Analyzes error messages to categorize them into specific error types.
+ * This enables appropriate retry logic and user-friendly messaging.
+ * 
+ * Error categories:
+ * - Network errors: Connection issues, timeouts (retryable)
+ * - Validation errors: Invalid input, duplicates (not retryable)
+ * - Service errors: Server issues, edge function failures (retryable)
+ * - Rate limiting: Too many attempts (not retryable, needs wait)
+ * 
+ * @example
+ * ```typescript
+ * const errorCode = detectErrorType(new Error("Network request failed"));
+ * // Returns: SignupErrorCode.NETWORK_ERROR
+ * ```
  */
 function detectErrorType(error: any): SignupErrorCode {
   const errorMessage = error?.message?.toLowerCase() || JSON.stringify(error).toLowerCase();
@@ -210,6 +252,36 @@ function getErrorResult(errorCode: SignupErrorCode, originalError: any): SignupE
 
 /**
  * Main error handler for signup operations
+ * 
+ * @param error - The error object to handle
+ * @param context - Context information about where/when the error occurred
+ * @param showToast - Whether to display toast notification to user (default: true)
+ * @returns SignupErrorResult - Structured error information
+ * 
+ * @description
+ * Central error handling function that:
+ * 1. Detects error type automatically
+ * 2. Gets user-friendly error message
+ * 3. Logs error with appropriate severity
+ * 4. Optionally shows toast notification
+ * 5. Returns structured error info for programmatic handling
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   await signupUser(data);
+ * } catch (error) {
+ *   const result = handleSignupError(error, {
+ *     email: data.email,
+ *     operation: "signup",
+ *     attemptCount: 1
+ *   });
+ *   
+ *   if (result.shouldRetry) {
+ *     // Retry after result.retryDelay ms
+ *   }
+ * }
+ * ```
  */
 export function handleSignupError(
   error: any,
@@ -248,6 +320,46 @@ export function handleSignupError(
 
 /**
  * Retry wrapper for signup operations
+ * 
+ * @template T - The return type of the operation
+ * @param operation - Async function to execute with retry logic
+ * @param context - Context about the operation for logging
+ * @param maxRetries - Maximum number of retry attempts (default: 2)
+ * @returns Promise with success/failure info and data/error
+ * 
+ * @description
+ * Wraps any async operation with smart retry logic:
+ * - Automatically retries on transient failures (network, service errors)
+ * - Does NOT retry validation or rate limit errors
+ * - Uses exponential backoff for retries
+ * - Shows user-friendly error messages
+ * - Logs all attempts for debugging
+ * 
+ * Retry Strategy:
+ * - Validation errors: No retry (fail immediately)
+ * - Network errors: Retry with 2s delay
+ * - Service errors: Retry with 2s delay
+ * - Rate limit: No retry (display wait time)
+ * 
+ * @example
+ * ```typescript
+ * // Validation with 2 retries
+ * const result = await retrySignupOperation(
+ *   async () => {
+ *     const { data, error } = await validateEmail(email);
+ *     if (error) throw error;
+ *     return data;
+ *   },
+ *   { email, operation: "validation" },
+ *   2
+ * );
+ * 
+ * if (result.success) {
+ *   console.log("Validation passed:", result.data);
+ * } else {
+ *   console.error("Validation failed:", result.error);
+ * }
+ * ```
  */
 export async function retrySignupOperation<T>(
   operation: () => Promise<T>,
