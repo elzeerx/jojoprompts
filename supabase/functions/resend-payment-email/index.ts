@@ -23,13 +23,25 @@ serve(async (req) => {
     // Fetch transaction details
     const { data: transaction, error: txError } = await supabase
       .from('transactions')
-      .select('*, subscription_plans(*)')
+      .select('*, subscription_plans!transactions_plan_id_fkey(*)')
       .eq('id', transactionId)
       .single();
 
     if (txError || !transaction) {
-      logger.error('Transaction not found', { error: txError });
-      return createErrorResponse('Transaction not found', 404);
+      logger.error('Transaction not found', { 
+        error: txError?.message || txError,
+        transactionId 
+      });
+      return createErrorResponse(
+        txError?.message || 'Transaction not found', 
+        404
+      );
+    }
+
+    // Validate subscription_plans relationship
+    if (!transaction.subscription_plans) {
+      logger.error('Transaction has no associated plan', { transactionId });
+      return createErrorResponse('Transaction has no associated subscription plan', 400);
     }
 
     // Fetch user profile
