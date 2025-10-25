@@ -290,7 +290,7 @@ serve(async (req) => {
           errorCode
         }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
