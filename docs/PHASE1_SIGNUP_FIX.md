@@ -56,14 +56,16 @@ VALUES (new.id, default_role, is_first_user);
 
 ## Testing Checklist
 
-Before marking as complete, verify:
+✅ **Migration Applied Successfully**  
+✅ **Function Updated:** `handle_new_user()` now inserts into both `profiles` and `user_roles` tables
+
+**Ready for User Testing:**
 
 - [ ] New user signup completes successfully
-- [ ] Profile record created in `profiles` table
+- [ ] Profile record created in `profiles` table with email
 - [ ] Role record created in `user_roles` table with correct role
 - [ ] First user gets `role = 'admin'` and `is_super_admin = TRUE`
 - [ ] Subsequent users get `role = 'user'` and `is_super_admin = FALSE`
-- [ ] Email is properly stored in profiles table
 - [ ] No console errors during signup
 - [ ] Signup with payment checkout flow works
 - [ ] Reserved usernames (admin, superadmin) still blocked by `validate-signup` function
@@ -192,4 +194,15 @@ For issues or questions about this fix, reference:
 
 ---
 
-**Status:** Ready for deployment ✅
+## Security Warnings (Pre-Existing, Not Related to This Migration)
+
+The linter detected 2 "Security Definer View" warnings. These are **NOT** related to this migration:
+- This migration creates a **function** (correct approach)
+- The warnings are about **views** (different database objects)
+- These are pre-existing issues in the database
+
+Our function uses `SECURITY DEFINER` correctly as recommended in Supabase documentation for trigger functions.
+
+---
+
+**Status:** ✅ Migration Applied - Ready for Testing
