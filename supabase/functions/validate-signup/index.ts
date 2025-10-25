@@ -60,6 +60,7 @@ interface ValidationResult {
   valid: boolean;
   errors: string[];
   warnings?: string[];
+  errorCode?: string; // PHASE 2: Add error codes for better debugging
 }
 
 // Validate email domain
@@ -263,14 +264,30 @@ serve(async (req) => {
     // Log the attempt
     await logSignupAttempt(supabase, requestBody, isValid, allErrors, logger);
     
-    // If validation failed, return errors
+    // PHASE 2: Enhanced error response with error codes
     if (!isValid) {
       logger.info('Validation failed', { email, errors: allErrors });
+      
+      // Determine primary error code
+      let errorCode = 'VALIDATION_FAILED';
+      if (allErrors.some(e => e.includes('email') && e.includes('exists'))) {
+        errorCode = 'EMAIL_TAKEN';
+      } else if (allErrors.some(e => e.includes('username') && e.includes('taken'))) {
+        errorCode = 'USERNAME_TAKEN';
+      } else if (allErrors.some(e => e.includes('reserved'))) {
+        errorCode = 'USERNAME_RESERVED';
+      } else if (allErrors.some(e => e.includes('email domain'))) {
+        errorCode = 'EMAIL_DOMAIN_INVALID';
+      } else if (allErrors.some(e => e.includes('rate limit'))) {
+        errorCode = 'RATE_LIMITED';
+      }
+      
       return new Response(
         JSON.stringify({
           valid: false,
           errors: allErrors,
-          warnings: allWarnings
+          warnings: allWarnings,
+          errorCode
         }),
         {
           status: 400,
