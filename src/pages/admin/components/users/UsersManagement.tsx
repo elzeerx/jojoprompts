@@ -28,7 +28,7 @@ export default function UsersManagement() {
     refetch
   } = useUserManagement();
   
-  const { resendConfirmationEmail } = useUserActions();
+  const { resendConfirmationEmail, resendPaymentEmail } = useUserActions();
 
   return (
     <div className="space-y-6">
@@ -106,6 +106,7 @@ export default function UsersManagement() {
                   searchTerm={searchTerm}
                   onDeleteUser={deleteUser}
                   onResendConfirmation={resendConfirmationEmail}
+                  onResendPaymentEmail={resendPaymentEmail}
                   onRefresh={refetch}
                 />
                 <div className="text-sm text-muted-foreground">

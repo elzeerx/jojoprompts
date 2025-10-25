@@ -307,10 +307,77 @@ export function useUserActions() {
     }
   };
 
+  const resendPaymentEmail = async (userId: string, email: string) => {
+    if (!userId || !email) {
+      logger.error('Missing userId or email for resend payment email');
+      toast({
+        title: "Error",
+        description: "Missing user information",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setProcessingUserId(userId);
+    logger.info('Admin requesting payment email resend', { userId, email });
+
+    try {
+      // Fetch user's most recent completed transaction
+      const { data: transaction, error: txError } = await supabase
+        .from('transactions')
+        .select('id, status')
+        .eq('user_id', userId)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (txError || !transaction) {
+        toast({
+          title: "No transaction found",
+          description: "This user has no completed transactions",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Call resend edge function
+      const { data, error } = await supabase.functions.invoke('resend-payment-email', {
+        body: { 
+          transactionId: transaction.id,
+          email: email
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      logger.info('Payment email resend successful', { userId, transactionId: transaction.id });
+      toast({
+        title: "Email sent",
+        description: `Payment confirmation email sent to ${email}`,
+      });
+
+    } catch (error: any) {
+      logger.error('Payment email resend failed', { error: error.message });
+      handleError(error, { component: 'useUserActions', action: 'resendPaymentEmail' });
+      
+      toast({
+        title: "Failed to resend email",
+        description: error.message || "Could not resend payment confirmation email",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
   return {
     processingUserId,
     sendPasswordResetEmail,
     deleteUser,
     resendConfirmationEmail,
+    resendPaymentEmail,
   };
 }

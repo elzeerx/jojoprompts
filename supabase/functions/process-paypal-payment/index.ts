@@ -22,20 +22,6 @@ async function sendPaymentConfirmationEmail(
   try {
     loggerInstance.info('Attempting to send payment confirmation email', { recipientEmail, planName, amount });
 
-    // Get the payment_confirmation template
-    const { data: template, error: templateError } = await supabaseClient
-      .from('email_templates')
-      .select('*')
-      .eq('name', 'payment_confirmation')
-      .eq('is_active', true)
-      .single();
-
-    if (templateError || !template) {
-      loggerInstance.error('Payment confirmation template not found', { error: templateError });
-      await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', false, 'Template not found');
-      return;
-    }
-
     // Format purchase date
     const purchaseDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
@@ -43,26 +29,35 @@ async function sendPaymentConfirmationEmail(
       day: 'numeric'
     });
 
-    // Prepare template variables
-    const variables = {
-      first_name: userName,
-      plan_name: planName,
-      amount: amount.toFixed(2),
-      transaction_id: transactionId,
-      purchase_date: purchaseDate,
-      unsubscribe_link: `${getSiteUrl()}/settings/subscription`
+    // Prepare email payload with template_slug
+    const payload = {
+      to: recipientEmail,
+      template_slug: 'payment_confirmation',
+      email_type: 'payment_confirmation',
+      variables: {
+        first_name: userName.split(' ')[0] || 'Valued Customer',
+        plan_name: planName,
+        amount: Number(amount || 0).toFixed(2),
+        transaction_id: transactionId,
+        purchase_date: purchaseDate,
+        email: recipientEmail,
+        unsubscribe_link: `${getSiteUrl()}/unsubscribe?email=${encodeURIComponent(recipientEmail)}&type=payment_confirmation`
+      }
     };
 
-    loggerInstance.debug('Email template variables prepared', { variables });
+    loggerInstance.debug('Email payload prepared', { to: recipientEmail, template_slug: 'payment_confirmation' });
 
-    // Call send-email edge function
+    // Call send-email edge function with template_slug
     const { data: emailResponse, error: emailError } = await supabaseClient.functions.invoke('send-email', {
-      body: {
-        to: recipientEmail,
-        templateId: template.id,
-        variables: variables
-      }
+      body: payload
     });
+
+    // Check if user is unsubscribed (treat as success, not an error)
+    if (emailResponse?.unsubscribed) {
+      loggerInstance.info('User is unsubscribed from payment emails', { recipientEmail });
+      await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', true, 'User unsubscribed');
+      return;
+    }
 
     if (emailError) {
       loggerInstance.error('Failed to send payment confirmation email', { error: emailError });

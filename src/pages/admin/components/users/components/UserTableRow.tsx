@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key, User as UserIcon } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key, User as UserIcon, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -48,6 +48,7 @@ interface UserTableRowProps {
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string, firstName: string, lastName: string, role: string) => void;
   onResendConfirmation: (userId: string, email: string) => void;
+  onResendPaymentEmail: (userId: string, email: string) => void;
   onRefresh: () => void;
   onViewProfile?: () => void;
 }
@@ -60,6 +61,7 @@ export function UserTableRow({
   onSendResetEmail,
   onDeleteUser,
   onResendConfirmation,
+  onResendPaymentEmail,
   onRefresh,
   onViewProfile
 }: UserTableRowProps) {
@@ -236,6 +238,12 @@ export function UserTableRow({
             {user.is_email_confirmed === false && (
               <DropdownMenuItem onClick={() => onResendConfirmation(user.id, user.email!)}>
                 <Send className="mr-2 h-4 w-4" /> Resend Confirmation
+              </DropdownMenuItem>
+            )}
+            {user.subscription && (
+              <DropdownMenuItem onClick={() => onResendPaymentEmail(user.id, user.email!)}>
+                <Receipt className="mr-2 h-4 w-4 text-blue-600" />
+                <span className="text-blue-600">Resend Payment Email</span>
               </DropdownMenuItem>
             )}
             

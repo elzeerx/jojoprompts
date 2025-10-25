@@ -46,6 +46,7 @@ interface UsersTableProps {
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string, firstName: string, lastName: string, role: string) => void;
   onResendConfirmation: (userId: string, email: string) => void;
+  onResendPaymentEmail: (userId: string, email: string) => void;
   onRefresh: () => void;
   searchTerm?: string;
   onSearchChange?: (search: string) => void;
@@ -63,6 +64,7 @@ export function UsersTable({
   onSendResetEmail,
   onDeleteUser,
   onResendConfirmation,
+  onResendPaymentEmail,
   onRefresh,
   searchTerm = "",
   onSearchChange
@@ -210,6 +212,7 @@ export function UsersTable({
                   onSendResetEmail={onSendResetEmail}
                   onDeleteUser={onDeleteUser}
                   onResendConfirmation={onResendConfirmation}
+                  onResendPaymentEmail={onResendPaymentEmail}
                   onRefresh={onRefresh}
                   onViewProfile={() => handleViewProfile(user)}
                 />
