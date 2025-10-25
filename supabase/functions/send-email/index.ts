@@ -343,7 +343,7 @@ export default async function handler(req: Request) {
     
     // Configure email with our verified subdomain
     const emailConfig = {
-      from: 'JoJo Prompts <noreply@noreply.jojoprompts.com>',
+      from: 'JoJo Prompts <info@jojoprompts.com>',
       to: email_address,
       subject: finalSubject,
       html: finalHtml,
@@ -353,7 +353,7 @@ export default async function handler(req: Request) {
         'List-Unsubscribe': '<mailto:unsubscribe@jojoprompts.com>',
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         'X-Entity-Ref-ID': `jojoprompts-${Date.now()}`,
-        'Message-ID': `<${crypto.randomUUID()}@noreply.jojoprompts.com>`,
+        'Message-ID': `<${crypto.randomUUID()}@jojoprompts.com>`,
         'Precedence': 'transactional',
         'Auto-Submitted': 'auto-generated',
         'X-Priority': '3',

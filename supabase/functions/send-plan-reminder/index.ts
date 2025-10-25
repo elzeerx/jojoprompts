@@ -209,7 +209,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const emailData = {
-      from: "JojoPrompts <noreply@noreply.jojoprompts.com>",
+      from: "JojoPrompts <info@jojoprompts.com>",
       to: [email],
       subject: "Unlock Premium Features - Choose Your Plan 🎯",
       html,
