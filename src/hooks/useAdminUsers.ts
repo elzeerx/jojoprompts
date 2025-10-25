@@ -25,45 +25,63 @@ export function useAdminUsers() {
       setLoading(true);
       setError(null);
 
-      // Call get-all-users edge function using GET with query params
-      const { data: response, error: functionError } = await supabase.functions.invoke(
-        'get-all-users?page=1&limit=10000'
-      );
+      let allUsers: AdminUser[] = [];
+      let page = 1;
+      let hasMore = true;
+      const batchSize = 100;
 
-      if (functionError) throw functionError;
-      if (!response?.users) throw new Error('Failed to fetch users');
-      
-      // Transform response data to AdminUser format
-      const transformedUsers: AdminUser[] = (response.users || []).map((user: any) => ({
-        id: user.id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        avatar_url: user.avatar_url,
-        bio: user.bio,
-        country: user.country,
-        phone_number: user.phone_number,
-        timezone: user.timezone,
-        membership_tier: user.membership_tier,
-        social_links: user.social_links,
-        created_at: user.created_at,
-        last_sign_in_at: user.last_sign_in_at,
-        updated_at: user.auth_updated_at || user.updated_at,
-        is_email_confirmed: user.is_email_confirmed || false,
+      // Fetch users in batches until all are loaded
+      while (hasMore) {
+        const { data: response, error: functionError } = await supabase.functions.invoke(
+          `get-all-users?page=${page}&limit=${batchSize}`
+        );
+
+        if (functionError) throw functionError;
+        if (!response?.users) throw new Error('Failed to fetch users');
         
-        // Build subscription object if subscription data exists
-        subscription: user.subscription ? {
-          plan_name: user.subscription.plan_name,
-          status: user.subscription.status,
-          is_lifetime: user.subscription.is_lifetime || false,
-          price_usd: user.subscription.price_usd || 0
-        } : null
-      }));
+        // Transform response data to AdminUser format
+        const transformedUsers: AdminUser[] = (response.users || []).map((user: any) => ({
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          avatar_url: user.avatar_url,
+          bio: user.bio,
+          country: user.country,
+          phone_number: user.phone_number,
+          timezone: user.timezone,
+          membership_tier: user.membership_tier,
+          social_links: user.social_links,
+          created_at: user.created_at,
+          last_sign_in_at: user.last_sign_in_at,
+          updated_at: user.auth_updated_at || user.updated_at,
+          is_email_confirmed: user.is_email_confirmed || false,
+          
+          subscription: user.subscription ? {
+            plan_name: user.subscription.plan_name,
+            status: user.subscription.status,
+            is_lifetime: user.subscription.is_lifetime || false,
+            price_usd: user.subscription.price_usd || 0
+          } : null
+        }));
 
-      logger.info('Loaded users successfully', { count: transformedUsers.length });
-      setUsers(transformedUsers);
+        allUsers = [...allUsers, ...transformedUsers];
+        
+        // Check if there are more pages
+        hasMore = transformedUsers.length === batchSize;
+        
+        logger.info(`Fetched page ${page}`, { 
+          pageUsers: transformedUsers.length, 
+          totalLoaded: allUsers.length 
+        });
+        
+        page++;
+      }
+
+      logger.info('Loaded all users successfully', { count: allUsers.length });
+      setUsers(allUsers);
     } catch (err: any) {
       logger.error('Failed to load users', { error: err.message || err });
       setError(err.message || 'Failed to load users');
