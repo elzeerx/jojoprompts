@@ -1,6 +1,7 @@
 import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
 import { verifyAdmin } from "../_shared/adminAuth.ts";
 import { createEdgeLogger } from "../_shared/logger.ts";
+import { handleGetUsers } from "./handlers/getUsersHandler.ts";
 
 const logger = createEdgeLogger('GET_ALL_USERS');
 
@@ -16,40 +17,7 @@ serve(async (req) => {
     
     // Handle GET - list users with pagination and search
     if (req.method === 'GET') {
-      const url = new URL(req.url);
-      const page = parseInt(url.searchParams.get('page') || '1');
-      const limit = parseInt(url.searchParams.get('limit') || '10');
-      const search = url.searchParams.get('search') || '';
-      
-      const offset = (page - 1) * limit;
-      
-      logger.info("Fetching users", { page, limit, search });
-      
-      // Build query
-      let query = supabase
-        .from('profiles')
-        .select('*, user_subscriptions(*, subscription_plans(*))', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
-      
-      if (search) {
-        query = query.or(`email.ilike.%${search}%,username.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
-      }
-      
-      const { data: profiles, error, count } = await query;
-      
-      if (error) {
-        logger.error('User fetch error', { error: error.message });
-        throw error;
-      }
-      
-      logger.info("Users fetched successfully", { count, returned: profiles?.length || 0 });
-      
-      return createSuccessResponse({
-        users: profiles,
-        total: count,
-        totalPages: Math.ceil((count || 0) / limit)
-      });
+      return await handleGetUsers(supabase, userId, req);
     }
     
     // Handle POST - delete/update operations
@@ -61,41 +29,7 @@ serve(async (req) => {
       if (!hasBody) {
         // Empty POST body - treat as GET request for user list
         logger.info("POST request with no body, redirecting to GET logic");
-        
-        const url = new URL(req.url);
-        const page = parseInt(url.searchParams.get('page') || '1');
-        const limit = parseInt(url.searchParams.get('limit') || '10');
-        const search = url.searchParams.get('search') || '';
-        
-        const offset = (page - 1) * limit;
-        
-        logger.info("Fetching users", { page, limit, search });
-        
-        // Build query
-        let query = supabase
-          .from('profiles')
-          .select('*, user_subscriptions(*, subscription_plans(*))', { count: 'exact' })
-          .order('created_at', { ascending: false })
-          .range(offset, offset + limit - 1);
-        
-        if (search) {
-          query = query.or(`email.ilike.%${search}%,username.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
-        }
-        
-        const { data: profiles, error, count } = await query;
-        
-        if (error) {
-          logger.error('User fetch error', { error: error.message });
-          throw error;
-        }
-        
-        logger.info("Users fetched successfully", { count, returned: profiles?.length || 0 });
-        
-        return createSuccessResponse({
-          users: profiles,
-          total: count,
-          totalPages: Math.ceil((count || 0) / limit)
-        });
+        return await handleGetUsers(supabase, userId, req);
       }
       
       // Safely parse body
