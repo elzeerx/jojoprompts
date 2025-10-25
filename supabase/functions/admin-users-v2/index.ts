@@ -1,5 +1,8 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
+import { verifyAdmin } from "../_shared/adminAuth.ts";
+import { createEdgeLogger, generateRequestId } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('ADMIN_USERS_V2');
 
 // Simple in-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -26,66 +29,15 @@ interface UserResponse {
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCors();
   }
 
   const startTime = Date.now();
 
   try {
-    // Initialize Supabase client with auth
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
-
-    // Verify authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      console.error('[AUTH ERROR]', authError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[AUTH] User authenticated: ${user.id} (${user.email})`);
-
-    // Check admin role using enum-based function
-    const { data: isAdmin, error: roleError } = await supabase.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
-    });
-
-    if (roleError) {
-      console.error('[ROLE CHECK ERROR]', roleError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to verify admin role' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!isAdmin) {
-      console.warn(`[UNAUTHORIZED] User ${user.email} attempted admin access`);
-      return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[AUTH SUCCESS] Admin verified: ${user.email}`);
+    // Admin authentication using shared module
+    const { supabase, userId, userRole } = await verifyAdmin(req);
+    logger.info('Admin authenticated', { userId, userRole });
 
     // Route based on method
     if (req.method === 'GET') {
@@ -93,21 +45,12 @@ Deno.serve(async (req) => {
     } else if (req.method === 'POST') {
       return await handlePostOperation(supabase, req, startTime);
     } else {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createErrorResponse('Method not allowed', 405);
     }
 
-  } catch (error) {
-    console.error('[ERROR] admin-users-v2 failed:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error',
-        timestamp: new Date().toISOString()
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  } catch (error: any) {
+    logger.error('Request failed', { error: error.message });
+    return createErrorResponse(error.message || 'Internal server error', 500);
   }
 });
 
@@ -118,13 +61,13 @@ async function handleGetUsers(supabase: any, req: Request, startTime: number) {
   const search = url.searchParams.get('search') || '';
   const offset = (page - 1) * limit;
 
-  console.log(`[GET USERS] page: ${page}, limit: ${limit}, search: "${search}"`);
+  logger.debug('Get users request', { page, limit, search });
 
   // Check cache
   const cacheKey = `users_${page}_${limit}_${search}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    console.log('[CACHE HIT]', cacheKey);
+    logger.debug('Cache hit', { cacheKey });
     return new Response(
       JSON.stringify({
         ...cached.data,
@@ -168,7 +111,7 @@ async function handleGetUsers(supabase: any, req: Request, startTime: number) {
   const { data: profiles, error: profilesError, count } = await query;
 
   if (profilesError) {
-    console.error('[QUERY ERROR]', profilesError);
+    logger.error('Query failed', { error: profilesError.message });
     return new Response(
       JSON.stringify({ error: profilesError.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -189,8 +132,8 @@ async function handleGetUsers(supabase: any, req: Request, startTime: number) {
           email_confirmed_at: authUser.user.email_confirmed_at
         });
       }
-    } catch (error) {
-      console.warn(`[AUTH METADATA] Failed for user ${userId}:`, error.message);
+    } catch (error: any) {
+      logger.warn('Auth metadata fetch failed', { userId, error: error.message });
     }
   }
 
@@ -240,7 +183,7 @@ async function handleGetUsers(supabase: any, req: Request, startTime: number) {
   // Cache the response
   cache.set(cacheKey, { data: response, timestamp: Date.now() });
 
-  console.log(`[SUCCESS] Returned ${users.length} users in ${duration}ms`);
+  logger.info('Users retrieved', { count: users.length, duration_ms: duration });
 
   return new Response(
     JSON.stringify(response),
@@ -252,7 +195,7 @@ async function handlePostOperation(supabase: any, req: Request, startTime: numbe
   const body = await req.json();
   const { operation, userId, data } = body;
 
-  console.log(`[POST] Operation: ${operation}, User: ${userId}`);
+  logger.debug('Post operation', { operation, userId });
 
   try {
     switch (operation) {
@@ -320,8 +263,8 @@ async function handlePostOperation(supabase: any, req: Request, startTime: numbe
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
-  } catch (error) {
-    console.error(`[POST ERROR] ${operation}:`, error);
+  } catch (error: any) {
+    logger.error('Post operation failed', { operation, error: error.message });
     return new Response(
       JSON.stringify({ 
         error: error.message,

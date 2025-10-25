@@ -1,5 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { PromptFormData } from '@/types/prompt-form';
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('PROMPT_SERVICE_UTILS');
 
 export interface CreatePromptParams {
   title: string;
@@ -54,7 +58,8 @@ export async function uploadThumbnail(file: File, promptId: string): Promise<str
 
     return urlData.publicUrl;
   } catch (error) {
-    console.error('Error uploading thumbnail:', error);
+    const appError = handleError(error, { component: 'promptService', action: 'uploadThumbnail' });
+    logger.error('Error uploading thumbnail', { error: appError });
     throw new Error('Failed to upload thumbnail');
   }
 }
@@ -74,7 +79,8 @@ export async function deleteThumbnail(imageUrl: string): Promise<void> {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting thumbnail:', error);
+    const appError = handleError(error, { component: 'promptService', action: 'deleteThumbnail' });
+    logger.error('Error deleting thumbnail', { error: appError, imageUrl });
     // Don't throw - deleting old thumbnail is not critical
   }
 }
@@ -127,14 +133,16 @@ export async function createPrompt(params: CreatePromptParams): Promise<PromptRe
         return updatedPrompt as PromptResponse;
       } catch (uploadError) {
         // Thumbnail upload failed, but prompt was created
-        console.error('Thumbnail upload failed:', uploadError);
+        const appError = handleError(uploadError, { component: 'promptService', action: 'createPrompt' });
+        logger.error('Thumbnail upload failed', { error: appError, promptId: prompt.id });
         return prompt as PromptResponse; // Return prompt without image
       }
     }
 
     return prompt as PromptResponse;
   } catch (error) {
-    console.error('Error creating prompt:', error);
+    const appError = handleError(error, { component: 'promptService', action: 'createPrompt' });
+    logger.error('Error creating prompt', { error: appError });
     throw error;
   }
 }
@@ -182,7 +190,8 @@ export async function updatePrompt(params: UpdatePromptParams): Promise<PromptRe
     if (error) throw error;
     return prompt as PromptResponse;
   } catch (error) {
-    console.error('Error updating prompt:', error);
+    const appError = handleError(error, { component: 'promptService', action: 'updatePrompt' });
+    logger.error('Error updating prompt', { error: appError, promptId: params.id });
     throw error;
   }
 }
@@ -205,7 +214,8 @@ export async function deletePrompt(promptId: string, imageUrl?: string): Promise
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting prompt:', error);
+    const appError = handleError(error, { component: 'promptService', action: 'deletePrompt' });
+    logger.error('Error deleting prompt', { error: appError, promptId });
     throw error;
   }
 }
@@ -224,7 +234,8 @@ export async function getPromptById(promptId: string): Promise<PromptResponse | 
     if (error) throw error;
     return data as PromptResponse;
   } catch (error) {
-    console.error('Error fetching prompt:', error);
+    const appError = handleError(error, { component: 'promptService', action: 'getPromptById' });
+    logger.error('Error fetching prompt', { error: appError, promptId });
     return null;
   }
 }

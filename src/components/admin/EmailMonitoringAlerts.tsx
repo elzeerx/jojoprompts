@@ -8,6 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, CheckCircle, Bell, BellOff, Apple, Mail } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('EMAIL_MONITORING');
 
 interface AlertRule {
   id: string;
@@ -103,7 +106,7 @@ export function EmailMonitoringAlerts() {
           filter: 'action.in.(email_delivery_warning,email_delivery_critical_failure)'
         },
         (payload) => {
-          console.log('New email alert received:', payload);
+          logger.debug('New email alert received', payload);
           loadRecentAlerts(); // Refresh alerts
         }
       )
@@ -122,7 +125,7 @@ export function EmailMonitoringAlerts() {
         loadRecentAlerts()
       ]);
     } catch (error) {
-      console.error('Error loading alert data:', error);
+      logger.error('Error loading alert data', error);
     } finally {
       setLoading(false);
     }
@@ -147,7 +150,7 @@ export function EmailMonitoringAlerts() {
         .limit(20);
 
       if (error) {
-        console.error('Error loading recent alerts:', error);
+        logger.error('Error loading recent alerts', error);
         return;
       }
 
@@ -156,7 +159,7 @@ export function EmailMonitoringAlerts() {
         details: item.details as RecentAlert['details']
       })));
     } catch (error) {
-      console.error('Error loading recent alerts:', error);
+      logger.error('Error loading recent alerts', error);
     }
   };
 
@@ -167,8 +170,7 @@ export function EmailMonitoringAlerts() {
       )
     );
     
-    // In production, you'd save this to database
-    console.log(`Alert rule ${ruleId} ${enabled ? 'enabled' : 'disabled'}`);
+    logger.info('Alert rule toggled', { ruleId, enabled });
   };
 
   const testAlert = async (domainType: string) => {
@@ -192,14 +194,14 @@ export function EmailMonitoringAlerts() {
         }]);
 
       if (error) {
-        console.error('Error creating test alert:', error);
+        logger.error('Error creating test alert', error);
       } else {
-        console.log(`Test alert created for ${domainType} domain`);
+        logger.info('Test alert created', { domainType });
         // Refresh alerts after a short delay
         setTimeout(loadRecentAlerts, 1000);
       }
     } catch (error) {
-      console.error('Error testing alert:', error);
+      logger.error('Error testing alert', error);
     } finally {
       setTestingAlert(null);
     }

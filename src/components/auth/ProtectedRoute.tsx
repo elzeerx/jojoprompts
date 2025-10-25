@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isAdmin } from "@/utils/auth";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -17,7 +18,7 @@ export function ProtectedRoute({ children, requireAdmin = false, requireRole }: 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/login");
-    } else if (!loading && requireAdmin && userRole !== "admin") {
+    } else if (!loading && requireAdmin && !isAdmin(userRole)) {
       navigate("/prompts");
     } else if (!loading && requireRole && userRole !== requireRole) {
       navigate("/prompts");
@@ -35,7 +36,7 @@ export function ProtectedRoute({ children, requireAdmin = false, requireRole }: 
     );
   }
 
-  if (!user || (requireAdmin && userRole !== "admin") || (requireRole && userRole !== requireRole)) {
+  if (!user || (requireAdmin && !isAdmin(userRole)) || (requireRole && userRole !== requireRole)) {
     return null;
   }
 

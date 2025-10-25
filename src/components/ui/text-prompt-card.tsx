@@ -9,6 +9,9 @@ import { Button } from "./button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('TextPromptCard');
 
 interface TextPromptCardProps {
   prompt: Prompt;
@@ -59,10 +62,10 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
           ? await getTextPromptDefaultImage()
           : await getPromptImage(imagePath, 400, 80);
           
-        console.log(`Loading text prompt image from path: ${imagePath}, URL: ${url}`);
+        logger.debug('Text prompt image loaded', { imagePath, promptId: prompt.id });
         setImageUrl(url);
       } catch (error) {
-        console.error('Error loading text prompt image:', error);
+        logger.error('Error loading text prompt image', { error: error instanceof Error ? error.message : error, imagePath, promptId: prompt.id });
         setImageUrl('/placeholder.svg');
       }
     }
@@ -107,7 +110,7 @@ export function TextPromptCard({ prompt, className }: TextPromptCardProps) {
       }
       setFavorited(!favorited);
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      logger.error('Error toggling favorite', { error: error instanceof Error ? error.message : error, promptId: prompt.id });
       toast({
         title: "Error",
         description: "Failed to update favorites",

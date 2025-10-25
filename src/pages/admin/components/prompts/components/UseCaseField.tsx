@@ -7,6 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { callEdgeFunction } from "@/utils/edgeFunctions";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('USE_CASE_FIELD');
 
 interface UseCaseFieldProps {
   value: string;
@@ -32,28 +36,24 @@ export function UseCaseField({ value, onChange, promptText, disabled }: UseCaseF
     setIsGenerating(true);
     
     try {
-      console.log("UseCaseField - Starting use case generation");
-      console.log("UseCaseField - Prompt length:", promptText.length);
-
-      console.log("UseCaseField - Calling edge function");
+      logger.info('Starting use case generation', { promptLength: promptText.length });
       
       const data = await callEdgeFunction('generate-use-case', { 
         prompt_text: promptText.trim()
       });
 
-      console.log("UseCaseField - Edge function response:", { data });
+      logger.debug('Edge function response', { hasData: !!data });
 
       if (!data) {
-        console.error("UseCaseField - No data returned from edge function");
         throw new Error("No response received from the service");
       }
 
-      console.log("UseCaseField - Generated use case from edge function:", data);
+      logger.info('Generated use case', { hasUseCase: !!data.use_case });
 
       const useCase = data.use_case || "";
       
       if (!useCase.trim()) {
-        console.warn("UseCaseField - Empty use case generated");
+        logger.warn('Empty use case generated');
         toast({
           title: "Generated empty use case",
           description: "The AI couldn't determine a specific use case. Please try a more detailed prompt or enter manually.",
@@ -70,7 +70,8 @@ export function UseCaseField({ value, onChange, promptText, disabled }: UseCaseF
       });
 
     } catch (error) {
-      console.error("UseCaseField - Error generating use case:", error);
+      const appError = handleError(error, { component: 'UseCaseField', action: 'generateUseCase' });
+      logger.error('Error generating use case', { error: appError });
       
       // Provide user-friendly error messages
       let errorMessage = "Could not auto-generate use case. You can still fill it manually.";

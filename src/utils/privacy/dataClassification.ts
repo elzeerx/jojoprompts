@@ -1,6 +1,7 @@
 // Data Classification System for GDPR and privacy compliance
 import { supabase } from '@/integrations/supabase/client';
 import { EnhancedSecurityLogger } from '@/utils/security/enhancedSecurityLogger';
+import { canAccessSensitiveData, isAdmin, isJadmin } from '@/utils/auth';
 
 export type DataClassification = 'public' | 'internal' | 'sensitive' | 'restricted';
 
@@ -101,12 +102,12 @@ export class DataClassificationManager {
 
     // Sensitive data requires specific roles or ownership
     if (classification === 'sensitive') {
-      return userRole === 'admin' || userRole === 'jadmin' || isOwner;
+      return canAccessSensitiveData(userRole) || isOwner;
     }
 
     // Restricted data requires admin access only
     if (classification === 'restricted') {
-      return userRole === 'admin' || userRole === 'jadmin';
+      return canAccessSensitiveData(userRole);
     }
 
     return false;

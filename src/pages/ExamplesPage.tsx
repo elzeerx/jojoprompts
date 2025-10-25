@@ -11,6 +11,9 @@ import { useCategories } from '@/hooks/useCategories';
 import { ImageWrapper } from '@/components/ui/prompt-card/ImageWrapper';
 import { useImageLoading } from '@/components/ui/prompt-card/hooks/useImageLoading';
 import { useAuth } from '@/contexts/AuthContext';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('EXAMPLES_PAGE');
 
 interface ExamplePrompt extends Prompt {
   previewText: string;
@@ -198,7 +201,7 @@ export default function ExamplesPage() {
 
       setExamplePrompts(transformedData);
     } catch (error) {
-      console.error('Error fetching example prompts:', error);
+      logger.error('Failed to fetch example prompts', { error });
     } finally {
       setLoading(false);
     }

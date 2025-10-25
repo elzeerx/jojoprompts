@@ -7,6 +7,9 @@ import { type Prompt } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('FAVORITES_PAGE');
 
 export default function FavoritesPage() {
   const [selectedFavoritePrompts, setSelectedFavoritePrompts] = useState<string[]>([]);
@@ -52,7 +55,7 @@ export default function FavoritesPage() {
 
         setFavoritePrompts(transformedPrompts);
       } catch (error: any) {
-        console.error("Error loading favorites:", error);
+        logger.error('Failed to load favorites', { error: error.message || error, userId: user?.id });
         if (mounted) {
           setLoadError("Failed to load favorite prompts");
           toast({

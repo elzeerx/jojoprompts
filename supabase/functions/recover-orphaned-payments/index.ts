@@ -3,8 +3,11 @@
 // The helper functions below are duplicated from supabase/functions/verify-paypal-payment/dbOperations.ts
 // because Supabase Edge Functions cannot import code outside their folder.
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('recover-orphaned-payments');
 
 // --- Duplicated utils ---
 function makeSupabaseClient() {
@@ -17,7 +20,7 @@ function makeSupabaseClient() {
 // New function to find and recover orphaned completed transactions
 async function findAndRecoverOrphanedTransactions(supabaseClient: any, { user_id, plan_id }: { user_id?: string, plan_id?: string }) {
   try {
-    console.log('Looking for orphaned transactions to recover:', { user_id, plan_id });
+    logger.info('Looking for orphaned transactions to recover', { user_id, plan_id });
     
     let query = supabaseClient
       .from('transactions')
@@ -42,7 +45,7 @@ async function findAndRecoverOrphanedTransactions(supabaseClient: any, { user_id
       return { recovered: 0, errors: [] };
     }
 
-    console.log(`Found ${filtered.length} orphaned transactions`);
+    logger.info('Found orphaned transactions', { count: filtered.length });
     
     const recoveryResults = [];
     for (const transaction of filtered) {
@@ -63,11 +66,11 @@ async function findAndRecoverOrphanedTransactions(supabaseClient: any, { user_id
     const successCount = recoveryResults.filter(r => r.success).length;
     const errors = recoveryResults.filter(r => !r.success).map(r => r.error);
 
-    console.log(`Recovered ${successCount} orphaned transactions`);
+    logger.info('Orphaned transactions recovered', { successCount, errorCount: errors.length });
     return { recovered: successCount, errors };
 
   } catch (error) {
-    console.error('Error during orphaned transaction recovery:', error);
+    logger.error('Error during orphaned transaction recovery', { error });
     return { recovered: 0, errors: [error] };
   }
 }
@@ -188,14 +191,14 @@ serve(async (req: Request) => {
     const supabaseClient = makeSupabaseClient();
     const { recovered, errors } = await findAndRecoverOrphanedTransactions(supabaseClient, { user_id: userId });
 
-    console.log(`[RECOVERY] Orphaned payments recovery for user ${userId}:`, { recovered, errors });
+    logger.info('Orphaned payments recovery completed', { userId, recovered, errorCount: errors.length });
 
     return new Response(
       JSON.stringify({ success: true, recovered, errors }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("[RECOVERY] Fatal error:", error);
+    logger.error('Fatal error in recovery', { error });
     return new Response(
       JSON.stringify({ success: false, error: error.message || "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

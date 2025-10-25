@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { ZeroTrustAccessController, AccessDecision, AccessContext } from '@/utils/access/zeroTrustAccess';
 import { useAuth } from '@/contexts/AuthContext';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('ZERO_TRUST_ACCESS');
 
 export function useZeroTrustAccess(
   resourceType: string,
@@ -26,7 +29,7 @@ export function useZeroTrustAccess(
       );
       setDecision(result);
     } catch (error) {
-      console.error('Access evaluation failed:', error);
+      logger.error('Access evaluation failed', { error, userId: user.id, resourceType, action });
       setDecision({
         decision: 'deny',
         riskScore: 100,

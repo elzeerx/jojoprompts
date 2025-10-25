@@ -7,6 +7,9 @@ import { ArrowUp, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PLAN_UPGRADE');
 
 interface SubscriptionPlan {
   id: string;
@@ -59,7 +62,7 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
 
       setAvailablePlans(higherTierPlans);
     } catch (error) {
-      console.error('Error fetching upgrade options:', error);
+      logger.error('Error fetching upgrade options', error);
       toast({
         title: "Error",
         description: "Failed to load upgrade options",
@@ -76,28 +79,26 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
   };
 
   const handleUpgrade = async (planId: string, upgradeCost: number) => {
-    console.log('handleUpgrade called with planId:', planId, 'upgradeCost:', upgradeCost);
-    console.log('user:', user);
-    console.log('userSubscription:', userSubscription);
+    logger.debug('handleUpgrade called', { planId, upgradeCost, hasUser: !!user, hasSubscription: !!userSubscription });
     
     if (!user) {
-      console.log('No user found, returning early');
+      logger.warn('No user found, returning early');
       return;
     }
     
     setProcessingUpgrade(planId);
     try {
       if (upgradeCost <= 0) {
-        console.log('Free upgrade - calling handleFreeUpgrade');
+        logger.info('Free upgrade initiated', { planId });
         // Free upgrade - handle directly
         await handleFreeUpgrade(planId);
       } else {
-        console.log('Paid upgrade - calling handlePaidUpgrade with amount:', upgradeCost);
+        logger.info('Paid upgrade initiated', { planId, amount: upgradeCost });
         // Paid upgrade - redirect to payment
         await handlePaidUpgrade(planId, upgradeCost);
       }
     } catch (error) {
-      console.error('Upgrade error:', error);
+      logger.error('Upgrade error', error);
       toast({
         title: "Upgrade Failed",
         description: "Failed to process upgrade. Please try again.",

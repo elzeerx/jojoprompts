@@ -1,5 +1,8 @@
+import { createEdgeLogger } from '../../_shared/logger.ts';
 import { corsHeaders } from "../../_shared/standardImports.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
+
+const logger = createEdgeLogger('get-all-users:create-user');
 
 /**
  * Create a new user with optional role assignment
@@ -76,7 +79,7 @@ export async function handleCreateUser(supabase: any, adminId: string, requestBo
     });
 
     if (createError) {
-      console.error('[createUserHandler] Failed to create user:', createError);
+      logger.error('Failed to create user', { error: createError.message });
       return new Response(
         JSON.stringify({ 
           error: 'Failed to create user', 
@@ -101,7 +104,7 @@ export async function handleCreateUser(supabase: any, adminId: string, requestBo
       });
 
     if (profileError) {
-      console.error('[createUserHandler] Failed to create profile:', profileError);
+      logger.error('Failed to create profile', { error: profileError.message });
       // If profile creation fails, delete the auth user
       await supabase.auth.admin.deleteUser(newUser.user.id);
       
@@ -146,7 +149,7 @@ export async function handleCreateUser(supabase: any, adminId: string, requestBo
     );
     
   } catch (error: any) {
-    console.error('[createUserHandler] Critical error:', error);
+    logger.error('Critical error', { error: error.message });
     
     return new Response(
       JSON.stringify({ 

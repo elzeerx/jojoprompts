@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createEdgeLogger } from "../_shared/logger.ts";
 
-console.log("debug-environment function initialized");
+const logger = createEdgeLogger('DEBUG_ENVIRONMENT');
+
+logger.info('Debug-environment function initialized');
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +13,7 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
-  console.log(`${new Date().toISOString()} - ${req.method} request to debug-environment`);
+  logger.info('Debug environment request', { method: req.method });
   
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -107,7 +110,10 @@ serve(async (req: Request) => {
       }
     };
 
-    console.log("Debug info collected:", JSON.stringify(debugInfo, null, 2));
+    logger.debug('Debug info collected', { 
+      supabaseStatus: debugInfo.supabase_connection?.status,
+      functionResponsive: debugInfo.deployment_check?.function_responsive 
+    });
 
     return new Response(
       JSON.stringify(debugInfo, null, 2),
@@ -121,7 +127,7 @@ serve(async (req: Request) => {
     );
 
   } catch (error: any) {
-    console.error("Error in debug-environment function:", error);
+    logger.error('Error in debug-environment function', { error: error.message });
     
     return new Response(
       JSON.stringify({ 

@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react';
 import { PlatformField } from '@/types/platform';
 import { useFieldValidation } from './useFieldValidation';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('DYNAMIC_FORM');
 
 export interface UseDynamicFormOptions {
   fields: PlatformField[];
@@ -131,8 +134,8 @@ export function useDynamicForm({
       try {
         await onSubmit(values);
       } catch (error) {
-        console.error('Form submission error:', error);
-      } finally {
+        logger.error('Form submission error', { error });
+      } finally{
         setIsSubmitting(false);
       }
     }

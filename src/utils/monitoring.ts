@@ -1,5 +1,8 @@
 
 import { SecurityUtils } from "./security";
+import { createLogger } from "./logging";
+
+const logger = createLogger('SecurityMonitor');
 
 // Security monitoring and logging utilities
 
@@ -34,8 +37,8 @@ class SecurityMonitor {
       this.events = this.events.slice(-this.MAX_EVENTS);
     }
 
-    // Console log for debugging (in production, send to logging service)
-    console.warn('Security Event:', event);
+    // Log for debugging in development
+    logger.debug('Security event logged', { type: event.type, userId: event.userId, details: event.details });
 
     // Check for suspicious patterns
     this.checkSuspiciousActivity(event);

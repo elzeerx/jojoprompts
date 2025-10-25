@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createEdgeLogger } from '../_shared/logger.ts';
 
-console.log("resend-confirmation-alternative function initialized");
+const logger = createEdgeLogger('resend-confirmation-alternative');
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,7 +31,7 @@ function validateEnvironment() {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
   
-  console.log("Environment validation passed:", {
+  logger.debug('Environment validation passed', {
     supabaseUrl: !!Deno.env.get("SUPABASE_URL"),
     serviceRoleKey: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
     anonKey: !!Deno.env.get("SUPABASE_ANON_KEY"),
@@ -39,11 +40,11 @@ function validateEnvironment() {
 }
 
 serve(async (req: Request) => {
-  console.log(`${new Date().toISOString()} - ${req.method} request received`);
+  logger.info('Request received', { method: req.method, timestamp: new Date().toISOString() });
   
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    console.log("Handling CORS preflight request");
+    logger.debug('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -51,22 +52,22 @@ serve(async (req: Request) => {
     // Validate environment variables first
     validateEnvironment();
     
-    console.log("Parsing request body...");
+    logger.debug('Parsing request body');
     const { userId, email }: ResendConfirmationRequest = await req.json();
-    console.log(`Processing resend request for user: ${userId} (${email})`);
+    logger.info('Processing resend request', { userId, email });
 
     // Create admin client
-    console.log("Creating Supabase admin client...");
+    logger.debug('Creating Supabase admin client');
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
     // Verify the request is from an admin
-    console.log("Verifying admin authentication...");
+    logger.debug('Verifying admin authentication');
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      console.error("No authorization header provided");
+      logger.error('No authorization header provided');
       throw new Error("Authorization header required");
     }
 
@@ -78,42 +79,46 @@ serve(async (req: Request) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
-      console.error("Authentication failed:", authError);
+      logger.error('Authentication failed', { error: authError });
       throw new Error("Invalid authentication");
     }
-    console.log(`Authenticated user: ${user.id}`);
+    logger.debug('User authenticated', { userId: user.id });
 
-    // Check if user is admin
-    console.log("Checking admin privileges...");
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
+    // Check if user is admin via user_roles table
+    logger.debug('Checking admin privileges');
+    const { data: userRole, error: roleError } = await supabaseAdmin
+      .from("user_roles")
       .select("role")
-      .eq("id", user.id)
+      .eq("user_id", user.id)
+      .eq("role", "admin")
       .maybeSingle();
 
-    if (profileError) {
-      console.error("Error checking admin role:", profileError);
+    if (roleError) {
+      logger.error('Error checking admin role', { error: roleError });
       throw new Error("Failed to verify admin privileges");
     }
 
-    if (!profile || profile.role !== "admin") {
-      console.error(`Access denied. User role: ${profile?.role || 'unknown'}`);
+    if (!userRole) {
+      logger.error('Access denied - user is not admin');
       throw new Error("Admin access required");
     }
-    console.log("Admin access verified");
+    logger.info('Admin access verified');
 
     // Get the user to resend confirmation for
-    console.log(`Fetching user data for: ${userId}`);
+    logger.debug('Fetching user data', { userId });
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (userError || !userData.user) {
-      console.error("User lookup error:", userError);
+      logger.error('User lookup error', { error: userError });
       throw new Error("User not found");
     }
-    console.log(`User found: ${userData.user.email}, confirmed: ${!!userData.user.email_confirmed_at}`);
+    logger.info('User found', { 
+      email: userData.user.email, 
+      emailConfirmed: !!userData.user.email_confirmed_at 
+    });
 
     // Check if email is already confirmed
     if (userData.user.email_confirmed_at) {
-      console.log("Email already confirmed");
+      logger.warn('Email already confirmed');
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -127,7 +132,7 @@ serve(async (req: Request) => {
     }
 
     // Use Supabase's built-in resend functionality
-    console.log("Using Supabase built-in resend confirmation...");
+    logger.info('Using Supabase built-in resend confirmation');
     const { data: resendData, error: resendError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       redirectTo: `${Deno.env.get("FRONTEND_URL") || "https://jojoprompts.com"}/`,
       data: {
@@ -137,10 +142,10 @@ serve(async (req: Request) => {
     });
 
     if (resendError) {
-      console.error("Supabase resend error:", resendError);
+      logger.warn('Supabase resend error, trying fallback', { error: resendError });
       
       // Fallback: Generate link manually
-      console.log("Trying fallback method with manual link generation...");
+      logger.info('Trying fallback method with manual link generation');
       const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'signup',
         email: email,
@@ -150,11 +155,11 @@ serve(async (req: Request) => {
       });
 
       if (linkError) {
-        console.error("Manual link generation failed:", linkError);
+        logger.error('Manual link generation failed', { error: linkError });
         throw new Error(`Failed to resend confirmation: ${resendError.message}`);
       }
 
-      console.log("Manual confirmation link generated successfully");
+      logger.info('Manual confirmation link generated successfully');
       
       // Log the action for audit
       const { error: auditError } = await supabaseAdmin
@@ -171,7 +176,7 @@ serve(async (req: Request) => {
         });
 
       if (auditError) {
-        console.warn("Failed to log audit entry:", auditError);
+        logger.warn('Failed to log audit entry', { error: auditError });
       }
 
       return new Response(
@@ -187,7 +192,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("Supabase built-in resend successful:", resendData);
+    logger.info('Supabase built-in resend successful', { resendData });
 
     // Log the action for audit
     const { error: auditError } = await supabaseAdmin
@@ -204,10 +209,10 @@ serve(async (req: Request) => {
       });
 
     if (auditError) {
-      console.warn("Failed to log audit entry:", auditError);
+      logger.warn('Failed to log audit entry', { error: auditError });
     }
 
-    console.log(`Successfully resent confirmation email to ${email} using Supabase built-in method`);
+    logger.info('Successfully resent confirmation email', { email, method: 'builtin' });
 
     return new Response(
       JSON.stringify({ 
@@ -222,8 +227,11 @@ serve(async (req: Request) => {
     );
 
   } catch (error: any) {
-    console.error("Error in resend-confirmation-alternative function:", error);
-    console.error("Error stack:", error.stack);
+    logger.error('Error in resend-confirmation-alternative function', { 
+      error: error.message,
+      stack: error.stack,
+      errorType: error.constructor.name
+    });
     
     return new Response(
       JSON.stringify({ 

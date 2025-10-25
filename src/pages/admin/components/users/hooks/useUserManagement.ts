@@ -1,9 +1,10 @@
 
 import { useState } from "react";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
-import { useUserUpdate } from "./useUserUpdate.query";
-import { usePlanAssignment } from "./usePlanAssignment.query";
+import { useUserUpdate } from "./useUserUpdate";
+import { usePlanAssignment } from "./usePlanAssignment";
 import { usePasswordReset } from "./usePasswordReset";
+import { useUserDeletion } from "./useUserDeletion";
 import { UserUpdateData, UserRole } from "@/types/user";
 
 export function useUserManagement() {
@@ -11,17 +12,28 @@ export function useUserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const pageSize = 10;
   
-  // Use direct database queries instead of edge function
+  // Use unified view-based hook
   const { 
-    users, 
-    loading, 
-    error, 
-    total, 
-    totalPages, 
-    refetch, 
-    deleteUser: deleteUserFn,
-    isDeleting 
-  } = useAdminUsers(currentPage, pageSize, searchTerm);
+    users: allUsers,
+    loading,
+    error,
+    refetch
+  } = useAdminUsers();
+  
+  // Client-side filtering and pagination
+  const filteredUsers = searchTerm 
+    ? allUsers.filter(user => 
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.username?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : allUsers;
+  
+  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const users = filteredUsers.slice(startIndex, endIndex);
   
   const { processingUserId: updateProcessingUserId, updateUser } = useUserUpdate();
   const { processingUserId: planProcessingUserId, assignPlanToUser } = usePlanAssignment();
@@ -54,22 +66,23 @@ export function useUserManagement() {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      deleteUserFn(userId);
-      return true;
+  const { processingUserId: deletionProcessingUserId, deleteUser: performDelete } = useUserDeletion();
+
+  const handleDeleteUser = async (userId: string, email: string, firstName: string, lastName: string, role: string) => {
+    const success = await performDelete(userId, email);
+    if (success) {
+      await refetch(); // Refresh user list after successful deletion
     }
-    return false;
+    return success;
   };
 
-  // Combine processing states from different hooks
-  const processingUserId = updateProcessingUserId || planProcessingUserId || (isDeleting ? 'deleting' : null);
+  const processingUserId = updateProcessingUserId || planProcessingUserId || deletionProcessingUserId || null;
 
   return {
     users,
     loading,
-    error,
-    total,
+    error: error || null,
+    total: filteredUsers.length,
     currentPage,
     totalPages,
     searchTerm,
@@ -81,7 +94,7 @@ export function useUserManagement() {
     assignPlanToUser: handleAssignPlanToUser,
     sendPasswordResetEmail,
     deleteUser: handleDeleteUser,
-    DeleteDialog: null, // No longer using dialog
-    performance: undefined // No performance metrics without edge function
+    DeleteDialog: null,
+    performance: undefined
   };
 }

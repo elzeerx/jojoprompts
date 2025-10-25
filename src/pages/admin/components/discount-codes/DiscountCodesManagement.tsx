@@ -10,6 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DiscountCodesTable } from "./DiscountCodesTable";
 import { CreateDiscountCodeDialog } from "./CreateDiscountCodeDialog";
 import { DiscountCodeStats } from "./DiscountCodeStats";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('DISCOUNT_CODES_MGMT');
 
 interface DiscountCode {
   id: string;
@@ -55,7 +59,8 @@ export default function DiscountCodesManagement() {
       if (error) throw error;
       setDiscountCodes(data || []);
     } catch (error) {
-      console.error("Error fetching discount codes:", error);
+      const appError = handleError(error, { component: 'DiscountCodesManagement', action: 'fetchCodes' });
+      logger.error('Error fetching discount codes', { error: appError });
       toast({
         title: "Error",
         description: "Failed to fetch discount codes",
@@ -96,7 +101,8 @@ export default function DiscountCodesManagement() {
 
       fetchDiscountCodes();
     } catch (error) {
-      console.error("Error updating discount code:", error);
+      const appError = handleError(error, { component: 'DiscountCodesManagement', action: 'toggleActive' });
+      logger.error('Error updating discount code', { error: appError, codeId });
       toast({
         title: "Error",
         description: "Failed to update discount code",

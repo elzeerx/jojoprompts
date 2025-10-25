@@ -20,6 +20,10 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Crown, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('ASSIGN_PLAN');
 
 interface AssignPlanDialogProps {
   open: boolean;
@@ -67,7 +71,8 @@ export function AssignPlanDialog({
         .maybeSingle();
 
       if (userError && userError.code !== "PGRST116") {
-        console.error("Error checking subscription:", userError);
+        const appError = handleError(userError, { component: 'AssignPlanDialog', action: 'checkSubscription' });
+        logger.error('Error checking subscription', { error: appError, userId });
       }
 
       setPlans(plansData || []);
@@ -82,7 +87,8 @@ export function AssignPlanDialog({
       }
 
     } catch (error) {
-      console.error("Error loading plans:", error);
+      const appError = handleError(error, { component: 'AssignPlanDialog', action: 'loadPlans' });
+      logger.error('Error loading plans', { error: appError });
       toast({
         title: "Error",
         description: "Failed to load subscription plans",
@@ -103,7 +109,8 @@ export function AssignPlanDialog({
       onAssign(selectedPlanId);
       
     } catch (error) {
-      console.error("Error assigning plan:", error);
+      const appError = handleError(error, { component: 'AssignPlanDialog', action: 'assignPlan' });
+      logger.error('Error assigning plan', { error: appError, userId, planId: selectedPlanId });
       toast({
         title: "Error",
         description: "Failed to assign the plan",

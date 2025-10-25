@@ -11,6 +11,10 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('DASHBOARD_OVERVIEW');
 
 interface Stats {
   prompts: number;
@@ -49,7 +53,7 @@ export default function DashboardOverview() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'prompts' },
         () => {
-          console.log('Prompts table changed, refreshing stats');
+          logger.info('Prompts table changed, refreshing stats');
           fetchStats();
           fetchRecentActivity();
         }
@@ -62,7 +66,7 @@ export default function DashboardOverview() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
         () => {
-          console.log('Profiles table changed, refreshing stats');
+          logger.info('Profiles table changed, refreshing stats');
           fetchStats();
         }
       )
@@ -86,47 +90,29 @@ export default function DashboardOverview() {
       
       if (promptsError) throw promptsError;
       
-      // Fetch users count from the edge function that accesses auth.users
-      let usersCount = 0;
+      // Fetch users count directly from profiles table
+      const { count: usersCount, error: usersError } = await supabase
+        .from("profiles")
+        .select("id", { count: 'exact', head: true });
       
-      if (session?.access_token) {
-        try {
-          console.log('Fetching users from edge function...');
-          const { data: allUsers, error: usersError } = await supabase.functions.invoke(
-            "get-all-users",
-            {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              method: "GET"
-            }
-          );
-          
-          if (usersError) {
-            console.error("Error fetching users from edge function:", usersError);
-          } else {
-            console.log("Users response from edge function:", allUsers);
-            usersCount = allUsers?.total || 0;
-          }
-        } catch (err) {
-          console.error("Failed to call get-all-users edge function:", err);
-        }
-      } else {
-        console.log('No session access token available');
+      if (usersError) {
+        const appError = handleError(usersError, { component: 'DashboardOverview', action: 'fetchUsersCount' });
+        logger.error('Error fetching users count', { error: appError });
       }
       
-      console.log('Final users count:', usersCount);
+      logger.debug('Users count from profiles', { usersCount });
       
       setStats({
         prompts: prompts?.length ?? 0,
-        users: usersCount,
-        signups: usersCount, // Same as users count
+        users: usersCount || 0,
+        signups: usersCount || 0, // Same as users count
         aiRuns: 0 // placeholder for future AI run tracking
       });
       
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
+      const appError = handleError(error, { component: 'DashboardOverview', action: 'fetchStats' });
+      logger.error('Error fetching dashboard stats', { error: appError });
       toast({
         title: "Error loading dashboard data",
         description: "Failed to fetch dashboard statistics.",
@@ -160,7 +146,8 @@ export default function DashboardOverview() {
         .in("id", userIds);
         
       if (profilesError) {
-        console.error("Error fetching profiles:", profilesError);
+        const appError = handleError(profilesError, { component: 'DashboardOverview', action: 'fetchProfiles' });
+        logger.error('Error fetching profiles', { error: appError });
       }
       
       // Create a map of user IDs to emails
@@ -181,7 +168,8 @@ export default function DashboardOverview() {
       
       setRecentActivity(formattedActivity);
     } catch (error) {
-      console.error("Error fetching recent activity:", error);
+      const appError = handleError(error, { component: 'DashboardOverview', action: 'fetchRecentActivity' });
+      logger.error('Error fetching recent activity', { error: appError });
     }
   };
 

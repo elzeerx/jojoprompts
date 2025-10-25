@@ -11,12 +11,15 @@ import { TrustSignals } from "@/components/sections/TrustSignals";
 import { useAuth } from "@/contexts/AuthContext";
 import { Container } from "@/components/ui/container";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('HOME_PAGE');
 
 export default function HomePage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
-  console.log('[HOMEPAGE] Component mounted', { user: !!user, isMobile });
+  logger.debug('HomePage mounted', { hasUser: !!user, isMobile });
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-soft-bg via-warm-gold/10 to-muted-teal/20">

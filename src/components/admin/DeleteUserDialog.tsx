@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, ExternalLink, Info, FileText, Code, HelpCircle } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { isAdmin as isAdminRole } from "@/utils/auth";
 
 interface DeleteUserDialogProps {
   open: boolean;
@@ -46,7 +47,7 @@ export function DeleteUserDialog({
   const [confirmText, setConfirmText] = useState("");
   const [showManualSteps, setShowManualSteps] = useState(false);
   const [showSqlCommands, setShowSqlCommands] = useState(false);
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const requiresDoubleConfirm = isAdmin;
   const expectedText = requiresDoubleConfirm ? "DELETE ADMIN" : "DELETE";
   const isConfirmValid = confirmText === expectedText;

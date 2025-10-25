@@ -1,14 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('get-user-insights');
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[GET-USER-INSIGHTS] ${step}${detailsStr}`);
 };
 
 interface UserInsightsRequest {
@@ -30,7 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    logStep("Function started");
+    logger.info("Function started");
 
     // Create Supabase client with service role key
     const supabaseClient = createClient(
@@ -65,7 +63,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { email }: UserInsightsRequest = await req.json();
 
-    logStep("Getting user insights", { email });
+    logger.info("Getting user insights", { email });
 
     // Find the user by email
     const { data: targetUser, error: targetUserError } = await supabaseClient.auth.admin.listUsers();
@@ -125,7 +123,7 @@ const handler = async (req: Request): Promise<Response> => {
       firstName: userProfile?.first_name || 'there'
     });
 
-    logStep("User insights generated", { 
+    logger.info("User insights generated", { 
       userId: foundUser.id, 
       daysSinceSignup, 
       recommendedPlan: insights.recommendedPlan 
@@ -151,7 +149,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   } catch (error: any) {
     const errorMessage = error.message || String(error);
-    logStep("ERROR", { message: errorMessage });
+    logger.error("Error in get-user-insights", { error: errorMessage });
     
     return new Response(
       JSON.stringify({ 

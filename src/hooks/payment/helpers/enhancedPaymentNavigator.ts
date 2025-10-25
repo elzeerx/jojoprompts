@@ -1,6 +1,8 @@
-
 import { NavigateFunction } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PAYMENT_NAVIGATOR');
 
 interface NavigationContext {
   navigate: NavigateFunction;
@@ -25,11 +27,13 @@ export class EnhancedPaymentNavigator {
     const { navigate, userId, planId, orderId, paymentId } = context;
     const { isSuccessful, hasActiveSubscription, needsAuthentication, errorMessage } = verificationResult;
 
-    console.log('Navigating based on payment state:', {
+    logger.info('Navigating based on payment state', {
       isSuccessful,
       hasActiveSubscription,
       needsAuthentication,
-      errorMessage
+      errorMessage,
+      userId,
+      planId
     });
 
     if (isSuccessful && hasActiveSubscription) {

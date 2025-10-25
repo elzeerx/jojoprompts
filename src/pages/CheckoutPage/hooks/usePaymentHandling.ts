@@ -4,20 +4,23 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { logInfo, logError } from '@/utils/secureLogging';
 import type { UsePaymentHandlingParams, UsePaymentHandlingReturn, PaymentData } from '../types';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PAYMENT_HANDLING');
 
 export function usePaymentHandling({ user, selectedPlan, processing, setProcessing }: UsePaymentHandlingParams): UsePaymentHandlingReturn {
   const navigate = useNavigate();
 
   const handlePaymentSuccess = useCallback(async (paymentData: PaymentData) => {
-    console.log('[Payment] Success handler called with:', paymentData);
+    logger.info('Payment success handler called', { paymentData });
     
     if (processing) {
-      console.warn('[Payment] Payment already processing, ignoring duplicate call');
+      logger.warn('Payment already processing, ignoring duplicate call');
       return;
     }
     
     if (!user?.id) {
-      console.error('[Payment] User not authenticated during payment success');
+      logger.error('User not authenticated during payment success');
       logError("User not authenticated during payment success", "payment");
       toast({
         title: "Authentication Error",
@@ -31,7 +34,7 @@ export function usePaymentHandling({ user, selectedPlan, processing, setProcessi
     const paymentId = paymentData?.paymentId || paymentData?.transactionId || paymentData?.paymentMethod;
     
     if (!paymentId) {
-      console.error('[Payment] No payment identifier received');
+      logger.error('No payment identifier received', { userId: user?.id });
       logError("No payment identifier received in success handler", "payment", undefined, user?.id);
       toast({
         title: "Payment Processing Error",
@@ -51,7 +54,7 @@ export function usePaymentHandling({ user, selectedPlan, processing, setProcessi
         paymentMethod: paymentData.paymentMethod
       }, user.id);
 
-      console.log('[Payment] Navigating to success page');
+      logger.info('Navigating to success page', { paymentId, planId: selectedPlan.id });
 
       // Navigate to success page with proper parameters
       const successParams = new URLSearchParams({
@@ -69,8 +72,8 @@ export function usePaymentHandling({ user, selectedPlan, processing, setProcessi
       navigate(`/payment-success?${successParams.toString()}`);
 
     } catch (error: any) {
-      console.error('[Payment] Error processing payment success:', error);
-      logError("Error processing payment success", "payment", { 
+      logger.error('Error processing payment success', { error: error.message || error });
+      logError("Error processing payment success", "payment", {
         error: error.message 
       }, user?.id);
       
@@ -86,7 +89,7 @@ export function usePaymentHandling({ user, selectedPlan, processing, setProcessi
   }, [processing, selectedPlan, user, navigate, setProcessing]);
 
   const handlePaymentError = useCallback((error: any) => {
-    console.error("[Payment] Payment error occurred:", error);
+    logger.error('Payment error occurred', { error: error.message || error });
     logError("Payment error occurred", "payment", { error: error.message || error }, user?.id);
     setProcessing(false);
     

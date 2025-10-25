@@ -1,6 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { createEdgeLogger } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('AI_GPT5_METAPROMPT');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,19 +45,19 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    // Check if user can manage prompts
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
+    // Check if user can manage prompts via user_roles table
+    const { data: userRole, error: roleError } = await supabase
+      .from('user_roles')
       .select('role')
-      .eq('id', user.id)
-      .single();
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'prompter', 'jadmin'])
+      .maybeSingle();
 
-    if (profileError || !profile) {
-      throw new Error('Profile not found');
+    if (roleError) {
+      throw new Error('Role check failed');
     }
 
-    const canManagePrompts = ['admin', 'prompter', 'jadmin'].includes(profile.role);
-    if (!canManagePrompts) {
+    if (!userRole) {
       throw new Error('Insufficient permissions');
     }
 
@@ -72,7 +75,7 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    console.log('Generating GPT-5 metaprompt for:', { subject, output_format, constraints, style, audience, goal, quick_request });
+    logger.info('Generating GPT-5 metaprompt', { subject, output_format, constraints, style, audience, goal, quick_request });
 
     // The exact metaprompt_generator JSON provided by the user
     const systemMessage = {
@@ -189,14 +192,14 @@ Output Format: ${output_format}`;
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('OpenAI API error:', errorData);
+      logger.error('OpenAI API error', { status: response.status, statusText: response.statusText, errorData });
       throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     const content = data.choices[0].message.content;
 
-    console.log('Raw OpenAI response:', content);
+    logger.debug('Raw OpenAI response received', { contentLength: content?.length });
 
     // Clean JSON response (similar pattern from generate-metadata)
     function cleanJsonResponse(text: string): any {
@@ -216,7 +219,7 @@ Output Format: ${output_format}`;
         try {
           return JSON.parse(cleanText);
         } catch (parseError) {
-          console.error('Failed to parse JSON:', parseError, 'Text:', cleanText);
+          logger.error('Failed to parse JSON from OpenAI', { error: parseError, textLength: cleanText?.length });
           throw new Error('Invalid JSON response from AI');
         }
       }
@@ -257,14 +260,17 @@ ${mp.example_usage || ''}`.trim();
       autofill_suggestions: autoFillSuggestions
     };
 
-    console.log('Generated metaprompt result:', result);
+    logger.info('Generated metaprompt successfully', { 
+      hasEnglish: !!result.metaprompt_template_english,
+      hasArabic: !!result.metaprompt_template_arabic 
+    });
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in ai-gpt5-metaprompt function:', error);
+    logger.error('Error in ai-gpt5-metaprompt function', { error: error.message });
     return new Response(JSON.stringify({ 
       error: error.message || 'Internal server error' 
     }), {

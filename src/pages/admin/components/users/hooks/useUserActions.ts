@@ -8,6 +8,11 @@ import { logInfo, logWarn, logError } from "@/utils/secureLogging";
 import { SecurityEnforcer } from "@/utils/enhancedSecurity";
 import { InputValidator } from "@/utils/inputValidation";
 import { RateLimiter, RateLimitConfigs } from "@/utils/rateLimiting";
+import { isAdmin } from "@/utils/auth";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('USER_ACTIONS');
 
 export function useUserActions() {
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
@@ -33,7 +38,7 @@ export function useUserActions() {
       }
 
       // Check if user has admin permissions
-      if (!user || user.role !== 'admin') {
+      if (!user || !isAdmin(user.role)) {
         logWarn("Password reset attempted without admin permissions", "admin", undefined, user?.id);
         securityMonitor.logEvent('access_denied', {
           action: 'password_reset',
@@ -100,7 +105,7 @@ export function useUserActions() {
     }
 
     // Check permissions
-    if (!user || user.role !== 'admin') {
+    if (!user || !isAdmin(user.role)) {
       logWarn("User deletion attempted without admin permissions", "admin", undefined, user?.id);
       securityMonitor.logEvent('access_denied', {
         action: 'delete_user',
@@ -165,16 +170,13 @@ export function useUserActions() {
         return false;
       }
       
-      // Call edge function using supabase.functions.invoke() for proper authentication
-      const { data, error } = await supabase.functions.invoke('get-all-users', {
-        body: { 
-          userId, 
-          action: "delete"
-        }
-      });
+      // Call RPC function for user deletion
+      const { data, error } = await supabase.rpc('admin_delete_user_data', {
+        target_user_id: userId
+      }) as { data: any, error: any };
 
-      if (error || (data && data.error)) {
-        const errorMessage = error?.message || data?.error || "Error deleting user";
+      if (error || (data && !(data as any).success)) {
+        const errorMessage = error?.message || (data as any)?.error || "Error deleting user";
         
         logError("User deletion failed", "admin", { error: errorMessage }, user?.id);
         securityMonitor.logEvent('access_denied', {
@@ -216,11 +218,12 @@ export function useUserActions() {
   };
 
   const resendConfirmationEmail = async (userId: string, email: string): Promise<void> => {
-    console.log('Admin attempting to resend confirmation email for user:', userId, email);
+    logger.info('Admin attempting to resend confirmation email', { userId, email });
     
     // Input validation
     if (!userId || !email) {
-      console.error('Invalid input for resend confirmation:', { userId, email });
+      const appError = handleError(new Error('Invalid input'), { component: 'useUserActions', action: 'resendConfirmation' });
+      logger.error('Invalid input for resend confirmation', { error: appError });
       toast({
         variant: "destructive",
         title: "Error",
@@ -232,7 +235,7 @@ export function useUserActions() {
     // Basic email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      console.error('Invalid email format:', email);
+      logger.error('Invalid email format', { email });
       toast({
         variant: "destructive",
         title: "Error", 
@@ -244,7 +247,7 @@ export function useUserActions() {
     try {
       setProcessingUserId(userId);
 
-      console.log("Using custom confirmation email template...");
+      logger.debug('Using custom confirmation email template');
       
       // Use our custom send-email function directly for confirmation emails
       const { data: response, error } = await supabase.functions.invoke('resend-confirmation-email', {
@@ -252,7 +255,6 @@ export function useUserActions() {
       });
 
       if (error) {
-        console.error("Custom confirmation email failed:", error);
         throw new Error(`Failed to resend confirmation email: ${error.message}`);
       }
 
@@ -260,7 +262,7 @@ export function useUserActions() {
         throw new Error(response?.error || 'Failed to resend confirmation email');
       }
 
-      console.log('Custom confirmation email sent successfully');
+      logger.info('Custom confirmation email sent successfully');
       toast({
         title: "Success",
         description: "Confirmation email has been resent successfully with custom template.",
@@ -279,7 +281,8 @@ export function useUserActions() {
       });
 
     } catch (error: any) {
-      console.error('Error resending confirmation email:', error);
+      const appError = handleError(error, { component: 'useUserActions', action: 'resendConfirmation' });
+      logger.error('Error resending confirmation email', { error: appError, userId });
       
       // Enhanced error messaging
       let errorMessage = "Failed to resend confirmation email.";

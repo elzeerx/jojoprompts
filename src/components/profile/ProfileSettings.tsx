@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { User, Shield, UserCircle } from "lucide-react";
 import { UserProfile } from "@/types/user";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PROFILE_SETTINGS');
 
 export function ProfileSettings() {
   const { user } = useAuth();
@@ -30,9 +33,20 @@ export function ProfileSettings() {
         .single();
 
       if (error) throw error;
-      setUserProfile(data as UserProfile);
+      
+      // Fetch role separately from user_roles table
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+      
+      setUserProfile({
+        ...data,
+        role: roleData?.role || 'user'
+      } as UserProfile);
     } catch (error) {
-      console.error("Error fetching profile:", error);
+      logger.error('Error fetching profile', { error, userId: user?.id });
       toast({
         title: "Error",
         description: "Failed to load profile information",

@@ -2,6 +2,9 @@
 import { useState, useEffect } from "react";
 import { Play, Volume2 } from "lucide-react";
 import { getPromptImage } from "@/utils/image";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('MediaThumbnail');
 
 interface MediaThumbnailProps {
   media: { type: string; path: string; name: string };
@@ -18,7 +21,7 @@ export function MediaThumbnail({ media, index, onClick }: MediaThumbnailProps) {
         const url = await getPromptImage(media.path, 200, 80);
         setThumbnailUrl(url);
       } catch (error) {
-        console.error('Error loading thumbnail:', error);
+        logger.warn('Error loading thumbnail', { error: error instanceof Error ? error.message : error, path: media.path });
       }
     };
     loadThumbnail();

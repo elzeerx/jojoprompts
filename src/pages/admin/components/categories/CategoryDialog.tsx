@@ -6,6 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('CATEGORY_DIALOG');
 import {
   Dialog,
   DialogContent,
@@ -121,7 +125,8 @@ export function CategoryDialog({
       }
       onClose();
     } catch (error) {
-      console.error("Error saving category:", error);
+      const appError = handleError(error, { component: 'CategoryDialog', action: 'saveCategory' });
+      logger.error('Error saving category', { error: appError });
     } finally {
       setLoading(false);
     }

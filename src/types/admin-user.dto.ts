@@ -2,9 +2,9 @@
  * Unified Data Transfer Object for Admin User Management
  * 
  * This DTO provides a consistent structure for user data across:
- * - Edge function responses (admin-users-v2)
+ * - v_admin_users SQL view
  * - Frontend components
- * - React Query cache
+ * - State management hooks
  * 
  * Represents a complete user with profile, role, auth, and subscription data
  */
@@ -61,7 +61,7 @@ export interface AdminUserDTO {
 }
 
 /**
- * Response structure from admin-users-v2 edge function
+ * Response structure from v_admin_users SQL view
  */
 export interface AdminUsersResponse {
   users: AdminUserDTO[];

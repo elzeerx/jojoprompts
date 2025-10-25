@@ -11,6 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PromptDetailsDialog } from "./prompt-details-dialog";
 import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PremiumPromptCard');
 
 interface PremiumPromptCardProps {
   prompt: Prompt;
@@ -48,7 +51,7 @@ export function PremiumPromptCard({
         
         setImageUrl(url);
       } catch (error) {
-        console.error('Error loading prompt image:', error);
+        logger.error('Error loading prompt image', { error: error instanceof Error ? error.message : error, imagePath, promptId: prompt.id });
         setImageUrl('/placeholder.svg');
       }
     }
@@ -79,7 +82,7 @@ export function PremiumPromptCard({
       }
       setFavorited(!favorited);
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      logger.error('Error toggling favorite', { error: error instanceof Error ? error.message : error, promptId: prompt.id, isFavorited: favorited });
       toast({
         title: "Error",
         description: "Failed to update favorites",

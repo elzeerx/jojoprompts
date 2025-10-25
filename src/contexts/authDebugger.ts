@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logging';
+
+const authLogger = createLogger('AUTH_DEBUG');
 
 export const debug = (msg: string, extra = {}) =>
-  console.log("[AUTH]", msg, extra);
+  authLogger.debug(msg, extra);

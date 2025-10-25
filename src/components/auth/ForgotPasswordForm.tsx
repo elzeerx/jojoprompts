@@ -5,6 +5,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('FORGOT_PASSWORD');
 import {
   Form,
   FormControl,
@@ -58,7 +62,8 @@ export function ForgotPasswordForm() {
         });
       }
     } catch (error) {
-      console.error("Password reset request error:", error);
+      const appError = handleError(error, { component: 'ForgotPasswordForm', action: 'requestReset' });
+      logger.error('Password reset request error', appError);
       toast({
         variant: "destructive",
         title: "Error",

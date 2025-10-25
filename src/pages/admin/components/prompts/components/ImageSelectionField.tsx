@@ -9,6 +9,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { getPromptImage } from "@/utils/image";
 import { Upload, Link, Database, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('IMAGE_SELECTION');
 
 interface ImageSelectionFieldProps {
   currentImagePath?: string;
@@ -78,7 +82,8 @@ export function ImageSelectionField({
 
       setDatabaseImages(imagesWithUrls);
     } catch (error) {
-      console.error('Error loading database images:', error);
+      const appError = handleError(error, { component: 'ImageSelectionField', action: 'loadImages' });
+      logger.error('Error loading database images', { error: appError });
       toast({
         title: "Error",
         description: "Failed to load database images",

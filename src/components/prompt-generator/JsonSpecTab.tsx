@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Copy, Wand2, Loader2, Save, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { callEdgeFunction } from "@/utils/edgeFunctions";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('JSON_SPEC_TAB');
 
 interface JsonSpecRequest {
   user_prompt: string;
@@ -53,8 +56,8 @@ export function JsonSpecTab() {
         description: "Your video/image specification is ready to use."
       });
 
-    } catch (error) {
-      console.error('Error generating JSON:', error);
+    } catch (error: any) {
+      logger.error('Error generating JSON', { error: error.message });
       setJsonValid(false);
       toast({
         variant: "destructive",

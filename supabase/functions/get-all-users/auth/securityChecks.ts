@@ -1,6 +1,8 @@
-
+import { createEdgeLogger } from '../_shared/logger.ts';
 import { SecurityCheckParams } from './types.ts';
 import { logSecurityEvent } from '../../shared/securityLogger.ts';
+
+const logger = createEdgeLogger('get-all-users:auth:security-checks');
 
 // Perform additional security checks
 export async function performSecurityChecks(
@@ -17,7 +19,7 @@ export async function performSecurityChecks(
       .limit(10);
 
     if (error) {
-      console.warn('Failed to check recent activity:', error.message);
+      logger.warn('Failed to check recent activity', { error: error.message });
       return; // Don't block on this check
     }
 
@@ -27,7 +29,7 @@ export async function performSecurityChecks(
     ).length || 0;
 
     if (failedAttempts >= 5) {
-      console.warn(`High number of failed admin access attempts for user ${userId}`);
+      logger.warn('High number of failed admin access attempts', { userId, failedAttempts });
       await logSecurityEvent(supabase, {
         user_id: userId,
         action: 'suspicious_admin_activity_detected',
@@ -36,7 +38,7 @@ export async function performSecurityChecks(
     }
 
   } catch (error) {
-    console.warn('Security checks failed:', error);
+    logger.warn('Security checks failed', { error });
     // Don't throw - these are supplementary checks
   }
 }

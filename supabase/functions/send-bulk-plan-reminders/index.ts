@@ -4,11 +4,14 @@ import React from 'npm:react@18.3.1';
 import { renderAsync } from 'npm:@react-email/components@0.0.22';
 import { PlanReminderEmail } from './_templates/plan-reminder.tsx';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('send-bulk-plan-reminders');
 
 // Validate environment variables
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 if (!RESEND_API_KEY) {
-  console.error("[SEND-BULK-PLAN-REMINDERS] RESEND_API_KEY environment variable is not set");
+  logger.error('RESEND_API_KEY environment variable is not set');
   throw new Error("RESEND_API_KEY is required");
 }
 
@@ -17,11 +20,6 @@ const resend = new Resend(RESEND_API_KEY);
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[SEND-BULK-PLAN-REMINDERS] ${step}${detailsStr}`);
 };
 
 // Helper function to construct URLs safely
@@ -40,21 +38,22 @@ const sendEmailWithRetry = async (emailData: any, maxRetries = 3): Promise<any> 
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      logStep(`Email send attempt ${attempt}`, { to: emailData.to });
+      logger.debug('Email send attempt', { attempt, to: emailData.to });
       
       const response = await resend.emails.send(emailData);
       
       if (response.error) {
-        logStep(`Resend API error on attempt ${attempt}`, { 
+        logger.warn('Resend API error', { 
+          attempt,
           error: response.error,
           errorType: typeof response.error,
-          statusCode: (response as any).statusCode,
-          headers: (response as any).headers
+          statusCode: (response as any).statusCode
         });
         throw new Error(`Resend API error: ${JSON.stringify(response.error)}`);
       }
       
-      logStep(`Email sent successfully on attempt ${attempt}`, { 
+      logger.info('Email sent successfully', { 
+        attempt,
         emailId: response.data?.id,
         to: emailData.to 
       });
@@ -62,9 +61,9 @@ const sendEmailWithRetry = async (emailData: any, maxRetries = 3): Promise<any> 
       
     } catch (error: any) {
       lastError = error;
-      logStep(`Email send failed on attempt ${attempt}`, { 
+      logger.error('Email send failed', { 
+        attempt,
         error: error.message,
-        errorStack: error.stack,
         to: emailData.to
       });
       
@@ -72,7 +71,7 @@ const sendEmailWithRetry = async (emailData: any, maxRetries = 3): Promise<any> 
       if (error.message?.includes('rate') || error.message?.includes('limit') || 
           error.message?.includes('429') || error.statusCode === 429) {
         const backoffDelay = Math.pow(2, attempt) * 1000; // Exponential backoff
-        logStep(`Rate limit detected, waiting ${backoffDelay}ms before retry`);
+        logger.warn('Rate limit detected, backing off', { backoffMs: backoffDelay });
         await delay(backoffDelay);
       } else if (attempt < maxRetries) {
         // For other errors, wait a shorter time
@@ -98,7 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    logStep("Function started");
+    logger.info('Function started');
 
     // Create Supabase client with service role key
     const supabaseClient = createClient(
@@ -137,7 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("No users provided for bulk email");
     }
 
-    logStep("Starting bulk email send", { userCount: users.length });
+    logger.info('Starting bulk email send', { userCount: users.length });
 
     const results = [];
     const batchSize = 5; // Reduced batch size for better rate limiting
@@ -147,7 +146,8 @@ const handler = async (req: Request): Promise<Response> => {
     
     for (let i = 0; i < users.length; i += batchSize) {
       const batch = users.slice(i, i + batchSize);
-      logStep(`Processing batch ${Math.floor(i / batchSize) + 1}`, { 
+      logger.info('Processing batch', { 
+        batchNumber: Math.floor(i / batchSize) + 1,
         batchStart: i + 1, 
         batchEnd: Math.min(i + batchSize, users.length),
         total: users.length 
@@ -223,7 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
           );
 
           const emailData = {
-            from: "JojoPrompts <noreply@noreply.jojoprompts.com>",
+            from: "JojoPrompts <info@jojoprompts.com>",
             to: [targetUser.email],
             subject: "Unlock Premium Features - Choose Your Plan 🎯",
             html,
@@ -269,7 +269,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Add a longer delay between batches to avoid rate limiting
       if (i + batchSize < users.length) {
-        logStep(`Waiting 3 seconds before next batch to respect rate limits`);
+        logger.debug('Waiting before next batch to respect rate limits', { waitMs: 3000 });
         await delay(3000); // Increased to 3 seconds
       }
     }
@@ -277,7 +277,7 @@ const handler = async (req: Request): Promise<Response> => {
     const successCount = results.filter(r => r.success).length;
     const failureCount = results.filter(r => !r.success).length;
 
-    logStep("Bulk email send completed", { 
+    logger.info('Bulk email send completed', { 
       total: users.length, 
       success: successCount, 
       failures: failureCount 
@@ -302,7 +302,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   } catch (error: any) {
     const errorMessage = error.message || String(error);
-    logStep("ERROR", { message: errorMessage });
+    logger.error('Error in send-bulk-plan-reminders', { error: errorMessage });
     
     return new Response(
       JSON.stringify({ 

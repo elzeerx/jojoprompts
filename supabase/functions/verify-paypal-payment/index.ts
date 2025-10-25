@@ -8,65 +8,39 @@ import { getAllParams } from "./parameterExtractor.ts";
 import { databaseFirstVerification } from "./databaseVerification.ts";
 import { getTransaction, updateTransactionCompleted, insertUserSubscriptionIfMissing } from "./dbOperations.ts";
 import { logEmailAttempt } from "./emailLogger.ts";
+import { createEdgeLogger, generateRequestId } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Simplified email sending helper - removed complex duplicate prevention
+// Payment confirmation email using database template
 async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: string, userName: string, planName: string, amount: number, transactionId: string, logger: any) {
   try {
-    logger(`[EMAIL] Sending payment confirmation email to ${userEmail}`);
+    logger.info('Sending payment confirmation email', { email: userEmail });
     
+    // Format purchase date
+    const purchaseDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    // Use the email template system with payment_confirmation template
     const emailData = {
       to: userEmail,
-      subject: "Payment Confirmed - Welcome to Premium! 🎉",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
-            <h1 style="margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">JoJo Prompts</h1>
-            <h2 style="margin: 10px 0 0 0; font-size: 28px; font-weight: 400;">Payment Confirmed! 🎉</h2>
-            <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Welcome to JoJo Prompts Premium</p>
-          </div>
-          
-          <div style="background: #f8f9fa; padding: 40px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
-            <h2 style="color: #333; margin: 0 0 20px 0;">Hi ${userName}! 👋</h2>
-            
-            <p style="color: #666; line-height: 1.6; margin: 20px 0;">
-              Your payment has been successfully processed! You now have access to all premium features.
-            </p>
-            
-            <div style="background: white; padding: 25px; border-radius: 8px; margin: 30px 0; border: 1px solid #dee2e6;">
-              <h3 style="color: #333; margin: 0 0 15px 0;">Payment Details</h3>
-              <p style="margin: 5px 0; color: #666;"><strong>Plan:</strong> ${planName}</p>
-              <p style="margin: 5px 0; color: #666;"><strong>Amount:</strong> $${amount.toFixed(2)} USD</p>
-              <p style="margin: 5px 0; color: #666;"><strong>Transaction ID:</strong> ${transactionId}</p>
-            </div>
-            
-            <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 20px; margin: 25px 0;">
-              <h3 style="color: #155724; margin: 0 0 10px 0;">🚀 You now have access to:</h3>
-              <ul style="color: #155724; margin: 0; padding-left: 20px;">
-                <li>Unlimited premium prompts</li>
-                <li>Advanced search and filtering</li>
-                <li>Priority customer support</li>
-                <li>Exclusive prompt collections</li>
-              </ul>
-            </div>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="https://jojoprompts.com/prompts" style="background: #28a745; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
-                Start Using Premium Features
-              </a>
-            </div>
-          </div>
-          
-          <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
-            <p style="margin: 0;">Thank you for your purchase!<br><strong>The JoJo Prompts Team</strong></p>
-          </div>
-        </div>
-      `,
-      text: `Payment Confirmed - JoJo Prompts\n\nHi ${userName}!\n\nYour payment has been successfully processed!\n\nPlan: ${planName}\nAmount: $${amount.toFixed(2)} USD\nTransaction ID: ${transactionId}\n\nStart using your premium features at https://jojoprompts.com/prompts\n\nThank you!\nThe JoJo Prompts Team`
+      template_slug: 'payment_confirmation',
+      email_type: 'payment_confirmation',
+      user_id: null,
+      variables: {
+        first_name: userName.split(' ')[0] || 'Valued Customer',
+        plan_name: planName,
+        amount: amount.toFixed(2),
+        transaction_id: transactionId,
+        purchase_date: purchaseDate,
+        email: userEmail
+      }
     };
 
     // Simple email logging
@@ -77,16 +51,16 @@ async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: stri
     });
 
     if (emailError || !emailResponse?.success) {
-      logger(`[EMAIL] Error sending email:`, emailError || emailResponse);
+      logger.error('Error sending email', { error: emailError?.message || emailResponse?.error });
       await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, emailError?.message || emailResponse?.error);
       return { success: false, error: emailError?.message || emailResponse?.error };
     }
 
-    logger(`[EMAIL] Payment confirmation email sent successfully to ${userEmail}`);
+    logger.info('Payment confirmation email sent successfully', { email: userEmail });
     await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', true, transactionId);
     return { success: true };
   } catch (error: any) {
-    logger(`[EMAIL] Exception sending email:`, error);
+    logger.error('Exception sending email', { error: error.message });
     await logEmailAttempt(supabaseClient, userEmail, 'payment_confirmation', false, error.message);
     return { success: false, error: error.message };
   }
@@ -95,8 +69,8 @@ async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: stri
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const requestId = crypto.randomUUID();
-  const logger = (...args: any[]) => console.log(`[${requestId}]`, ...args);
+  const requestId = generateRequestId();
+  const logger = createEdgeLogger('VERIFY_PAYPAL_PAYMENT', requestId);
 
   try {
     const supabaseClient = makeSupabaseClient();
@@ -128,10 +102,10 @@ serve(async (req: Request) => {
     const userId = extract(["user_id", "userId", "USER_ID"]);
 
     const debugParams = { ...params, orderId, paymentId, planId, userId };
-    logger(`Payment verification params:`, debugParams);
+    logger.info('Payment verification started', { params: debugParams });
 
     if (!orderId && !paymentId) {
-      logger(`Missing both orderId and paymentId. Params:`, debugParams);
+      logger.error('Missing both orderId and paymentId', { params: debugParams });
       return new Response(JSON.stringify({
         error: "No order_id or payment_id supplied.",
         status: PAYMENT_STATES.ERROR,
@@ -158,7 +132,7 @@ serve(async (req: Request) => {
         .maybeSingle();
         
       if (existingSubscription && existingSubscription.status === "active") {
-        logger("SUCCESS: Database shows completed transaction and active subscription.");
+        logger.info('SUCCESS: Database shows completed transaction and active subscription');
         
         // Get plan and user data for email
         const { data: planData } = await supabaseClient
@@ -191,7 +165,7 @@ serve(async (req: Request) => {
           );
           
           if (!emailResult.success) {
-            logger(`[EMAIL] Failed to send confirmation email:`, emailResult.error);
+            logger.warn('Failed to send confirmation email', { error: emailResult.error });
           }
         }
 
@@ -213,41 +187,41 @@ serve(async (req: Request) => {
     }
 
     // Simplified PayPal API verification (removed complex capture logic)
-    logger(`PayPal API verification for order: ${orderId || 'none'}, payment: ${paymentId || 'none'}`);
+    logger.info('PayPal API verification', { orderId: orderId || 'none', paymentId: paymentId || 'none' });
     
     let orderIdToUse = orderId || localTx?.paypal_order_id;
     let payPalStatus: string | null = null;
     let payPalRawResponse: any = null;
 
     if (orderIdToUse) {
-      logger(`Fetching PayPal order:`, orderIdToUse);
+      logger.debug('Fetching PayPal order', { orderId: orderIdToUse });
       const { data: orderData, ok: orderOk } = await fetchPaypalOrder(baseUrl, accessToken, orderIdToUse);
       
       if (orderOk) {
         payPalRawResponse = orderData;
         payPalStatus = orderData.status || PAYMENT_STATES.UNKNOWN;
-        logger(`PayPal order status:`, payPalStatus);
+        logger.info('PayPal order status retrieved', { status: payPalStatus });
       } else {
-        logger(`Failed to fetch PayPal order:`, orderData);
+        logger.error('Failed to fetch PayPal order', { error: orderData });
         payPalStatus = PAYMENT_STATES.ERROR;
       }
     } else if (paymentId) {
-      logger(`Fetching PayPal payment capture:`, paymentId);
+      logger.debug('Fetching PayPal payment capture', { paymentId });
       const { data: paymentData, ok: paymentOk } = await fetchPaypalPaymentCapture(baseUrl, accessToken, paymentId);
       
       if (paymentOk) {
         payPalRawResponse = paymentData;
         payPalStatus = paymentData.status || PAYMENT_STATES.UNKNOWN;
-        logger(`PayPal payment status:`, payPalStatus);
+        logger.info('PayPal payment status retrieved', { status: payPalStatus });
       } else {
-        logger(`Failed to fetch PayPal payment:`, paymentData);
+        logger.error('Failed to fetch PayPal payment', { error: paymentData });
         payPalStatus = PAYMENT_STATES.ERROR;
       }
     }
 
-    // If payment is completed, send confirmation email
+    // If payment is completed, send confirmation email using template
     if (payPalStatus === "COMPLETED" && userId && planId) {
-      logger(`Payment completed successfully, sending confirmation email`);
+      logger.info('Payment completed successfully, sending confirmation email');
       
       // Get user and plan details for email
       const { data: userProfile } = await supabaseClient
@@ -258,23 +232,23 @@ serve(async (req: Request) => {
       
       const { data: planDetails } = await supabaseClient
         .from('subscription_plans')
-        .select('name, price')
+        .select('name, price_usd')
         .eq('id', planId)
         .single();
       
       if (userProfile && planDetails) {
         const userName = `${userProfile.first_name} ${userProfile.last_name}`.trim();
-        const userEmail = (await supabaseClient.auth.admin.getUserById(userId)).data?.user?.email;
+        const { data: { user: authUser } } = await supabaseClient.auth.admin.getUserById(userId);
         
-        if (userEmail) {
+        if (authUser?.email) {
           // Send confirmation email in background
           setTimeout(async () => {
             await sendPaymentConfirmationEmail(
               supabaseClient,
-              userEmail,
+              authUser.email,
               userName,
               planDetails.name,
-              planDetails.price,
+              planDetails.price_usd || 0,
               paymentId || orderIdToUse || 'unknown',
               logger
             );
@@ -301,7 +275,7 @@ serve(async (req: Request) => {
     });
 
   } catch (error: any) {
-    logger("Verification error:", error);
+    logger.error('Verification error', { error: error.message });
     return new Response(JSON.stringify({
       error: error.message,
       status: PAYMENT_STATES.ERROR,

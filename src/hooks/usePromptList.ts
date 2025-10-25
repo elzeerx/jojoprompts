@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PROMPT_LIST');
 
 export interface PromptListItem {
   id: string;
@@ -42,7 +45,7 @@ export function usePromptList(limit: number = 10) {
       if (fetchError) throw fetchError;
       setPrompts(data || []);
     } catch (err) {
-      console.error('Error fetching prompts:', err);
+      logger.error('Failed to fetch prompts', { error: err });
       setError(err as Error);
     } finally {
       setLoading(false);

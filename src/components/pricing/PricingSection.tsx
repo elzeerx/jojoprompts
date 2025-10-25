@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from "@/contexts/AuthContext";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PRICING_SECTION');
 
 export function PricingSection() {
   const [plans, setPlans] = useState<any[]>([]);
@@ -33,8 +36,8 @@ export function PricingSection() {
           // Select the first plan by default
           setSelectedPlanId(data[0].id);
         }
-      } catch (error) {
-        console.error("Error fetching plans:", error);
+      } catch (error: any) {
+        logger.error('Error fetching plans', { error: error.message });
       } finally {
         setLoading(false);
       }

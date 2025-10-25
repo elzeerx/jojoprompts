@@ -1,3 +1,6 @@
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('get-all-users:auth:env-validator');
 
 export interface EnvironmentConfig {
   supabaseUrl: string;
@@ -16,7 +19,7 @@ export function validateEnvironment(): EnvironmentConfig {
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') as string;
 
   if (!supabaseUrl || !serviceRoleKey || !anonKey) {
-    console.error('Missing required environment variables');
+    logger.error('Missing required environment variables');
     return {
       supabaseUrl: '',
       serviceRoleKey: '',

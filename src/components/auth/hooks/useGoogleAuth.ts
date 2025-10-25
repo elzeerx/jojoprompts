@@ -4,6 +4,10 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CheckoutContextManager } from "@/utils/checkoutContext";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('GOOGLE_AUTH');
 
 export function useGoogleAuth() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -47,7 +51,8 @@ export function useGoogleAuth() {
         });
       }
     } catch (error) {
-      console.error("Google sign-up error:", error);
+      const appError = handleError(error, { component: 'useGoogleAuth', action: 'googleSignUp' });
+      logger.error('Google sign-up error', appError);
       toast({
         variant: "destructive",
         title: "Error",

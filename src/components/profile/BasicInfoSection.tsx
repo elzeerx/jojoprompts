@@ -5,6 +5,9 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Check, X } from "lucide-react";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('BASIC_INFO_SECTION');
 
 interface UserProfile {
   id: string;
@@ -45,7 +48,7 @@ export function BasicInfoSection({ userProfile, userEmail, onUpdate }: BasicInfo
       if (error) throw error;
       setUsernameAvailable(data.length === 0);
     } catch (error) {
-      console.error("Error checking username:", error);
+      logger.error('Error checking username', { error, username: newUsername });
     } finally {
       setIsCheckingUsername(false);
     }

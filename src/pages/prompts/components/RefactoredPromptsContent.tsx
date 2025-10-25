@@ -11,6 +11,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { getSubscriptionTier, isPromptLocked } from "@/utils/subscription";
+import { isPrivilegedUser, isAdmin as isAdminRole } from "@/utils/auth";
 
 interface RefactoredPromptsContentProps {
   prompts: PromptRow[];
@@ -36,9 +37,9 @@ export function RefactoredPromptsContent({
   const [view, setView] = useState<"grid" | "list">("grid");
 
   // Determine user privileges and subscription tier
-  const isPrivileged = userRole === 'admin' || userRole === 'prompter' || userRole === 'jadmin';
+  const isPrivileged = isPrivilegedUser(userRole);
   const userTier = getSubscriptionTier(userSubscription?.subscription_plans?.name);
-  const isAdmin = userRole === 'admin';
+  const isAdmin = isAdminRole(userRole);
 
   const categoryNames = categories.map(cat => cat.name);
   

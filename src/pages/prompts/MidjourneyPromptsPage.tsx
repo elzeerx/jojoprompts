@@ -8,15 +8,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Prompt } from "@/types";
 import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, hasFeatureInPlan } from "@/utils/subscription";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('MIDJOURNEY_PROMPTS');
 
 export default function MidjourneyPromptsPage() {
-  const { user, session } = useAuth();
+  const { user, session, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userTier, setUserTier] = useState<string>('none');
-  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     const checkAccess = async () => {
@@ -26,19 +28,8 @@ export default function MidjourneyPromptsPage() {
       }
       
       try {
-        // Check if user is admin
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
-          
-        if (profileError) throw profileError;
-        
-        const isUserAdmin = profileData?.role === "admin";
-        setIsAdmin(isUserAdmin);
-        
-        if (isUserAdmin) {
+        // Admins have full access
+        if (isAdmin) {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
@@ -52,13 +43,13 @@ export default function MidjourneyPromptsPage() {
             .limit(1);
           
           if (error && error.code !== "PGRST116") {
-            console.error("Error checking subscription:", error);
+            logger.error('Error checking subscription', { error: error.message });
           }
           
           let tier = 'none';
           let hasAccess = false;
           
-          console.log('Raw subscription data:', subscriptions);
+          logger.debug('Subscription data loaded', { count: subscriptions?.length || 0 });
           
           if (subscriptions && subscriptions.length > 0) {
             const subscription = subscriptions[0];
@@ -66,9 +57,8 @@ export default function MidjourneyPromptsPage() {
             const planFeatures = subscription.subscription_plans?.features;
             tier = getSubscriptionTier(planName);
             
-            console.log('Midjourney access check:', { 
+            logger.debug('Access check', { 
               planName, 
-              planFeatures, 
               tier,
               userId: user.id,
               subscriptionCount: subscriptions.length
@@ -77,9 +67,9 @@ export default function MidjourneyPromptsPage() {
             // Check if user's plan includes Midjourney prompts feature
             hasAccess = hasFeatureInPlan(planFeatures, 'Midjourney prompts');
             
-            console.log('Midjourney access result:', { hasAccess, featureCheck: planFeatures });
+            logger.debug('Access result', { hasAccess });
           } else {
-            console.log('No active subscriptions found for user:', user.id);
+            logger.debug('No active subscriptions', { userId: user.id });
           }
           
           setUserTier(tier);
@@ -94,7 +84,7 @@ export default function MidjourneyPromptsPage() {
           .order("created_at", { ascending: false });
         
         if (promptsError) {
-          console.error("Error fetching prompts:", promptsError);
+          logger.error('Error fetching prompts', { error: promptsError.message });
         } else if (data) {
           // Transform data to ensure it matches the Prompt type
           const transformedData: Prompt[] = data.map(item => ({
@@ -111,15 +101,15 @@ export default function MidjourneyPromptsPage() {
           
           setPrompts(transformedData);
         }
-      } catch (err) {
-        console.error("Error checking access:", err);
+      } catch (err: any) {
+        logger.error('Error checking access', { error: err.message || err });
       } finally {
         setLoading(false);
       }
     };
     
     checkAccess();
-  }, [user, navigate]);
+  }, [user, navigate, isAdmin]);
   
   if (loading) {
     return (

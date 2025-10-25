@@ -1,7 +1,7 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUserCRUD } from "@/hooks/useUserCRUD";
+import { useUserManagement } from "./hooks/useUserManagement";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useUserActions } from "./hooks/useUserActions";
 import { UsersTable } from "./UsersTable";
@@ -19,14 +19,14 @@ export default function UsersManagement() {
     totalPages,
     currentPage,
     searchTerm,
-    isLoading,
+    loading: isLoading,
     error,
     updateUser,
     deleteUser,
-    setPage,
-    setSearch,
+    onPageChange: setPage,
+    onSearchChange: setSearch,
     refetch
-  } = useUserCRUD();
+  } = useUserManagement();
   
   const { resendConfirmationEmail } = useUserActions();
 

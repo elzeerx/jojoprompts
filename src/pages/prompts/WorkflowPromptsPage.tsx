@@ -9,15 +9,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Prompt } from "@/types";
 import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, isCategoryLocked } from "@/utils/subscription";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('WORKFLOW_PROMPTS');
 
 export default function WorkflowPromptsPage() {
-  const { user, session } = useAuth();
+  const { user, session, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userTier, setUserTier] = useState<string>('none');
-  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     const checkAccess = async () => {
@@ -27,19 +29,8 @@ export default function WorkflowPromptsPage() {
       }
       
       try {
-        // Check if user is admin
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
-          
-        if (profileError) throw profileError;
-        
-        const isUserAdmin = profileData?.role === "admin";
-        setIsAdmin(isUserAdmin);
-        
-        if (isUserAdmin) {
+        // Admins have full access
+        if (isAdmin) {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
@@ -52,7 +43,7 @@ export default function WorkflowPromptsPage() {
             .maybeSingle();
           
           if (error && error.code !== "PGRST116") {
-            console.error("Error checking subscription:", error);
+            logger.error('Error checking subscription', { error: error.message });
           }
           
           let tier = 'none';
@@ -64,7 +55,7 @@ export default function WorkflowPromptsPage() {
           setUserTier(tier);
           
           // Check if user has access to workflow prompts (premium plan requirement)
-          const hasAccess = !isCategoryLocked('premium', tier, isUserAdmin);
+          const hasAccess = !isCategoryLocked('premium', tier, isAdmin);
           setHasAccess(hasAccess);
         }
         
@@ -76,7 +67,7 @@ export default function WorkflowPromptsPage() {
           .order("created_at", { ascending: false });
         
         if (promptsError) {
-          console.error("Error fetching prompts:", promptsError);
+          logger.error('Error fetching prompts', { error: promptsError.message });
         } else if (data) {
           // Transform data to ensure it matches the Prompt type
           const transformedData: Prompt[] = data.map(item => ({
@@ -93,15 +84,15 @@ export default function WorkflowPromptsPage() {
           
           setPrompts(transformedData);
         }
-      } catch (err) {
-        console.error("Error checking access:", err);
+      } catch (err: any) {
+        logger.error('Error checking access', { error: err.message || err });
       } finally {
         setLoading(false);
       }
     };
     
     checkAccess();
-  }, [user, navigate]);
+  }, [user, navigate, isAdmin]);
   
   if (loading) {
     return (

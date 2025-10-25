@@ -4,6 +4,9 @@ import { safeDelete, logStep } from './dbUtils.ts';
 import { deleteUser as deleteUserFn } from './userDeletion.ts';
 import { updateUser as updateUserFn } from './userUpdate.ts';
 import { createUser as createUserFn } from './userCreate.ts';
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('get-all-users:users');
 
 /**
  * List all users with their profile info.
@@ -18,7 +21,7 @@ export async function listUsers(
     includeAuth?: boolean;
   } = {}
 ) {
-  console.log(`Admin ${adminId} is fetching users with options:`, options);
+  logger.info('Admin fetching users', { adminId, options });
   
   const { page = 1, limit = 10, search = '', includeAuth = true } = options;
   
@@ -34,7 +37,7 @@ export async function listUsers(
       });
 
       if (authError) {
-        console.error('Error listing auth users:', authError);
+        logger.error('Error listing auth users', { error: authError.message });
         throw new Error(`Error fetching auth users: ${authError.message}`);
       }
 
@@ -64,7 +67,7 @@ export async function listUsers(
       }
     }
 
-    // Get comprehensive profile data with all fields
+    // Get comprehensive profile data with all fields (excluding role which is in user_roles)
     const profileQuery = supabase
       .from('profiles')
       .select(`
@@ -72,7 +75,6 @@ export async function listUsers(
         first_name,
         last_name,
         username,
-        role,
         bio,
         avatar_url,
         country,
@@ -99,13 +101,13 @@ export async function listUsers(
     const { data: profiles, error: profileError, count: totalProfiles } = await profileQuery;
 
     if (profileError) {
-      console.error('Error fetching profiles:', profileError);
+      logger.error('Error fetching profiles', { error: profileError.message });
       throw new Error(`Error fetching profiles: ${profileError.message}`);
     }
 
     if (!profiles || profiles.length === 0) {
-      console.log('No profiles found');
-      return { 
+      logger.info('No profiles found', { search, page });
+      return {
         users: [], 
         total: 0, 
         totalPages: 0,
@@ -114,8 +116,28 @@ export async function listUsers(
       };
     }
 
-    // Get user subscriptions for the profiles in this page
+    // Get user roles for the profiles in this page
     const profileIds = profiles.map(p => p.id);
+    const { data: userRoles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .in('user_id', profileIds);
+
+    if (rolesError) {
+      logger.warn('Error fetching roles', { error: rolesError.message });
+    }
+
+    // Create role map for efficient lookup
+    const roleMap = new Map();
+    if (userRoles) {
+      userRoles.forEach(ur => {
+        if (!roleMap.has(ur.user_id)) {
+          roleMap.set(ur.user_id, ur.role);
+        }
+      });
+    }
+
+    // Get user subscriptions for the profiles in this page
     const { data: subscriptions, error: subError } = await supabase
       .from('user_subscriptions')
       .select(`
@@ -137,7 +159,7 @@ export async function listUsers(
       .order('created_at', { ascending: false });
 
     if (subError) {
-      console.warn('Error fetching subscriptions:', subError);
+      logger.warn('Error fetching subscriptions', { error: subError.message });
     }
 
     // Create subscription map for efficient lookup
@@ -162,6 +184,7 @@ export async function listUsers(
     const combinedUsers = profiles.map(profile => {
       const authUser = authUserMap.get(profile.id);
       const subscription = subscriptionMap.get(profile.id);
+      const role = roleMap.get(profile.id) || 'user';
       
       return {
         // Profile data (complete)
@@ -169,7 +192,7 @@ export async function listUsers(
         first_name: profile.first_name,
         last_name: profile.last_name,
         username: profile.username,
-        role: profile.role || 'user',
+        role: role,
         bio: profile.bio,
         avatar_url: profile.avatar_url,
         country: profile.country,
@@ -206,9 +229,14 @@ export async function listUsers(
 
     const totalPages = Math.ceil((totalProfiles || 0) / limit);
 
-    console.log(`Successfully fetched ${combinedUsers.length} users (page ${page}/${totalPages})`);
+    logger.info('Successfully fetched users', { 
+      count: combinedUsers.length, 
+      page, 
+      totalPages,
+      totalProfiles 
+    });
     
-    return { 
+    return {
       users: combinedUsers,
       total: totalProfiles || 0,
       totalPages,
@@ -217,7 +245,7 @@ export async function listUsers(
       totalAuthUsers: includeAuth ? totalAuthUsers : undefined
     };
   } catch (error) {
-    console.error('Error in listUsers:', error);
+    logger.error('Error in listUsers', { error });
     throw error;
   }
 }

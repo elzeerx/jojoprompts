@@ -1,6 +1,9 @@
 // Shared admin authentication and authorization
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 import { createSupabaseClient } from './standardImports.ts';
+import { createEdgeLogger } from './logger.ts';
+
+const logger = createEdgeLogger('ADMIN_AUTH');
 
 export interface AuthContext {
   supabase: ReturnType<typeof createClient>;
@@ -63,19 +66,19 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
       if (!userError && user) break;
       
       if (attempt === 1) {
-        console.warn(`Token validation attempt ${attempt} failed, retrying...`);
+        logger.warn('Token validation retry', { attempt });
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     
     if (userError || !user) {
-      console.error('Authentication failed after retries:', userError);
+      logger.error('Authentication failed', { error: userError?.message });
       throw new Error('Invalid or expired token');
     }
 
     // Enhanced user validation
     if (!user.email || !user.email_confirmed_at) {
-      console.error('User email not confirmed', { userId: user.id });
+      logger.error('Email not confirmed', { userId: user.id });
       throw new Error('Email verification required');
     }
 
@@ -92,13 +95,13 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
     });
     
     if (adminCheckError || jadminCheckError) {
-      console.error('Role check failed:', { adminCheckError, jadminCheckError });
+      logger.error('Role check failed', { adminCheckError, jadminCheckError });
       throw new Error('Failed to verify user role');
     }
 
     // User must have either admin or jadmin role
     if (!hasAdmin && !hasJadmin) {
-      console.error('Non-admin user attempted admin access:', { userId: user.id });
+      logger.error('Unauthorized admin access attempt', { userId: user.id });
       throw new Error('Insufficient privileges. Admin access required.');
     }
 
@@ -115,7 +118,7 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
       permissions
     };
   } catch (error: any) {
-    console.error('verifyAdmin error:', error);
+    logger.error('Admin verification failed', { error: error.message });
     // Re-throw with original message for better debugging
     throw error;
   }
@@ -146,6 +149,6 @@ export async function logSecurityEvent(
         user_agent: event.user_agent
       });
   } catch (error) {
-    console.warn('Failed to log security event:', error);
+    logger.warn('Failed to log security event', { error });
   }
 }

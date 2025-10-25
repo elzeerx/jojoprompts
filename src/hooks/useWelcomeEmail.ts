@@ -1,6 +1,8 @@
-
 import { useState } from 'react';
 import { emailService } from '@/utils/emailService';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('WELCOME_EMAIL');
 
 export function useWelcomeEmail() {
   const [isSending, setIsSending] = useState(false);
@@ -10,11 +12,11 @@ export function useWelcomeEmail() {
     try {
       const result = await emailService.sendWelcomeEmail(name, email);
       if (!result.success) {
-        console.warn('Welcome email failed to send:', result.error);
+        logger.warn('Welcome email failed', { error: result.error, email });
       }
       return result;
     } catch (error) {
-      console.error('Welcome email error:', error);
+      logger.error('Welcome email error', { error, email });
       return { success: false, error: 'Failed to send welcome email' };
     } finally {
       setIsSending(false);

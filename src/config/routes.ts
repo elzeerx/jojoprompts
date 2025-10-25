@@ -35,7 +35,6 @@ const SubscriptionDashboard = lazy(() => import("@/pages/dashboard/SubscriptionD
 const PrompterDashboard = lazy(() => import("@/pages/prompter/PrompterDashboard"));
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const PromptsManagement = lazy(() => import("@/pages/admin/PromptsManagement"));
-const PromptGeneratorPage = lazy(() => import("@/pages/PromptGeneratorPage"));
 const PlatformTest = lazy(() => import("@/pages/PlatformTest"));
 const AboutPage = lazy(() => import("@/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));
@@ -189,11 +188,6 @@ export const routes: RouteConfig[] = [
   {
     path: "payment-recovery",
     component: PaymentRecoveryPage,
-    protection: "public"
-  },
-  {
-    path: "prompt-generator",
-    component: PromptGeneratorPage,
     protection: "public"
   },
   {

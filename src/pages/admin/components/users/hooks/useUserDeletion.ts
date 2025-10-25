@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('USER_DELETION');
 
 interface DeleteUserResponse {
   success: boolean;
@@ -16,7 +20,7 @@ export function useUserDeletion() {
     setProcessingUserId(userId);
     
     try {
-      console.log(`[UserDeletion] Attempting to delete user ${userId} via direct database call`);
+      logger.info('Attempting to delete user via direct database call', { userId });
       
       // Call the database function directly (bypassing edge functions)
       const { data, error } = await supabase.rpc('admin_delete_user_data', {
@@ -24,7 +28,7 @@ export function useUserDeletion() {
       });
       
       if (error) {
-        console.error("[UserDeletion] Database error:", error);
+        logger.error('Database error', { error: error.message, userId });
         throw new Error(error.message || 'Failed to delete user');
       }
       
@@ -33,7 +37,7 @@ export function useUserDeletion() {
       
       // Check if the function returned an error
       if (response && !response.success) {
-        console.error("[UserDeletion] Deletion failed:", response.error);
+        logger.error('Deletion failed', { error: response.error, userId });
         throw new Error(response.error || 'Failed to delete user');
       }
       
@@ -44,10 +48,11 @@ export function useUserDeletion() {
         description: `User ${email} has been deleted successfully${duration}.`
       });
       
-      console.log(`[UserDeletion] User ${userId} deleted successfully:`, response);
+      logger.info('User deleted successfully', { userId, duration: response?.duration_ms });
       return true;
     } catch (error: any) {
-      console.error(`[UserDeletion] Error deleting user:`, error);
+      const appError = handleError(error, { component: 'useUserDeletion', action: 'deleteUser' });
+      logger.error('Error deleting user', { error: appError, userId });
       
       // Parse error message more specifically
       let errorMessage = "Failed to delete user.";

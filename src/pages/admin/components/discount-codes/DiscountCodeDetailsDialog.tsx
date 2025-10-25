@@ -7,6 +7,10 @@ import { Copy, Calendar, Users, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('DISCOUNT_CODE_DETAILS');
 
 interface DiscountCode {
   id: string;
@@ -75,7 +79,8 @@ export function DiscountCodeDetailsDialog({ code, open, onClose, onRefresh }: Di
 
       setUsageHistory(enrichedUsage);
     } catch (error) {
-      console.error("Error fetching usage history:", error);
+      const appError = handleError(error, { component: 'DiscountCodeDetailsDialog', action: 'fetchUsageHistory' });
+      logger.error('Error fetching usage history', { error: appError, codeId: code?.id });
     } finally {
       setLoadingUsage(false);
     }
