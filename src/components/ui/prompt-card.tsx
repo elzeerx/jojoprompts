@@ -99,6 +99,7 @@ export function PromptCard({
           isN8nWorkflow={isN8nWorkflow}
           workflowSteps={workflowSteps}
           mediaFiles={mediaFiles}
+          isLocked={isLocked}
         />
 
         <CardFooter

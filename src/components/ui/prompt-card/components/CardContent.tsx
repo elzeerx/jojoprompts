@@ -10,7 +10,8 @@ export function CardContent({
   prompt_text,
   isN8nWorkflow,
   workflowSteps,
-  mediaFiles
+  mediaFiles,
+  isLocked = false
 }: {
   title: string;
   imageUrl: string;
@@ -19,6 +20,7 @@ export function CardContent({
   isN8nWorkflow: boolean;
   workflowSteps: any[];
   mediaFiles: any[];
+  isLocked?: boolean;
 }) {
   return (
     <>
@@ -52,7 +54,7 @@ export function CardContent({
         )}
       </div>
       {isN8nWorkflow && workflowSteps.length > 0 ? (
-        <div className="flex-grow space-y-1 sm:space-y-2">
+        <div className={`flex-grow space-y-1 sm:space-y-2 ${isLocked ? 'blur-sm select-none pointer-events-none' : ''}`}>
           <div className="space-y-1">
             <h4 className="text-xs sm:text-sm font-semibold text-gray-800 flex items-center gap-1 sm:gap-2">
               <Workflow className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
@@ -81,8 +83,8 @@ export function CardContent({
       ) : (
         <p className={
           isSmallMobile 
-            ? "text-xs text-gray-600 line-clamp-2 leading-relaxed flex-grow"
-            : "text-sm text-gray-600 line-clamp-2 sm:line-clamp-3 leading-relaxed flex-grow"
+            ? `text-xs text-gray-600 line-clamp-2 leading-relaxed flex-grow ${isLocked ? 'blur-sm select-none' : ''}`
+            : `text-sm text-gray-600 line-clamp-2 sm:line-clamp-3 leading-relaxed flex-grow ${isLocked ? 'blur-sm select-none' : ''}`
         }>
           {prompt_text}
         </p>
