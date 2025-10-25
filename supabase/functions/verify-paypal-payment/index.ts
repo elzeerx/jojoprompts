@@ -15,59 +15,32 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Simplified email sending helper - removed complex duplicate prevention
+// Payment confirmation email using database template
 async function sendPaymentConfirmationEmail(supabaseClient: any, userEmail: string, userName: string, planName: string, amount: number, transactionId: string, logger: any) {
   try {
     logger.info('Sending payment confirmation email', { email: userEmail });
     
+    // Format purchase date
+    const purchaseDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    // Use the email template system with payment_confirmation template
     const emailData = {
       to: userEmail,
-      subject: "Payment Confirmed - Welcome to Premium! 🎉",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
-            <h1 style="margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">JoJo Prompts</h1>
-            <h2 style="margin: 10px 0 0 0; font-size: 28px; font-weight: 400;">Payment Confirmed! 🎉</h2>
-            <p style="margin: 15px 0 0 0; font-size: 18px; opacity: 0.9;">Welcome to JoJo Prompts Premium</p>
-          </div>
-          
-          <div style="background: #f8f9fa; padding: 40px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
-            <h2 style="color: #333; margin: 0 0 20px 0;">Hi ${userName}! 👋</h2>
-            
-            <p style="color: #666; line-height: 1.6; margin: 20px 0;">
-              Your payment has been successfully processed! You now have access to all premium features.
-            </p>
-            
-            <div style="background: white; padding: 25px; border-radius: 8px; margin: 30px 0; border: 1px solid #dee2e6;">
-              <h3 style="color: #333; margin: 0 0 15px 0;">Payment Details</h3>
-              <p style="margin: 5px 0; color: #666;"><strong>Plan:</strong> ${planName}</p>
-              <p style="margin: 5px 0; color: #666;"><strong>Amount:</strong> $${amount.toFixed(2)} USD</p>
-              <p style="margin: 5px 0; color: #666;"><strong>Transaction ID:</strong> ${transactionId}</p>
-            </div>
-            
-            <div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 20px; margin: 25px 0;">
-              <h3 style="color: #155724; margin: 0 0 10px 0;">🚀 You now have access to:</h3>
-              <ul style="color: #155724; margin: 0; padding-left: 20px;">
-                <li>Unlimited premium prompts</li>
-                <li>Advanced search and filtering</li>
-                <li>Priority customer support</li>
-                <li>Exclusive prompt collections</li>
-              </ul>
-            </div>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="https://jojoprompts.com/prompts" style="background: #28a745; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
-                Start Using Premium Features
-              </a>
-            </div>
-          </div>
-          
-          <div style="text-align: center; margin: 20px 0; padding: 20px; color: #666; font-size: 14px;">
-            <p style="margin: 0;">Thank you for your purchase!<br><strong>The JoJo Prompts Team</strong></p>
-          </div>
-        </div>
-      `,
-      text: `Payment Confirmed - JoJo Prompts\n\nHi ${userName}!\n\nYour payment has been successfully processed!\n\nPlan: ${planName}\nAmount: $${amount.toFixed(2)} USD\nTransaction ID: ${transactionId}\n\nStart using your premium features at https://jojoprompts.com/prompts\n\nThank you!\nThe JoJo Prompts Team`
+      template_slug: 'payment_confirmation',
+      email_type: 'payment_confirmation',
+      user_id: null,
+      variables: {
+        first_name: userName.split(' ')[0] || 'Valued Customer',
+        plan_name: planName,
+        amount: amount.toFixed(2),
+        transaction_id: transactionId,
+        purchase_date: purchaseDate,
+        email: userEmail
+      }
     };
 
     // Simple email logging
@@ -246,7 +219,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // If payment is completed, send confirmation email
+    // If payment is completed, send confirmation email using template
     if (payPalStatus === "COMPLETED" && userId && planId) {
       logger.info('Payment completed successfully, sending confirmation email');
       
@@ -259,23 +232,23 @@ serve(async (req: Request) => {
       
       const { data: planDetails } = await supabaseClient
         .from('subscription_plans')
-        .select('name, price')
+        .select('name, price_usd')
         .eq('id', planId)
         .single();
       
       if (userProfile && planDetails) {
         const userName = `${userProfile.first_name} ${userProfile.last_name}`.trim();
-        const userEmail = (await supabaseClient.auth.admin.getUserById(userId)).data?.user?.email;
+        const { data: { user: authUser } } = await supabaseClient.auth.admin.getUserById(userId);
         
-        if (userEmail) {
+        if (authUser?.email) {
           // Send confirmation email in background
           setTimeout(async () => {
             await sendPaymentConfirmationEmail(
               supabaseClient,
-              userEmail,
+              authUser.email,
               userName,
               planDetails.name,
-              planDetails.price,
+              planDetails.price_usd || 0,
               paymentId || orderIdToUse || 'unknown',
               logger
             );
