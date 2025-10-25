@@ -5,8 +5,77 @@ import { fetchPayPalAccessToken } from './paypalToken.ts';
 import { getSiteUrl } from './siteUrl.ts';
 import { makeSupabaseClient, insertTransaction, updateTransactionOnCapture, createUserSubscription, upgradeUserSubscription } from './dbOperations.ts';
 import { createEdgeLogger } from '../_shared/logger.ts';
+import { logEmailAttempt } from '../verify-paypal-payment/emailLogger.ts';
 
 const logger = createEdgeLogger('process-paypal-payment');
+
+// Email sending function for payment confirmation
+async function sendPaymentConfirmationEmail(
+  supabaseClient: any,
+  recipientEmail: string,
+  userName: string,
+  planName: string,
+  amount: number,
+  transactionId: string,
+  loggerInstance: any
+): Promise<void> {
+  try {
+    loggerInstance.info('Attempting to send payment confirmation email', { recipientEmail, planName, amount });
+
+    // Get the payment_confirmation template
+    const { data: template, error: templateError } = await supabaseClient
+      .from('email_templates')
+      .select('*')
+      .eq('name', 'payment_confirmation')
+      .eq('is_active', true)
+      .single();
+
+    if (templateError || !template) {
+      loggerInstance.error('Payment confirmation template not found', { error: templateError });
+      await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', false, 'Template not found');
+      return;
+    }
+
+    // Format purchase date
+    const purchaseDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    // Prepare template variables
+    const variables = {
+      first_name: userName,
+      plan_name: planName,
+      amount: amount.toFixed(2),
+      transaction_id: transactionId,
+      purchase_date: purchaseDate,
+      unsubscribe_link: `${getSiteUrl()}/settings/subscription`
+    };
+
+    loggerInstance.debug('Email template variables prepared', { variables });
+
+    // Call send-email edge function
+    const { data: emailResponse, error: emailError } = await supabaseClient.functions.invoke('send-email', {
+      body: {
+        to: recipientEmail,
+        templateId: template.id,
+        variables: variables
+      }
+    });
+
+    if (emailError) {
+      loggerInstance.error('Failed to send payment confirmation email', { error: emailError });
+      await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', false, emailError.message);
+    } else {
+      loggerInstance.info('Payment confirmation email sent successfully', { recipientEmail });
+      await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', true);
+    }
+  } catch (error) {
+    loggerInstance.error('Exception while sending payment confirmation email', { error });
+    await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', false, error.message);
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -111,6 +180,38 @@ serve(async (req) => {
       }
 
       logger.info('Created subscription for direct activation', { subscriptionId: subscription.id });
+
+      // Send payment confirmation email in background (don't block response)
+      setTimeout(async () => {
+        try {
+          const { data: userProfile } = await supabaseClient
+            .from('profiles')
+            .select('first_name, last_name, email')
+            .eq('id', userId)
+            .single();
+
+          const { data: planDetails } = await supabaseClient
+            .from('subscription_plans')
+            .select('name')
+            .eq('id', planId)
+            .single();
+
+          if (userProfile?.email && planDetails) {
+            const userName = `${userProfile.first_name} ${userProfile.last_name}`.trim() || 'User';
+            await sendPaymentConfirmationEmail(
+              supabaseClient,
+              userProfile.email,
+              userName,
+              planDetails.name,
+              0, // Amount is 0 for 100% discount
+              transaction.id,
+              logger
+            );
+          }
+        } catch (emailError) {
+          logger.warn('Failed to send payment confirmation email for direct activation', { error: emailError });
+        }
+      }, 0);
 
       // Track discount usage
       const { error: discountUsageError } = await supabaseClient
@@ -366,6 +467,38 @@ serve(async (req) => {
             // Payment was successful - just log subscription error, don't abort
           }
         }
+
+        // Send payment confirmation email in background (don't block response)
+        setTimeout(async () => {
+          try {
+            const { data: userProfile } = await supabaseClient
+              .from('profiles')
+              .select('first_name, last_name, email')
+              .eq('id', userId)
+              .single();
+
+            const { data: planDetails } = await supabaseClient
+              .from('subscription_plans')
+              .select('name, price_usd')
+              .eq('id', planId)
+              .single();
+
+            if (userProfile?.email && planDetails) {
+              const userName = `${userProfile.first_name} ${userProfile.last_name}`.trim() || 'User';
+              await sendPaymentConfirmationEmail(
+                supabaseClient,
+                userProfile.email,
+                userName,
+                planDetails.name,
+                transaction.amount_usd || planDetails.price_usd,
+                paymentId,
+                logger
+              );
+            }
+          } catch (emailError) {
+            logger.warn('Failed to send payment confirmation email', { error: emailError });
+          }
+        }, 0);
       }
 
       return new Response(JSON.stringify({
