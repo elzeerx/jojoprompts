@@ -7,7 +7,7 @@ import { PAYMENT_STATES } from "./types.ts";
 import { getAllParams } from "./parameterExtractor.ts";
 import { databaseFirstVerification } from "./databaseVerification.ts";
 import { getTransaction, updateTransactionCompleted, insertUserSubscriptionIfMissing } from "./dbOperations.ts";
-import { logEmailAttempt } from "./emailLogger.ts";
+import { logEmailAttempt } from "../_shared/emailLogger.ts";
 import { createEdgeLogger, generateRequestId } from "../_shared/logger.ts";
 
 const corsHeaders = {

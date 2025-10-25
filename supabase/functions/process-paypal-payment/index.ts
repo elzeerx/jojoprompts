@@ -5,7 +5,7 @@ import { fetchPayPalAccessToken } from './paypalToken.ts';
 import { getSiteUrl } from './siteUrl.ts';
 import { makeSupabaseClient, insertTransaction, updateTransactionOnCapture, createUserSubscription, upgradeUserSubscription } from './dbOperations.ts';
 import { createEdgeLogger } from '../_shared/logger.ts';
-import { logEmailAttempt } from '../verify-paypal-payment/emailLogger.ts';
+import { logEmailAttempt } from '../_shared/emailLogger.ts';
 
 const logger = createEdgeLogger('process-paypal-payment');
 

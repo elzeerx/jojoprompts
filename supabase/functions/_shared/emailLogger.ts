@@ -1,6 +1,6 @@
-import { createEdgeLogger } from '../_shared/logger.ts';
+import { createEdgeLogger } from './logger.ts';
 
-const logger = createEdgeLogger('verify-paypal-payment:email-logger');
+const logger = createEdgeLogger('email-logger');
 
 // Email logging utility for tracking email attempts
 export async function logEmailAttempt(
