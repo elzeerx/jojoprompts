@@ -102,6 +102,7 @@ export type Database = {
         Row: {
           action: string
           admin_user_id: string
+          anonymized_ip: string | null
           id: string
           ip_address: string | null
           metadata: Json | null
@@ -111,6 +112,7 @@ export type Database = {
         Insert: {
           action: string
           admin_user_id: string
+          anonymized_ip?: string | null
           id?: string
           ip_address?: string | null
           metadata?: Json | null
@@ -120,6 +122,7 @@ export type Database = {
         Update: {
           action?: string
           admin_user_id?: string
+          anonymized_ip?: string | null
           id?: string
           ip_address?: string | null
           metadata?: Json | null
@@ -1714,6 +1717,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_tracking: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          last_request_at: string
+          request_count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_request_at?: string
+          request_count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_request_at?: string
+          request_count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       response_executions: {
         Row: {
           completed_at: string | null
@@ -2505,6 +2538,17 @@ export type Database = {
       }
     }
     Views: {
+      admin_activity_summary: {
+        Row: {
+          action: string | null
+          action_count: number | null
+          admin_user_id: string | null
+          anonymized_ip: string | null
+          first_occurrence: string | null
+          last_occurrence: string | null
+        }
+        Relationships: []
+      }
       profiles_with_role: {
         Row: {
           avatar_url: string | null
@@ -2602,6 +2646,7 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: Json
       }
+      anonymize_ip_address: { Args: { ip_address: string }; Returns: string }
       calculate_anomaly_score: {
         Args: { p_current_data: Json; p_metric_type: string; p_user_id: string }
         Returns: number
@@ -2623,6 +2668,15 @@ export type Database = {
         Args: { _admin_id: string; _user_id: string }
         Returns: Json
       }
+      check_rate_limit: {
+        Args: {
+          p_endpoint: string
+          p_max_requests?: number
+          p_user_id: string
+          p_window_minutes?: number
+        }
+        Returns: Json
+      }
       cleanup_expired_data: { Args: never; Returns: Json }
       cleanup_expired_magic_tokens: { Args: never; Returns: undefined }
       cleanup_expired_sessions: { Args: never; Returns: undefined }
@@ -2631,6 +2685,7 @@ export type Database = {
         Args: { days_old?: number }
         Returns: Json
       }
+      cleanup_security_data: { Args: never; Returns: Json }
       cleanup_unverified_accounts: { Args: never; Returns: number }
       confirm_user_email: {
         Args: { email_confirmed?: boolean; user_id: string }
