@@ -2718,6 +2718,7 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: string
       }
+      has_active_subscription: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
