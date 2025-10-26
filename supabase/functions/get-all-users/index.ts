@@ -2,6 +2,7 @@ import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessRespo
 import { verifyAdmin } from "../_shared/adminAuth.ts";
 import { createEdgeLogger } from "../_shared/logger.ts";
 import { handleGetUsers } from "./handlers/getUsersHandler.ts";
+import { checkRateLimit, RATE_LIMITS, createRateLimitResponse } from "../_shared/rateLimit.ts";
 
 const logger = createEdgeLogger('GET_ALL_USERS');
 
@@ -14,6 +15,31 @@ serve(async (req) => {
   try {
     // Admin authentication using shared module
     const { supabase, userId } = await verifyAdmin(req);
+    
+    // Check rate limit for admin user
+    const rateLimitResult = await checkRateLimit(supabase, userId, RATE_LIMITS.GET_ALL_USERS);
+    
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded for admin user', {
+        userId,
+        endpoint: 'get-all-users',
+        currentCount: rateLimitResult.currentCount,
+        limit: rateLimitResult.limit
+      });
+      
+      // Log rate limit violation
+      await supabase.from('admin_audit_log').insert({
+        admin_user_id: userId,
+        action: 'rate_limit_exceeded',
+        target_resource: 'get-all-users',
+        metadata: {
+          rate_limit_details: rateLimitResult,
+          method: req.method
+        }
+      });
+      
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
     
     // Handle GET - list users with pagination and search
     if (req.method === 'GET') {
