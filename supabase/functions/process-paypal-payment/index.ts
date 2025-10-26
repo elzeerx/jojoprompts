@@ -6,6 +6,12 @@ import { getSiteUrl } from './siteUrl.ts';
 import { makeSupabaseClient, insertTransaction, updateTransactionOnCapture, createUserSubscription, upgradeUserSubscription } from './dbOperations.ts';
 import { createEdgeLogger } from '../_shared/logger.ts';
 import { logEmailAttempt } from '../_shared/emailLogger.ts';
+import { 
+  validatePaymentInput, 
+  ProcessPaymentCreateSchema, 
+  ProcessPaymentCaptureSchema, 
+  ProcessPaymentDirectActivationSchema 
+} from '../_shared/paymentValidation.ts';
 
 const logger = createEdgeLogger('process-paypal-payment');
 
@@ -102,8 +108,39 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
   try {
-    const { action, orderId, planId, userId, amount, appliedDiscount, isUpgrade, upgradingFromPlanId, currentSubscriptionId } = await req.json();
+    const rawBody = await req.json();
     const supabaseClient = makeSupabaseClient();
+
+    // Validate input based on action type
+    let validationResult;
+    if (rawBody.action === 'create') {
+      validationResult = validatePaymentInput(ProcessPaymentCreateSchema, rawBody);
+    } else if (rawBody.action === 'capture') {
+      validationResult = validatePaymentInput(ProcessPaymentCaptureSchema, rawBody);
+    } else if (rawBody.action === 'direct-activation') {
+      validationResult = validatePaymentInput(ProcessPaymentDirectActivationSchema, rawBody);
+    } else {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Invalid action. Must be "create", "capture", or "direct-activation"' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!validationResult.success) {
+      logger.error('Input validation failed', { error: validationResult.error, action: rawBody.action });
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: validationResult.error 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { action, orderId, planId, userId, amount, appliedDiscount, isUpgrade, upgradingFromPlanId, currentSubscriptionId } = validationResult.data;
 
     // Handle direct activation for 100% discounts
     if (action === 'direct-activation') {

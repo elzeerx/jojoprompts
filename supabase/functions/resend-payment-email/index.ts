@@ -2,6 +2,7 @@ import { serve, corsHeaders, createErrorResponse, createSuccessResponse } from "
 import { verifyAdmin } from "../_shared/adminAuth.ts";
 import { createEdgeLogger } from "../_shared/logger.ts";
 import { logEmailAttempt } from "../_shared/emailLogger.ts";
+import { validatePaymentInput, ResendPaymentEmailSchema } from "../_shared/paymentValidation.ts";
 
 const logger = createEdgeLogger('RESEND_PAYMENT_EMAIL');
 
@@ -12,11 +13,16 @@ serve(async (req) => {
 
   try {
     const { supabase, userId } = await verifyAdmin(req);
-    const { transactionId, email } = await req.json();
+    const rawBody = await req.json();
 
-    if (!transactionId || !email) {
-      return createErrorResponse('Missing transactionId or email', 400);
+    // Validate input
+    const validationResult = validatePaymentInput(ResendPaymentEmailSchema, rawBody);
+    if (!validationResult.success) {
+      logger.error('Input validation failed', { error: validationResult.error });
+      return createErrorResponse(validationResult.error, 400);
     }
+
+    const { transactionId, email } = validationResult.data;
 
     logger.info('Admin resending payment email', { transactionId, email, adminId: userId });
 

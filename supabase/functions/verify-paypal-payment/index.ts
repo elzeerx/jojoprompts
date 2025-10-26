@@ -9,6 +9,7 @@ import { databaseFirstVerification } from "./databaseVerification.ts";
 import { getTransaction, updateTransactionCompleted, insertUserSubscriptionIfMissing } from "./dbOperations.ts";
 import { logEmailAttempt } from "../_shared/emailLogger.ts";
 import { createEdgeLogger, generateRequestId } from "../_shared/logger.ts";
+import { validatePaymentInput, VerifyPaymentSchema } from "../_shared/paymentValidation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,21 +102,29 @@ serve(async (req: Request) => {
     const planId = extract(["plan_id", "planId", "PLAN_ID"]);
     const userId = extract(["user_id", "userId", "USER_ID"]);
 
-    const debugParams = { ...params, orderId, paymentId, planId, userId };
-    logger.info('Payment verification started', { params: debugParams });
+    // Validate extracted parameters
+    const validationResult = validatePaymentInput(VerifyPaymentSchema, {
+      orderId,
+      paymentId,
+      planId,
+      userId
+    });
 
-    if (!orderId && !paymentId) {
-      logger.error('Missing both orderId and paymentId', { params: debugParams });
+    if (!validationResult.success) {
+      logger.error('Input validation failed', { error: validationResult.error, params });
       return new Response(JSON.stringify({
-        error: "No order_id or payment_id supplied.",
+        error: validationResult.error,
         status: PAYMENT_STATES.ERROR,
         success: false,
         requestId
       }), {
-        status: 200,
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
+
+    const debugParams = { ...params, orderId, paymentId, planId, userId };
+    logger.info('Payment verification started', { params: debugParams });
 
     // Database-first verification
     let localTx = await databaseFirstVerification(supabaseClient, { orderId, paymentId, planId, userId }, logger);
