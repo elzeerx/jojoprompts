@@ -2109,6 +2109,7 @@ export type Database = {
           is_lifetime: boolean
           name: string
           price_usd: number
+          tier: string
         }
         Insert: {
           created_at?: string | null
@@ -2120,6 +2121,7 @@ export type Database = {
           is_lifetime?: boolean
           name: string
           price_usd: number
+          tier: string
         }
         Update: {
           created_at?: string | null
@@ -2131,6 +2133,7 @@ export type Database = {
           is_lifetime?: boolean
           name?: string
           price_usd?: number
+          tier?: string
         }
         Relationships: []
       }
@@ -2603,8 +2606,16 @@ export type Database = {
         Args: { p_current_data: Json; p_metric_type: string; p_user_id: string }
         Returns: number
       }
+      can_access_prompt: {
+        Args: { prompt_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
       can_access_sensitive_profile_data: {
         Args: { target_user_id?: string }
+        Returns: boolean
+      }
+      can_access_tier: {
+        Args: { required_tier: string; user_id_param: string }
         Returns: boolean
       }
       can_manage_prompts: { Args: { _user_id: string }; Returns: boolean }
@@ -2702,6 +2713,10 @@ export type Database = {
           social_links: Json
           username: string
         }[]
+      }
+      get_user_subscription_tier: {
+        Args: { user_id_param: string }
+        Returns: string
       }
       has_role: {
         Args: {
