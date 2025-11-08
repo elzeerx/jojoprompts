@@ -3,16 +3,20 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Menu, X, User, LogOut, Settings, Heart, Edit } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 import { createLogger } from '@/utils/logging';
+import { cn } from "@/lib/utils";
 
 const logger = createLogger('HEADER');
 
 export function Header() {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { t, isRTL } = useTranslation();
   
   // Safe auth hook with fallback
   let user = null;
@@ -78,37 +82,44 @@ export function Header() {
           </button>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
+          <nav className={cn(
+            "hidden md:flex items-center gap-6 lg:gap-8",
+            isRTL && "flex-row-reverse"
+          )}>
             <Link
               to="/examples"
               className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
             >
-              Examples
+              {t('nav.examples')}
             </Link>
             <Link
               to="/prompts"
               className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
             >
-              Prompts
+              {t('nav.prompts')}
             </Link>
             {!user && (
               <Link
                 to="/pricing"
                 className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
               >
-                Pricing
+                {t('nav.pricing')}
               </Link>
             )}
             <Link
               to="/about"
               className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
             >
-              About
+              {t('nav.about')}
             </Link>
           </nav>
 
           {/* Desktop Auth */}
-          <div className="hidden md:flex items-center space-x-3">
+          <div className={cn(
+            "hidden md:flex items-center gap-3",
+            isRTL && "flex-row-reverse"
+          )}>
+            <LanguageSwitcher variant="desktop" />
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -130,60 +141,75 @@ export function Header() {
                 >
                   <DropdownMenuItem
                     onClick={() => navigate("/dashboard")}
-                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                    className={cn(
+                      "hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                      isRTL && "flex-row-reverse"
+                    )}
                   >
-                    <User className="mr-3 h-4 w-4 text-warm-gold" />
-                    <span className="text-dark-base font-medium">Dashboard</span>
+                    <User className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                    <span className="text-dark-base font-medium">{t('nav.dashboard')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => navigate("/favorites")}
-                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                    className={cn(
+                      "hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                      isRTL && "flex-row-reverse"
+                    )}
                   >
-                    <Heart className="mr-3 h-4 w-4 text-warm-gold" />
-                    <span className="text-dark-base font-medium">Favorites</span>
+                    <Heart className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                    <span className="text-dark-base font-medium">{t('nav.favorites')}</span>
                   </DropdownMenuItem>
                   {isPrompter && (
                     <DropdownMenuItem
                       onClick={() => navigate("/dashboard/prompter")}
-                      className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                      className={cn(
+                        "hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                        isRTL && "flex-row-reverse"
+                      )}
                     >
-                      <Edit className="mr-3 h-4 w-4 text-warm-gold" />
-                      <span className="text-dark-base font-medium">My Prompts</span>
+                      <Edit className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                      <span className="text-dark-base font-medium">{t('nav.myPrompts')}</span>
                     </DropdownMenuItem>
                    )}
                    {isAdmin && (
                      <DropdownMenuItem
                        onClick={() => navigate("/admin")}
-                       className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                       className={cn(
+                         "hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                         isRTL && "flex-row-reverse"
+                       )}
                      >
-                       <Settings className="mr-3 h-4 w-4 text-warm-gold" />
-                       <span className="text-dark-base font-medium">Admin</span>
+                       <Settings className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                       <span className="text-dark-base font-medium">{t('nav.admin')}</span>
                      </DropdownMenuItem>
                    )}
                   <DropdownMenuSeparator className="my-2 bg-warm-gold/20" />
                   <DropdownMenuItem
                     onClick={handleLogout}
-                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                    className={cn(
+                      "hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                      isRTL && "flex-row-reverse"
+                    )}
                   >
-                    <LogOut className="mr-3 h-4 w-4 text-warm-gold" />
-                    <span className="text-dark-base font-medium">Log out</span>
+                    <LogOut className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                    <span className="text-dark-base font-medium">{t('nav.logout')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
                 <Button
                   variant="ghost"
                   onClick={() => navigate("/login")}
                   className="text-dark-base hover:text-warm-gold text-sm lg:text-base py-2 px-3 touch-manipulation"
                 >
-                  Login
+                  {t('nav.login')}
                 </Button>
                 <Button
                   onClick={() => navigate("/pricing")}
                   className="bg-warm-gold hover:bg-warm-gold/90 text-white text-sm lg:text-base py-2 px-3 lg:px-4 touch-manipulation"
                 >
-                  Get Started
+                  {t('nav.signup')}
                 </Button>
               </div>
             )}
@@ -207,19 +233,22 @@ export function Header() {
         {isMobileMenuOpen && (
           <div className="md:hidden animate-slide-down bg-white/95 backdrop-blur-sm border-t border-warm-gold/20">
             <nav className="py-3 space-y-1">
+              <div className="px-2 pb-2 border-b border-warm-gold/10">
+                <LanguageSwitcher variant="mobile" />
+              </div>
               <Link
                 to="/examples"
                 className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Examples
+                {t('nav.examples')}
               </Link>
               <Link
                 to="/prompts"
                 className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Prompts
+                {t('nav.prompts')}
               </Link>
               {!user && (
                 <Link
@@ -227,7 +256,7 @@ export function Header() {
                   className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Pricing
+                  {t('nav.pricing')}
                 </Link>
               )}
               <Link
@@ -235,7 +264,7 @@ export function Header() {
                 className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                About
+                {t('nav.about')}
               </Link>
 
               {user ? (
@@ -246,14 +275,14 @@ export function Header() {
                       className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      Dashboard
+                      {t('nav.dashboard')}
                     </Link>
                     <Link
                       to="/favorites"
                       className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      Favorites
+                      {t('nav.favorites')}
                     </Link>
                      {isPrompter && (
                        <Link
@@ -261,7 +290,7 @@ export function Header() {
                          className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
                          onClick={() => setIsMobileMenuOpen(false)}
                        >
-                         My Prompts
+                         {t('nav.myPrompts')}
                        </Link>
                       )}
                       {isAdmin && (
@@ -270,7 +299,7 @@ export function Header() {
                          className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
                          onClick={() => setIsMobileMenuOpen(false)}
                        >
-                         Admin
+                         {t('nav.admin')}
                        </Link>
                      )}
                     <button
@@ -278,9 +307,12 @@ export function Header() {
                         handleLogout();
                         setIsMobileMenuOpen(false);
                       }}
-                      className="block w-full text-left px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                      className={cn(
+                        "block w-full px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2",
+                        isRTL ? "text-right" : "text-left"
+                      )}
                     >
-                      Log out
+                      {t('nav.logout')}
                     </button>
                   </div>
                 </>
@@ -292,9 +324,12 @@ export function Header() {
                       navigate("/login");
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full justify-start text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 touch-manipulation h-12"
+                    className={cn(
+                      "w-full text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 touch-manipulation h-12",
+                      isRTL ? "justify-end" : "justify-start"
+                    )}
                   >
-                    Login
+                    {t('nav.login')}
                   </Button>
                   <Button
                     onClick={() => {
@@ -303,7 +338,7 @@ export function Header() {
                     }}
                     className="w-full bg-warm-gold hover:bg-warm-gold/90 text-white touch-manipulation h-12"
                   >
-                    Get Started
+                    {t('nav.signup')}
                   </Button>
                 </div>
               )}
