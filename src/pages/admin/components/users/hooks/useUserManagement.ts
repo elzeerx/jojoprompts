@@ -5,6 +5,7 @@ import { useUserUpdate } from "./useUserUpdate";
 import { usePlanAssignment } from "./usePlanAssignment";
 import { usePasswordReset } from "./usePasswordReset";
 import { useUserDeletion } from "./useUserDeletion";
+import { useEmailConfirmation } from "./useEmailConfirmation";
 import { UserUpdateData, UserRole } from "@/types/user";
 
 export function useUserManagement() {
@@ -38,6 +39,7 @@ export function useUserManagement() {
   const { processingUserId: updateProcessingUserId, updateUser } = useUserUpdate();
   const { processingUserId: planProcessingUserId, assignPlanToUser } = usePlanAssignment();
   const { sendPasswordResetEmail } = usePasswordReset();
+  const { confirmUserEmail, bulkConfirmUsers, processingUserId: confirmProcessingUserId, bulkProcessing } = useEmailConfirmation();
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -76,7 +78,7 @@ export function useUserManagement() {
     return success;
   };
 
-  const processingUserId = updateProcessingUserId || planProcessingUserId || deletionProcessingUserId || null;
+  const processingUserId = updateProcessingUserId || planProcessingUserId || deletionProcessingUserId || confirmProcessingUserId || null;
 
   return {
     users,
@@ -94,6 +96,9 @@ export function useUserManagement() {
     assignPlanToUser: handleAssignPlanToUser,
     sendPasswordResetEmail,
     deleteUser: handleDeleteUser,
+    confirmUserEmail,
+    bulkConfirmUsers,
+    bulkProcessing,
     DeleteDialog: null,
     performance: undefined
   };

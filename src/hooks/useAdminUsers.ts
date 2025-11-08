@@ -57,7 +57,7 @@ export function useAdminUsers() {
           created_at: user.created_at,
           last_sign_in_at: user.last_sign_in_at,
           updated_at: user.auth_updated_at || user.updated_at,
-          is_email_confirmed: user.is_email_confirmed || false,
+          is_email_confirmed: user.is_email_confirmed ?? null,
           
           subscription: user.subscription ? {
             plan_name: user.subscription.plan_name,

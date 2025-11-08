@@ -34,7 +34,7 @@ interface UsersTableProps {
       is_lifetime: boolean;
       price_usd: number;
     } | null;
-    is_email_confirmed?: boolean;
+    is_email_confirmed?: boolean | null;
   })[];
   currentPage: number;
   totalPages: number;
@@ -47,6 +47,9 @@ interface UsersTableProps {
   onDeleteUser: (userId: string, email: string, firstName: string, lastName: string, role: string) => void;
   onResendConfirmation: (userId: string, email: string) => void;
   onResendPaymentEmail: (userId: string, email: string) => void;
+  onConfirmEmail: (userId: string, userName?: string) => Promise<boolean>;
+  onBulkConfirmUsers: (startDate?: string, endDate?: string, onlyWithActiveSubscriptions?: boolean, dryRun?: boolean) => Promise<any>;
+  bulkProcessing: boolean;
   onRefresh: () => void;
   searchTerm?: string;
   onSearchChange?: (search: string) => void;
@@ -65,6 +68,9 @@ export function UsersTable({
   onDeleteUser,
   onResendConfirmation,
   onResendPaymentEmail,
+  onConfirmEmail,
+  onBulkConfirmUsers,
+  bulkProcessing,
   onRefresh,
   searchTerm = "",
   onSearchChange
@@ -213,6 +219,7 @@ export function UsersTable({
                   onDeleteUser={onDeleteUser}
                   onResendConfirmation={onResendConfirmation}
                   onResendPaymentEmail={onResendPaymentEmail}
+                  onConfirmEmail={onConfirmEmail}
                   onRefresh={onRefresh}
                   onViewProfile={() => handleViewProfile(user)}
                 />

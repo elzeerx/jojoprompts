@@ -27,21 +27,37 @@ export function buildRoleMap(userRoleData: any[]): Map<string, string> {
 }
 
 /**
- * Fetch auth data for specific user IDs
+ * Fetch auth data for specific user IDs using batched getUserById
+ * This ensures we get auth data for ALL users, not just the first page from listUsers
  */
 export async function fetchAuthData(supabase: any, profileIds: string[], requestId: string) {
   const startTime = Date.now();
   const authUserMap = new Map();
+  const BATCH_SIZE = 25;
   
   try {
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-    
-    if (authError) {
-      logger.warn('Error fetching auth data', { requestId, error: authError });
-    } else if (authUsers?.users) {
-      authUsers.users.forEach((user: any) => {
-        if (profileIds.includes(user.id)) {
-          authUserMap.set(user.id, user);
+    // Batch process user IDs to avoid overwhelming the API
+    for (let i = 0; i < profileIds.length; i += BATCH_SIZE) {
+      const batch = profileIds.slice(i, i + BATCH_SIZE);
+      
+      const results = await Promise.all(
+        batch.map(async (userId) => {
+          try {
+            const { data, error } = await supabase.auth.admin.getUserById(userId);
+            if (!error && data?.user) {
+              return { id: userId, user: data.user };
+            }
+          } catch (err) {
+            logger.warn('Failed to fetch auth data for user', { userId, error: err });
+          }
+          return { id: userId, user: null };
+        })
+      );
+      
+      // Add successful results to map
+      results.forEach(result => {
+        if (result.user) {
+          authUserMap.set(result.id, result.user);
         }
       });
     }
@@ -52,7 +68,8 @@ export async function fetchAuthData(supabase: any, profileIds: string[], request
   logger.debug('Auth data fetched', { 
     duration_ms: Date.now() - startTime,
     authUsersFound: authUserMap.size,
-    profileCount: profileIds.length
+    profileCount: profileIds.length,
+    coverage: `${Math.round((authUserMap.size / profileIds.length) * 100)}%`
   });
   
   return authUserMap;
@@ -144,7 +161,7 @@ export function enrichUserProfiles(
       // Auth data
       email: authUser?.email || null,
       email_confirmed_at: authUser?.email_confirmed_at || null,
-      is_email_confirmed: !!authUser?.email_confirmed_at,
+      is_email_confirmed: authUser?.email_confirmed_at ? true : (authUser ? false : null),
       last_sign_in_at: authUser?.last_sign_in_at || null,
       auth_created_at: authUser?.created_at || null,
       auth_updated_at: authUser?.updated_at || null,

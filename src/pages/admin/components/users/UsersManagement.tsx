@@ -23,6 +23,9 @@ export default function UsersManagement() {
     error,
     updateUser,
     deleteUser,
+    confirmUserEmail,
+    bulkConfirmUsers,
+    bulkProcessing,
     onPageChange: setPage,
     onSearchChange: setSearch,
     refetch
@@ -107,6 +110,9 @@ export default function UsersManagement() {
                   onDeleteUser={deleteUser}
                   onResendConfirmation={resendConfirmationEmail}
                   onResendPaymentEmail={resendPaymentEmail}
+                  onConfirmEmail={confirmUserEmail}
+                  onBulkConfirmUsers={bulkConfirmUsers}
+                  bulkProcessing={bulkProcessing}
                   onRefresh={refetch}
                 />
                 <div className="text-sm text-muted-foreground">
