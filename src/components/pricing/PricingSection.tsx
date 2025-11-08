@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from "@/contexts/AuthContext";
 import { createLogger } from '@/utils/logging';
+import { useTranslation } from '@/hooks/useTranslation';
+import { cn } from '@/lib/utils';
 
 const logger = createLogger('PRICING_SECTION');
 
@@ -17,6 +19,7 @@ export function PricingSection() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const { t, isRTL } = useTranslation();
 
   // Fetch available plans
   useEffect(() => {
@@ -64,7 +67,7 @@ export function PricingSection() {
       <div className="flex justify-center py-8 sm:py-12">
         <div className="text-center space-y-3">
           <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-warm-gold mx-auto" />
-          <p className="text-sm sm:text-base text-muted-foreground">Loading pricing plans...</p>
+          <p className={cn("text-sm sm:text-base text-muted-foreground", isRTL && "rtl-text")}>{t('pricingSection.loading')}</p>
         </div>
       </div>
     );

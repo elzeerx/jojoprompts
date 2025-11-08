@@ -2,6 +2,8 @@
 import { Check, X } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from '@/hooks/useTranslation';
+import { cn } from '@/lib/utils';
 
 interface PlanCardProps {
   plan: {
@@ -19,6 +21,7 @@ interface PlanCardProps {
 
 export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
   const { name, description, price_usd, features, excluded_features, is_lifetime } = plan;
+  const { t, isRTL } = useTranslation();
   
   return (
     <Card className={`group flex flex-col h-full transition-all duration-500 hover:shadow-2xl hover:shadow-warm-gold/20 hover:-translate-y-2 cursor-pointer ${
@@ -36,38 +39,59 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
       
       <CardHeader className="pb-3 relative z-10">
         <div className="text-center">
-          <h3 className="text-xl font-bold group-hover:text-warm-gold transition-colors duration-300">{name}</h3>
+          <h3 className={cn("text-xl font-bold group-hover:text-warm-gold transition-colors duration-300", isRTL && "rtl-text")}>{name}</h3>
           <div className="mt-2 flex items-baseline justify-center">
             <span className="text-3xl font-bold text-warm-gold group-hover:scale-110 transition-transform duration-300">${price_usd}</span>
           </div>
           <div className="mt-1">
             {is_lifetime ? (
-              <span className="text-sm text-green-600 font-medium group-hover:text-green-500 transition-colors duration-300 inline-flex items-center gap-1">
-                ✨ Lifetime Access
+              <span className={cn(
+                "text-sm text-green-600 font-medium group-hover:text-green-500 transition-colors duration-300 inline-flex items-center gap-1",
+                isRTL && "flex-row-reverse"
+              )}>
+                ✨ {t('pricingSection.lifetimeAccess')}
               </span>
             ) : (
-              <span className="text-sm text-amber-600 font-medium group-hover:text-amber-500 transition-colors duration-300 inline-flex items-center gap-1">
-                ⏰ 1 Year Access
+              <span className={cn(
+                "text-sm text-amber-600 font-medium group-hover:text-amber-500 transition-colors duration-300 inline-flex items-center gap-1",
+                isRTL && "flex-row-reverse"
+              )}>
+                ⏰ {t('pricingSection.yearAccess')}
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground group-hover:text-foreground/80 transition-colors duration-300">{description}</p>
+          <p className={cn(
+            "mt-1 text-sm text-muted-foreground group-hover:text-foreground/80 transition-colors duration-300",
+            isRTL && "rtl-text"
+          )}>{description}</p>
         </div>
       </CardHeader>
       
       <CardContent className="flex-grow px-4 py-3 relative z-10">
         <ul className="space-y-2">
           {features && features.map((feature, index) => (
-            <li key={`feature-${index}`} className="flex items-start group-hover:translate-x-1 transition-transform duration-300" style={{ transitionDelay: `${index * 50}ms` }}>
-              <Check className="h-5 w-5 text-warm-gold mr-2 flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform duration-300" />
-              <span className="text-sm group-hover:text-foreground transition-colors duration-300">{feature}</span>
+            <li key={`feature-${index}`} className={cn(
+              "flex items-start group-hover:translate-x-1 transition-transform duration-300",
+              isRTL && "flex-row-reverse group-hover:-translate-x-1"
+            )} style={{ transitionDelay: `${index * 50}ms` }}>
+              <Check className={cn(
+                "h-5 w-5 text-warm-gold flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform duration-300",
+                isRTL ? "ml-2" : "mr-2"
+              )} />
+              <span className={cn("text-sm group-hover:text-foreground transition-colors duration-300", isRTL && "rtl-text text-right")}>{feature}</span>
             </li>
           ))}
           
           {excluded_features && excluded_features.map((feature, index) => (
-            <li key={`excluded-${index}`} className="flex items-start text-muted-foreground group-hover:translate-x-1 transition-transform duration-300" style={{ transitionDelay: `${(features?.length || 0 + index) * 50}ms` }}>
-              <X className="h-5 w-5 text-muted-foreground/50 mr-2 flex-shrink-0 mt-0.5" />
-              <span className="text-sm">{feature}</span>
+            <li key={`excluded-${index}`} className={cn(
+              "flex items-start text-muted-foreground group-hover:translate-x-1 transition-transform duration-300",
+              isRTL && "flex-row-reverse group-hover:-translate-x-1"
+            )} style={{ transitionDelay: `${(features?.length || 0 + index) * 50}ms` }}>
+              <X className={cn(
+                "h-5 w-5 text-muted-foreground/50 flex-shrink-0 mt-0.5",
+                isRTL ? "ml-2" : "mr-2"
+              )} />
+              <span className={cn("text-sm", isRTL && "rtl-text text-right")}>{feature}</span>
             </li>
           ))}
         </ul>
@@ -84,13 +108,16 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
           variant={isSelected ? "default" : "outline"}
         >
           {isSelected ? (
-            <span className="flex items-center gap-2">
-              ✓ Selected
+            <span className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+              ✓ {t('pricingSection.selected')}
             </span>
           ) : (
-            <span className="flex items-center gap-2">
-              {`Get ${is_lifetime ? "Lifetime" : "1-Year"} Access`}
-              <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
+            <span className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+              {is_lifetime ? t('pricingSection.getLifetimeAccess') : t('pricingSection.getYearAccess')}
+              <span className={cn(
+                "group-hover:translate-x-1 transition-transform duration-300",
+                isRTL && "rotate-180 group-hover:-translate-x-1"
+              )}>→</span>
             </span>
           )}
         </Button>
