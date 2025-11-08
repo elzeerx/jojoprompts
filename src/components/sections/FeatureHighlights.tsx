@@ -2,50 +2,57 @@
 import React from 'react';
 import { Check, Star, Zap, Book } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTranslation } from '@/hooks/useTranslation';
+import { cn } from '@/lib/utils';
 
 export function FeatureHighlights() {
+  const { t, isRTL } = useTranslation();
+  
   const features = [
     {
       icon: <Star className="h-6 w-6 sm:h-8 sm:w-8 text-warm-gold" />,
-      title: "10x Better Results",
-      description: "Transform generic AI outputs into professional-grade content that actually works for your business",
-      metric: "10x",
-      metricLabel: "Better Output Quality"
+      title: t('featureHighlights.feature1Title'),
+      description: t('featureHighlights.feature1Description'),
+      metric: t('featureHighlights.feature1Metric'),
+      metricLabel: t('featureHighlights.feature1MetricLabel')
     },
     {
       icon: <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-warm-gold" />,
-      title: "Save Hours Daily",
-      description: "Stop wasting time tweaking prompts. Our tested formulas work perfectly on the first try",
-      metric: "5hrs",
-      metricLabel: "Saved Per Day"
+      title: t('featureHighlights.feature2Title'),
+      description: t('featureHighlights.feature2Description'),
+      metric: t('featureHighlights.feature2Metric'),
+      metricLabel: t('featureHighlights.feature2MetricLabel')
     },
     {
       icon: <Book className="h-6 w-6 sm:h-8 sm:w-8 text-warm-gold" />,
-      title: "Arabic & English Mastery",
-      description: "Culturally-aware prompts that understand context, nuance, and deliver authentic results",
-      metric: "2x",
-      metricLabel: "Languages Mastered"
+      title: t('featureHighlights.feature3Title'),
+      description: t('featureHighlights.feature3Description'),
+      metric: t('featureHighlights.feature3Metric'),
+      metricLabel: t('featureHighlights.feature3MetricLabel')
     },
     {
       icon: <Check className="h-6 w-6 sm:h-8 sm:w-8 text-warm-gold" />,
-      title: "Instant ROI",
-      description: "Pay once, use forever. No monthly fees eating into your profits like other AI tools",
-      metric: "$0",
-      metricLabel: "Monthly Fees"
+      title: t('featureHighlights.feature4Title'),
+      description: t('featureHighlights.feature4Description'),
+      metric: t('featureHighlights.feature4Metric'),
+      metricLabel: t('featureHighlights.feature4MetricLabel')
     }
   ];
 
   return (
     <section className="mobile-section-padding overflow-hidden bg-gradient-to-br from-white via-warm-gold/5 to-muted-teal/5">
       <div className="container">
-        <h2 className="section-title text-center mobile-text-center animate-fade-in">
-          Stop Struggling with
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-warm-gold to-muted-teal block sm:inline sm:ml-3">
-            Generic Prompts
+        <h2 className={cn("section-title text-center mobile-text-center animate-fade-in", isRTL && "rtl-text")}>
+          {t('featureHighlights.title')}
+          <span className={cn(
+            "text-transparent bg-clip-text bg-gradient-to-r from-warm-gold to-muted-teal block sm:inline",
+            isRTL ? "sm:mr-3" : "sm:ml-3"
+          )}>
+            {t('featureHighlights.titleHighlight')}
           </span>
         </h2>
-        <p className="section-subtitle text-center mobile-text-center animate-fade-in delay-200">
-          Get professional results immediately with our battle-tested prompt collection
+        <p className={cn("section-subtitle text-center mobile-text-center animate-fade-in delay-200", isRTL && "rtl-text")}>
+          {t('featureHighlights.subtitle')}
         </p>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 mt-8 sm:mt-12">
@@ -91,12 +98,12 @@ export function FeatureHighlights() {
         
         {/* Bottom CTA */}
         <div className="text-center mt-12 sm:mt-16 animate-fade-in">
-          <p className="text-muted-teal font-medium text-lg mb-4">
-            Ready to transform your AI experience?
+          <p className={cn("text-muted-teal font-medium text-lg mb-4", isRTL && "rtl-text")}>
+            {t('featureHighlights.ctaQuestion')}
           </p>
-          <div className="inline-flex items-center gap-2 text-warm-gold text-sm font-medium">
+          <div className={cn("inline-flex items-center gap-2 text-warm-gold text-sm font-medium", isRTL && "flex-row-reverse")}>
             <span>🚀</span>
-            <span>Start getting professional results today</span>
+            <span>{t('featureHighlights.ctaMessage')}</span>
           </div>
         </div>
       </div>

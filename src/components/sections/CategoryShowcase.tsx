@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from '@/components/ui/button';
 import { useCategories } from "@/hooks/useCategories";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTranslation } from '@/hooks/useTranslation';
+import { cn } from '@/lib/utils';
 
 const iconMap = {
   Sparkles,
@@ -26,6 +28,7 @@ export function CategoryShowcase() {
   const { user } = useAuth();
   const { categories, loading } = useCategories();
   const isMobile = useIsMobile();
+  const { t, isRTL } = useTranslation();
   
   // Filter only active categories for public display
   const activeCategories = categories.filter(category => category.is_active);
@@ -35,7 +38,7 @@ export function CategoryShowcase() {
       <section className="mobile-section-padding overflow-hidden">
         <div className="container">
           <div className="text-center">
-            <div className="animate-pulse text-lg">Loading categories...</div>
+            <div className={cn("animate-pulse text-lg", isRTL && "rtl-text")}>{t('categoryShowcase.loading')}</div>
           </div>
         </div>
       </section>
@@ -47,7 +50,7 @@ export function CategoryShowcase() {
       <section className="mobile-section-padding overflow-hidden">
         <div className="container">
           <div className="text-center">
-            <p className="text-muted-foreground text-base sm:text-lg">No categories available at the moment.</p>
+            <p className={cn("text-muted-foreground text-base sm:text-lg", isRTL && "rtl-text")}>{t('categoryShowcase.noCategories')}</p>
           </div>
         </div>
       </section>
@@ -65,14 +68,17 @@ export function CategoryShowcase() {
 
         {/* Header - Mobile optimized */}
         <div className="text-center mb-12 sm:mb-16 relative z-10 mobile-container-padding">
-          <h2 className="section-title animate-fade-in">
-            Explore Our
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-warm-gold to-muted-teal block sm:inline sm:ml-3">
-              Categories
+          <h2 className={cn("section-title animate-fade-in", isRTL && "rtl-text")}>
+            {t('categoryShowcase.title')}
+            <span className={cn(
+              "text-transparent bg-clip-text bg-gradient-to-r from-warm-gold to-muted-teal block sm:inline",
+              isRTL ? "sm:mr-3" : "sm:ml-3"
+            )}>
+              {t('categoryShowcase.titleHighlight')}
             </span>
           </h2>
-          <p className="section-subtitle animate-fade-in delay-200">
-            Discover curated prompts for different AI platforms to enhance your creativity and productivity
+          <p className={cn("section-subtitle animate-fade-in delay-200", isRTL && "rtl-text")}>
+            {t('categoryShowcase.subtitle')}
           </p>
         </div>
         
@@ -85,7 +91,10 @@ export function CategoryShowcase() {
             return (
               <div 
                 key={category.id} 
-                className={`flex flex-col ${isReversed ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-8 sm:gap-12 lg:gap-16 group`}
+                className={cn(
+                  "flex flex-col items-center gap-8 sm:gap-12 lg:gap-16 group",
+                  !isMobile && (isReversed ? "lg:flex-row-reverse" : "lg:flex-row")
+                )}
               >
                 {/* Image Section - Mobile optimized */}
                 <div className="flex-1 relative w-full">
@@ -120,10 +129,16 @@ export function CategoryShowcase() {
                 {/* Content Section - Mobile optimized */}
                 <div className="flex-1 space-y-4 sm:space-y-6 w-full mobile-container-padding lg:px-0">
                   <div className="space-y-3 sm:space-y-4">
-                    <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-dark-base group-hover:text-warm-gold transition-colors duration-300 text-center lg:text-left">
+                    <h3 className={cn(
+                      "text-2xl sm:text-3xl lg:text-4xl font-bold text-dark-base group-hover:text-warm-gold transition-colors duration-300",
+                      isRTL ? "text-center lg:text-right rtl-text" : "text-center lg:text-left"
+                    )}>
                       {category.name}
                     </h3>
-                    <p className="text-base sm:text-lg text-muted-foreground leading-relaxed text-center lg:text-left">
+                    <p className={cn(
+                      "text-base sm:text-lg text-muted-foreground leading-relaxed",
+                      isRTL ? "text-center lg:text-right rtl-text" : "text-center lg:text-left"
+                    )}>
                       {category.description}
                     </p>
                   </div>
@@ -144,21 +159,27 @@ export function CategoryShowcase() {
                   )}
 
                   {/* CTA Section - Mobile optimized */}
-                  <div className="pt-2 sm:pt-4 text-center lg:text-left">
+                  <div className={cn("pt-2 sm:pt-4", isRTL ? "text-center lg:text-right" : "text-center lg:text-left")}>
                     {user ? (
                       <Link 
                         to={category.link_path}
-                        className="inline-flex items-center space-x-2 sm:space-x-3 text-warm-gold font-bold text-base sm:text-lg hover:text-warm-gold/80 transition-all duration-300 group/link touch-manipulation py-2"
+                        className={cn(
+                          "inline-flex items-center space-x-2 sm:space-x-3 text-warm-gold font-bold text-base sm:text-lg hover:text-warm-gold/80 transition-all duration-300 group/link touch-manipulation py-2",
+                          isRTL && "flex-row-reverse space-x-reverse"
+                        )}
                       >
-                        <span>Explore Collection</span>
-                        <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover/link:translate-x-2" />
+                        <span>{t('categoryShowcase.exploreCollection')}</span>
+                        <ArrowRight className={cn("h-4 w-4 sm:h-5 sm:w-5 transition-transform", isRTL ? "group-hover/link:-translate-x-2 rotate-180" : "group-hover/link:translate-x-2")} />
                       </Link>
                     ) : (
                       <div className="space-y-3 sm:space-y-4">
-                        <div className="flex items-center justify-center lg:justify-start space-x-2 text-muted-foreground">
+                        <div className={cn(
+                          "flex items-center space-x-2 text-muted-foreground",
+                          isRTL ? "justify-center lg:justify-end flex-row-reverse space-x-reverse rtl-text" : "justify-center lg:justify-start"
+                        )}>
                           <Lock className="h-3 w-3 sm:h-4 sm:w-4" />
                           <span className="text-xs sm:text-sm">
-                            <span className="font-bold capitalize text-warm-gold">{category.required_plan} plan</span> or higher required
+                            <span className="font-bold capitalize text-warm-gold">{category.required_plan}</span> {t('categoryShowcase.planRequired')}
                           </span>
                         </div>
                         <Button 
@@ -166,8 +187,8 @@ export function CategoryShowcase() {
                           size={isMobile ? "default" : "lg"}
                           className="mobile-button-primary bg-gradient-to-r from-warm-gold to-muted-teal hover:from-warm-gold/90 hover:to-muted-teal/90 text-white font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                         >
-                          <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                          Subscribe to Access
+                          <Sparkles className={cn("h-4 w-4 sm:h-5 sm:w-5", isRTL ? "ml-2" : "mr-2")} />
+                          {t('categoryShowcase.subscribeButton')}
                         </Button>
                       </div>
                     )}
@@ -181,19 +202,19 @@ export function CategoryShowcase() {
         {/* Bottom CTA - Mobile optimized */}
         <div className="text-center mt-16 sm:mt-20 relative z-10 mobile-container-padding">
           <div className="bg-gradient-to-r from-warm-gold/10 via-transparent to-muted-teal/10 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-12 backdrop-blur-sm border border-warm-gold/20">
-            <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-dark-base mb-3 sm:mb-4">
-              Ready to Transform Your AI Experience?
+            <h3 className={cn("text-xl sm:text-2xl lg:text-3xl font-bold text-dark-base mb-3 sm:mb-4", isRTL && "rtl-text")}>
+              {t('categoryShowcase.finalCtaTitle')}
             </h3>
-            <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto">
-              Join thousands of creators, writers, and professionals who trust JojoPrompts for their AI needs
+            <p className={cn("text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto", isRTL && "rtl-text")}>
+              {t('categoryShowcase.finalCtaSubtitle')}
             </p>
             <Button 
               onClick={() => window.location.href = "/pricing"}
               size={isMobile ? "default" : "lg"}
               className="mobile-button-primary bg-gradient-to-r from-warm-gold to-muted-teal hover:from-warm-gold/90 hover:to-muted-teal/90 text-white font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
             >
-              <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-              Get Started Today
+              <Zap className={cn("h-4 w-4 sm:h-5 sm:w-5", isRTL ? "ml-2" : "mr-2")} />
+              {t('categoryShowcase.finalCtaButton')}
             </Button>
           </div>
         </div>
