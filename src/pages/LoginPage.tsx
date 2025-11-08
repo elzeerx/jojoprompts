@@ -13,22 +13,22 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 import { AppleEmailHelp } from "@/components/auth/AppleEmailHelp";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
   const [searchParams] = useSearchParams();
+  const { t, isRTL } = useTranslation();
 
   useEffect(() => {
-    // Check for password reset token or tab parameter
     const token = searchParams.get('access_token') || searchParams.get('token');
     const type = searchParams.get('type');
     const tab = searchParams.get('tab');
 
-    // If we have a recovery token, always go to reset tab
     if (token && type === 'recovery') {
       setActiveTab("reset");
     } else if (tab) {
-      // Allow external navigation to specific tabs
       if (['login', 'forgot', 'reset'].includes(tab)) {
         setActiveTab(tab);
       }
@@ -47,50 +47,67 @@ export default function LoginPage() {
 
       <div className="flex items-center justify-center min-h-[calc(100vh-9rem)] mobile-container-padding mobile-section-padding relative z-10">
         <div className="mx-auto max-w-lg w-full">
-          {/* Enhanced mobile-optimized card */}
           <Card className="border-2 border-warm-gold/20 rounded-2xl sm:rounded-3xl shadow-xl sm:shadow-2xl bg-white/95 backdrop-blur-sm overflow-hidden transform hover:scale-105 transition-all duration-300">
-            {/* Mobile-optimized header */}
-            <CardHeader className="space-y-2 sm:space-y-1 bg-gradient-to-r from-warm-gold/10 via-transparent to-muted-teal/10 pb-6 sm:pb-8 pt-6 sm:pt-8 px-4 sm:px-6">
+            <CardHeader className={cn(
+              "space-y-2 sm:space-y-1 bg-gradient-to-r from-warm-gold/10 via-transparent to-muted-teal/10 pb-6 sm:pb-8 pt-6 sm:pt-8 px-4 sm:px-6",
+              isRTL && "rtl-text"
+            )}>
               <div className="flex justify-center mb-3 sm:mb-4">
                 <div className="relative">
                   <div className="rounded-full bg-gradient-to-r from-warm-gold to-muted-teal p-3 sm:p-4 text-white shadow-lg">
                     <FileText className="h-6 w-6 sm:h-8 sm:w-8" />
                   </div>
-                  {/* Floating sparkle */}
-                  <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 text-warm-gold animate-bounce">
+                  <div className={cn(
+                    "absolute text-warm-gold animate-bounce",
+                    isRTL ? "-top-1 -left-1 sm:-top-2 sm:-left-2" : "-top-1 -right-1 sm:-top-2 sm:-right-2"
+                  )}>
                     <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                 </div>
               </div>
-              <CardTitle className="text-2xl sm:text-3xl font-bold text-center text-dark-base bg-clip-text">
-                Welcome Back
+              <CardTitle className={cn(
+                "text-2xl sm:text-3xl font-bold text-center text-dark-base bg-clip-text",
+                isRTL && "rtl-text"
+              )}>
+                {t('auth.welcomeBack')}
               </CardTitle>
-              <CardDescription className="text-center text-base sm:text-lg text-muted-foreground max-w-sm mx-auto leading-relaxed px-2 sm:px-0">
-                Access your premium AI prompts and continue your creative journey
+              <CardDescription className={cn(
+                "text-center text-base sm:text-lg text-muted-foreground max-w-sm mx-auto leading-relaxed px-2 sm:px-0",
+                isRTL && "rtl-text"
+              )}>
+                {t('auth.welcomeMessage')}
               </CardDescription>
             </CardHeader>
 
-            {/* Enhanced mobile-optimized tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="px-4 sm:px-6">
                 <TabsList className="grid grid-cols-3 w-full bg-soft-bg/50 p-1 rounded-xl mobile-tabs">
                   <TabsTrigger 
                     value="login" 
-                    className="rounded-lg font-medium text-xs sm:text-sm transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-warm-gold mobile-tab touch-target"
+                    className={cn(
+                      "rounded-lg font-medium text-xs sm:text-sm transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-warm-gold mobile-tab touch-target",
+                      isRTL && "rtl-text"
+                    )}
                   >
-                    Login
+                    {t('auth.login')}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="forgot"
-                    className="rounded-lg font-medium text-xs sm:text-sm transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-warm-gold mobile-tab touch-target"
+                    className={cn(
+                      "rounded-lg font-medium text-xs sm:text-sm transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-warm-gold mobile-tab touch-target",
+                      isRTL && "rtl-text"
+                    )}
                   >
-                    Forgot
+                    {t('auth.forgot')}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="reset"
-                    className="rounded-lg font-medium text-xs sm:text-sm transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-warm-gold mobile-tab touch-target"
+                    className={cn(
+                      "rounded-lg font-medium text-xs sm:text-sm transition-all data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-warm-gold mobile-tab touch-target",
+                      isRTL && "rtl-text"
+                    )}
                   >
-                    Reset
+                    {t('auth.reset')}
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -114,20 +131,23 @@ export default function LoginPage() {
               </TabsContent>
             </Tabs>
 
-            {/* Apple Email Help Section */}
             <div className="mt-4 px-4 sm:px-6 pb-4">
               <AppleEmailHelp />
             </div>
 
-            {/* Premium footer with gradient */}
             <div className="h-2 bg-gradient-to-r from-warm-gold via-muted-teal to-warm-gold"></div>
           </Card>
 
-          {/* Mobile-optimized floating elements */}
-          <div className="absolute top-4 left-4 sm:top-8 sm:left-8 text-warm-gold/20 animate-pulse">
+          <div className={cn(
+            "absolute top-4 text-warm-gold/20 animate-pulse",
+            isRTL ? "right-4 sm:right-8" : "left-4 sm:left-8"
+          )}>
             <Sparkles className="h-4 w-4 sm:h-6 sm:w-6" />
           </div>
-          <div className="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 text-muted-teal/20 animate-pulse delay-1000">
+          <div className={cn(
+            "absolute bottom-4 text-muted-teal/20 animate-pulse delay-1000",
+            isRTL ? "left-4 sm:left-8" : "right-4 sm:right-8"
+          )}>
             <Sparkles className="h-4 w-4 sm:h-6 sm:w-6" />
           </div>
         </div>

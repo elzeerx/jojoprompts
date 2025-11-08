@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -8,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createLogger } from '@/utils/logging';
 import { handleError } from '@/utils/errorHandler';
-
-const logger = createLogger('RESET_PASSWORD');
 import {
   Form,
   FormControl,
@@ -20,8 +17,12 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle } from "lucide-react";
-import { ResetPasswordFormValues, resetPasswordSchema } from "./validation";
+import { createLocalizedSchemas, ResetPasswordFormValues } from "./validation/schemas";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
+
+const logger = createLogger('RESET_PASSWORD');
 
 interface ResetPasswordFormProps {
   onSuccess: () => void;
@@ -34,16 +35,19 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
+  const { t, isRTL } = useTranslation();
+
+  // Create localized schema
+  const schemas = createLocalizedSchemas(t);
 
   const form = useForm<ResetPasswordFormValues>({
-    resolver: zodResolver(resetPasswordSchema),
+    resolver: zodResolver(schemas.resetPasswordSchema),
     defaultValues: {
       password: "",
       confirmPassword: "",
     },
   });
 
-  // Check for password reset token on mount
   useEffect(() => {
     const token = searchParams.get('access_token') || searchParams.get('token');
     const type = searchParams.get('type');
@@ -52,9 +56,9 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
       setHasResetToken(true);
       setError(null);
     } else {
-      setError("No password reset token found. Please request a password reset from the 'Forgot Password' tab.");
+      setError(t('auth.noResetToken'));
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   const onSubmit = async (values: ResetPasswordFormValues) => {
     setIsLoading(true);
@@ -67,7 +71,6 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
         throw new Error("No reset token found");
       }
 
-      // Use verifyOtp for password reset instead of updateUser
       const { error } = await supabase.auth.verifyOtp({
         token_hash: token,
         type: 'recovery',
@@ -80,13 +83,12 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
         setError(error.message);
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t('common.error'),
           description: error.message,
         });
         return;
       }
 
-      // Now update the password using the authenticated session from verifyOtp
       const { error: updateError } = await supabase.auth.updateUser({
         password: values.password,
       });
@@ -95,21 +97,19 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
         setError(updateError.message);
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t('common.error'),
           description: updateError.message,
         });
         return;
       }
 
-      // Sign out the user after successful password reset
       await supabase.auth.signOut();
       
       toast({
-        title: "Password Updated",
-        description: "Your password has been successfully updated. Please log in with your new password.",
+        title: t('auth.passwordUpdated'),
+        description: t('auth.passwordUpdatedDesc'),
       });
       
-      // Redirect to login page
       onSuccess();
     } catch (error: any) {
       const appError = handleError(error, { component: 'ResetPasswordForm', action: 'updatePassword' });
@@ -117,7 +117,7 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
       setError("An unexpected error occurred. Please try again.");
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t('common.error'),
         description: "An unexpected error occurred. Please try again.",
       });
     }
@@ -128,20 +128,20 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
   return (
     <div className="space-y-4 pt-4">
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className={isRTL ? "rtl-text" : ""}>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {!hasResetToken && (
-        <div className="text-center py-2">
+        <div className={cn("text-center py-2", isRTL && "rtl-text")}>
           <Button 
             variant="outline" 
             onClick={() => navigate("/login?tab=forgot")}
-            className="w-full"
+            className="w-full min-h-[44px]"
           >
-            Request Password Reset
+            {t('auth.requestPasswordReset')}
           </Button>
         </div>
       )}
@@ -154,11 +154,17 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel className={isRTL ? "rtl-text" : ""}>{t('auth.newPassword')}</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <Input 
+                      type="password" 
+                      placeholder="••••••••" 
+                      className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                      dir={isRTL ? "rtl" : "ltr"}
+                      {...field} 
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className={isRTL ? "rtl-text" : ""} />
                 </FormItem>
               )}
             />
@@ -168,23 +174,36 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel className={isRTL ? "rtl-text" : ""}>{t('auth.confirmNewPassword')}</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <Input 
+                      type="password" 
+                      placeholder="••••••••" 
+                      className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                      dir={isRTL ? "rtl" : "ltr"}
+                      {...field} 
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className={isRTL ? "rtl-text" : ""} />
                 </FormItem>
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className={cn(
+                "w-full min-h-[44px]",
+                isRTL && "flex-row-reverse"
+              )} 
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
+                  <Loader2 className={cn("h-4 w-4 animate-spin", isRTL ? "ml-2" : "mr-2")} />
+                  {t('auth.updating')}
                 </>
               ) : (
-                "Update Password"
+                t('auth.updatePassword')
               )}
             </Button>
           </form>

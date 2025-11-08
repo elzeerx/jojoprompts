@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,9 +10,12 @@ import { useGoogleAuth } from "@/components/auth/hooks/useGoogleAuth";
 import { SignupHeader } from "@/components/auth/SignupHeader";
 import { GoogleSignupButton } from "@/components/auth/GoogleSignupButton";
 import { SignupForm } from "@/components/auth/SignupForm";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
 
 export default function SignupPage() {
   const navigate = useNavigate();
+  const { t, isRTL } = useTranslation();
   
   const {
     form,
@@ -45,9 +47,12 @@ export default function SignupPage() {
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
+            <div className={cn(
+              "relative flex justify-center text-xs uppercase",
+              isRTL && "rtl-text"
+            )}>
               <span className="bg-background px-2 text-muted-foreground">
-                Or continue with email
+                {t('auth.orContinueWith')}
               </span>
             </div>
           </div>
@@ -62,8 +67,11 @@ export default function SignupPage() {
         </CardContent>
         
         <CardFooter className="flex flex-col space-y-4 px-4 sm:px-6 pb-6">
-          <p className="text-xs sm:text-sm text-muted-foreground text-center">
-            Already have an account?{" "}
+          <p className={cn(
+            "text-xs sm:text-sm text-muted-foreground text-center",
+            isRTL && "rtl-text"
+          )}>
+            {t('auth.alreadyHaveAccount')}{" "}
             <Button 
               variant="link" 
               className="p-0 text-xs sm:text-sm text-warm-gold hover:text-warm-gold/80" 
@@ -72,7 +80,7 @@ export default function SignupPage() {
                 navigate(`/login${params}`);
               }}
             >
-              Sign in
+              {t('auth.signIn')}
             </Button>
           </p>
         </CardFooter>
