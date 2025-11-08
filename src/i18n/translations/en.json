@@ -449,5 +449,21 @@
     "journeyDesc": "Ready to transform your AI interactions? Dive into our collection of proven prompts and discover how the right words can unlock incredible results. No complicated setups, no lengthy tutorials—just copy, paste, and create amazing content.",
     "browsePrompts": "Browse All Prompts",
     "joinCommunity": "Join the Community"
+  },
+  "prompts": {
+    "loading": "Loading prompts...",
+    "loadingError": "Failed to load prompts",
+    "retry": "Retry",
+    "noPromptsFound": "No prompts found matching your search.",
+    "noPromptsAvailable": "No prompts available.",
+    "clearFilters": "Clear Filters",
+    "searchPlaceholder": "Search prompts...",
+    "searchPlaceholderMobile": "Search...",
+    "categoryPlaceholder": "Category",
+    "allCategories": "All Categories",
+    "gridView": "Grid View",
+    "listView": "List View",
+    "upgradeToView": "Upgrade to view this prompt",
+    "upgradeNow": "Upgrade Now"
   }
 }
