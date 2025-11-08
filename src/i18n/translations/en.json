@@ -422,5 +422,32 @@
     "cancelSubscription": "Cancel Subscription",
     "choosePlan": "Choose a Plan",
     "renewSubscription": "Renew Subscription"
+  },
+  "about": {
+    "title": "About JojoPrompts",
+    "subtitle": "A passion project by Nawaf Alsuwaiyed, sharing carefully curated AI prompts that have been tested and refined through real-world use. Discover prompts that actually work for ChatGPT, Midjourney, Claude, and other AI tools.",
+    "storyTitle": "The Story Behind JojoPrompts",
+    "storyParagraph1": "JojoPrompts was born from a simple frustration: spending hours crafting the perfect AI prompt, only to forget it later. Nawaf Alsuwaiyed, a passionate AI enthusiast and prompt engineer, decided to solve this problem by creating a centralized hub for his ever-growing collection of effective prompts.",
+    "storyParagraph2": "What started as a personal library has evolved into a curated platform where quality trumps quantity. Every prompt here has been battle-tested in real projects, refined through iterations, and proven to deliver exceptional results across different AI platforms.",
+    "specialTitle": "What Makes JojoPrompts Special?",
+    "qualityTitle": "Battle-Tested Quality",
+    "qualityDesc": "No fluff, no filler. Every prompt has been used in real projects and refined based on actual results.",
+    "personalTitle": "Personal Touch",
+    "personalDesc": "Each prompt comes with context and tips from real-world usage, not just copy-paste text.",
+    "evolvingTitle": "Constantly Evolving",
+    "evolvingDesc": "As AI tools evolve, so do our prompts. Regular updates ensure compatibility with the latest models.",
+    "findTitle": "What You'll Find Here",
+    "copyTitle": "One-Click Copy",
+    "copyDesc": "Click to copy any prompt instantly. No sign-ups, no downloads, just immediate access to prompts you can use right away in your favorite AI tools.",
+    "favoritesTitle": "Favorites Collection",
+    "favoritesDesc": "Save your favorite prompts to your personal collection for quick access. Build your own curated library of go-to prompts.",
+    "searchTitle": "Smart Search",
+    "searchDesc": "Find exactly what you need with our intelligent search. Filter by category, AI platform, or search through prompt content to discover new possibilities.",
+    "multiPlatformTitle": "Multi-Platform Ready",
+    "multiPlatformDesc": "Prompts for ChatGPT, Claude, Midjourney, and other AI tools. Each prompt is optimized for the platform it's designed for.",
+    "journeyTitle": "Start Your Journey",
+    "journeyDesc": "Ready to transform your AI interactions? Dive into our collection of proven prompts and discover how the right words can unlock incredible results. No complicated setups, no lengthy tutorials—just copy, paste, and create amazing content.",
+    "browsePrompts": "Browse All Prompts",
+    "joinCommunity": "Join the Community"
   }
 }
