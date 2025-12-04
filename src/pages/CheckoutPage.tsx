@@ -3,7 +3,7 @@ import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
-import { CheckoutSignupForm } from "@/components/checkout/CheckoutSignupForm";
+import { SmartAuthForm } from "@/components/checkout/SmartAuthForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { logDebug } from "@/utils/secureLogging";
 import { useCheckoutState } from "./CheckoutPage/hooks/useCheckoutState";
@@ -14,10 +14,13 @@ import { CheckoutProgress } from "./CheckoutPage/components/CheckoutProgress";
 import { PlanSummaryCard } from "./CheckoutPage/components/PlanSummaryCard";
 import { PaymentMethodsCard } from "./CheckoutPage/components/PaymentMethodsCard";
 import { PaymentErrorBoundary } from "@/components/subscription/PaymentErrorBoundary";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { t, isRTL } = useTranslation();
   const planId = searchParams.get("plan_id");
   const authCallback = searchParams.get("auth_callback");
   const fromSignup = searchParams.get("from_signup") === "true";
@@ -134,16 +137,16 @@ export default function CheckoutPage() {
         {/* Progress indicator */}
         <CheckoutProgress showAuthForm={showAuthForm} />
 
-        <div className="text-center mb-8">
+        <div className={cn("text-center mb-8", isRTL && "rtl-text")}>
           <h1 className="text-3xl font-bold mb-2">
-            {showAuthForm ? "Create Your Account" : "Complete Your Purchase"}
+            {showAuthForm ? t('checkout.createAccount') : t('checkout.completePurchase')}
           </h1>
           <p className="text-muted-foreground">
             {showAuthForm 
-              ? `Create an account to purchase ${isLifetime ? "lifetime" : "1-year"} access to the ${selectedPlan.name} plan`
+              ? t('checkout.createAccountDesc', { planName: selectedPlan.name, duration: isLifetime ? t('checkout.lifetime') : t('checkout.oneYear') })
               : fromSignup
-              ? `Welcome! Complete your purchase for ${isLifetime ? "lifetime" : "1-year"} access to the ${selectedPlan.name} plan`
-              : `You're about to purchase ${isLifetime ? "lifetime" : "1-year"} access to the ${selectedPlan.name} plan`
+              ? t('checkout.welcomeDesc', { planName: selectedPlan.name, duration: isLifetime ? t('checkout.lifetime') : t('checkout.oneYear') })
+              : t('checkout.purchaseDesc', { planName: selectedPlan.name, duration: isLifetime ? t('checkout.lifetime') : t('checkout.oneYear') })
             }
           </p>
         </div>
@@ -163,7 +166,7 @@ export default function CheckoutPage() {
 
           {/* Authentication Form or Payment Methods */}
           {showAuthForm ? (
-            <CheckoutSignupForm
+            <SmartAuthForm
               onSuccess={handleAuthSuccess}
               planName={planName}
               planPrice={originalPrice}

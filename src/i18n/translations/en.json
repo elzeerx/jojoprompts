@@ -166,7 +166,10 @@
     "passwordNumber": "Number",
     "passwordWeak": "Weak password",
     "passwordMedium": "Medium strength",
-    "passwordStrong": "Strong password"
+    "passwordStrong": "Strong password",
+    "continueWithEmail": "Continue with Email",
+    "useAnotherEmail": "Use a different email",
+    "creatingAccountFor": "Creating account for"
   },
   "validation": {
     "invalidEmail": "Please enter a valid email address",
@@ -423,7 +426,16 @@
     "planPrice": "Plan Price:",
     "cancelTransaction": "Cancel Transaction",
     "processing": "Processing...",
-    "youSave": "You save"
+    "youSave": "You save",
+    "createAccount": "Create Your Account",
+    "completePurchase": "Complete Your Purchase",
+    "createAccountDesc": "Create an account to purchase {{duration}} access to the {{planName}} plan",
+    "welcomeDesc": "Welcome! Complete your purchase for {{duration}} access to the {{planName}} plan",
+    "purchaseDesc": "You're about to purchase {{duration}} access to the {{planName}} plan",
+    "lifetime": "lifetime",
+    "oneYear": "1-year",
+    "purchasing": "You're purchasing",
+    "for": "for"
   },
   "subscription": {
     "active": "Active",
