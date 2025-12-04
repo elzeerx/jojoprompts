@@ -25,7 +25,7 @@ export default function UserDashboardPage() {
 
   return (
     <div className="min-h-screen bg-soft-bg/30">
-      <Container className="py-8">
+      <Container className="pt-20 lg:pt-24 pb-8">
         <div className="mb-8">
           <h1 className="section-title">My Dashboard</h1>
           <p className="text-muted-foreground">Manage your account and view your activity</p>

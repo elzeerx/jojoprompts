@@ -158,7 +158,7 @@ export default function FavoritesPage() {
   };
 
   return (
-    <div className="mobile-container-padding mobile-section-padding">
+    <div className="mobile-container-padding pt-20 lg:pt-24 pb-8">
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-dark-base">My Favorites</h1>

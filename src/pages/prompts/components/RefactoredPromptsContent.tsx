@@ -91,7 +91,7 @@ export function RefactoredPromptsContent({
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 pt-20 lg:pt-24 pb-8">
       <PromptsFilters
         category={filters.filters.category}
         setCategory={filters.setCategory}

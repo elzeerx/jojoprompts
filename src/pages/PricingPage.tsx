@@ -24,7 +24,7 @@ export default function PricingPage() {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      <Container className="mobile-section-padding">
+      <Container className="pt-20 lg:pt-24 pb-8">
         {/* Hero Section */}
         <div className="text-center mobile-container-padding mb-8 sm:mb-12">
           <h1 className={cn("section-title mobile-text-center mb-4 sm:mb-6", isRTL && "rtl-text")}>
