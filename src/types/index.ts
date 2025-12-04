@@ -32,6 +32,8 @@ export interface Prompt {
     button_text?: string;
     button_action?: string;
     image_options?: string[];
+    model_type?: string;
+    model_fields?: Record<string, any>;
     translations?: {
       arabic?: LocalePrompt;
       english?: LocalePrompt;
@@ -75,6 +77,8 @@ export interface PromptRow {
     button_text?: string;
     button_action?: string;
     image_options?: string[];
+    model_type?: string;
+    model_fields?: Record<string, any>;
     translations?: {
       arabic?: LocalePrompt;
       english?: LocalePrompt;

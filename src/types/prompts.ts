@@ -26,6 +26,7 @@ export interface PromptFilters {
   category: string;
   searchQuery: string;
   promptType: PromptTypeFilter;
+  modelType: string;
   tags: string[];
   sortBy: SortOption;
   sortOrder: 'asc' | 'desc';

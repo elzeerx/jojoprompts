@@ -48,6 +48,7 @@ export function PromptCard({
   const tags = metadata?.tags || [];
   const mediaFiles = metadata?.media_files || [];
   const workflowSteps = metadata?.workflow_steps || [];
+  const modelType = metadata?.model_type;
   const { session } = useAuth();
   const isMobile = useIsMobile();
   const isSmallMobile = useIsSmallMobile();
@@ -89,6 +90,7 @@ export function PromptCard({
           toggleFavorite={toggleFavorite}
           session={session}
           isSmallMobile={isSmallMobile}
+          modelType={modelType}
         />
 
         <CardContent

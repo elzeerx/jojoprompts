@@ -4,12 +4,27 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { List, Grid, Search } from "lucide-react";
+import { List, Grid, Search, Sparkles, Bot, Wand2, Video, Mic, Music } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCategories } from "@/hooks/useCategories";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
+
+// AI Platform options for filtering
+const AI_PLATFORMS = [
+  { value: 'all', label: 'All Platforms', icon: null },
+  { value: 'chatgpt-text', label: 'ChatGPT', icon: Bot },
+  { value: 'chatgpt-gpt-builder', label: 'GPTs Builder', icon: Bot },
+  { value: 'claude-text', label: 'Claude', icon: Bot },
+  { value: 'gemini-image', label: 'Gemini', icon: Sparkles },
+  { value: 'midjourney-full', label: 'Midjourney', icon: Wand2 },
+  { value: 'flux-image', label: 'Flux', icon: Wand2 },
+  { value: 'sora-video', label: 'Sora', icon: Video },
+  { value: 'elevenlabs-voice', label: 'ElevenLabs', icon: Mic },
+  { value: 'suno-music', label: 'Suno', icon: Music },
+  { value: 'workflow-n8n', label: 'n8n Workflow', icon: null },
+];
 
 interface PromptsFiltersProps {
   category: string;
@@ -19,10 +34,13 @@ interface PromptsFiltersProps {
   setSearchQuery: (val: string) => void;
   view: "grid" | "list";
   setView: (v: "grid" | "list") => void;
+  modelType?: string;
+  setModelType?: (type: string) => void;
 }
 
 export function PromptsFilters({
-  category, setCategory, categories, searchQuery, setSearchQuery, view, setView
+  category, setCategory, categories, searchQuery, setSearchQuery, view, setView,
+  modelType = 'all', setModelType
 }: PromptsFiltersProps) {
   const { t, isRTL } = useTranslation();
   const { categories: dbCategories } = useCategories();
@@ -89,9 +107,36 @@ export function PromptsFilters({
           />
         </div>
         <div className={cn(
-          "flex gap-2 sm:gap-3 items-center",
+          "flex gap-2 sm:gap-3 items-center flex-wrap",
           isRTL && "flex-row-reverse"
         )}>
+          {/* AI Platform Filter */}
+          {setModelType && (
+            <Select value={modelType} onValueChange={setModelType}>
+              <SelectTrigger className="mobile-select w-full sm:w-[150px] border-warm-gold/20 rounded-lg min-h-[44px]">
+                <SelectValue placeholder="AI Platform" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-warm-gold/20 shadow-lg rounded-lg z-50 max-h-[300px]">
+                {AI_PLATFORMS.map((platform) => {
+                  const IconComponent = platform.icon;
+                  return (
+                    <SelectItem 
+                      key={platform.value} 
+                      value={platform.value}
+                      className="touch-manipulation py-2 sm:py-2.5 px-3 sm:px-4 hover:bg-warm-gold/10 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        {IconComponent && <IconComponent className="h-4 w-4" />}
+                        {platform.label}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          )}
+          
+          {/* Category Filter */}
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="mobile-select w-full sm:w-[170px] border-warm-gold/20 rounded-lg min-h-[44px]">
               <SelectValue placeholder={t("prompts.categoryPlaceholder")} />
@@ -126,3 +171,4 @@ export function PromptsFilters({
     </div>
   );
 }
+
