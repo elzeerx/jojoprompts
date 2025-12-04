@@ -23,24 +23,12 @@ export function createLocalizedSchemas(t: (key: string) => string) {
     email: z.string().email(t('validation.invalidEmail')),
   });
 
+  // Simplified signup schema - 3 fields only
   const signupSchema = z.object({
-    firstName: z.string()
-      .min(2, t('validation.firstNameMin'))
-      .max(50, t('validation.firstNameMax'))
-      .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, t('validation.firstNameInvalid')),
-    lastName: z.string()
-      .min(2, t('validation.lastNameMin'))
-      .max(50, t('validation.lastNameMax'))
-      .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, t('validation.lastNameInvalid')),
-    username: z.string()
-      .min(3, t('validation.usernameMin'))
-      .max(20, t('validation.usernameMax'))
-      .regex(/^[a-zA-Z0-9_-]+$/, t('validation.usernameInvalid'))
-      .refine((val) => !val.startsWith('@'), t('validation.usernameNoAt'))
-      .refine((val) => {
-        const reserved = ['admin', 'administrator', 'root', 'system', 'superadmin', 'support', 'help', 'info', 'contact', 'jojo', 'jojoprompts', 'moderator', 'mod'];
-        return !reserved.includes(val.toLowerCase());
-      }, t('validation.usernameReserved')),
+    fullName: z.string()
+      .min(2, t('validation.fullNameMin'))
+      .max(100, t('validation.fullNameMax'))
+      .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, t('validation.fullNameInvalid')),
     email: z.string()
       .email(t('validation.invalidEmail'))
       .refine((email) => {
@@ -49,22 +37,15 @@ export function createLocalizedSchemas(t: (key: string) => string) {
         return !blocked.some(b => domain?.endsWith(b) || domain === b.substring(1));
       }, t('validation.emailDomainBlocked')),
     password: z.string().min(8, t('validation.passwordMin')),
-    confirmPassword: z.string(),
     role: z.enum(VALID_ROLES as [UserRole, ...UserRole[]]).optional(),
-  }).refine((data) => data.password === data.confirmPassword, {
-    message: t('validation.passwordsDontMatch'),
-    path: ["confirmPassword"],
   });
 
+  // Checkout signup schema - same 3 fields
   const checkoutSignupSchema = z.object({
-    firstName: z.string()
-      .min(2, t('validation.firstNameMin'))
-      .max(50, t('validation.firstNameMax'))
-      .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, t('validation.firstNameInvalid')),
-    lastName: z.string()
-      .min(2, t('validation.lastNameMin'))
-      .max(50, t('validation.lastNameMax'))
-      .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, t('validation.lastNameInvalid')),
+    fullName: z.string()
+      .min(2, t('validation.fullNameMin'))
+      .max(100, t('validation.fullNameMax'))
+      .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, t('validation.fullNameInvalid')),
     email: z.string()
       .email(t('validation.invalidEmail'))
       .refine((email) => {
@@ -73,10 +54,6 @@ export function createLocalizedSchemas(t: (key: string) => string) {
         return !blocked.some(b => domain?.endsWith(b) || domain === b.substring(1));
       }, t('validation.emailDomainBlocked')),
     password: z.string().min(8, t('validation.passwordMin')),
-    confirmPassword: z.string(),
-  }).refine((data) => data.password === data.confirmPassword, {
-    message: t('validation.passwordsDontMatch'),
-    path: ["confirmPassword"],
   });
 
   const forgotPasswordSchema = z.object({

@@ -7,8 +7,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { checkoutSignupSchema, type CheckoutSignupFormValues } from "@/components/auth/validation";
+import { checkoutSignupSchema, type CheckoutSignupFormValues, splitFullName, generateUsernameFromEmail } from "@/components/auth/validation";
 import { createLogger } from '@/utils/logging';
+import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
 
 const logger = createLogger('CHECKOUT_SIGNUP');
 
@@ -24,16 +27,16 @@ export function EmailPasswordSignupForm({
   disabled = false 
 }: EmailPasswordSignupFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [password, setPassword] = useState("");
   const { toast } = useToast();
+  const { t, isRTL } = useTranslation();
 
   const form = useForm<CheckoutSignupFormValues>({
     resolver: zodResolver(checkoutSignupSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "", 
+      fullName: "",
       email: "",
       password: "",
-      confirmPassword: "",
     },
   });
 
@@ -43,6 +46,12 @@ export function EmailPasswordSignupForm({
     setIsLoading(true);
 
     try {
+      // Split full name into first and last name
+      const { firstName, lastName } = splitFullName(values.fullName);
+      
+      // Auto-generate username from email
+      const username = generateUsernameFromEmail(values.email);
+
       logger.debug('Starting email/password signup', { email: values.email });
 
       const { data, error } = await supabase.auth.signUp({
@@ -50,8 +59,9 @@ export function EmailPasswordSignupForm({
         password: values.password,
         options: {
           data: {
-            first_name: values.firstName,
-            last_name: values.lastName,
+            first_name: firstName,
+            last_name: lastName || firstName,
+            username: username,
           },
           // Skip email confirmation for faster checkout
           emailRedirectTo: undefined
@@ -100,52 +110,49 @@ export function EmailPasswordSignupForm({
   return (
     <div className="space-y-4">
       <Alert>
-        <AlertDescription>
-          Create your account to continue with your purchase. No email confirmation required.
+        <AlertDescription className={cn(isRTL && "rtl-text")}>
+          {t('auth.checkoutSignupNote')}
         </AlertDescription>
       </Alert>
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSignup)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>First Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John" {...field} disabled={disabled} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="lastName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Last Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Doe" {...field} disabled={disabled} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+          <FormField
+            control={form.control}
+            name="fullName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className={cn(isRTL && "rtl-text")}>
+                  {t('auth.fullName')}
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder={t('auth.fullNamePlaceholder')} 
+                    className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                    dir={isRTL ? "rtl" : "ltr"}
+                    {...field} 
+                    disabled={disabled} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel className={cn(isRTL && "rtl-text")}>
+                  {t('auth.email')}
+                </FormLabel>
                 <FormControl>
                   <Input 
                     type="email" 
-                    placeholder="name@example.com" 
+                    placeholder={t('auth.emailPlaceholder')} 
+                    className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                    dir={isRTL ? "rtl" : "ltr"}
                     {...field} 
                     disabled={disabled}
                   />
@@ -160,34 +167,24 @@ export function EmailPasswordSignupForm({
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className={cn(isRTL && "rtl-text")}>
+                  {t('auth.password')}
+                </FormLabel>
                 <FormControl>
                   <Input 
                     type="password" 
-                    placeholder="Enter your password" 
+                    placeholder={t('auth.passwordPlaceholder')} 
+                    className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                    dir={isRTL ? "rtl" : "ltr"}
                     {...field} 
                     disabled={disabled}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setPassword(e.target.value);
+                    }}
                   />
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm Password</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="password" 
-                    placeholder="Confirm your password" 
-                    {...field} 
-                    disabled={disabled}
-                  />
-                </FormControl>
+                <PasswordStrengthIndicator password={password} />
                 <FormMessage />
               </FormItem>
             )}
@@ -195,10 +192,10 @@ export function EmailPasswordSignupForm({
 
           <Button 
             type="submit" 
-            className="w-full" 
+            className="w-full min-h-[44px]" 
             disabled={isLoading || disabled}
           >
-            {isLoading ? "Creating account..." : "Create Account & Continue"}
+            {isLoading ? t('auth.creatingAccount') : t('auth.createAccountAndContinue')}
           </Button>
         </form>
       </Form>
@@ -208,8 +205,9 @@ export function EmailPasswordSignupForm({
           variant="link" 
           onClick={onSwitchToLogin}
           disabled={disabled}
+          className={cn(isRTL && "rtl-text")}
         >
-          Already have an account? Sign in
+          {t('auth.alreadyHaveAccount')} {t('auth.signIn')}
         </Button>
       </div>
     </div>
