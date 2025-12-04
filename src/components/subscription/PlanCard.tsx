@@ -9,10 +9,10 @@ interface PlanCardProps {
   plan: {
     id: string;
     name: string;
-    description: string;
+    description?: string | null;
     price_usd: number;
-    features: string[];
-    excluded_features: string[];
+    features: string[] | any;
+    excluded_features?: string[] | any;
     is_lifetime: boolean;
   };
   isSelected: boolean;
