@@ -59,3 +59,6 @@ verify_jwt = true
 
 [functions.get-all-users]
 verify_jwt = true
+
+[functions.check-email-exists]
+verify_jwt = false

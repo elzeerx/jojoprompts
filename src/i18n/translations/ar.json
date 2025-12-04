@@ -166,7 +166,10 @@
     "passwordNumber": "رقم",
     "passwordWeak": "كلمة مرور ضعيفة",
     "passwordMedium": "متوسطة القوة",
-    "passwordStrong": "كلمة مرور قوية"
+    "passwordStrong": "كلمة مرور قوية",
+    "continueWithEmail": "المتابعة بالبريد الإلكتروني",
+    "useAnotherEmail": "استخدم بريداً إلكترونياً مختلفاً",
+    "creatingAccountFor": "جاري إنشاء حساب لـ"
   },
   "validation": {
     "invalidEmail": "يرجى إدخال عنوان بريد إلكتروني صالح",
@@ -423,7 +426,16 @@
     "planPrice": "سعر الخطة:",
     "cancelTransaction": "إلغاء العملية",
     "processing": "جاري المعالجة...",
-    "youSave": "توفر"
+    "youSave": "توفر",
+    "createAccount": "إنشاء حسابك",
+    "completePurchase": "إكمال الشراء",
+    "createAccountDesc": "أنشئ حساباً لشراء وصول {{duration}} لخطة {{planName}}",
+    "welcomeDesc": "مرحباً! أكمل عملية الشراء للحصول على وصول {{duration}} لخطة {{planName}}",
+    "purchaseDesc": "أنت على وشك شراء وصول {{duration}} لخطة {{planName}}",
+    "lifetime": "مدى الحياة",
+    "oneYear": "سنة واحدة",
+    "purchasing": "أنت تشتري",
+    "for": "بسعر"
   },
   "subscription": {
     "active": "نشط",
