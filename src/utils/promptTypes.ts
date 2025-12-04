@@ -622,13 +622,568 @@ export const WORKFLOW_N8N_PROMPT: ModelPromptType = {
   color: '#8b7fb8'
 };
 
+// GPT Builder Prompt
+export const CHATGPT_GPT_BUILDER: ModelPromptType = {
+  id: MODEL_PROMPT_TYPES.CHATGPT.GPT_BUILDER,
+  name: 'GPT Builder',
+  description: 'Create custom GPT configurations for ChatGPT',
+  category: 'GPTs Builder',
+  fields: [
+    {
+      id: 'gpt_name',
+      name: 'GPT Name',
+      type: 'text',
+      required: true,
+      placeholder: 'My Custom GPT',
+      validation: {
+        minLength: 3,
+        maxLength: 50
+      },
+      help: 'Give your GPT a memorable name'
+    },
+    {
+      id: 'promptText',
+      name: 'System Instructions',
+      type: 'textarea',
+      required: true,
+      placeholder: 'You are a helpful assistant that...',
+      validation: {
+        minLength: 50,
+        maxLength: 8000
+      },
+      help: 'Define how your GPT should behave and respond'
+    },
+    {
+      id: 'gpt_description',
+      name: 'Description',
+      type: 'textarea',
+      required: false,
+      placeholder: 'This GPT helps users with...',
+      validation: {
+        maxLength: 300
+      },
+      help: 'Brief description shown to users'
+    },
+    {
+      id: 'conversation_starters',
+      name: 'Conversation Starters',
+      type: 'textarea',
+      required: false,
+      placeholder: 'Enter each starter on a new line',
+      help: 'Suggested prompts users can click to start a conversation'
+    },
+    {
+      id: 'capabilities',
+      name: 'Capabilities',
+      type: 'multiselect',
+      required: false,
+      options: [
+        { value: 'web_browsing', label: 'Web Browsing' },
+        { value: 'code_interpreter', label: 'Code Interpreter' },
+        { value: 'dalle', label: 'DALL-E Image Generation' },
+        { value: 'file_upload', label: 'File Upload' }
+      ],
+      help: 'Select which capabilities your GPT should have'
+    },
+    {
+      id: 'tone',
+      name: 'Response Tone',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'professional', label: 'Professional' },
+        { value: 'friendly', label: 'Friendly' },
+        { value: 'casual', label: 'Casual' },
+        { value: 'formal', label: 'Formal' },
+        { value: 'enthusiastic', label: 'Enthusiastic' }
+      ],
+      help: 'The overall tone of GPT responses'
+    }
+  ],
+  validation: {
+    required: ['gpt_name', 'promptText'],
+    optional: ['gpt_description', 'conversation_starters', 'capabilities', 'tone']
+  },
+  examples: [
+    'Create a coding assistant that helps debug Python code',
+    'Build a creative writing coach that provides feedback',
+    'Design a meal planning assistant for healthy eating'
+  ],
+  tips: [
+    'Be specific about what your GPT should and should not do',
+    'Include example interactions in your instructions',
+    'Define clear boundaries and response formats'
+  ],
+  color: '#10a37f'
+};
+
+// Gemini Image Prompt (Nano Banana)
+export const GEMINI_IMAGE_PROMPT: ModelPromptType = {
+  id: MODEL_PROMPT_TYPES.GEMINI.IMAGE,
+  name: 'Gemini Image (Nano Banana)',
+  description: 'Create image generation prompts for Google Gemini/Nano Banana',
+  category: 'Gemini',
+  fields: [
+    {
+      id: 'promptText',
+      name: 'Image Description',
+      type: 'textarea',
+      required: true,
+      placeholder: 'A photorealistic image of...',
+      validation: {
+        minLength: 10,
+        maxLength: 2000
+      },
+      help: 'Describe the image you want to generate in detail'
+    },
+    {
+      id: 'style',
+      name: 'Art Style',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'photorealistic', label: 'Photorealistic' },
+        { value: 'digital_art', label: 'Digital Art' },
+        { value: 'illustration', label: 'Illustration' },
+        { value: 'painting', label: 'Painting' },
+        { value: 'anime', label: 'Anime' },
+        { value: '3d_render', label: '3D Render' },
+        { value: 'watercolor', label: 'Watercolor' },
+        { value: 'sketch', label: 'Sketch' }
+      ],
+      help: 'Choose the artistic style for your image'
+    },
+    {
+      id: 'aspect_ratio',
+      name: 'Aspect Ratio',
+      type: 'select',
+      required: false,
+      options: [
+        { value: '1:1', label: 'Square (1:1)' },
+        { value: '16:9', label: 'Landscape (16:9)' },
+        { value: '9:16', label: 'Portrait (9:16)' },
+        { value: '4:3', label: 'Standard (4:3)' },
+        { value: '3:2', label: 'Photo (3:2)' }
+      ],
+      help: 'Select the image dimensions'
+    },
+    {
+      id: 'mood',
+      name: 'Mood/Atmosphere',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'bright', label: 'Bright & Cheerful' },
+        { value: 'dark', label: 'Dark & Moody' },
+        { value: 'cinematic', label: 'Cinematic' },
+        { value: 'dreamy', label: 'Dreamy' },
+        { value: 'vintage', label: 'Vintage' },
+        { value: 'futuristic', label: 'Futuristic' }
+      ],
+      help: 'Set the overall mood of the image'
+    },
+    {
+      id: 'negative_prompt',
+      name: 'Negative Prompt',
+      type: 'textarea',
+      required: false,
+      placeholder: 'Things to avoid: blurry, low quality...',
+      help: 'Describe what you do NOT want in the image'
+    }
+  ],
+  validation: {
+    required: ['promptText'],
+    optional: ['style', 'aspect_ratio', 'mood', 'negative_prompt']
+  },
+  examples: [
+    'A serene Japanese garden with cherry blossoms and a koi pond',
+    'A futuristic cityscape at night with neon lights and flying cars',
+    'A cozy coffee shop interior with warm lighting and vintage decor'
+  ],
+  tips: [
+    'Be specific about colors, lighting, and composition',
+    'Include details about the environment and setting',
+    'Use descriptive adjectives for better results'
+  ],
+  color: '#4285f4'
+};
+
+// Flux Image Prompt
+export const FLUX_IMAGE_PROMPT: ModelPromptType = {
+  id: MODEL_PROMPT_TYPES.FLUX.IMAGE,
+  name: 'Flux Image Prompt',
+  description: 'Create image generation prompts for Flux and Stable Diffusion',
+  category: 'Flux',
+  fields: [
+    {
+      id: 'promptText',
+      name: 'Image Description',
+      type: 'textarea',
+      required: true,
+      placeholder: 'Describe the image in detail...',
+      validation: {
+        minLength: 10,
+        maxLength: 2000
+      },
+      help: 'Detailed description of the image you want to generate'
+    },
+    {
+      id: 'negative_prompt',
+      name: 'Negative Prompt',
+      type: 'textarea',
+      required: false,
+      placeholder: 'bad quality, blurry, distorted...',
+      help: 'What to avoid in the generated image'
+    },
+    {
+      id: 'model_version',
+      name: 'Model Version',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'flux-pro', label: 'Flux Pro' },
+        { value: 'flux-dev', label: 'Flux Dev' },
+        { value: 'flux-schnell', label: 'Flux Schnell (Fast)' },
+        { value: 'sd-xl', label: 'Stable Diffusion XL' }
+      ],
+      help: 'Select the model version for generation'
+    },
+    {
+      id: 'style_preset',
+      name: 'Style Preset',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'photographic', label: 'Photographic' },
+        { value: 'digital-art', label: 'Digital Art' },
+        { value: 'anime', label: 'Anime' },
+        { value: 'cinematic', label: 'Cinematic' },
+        { value: 'fantasy-art', label: 'Fantasy Art' },
+        { value: 'neon-punk', label: 'Neon Punk' },
+        { value: 'isometric', label: 'Isometric' }
+      ],
+      help: 'Choose a predefined style preset'
+    },
+    {
+      id: 'guidance_scale',
+      name: 'Guidance Scale',
+      type: 'number',
+      required: false,
+      defaultValue: 7.5,
+      help: 'How closely to follow the prompt (1-20)'
+    }
+  ],
+  validation: {
+    required: ['promptText'],
+    optional: ['negative_prompt', 'model_version', 'style_preset', 'guidance_scale']
+  },
+  examples: [
+    'A mystical forest with bioluminescent plants and fireflies',
+    'Portrait of a cyberpunk character with neon accents',
+    'An abstract geometric pattern with vibrant colors'
+  ],
+  tips: [
+    'Include quality tags like "highly detailed", "8k resolution"',
+    'Use negative prompts to avoid common issues',
+    'Experiment with different guidance scales'
+  ],
+  color: '#9333ea'
+};
+
+// Sora Video Prompt
+export const SORA_VIDEO_PROMPT: ModelPromptType = {
+  id: MODEL_PROMPT_TYPES.SORA.VIDEO,
+  name: 'Sora Video Prompt',
+  description: 'Create video generation prompts for OpenAI Sora',
+  category: 'Video AI',
+  fields: [
+    {
+      id: 'promptText',
+      name: 'Video Description',
+      type: 'textarea',
+      required: true,
+      placeholder: 'A cinematic shot of...',
+      validation: {
+        minLength: 20,
+        maxLength: 3000
+      },
+      help: 'Describe the video scene, action, and visual style'
+    },
+    {
+      id: 'duration',
+      name: 'Duration',
+      type: 'select',
+      required: false,
+      options: [
+        { value: '5s', label: '5 seconds' },
+        { value: '10s', label: '10 seconds' },
+        { value: '15s', label: '15 seconds' },
+        { value: '20s', label: '20 seconds' }
+      ],
+      help: 'Target video duration'
+    },
+    {
+      id: 'aspect_ratio',
+      name: 'Aspect Ratio',
+      type: 'select',
+      required: false,
+      options: [
+        { value: '16:9', label: 'Widescreen (16:9)' },
+        { value: '9:16', label: 'Vertical (9:16)' },
+        { value: '1:1', label: 'Square (1:1)' },
+        { value: '21:9', label: 'Cinematic (21:9)' }
+      ],
+      help: 'Video dimensions'
+    },
+    {
+      id: 'camera_movement',
+      name: 'Camera Movement',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'static', label: 'Static' },
+        { value: 'pan_left', label: 'Pan Left' },
+        { value: 'pan_right', label: 'Pan Right' },
+        { value: 'tilt_up', label: 'Tilt Up' },
+        { value: 'tilt_down', label: 'Tilt Down' },
+        { value: 'zoom_in', label: 'Zoom In' },
+        { value: 'zoom_out', label: 'Zoom Out' },
+        { value: 'tracking', label: 'Tracking Shot' },
+        { value: 'dolly', label: 'Dolly Movement' },
+        { value: 'drone', label: 'Drone Shot' }
+      ],
+      help: 'Specify camera movement style'
+    },
+    {
+      id: 'video_style',
+      name: 'Video Style',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'cinematic', label: 'Cinematic' },
+        { value: 'documentary', label: 'Documentary' },
+        { value: 'animation', label: 'Animation' },
+        { value: 'slow_motion', label: 'Slow Motion' },
+        { value: 'timelapse', label: 'Timelapse' }
+      ],
+      help: 'Overall video aesthetic'
+    }
+  ],
+  validation: {
+    required: ['promptText'],
+    optional: ['duration', 'aspect_ratio', 'camera_movement', 'video_style']
+  },
+  examples: [
+    'A drone shot flying over a misty mountain range at sunrise',
+    'A close-up of rain drops falling on a leaf in slow motion',
+    'A bustling Tokyo street at night with neon signs and crowds'
+  ],
+  tips: [
+    'Describe the scene progression from start to end',
+    'Include camera movement instructions',
+    'Specify lighting and atmosphere details'
+  ],
+  color: '#ef4444'
+};
+
+// ElevenLabs Voice Prompt
+export const ELEVENLABS_VOICE_PROMPT: ModelPromptType = {
+  id: MODEL_PROMPT_TYPES.ELEVENLABS.VOICE,
+  name: 'ElevenLabs Voice Prompt',
+  description: 'Create voice generation prompts for ElevenLabs',
+  category: 'Audio AI',
+  fields: [
+    {
+      id: 'promptText',
+      name: 'Text to Speak',
+      type: 'textarea',
+      required: true,
+      placeholder: 'Enter the text you want converted to speech...',
+      validation: {
+        minLength: 5,
+        maxLength: 5000
+      },
+      help: 'The text that will be converted to speech'
+    },
+    {
+      id: 'voice_style',
+      name: 'Voice Style',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'narrator', label: 'Narrator' },
+        { value: 'conversational', label: 'Conversational' },
+        { value: 'professional', label: 'Professional' },
+        { value: 'dramatic', label: 'Dramatic' },
+        { value: 'whisper', label: 'Whisper' },
+        { value: 'announcer', label: 'Announcer' }
+      ],
+      help: 'The speaking style for the voice'
+    },
+    {
+      id: 'emotion',
+      name: 'Emotion',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'neutral', label: 'Neutral' },
+        { value: 'happy', label: 'Happy' },
+        { value: 'sad', label: 'Sad' },
+        { value: 'excited', label: 'Excited' },
+        { value: 'calm', label: 'Calm' },
+        { value: 'serious', label: 'Serious' }
+      ],
+      help: 'Emotional tone of the speech'
+    },
+    {
+      id: 'speed',
+      name: 'Speech Speed',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'slow', label: 'Slow' },
+        { value: 'normal', label: 'Normal' },
+        { value: 'fast', label: 'Fast' }
+      ],
+      help: 'Speed of speech delivery'
+    },
+    {
+      id: 'use_case',
+      name: 'Use Case',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'audiobook', label: 'Audiobook' },
+        { value: 'podcast', label: 'Podcast' },
+        { value: 'video_narration', label: 'Video Narration' },
+        { value: 'advertisement', label: 'Advertisement' },
+        { value: 'educational', label: 'Educational' }
+      ],
+      help: 'Intended use for the audio'
+    }
+  ],
+  validation: {
+    required: ['promptText'],
+    optional: ['voice_style', 'emotion', 'speed', 'use_case']
+  },
+  examples: [
+    'Welcome to our podcast about technology and innovation',
+    'Chapter one: It was a dark and stormy night...',
+    'Introducing the future of artificial intelligence'
+  ],
+  tips: [
+    'Use punctuation to control pacing and pauses',
+    'Match voice style to your content type',
+    'Test different emotions for the same text'
+  ],
+  color: '#f97316'
+};
+
+// Suno Music Prompt
+export const SUNO_MUSIC_PROMPT: ModelPromptType = {
+  id: MODEL_PROMPT_TYPES.SUNO.MUSIC,
+  name: 'Suno Music Prompt',
+  description: 'Create AI music generation prompts for Suno',
+  category: 'Audio AI',
+  fields: [
+    {
+      id: 'promptText',
+      name: 'Music Description',
+      type: 'textarea',
+      required: true,
+      placeholder: 'An upbeat electronic track with...',
+      validation: {
+        minLength: 10,
+        maxLength: 1000
+      },
+      help: 'Describe the music style, mood, and elements'
+    },
+    {
+      id: 'genre',
+      name: 'Genre',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'pop', label: 'Pop' },
+        { value: 'rock', label: 'Rock' },
+        { value: 'electronic', label: 'Electronic' },
+        { value: 'hip_hop', label: 'Hip Hop' },
+        { value: 'jazz', label: 'Jazz' },
+        { value: 'classical', label: 'Classical' },
+        { value: 'ambient', label: 'Ambient' },
+        { value: 'lofi', label: 'Lo-Fi' },
+        { value: 'cinematic', label: 'Cinematic' }
+      ],
+      help: 'Primary music genre'
+    },
+    {
+      id: 'mood',
+      name: 'Mood',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'happy', label: 'Happy' },
+        { value: 'sad', label: 'Sad' },
+        { value: 'energetic', label: 'Energetic' },
+        { value: 'relaxing', label: 'Relaxing' },
+        { value: 'epic', label: 'Epic' },
+        { value: 'mysterious', label: 'Mysterious' },
+        { value: 'romantic', label: 'Romantic' }
+      ],
+      help: 'Overall mood of the track'
+    },
+    {
+      id: 'tempo',
+      name: 'Tempo',
+      type: 'select',
+      required: false,
+      options: [
+        { value: 'slow', label: 'Slow (60-80 BPM)' },
+        { value: 'moderate', label: 'Moderate (80-120 BPM)' },
+        { value: 'fast', label: 'Fast (120-150 BPM)' },
+        { value: 'very_fast', label: 'Very Fast (150+ BPM)' }
+      ],
+      help: 'Speed of the music'
+    },
+    {
+      id: 'instruments',
+      name: 'Key Instruments',
+      type: 'text',
+      required: false,
+      placeholder: 'piano, synth, drums, guitar...',
+      help: 'Specific instruments to include'
+    }
+  ],
+  validation: {
+    required: ['promptText'],
+    optional: ['genre', 'mood', 'tempo', 'instruments']
+  },
+  examples: [
+    'A chill lo-fi hip hop beat for studying with soft piano',
+    'Epic orchestral music for a fantasy movie trailer',
+    'Upbeat electronic dance track with heavy bass drops'
+  ],
+  tips: [
+    'Describe the energy progression of the track',
+    'Reference similar artists or songs for style',
+    'Specify if you want vocals or instrumental only'
+  ],
+  color: '#8b5cf6'
+};
+
 // All prompt types
 export const ALL_PROMPT_TYPES: ModelPromptType[] = [
   CHATGPT_TEXT_PROMPT,
   CHATGPT_IMAGE_PROMPT,
+  CHATGPT_GPT_BUILDER,
   CLAUDE_TEXT_PROMPT,
   MIDJOURNEY_FULL_PROMPT,
   MIDJOURNEY_STYLE_REF_PROMPT,
+  GEMINI_IMAGE_PROMPT,
+  FLUX_IMAGE_PROMPT,
+  SORA_VIDEO_PROMPT,
+  ELEVENLABS_VOICE_PROMPT,
+  SUNO_MUSIC_PROMPT,
   VIDEO_FULL_PROMPT,
   VIDEO_JSON_PROMPT,
   WORKFLOW_N8N_PROMPT
@@ -683,4 +1238,4 @@ export function validatePromptData(data: any, promptType: ModelPromptType): Reco
   }
 
   return errors;
-} 
+}
