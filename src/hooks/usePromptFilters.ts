@@ -6,6 +6,7 @@ const initialFilters: PromptFilters = {
   category: 'all',
   searchQuery: '',
   promptType: 'all',
+  modelType: 'all',
   tags: [],
   sortBy: 'created_at',
   sortOrder: 'desc'
@@ -34,6 +35,7 @@ export function usePromptFilters() {
       category: 'all',
       searchQuery: '',
       promptType: 'all',
+      modelType: 'all',
       tags: []
     }));
   }, []);
@@ -51,17 +53,26 @@ export function usePromptFilters() {
         return false;
       }
 
+      // Model type filter - check metadata.model_type or prompt_type
+      if (filters.modelType !== 'all') {
+        const promptModelType = prompt.metadata?.model_type || prompt.prompt_type;
+        if (promptModelType !== filters.modelType) {
+          return false;
+        }
+      }
+
       // Search filter (use debounced value)
       if (debouncedSearchQuery) {
         const searchLower = debouncedSearchQuery.toLowerCase();
         const titleMatch = prompt.title.toLowerCase().includes(searchLower);
         const textMatch = prompt.prompt_text.toLowerCase().includes(searchLower);
         const categoryMatch = prompt.metadata?.category?.toLowerCase().includes(searchLower);
+        const modelTypeMatch = prompt.metadata?.model_type?.toLowerCase().includes(searchLower);
         const tagsMatch = prompt.metadata?.tags?.some(tag => 
           tag.toLowerCase().includes(searchLower)
         );
         
-        if (!titleMatch && !textMatch && !categoryMatch && !tagsMatch) {
+        if (!titleMatch && !textMatch && !categoryMatch && !tagsMatch && !modelTypeMatch) {
           return false;
         }
       }
@@ -79,7 +90,7 @@ export function usePromptFilters() {
 
       return true;
     });
-  }, [filters.category, filters.promptType, debouncedSearchQuery, filters.tags]);
+  }, [filters.category, filters.promptType, filters.modelType, debouncedSearchQuery, filters.tags]);
 
   // Sort function
   const sortPrompts = useCallback((prompts: PromptRow[]) => {
@@ -120,6 +131,7 @@ export function usePromptFilters() {
       filters.category !== 'all' ||
       filters.searchQuery !== '' ||
       filters.promptType !== 'all' ||
+      filters.modelType !== 'all' ||
       filters.tags.length > 0
     );
   }, [filters]);
@@ -136,6 +148,7 @@ export function usePromptFilters() {
     setCategory: (category: string) => updateFilter('category', category),
     setSearchQuery: (query: string) => updateFilter('searchQuery', query),
     setPromptType: (type: PromptTypeFilter) => updateFilter('promptType', type),
+    setModelType: (modelType: string) => updateFilter('modelType', modelType),
     setTags: (tags: string[]) => updateFilter('tags', tags),
     setSortBy: (sortBy: SortOption) => updateFilter('sortBy', sortBy),
     setSortOrder: (order: 'asc' | 'desc') => updateFilter('sortOrder', order)

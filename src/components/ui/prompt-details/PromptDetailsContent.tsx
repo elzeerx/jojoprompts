@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Workflow } from "lucide-react";
 import { MediaThumbnail } from "./MediaThumbnail";
 import { WorkflowDownloadSection } from "@/components/ui/workflow-download-section";
+import { ModelFieldsDisplay } from "./ModelFieldsDisplay";
 
 interface PromptDetailsContentProps {
   imageUrl: string;
@@ -19,6 +20,8 @@ interface PromptDetailsContentProps {
   onMediaClick: (index: number) => void;
   isRTL?: boolean;
   isLocked?: boolean;
+  modelType?: string;
+  modelFields?: Record<string, any>;
 }
 
 export function PromptDetailsContent({
@@ -35,7 +38,9 @@ export function PromptDetailsContent({
   tags,
   onMediaClick,
   isRTL = false,
-  isLocked = false
+  isLocked = false,
+  modelType,
+  modelFields
 }: PromptDetailsContentProps) {
   return (
     <div className={`bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200 space-y-6 ${isRTL ? 'text-right' : 'text-left'}`}>
@@ -111,6 +116,16 @@ export function PromptDetailsContent({
             </p>
           </div>
         </div>
+      )}
+
+      {/* Model-Specific Fields Section */}
+      {modelType && modelFields && Object.keys(modelFields).length > 0 && (
+        <ModelFieldsDisplay
+          modelType={modelType}
+          modelFields={modelFields}
+          isRTL={isRTL}
+          isLocked={isLocked}
+        />
       )}
 
       {/* Workflow Files Download Section for n8n prompts */}

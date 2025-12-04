@@ -48,6 +48,10 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const workflowFiles = metadata?.workflow_files || [];
   const translations = metadata?.translations;
   
+  // Model-specific fields
+  const modelType = metadata?.model_type;
+  const modelFields = metadata?.model_fields;
+  
   // Check if this prompt supports bilingual content (ChatGPT or Claude)
   const supportsBilingual = category.toLowerCase().includes('chatgpt') || category.toLowerCase().includes('claude');
   const hasTranslations = supportsBilingual;
@@ -227,12 +231,24 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const getCategoryColor = (category: string) => {
     switch (category?.toLowerCase()) {
       case 'chatgpt':
-        return '#c49d68';
+        return '#10a37f';
       case 'midjourney':
         return '#7a9e9f';
       case 'workflow':
       case 'n8n':
         return '#8b7fb8';
+      case 'gemini':
+        return '#9333ea';
+      case 'flux':
+        return '#4f46e5';
+      case 'sora':
+        return '#e11d48';
+      case 'elevenlabs':
+        return '#059669';
+      case 'suno':
+        return '#7c3aed';
+      case 'claude':
+        return '#f97316';
       default:
         return '#c49d68';
     }
@@ -279,6 +295,8 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                     tags={tags}
                     onMediaClick={handleMediaClick}
                     isRTL={language === 'arabic'}
+                    modelType={modelType}
+                    modelFields={modelFields}
                   />
                 )}
               </LanguageTabs>
