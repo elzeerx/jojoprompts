@@ -4,7 +4,7 @@ import { Workflow } from "lucide-react";
 import { MediaThumbnail } from "./MediaThumbnail";
 import { WorkflowDownloadSection } from "@/components/ui/workflow-download-section";
 import { ModelFieldsDisplay } from "./ModelFieldsDisplay";
-import { GPTConfigDisplay, GPTConfiguration } from "@/components/gpts-builder";
+import { GPTConfigDisplay, transformModelFieldsToGPTConfig } from "@/components/gpts-builder";
 
 interface PromptDetailsContentProps {
   imageUrl: string;
@@ -122,7 +122,7 @@ export function PromptDetailsContent({
       {/* GPT Configuration Display for GPTs Builder prompts */}
       {modelType === 'chatgpt-gpt-builder' && modelFields && (
         <GPTConfigDisplay
-          config={modelFields as GPTConfiguration}
+          config={transformModelFieldsToGPTConfig(modelFields)}
           className={isLocked ? 'blur-md select-none pointer-events-none' : ''}
         />
       )}

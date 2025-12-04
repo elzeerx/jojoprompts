@@ -6,3 +6,4 @@ export type { GPTTemplate } from './GPTTemplateLibrary';
 
 export { GPTExportDialog } from './GPTExportDialog';
 export { GPTConfigDisplay } from './GPTConfigDisplay';
+export { transformModelFieldsToGPTConfig } from './utils';

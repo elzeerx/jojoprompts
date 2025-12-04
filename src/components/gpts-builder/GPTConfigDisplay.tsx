@@ -43,8 +43,9 @@ export function GPTConfigDisplay({ config, className }: GPTConfigDisplayProps) {
     { key: 'fileSearch', label: 'File Search', icon: FileSearch, color: 'text-orange-500' },
   ] as const;
 
+  const configCapabilities = config?.capabilities || {};
   const enabledCapabilities = capabilities.filter(
-    cap => config.capabilities[cap.key]
+    cap => configCapabilities[cap.key as keyof typeof configCapabilities]
   );
 
   return (
@@ -85,14 +86,14 @@ export function GPTConfigDisplay({ config, className }: GPTConfigDisplayProps) {
           </div>
 
           {/* Conversation Starters */}
-          {config.conversationStarters.filter(s => s.trim()).length > 0 && (
+          {(config?.conversationStarters || []).filter(s => s?.trim()).length > 0 && (
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
                 Conversation Starters
               </h4>
               <div className="space-y-2">
-                {config.conversationStarters.filter(s => s.trim()).map((starter, index) => (
+                {(config?.conversationStarters || []).filter(s => s?.trim()).map((starter, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border border-border/30"
@@ -128,16 +129,16 @@ export function GPTConfigDisplay({ config, className }: GPTConfigDisplayProps) {
             <CollapsibleContent className="space-y-2">
               <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
                 <pre className="text-sm whitespace-pre-wrap font-mono">
-                  {config.systemPrompt.length > 500 
-                    ? `${config.systemPrompt.substring(0, 500)}...` 
-                    : config.systemPrompt}
+                  {(config?.systemPrompt || '').length > 500 
+                    ? `${(config?.systemPrompt || '').substring(0, 500)}...` 
+                    : (config?.systemPrompt || '')}
                 </pre>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={() => copyToClipboard(config.systemPrompt, 'System instructions')}
+                onClick={() => copyToClipboard(config?.systemPrompt || '', 'System instructions')}
               >
                 <Copy className="h-4 w-4 mr-2" />
                 Copy Full Instructions
@@ -146,7 +147,7 @@ export function GPTConfigDisplay({ config, className }: GPTConfigDisplayProps) {
           </Collapsible>
 
           {/* Actions Preview */}
-          {config.customActions && (
+          {config?.customActions && (
             <Collapsible>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between p-2 h-auto">
@@ -159,7 +160,7 @@ export function GPTConfigDisplay({ config, className }: GPTConfigDisplayProps) {
               <CollapsibleContent>
                 <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
                   <pre className="text-xs whitespace-pre-wrap font-mono overflow-x-auto">
-                    {config.customActions}
+                    {config?.customActions}
                   </pre>
                 </div>
               </CollapsibleContent>
