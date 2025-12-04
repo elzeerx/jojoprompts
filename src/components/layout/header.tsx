@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import headerLogo from "@/assets/logo-header.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Menu, X, User, LogOut, Settings, Heart, Edit } from "lucide-react";
@@ -96,8 +97,8 @@ export function Header() {
           >
             <img
               alt="JojoPrompts"
-              className="h-7 w-auto sm:h-8 transition-all duration-200"
-              src="/lovable-uploads/2207fac5-9e06-4da3-a1b4-da690a123a56.png"
+              className="h-8 w-auto sm:h-10 transition-all duration-200"
+              src={headerLogo}
             />
           </button>
 
