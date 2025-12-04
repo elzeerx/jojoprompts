@@ -169,7 +169,10 @@
     "passwordStrong": "كلمة مرور قوية",
     "continueWithEmail": "المتابعة بالبريد الإلكتروني",
     "useAnotherEmail": "استخدم بريداً إلكترونياً مختلفاً",
-    "creatingAccountFor": "جاري إنشاء حساب لـ"
+    "creatingAccountFor": "جاري إنشاء حساب لـ",
+    "loggedInAs": "تم تسجيل الدخول كـ",
+    "loginFailed": "فشل تسجيل الدخول",
+    "signupFailed": "فشل إنشاء الحساب"
   },
   "validation": {
     "invalidEmail": "يرجى إدخال عنوان بريد إلكتروني صالح",
@@ -435,7 +438,12 @@
     "lifetime": "مدى الحياة",
     "oneYear": "سنة واحدة",
     "purchasing": "أنت تشتري",
-    "for": "بسعر"
+    "for": "بسعر",
+    "completeYourPurchase": "أكمل عملية الشراء",
+    "getStarted": "ابدأ الآن",
+    "securePayment": "دفع آمن",
+    "totalAfterDiscount": "الإجمالي بعد الخصم",
+    "termsAgreement": "بإتمام عملية الشراء، فإنك توافق على الشروط والأحكام."
   },
   "subscription": {
     "active": "نشط",

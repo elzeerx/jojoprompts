@@ -169,7 +169,10 @@
     "passwordStrong": "Strong password",
     "continueWithEmail": "Continue with Email",
     "useAnotherEmail": "Use a different email",
-    "creatingAccountFor": "Creating account for"
+    "creatingAccountFor": "Creating account for",
+    "loggedInAs": "Logged in as",
+    "loginFailed": "Login failed",
+    "signupFailed": "Sign up failed"
   },
   "validation": {
     "invalidEmail": "Please enter a valid email address",
@@ -435,7 +438,12 @@
     "lifetime": "lifetime",
     "oneYear": "1-year",
     "purchasing": "You're purchasing",
-    "for": "for"
+    "for": "for",
+    "completeYourPurchase": "Complete Your Purchase",
+    "getStarted": "Get Started",
+    "securePayment": "Secure Payment",
+    "totalAfterDiscount": "Total after discount",
+    "termsAgreement": "By completing your purchase, you agree to our terms and conditions."
   },
   "subscription": {
     "active": "Active",
