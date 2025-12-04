@@ -155,7 +155,18 @@
     "roleNotAllowed": "الدور غير مسموح. المسموح: {{allowed}}، الحالي: {{current}}",
     "missingPermissions": "أذونات مطلوبة مفقودة: {{permissions}}",
     "featureAccessDenied": "تم رفض الوصول إلى الميزة: {{feature}}",
-    "activeSubscriptionRequired": "اشتراك نشط مطلوب"
+    "activeSubscriptionRequired": "اشتراك نشط مطلوب",
+    "fullName": "الاسم الكامل",
+    "fullNamePlaceholder": "أحمد محمد",
+    "createAccountAndContinue": "إنشاء حساب والمتابعة",
+    "checkoutSignupNote": "أنشئ حسابك لإكمال عملية الشراء. لا حاجة لتأكيد البريد الإلكتروني.",
+    "passwordLength": "8 أحرف على الأقل",
+    "passwordUppercase": "حرف كبير",
+    "passwordLowercase": "حرف صغير",
+    "passwordNumber": "رقم",
+    "passwordWeak": "كلمة مرور ضعيفة",
+    "passwordMedium": "متوسطة القوة",
+    "passwordStrong": "كلمة مرور قوية"
   },
   "validation": {
     "invalidEmail": "يرجى إدخال عنوان بريد إلكتروني صالح",
@@ -173,7 +184,10 @@
     "usernameReserved": "اسم المستخدم هذا محجوز ولا يمكن استخدامه",
     "emailDomainBlocked": "نطاق البريد الإلكتروني هذا غير مسموح به للتسجيل",
     "passwordMin": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل",
-    "passwordsDontMatch": "كلمات المرور غير متطابقة"
+    "passwordsDontMatch": "كلمات المرور غير متطابقة",
+    "fullNameMin": "يجب أن يتكون الاسم الكامل من حرفين على الأقل",
+    "fullNameMax": "يجب أن يكون الاسم الكامل أقل من 100 حرف",
+    "fullNameInvalid": "يمكن أن يحتوي الاسم على أحرف ومسافات فقط"
   },
   "footer": {
     "description": "مصدرك الموثوق لبرومبتات وقوالب الذكاء الاصطناعي المميزة.",

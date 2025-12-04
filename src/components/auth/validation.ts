@@ -17,25 +17,13 @@ export const magicLinkSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
 
-// Email/password signup schema - traditional registration
+// Simplified signup schema - 3 fields only (fullName, email, password)
+// Username is auto-generated from email prefix + random suffix
 export const signupSchema = z.object({
-  firstName: z.string()
-    .min(2, "First name must be at least 2 characters")
-    .max(50, "First name must be less than 50 characters")
-    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "First name can only contain letters and spaces"),
-  lastName: z.string()
-    .min(2, "Last name must be at least 2 characters")
-    .max(50, "Last name must be less than 50 characters")
-    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "Last name can only contain letters and spaces"),
-  username: z.string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be less than 20 characters")
-    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and dashes")
-    .refine((val) => !val.startsWith('@'), "Username cannot start with @")
-    .refine((val) => {
-      const reserved = ['admin', 'administrator', 'root', 'system', 'superadmin', 'support', 'help', 'info', 'contact', 'jojo', 'jojoprompts', 'moderator', 'mod'];
-      return !reserved.includes(val.toLowerCase());
-    }, "This username is reserved and cannot be used"),
+  fullName: z.string()
+    .min(2, "Full name must be at least 2 characters")
+    .max(100, "Full name must be less than 100 characters")
+    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "Name can only contain letters and spaces"),
   email: z.string()
     .email("Please enter a valid email address")
     .refine((email) => {
@@ -44,23 +32,15 @@ export const signupSchema = z.object({
       return !blocked.some(b => domain?.endsWith(b) || domain === b.substring(1));
     }, "This email domain is not allowed for registration"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string(),
   role: z.enum(VALID_ROLES as [UserRole, ...UserRole[]]).optional(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
 });
 
-// Checkout-specific email/password signup schema
+// Checkout-specific signup schema - same 3 fields
 export const checkoutSignupSchema = z.object({
-  firstName: z.string()
-    .min(2, "First name must be at least 2 characters")
-    .max(50, "First name must be less than 50 characters")
-    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "First name can only contain letters and spaces"),
-  lastName: z.string()
-    .min(2, "Last name must be at least 2 characters")
-    .max(50, "Last name must be less than 50 characters")
-    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "Last name can only contain letters and spaces"),
+  fullName: z.string()
+    .min(2, "Full name must be at least 2 characters")
+    .max(100, "Full name must be less than 100 characters")
+    .regex(/^[a-zA-Z\s\u0600-\u06FF\u0750-\u077F]+$/, "Name can only contain letters and spaces"),
   email: z.string()
     .email("Please enter a valid email address")
     .refine((email) => {
@@ -69,11 +49,27 @@ export const checkoutSignupSchema = z.object({
       return !blocked.some(b => domain?.endsWith(b) || domain === b.substring(1));
     }, "This email domain is not allowed for registration"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
 });
+
+// Helper to split full name into first and last name
+export function splitFullName(fullName: string): { firstName: string; lastName: string } {
+  const trimmed = fullName.trim();
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' };
+  }
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' ')
+  };
+}
+
+// Helper to generate username from email
+export function generateUsernameFromEmail(email: string): string {
+  const prefix = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').substring(0, 12);
+  const suffix = Math.random().toString(36).substring(2, 6);
+  return `${prefix}_${suffix}`;
+}
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),

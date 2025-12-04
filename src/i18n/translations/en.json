@@ -155,7 +155,18 @@
     "roleNotAllowed": "Role not allowed. Allowed: {{allowed}}, Current: {{current}}",
     "missingPermissions": "Missing required permissions: {{permissions}}",
     "featureAccessDenied": "Feature access denied: {{feature}}",
-    "activeSubscriptionRequired": "Active subscription required"
+    "activeSubscriptionRequired": "Active subscription required",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "John Doe",
+    "createAccountAndContinue": "Create Account & Continue",
+    "checkoutSignupNote": "Create your account to complete your purchase. No email confirmation required.",
+    "passwordLength": "8+ characters",
+    "passwordUppercase": "Uppercase letter",
+    "passwordLowercase": "Lowercase letter",
+    "passwordNumber": "Number",
+    "passwordWeak": "Weak password",
+    "passwordMedium": "Medium strength",
+    "passwordStrong": "Strong password"
   },
   "validation": {
     "invalidEmail": "Please enter a valid email address",
@@ -173,7 +184,10 @@
     "usernameReserved": "This username is reserved and cannot be used",
     "emailDomainBlocked": "This email domain is not allowed for registration",
     "passwordMin": "Password must be at least 8 characters",
-    "passwordsDontMatch": "Passwords don't match"
+    "passwordsDontMatch": "Passwords don't match",
+    "fullNameMin": "Full name must be at least 2 characters",
+    "fullNameMax": "Full name must be less than 100 characters",
+    "fullNameInvalid": "Name can only contain letters and spaces"
   },
   "footer": {
     "description": "Your trusted source for premium AI prompts and templates.",

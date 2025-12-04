@@ -4,10 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { signupSchema, type SignupFormValues } from "../validation";
+import { signupSchema, type SignupFormValues, splitFullName, generateUsernameFromEmail } from "../validation";
 import { useWelcomeEmail } from "@/hooks/useWelcomeEmail";
 import { createLogger } from '@/utils/logging';
-import { handleError, ErrorTypes } from '@/utils/errorHandler';
+import { handleError } from '@/utils/errorHandler';
 import { retrySignupOperation } from '@/utils/signupErrorHandler';
 
 const logger = createLogger('SIGNUP_FORM');
@@ -25,12 +25,9 @@ export function useSignupForm() {
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      username: "",
+      fullName: "",
       email: "",
       password: "",
-      confirmPassword: "",
     },
   });
 
@@ -38,6 +35,12 @@ export function useSignupForm() {
     setIsLoading(true);
 
     try {
+      // Split full name into first and last name
+      const { firstName, lastName } = splitFullName(values.fullName);
+      
+      // Auto-generate username from email
+      const username = generateUsernameFromEmail(values.email);
+
       // PHASE 2: Validation with retry logic for transient failures
       logger.info('Validating signup data with retry support');
       
@@ -46,9 +49,9 @@ export function useSignupForm() {
           const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-signup', {
             body: {
               email: values.email,
-              username: values.username,
-              firstName: values.firstName,
-              lastName: values.lastName,
+              username: username,
+              firstName: firstName,
+              lastName: lastName || firstName, // Use firstName as lastName if not provided
               ipAddress: window.location.hostname
             }
           });
@@ -61,11 +64,12 @@ export function useSignupForm() {
 
           return validationData;
         },
-        { email: values.email, username: values.username, operation: "validation" },
+        { email: values.email, username: username, operation: "validation" },
         2 // Max 2 retries for validation
       );
 
       if (!validationResult.success) {
+        setIsLoading(false);
         return;
       }
 
@@ -79,9 +83,9 @@ export function useSignupForm() {
             password: values.password,
             options: {
               data: {
-                first_name: values.firstName,
-                last_name: values.lastName,
-                username: values.username,
+                first_name: firstName,
+                last_name: lastName || firstName,
+                username: username,
               },
               emailRedirectTo: `${window.location.origin}/auth/callback`
             }
@@ -97,6 +101,7 @@ export function useSignupForm() {
       );
 
       if (!signupResult.success) {
+        setIsLoading(false);
         return;
       }
 
@@ -111,8 +116,8 @@ export function useSignupForm() {
               body: { 
                 email: signupData.user!.email, 
                 userId: signupData.user!.id,
-                firstName: values.firstName,
-                lastName: values.lastName
+                firstName: firstName,
+                lastName: lastName || firstName
               }
             });
             if (error) throw error;

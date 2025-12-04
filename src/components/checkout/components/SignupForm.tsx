@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,9 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { CheckoutSignupFormValues, checkoutSignupSchema } from "@/components/auth/validation";
+import { CheckoutSignupFormValues, checkoutSignupSchema, splitFullName, generateUsernameFromEmail } from "@/components/auth/validation";
 import { supabase } from "@/integrations/supabase/client";
 import { logInfo, logError, logDebug } from "@/utils/secureLogging";
+import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
 
 interface SignupFormProps {
   onSuccess: () => void;
@@ -19,68 +21,116 @@ interface SignupFormProps {
 
 export function SignupForm({ onSuccess, onSwitchToLogin, disabled }: SignupFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [password, setPassword] = useState("");
+  const { t, isRTL } = useTranslation();
 
   const form = useForm<CheckoutSignupFormValues>({
     resolver: zodResolver(checkoutSignupSchema),
     mode: "onSubmit",
     defaultValues: {
+      fullName: "",
       email: "",
-      firstName: "",
-      lastName: "",
+      password: "",
     },
   });
 
   const handleSignup = async (values: CheckoutSignupFormValues) => {
-    logInfo("Starting magic link signup process", "auth");
-    logDebug("Magic link signup form submission", "auth", { 
-      email: values.email,
-      firstName: values.firstName,
-      lastName: values.lastName 
-    });
+    logInfo("Starting checkout signup process", "auth");
     setIsLoading(true);
 
     try {
-      // Generate magic link using our edge function for better Apple deliverability
-      logDebug("Sending magic link for checkout", "auth");
-      const { data, error } = await supabase.functions.invoke('send-signup-confirmation', {
+      // Split full name into first and last name
+      const { firstName, lastName } = splitFullName(values.fullName);
+      
+      // Auto-generate username from email
+      const username = generateUsernameFromEmail(values.email);
+
+      logDebug("Checkout signup form submission", "auth", { 
+        email: values.email,
+        firstName,
+        lastName,
+        username
+      });
+
+      // Validate signup data
+      const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-signup', {
         body: {
           email: values.email,
-          firstName: values.firstName,
-          lastName: values.lastName,
-          userId: crypto.randomUUID(), // Generate temporary ID
-          redirectUrl: `${window.location.origin}/checkout`
+          username: username,
+          firstName: firstName,
+          lastName: lastName || firstName,
+          ipAddress: window.location.hostname
+        }
+      });
+
+      if (validationError) {
+        logError("Validation error", "auth", { error: validationError.message });
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: validationError.message || "Failed to validate signup data.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!validationData?.valid) {
+        const errors = validationData?.errors || ["Validation failed"];
+        logError("Validation failed", "auth", { errors });
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: errors[0],
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Create account with password
+      const { data, error } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName || firstName,
+            username: username,
+          },
+          emailRedirectTo: `${window.location.origin}/checkout`
         }
       });
 
       if (error) {
-        logError("Magic link generation error", "auth", { error: error.message });
+        logError("Signup error", "auth", { error: error.message });
         toast({
           variant: "destructive",
           title: "Error",
-          description: error.message || "Failed to send magic link. Please try again.",
+          description: error.message || "Failed to create account. Please try again.",
         });
         setIsLoading(false);
         return;
       }
 
-      if (!data?.success) {
-        logError("Magic link sending failed", "auth", { error: data?.error });
+      if (!data?.user) {
+        logError("No user returned from signup", "auth");
         toast({
           variant: "destructive",
           title: "Error",
-          description: data?.error || "Failed to send magic link. Please try again.",
+          description: "Failed to create account. Please try again.",
         });
         setIsLoading(false);
         return;
       }
 
-      logInfo("Magic link sent successfully", "auth");
+      logInfo("Account created successfully", "auth");
       toast({
-        title: "Magic link sent! ✨",
-        description: "Check your email and click the link to continue with your purchase.",
+        title: "Account Created! 🎉",
+        description: "You can now proceed with your purchase.",
       });
+
+      onSuccess();
     } catch (error: any) {
-      logError("Magic link signup error", "auth", { error: error.message });
+      logError("Checkout signup error", "auth", { error: error.message });
       toast({
         variant: "destructive",
         title: "Error",
@@ -94,59 +144,85 @@ export function SignupForm({ onSuccess, onSwitchToLogin, disabled }: SignupFormP
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSignup)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>First Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Last Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
         <FormField
           control={form.control}
-          name="email"
+          name="fullName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel className={cn(isRTL && "rtl-text")}>
+                {t('auth.fullName')}
+              </FormLabel>
               <FormControl>
-                <Input type="email" placeholder="name@example.com" {...field} />
+                <Input 
+                  placeholder={t('auth.fullNamePlaceholder')} 
+                  className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                  dir={isRTL ? "rtl" : "ltr"}
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isLoading || disabled}>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className={cn(isRTL && "rtl-text")}>
+                {t('auth.email')}
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  type="email" 
+                  placeholder={t('auth.emailPlaceholder')} 
+                  className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                  dir={isRTL ? "rtl" : "ltr"}
+                  {...field} 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className={cn(isRTL && "rtl-text")}>
+                {t('auth.password')}
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  type="password" 
+                  placeholder={t('auth.passwordPlaceholder')} 
+                  className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                  dir={isRTL ? "rtl" : "ltr"}
+                  {...field}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setPassword(e.target.value);
+                  }}
+                />
+              </FormControl>
+              <PasswordStrengthIndicator password={password} />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full min-h-[44px]" disabled={isLoading || disabled}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sending magic link...
+              {t('auth.creatingAccount')}
             </>
           ) : (
-            "Send Magic Link & Continue"
+            t('auth.createAccountAndContinue')
           )}
         </Button>
-        <p className="text-xs text-muted-foreground text-center mt-2">
-          We'll send you a secure link to continue with your purchase.
+        <p className={cn("text-xs text-muted-foreground text-center mt-2", isRTL && "rtl-text")}>
+          {t('auth.checkoutSignupNote')}
         </p>
       </form>
     </Form>
