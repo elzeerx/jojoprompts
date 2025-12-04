@@ -83,9 +83,8 @@ serve(async (req) => {
       }
     )
 
-    // Verify user authentication - extract token from Authorization header
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    // Verify user authentication - getUser() uses the Authorization header already set
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     logger.debug("User authentication", { 
       authenticated: !!user, 
       userId: user?.id?.substring(0, 8)
