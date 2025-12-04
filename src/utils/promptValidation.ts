@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 export const MODEL_PROMPT_TYPES = {
   CHATGPT: {
     TEXT: 'chatgpt-text',
-    IMAGE: 'chatgpt-image'
+    IMAGE: 'chatgpt-image',
+    GPT_BUILDER: 'chatgpt-gpt-builder'
   },
   CLAUDE: {
     TEXT: 'claude-text',
@@ -13,6 +14,34 @@ export const MODEL_PROMPT_TYPES = {
   MIDJOURNEY: {
     FULL_PROMPT: 'midjourney-full',
     STYLE_REFERENCE: 'midjourney-sref'
+  },
+  GEMINI: {
+    IMAGE: 'gemini-image',
+    TEXT: 'gemini-text'
+  },
+  FLUX: {
+    IMAGE: 'flux-image'
+  },
+  IDEOGRAM: {
+    IMAGE: 'ideogram-image'
+  },
+  SORA: {
+    VIDEO: 'sora-video'
+  },
+  RUNWAY: {
+    VIDEO: 'runway-video'
+  },
+  ELEVENLABS: {
+    VOICE: 'elevenlabs-voice'
+  },
+  SUNO: {
+    MUSIC: 'suno-music'
+  },
+  CURSOR: {
+    CODE: 'cursor-code'
+  },
+  PERPLEXITY: {
+    RESEARCH: 'perplexity-research'
   },
   VIDEO: {
     FULL_PROMPT: 'video-full',
