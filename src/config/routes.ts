@@ -19,6 +19,7 @@ const PromptsPage = lazy(() => import("@/pages/PromptsPage"));
 const ChatGPTPromptsPage = lazy(() => import("@/pages/prompts/ChatGPTPromptsPage"));
 const MidjourneyPromptsPage = lazy(() => import("@/pages/prompts/MidjourneyPromptsPage"));
 const WorkflowPromptsPage = lazy(() => import("@/pages/prompts/WorkflowPromptsPage"));
+const GPTsBuilderPage = lazy(() => import("@/pages/prompts/GPTsBuilderPage"));
 const FavoritesPage = lazy(() => import("@/pages/FavoritesPage"));
 const SearchPage = lazy(() => import("@/pages/SearchPage"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
@@ -153,6 +154,11 @@ export const routes: RouteConfig[] = [
   {
     path: "prompts/workflow",
     component: WorkflowPromptsPage,
+    protection: "public"
+  },
+  {
+    path: "prompts/gpts-builder",
+    component: GPTsBuilderPage,
     protection: "public"
   },
   {

@@ -4,6 +4,7 @@ import { Workflow } from "lucide-react";
 import { MediaThumbnail } from "./MediaThumbnail";
 import { WorkflowDownloadSection } from "@/components/ui/workflow-download-section";
 import { ModelFieldsDisplay } from "./ModelFieldsDisplay";
+import { GPTConfigDisplay, GPTConfiguration } from "@/components/gpts-builder";
 
 interface PromptDetailsContentProps {
   imageUrl: string;
@@ -118,8 +119,16 @@ export function PromptDetailsContent({
         </div>
       )}
 
-      {/* Model-Specific Fields Section */}
-      {modelType && modelFields && Object.keys(modelFields).length > 0 && (
+      {/* GPT Configuration Display for GPTs Builder prompts */}
+      {modelType === 'chatgpt-gpt-builder' && modelFields && (
+        <GPTConfigDisplay
+          config={modelFields as GPTConfiguration}
+          className={isLocked ? 'blur-md select-none pointer-events-none' : ''}
+        />
+      )}
+
+      {/* Model-Specific Fields Section for other model types */}
+      {modelType && modelType !== 'chatgpt-gpt-builder' && modelFields && Object.keys(modelFields).length > 0 && (
         <ModelFieldsDisplay
           modelType={modelType}
           modelFields={modelFields}
