@@ -23,7 +23,7 @@
  * />
  * ```
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, X } from "lucide-react";
+import { Loader2, Upload, FileText, X, ChevronDown, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useCategories";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +44,9 @@ import { Badge } from "@/components/ui/badge";
 import { type PromptRow } from "@/types";
 import { PromptDialogHeader } from "./components/PromptDialogHeader";
 import { createLogger } from '@/utils/logging';
+import { ALL_PROMPT_TYPES, getPromptTypeById, validatePromptData, type ModelPromptType } from "@/utils/promptTypes";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const logger = createLogger('SIMPLIFIED_PROMPT_DIALOG');
 
@@ -77,6 +80,8 @@ interface FormData {
     english?: TranslationData;
   };
   attachedFiles: File[];
+  modelType: string;
+  modelFields: Record<string, any>;
 }
 
 export function SimplifiedPromptDialog({
@@ -96,8 +101,29 @@ export function SimplifiedPromptDialog({
     tags: [],
     thumbnail: null,
     translations: {},
-    attachedFiles: []
+    attachedFiles: [],
+    modelType: "",
+    modelFields: {}
   });
+  const [showModelFields, setShowModelFields] = useState(false);
+  const [modelValidationErrors, setModelValidationErrors] = useState<Record<string, string>>({});
+
+  // Get the selected model prompt type
+  const selectedModelType = useMemo(() => {
+    return formData.modelType ? getPromptTypeById(formData.modelType) : undefined;
+  }, [formData.modelType]);
+
+  // Group prompt types by category
+  const promptTypesByCategory = useMemo(() => {
+    const grouped: Record<string, ModelPromptType[]> = {};
+    ALL_PROMPT_TYPES.forEach(type => {
+      if (!grouped[type.category]) {
+        grouped[type.category] = [];
+      }
+      grouped[type.category].push(type);
+    });
+    return grouped;
+  }, []);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
@@ -118,8 +144,13 @@ export function SimplifiedPromptDialog({
           },
           ...editingPrompt.metadata?.translations
         },
-        attachedFiles: []
+        attachedFiles: [],
+        modelType: editingPrompt.prompt_type || "",
+        modelFields: (editingPrompt.metadata as any)?.model_fields || {}
       });
+      if (editingPrompt.prompt_type) {
+        setShowModelFields(true);
+      }
     } else {
       // Reset form for new prompt
       setFormData({
@@ -129,10 +160,68 @@ export function SimplifiedPromptDialog({
         tags: [],
         thumbnail: null,
         translations: {},
-        attachedFiles: []
+        attachedFiles: [],
+        modelType: "",
+        modelFields: {}
+      });
+      setShowModelFields(false);
+    }
+    setModelValidationErrors({});
+  }, [editingPrompt, open]);
+
+  // Auto-set category when model type changes
+  useEffect(() => {
+    if (selectedModelType && !formData.category) {
+      // Find matching category
+      const matchingCategory = categories.find(c => 
+        c.name.toLowerCase() === selectedModelType.category.toLowerCase()
+      );
+      if (matchingCategory) {
+        updateFormField("category", matchingCategory.name);
+      }
+    }
+  }, [selectedModelType, categories]);
+
+  // Handle model type change
+  const handleModelTypeChange = (typeId: string) => {
+    const newType = getPromptTypeById(typeId);
+    if (newType) {
+      // Initialize default values for fields
+      const defaultFields: Record<string, any> = {};
+      newType.fields.forEach(field => {
+        if (field.defaultValue !== undefined) {
+          defaultFields[field.id] = field.defaultValue;
+        }
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        modelType: typeId,
+        modelFields: defaultFields
+      }));
+      setShowModelFields(true);
+      setModelValidationErrors({});
+    }
+  };
+
+  // Handle model field change
+  const handleModelFieldChange = (fieldId: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      modelFields: {
+        ...prev.modelFields,
+        [fieldId]: value
+      }
+    }));
+    
+    // Clear validation error for this field
+    if (modelValidationErrors[fieldId]) {
+      setModelValidationErrors(prev => {
+        const { [fieldId]: _, ...rest } = prev;
+        return rest;
       });
     }
-  }, [editingPrompt, open]);
+  };
 
   const updateFormField = <K extends keyof FormData>(
     field: K,
@@ -159,7 +248,25 @@ export function SimplifiedPromptDialog({
         });
         return false;
       }
-      return true;
+    // Validate model-specific fields if a model type is selected
+    if (selectedModelType) {
+      const modelErrors = validatePromptData(
+        { ...formData.modelFields, promptText: formData.promptText },
+        selectedModelType
+      );
+      if (Object.keys(modelErrors).length > 0) {
+        setModelValidationErrors(modelErrors);
+        const firstError = Object.values(modelErrors)[0];
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: firstError
+        });
+        return false;
+      }
+    }
+
+    return true;
     });
 
     // Max 10 files total
@@ -305,12 +412,14 @@ export function SimplifiedPromptDialog({
       const category = categories.find(c => c.name === formData.category);
       const categoryId = category?.id;
 
-      // Prepare metadata
+      // Prepare metadata with model-specific fields
       const metadata: any = {
         category: formData.category,
         tags: formData.tags,
         translations: formData.translations,
-        attached_files: []
+        attached_files: [],
+        model_type: formData.modelType || null,
+        model_fields: formData.modelType ? formData.modelFields : null
       };
 
       // Create or update prompt with correct schema
@@ -319,7 +428,7 @@ export function SimplifiedPromptDialog({
         title_ar: formData.translations.arabic?.title || null,
         prompt_text: formData.promptText,
         prompt_text_ar: formData.translations.arabic?.prompt_text || null,
-        prompt_type: 'text',
+        prompt_type: formData.modelType || 'text',
         image_path: formData.thumbnail,
         metadata,
         user_id: user.id
@@ -396,8 +505,12 @@ export function SimplifiedPromptDialog({
         tags: [],
         thumbnail: null,
         translations: {},
-        attachedFiles: []
+        attachedFiles: [],
+        modelType: "",
+        modelFields: {}
       });
+      setShowModelFields(false);
+      setModelValidationErrors({});
     } catch (error: any) {
       logger.error('Error saving prompt', { error: error.message, isEditing: !!editingPrompt });
       toast({
@@ -440,6 +553,144 @@ export function SimplifiedPromptDialog({
               <p className="text-xs text-muted-foreground">
                 {formData.title.length}/200 characters
               </p>
+            </div>
+
+            <Separator />
+
+            {/* Model Type Selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-warm-gold" />
+                AI Model Type
+                <Badge variant="outline" className="text-xs">Optional</Badge>
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Select the AI model this prompt is optimized for
+              </p>
+              
+              <Select
+                value={formData.modelType}
+                onValueChange={handleModelTypeChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select model type (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(promptTypesByCategory).map(([category, types]) => (
+                    <div key={category}>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
+                        {category}
+                      </div>
+                      {types.map(type => (
+                        <SelectItem key={type.id} value={type.id}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-2 h-2 rounded-full" 
+                              style={{ backgroundColor: type.color || '#888' }}
+                            />
+                            {type.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Model-specific fields */}
+              {selectedModelType && showModelFields && (
+                <Collapsible defaultOpen className="space-y-3 mt-4">
+                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium w-full">
+                    <ChevronDown className="h-4 w-4" />
+                    {selectedModelType.name} Settings
+                    <Badge 
+                      variant="secondary" 
+                      className="ml-auto text-xs"
+                      style={{ 
+                        backgroundColor: `${selectedModelType.color}20`,
+                        color: selectedModelType.color 
+                      }}
+                    >
+                      {selectedModelType.fields.length - 1} fields
+                    </Badge>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-2">
+                    {selectedModelType.fields
+                      .filter(field => field.id !== 'promptText') // Skip promptText as it's already shown
+                      .map(field => (
+                        <div key={field.id} className="space-y-2">
+                          <Label htmlFor={field.id} className="text-sm">
+                            {field.name}
+                            {field.required && <span className="text-destructive ml-1">*</span>}
+                          </Label>
+                          
+                          {field.type === 'select' ? (
+                            <Select
+                              value={formData.modelFields[field.id] || ''}
+                              onValueChange={(value) => handleModelFieldChange(field.id, value)}
+                            >
+                              <SelectTrigger className={modelValidationErrors[field.id] ? 'border-destructive' : ''}>
+                                <SelectValue placeholder={field.placeholder || `Select ${field.name.toLowerCase()}`} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {field.options?.map(option => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : field.type === 'textarea' ? (
+                            <Textarea
+                              id={field.id}
+                              value={formData.modelFields[field.id] || ''}
+                              onChange={(e) => handleModelFieldChange(field.id, e.target.value)}
+                              placeholder={field.placeholder}
+                              rows={3}
+                              className={modelValidationErrors[field.id] ? 'border-destructive' : ''}
+                            />
+                          ) : field.type === 'number' ? (
+                            <Input
+                              id={field.id}
+                              type="number"
+                              value={formData.modelFields[field.id] || ''}
+                              onChange={(e) => handleModelFieldChange(field.id, parseFloat(e.target.value) || 0)}
+                              placeholder={field.placeholder}
+                              className={modelValidationErrors[field.id] ? 'border-destructive' : ''}
+                            />
+                          ) : (
+                            <Input
+                              id={field.id}
+                              value={formData.modelFields[field.id] || ''}
+                              onChange={(e) => handleModelFieldChange(field.id, e.target.value)}
+                              placeholder={field.placeholder}
+                              className={modelValidationErrors[field.id] ? 'border-destructive' : ''}
+                            />
+                          )}
+                          
+                          {field.help && (
+                            <p className="text-xs text-muted-foreground">{field.help}</p>
+                          )}
+                          {modelValidationErrors[field.id] && (
+                            <p className="text-xs text-destructive">{modelValidationErrors[field.id]}</p>
+                          )}
+                        </div>
+                      ))}
+                    
+                    {/* Tips section */}
+                    {selectedModelType.tips.length > 0 && (
+                      <div className="p-3 bg-muted rounded-lg mt-4">
+                        <p className="text-xs font-medium mb-2">Tips for {selectedModelType.name}:</p>
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          {selectedModelType.tips.map((tip, i) => (
+                            <li key={i}>• {tip}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </div>
 
             <Separator />
