@@ -40,7 +40,7 @@ export function FeatureHighlights() {
   ];
 
   return (
-    <section className="mobile-section-padding overflow-hidden bg-gradient-to-br from-white via-warm-gold/5 to-muted-teal/5">
+    <section className="mobile-section-padding overflow-hidden">
       <div className="container">
         <h2 className={cn("section-title text-center mobile-text-center animate-fade-in", isRTL && "rtl-text")}>
           {t('featureHighlights.title')}
