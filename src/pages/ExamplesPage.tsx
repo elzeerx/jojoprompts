@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Sparkles, ArrowRight, Lock, Eye, Zap, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Prompt } from '@/types';
@@ -20,93 +18,84 @@ interface ExamplePrompt extends Prompt {
   isLocked: boolean;
 }
 
-function ExampleCard({ prompt, index }: { prompt: ExamplePrompt; index: number }) {
+function ExampleCard({ prompt }: { prompt: ExamplePrompt }) {
   const imageUrl = useImageLoading(prompt);
-  
-  // Get first 3 words from prompt text
   const firstThreeWords = prompt.prompt_text.split(' ').slice(0, 3).join(' ') + '...';
 
   return (
-    <Card 
-      className="group bg-white hover:shadow-xl border border-gray-200 hover:border-warm-gold/30 transition-all duration-300 transform hover:-translate-y-2 animate-fade-in relative overflow-hidden"
-      style={{ animationDelay: `${index * 100}ms` }}
-    >
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold text-dark-base mb-2 group-hover:text-warm-gold transition-colors">
-              {prompt.title}
-            </CardTitle>
-            <div className="flex flex-wrap gap-2 mb-3">
-              <Badge variant="secondary" className="bg-warm-gold/10 text-warm-gold">
-                {prompt.prompt_type}
-              </Badge>
-              {prompt.metadata.category && (
-                <Badge variant="outline" className="border-muted-teal/30 text-muted-teal">
-                  {prompt.metadata.category}
-                </Badge>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1 bg-warm-gold/10 px-2 py-1 rounded-full">
-            <Crown className="h-3 w-3 text-warm-gold" />
-            <span className="text-xs text-warm-gold font-medium">Premium</span>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        <div className="relative mb-4">
-          {/* Image Display */}
-          <div className="relative overflow-hidden rounded-xl bg-white/50">
-            <div className="aspect-video">
-              <ImageWrapper
-                src={imageUrl}
-                alt={prompt.title}
-                aspect={1}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
-            </div>
-            {/* Media files indicator */}
-            {prompt.metadata.media_files && prompt.metadata.media_files.length > 1 && (
-              <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
-                +{prompt.metadata.media_files.length - 1} files
-              </div>
+    <div className="bg-white p-6 group hover:bg-gray-50/50 transition-colors duration-300 relative">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <h3 className="text-lg font-medium text-dark-base mb-2 group-hover:text-warm-gold transition-colors">
+            {prompt.title}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs text-warm-gold bg-warm-gold/5 px-2 py-1 rounded">
+              {prompt.prompt_type}
+            </span>
+            {prompt.metadata.category && (
+              <span className="text-xs text-muted-teal bg-muted-teal/5 px-2 py-1 rounded">
+                {prompt.metadata.category}
+              </span>
             )}
           </div>
-          
-          {/* Locked overlay */}
-          {prompt.isLocked && (
-            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-xl">
-              <div className="text-center">
-                <Lock className="h-6 w-6 text-warm-gold mx-auto mb-2" />
-                <p className="text-warm-gold font-medium text-sm">Premium Content</p>
-              </div>
+        </div>
+        <div className="flex items-center gap-1 text-warm-gold">
+          <Crown className="h-4 w-4" />
+          <span className="text-xs font-medium">Premium</span>
+        </div>
+      </div>
+      
+      {/* Image */}
+      <div className="relative mb-4">
+        <div className="relative overflow-hidden rounded-xl">
+          <div className="aspect-video">
+            <ImageWrapper
+              src={imageUrl}
+              alt={prompt.title}
+              aspect={1}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          {prompt.metadata.media_files && prompt.metadata.media_files.length > 1 && (
+            <div className="absolute top-2 right-2 bg-dark-base/70 text-white text-xs px-2 py-1 rounded">
+              +{prompt.metadata.media_files.length - 1} files
             </div>
           )}
         </div>
-
-        {/* Brief text preview - first 3 words */}
-        <div className="mb-4">
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            {firstThreeWords}
-          </p>
-        </div>
         
-        {/* CTA Button */}
-        <Button 
-          asChild
-          variant="outline" 
-          className="w-full border-warm-gold/30 hover:border-warm-gold/50 text-warm-gold hover:bg-warm-gold/10 group-hover:shadow-md transition-all duration-300"
-        >
-          <Link to="/pricing" className="flex items-center justify-center gap-2">
-            <Zap className="h-4 w-4" />
-            Unlock This Prompt
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
+        {prompt.isLocked && (
+          <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center rounded-xl">
+            <div className="text-center">
+              <Lock className="h-5 w-5 text-warm-gold mx-auto mb-2" />
+              <p className="text-warm-gold font-medium text-sm">Premium Content</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Preview text */}
+      <p className="text-sm text-muted-foreground font-light mb-4">
+        {firstThreeWords}
+      </p>
+      
+      {/* CTA Button */}
+      <Button 
+        asChild
+        variant="outline" 
+        className="w-full border-gray-200 hover:bg-gray-50 text-dark-base hover:text-warm-gold transition-colors"
+      >
+        <Link to="/pricing" className="flex items-center justify-center gap-2">
+          <Zap className="h-4 w-4" />
+          Unlock This Prompt
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Button>
+
+      {/* Accent line */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
+    </div>
   );
 }
 
@@ -119,7 +108,7 @@ export default function ExamplesPage() {
 
   useEffect(() => {
     fetchExamplePrompts();
-  }, [user]); // Re-fetch when authentication state changes
+  }, [user]);
 
   const fetchExamplePrompts = async () => {
     try {
@@ -128,7 +117,6 @@ export default function ExamplesPage() {
       let data, error;
       
       if (user) {
-        // Authenticated users can access full prompt data
         const response = await supabase
           .from('prompts')
           .select(`
@@ -141,7 +129,6 @@ export default function ExamplesPage() {
         data = response.data;
         error = response.error;
       } else {
-        // Unauthenticated users get preview data through secure function
         const response = await supabase.rpc('get_public_prompt_previews', { limit_count: 12 });
         data = response.data;
         error = response.error;
@@ -153,7 +140,6 @@ export default function ExamplesPage() {
         let metadata, category, profile, prompt_text, previewText;
         
         if (user) {
-          // Full data for authenticated users
           metadata = typeof item.metadata === 'object' && item.metadata !== null ? item.metadata : {};
           const metadataObj = metadata as Record<string, any>;
           category = metadataObj.category || "";
@@ -161,7 +147,6 @@ export default function ExamplesPage() {
           prompt_text = item.prompt_text;
           previewText = prompt_text.length > 100 ? prompt_text.substring(0, 100) + "..." : prompt_text;
         } else {
-          // Limited preview data for unauthenticated users
           metadata = { category: item.category || "" };
           category = item.category || "";
           profile = null;
@@ -195,7 +180,7 @@ export default function ExamplesPage() {
             button_action: undefined,
           },
           previewText,
-          isLocked: !user // Prompts are locked for unauthenticated users
+          isLocked: !user
         };
       });
 
@@ -217,41 +202,37 @@ export default function ExamplesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-soft-bg via-warm-gold/5 to-muted-teal/5 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-warm-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading examples...</p>
+          <div className="w-10 h-10 border-2 border-warm-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground font-light">Loading examples...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-soft-bg via-warm-gold/5 to-muted-teal/5">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="pt-20 lg:pt-24 pb-16 sm:pb-20">
+      <section className="pt-20 lg:pt-24 pb-12 sm:pb-16">
         <Container>
           <div className="text-center mb-12">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-dark-base">
-              Real Prompt
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-warm-gold to-muted-teal block sm:inline sm:ml-3">
-                Examples
-              </span>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight text-dark-base mb-4">
+              Real Prompt <span className="text-warm-gold">Examples</span>
             </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-              See the quality difference between generic prompts and our professionally crafted ones. 
-              These examples show why thousands of creators trust JojoPrompts.
+            <p className="text-lg text-muted-foreground font-light max-w-2xl mx-auto mb-8">
+              See the quality difference between generic prompts and our professionally crafted ones.
             </p>
             
             {/* Trust indicators */}
-            <div className="flex flex-wrap gap-4 justify-center mb-8 text-sm">
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-warm-gold/20">
+            <div className="grid grid-cols-2 gap-px bg-gray-200 rounded-xl overflow-hidden max-w-md mx-auto">
+              <div className="bg-white p-4 flex items-center justify-center gap-2">
                 <Eye className="h-4 w-4 text-warm-gold" />
-                <span>Real examples from our collection</span>
+                <span className="text-sm text-muted-foreground">Real examples</span>
               </div>
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-warm-gold/20">
+              <div className="bg-white p-4 flex items-center justify-center gap-2">
                 <Sparkles className="h-4 w-4 text-warm-gold" />
-                <span>Premium prompts collection</span>
+                <span className="text-sm text-muted-foreground">Premium collection</span>
               </div>
             </div>
           </div>
@@ -261,20 +242,19 @@ export default function ExamplesPage() {
       {/* Categories Filter */}
       <section className="pb-8">
         <Container>
-          <div className="flex flex-wrap gap-2 sm:gap-4 justify-center">
+          <div className="grid grid-cols-5 gap-px bg-gray-200 rounded-xl overflow-hidden max-w-2xl mx-auto">
             {categories.map((category) => (
-              <Button
+              <button
                 key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
                 onClick={() => setSelectedCategory(category)}
-                className={`transition-all duration-300 ${
+                className={`py-3 px-4 text-sm font-medium transition-colors duration-300 ${
                   selectedCategory === category 
-                    ? 'bg-warm-gold text-white shadow-lg scale-105' 
-                    : 'border-warm-gold/30 hover:border-warm-gold/50'
+                    ? 'bg-warm-gold/5 text-warm-gold' 
+                    : 'bg-white text-muted-foreground hover:bg-gray-50/50'
                 }`}
               >
-                {category === 'all' ? 'All Categories' : category}
-              </Button>
+                {category === 'all' ? 'All' : category}
+              </button>
             ))}
           </div>
         </Container>
@@ -283,73 +263,68 @@ export default function ExamplesPage() {
       {/* Examples Grid */}
       <section className="pb-16">
         <Container>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {filteredPrompts.map((prompt, index) => (
-              <ExampleCard key={prompt.id} prompt={prompt} index={index} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-200 rounded-2xl overflow-hidden">
+            {filteredPrompts.map((prompt) => (
+              <ExampleCard key={prompt.id} prompt={prompt} />
             ))}
           </div>
         </Container>
       </section>
 
       {/* Bottom CTA Section */}
-      <section className="py-16 bg-gradient-to-br from-dark-base via-dark-base/95 to-warm-gold/20 text-white">
+      <section className="pb-16">
         <Container>
-          <div className="text-center max-w-4xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">
-              Ready to Unlock
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-warm-gold to-muted-teal block sm:inline sm:ml-3">
-                All Premium Prompts?
-              </span>
-            </h2>
-            <p className="text-lg sm:text-xl mb-8 opacity-90">
-              Get instant access to our professional prompts collection, lifetime updates, and proven results.
-            </p>
-            
-            {/* Benefits */}
-            <div className="flex flex-wrap gap-4 justify-center mb-8 text-sm">
-              <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/20">
-                <span className="text-green-400">✓</span>
-                <span>Premium Prompts Collection</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/20">
-                <span className="text-green-400">✓</span>
-                <span>One-Time Payment</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/20">
-                <span className="text-green-400">✓</span>
-                <span>30-Day Guarantee</span>
-              </div>
-            </div>
-            
-            <div className="space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center">
-              <Button 
-                asChild 
-                size="lg"
-                className="bg-gradient-to-r from-warm-gold to-warm-gold/90 hover:from-warm-gold/90 hover:to-warm-gold/80 text-white px-8 py-6 font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-              >
-                <Link to="/pricing" className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  Get Full Access Now
-                  <ArrowRight className="h-5 w-5" />
-                </Link>
-              </Button>
+          <div className="grid gap-px bg-gray-200 rounded-2xl overflow-hidden">
+            <div className="bg-white p-8 sm:p-12 text-center group hover:bg-gray-50/50 transition-colors duration-300 relative">
+              <h2 className="text-2xl sm:text-3xl font-light tracking-tight text-dark-base mb-4">
+                Ready to Unlock <span className="text-warm-gold">All Premium Prompts?</span>
+              </h2>
+              <p className="text-lg text-muted-foreground font-light mb-8 max-w-2xl mx-auto">
+                Get instant access to our professional prompts collection, lifetime updates, and proven results.
+              </p>
               
-              <Button 
-                asChild 
-                variant="outline" 
-                size="lg"
-                className="border-warm-gold/30 bg-white/10 hover:bg-white/20 text-white px-8 py-6 font-semibold text-lg"
-              >
-                <Link to="/pricing" className="flex items-center gap-2">
-                  View Pricing
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+              {/* Benefits */}
+              <div className="grid grid-cols-3 gap-px bg-gray-200 rounded-xl overflow-hidden max-w-lg mx-auto mb-8">
+                <div className="bg-white p-3 text-center">
+                  <span className="text-warm-gold text-sm">✓ Premium Collection</span>
+                </div>
+                <div className="bg-white p-3 text-center">
+                  <span className="text-warm-gold text-sm">✓ One-Time Payment</span>
+                </div>
+                <div className="bg-white p-3 text-center">
+                  <span className="text-warm-gold text-sm">✓ 30-Day Guarantee</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  asChild 
+                  size="lg"
+                  className="bg-warm-gold hover:bg-warm-gold/90 text-white"
+                >
+                  <Link to="/pricing" className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    Get Full Access Now
+                    <ArrowRight className="h-5 w-5" />
+                  </Link>
+                </Button>
+                
+                <Button 
+                  asChild 
+                  variant="outline" 
+                  size="lg"
+                  className="border-gray-200 hover:bg-gray-50 text-dark-base"
+                >
+                  <Link to="/pricing" className="flex items-center gap-2">
+                    View Pricing
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+
+              {/* Accent line */}
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
             </div>
-            
-            <p className="text-warm-gold/90 text-sm font-medium mt-6 animate-pulse-gentle">
-              🚀 Start getting 10x better AI results today
-            </p>
           </div>
         </Container>
       </section>
