@@ -37,9 +37,13 @@ export function PaymentSuccessCard() {
               <p className="font-medium text-green-800 text-sm sm:text-base">Your account has been successfully upgraded!</p>
               <p className="text-xs sm:text-sm mt-2 text-green-700">You now have access to all the features included in your plan.</p>
             </div>
-            <div className="border-t pt-4 sm:pt-6">
+            <div className="border-t pt-4 sm:pt-6 space-y-2">
               <p className="text-sm sm:text-base text-muted-foreground">
                 We've sent you a confirmation email with your receipt and access details.
+              </p>
+              <p className="text-xs sm:text-sm text-green-600 flex items-center justify-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5" />
+                Your email has been automatically verified
               </p>
             </div>
           </CardContent>
