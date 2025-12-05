@@ -242,7 +242,31 @@ export default function ExamplesPage() {
       {/* Categories Filter */}
       <section className="pb-8">
         <Container>
-          <div className="grid grid-cols-5 gap-px bg-gray-200 rounded-xl overflow-hidden max-w-2xl mx-auto">
+          {/* Mobile: Horizontal scroll with fade gradient hint */}
+          <div className="md:hidden relative">
+            <div className="overflow-x-auto pb-2 scrollbar-hide">
+              <div className="flex gap-2 px-1 min-w-max">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`py-2.5 px-4 text-sm font-medium rounded-lg whitespace-nowrap transition-colors duration-300 min-h-[44px] ${
+                      selectedCategory === category 
+                        ? 'bg-warm-gold/10 text-warm-gold border border-warm-gold/20' 
+                        : 'bg-white text-muted-foreground border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {category === 'all' ? 'All' : category}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Right fade gradient indicator */}
+            <div className="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none" />
+          </div>
+          
+          {/* Desktop: Gap-px grid pattern */}
+          <div className="hidden md:grid grid-cols-5 gap-px bg-gray-200 rounded-xl overflow-hidden max-w-2xl mx-auto">
             {categories.map((category) => (
               <button
                 key={category}
