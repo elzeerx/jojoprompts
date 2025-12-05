@@ -356,6 +356,23 @@
     "badge4Name": "Trusted Quality",
     "badge4Description": "Expert verified"
   },
+  "trustBadges": {
+    "paypalProtection": "PayPal Buyer Protection",
+    "shopWithConfidence": "Shop with confidence",
+    "sslEncryption": "256-bit SSL",
+    "secureEncryption": "Secure encryption",
+    "securePayment": "Secure Payment",
+    "protectedCheckout": "Protected checkout",
+    "satisfactionGuaranteed": "Satisfaction Guaranteed",
+    "qualityAssured": "Quality assured",
+    "secure": "Secure",
+    "protected": "Protected"
+  },
+  "moneyBack": {
+    "guarantee": "{{days}}-Day Money Back Guarantee",
+    "noQuestionsAsked": "No questions asked",
+    "fullRefund": "Full refund if not satisfied"
+  },
   "pricingPage": {
     "title": "Choose Your Access Plan",
     "subtitle": "Get access to our premium collection of AI prompts with a simple one-time payment. No subscriptions, no recurring fees.",

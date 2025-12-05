@@ -356,6 +356,23 @@
     "badge4Name": "جودة موثوقة",
     "badge4Description": "معتمد من الخبراء"
   },
+  "trustBadges": {
+    "paypalProtection": "حماية مشتري PayPal",
+    "shopWithConfidence": "تسوق بثقة",
+    "sslEncryption": "تشفير SSL 256 بت",
+    "secureEncryption": "تشفير آمن",
+    "securePayment": "دفع آمن",
+    "protectedCheckout": "دفع محمي",
+    "satisfactionGuaranteed": "ضمان الرضا",
+    "qualityAssured": "جودة مضمونة",
+    "secure": "آمن",
+    "protected": "محمي"
+  },
+  "moneyBack": {
+    "guarantee": "ضمان استرداد المال خلال {{days}} يوماً",
+    "noQuestionsAsked": "بدون أسئلة",
+    "fullRefund": "استرداد كامل إذا لم تكن راضياً"
+  },
   "pricingPage": {
     "title": "اختر خطة الوصول الخاصة بك",
     "subtitle": "احصل على وصول لمجموعتنا المميزة من برومبتات الذكاء الاصطناعي بدفعة واحدة بسيطة. بدون اشتراكات، بدون رسوم متكررة.",

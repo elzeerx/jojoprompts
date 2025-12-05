@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { createLogger } from '@/utils/logging';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
+import { EnhancedTrustBadges } from "@/components/checkout/EnhancedTrustBadges";
+import { MoneyBackGuarantee } from "@/components/checkout/MoneyBackGuarantee";
 
 const logger = createLogger('PAYMENT_METHODS_CARD');
 
@@ -120,6 +122,12 @@ export function PaymentMethodsCard({
             appliedDiscount={appliedDiscount}
           />
         </DiscountErrorBoundary>
+        
+        {/* Trust Elements */}
+        <div className="mt-4 space-y-3">
+          <MoneyBackGuarantee variant="compact" />
+          <EnhancedTrustBadges variant="compact" />
+        </div>
         
         {/* Cancel Transaction Button */}
         <div className="mt-6 pt-4 border-t">

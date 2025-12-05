@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { logInfo, logError, logDebug } from "@/utils/secureLogging";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppliedDiscount } from "@/pages/CheckoutPage/types";
+import { EnhancedTrustBadges } from "@/components/checkout/EnhancedTrustBadges";
+import { MoneyBackGuarantee } from "@/components/checkout/MoneyBackGuarantee";
 
 interface SelectedPlan {
   id: string;
@@ -334,17 +336,8 @@ export function ExpressCheckoutModal({ open, onOpenChange, plan }: ExpressChecko
           )}
         </div>
 
-        {/* Trust Badges - Compact */}
-        <div className="flex items-center justify-center gap-4 py-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Shield className="h-3 w-3" />
-            <span>{t('checkout.securePayment')}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Lock className="h-3 w-3" />
-            <span>SSL Encrypted</span>
-          </div>
-        </div>
+        {/* Trust Badges */}
+        <EnhancedTrustBadges variant="compact" />
 
         {/* Auth Steps */}
         {step !== 'payment' && (
@@ -516,6 +509,9 @@ export function ExpressCheckoutModal({ open, onOpenChange, plan }: ExpressChecko
               onError={handlePaymentError}
               appliedDiscount={appliedDiscount}
             />
+
+            {/* Money Back Guarantee */}
+            <MoneyBackGuarantee variant="compact" />
 
             <p className="text-xs text-muted-foreground text-center">
               {t('checkout.termsAgreement')}

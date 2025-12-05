@@ -16,6 +16,7 @@ import { PaymentMethodsCard } from "./CheckoutPage/components/PaymentMethodsCard
 import { PaymentErrorBoundary } from "@/components/subscription/PaymentErrorBoundary";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
+import { EnhancedTrustBadges } from "@/components/checkout/EnhancedTrustBadges";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -187,7 +188,12 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        <div className="text-center mt-8">
+        {/* Trust Badges */}
+        <div className="mt-8 mb-4">
+          <EnhancedTrustBadges variant="horizontal" />
+        </div>
+
+        <div className="text-center mt-4">
           <Button
             variant="outline"
             onClick={() => navigate("/pricing")}
