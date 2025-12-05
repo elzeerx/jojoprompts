@@ -5,10 +5,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Mail, ArrowRight, User, Shield, Lock, CreditCard, Check, X } from "lucide-react";
+import { Loader2, Mail, ArrowRight, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GoogleAuthButton } from "@/components/checkout/components/GoogleAuthButton";
 import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
@@ -293,231 +294,244 @@ export function ExpressCheckoutModal({ open, onOpenChange, plan }: ExpressChecko
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className={cn("text-xl text-center", isRTL && "rtl-text")}>
-            {step === 'payment' ? t('checkout.completeYourPurchase') : t('checkout.getStarted')}
-          </DialogTitle>
-        </DialogHeader>
-
-        {/* Plan Summary */}
-        <div className="bg-muted/50 rounded-lg p-4 border">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="font-semibold text-lg">{plan.name}</h3>
-              {plan.is_lifetime && (
-                <span className="text-xs bg-warm-gold/10 text-warm-gold px-2 py-0.5 rounded">
-                  Lifetime Access
-                </span>
-              )}
-            </div>
-            <div className="text-right">
-              {appliedDiscount ? (
-                <>
-                  <span className="text-sm text-muted-foreground line-through">${plan.price_usd}</span>
-                  <span className="text-xl font-bold text-warm-gold ml-2">${finalAmount.toFixed(2)}</span>
-                </>
-              ) : (
-                <span className="text-xl font-bold text-warm-gold">${plan.price_usd}</span>
-              )}
-            </div>
-          </div>
-          {features.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <ul className="space-y-1">
-                {features.slice(0, 3).map((feature: string, idx: number) => (
-                  <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Check className="h-3 w-3 text-warm-gold flex-shrink-0" />
-                    <span className="truncate">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+      <DialogContent className="w-full max-w-lg h-[90vh] flex flex-col p-0">
+        {/* Custom Header with Badge */}
+        <div className={cn("flex-shrink-0 p-6 border-b border-border", isRTL && "text-right")}>
+          <span 
+            className="inline-block rounded-lg text-white px-3 py-1 text-xs font-medium mb-3"
+            style={{ backgroundColor: '#c49d68' }}
+          >
+            {t('checkout.checkout')}
+          </span>
+          <DialogHeader className={cn("p-0", isRTL ? "text-right" : "text-left")}>
+            <DialogTitle className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+              {step === 'payment' ? t('checkout.completeYourPurchase') : t('checkout.getStarted')}
+            </DialogTitle>
+          </DialogHeader>
         </div>
 
-        {/* Trust Badges */}
-        <EnhancedTrustBadges variant="compact" />
-
-        {/* Auth Steps */}
-        {step !== 'payment' && (
-          <>
-            <GoogleAuthButton />
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  {t('auth.orContinueWith')}
-                </span>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Step 1: Email Input */}
-        {step === 'email' && (
-          <form onSubmit={handleEmailSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="express-email">{t('auth.email')}</Label>
-              <div className="relative">
-                <Mail className={cn("absolute top-3 h-4 w-4 text-muted-foreground", isRTL ? "right-3" : "left-3")} />
-                <Input
-                  id="express-email"
-                  type="email"
-                  placeholder={t('auth.emailPlaceholder')}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={cn("min-h-[44px]", isRTL ? "pr-10" : "pl-10")}
-                  autoComplete="email"
-                  autoFocus
-                />
-              </div>
-            </div>
-            <Button type="submit" className="w-full min-h-[44px]" disabled={isCheckingEmail || !email}>
-              {isCheckingEmail ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('common.loading')}</>
-              ) : (
-                <>{t('common.next')}<ArrowRight className="ml-2 h-4 w-4" /></>
-              )}
-            </Button>
-          </form>
-        )}
-
-        {/* Step 2a: Login */}
-        {step === 'login' && (
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
-              <p className="text-sm text-blue-800">
-                {t('auth.welcomeBack')} <strong>{email}</strong>
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="express-password">{t('auth.password')}</Label>
-              <Input
-                id="express-password"
-                type="password"
-                placeholder={t('auth.passwordPlaceholder')}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="min-h-[44px]"
-                autoComplete="current-password"
-                autoFocus
-              />
-            </div>
-
-            <Button type="submit" className="w-full min-h-[44px]" disabled={isLoading || !password}>
-              {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('auth.signingIn')}</>
-              ) : (
-                t('auth.signIn')
-              )}
-            </Button>
-
-            <Button type="button" variant="ghost" className="w-full" onClick={handleBackToEmail}>
-              {t('auth.useAnotherEmail')}
-            </Button>
-          </form>
-        )}
-
-        {/* Step 2b: Signup */}
-        {step === 'signup' && (
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div className="bg-green-50 border border-green-100 rounded-md p-3">
-              <p className="text-sm text-green-800">
-                {t('auth.creatingAccountFor')} <strong>{email}</strong>
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="express-fullName">{t('auth.fullName')}</Label>
-              <Input
-                id="express-fullName"
-                type="text"
-                placeholder={t('auth.fullNamePlaceholder')}
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="min-h-[44px]"
-                autoFocus
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="express-signupPassword">{t('auth.password')}</Label>
-              <Input
-                id="express-signupPassword"
-                type="password"
-                placeholder={t('auth.passwordPlaceholder')}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="min-h-[44px]"
-                autoComplete="new-password"
-              />
-              <PasswordStrengthIndicator password={password} />
-            </div>
-
-            <Button type="submit" className="w-full min-h-[44px]" disabled={isLoading || !fullName || !password}>
-              {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('auth.creatingAccount')}</>
-              ) : (
-                t('auth.createAccountAndContinue')
-              )}
-            </Button>
-
-            <Button type="button" variant="ghost" className="w-full" onClick={handleBackToEmail}>
-              {t('auth.useAnotherEmail')}
-            </Button>
-          </form>
-        )}
-
-        {/* Step 3: Payment */}
-        {step === 'payment' && user && (
-          <div className="space-y-4">
-            <div className="bg-green-50 border border-green-100 rounded-md p-3">
-              <p className="text-sm text-green-800">
-                {t('auth.loggedInAs')} <strong>{user.email}</strong>
-              </p>
-            </div>
-
-            {/* Discount Code Input */}
-            <DiscountCodeInput
-              onDiscountApplied={setAppliedDiscount}
-              onDiscountRemoved={() => setAppliedDiscount(null)}
-              appliedDiscount={appliedDiscount}
-              planId={plan.id}
-            />
-
-            {/* Final Amount Display */}
-            {appliedDiscount && (
-              <div className="bg-green-50 border border-green-100 rounded-lg p-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-green-800">{t('checkout.totalAfterDiscount')}</span>
-                  <span className="text-lg font-bold text-green-800">${finalAmount.toFixed(2)}</span>
+        {/* Scrollable Content Area */}
+        <ScrollArea className="flex-1 px-6">
+          <div className="py-6 space-y-5">
+            {/* Plan Summary */}
+            <div className="bg-muted/50 rounded-lg p-4 border">
+              <div className={cn("flex justify-between items-start mb-2", isRTL && "flex-row-reverse")}>
+                <div className={isRTL ? "text-right" : ""}>
+                  <h3 className="font-semibold text-lg">{plan.name}</h3>
+                  {plan.is_lifetime && (
+                    <span className="text-xs bg-warm-gold/10 text-warm-gold px-2 py-0.5 rounded">
+                      {t('pricing.lifetimeAccess')}
+                    </span>
+                  )}
+                </div>
+                <div className={isRTL ? "text-left" : "text-right"}>
+                  {appliedDiscount ? (
+                    <>
+                      <span className="text-sm text-muted-foreground line-through">${plan.price_usd}</span>
+                      <span className="text-xl font-bold text-warm-gold ml-2">${finalAmount.toFixed(2)}</span>
+                    </>
+                  ) : (
+                    <span className="text-xl font-bold text-warm-gold">${plan.price_usd}</span>
+                  )}
                 </div>
               </div>
+              {features.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <ul className="space-y-1">
+                    {features.slice(0, 3).map((feature: string, idx: number) => (
+                      <li key={idx} className={cn("flex items-center gap-2 text-sm text-muted-foreground", isRTL && "flex-row-reverse")}>
+                        <Check className="h-3 w-3 text-warm-gold flex-shrink-0" />
+                        <span className="truncate">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Auth Steps */}
+            {step !== 'payment' && (
+              <>
+                <GoogleAuthButton />
+                
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      {t('auth.orContinueWith')}
+                    </span>
+                  </div>
+                </div>
+              </>
             )}
 
-            {/* PayPal Button */}
-            <SimplePayPalButton
-              amount={finalAmount}
-              planId={plan.id}
-              userId={user.id}
-              onSuccess={handlePaymentSuccess}
-              onError={handlePaymentError}
-              appliedDiscount={appliedDiscount}
-            />
+            {/* Step 1: Email Input */}
+            {step === 'email' && (
+              <form onSubmit={handleEmailSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="express-email">{t('auth.email')}</Label>
+                  <div className="relative">
+                    <Mail className={cn("absolute top-3 h-4 w-4 text-muted-foreground", isRTL ? "right-3" : "left-3")} />
+                    <Input
+                      id="express-email"
+                      type="email"
+                      placeholder={t('auth.emailPlaceholder')}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={cn("min-h-[44px]", isRTL ? "pr-10" : "pl-10")}
+                      autoComplete="email"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full min-h-[44px]" disabled={isCheckingEmail || !email}>
+                  {isCheckingEmail ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('common.loading')}</>
+                  ) : (
+                    <>{t('common.next')}<ArrowRight className={cn("h-4 w-4", isRTL ? "mr-2" : "ml-2")} /></>
+                  )}
+                </Button>
+              </form>
+            )}
 
-            {/* Money Back Guarantee */}
-            <MoneyBackGuarantee variant="compact" />
+            {/* Step 2a: Login */}
+            {step === 'login' && (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
+                  <p className={cn("text-sm text-blue-800", isRTL && "text-right")}>
+                    {t('auth.welcomeBack')} <strong>{email}</strong>
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="express-password">{t('auth.password')}</Label>
+                  <Input
+                    id="express-password"
+                    type="password"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="min-h-[44px]"
+                    autoComplete="current-password"
+                    autoFocus
+                  />
+                </div>
 
-            <p className="text-xs text-muted-foreground text-center">
-              {t('checkout.termsAgreement')}
-            </p>
+                <Button type="submit" className="w-full min-h-[44px]" disabled={isLoading || !password}>
+                  {isLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('auth.signingIn')}</>
+                  ) : (
+                    t('auth.signIn')
+                  )}
+                </Button>
+
+                <Button type="button" variant="ghost" className="w-full" onClick={handleBackToEmail}>
+                  {t('auth.useAnotherEmail')}
+                </Button>
+              </form>
+            )}
+
+            {/* Step 2b: Signup */}
+            {step === 'signup' && (
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="bg-green-50 border border-green-100 rounded-md p-3">
+                  <p className={cn("text-sm text-green-800", isRTL && "text-right")}>
+                    {t('auth.creatingAccountFor')} <strong>{email}</strong>
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="express-fullName">{t('auth.fullName')}</Label>
+                  <Input
+                    id="express-fullName"
+                    type="text"
+                    placeholder={t('auth.fullNamePlaceholder')}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="min-h-[44px]"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="express-signupPassword">{t('auth.password')}</Label>
+                  <Input
+                    id="express-signupPassword"
+                    type="password"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="min-h-[44px]"
+                    autoComplete="new-password"
+                  />
+                  <PasswordStrengthIndicator password={password} />
+                </div>
+
+                <Button type="submit" className="w-full min-h-[44px]" disabled={isLoading || !fullName || !password}>
+                  {isLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('auth.creatingAccount')}</>
+                  ) : (
+                    t('auth.createAccountAndContinue')
+                  )}
+                </Button>
+
+                <Button type="button" variant="ghost" className="w-full" onClick={handleBackToEmail}>
+                  {t('auth.useAnotherEmail')}
+                </Button>
+              </form>
+            )}
+
+            {/* Step 3: Payment */}
+            {step === 'payment' && user && (
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-100 rounded-md p-3">
+                  <p className={cn("text-sm text-green-800", isRTL && "text-right")}>
+                    {t('auth.loggedInAs')} <strong>{user.email}</strong>
+                  </p>
+                </div>
+
+                {/* Discount Code Input */}
+                <DiscountCodeInput
+                  onDiscountApplied={setAppliedDiscount}
+                  onDiscountRemoved={() => setAppliedDiscount(null)}
+                  appliedDiscount={appliedDiscount}
+                  planId={plan.id}
+                />
+
+                {/* Final Amount Display */}
+                {appliedDiscount && (
+                  <div className="bg-green-50 border border-green-100 rounded-lg p-3">
+                    <div className={cn("flex justify-between items-center", isRTL && "flex-row-reverse")}>
+                      <span className="text-sm text-green-800">{t('checkout.totalAfterDiscount')}</span>
+                      <span className="text-lg font-bold text-green-800">${finalAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* PayPal Button */}
+                <SimplePayPalButton
+                  amount={finalAmount}
+                  planId={plan.id}
+                  userId={user.id}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                  appliedDiscount={appliedDiscount}
+                />
+              </div>
+            )}
           </div>
-        )}
+        </ScrollArea>
+
+        {/* Footer with Trust Elements */}
+        <div className="flex-shrink-0 p-6 border-t border-border space-y-4">
+          <MoneyBackGuarantee variant="compact" />
+          <EnhancedTrustBadges variant="compact" />
+          <p className="text-xs text-muted-foreground text-center">
+            {t('checkout.termsAgreement')}
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   );
