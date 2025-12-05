@@ -49,11 +49,11 @@ export function InteractiveDemo() {
   };
 
   return (
-    <section className="mobile-section-padding text-white">
+    <section className="mobile-section-padding bg-gradient-to-br from-soft-bg via-white to-warm-gold/5">
       <Container>
         {/* Header */}
         <div className="text-center mb-12 sm:mb-16">
-          <h2 className={cn("text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-white animate-fade-in", isRTL && "rtl-text")}>
+          <h2 className={cn("section-title animate-fade-in", isRTL && "rtl-text")}>
             {t('interactiveDemo.title')}
             <span className={cn(
               "text-transparent bg-clip-text bg-gradient-to-r from-warm-gold to-muted-teal block sm:inline",
@@ -62,7 +62,7 @@ export function InteractiveDemo() {
               {t('interactiveDemo.titleHighlight')}
             </span>
           </h2>
-          <p className={cn("text-white/70 text-base sm:text-lg max-w-2xl mx-auto animate-fade-in delay-200", isRTL && "rtl-text")}>
+          <p className={cn("section-subtitle animate-fade-in delay-200", isRTL && "rtl-text")}>
             {t('interactiveDemo.subtitle')}
           </p>
         </div>
@@ -90,10 +90,10 @@ export function InteractiveDemo() {
           {/* Generic Prompt */}
           <div className="space-y-4 sm:space-y-6 animate-fade-in">
             <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
-              <div className="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center">
-                <X className="h-5 w-5 text-red-400" />
+              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                <X className="h-5 w-5 text-red-600" />
               </div>
-              <h3 className={cn("text-xl sm:text-2xl font-bold text-white/90", isRTL && "rtl-text")}>
+              <h3 className={cn("text-xl sm:text-2xl font-bold text-gray-700", isRTL && "rtl-text")}>
                 {t('interactiveDemo.genericPromptTitle')}
               </h3>
             </div>
@@ -181,7 +181,7 @@ export function InteractiveDemo() {
               <ArrowRight className={cn("h-5 w-5", isRTL && "rotate-180")} />
             </a>
           </Button>
-          <p className={cn("text-white/60 text-sm mt-3", isRTL && "rtl-text")}>
+          <p className={cn("text-muted-foreground text-sm mt-3", isRTL && "rtl-text")}>
             {t('interactiveDemo.ctaSubtext')}
           </p>
         </div>

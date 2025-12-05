@@ -3,9 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import animation library */
-@import './styles/animations.css';
-
 /* Forma Font Face Declarations */
 @font-face {
   font-family: 'FormaDJRArabicText';

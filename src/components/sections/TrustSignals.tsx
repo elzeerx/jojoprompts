@@ -64,7 +64,7 @@ export function TrustSignals() {
   ];
 
   return (
-    <section className="mobile-section-padding">
+    <section className="mobile-section-padding bg-gradient-to-br from-white via-warm-gold/5 to-muted-teal/5">
       <Container>
         {/* Header */}
         <div className="text-center mb-12 sm:mb-16">
