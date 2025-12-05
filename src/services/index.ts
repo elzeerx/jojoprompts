@@ -1,2 +1,2 @@
-export * from './promptService';
+export * from './PromptService';
 export * from './validationService';

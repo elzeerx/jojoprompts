@@ -213,6 +213,22 @@ serve(async (req) => {
 
       logger.info('Created subscription for direct activation', { subscriptionId: subscription.id });
 
+      // Auto-confirm user's email after successful direct activation (deferred verification)
+      try {
+        logger.info('Auto-confirming user email after direct activation', { userId });
+        const { error: confirmError } = await supabaseClient.auth.admin.updateUserById(userId, {
+          email_confirm: true
+        });
+        if (confirmError) {
+          logger.warn('Failed to auto-confirm email after direct activation (non-critical)', { error: confirmError.message });
+        } else {
+          logger.info('User email auto-confirmed after direct activation', { userId });
+        }
+      } catch (confirmErr) {
+        logger.warn('Exception auto-confirming email after direct activation', { error: confirmErr });
+        // Non-critical - don't fail the activation
+      }
+
       // Send payment confirmation email in background (don't block response)
       setTimeout(async () => {
         try {
@@ -498,6 +514,22 @@ serve(async (req) => {
             logger.error('Subscription creation error after capture', { error: subscriptionError });
             // Payment was successful - just log subscription error, don't abort
           }
+        }
+
+        // Auto-confirm user's email after successful payment (deferred verification)
+        try {
+          logger.info('Auto-confirming user email after successful payment', { userId });
+          const { error: confirmError } = await supabaseClient.auth.admin.updateUserById(userId, {
+            email_confirm: true
+          });
+          if (confirmError) {
+            logger.warn('Failed to auto-confirm email after payment (non-critical)', { error: confirmError.message });
+          } else {
+            logger.info('User email auto-confirmed after successful payment', { userId });
+          }
+        } catch (confirmErr) {
+          logger.warn('Exception auto-confirming email after payment', { error: confirmErr });
+          // Non-critical - don't fail the payment
         }
 
         // Send payment confirmation email in background (don't block response)
