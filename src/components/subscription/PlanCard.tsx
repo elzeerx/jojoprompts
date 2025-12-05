@@ -1,6 +1,5 @@
 
-import { Check, X } from "lucide-react";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Check, X, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
@@ -24,104 +23,127 @@ export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
   const { t, isRTL } = useTranslation();
   
   return (
-    <Card className={`group flex flex-col h-full transition-all duration-500 hover:shadow-2xl hover:shadow-warm-gold/20 hover:-translate-y-2 cursor-pointer ${
-      isSelected 
-        ? 'ring-2 ring-warm-gold border-warm-gold transform scale-[1.02] shadow-xl shadow-warm-gold/30' 
-        : 'hover:ring-2 hover:ring-warm-gold/50 hover:border-warm-gold/50'
-    } relative overflow-hidden`}
-    onClick={onSelect}>
-      {/* Animated background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-warm-gold/5 via-transparent to-muted-teal/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-      
-      {/* Floating orbs animation */}
-      <div className="absolute top-4 right-4 w-2 h-2 bg-warm-gold/30 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-      <div className="absolute bottom-6 left-4 w-1.5 h-1.5 bg-muted-teal/40 rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ animationDelay: '0.3s' }}></div>
-      
-      <CardHeader className="pb-3 relative z-10">
-        <div className="text-center">
-          <h3 className={cn("text-xl font-bold group-hover:text-warm-gold transition-colors duration-300", isRTL && "rtl-text")}>{name}</h3>
-          <div className="mt-2 flex items-baseline justify-center">
-            <span className="text-3xl font-bold text-warm-gold group-hover:scale-110 transition-transform duration-300">${price_usd}</span>
-          </div>
-          <div className="mt-1">
-            {is_lifetime ? (
-              <span className={cn(
-                "text-sm text-green-600 font-medium group-hover:text-green-500 transition-colors duration-300 inline-flex items-center gap-1",
+    <div 
+      className={cn(
+        "group flex flex-col h-full bg-white p-6 sm:p-8 cursor-pointer transition-colors duration-200",
+        isSelected ? "bg-warm-gold/5" : "hover:bg-gray-50/50"
+      )}
+      onClick={onSelect}
+    >
+      {/* Plan Label */}
+      <div className="mb-4">
+        <span className={cn(
+          "text-xs font-medium text-muted-foreground uppercase tracking-wider",
+          isRTL && "rtl-text"
+        )}>
+          {name}
+        </span>
+      </div>
+
+      {/* Price */}
+      <div className="mb-2">
+        <span className="text-4xl sm:text-5xl font-light text-warm-gold">
+          ${price_usd}
+        </span>
+      </div>
+
+      {/* Duration Badge */}
+      <div className="mb-4">
+        <span className={cn(
+          "text-xs text-muted-foreground uppercase tracking-wide",
+          isRTL && "rtl-text"
+        )}>
+          {is_lifetime ? t('pricingSection.lifetimeAccess') : t('pricingSection.yearAccess')}
+        </span>
+      </div>
+
+      {/* Description */}
+      {description && (
+        <p className={cn(
+          "text-sm text-muted-foreground mb-6",
+          isRTL && "rtl-text"
+        )}>
+          {description}
+        </p>
+      )}
+
+      {/* Features List */}
+      <div className="flex-grow mb-6">
+        <ul className="space-y-3">
+          {features && features.map((feature: string, index: number) => (
+            <li 
+              key={`feature-${index}`} 
+              className={cn(
+                "flex items-start",
                 isRTL && "flex-row-reverse"
-              )}>
-                ✨ {t('pricingSection.lifetimeAccess')}
-              </span>
-            ) : (
-              <span className={cn(
-                "text-sm text-amber-600 font-medium group-hover:text-amber-500 transition-colors duration-300 inline-flex items-center gap-1",
-                isRTL && "flex-row-reverse"
-              )}>
-                ⏰ {t('pricingSection.yearAccess')}
-              </span>
-            )}
-          </div>
-          <p className={cn(
-            "mt-1 text-sm text-muted-foreground group-hover:text-foreground/80 transition-colors duration-300",
-            isRTL && "rtl-text"
-          )}>{description}</p>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="flex-grow px-4 py-3 relative z-10">
-        <ul className="space-y-2">
-          {features && features.map((feature, index) => (
-            <li key={`feature-${index}`} className={cn(
-              "flex items-start group-hover:translate-x-1 transition-transform duration-300",
-              isRTL && "flex-row-reverse group-hover:-translate-x-1"
-            )} style={{ transitionDelay: `${index * 50}ms` }}>
+              )}
+            >
               <Check className={cn(
-                "h-5 w-5 text-warm-gold flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform duration-300",
-                isRTL ? "ml-2" : "mr-2"
+                "h-4 w-4 text-warm-gold flex-shrink-0 mt-0.5",
+                isRTL ? "ml-3" : "mr-3"
               )} />
-              <span className={cn("text-sm group-hover:text-foreground transition-colors duration-300", isRTL && "rtl-text text-right")}>{feature}</span>
+              <span className={cn(
+                "text-sm text-foreground",
+                isRTL && "rtl-text text-right"
+              )}>
+                {feature}
+              </span>
             </li>
           ))}
           
-          {excluded_features && excluded_features.map((feature, index) => (
-            <li key={`excluded-${index}`} className={cn(
-              "flex items-start text-muted-foreground group-hover:translate-x-1 transition-transform duration-300",
-              isRTL && "flex-row-reverse group-hover:-translate-x-1"
-            )} style={{ transitionDelay: `${(features?.length || 0 + index) * 50}ms` }}>
+          {excluded_features && excluded_features.map((feature: string, index: number) => (
+            <li 
+              key={`excluded-${index}`} 
+              className={cn(
+                "flex items-start",
+                isRTL && "flex-row-reverse"
+              )}
+            >
               <X className={cn(
-                "h-5 w-5 text-muted-foreground/50 flex-shrink-0 mt-0.5",
-                isRTL ? "ml-2" : "mr-2"
+                "h-4 w-4 text-muted-foreground/40 flex-shrink-0 mt-0.5",
+                isRTL ? "ml-3" : "mr-3"
               )} />
-              <span className={cn("text-sm", isRTL && "rtl-text text-right")}>{feature}</span>
+              <span className={cn(
+                "text-sm text-muted-foreground/60",
+                isRTL && "rtl-text text-right"
+              )}>
+                {feature}
+              </span>
             </li>
           ))}
         </ul>
-      </CardContent>
-      
-      <CardFooter className="pt-4 px-4 py-4 relative z-10">
-        <Button
-          onClick={onSelect}
-          className={`w-full group-hover:scale-105 transition-all duration-300 ${
-            isSelected 
-              ? 'bg-warm-gold hover:bg-warm-gold/90 shadow-lg shadow-warm-gold/30' 
-              : 'hover:bg-warm-gold hover:text-white hover:border-warm-gold group-hover:shadow-lg group-hover:shadow-warm-gold/20'
-          }`}
-          variant={isSelected ? "default" : "outline"}
-        >
+      </div>
+
+      {/* CTA Button */}
+      <Button
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+        className={cn(
+          "w-full transition-colors duration-200",
+          isSelected 
+            ? "bg-warm-gold hover:bg-warm-gold/90 text-white" 
+            : "bg-warm-gold hover:bg-warm-gold/90 text-white"
+        )}
+      >
+        <span className={cn("flex items-center justify-center gap-2", isRTL && "flex-row-reverse")}>
           {isSelected ? (
-            <span className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
-              ✓ {t('pricingSection.selected')}
-            </span>
+            <>
+              <Check className="h-4 w-4" />
+              {t('pricingSection.selected')}
+            </>
           ) : (
-            <span className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+            <>
               {is_lifetime ? t('pricingSection.getLifetimeAccess') : t('pricingSection.getYearAccess')}
-              <span className={cn(
-                "group-hover:translate-x-1 transition-transform duration-300",
-                isRTL && "rotate-180 group-hover:-translate-x-1"
-              )}>→</span>
-            </span>
+              <ArrowRight className={cn("h-4 w-4", isRTL && "rotate-180")} />
+            </>
           )}
-        </Button>
-      </CardFooter>
-    </Card>
+        </span>
+      </Button>
+
+      {/* Subtle hover indicator line */}
+      <div className="mt-6 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-200" />
+    </div>
   );
 }

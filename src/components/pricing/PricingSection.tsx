@@ -83,15 +83,15 @@ export function PricingSection() {
   return (
     <>
       <div className="w-full max-w-7xl mx-auto mobile-container-padding">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        {/* Minimalist grid with 1px gap borders */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-gray-200 rounded-2xl overflow-hidden">
           {plans.map((plan) => (
-            <div key={plan.id} className="flex flex-col h-full">
-              <PlanCard
-                plan={plan}
-                isSelected={selectedPlanId === plan.id}
-                onSelect={() => handleSelectPlan(plan.id)}
-              />
-            </div>
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              isSelected={selectedPlanId === plan.id}
+              onSelect={() => handleSelectPlan(plan.id)}
+            />
           ))}
         </div>
       </div>
