@@ -14,13 +14,19 @@ interface LanguageSwitcherProps {
   variant?: 'desktop' | 'mobile';
   className?: string;
   isScrolled?: boolean;
+  isLandingPage?: boolean;
 }
 
-export function LanguageSwitcher({ variant = 'desktop', className, isScrolled }: LanguageSwitcherProps) {
+export function LanguageSwitcher({ variant = 'desktop', className, isScrolled, isLandingPage = true }: LanguageSwitcherProps) {
   const { language, setLanguage } = useTranslation();
 
   const isMobile = variant === 'mobile';
   const languageCode = language.toUpperCase();
+
+  // Determine text color based on context
+  const textColorClass = isLandingPage
+    ? 'text-white/90 hover:text-warm-gold hover:bg-white/10'
+    : 'text-dark-base hover:text-warm-gold hover:bg-dark-base/10';
 
   return (
     <DropdownMenu>
@@ -31,8 +37,8 @@ export function LanguageSwitcher({ variant = 'desktop', className, isScrolled }:
           className={cn(
             'gap-1.5 min-h-[44px] transition-colors',
             isMobile 
-              ? 'w-full justify-start text-white/90 hover:text-warm-gold hover:bg-white/10' 
-              : 'text-white/90 hover:text-warm-gold hover:bg-white/10 px-3',
+              ? cn('w-full justify-start', textColorClass)
+              : cn('px-3', textColorClass),
             className
           )}
         >

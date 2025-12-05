@@ -229,7 +229,7 @@ export default function ExamplesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-soft-bg via-warm-gold/5 to-muted-teal/5">
       {/* Hero Section */}
-      <section className="py-16 sm:py-20">
+      <section className="pt-20 lg:pt-24 pb-16 sm:pb-20">
         <Container>
           <div className="text-center mb-12">
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-dark-base">
