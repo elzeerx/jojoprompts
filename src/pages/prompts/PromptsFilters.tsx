@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { List, Grid, Search, Sparkles, Bot, Wand2, Video, Mic, Music } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCategories } from "@/hooks/useCategories";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTranslation } from "@/hooks/useTranslation";
@@ -64,55 +65,24 @@ export function PromptsFilters({
 
   return (
     <div className="mb-6 sm:mb-10 space-y-4 sm:space-y-6">
-      {/* Category Tabs - Mobile: horizontal scroll with fade gradient | Desktop: gap-px grid */}
+      {/* Category Tabs - Mobile optimized horizontal scroll */}
       <div className={cn(
-        "mb-3 sm:mb-4",
+        "overflow-x-auto pb-2 sm:pb-3 mb-3 sm:mb-4 border-b border-warm-gold/10",
         isRTL && "direction-rtl"
       )}>
-        {/* Mobile: Horizontal scroll with fade gradient hint */}
-        <div className="md:hidden relative">
-          <div className="overflow-x-auto pb-2 scrollbar-hide">
-            <div className={cn("flex gap-2 px-1 min-w-max", isRTL && "flex-row-reverse")}>
-              {mainCategories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`py-2.5 px-4 text-sm font-medium rounded-lg whitespace-nowrap transition-colors duration-300 min-h-[44px] touch-manipulation ${
-                    category === cat 
-                      ? 'bg-warm-gold/10 text-warm-gold border border-warm-gold/20' 
-                      : 'bg-white text-muted-foreground border border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {cat === "all" ? t("prompts.allCategories") : cat}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Fade gradient indicator */}
-          <div className={cn(
-            "absolute top-0 bottom-2 w-12 pointer-events-none",
-            isRTL 
-              ? "left-0 bg-gradient-to-r from-white via-white/80 to-transparent" 
-              : "right-0 bg-gradient-to-l from-white via-white/80 to-transparent"
-          )} />
-        </div>
-        
-        {/* Desktop: Gap-px grid pattern */}
-        <div className="hidden md:grid grid-cols-5 lg:grid-cols-6 gap-px bg-gray-200 rounded-xl overflow-hidden max-w-3xl">
-          {mainCategories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={`py-3 px-4 text-sm font-medium transition-colors duration-300 ${
-                category === cat 
-                  ? 'bg-warm-gold/5 text-warm-gold' 
-                  : 'bg-white text-muted-foreground hover:bg-gray-50/50'
-              }`}
-            >
-              {cat === "all" ? t("prompts.allCategories") : cat}
-            </button>
-          ))}
-        </div>
+        <Tabs value={category} onValueChange={setCategory} className="w-full">
+          <TabsList className="mobile-tabs bg-gray-100/80 h-auto p-1 flex w-max min-w-full">
+            {mainCategories.map((cat) => (
+              <TabsTrigger 
+                key={cat} 
+                value={cat}
+                className="mobile-tab mobile-tab-inactive data-[state=active]:mobile-tab-active whitespace-nowrap px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-md transition-all duration-200 touch-manipulation"
+              >
+                {cat === "all" ? t("prompts.allCategories") : cat}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Search and View Options - Mobile optimized */}
