@@ -425,6 +425,7 @@
     "lifetime": "Lifetime"
   },
   "checkout": {
+    "checkout": "Checkout",
     "title": "Complete Your Order",
     "loading": "Loading checkout...",
     "error": "Error loading checkout",
