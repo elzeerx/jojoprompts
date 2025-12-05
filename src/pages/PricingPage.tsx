@@ -5,7 +5,7 @@ import { PricingSection } from '@/components/pricing/PricingSection';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Container } from '@/components/ui/container';
-import { Check } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
@@ -21,28 +21,50 @@ export default function PricingPage() {
     t('pricingPage.feature3'),
     t('pricingPage.feature4'),
   ];
+
+  const faqs = [
+    { question: t('pricingPage.faq1Question'), answer: t('pricingPage.faq1Answer') },
+    { question: t('pricingPage.faq2Question'), answer: t('pricingPage.faq2Answer') },
+    { question: t('pricingPage.faq3Question'), answer: t('pricingPage.faq3Answer') },
+    { question: t('pricingPage.faq4Question'), answer: t('pricingPage.faq4Answer') },
+  ];
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <div className="min-h-screen bg-white">
       <Container className="pt-20 lg:pt-24 pb-8">
-        {/* Hero Section */}
-        <div className="text-center mobile-container-padding mb-8 sm:mb-12">
-          <h1 className={cn("section-title mobile-text-center mb-4 sm:mb-6", isRTL && "rtl-text")}>
-            {t('pricingPage.title')}
+        {/* Hero Section - Minimalist */}
+        <div className="text-center mobile-container-padding mb-12 sm:mb-16">
+          <h1 className={cn(
+            "text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight text-dark-base mb-4 sm:mb-6",
+            isRTL && "rtl-text"
+          )}>
+            {t('pricingPage.title').split(' ').map((word, i, arr) => (
+              i === arr.length - 1 ? (
+                <span key={i} className="text-warm-gold font-medium">{word}</span>
+              ) : (
+                <span key={i}>{word} </span>
+              )
+            ))}
           </h1>
-          <p className={cn("section-subtitle mobile-text-center max-w-3xl mx-auto", isRTL && "rtl-text")}>
+          <p className={cn(
+            "text-lg text-muted-foreground font-light max-w-2xl mx-auto",
+            isRTL && "rtl-text"
+          )}>
             {t('pricingPage.subtitle')}
           </p>
           
-          {/* Key Features - Mobile Optimized */}
-          <div className="mobile-grid-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 sm:mt-8 max-w-4xl mx-auto">
+          {/* Key Features - Minimalist gap-px Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-200 rounded-xl overflow-hidden mt-8 sm:mt-10 max-w-4xl mx-auto">
             {keyFeatures.map((feature, index) => (
-              <div key={index} className={cn(
-                "flex items-center",
-                isRTL ? "justify-center sm:justify-end text-center sm:text-right" : "justify-center sm:justify-start text-center sm:text-left"
-              )}>
-                <Check className={cn("mobile-icon text-warm-gold flex-shrink-0", isRTL ? "ml-2" : "mr-2")} />
-                <span className={cn("text-xs sm:text-sm text-muted-foreground leading-relaxed", isRTL && "rtl-text")}>{feature}</span>
+              <div 
+                key={index} 
+                className={cn(
+                  "bg-white p-4 sm:p-5 flex items-center gap-2 group hover:bg-gray-50/50 transition-colors duration-300",
+                  isRTL ? "justify-center sm:justify-end" : "justify-center sm:justify-start"
+                )}
+              >
+                <Check className={cn("h-4 w-4 text-warm-gold flex-shrink-0", isRTL ? "ml-2" : "mr-1")} />
+                <span className={cn("text-sm text-muted-foreground", isRTL && "rtl-text")}>{feature}</span>
               </div>
             ))}
           </div>
@@ -55,79 +77,87 @@ export default function PricingPage() {
 
         {/* Pricing comparison table */}
         <div className="mb-16 sm:mb-24">
-          <h2 className={cn("section-title text-center mobile-text-center mb-6 sm:mb-8", isRTL && "rtl-text")}>
+          <h2 className={cn(
+            "text-2xl sm:text-3xl lg:text-4xl font-light tracking-tight text-dark-base text-center mb-8 sm:mb-10",
+            isRTL && "rtl-text"
+          )}>
             {t('pricingPage.comparisonTitle')}
           </h2>
           <PricingComparison />
         </div>
 
-        {/* CTA Section */}
-        <div className="mobile-container-padding bg-warm-gold/10 rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-warm-gold/20 mb-16 sm:mb-24">
-          <div className="text-center">
-            <h3 className={cn("text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-dark-base", isRTL && "rtl-text")}>
-              {t('pricingPage.ctaTitle')}
-            </h3>
-            <p className={cn("text-sm sm:text-lg mb-4 sm:mb-6 text-muted-foreground max-w-2xl mx-auto", isRTL && "rtl-text")}>
-              {t('pricingPage.ctaSubtitle')}
-            </p>
-            <Button 
-              size={isMobile ? "default" : "lg"}
-              className="mobile-button-primary bg-warm-gold hover:bg-warm-gold/90 text-white"
-              asChild
-            >
-              <a href="#pricing" onClick={(e) => {
-                e.preventDefault();
-                const element = document.querySelector('#pricing');
-                if (element) {
-                  const yOffset = isMobile ? -20 : -10;
-                  const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                  window.scrollTo({ top: y, behavior: 'smooth' });
-                }
-              }}>
-                {t('pricingPage.ctaButton')}
-              </a>
-            </Button>
+        {/* CTA Section - Minimalist Card */}
+        <div className="mb-16 sm:mb-24">
+          <div className="grid gap-px bg-gray-200 rounded-2xl overflow-hidden max-w-2xl mx-auto">
+            <div className="bg-white p-8 sm:p-10 text-center group hover:bg-gray-50/50 transition-colors duration-300 relative">
+              <h3 className={cn(
+                "text-xl sm:text-2xl font-light tracking-tight text-dark-base mb-3",
+                isRTL && "rtl-text"
+              )}>
+                {t('pricingPage.ctaTitle')}
+              </h3>
+              <p className={cn(
+                "text-sm sm:text-base text-muted-foreground mb-6 max-w-md mx-auto font-light",
+                isRTL && "rtl-text"
+              )}>
+                {t('pricingPage.ctaSubtitle')}
+              </p>
+              <Button 
+                size={isMobile ? "default" : "lg"}
+                className="bg-warm-gold hover:bg-warm-gold/90 text-white font-medium"
+                asChild
+              >
+                <a href="#pricing" onClick={(e) => {
+                  e.preventDefault();
+                  const element = document.querySelector('#pricing');
+                  if (element) {
+                    const yOffset = isMobile ? -20 : -10;
+                    const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                  }
+                }}>
+                  {t('pricingPage.ctaButton')}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+              
+              {/* Subtle hover accent line */}
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
+            </div>
           </div>
         </div>
 
-        {/* FAQ Section - Mobile Optimized */}
+        {/* FAQ Section - Minimalist gap-px Grid */}
         <div className="mobile-container-padding">
-          <h2 className={cn("section-title text-center mobile-text-center mb-6 sm:mb-8", isRTL && "rtl-text")}>
+          <h2 className={cn(
+            "text-2xl sm:text-3xl lg:text-4xl font-light tracking-tight text-dark-base text-center mb-8 sm:mb-10",
+            isRTL && "rtl-text"
+          )}>
             {t('pricingPage.faqTitle')}
           </h2>
-          <div className="mobile-grid-2 gap-4 sm:gap-6 lg:gap-8">
-            <div className="mobile-card">
-              <h3 className={cn("text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-dark-base", isRTL && "rtl-text text-right")}>
-                {t('pricingPage.faq1Question')}
-              </h3>
-              <p className={cn("text-sm sm:text-base text-muted-foreground leading-relaxed", isRTL && "rtl-text text-right")}>
-                {t('pricingPage.faq1Answer')}
-              </p>
-            </div>
-            <div className="mobile-card">
-              <h3 className={cn("text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-dark-base", isRTL && "rtl-text text-right")}>
-                {t('pricingPage.faq2Question')}
-              </h3>
-              <p className={cn("text-sm sm:text-base text-muted-foreground leading-relaxed", isRTL && "rtl-text text-right")}>
-                {t('pricingPage.faq2Answer')}
-              </p>
-            </div>
-            <div className="mobile-card">
-              <h3 className={cn("text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-dark-base", isRTL && "rtl-text text-right")}>
-                {t('pricingPage.faq3Question')}
-              </h3>
-              <p className={cn("text-sm sm:text-base text-muted-foreground leading-relaxed", isRTL && "rtl-text text-right")}>
-                {t('pricingPage.faq3Answer')}
-              </p>
-            </div>
-            <div className="mobile-card">
-              <h3 className={cn("text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-dark-base", isRTL && "rtl-text text-right")}>
-                {t('pricingPage.faq4Question')}
-              </h3>
-              <p className={cn("text-sm sm:text-base text-muted-foreground leading-relaxed", isRTL && "rtl-text text-right")}>
-                {t('pricingPage.faq4Answer')}
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-gray-200 rounded-2xl overflow-hidden">
+            {faqs.map((faq, index) => (
+              <div 
+                key={index} 
+                className="bg-white p-6 sm:p-8 group hover:bg-gray-50/50 transition-colors duration-300 relative"
+              >
+                <h3 className={cn(
+                  "text-base sm:text-lg font-medium mb-2 sm:mb-3 text-dark-base",
+                  isRTL && "rtl-text text-right"
+                )}>
+                  {faq.question}
+                </h3>
+                <p className={cn(
+                  "text-sm text-muted-foreground leading-relaxed font-light",
+                  isRTL && "rtl-text text-right"
+                )}>
+                  {faq.answer}
+                </p>
+                
+                {/* Subtle hover accent line */}
+                <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
+              </div>
+            ))}
           </div>
         </div>
       </Container>

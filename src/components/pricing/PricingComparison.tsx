@@ -21,118 +21,129 @@ export function PricingComparison() {
   const renderCell = (value: boolean | string) => {
     if (typeof value === 'boolean') {
       return value ? (
-        <Check className="mobile-icon text-warm-gold mx-auto" />
+        <Check className="h-4 w-4 text-warm-gold mx-auto" />
       ) : (
-        <X className="mobile-icon text-gray-300 mx-auto" />
+        <X className="h-4 w-4 text-gray-300 mx-auto" />
       );
     }
-    return <span className="text-center block text-xs sm:text-sm font-medium">{value}</span>;
+    return <span className="text-center block text-xs sm:text-sm font-medium text-dark-base">{value}</span>;
   };
 
   if (isMobile) {
-    // Mobile-first comparison cards layout
+    // Mobile-first minimalist comparison
     return (
-      <div className="space-y-4 sm:space-y-6">
-        {/* Mobile Plan Headers */}
-        <div className="mobile-grid-2 gap-3 mb-6">
-          <div className="mobile-card bg-gray-50 text-center">
-            <h3 className="font-bold text-sm text-dark-base">Basic</h3>
-            <p className="text-xs text-muted-foreground">$55</p>
+      <div className="space-y-4">
+        {/* Mobile Plan Headers - gap-px grid */}
+        <div className="grid grid-cols-2 gap-px bg-gray-200 rounded-xl overflow-hidden mb-6">
+          <div className="bg-white p-4 text-center group hover:bg-gray-50/50 transition-colors duration-300">
+            <h3 className="font-medium text-sm text-dark-base">Basic</h3>
+            <p className="text-xs text-muted-foreground font-light">$55</p>
           </div>
-          <div className="mobile-card bg-gray-50 text-center">
-            <h3 className="font-bold text-sm text-dark-base">Standard</h3>
-            <p className="text-xs text-muted-foreground">$65</p>
+          <div className="bg-white p-4 text-center group hover:bg-gray-50/50 transition-colors duration-300">
+            <h3 className="font-medium text-sm text-dark-base">Standard</h3>
+            <p className="text-xs text-muted-foreground font-light">$65</p>
           </div>
-          <div className="mobile-card bg-warm-gold/10 border-warm-gold/30 text-center">
-            <h3 className="font-bold text-sm text-warm-gold">Premium</h3>
-            <p className="text-xs text-muted-foreground">$80</p>
+          <div className="bg-warm-gold/5 p-4 text-center group hover:bg-warm-gold/10 transition-colors duration-300">
+            <h3 className="font-medium text-sm text-warm-gold">Premium</h3>
+            <p className="text-xs text-muted-foreground font-light">$80</p>
           </div>
-          <div className="mobile-card bg-gray-50 text-center">
-            <h3 className="font-bold text-sm text-dark-base">Ultimate</h3>
-            <p className="text-xs text-muted-foreground">$100</p>
+          <div className="bg-white p-4 text-center group hover:bg-gray-50/50 transition-colors duration-300">
+            <h3 className="font-medium text-sm text-dark-base">Ultimate</h3>
+            <p className="text-xs text-muted-foreground font-light">$100</p>
           </div>
         </div>
 
-        {/* Mobile Feature Comparison */}
-        {features.map((feature, idx) => (
-          <div key={idx} className="mobile-card">
-            <h4 className="font-medium text-sm sm:text-base mb-3 text-dark-base">{feature.name}</h4>
-            <div className="mobile-grid-2 gap-2">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <span className="text-xs font-medium">Basic</span>
-                {renderCell(feature.basic)}
+        {/* Mobile Feature Comparison - gap-px pattern */}
+        <div className="grid gap-px bg-gray-200 rounded-xl overflow-hidden">
+          {features.map((feature, idx) => (
+            <div key={idx} className="bg-white p-4 sm:p-5 group hover:bg-gray-50/50 transition-colors duration-300 relative">
+              <h4 className="font-medium text-sm mb-3 text-dark-base">{feature.name}</h4>
+              <div className="grid grid-cols-4 gap-2">
+                <div className="text-center">
+                  <span className="text-xs text-muted-foreground block mb-1 font-light">Basic</span>
+                  {renderCell(feature.basic)}
+                </div>
+                <div className="text-center">
+                  <span className="text-xs text-muted-foreground block mb-1 font-light">Std</span>
+                  {renderCell(feature.standard)}
+                </div>
+                <div className="text-center bg-warm-gold/5 rounded-lg py-1 -mx-1 px-1">
+                  <span className="text-xs text-warm-gold block mb-1 font-medium">Prem</span>
+                  {renderCell(feature.premium)}
+                </div>
+                <div className="text-center">
+                  <span className="text-xs text-muted-foreground block mb-1 font-light">Ultm</span>
+                  {renderCell(feature.ultimate)}
+                </div>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <span className="text-xs font-medium">Standard</span>
-                {renderCell(feature.standard)}
-              </div>
-              <div className="flex items-center justify-between p-2 bg-warm-gold/10 rounded border border-warm-gold/20">
-                <span className="text-xs font-medium text-warm-gold">Premium</span>
-                {renderCell(feature.premium)}
-              </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <span className="text-xs font-medium">Ultimate</span>
-                {renderCell(feature.ultimate)}
-              </div>
+              
+              {/* Subtle accent line */}
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
             </div>
-          </div>
-        ))}
+          ))}
 
-        {/* Access Duration for Mobile */}
-        <div className="mobile-card bg-gray-50">
-          <h4 className="font-medium text-sm sm:text-base mb-3 text-dark-base">Access Duration</h4>
-          <div className="mobile-grid-2 gap-2">
-            <div className="flex items-center justify-between p-2 bg-white rounded">
-              <span className="text-xs font-medium">Basic</span>
-              <span className="text-xs">1 Year</span>
+          {/* Access Duration */}
+          <div className="bg-white p-4 sm:p-5 group hover:bg-gray-50/50 transition-colors duration-300 relative">
+            <h4 className="font-medium text-sm mb-3 text-dark-base">Access Duration</h4>
+            <div className="grid grid-cols-4 gap-2">
+              <div className="text-center">
+                <span className="text-xs text-muted-foreground block mb-1 font-light">Basic</span>
+                <span className="text-xs text-dark-base">1 Year</span>
+              </div>
+              <div className="text-center">
+                <span className="text-xs text-muted-foreground block mb-1 font-light">Std</span>
+                <span className="text-xs text-dark-base">1 Year</span>
+              </div>
+              <div className="text-center bg-warm-gold/5 rounded-lg py-1 -mx-1 px-1">
+                <span className="text-xs text-warm-gold block mb-1 font-medium">Prem</span>
+                <span className="text-xs text-warm-gold font-medium">Lifetime</span>
+              </div>
+              <div className="text-center">
+                <span className="text-xs text-muted-foreground block mb-1 font-light">Ultm</span>
+                <span className="text-xs text-dark-base font-medium">Lifetime</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between p-2 bg-white rounded">
-              <span className="text-xs font-medium">Standard</span>
-              <span className="text-xs">1 Year</span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-warm-gold/10 rounded border border-warm-gold/20">
-              <span className="text-xs font-medium text-warm-gold">Premium</span>
-              <span className="text-xs font-medium text-warm-gold">Lifetime</span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-white rounded">
-              <span className="text-xs font-medium">Ultimate</span>
-              <span className="text-xs font-medium">Lifetime</span>
-            </div>
+            
+            {/* Subtle accent line */}
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
           </div>
         </div>
       </div>
     );
   }
 
-  // Desktop table layout
+  // Desktop table layout - Minimalist
   return (
-    <div className="overflow-x-auto mobile-smooth-scroll">
-      <Table className="border rounded-lg bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl bg-gray-200">
+      <Table className="bg-white">
         <TableHeader>
-          <TableRow className="bg-gray-50">
-            <TableHead className="w-[250px] font-semibold text-dark-base">Feature</TableHead>
-            <TableHead className="text-center font-semibold">Basic ($55)</TableHead>
-            <TableHead className="text-center font-semibold">Standard ($65)</TableHead>
-            <TableHead className="text-center bg-warm-gold/10 font-semibold text-warm-gold">Premium ($80)</TableHead>
-            <TableHead className="text-center font-semibold">Ultimate ($100)</TableHead>
+          <TableRow className="border-b border-gray-100 hover:bg-transparent">
+            <TableHead className="w-[250px] font-medium text-dark-base bg-gray-50/50 text-sm">Feature</TableHead>
+            <TableHead className="text-center font-medium text-muted-foreground bg-gray-50/50 text-sm">Basic ($55)</TableHead>
+            <TableHead className="text-center font-medium text-muted-foreground bg-gray-50/50 text-sm">Standard ($65)</TableHead>
+            <TableHead className="text-center font-medium text-warm-gold bg-warm-gold/5 text-sm">Premium ($80)</TableHead>
+            <TableHead className="text-center font-medium text-muted-foreground bg-gray-50/50 text-sm">Ultimate ($100)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {features.map((feature, idx) => (
-            <TableRow key={idx} className="hover:bg-gray-50/50 transition-colors">
-              <TableCell className="font-medium text-dark-base">{feature.name}</TableCell>
+            <TableRow 
+              key={idx} 
+              className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors duration-300"
+            >
+              <TableCell className="font-medium text-dark-base text-sm">{feature.name}</TableCell>
               <TableCell className="text-center">{renderCell(feature.basic)}</TableCell>
               <TableCell className="text-center">{renderCell(feature.standard)}</TableCell>
-              <TableCell className={cn("text-center", "bg-warm-gold/5")}>{renderCell(feature.premium)}</TableCell>
+              <TableCell className="text-center bg-warm-gold/5">{renderCell(feature.premium)}</TableCell>
               <TableCell className="text-center">{renderCell(feature.ultimate)}</TableCell>
             </TableRow>
           ))}
-          <TableRow className="bg-gray-50 font-medium">
-            <TableCell className="font-semibold text-dark-base">Access Duration</TableCell>
-            <TableCell className="text-center">1 Year</TableCell>
-            <TableCell className="text-center">1 Year</TableCell>
-            <TableCell className={cn("text-center font-semibold text-warm-gold", "bg-warm-gold/5")}>Lifetime</TableCell>
-            <TableCell className="text-center font-semibold">Lifetime</TableCell>
+          <TableRow className="hover:bg-gray-50/50 transition-colors duration-300">
+            <TableCell className="font-medium text-dark-base text-sm">Access Duration</TableCell>
+            <TableCell className="text-center text-sm text-muted-foreground">1 Year</TableCell>
+            <TableCell className="text-center text-sm text-muted-foreground">1 Year</TableCell>
+            <TableCell className="text-center text-sm font-medium text-warm-gold bg-warm-gold/5">Lifetime</TableCell>
+            <TableCell className="text-center text-sm font-medium text-dark-base">Lifetime</TableCell>
           </TableRow>
         </TableBody>
       </Table>
