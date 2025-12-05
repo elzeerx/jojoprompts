@@ -9,7 +9,7 @@ export default function AboutPage() {
   const { t, isRTL } = useTranslation();
 
   return (
-    <div className="mobile-container-padding mobile-section-padding max-w-4xl mx-auto">
+    <div className="mobile-container-padding mobile-section-padding max-w-4xl mx-auto pt-20 lg:pt-24">
       <div className="text-center mb-8 sm:mb-12">
         <div className="flex justify-center mb-4">
           <div className="rounded-full bg-warm-gold/10 p-3 sm:p-4">

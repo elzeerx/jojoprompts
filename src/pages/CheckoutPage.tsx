@@ -133,7 +133,7 @@ export default function CheckoutPage() {
   const isLifetime = selectedPlan.is_lifetime;
 
   return (
-    <div className="min-h-screen bg-soft-bg py-16">
+    <div className="min-h-screen bg-soft-bg pt-20 lg:pt-24 pb-16">
       <div className="container mx-auto max-w-4xl px-4">
         {/* Progress indicator */}
         <CheckoutProgress showAuthForm={showAuthForm} />
