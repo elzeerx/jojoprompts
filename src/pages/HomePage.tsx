@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sparkles, ArrowRight } from "lucide-react";
 import { PricingSection } from "@/components/pricing/PricingSection";
-import { EnhancedHeroSection } from "@/components/sections/EnhancedHeroSection";
+import { HeroSectionV2 } from "@/components/sections/HeroSectionV2";
 import { FeatureHighlights } from "@/components/sections/FeatureHighlights";
 import { InteractiveDemo } from "@/components/sections/InteractiveDemo";
 import { CategoryShowcase } from "@/components/sections/CategoryShowcase";
@@ -25,9 +25,9 @@ export default function HomePage() {
   logger.debug('HomePage mounted', { hasUser: !!user, isMobile });
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-soft-bg via-warm-gold/10 to-muted-teal/20">
-      {/* Enhanced Hero Section */}
-      <EnhancedHeroSection />
+    <main className="min-h-screen">
+      {/* New Hero Section V2 */}
+      <HeroSectionV2 />
 
       {/* Feature Highlights */}
       <FeatureHighlights />
