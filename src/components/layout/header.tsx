@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import headerLogo from "@/assets/logo-header.png";
+import headerLogoDark from "@/assets/logo-header-dark.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Menu, X, User, LogOut, Settings, Heart, Edit } from "lucide-react";
@@ -127,7 +128,7 @@ export function Header() {
             <img
               alt="JojoPrompts"
               className="h-8 w-auto sm:h-10 transition-all duration-200"
-              src={headerLogo}
+              src={isLandingPage ? headerLogo : headerLogoDark}
             />
           </button>
 
