@@ -92,11 +92,6 @@ export const routes: RouteConfig[] = [
     protection: "public"
   },
   {
-    path: "reset-password",
-    component: ResetPasswordPage,
-    protection: "public"
-  },
-  {
     path: "auth/magic-login",
     component: MagicLoginPage,
     protection: "public"
