@@ -18,6 +18,7 @@ export interface PromptMetadata {
 export interface PromptRow extends BasePrompt {
   uploader_name?: string;
   uploader_username?: string;
+  uploader_avatar_url?: string;
   // Add any display-specific fields
 }
 

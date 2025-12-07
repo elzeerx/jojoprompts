@@ -107,18 +107,21 @@ export class PromptService {
       const uniqueUserIds = [...new Set((data || []).map((prompt: any) => prompt.user_id))];
       
       // Single batch query for all profiles
-      let profileMap: Record<string, string> = {};
+      let profileMap: Record<string, { username: string; avatar_url: string | null }> = {};
       if (uniqueUserIds.length > 0) {
         try {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, username')
+            .select('id, username, avatar_url')
             .in('id', uniqueUserIds);
           
           profileMap = (profiles || []).reduce((acc, profile) => {
-            acc[profile.id] = profile.username || 'Anonymous';
+            acc[profile.id] = {
+              username: profile.username || 'Anonymous',
+              avatar_url: profile.avatar_url
+            };
             return acc;
-          }, {} as Record<string, string>);
+          }, {} as Record<string, { username: string; avatar_url: string | null }>);
         } catch (profileError) {
           logger.debug('Batch profile fetch failed', { error: profileError });
         }
@@ -126,11 +129,13 @@ export class PromptService {
 
       // Transform data with cached profile info
       const transformedData = (data || []).map((prompt: any) => {
-        const uploader_name = profileMap[prompt.user_id] || 'Anonymous';
+        const profileInfo = profileMap[prompt.user_id];
+        const uploader_name = profileInfo?.username || 'Anonymous';
         return {
           ...prompt,
           uploader_name,
-          uploader_username: uploader_name !== 'Anonymous' ? uploader_name : undefined
+          uploader_username: uploader_name !== 'Anonymous' ? uploader_name : undefined,
+          uploader_avatar_url: profileInfo?.avatar_url || undefined
         };
       }) as PromptRow[];
 
@@ -180,17 +185,19 @@ export class PromptService {
       // Safely fetch uploader info
       let uploader_name = 'Anonymous';
       let uploader_username = undefined;
+      let uploader_avatar_url = undefined;
 
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('username, first_name, last_name')
+          .select('username, first_name, last_name, avatar_url')
           .eq('id', data.user_id)
           .maybeSingle();
         
         if (profile) {
           uploader_name = profile.username || 'Anonymous';
           uploader_username = profile.username;
+          uploader_avatar_url = profile.avatar_url || undefined;
         }
       } catch (profileError) {
         logger.debug('Profile fetch failed (expected for non-admin users)', { error: profileError });
@@ -207,7 +214,8 @@ export class PromptService {
         metadata: (data.metadata as any) || {},
         created_at: data.created_at,
         uploader_name,
-        uploader_username
+        uploader_username,
+        uploader_avatar_url
       };
     } catch (error) {
       const appError = handleError(error, { component: 'PromptService', action: 'getPromptById' });
