@@ -43,9 +43,13 @@ export function usePromptFilters() {
   // Filter function for client-side filtering
   const filterPrompts = useCallback((prompts: PromptRow[]) => {
     return prompts.filter(prompt => {
-      // Category filter
-      if (filters.category !== 'all' && prompt.metadata?.category !== filters.category) {
-        return false;
+      // Category filter - case-insensitive partial match
+      if (filters.category !== 'all') {
+        const promptCategory = (prompt.metadata?.category || '').toLowerCase();
+        const filterCategory = filters.category.toLowerCase();
+        if (!promptCategory.includes(filterCategory)) {
+          return false;
+        }
       }
 
       // Type filter
