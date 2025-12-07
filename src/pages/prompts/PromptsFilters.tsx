@@ -65,9 +65,45 @@ export function PromptsFilters({
 
   return (
     <div className="mb-6 sm:mb-10 space-y-4 sm:space-y-6">
-      {/* Category Tabs - Mobile optimized horizontal scroll */}
+      {/* Category Pills - Mobile optimized horizontal scroll */}
+      <div className="md:hidden relative">
+        <div className={cn(
+          "overflow-x-auto pb-2 scrollbar-hide",
+          isRTL && "direction-rtl"
+        )}>
+          <div className={cn(
+            "flex gap-2 px-1 min-w-max",
+            isRTL && "flex-row-reverse"
+          )}>
+            {mainCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                className={cn(
+                  "py-2.5 px-4 text-sm font-medium rounded-full whitespace-nowrap",
+                  "transition-colors duration-200 min-h-[44px] touch-manipulation",
+                  category === cat
+                    ? "bg-warm-gold text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                )}
+              >
+                {cat === "all" ? t("prompts.allCategories") : cat}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Fade gradient indicator */}
+        <div className={cn(
+          "absolute top-0 bottom-2 w-12 pointer-events-none",
+          isRTL 
+            ? "left-0 bg-gradient-to-r from-white via-white/80 to-transparent"
+            : "right-0 bg-gradient-to-l from-white via-white/80 to-transparent"
+        )} />
+      </div>
+
+      {/* Category Tabs - Desktop */}
       <div className={cn(
-        "overflow-x-auto pb-2 sm:pb-3 mb-3 sm:mb-4 border-b border-warm-gold/10",
+        "hidden md:block overflow-x-auto pb-2 sm:pb-3 mb-3 sm:mb-4 border-b border-warm-gold/10",
         isRTL && "direction-rtl"
       )}>
         <Tabs value={category} onValueChange={setCategory} className="w-full">
@@ -171,4 +207,3 @@ export function PromptsFilters({
     </div>
   );
 }
-
