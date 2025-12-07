@@ -13,6 +13,8 @@ import { getSubscriptionTier, isPromptLocked } from "@/utils/subscription";
 import { isPrivilegedUser, isAdmin as isAdminRole } from "@/utils/auth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
+import { PromptService } from "@/services/PromptService";
+import { toast } from "@/hooks/use-toast";
 
 interface RefactoredPromptsContentProps {
   prompts: PromptRow[];
@@ -46,6 +48,31 @@ export function RefactoredPromptsContent({
   
   // Process prompts using the filters
   const processedPrompts = filters.processPrompts(prompts);
+
+  const handleDeletePrompt = async (promptId: string) => {
+    try {
+      const result = await PromptService.deletePrompt(promptId);
+      if (result.success) {
+        toast({
+          title: "Prompt deleted",
+          description: "The prompt has been successfully deleted.",
+        });
+        onReload();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Delete failed",
+          description: result.error || "Failed to delete prompt",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: "An unexpected error occurred",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -127,8 +154,8 @@ export function RefactoredPromptsContent({
                 key={prompt.id}
                 prompt={prompt as unknown as Prompt}
                 isAdmin={isAdmin}
-                onEdit={() => {}}
-                onDelete={() => {}}
+                onDelete={handleDeletePrompt}
+                onEditSuccess={onReload}
                 isLocked={promptIsLocked}
                 onUpgradeClick={handleUpgradeClick}
               />
