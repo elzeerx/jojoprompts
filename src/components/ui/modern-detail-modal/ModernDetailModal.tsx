@@ -12,7 +12,6 @@ import { LeftColumn } from './components/LeftColumn';
 import { RightColumn } from './components/RightColumn';
 import { MediaPreviewDialog } from '../prompt-details/MediaPreviewDialog';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 const logger = createLogger('ModernDetailModal');
 
@@ -79,9 +78,7 @@ export function ModernDetailModal({ open, onOpenChange, prompt }: ModernDetailMo
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="p-0 border-none bg-transparent max-w-5xl w-[95vw] max-h-[90vh]">
-          <VisuallyHidden>
-            <DialogTitle>{title}</DialogTitle>
-          </VisuallyHidden>
+          <DialogTitle className="sr-only">{title}</DialogTitle>
           
           {/* Modal Container */}
           <div className={cn(
