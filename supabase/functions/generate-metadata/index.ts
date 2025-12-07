@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import { createEdgeLogger } from "../_shared/logger.ts"
+import { GenerateMetadataSchema, validateAIInput } from "../_shared/aiValidation.ts"
 
 const logger = createEdgeLogger('GENERATE_METADATA');
 
@@ -52,8 +53,24 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt_text } = await req.json()
-    logger.info("Metadata generation request", { promptLength: prompt_text?.length });
+    const requestBody = await req.json()
+    
+    // Validate input with Zod schema
+    const validation = validateAIInput(GenerateMetadataSchema, requestBody);
+    if (!validation.success) {
+      logger.warn("Input validation failed", { error: validation.error });
+      return new Response(
+        JSON.stringify({ 
+          error: validation.error,
+          style: "",
+          tags: []
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    
+    const { prompt_text } = validation.data;
+    logger.info("Metadata generation request", { promptLength: prompt_text.length });
     
     const authHeader = req.headers.get('Authorization')
     logger.debug("Auth header check", { hasAuth: !!authHeader });
