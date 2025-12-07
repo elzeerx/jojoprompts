@@ -66,9 +66,10 @@ export class PromptService {
           ascending: query.orderDirection === 'asc' 
         });
 
-      // Apply filters
+      // Apply filters - use ilike for case-insensitive partial matching
       if (query.category && query.category !== 'all') {
-        supabaseQuery = supabaseQuery.contains('metadata', { category: query.category });
+        const categoryPattern = `%${query.category.toLowerCase()}%`;
+        supabaseQuery = supabaseQuery.ilike('metadata->>category', categoryPattern);
       }
 
       if (query.type && query.type !== 'all') {
