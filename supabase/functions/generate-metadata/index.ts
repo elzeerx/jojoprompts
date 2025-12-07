@@ -80,37 +80,41 @@ serve(async (req) => {
       throw new Error('No authorization header')
     }
 
-    // Initialize Supabase client with better error handling
+    // Initialize Supabase client with service role for user verification
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://fxkqgjakbyrxkmevkglv.supabase.co';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     logger.debug("Environment check", {
       hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
-      hasSupabaseAnonKey: !!Deno.env.get('SUPABASE_ANON_KEY'),
+      hasServiceKey: !!supabaseServiceKey,
       hasOpenAiKey: !!Deno.env.get('OPENAI_API_KEY')
     });
 
-    const supabaseClient = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    )
+    if (!supabaseServiceKey) {
+      logger.error("Missing SUPABASE_SERVICE_ROLE_KEY");
+      throw new Error('Service configuration error');
+    }
 
-    // Verify user authentication - getUser() uses the Authorization header already set
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Extract the JWT token from the Authorization header
+    const token = authHeader.replace('Bearer ', '');
+
+    // Create admin client to verify user
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Verify user authentication using the token
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     logger.debug("User authentication", { 
       authenticated: !!user, 
       userId: user?.id?.substring(0, 8)
     });
     
     if (userError || !user) {
-      logger.error("Authentication failed", { error: userError?.message });
-      throw new Error(`Authentication failed: ${userError?.message || 'No user found'}`)
+      logger.error("Authentication failed", { error: userError?.message || 'Auth session missing!' });
+      throw new Error(`Authentication failed: ${userError?.message || 'Auth session missing!'}`);
     }
+
+    // Create a client for user-context operations
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check user permissions using the database function
     const { data: canManagePromptsResult, error: permissionError } = await supabaseClient
