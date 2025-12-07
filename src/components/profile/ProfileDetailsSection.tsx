@@ -4,8 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Upload, User, MapPin, Phone, Globe } from "lucide-react";
+import { MapPin, Globe } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -58,36 +57,8 @@ export function ProfileDetailsSection({ userProfile, onUpdate }: ProfileDetailsS
     phoneNumber !== (userProfile.phone_number || "") ||
     JSON.stringify(socialLinks) !== JSON.stringify(userProfile.social_links || {});
 
-  const getInitials = () => {
-    return `${userProfile.first_name[0] || ''}${userProfile.last_name[0] || ''}`.toUpperCase();
-  };
-
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Profile Picture
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center gap-4">
-          <Avatar className="h-20 w-20">
-            <AvatarImage src={userProfile.avatar_url} />
-            <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
-          </Avatar>
-          <div className="space-y-2">
-            <Button variant="outline" size="sm" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Upload Photo
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              JPG, PNG or GIF. Max size 5MB.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>About</CardTitle>

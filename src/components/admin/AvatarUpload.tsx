@@ -34,19 +34,20 @@ export function AvatarUpload({
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const fileName = `${Date.now()}.${fileExt}`;
+      // Store in userId folder for RLS policy compliance
+      const filePath = `${userId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('prompt-images')
-        .upload(filePath, file);
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) {
         throw uploadError;
       }
 
       const { data } = supabase.storage
-        .from('prompt-images')
+        .from('avatars')
         .getPublicUrl(filePath);
 
       onAvatarChange(data.publicUrl);
