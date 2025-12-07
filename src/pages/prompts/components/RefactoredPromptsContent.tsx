@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PromptsFilters } from "../PromptsFilters";
-import { PromptCard } from "@/components/ui/prompt-card";
-import { PromptDetailsDialog } from "@/components/ui/prompt-details-dialog";
+import { ModernPromptCard } from "@/components/ui/modern-prompt-card";
 import type { PromptRow } from "@/types/prompts";
 import type { Prompt } from "@/types";
 import type { usePromptFilters } from "@/hooks/usePromptFilters";
@@ -35,8 +34,6 @@ export function RefactoredPromptsContent({
   const { categories } = useCategories();
   const { user, userRole } = useAuth();
   const { userSubscription } = useUserSubscription(user?.id);
-  const [selectedPrompt, setSelectedPrompt] = useState<PromptRow | null>(null);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
 
   // Determine user privileges and subscription tier
@@ -82,11 +79,6 @@ export function RefactoredPromptsContent({
     );
   }
 
-  const openPromptDetails = (prompt: PromptRow) => {
-    setSelectedPrompt(prompt);
-    setDetailsDialogOpen(true);
-  };
-
   const handleUpgradeClick = () => {
     navigate('/pricing');
   };
@@ -131,11 +123,9 @@ export function RefactoredPromptsContent({
             const promptIsLocked = isPromptLocked(prompt.prompt_type || 'text', userTier, isPrivileged, isLifetime);
             
             return (
-              <PromptCard
+              <ModernPromptCard
                 key={prompt.id}
                 prompt={prompt as unknown as Prompt}
-                isSelected={false}
-                onSelect={() => openPromptDetails(prompt)}
                 isAdmin={isAdmin}
                 onEdit={() => {}}
                 onDelete={() => {}}
@@ -145,14 +135,6 @@ export function RefactoredPromptsContent({
             );
           })}
         </div>
-      )}
-
-      {selectedPrompt && (
-        <PromptDetailsDialog
-          open={detailsDialogOpen}
-          onOpenChange={setDetailsDialogOpen}
-          prompt={selectedPrompt as unknown as Prompt}
-        />
       )}
     </div>
   );
