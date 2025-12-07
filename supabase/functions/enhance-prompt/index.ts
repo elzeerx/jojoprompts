@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
-import { createEdgeLogger } from "../_shared/logger.ts";
+import { createEdgeLogger } from "../_shared/logger.ts"
+import { EnhancePromptSchema, validateAIInput } from "../_shared/aiValidation.ts"
 
 const logger = createEdgeLogger('ENHANCE_PROMPT');
 
@@ -17,7 +18,22 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt_description, model_type = 'image', style_preferences = [] } = await req.json()
+    const requestBody = await req.json()
+    
+    // Validate input with Zod schema
+    const validation = validateAIInput(EnhancePromptSchema, requestBody);
+    if (!validation.success) {
+      logger.warn("Input validation failed", { error: validation.error });
+      return new Response(
+        JSON.stringify({ 
+          error: validation.error,
+          enhanced_prompt: ""
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    
+    const { prompt_description, model_type, style_preferences } = validation.data;
     logger.info('Prompt enhancement request received', { model_type, hasStylePreferences: style_preferences.length > 0 });
     
     const authHeader = req.headers.get('Authorization')
@@ -138,7 +154,7 @@ Keep the core subject but expand with rich visual details that would help AI gen
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: model_to_use,
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',

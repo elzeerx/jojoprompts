@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createEdgeLogger } from '../_shared/logger.ts';
+import { SuggestPromptSchema, validateAIInput } from "../_shared/aiValidation.ts";
 
 const logger = createEdgeLogger('suggest-prompt');
 
@@ -17,6 +18,24 @@ serve(async (req) => {
   }
 
   try {
+    // Validate optional input parameters
+    let requestBody = {};
+    try {
+      requestBody = await req.json();
+    } catch {
+      // No body is acceptable for this endpoint
+      requestBody = {};
+    }
+    
+    const validation = validateAIInput(SuggestPromptSchema, requestBody);
+    if (!validation.success) {
+      logger.warn("Input validation failed", { error: validation.error });
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
     // Create client that forwards the caller's JWT
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
