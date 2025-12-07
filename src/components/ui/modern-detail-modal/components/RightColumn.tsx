@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, X, Share2, Check } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ConfigurationSection } from './ConfigurationSection';
 import { toast } from '@/hooks/use-toast';
@@ -9,8 +9,6 @@ interface RightColumnProps {
   modelFields?: Record<string, any>;
   modelType?: string;
   category?: string;
-  onClose?: () => void;
-  onShare?: () => void;
   isRTL?: boolean;
 }
 
@@ -19,8 +17,6 @@ export function RightColumn({
   modelFields,
   modelType,
   category,
-  onClose,
-  onShare,
   isRTL = false
 }: RightColumnProps) {
   const [copied, setCopied] = useState(false);
@@ -43,16 +39,6 @@ export function RightColumn({
     }
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'AI Prompt',
-        text: promptText,
-      }).catch(() => {});
-    } else {
-      onShare?.();
-    }
-  };
 
   return (
     <div className={cn(
@@ -60,35 +46,11 @@ export function RightColumn({
       "p-4 sm:p-6 md:p-8",
       "flex flex-col bg-white overflow-y-auto"
     )}>
-      {/* Header Actions */}
-      <div className="flex justify-between items-center mb-4 sm:mb-6">
+      {/* Header */}
+      <div className="mb-4 sm:mb-6">
         <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
           {isRTL ? 'النص' : 'The Prompt'}
         </span>
-        <div className="flex gap-2">
-          <button
-            onClick={handleShare}
-            className={cn(
-              "p-2 text-gray-400 hover:bg-gray-100 rounded-full",
-              "transition-colors min-h-[40px] min-w-[40px]",
-              "flex items-center justify-center touch-manipulation"
-            )}
-            aria-label="Share"
-          >
-            <Share2 size={18} />
-          </button>
-          <button
-            onClick={onClose}
-            className={cn(
-              "hidden md:flex p-2 text-gray-400 hover:bg-gray-100 rounded-full",
-              "transition-colors min-h-[40px] min-w-[40px]",
-              "items-center justify-center touch-manipulation"
-            )}
-            aria-label="Close"
-          >
-            <X size={20} />
-          </button>
-        </div>
       </div>
 
       {/* Prompt Box */}
