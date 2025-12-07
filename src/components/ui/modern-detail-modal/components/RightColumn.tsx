@@ -95,7 +95,7 @@ export function RightColumn({
       <div className="relative group flex-1 min-h-[200px] sm:min-h-[300px] mb-4 sm:mb-6">
         <textarea
           className={cn(
-            "w-full h-full resize-none p-4 sm:p-5",
+            "w-full h-full resize-none p-4 sm:p-5 pb-14",
             "bg-gray-50 rounded-xl",
             "border-2 border-transparent",
             "focus:border-gray-200 focus:bg-white focus:outline-none",
@@ -112,8 +112,8 @@ export function RightColumn({
         <button
           onClick={handleCopy}
           className={cn(
-            "absolute top-3 sm:top-4",
-            isRTL ? "right-3 sm:right-4" : "left-3 sm:left-4",
+            "absolute bottom-3 sm:bottom-4",
+            isRTL ? "left-3 sm:left-4" : "right-3 sm:right-4",
             "flex items-center gap-2",
             "px-3 sm:px-4 py-2 rounded-lg",
             "text-sm font-medium",
