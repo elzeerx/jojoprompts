@@ -30,25 +30,47 @@ export default function ExamplesPage() {
     try {
       setLoading(true);
       
-      // Fetch prompts with uploader info
+      // Step 1: Fetch prompts WITHOUT profile join (avoids FK ambiguity)
       const { data, error } = await supabase
         .from('prompts')
         .select(`
-          *,
-          profiles:user_id(
-            first_name,
-            last_name,
-            username,
-            avatar_url
-          )
+          id,
+          title,
+          prompt_text,
+          prompt_type,
+          user_id,
+          image_path,
+          default_image_path,
+          metadata,
+          created_at
         `)
         .limit(12)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
+      // Step 2: Batch fetch profiles separately
+      const uniqueUserIds = [...new Set((data || []).map(p => p.user_id))];
+      let profileMap: Record<string, { username: string; avatar_url: string | null }> = {};
+      
+      if (uniqueUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, first_name, last_name, avatar_url')
+          .in('id', uniqueUserIds);
+        
+        profileMap = (profiles || []).reduce((acc, profile) => {
+          acc[profile.id] = {
+            username: profile.username || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Expert Creator',
+            avatar_url: profile.avatar_url
+          };
+          return acc;
+        }, {} as Record<string, { username: string; avatar_url: string | null }>);
+      }
+
+      // Step 3: Transform data with profile info
       const transformedData: PromptRow[] = (data || []).map((item: any) => {
-        const profile = item.profiles;
+        const profileInfo = profileMap[item.user_id];
         const metadata = typeof item.metadata === 'object' && item.metadata !== null ? item.metadata : {};
         
         return {
@@ -61,9 +83,9 @@ export default function ExamplesPage() {
           prompt_type: item.prompt_type,
           created_at: item.created_at || "",
           metadata: metadata,
-          uploader_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username : 'Expert Creator',
-          uploader_username: profile?.username,
-          uploader_avatar_url: profile?.avatar_url
+          uploader_name: profileInfo?.username || 'Expert Creator',
+          uploader_username: profileInfo?.username,
+          uploader_avatar_url: profileInfo?.avatar_url
         };
       });
 
