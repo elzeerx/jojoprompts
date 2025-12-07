@@ -43,6 +43,7 @@ export function RefactoredPromptsContent({
   const isPrivileged = isPrivilegedUser(userRole);
   const userTier = getSubscriptionTier(userSubscription?.subscription_plans?.name);
   const isAdmin = isAdminRole(userRole);
+  const isLifetime = userSubscription?.subscription_plans?.is_lifetime ?? false;
 
   const categoryNames = categories.map(cat => cat.name);
   
@@ -126,8 +127,8 @@ export function RefactoredPromptsContent({
             ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
             : "grid-cols-1 max-w-4xl mx-auto"
         )}>
-          {processedPrompts.map((prompt) => {
-            const promptIsLocked = isPromptLocked(prompt.prompt_type || 'text', userTier, isPrivileged);
+        {processedPrompts.map((prompt) => {
+            const promptIsLocked = isPromptLocked(prompt.prompt_type || 'text', userTier, isPrivileged, isLifetime);
             
             return (
               <PromptCard

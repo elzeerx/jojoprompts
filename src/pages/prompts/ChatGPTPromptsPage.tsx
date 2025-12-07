@@ -34,10 +34,10 @@ export default function ChatGPTPromptsPage() {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
-          // Get the most recent active subscription - FIXED QUERY
+          // Get the most recent active subscription with is_lifetime flag
           const { data: subscriptions, error } = await supabase
             .from("user_subscriptions")
-            .select("plan_id, subscription_plans:plan_id(name, features)")
+            .select("plan_id, subscription_plans:plan_id(name, features, is_lifetime)")
             .eq("user_id", user.id)
             .eq("status", "active")
             .order("created_at", { ascending: false })
@@ -56,19 +56,26 @@ export default function ChatGPTPromptsPage() {
             const subscription = subscriptions[0];
             const planName = subscription.subscription_plans?.name;
             const planFeatures = subscription.subscription_plans?.features;
+            const isLifetime = subscription.subscription_plans?.is_lifetime ?? false;
             tier = getSubscriptionTier(planName);
             
             logger.debug('Access check', { 
               planName, 
               tier,
+              isLifetime,
               userId: user.id,
               subscriptionCount: subscriptions.length
             });
             
-            // Check if user's plan includes ChatGPT prompts feature
-            hasAccess = hasFeatureInPlan(planFeatures, 'ChatGPT prompts');
+            // Lifetime plans have access to EVERYTHING (current + future features)
+            if (isLifetime) {
+              hasAccess = true;
+            } else {
+              // Yearly plans check feature access
+              hasAccess = hasFeatureInPlan(planFeatures, 'ChatGPT prompts');
+            }
             
-            logger.debug('Access result', { hasAccess });
+            logger.debug('Access result', { hasAccess, isLifetime });
           } else {
             logger.debug('No active subscriptions', { userId: user.id });
           }

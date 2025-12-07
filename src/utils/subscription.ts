@@ -40,13 +40,27 @@ export function hasFeatureInPlan(features: string[] | any, featureName: string):
   );
 }
 
+// Check if user has full access (lifetime plans or admin)
+export function hasFullAccess(
+  userTier: string,
+  isLifetime: boolean,
+  isAdmin: boolean
+): boolean {
+  if (isAdmin) return true;
+  if (isLifetime) return true; // Lifetime plans = full access to all current and future features
+  // Premium and ultimate tiers also get full access (but this is mainly for yearly premium)
+  return userTier === 'ultimate' || userTier === 'premium';
+}
+
 export function isPromptLocked(
   promptType: string,
   userTier: string,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  isLifetime: boolean = false
 ): boolean {
-  // Admins have access to everything
+  // Admins and lifetime users have access to everything
   if (isAdmin) return false;
+  if (isLifetime) return false; // Lifetime plans unlock ALL content
   
   // Input validation
   if (!promptType || typeof promptType !== 'string') {
@@ -54,13 +68,13 @@ export function isPromptLocked(
     return true; // Default to locked for invalid input
   }
   
-  // Define access levels for each tier with enhanced security
+  // Define access levels for each tier (only applies to yearly plans)
   const accessLevels = {
     none: [],
     basic: ['text'], // Only ChatGPT prompts
-    standard: ['text', 'image'], // ChatGPT + Midjourney
-    premium: ['text', 'image', 'workflow'], // All standard prompt types
-    ultimate: ['text', 'image', 'workflow', 'special'] // All prompt types + special requests
+    standard: ['text', 'image', 'chatgpt-gpt-builder', 'gemini', 'flux', 'code-cursor'], // ChatGPT + Midjourney + new models
+    premium: ['text', 'image', 'workflow', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'], // All prompt types
+    ultimate: ['text', 'image', 'workflow', 'special', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'] // All + special
   };
   
   const userAccess = accessLevels[userTier as keyof typeof accessLevels] || [];
@@ -72,10 +86,12 @@ export function isPromptLocked(
 export function isCategoryLocked(
   categoryRequiredPlan: string | null | undefined,
   userTier: string,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  isLifetime: boolean = false
 ): boolean {
-  // Admins have access to everything
+  // Admins and lifetime users have access to everything
   if (isAdmin) return false;
+  if (isLifetime) return false; // Lifetime plans unlock ALL categories
   
   // If no plan required, it's free for everyone
   if (!categoryRequiredPlan) return false;
@@ -120,10 +136,12 @@ export function isCategoryLocked(
 export function hasFeatureAccess(
   feature: string,
   userTier: string,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  isLifetime: boolean = false
 ): boolean {
-  // Admins have access to everything
+  // Admins and lifetime users have access to everything
   if (isAdmin) return true;
+  if (isLifetime) return true; // Lifetime plans unlock ALL features
   
   // Input validation
   if (!feature || typeof feature !== 'string' || !userTier || typeof userTier !== 'string') {
@@ -131,13 +149,13 @@ export function hasFeatureAccess(
     return false; // Default to no access for invalid input
   }
   
-  // Enhanced feature access mapping with security considerations
+  // Enhanced feature access mapping (only applies to yearly plans)
   const featureAccess = {
     none: [],
-    basic: ['basic_prompts'],
-    standard: ['basic_prompts', 'midjourney_prompts'],
-    premium: ['basic_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features'],
-    ultimate: ['basic_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features', 'special_requests']
+    basic: ['basic_prompts', 'chatgpt_prompts'],
+    standard: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts', 'gpts_builder', 'gemini_prompts', 'flux_prompts', 'code_prompts'],
+    premium: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features', 'gpts_builder', 'gemini_prompts', 'flux_prompts', 'video_prompts', 'audio_prompts', 'code_prompts'],
+    ultimate: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features', 'special_requests', 'gpts_builder', 'gemini_prompts', 'flux_prompts', 'video_prompts', 'audio_prompts', 'code_prompts']
   };
   
   const userFeatures = featureAccess[userTier.toLowerCase() as keyof typeof featureAccess] || [];
