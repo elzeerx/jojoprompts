@@ -118,7 +118,6 @@ export function ModernDetailModal({ open, onOpenChange, prompt }: ModernDetailMo
               modelFields={modelFields}
               modelType={modelType}
               category={category}
-              onClose={handleClose}
               isRTL={isRTL}
             />
           </div>
