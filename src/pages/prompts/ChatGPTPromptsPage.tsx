@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { PromptCard } from "@/components/ui/prompt-card";
+import { ModernPromptCard } from "@/components/ui/modern-prompt-card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Prompt } from "@/types";
+import { type PromptRow } from "@/types/prompts";
 import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, hasFeatureInPlan } from "@/utils/subscription";
 import { PromptService } from "@/services/PromptService";
@@ -14,9 +14,9 @@ import { createLogger } from '@/utils/logging';
 const logger = createLogger('CHATGPT_PROMPTS');
 
 export default function ChatGPTPromptsPage() {
-  const { user, session, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userTier, setUserTier] = useState<string>('none');
@@ -34,7 +34,6 @@ export default function ChatGPTPromptsPage() {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
-          // Get the most recent active subscription with is_lifetime flag
           const { data: subscriptions, error } = await supabase
             .from("user_subscriptions")
             .select("plan_id, subscription_plans:plan_id(name, features, is_lifetime)")
@@ -48,9 +47,7 @@ export default function ChatGPTPromptsPage() {
           }
           
           let tier = 'none';
-          let hasAccess = false;
-          
-          logger.debug('Subscription data loaded', { count: subscriptions?.length || 0 });
+          let access = false;
           
           if (subscriptions && subscriptions.length > 0) {
             const subscription = subscriptions[0];
@@ -59,49 +56,23 @@ export default function ChatGPTPromptsPage() {
             const isLifetime = subscription.subscription_plans?.is_lifetime ?? false;
             tier = getSubscriptionTier(planName);
             
-            logger.debug('Access check', { 
-              planName, 
-              tier,
-              isLifetime,
-              userId: user.id,
-              subscriptionCount: subscriptions.length
-            });
-            
-            // Lifetime plans have access to EVERYTHING (current + future features)
+            // Lifetime plans have access to EVERYTHING
             if (isLifetime) {
-              hasAccess = true;
+              access = true;
             } else {
-              // Yearly plans check feature access
-              hasAccess = hasFeatureInPlan(planFeatures, 'ChatGPT prompts');
+              access = hasFeatureInPlan(planFeatures, 'ChatGPT prompts');
             }
-            
-            logger.debug('Access result', { hasAccess, isLifetime });
-          } else {
-            logger.debug('No active subscriptions', { userId: user.id });
           }
           
           setUserTier(tier);
-          setHasAccess(hasAccess);
+          setHasAccess(access);
         }
         
         // Fetch ChatGPT prompts using unified service
         const result = await PromptService.getPublicPrompts(100, 0, 'text');
         
         if (result.success && result.data) {
-          // Transform to match existing Prompt interface
-          const transformedData: Prompt[] = result.data.map(item => ({
-            id: item.id,
-            user_id: item.user_id,
-            title: item.title,
-            prompt_text: item.prompt_text,
-            image_path: item.image_path,
-            default_image_path: item.default_image_path || null,
-            prompt_type: item.prompt_type as 'text' | 'image' | 'button' | 'image-selection' | 'workflow',
-            created_at: item.created_at || "",
-            metadata: item.metadata as any || {}
-          }));
-          
-          setPrompts(transformedData);
+          setPrompts(result.data);
         } else {
           logger.error('Error fetching prompts', { error: result.error });
         }
@@ -163,7 +134,7 @@ export default function ChatGPTPromptsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {prompts.map((prompt) => (
-            <PromptCard 
+            <ModernPromptCard 
               key={prompt.id} 
               prompt={prompt}
               isLocked={false}

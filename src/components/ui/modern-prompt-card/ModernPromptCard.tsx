@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { type Prompt, type PromptRow } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Check, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 
 import { useFavoriteLogic } from '../prompt-card/hooks/useFavoriteLogic';
 import { useImageLoading } from '../prompt-card/hooks/useImageLoading';
@@ -26,6 +26,12 @@ export interface ModernPromptCardProps {
   initiallyFavorited?: boolean;
   isLocked?: boolean;
   onUpgradeClick?: () => void;
+  /** Enable selection mode (for bulk operations) */
+  isSelectable?: boolean;
+  /** Whether the card is currently selected */
+  isSelected?: boolean;
+  /** Callback when selection changes */
+  onSelect?: (promptId: string) => void;
 }
 
 export function ModernPromptCard({
@@ -35,7 +41,10 @@ export function ModernPromptCard({
   onDelete,
   initiallyFavorited = false,
   isLocked = false,
-  onUpgradeClick
+  onUpgradeClick,
+  isSelectable = false,
+  isSelected = false,
+  onSelect
 }: ModernPromptCardProps) {
   const { title, prompt_text, metadata, prompt_type } = prompt;
   const category = metadata?.category || 'ChatGPT';
@@ -55,7 +64,9 @@ export function ModernPromptCard({
   const uploaderAvatarUrl = (prompt as any).uploader_avatar_url as string | undefined;
 
   const handleCardClick = () => {
-    if (isLocked && onUpgradeClick) {
+    if (isSelectable && onSelect) {
+      onSelect(prompt.id);
+    } else if (isLocked && onUpgradeClick) {
       onUpgradeClick();
     } else if (!adminMenuOpen) {
       setDetailsOpen(true);
@@ -85,10 +96,27 @@ export function ModernPromptCard({
           "hover:shadow-md hover:-translate-y-1",
           "overflow-hidden cursor-pointer",
           "touch-manipulation",
-          isLocked && "opacity-95"
+          isLocked && "opacity-95",
+          isSelected && "ring-2 ring-warm-gold ring-offset-2"
         )}
         onClick={handleCardClick}
       >
+        {/* Selection Checkbox */}
+        {isSelectable && (
+          <div className="absolute top-3 right-3 z-20">
+            <div
+              className={cn(
+                "w-6 h-6 rounded-full flex items-center justify-center",
+                "border-2 transition-all duration-200",
+                isSelected 
+                  ? "bg-warm-gold border-warm-gold text-white" 
+                  : "bg-white/80 border-gray-300 hover:border-warm-gold"
+              )}
+            >
+              {isSelected && <Check size={14} />}
+            </div>
+          </div>
+        )}
         {/* Locked Overlay */}
         {isLocked && <LockedOverlay onUpgradeClick={onUpgradeClick} />}
 

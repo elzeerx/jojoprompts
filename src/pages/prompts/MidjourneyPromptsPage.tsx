@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { PromptCard } from "@/components/ui/prompt-card";
+import { ModernPromptCard } from "@/components/ui/modern-prompt-card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Prompt } from "@/types";
+import { type PromptRow } from "@/types/prompts";
 import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, hasFeatureInPlan } from "@/utils/subscription";
 import { createLogger } from '@/utils/logging';
@@ -13,9 +13,9 @@ import { createLogger } from '@/utils/logging';
 const logger = createLogger('MIDJOURNEY_PROMPTS');
 
 export default function MidjourneyPromptsPage() {
-  const { user, session, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userTier, setUserTier] = useState<string>('none');
@@ -33,7 +33,6 @@ export default function MidjourneyPromptsPage() {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
-          // Get the most recent active subscription - FIXED QUERY
           const { data: subscriptions, error } = await supabase
             .from("user_subscriptions")
             .select("plan_id, subscription_plans:plan_id(name, features)")
@@ -47,57 +46,55 @@ export default function MidjourneyPromptsPage() {
           }
           
           let tier = 'none';
-          let hasAccess = false;
-          
-          logger.debug('Subscription data loaded', { count: subscriptions?.length || 0 });
+          let access = false;
           
           if (subscriptions && subscriptions.length > 0) {
             const subscription = subscriptions[0];
             const planName = subscription.subscription_plans?.name;
             const planFeatures = subscription.subscription_plans?.features;
             tier = getSubscriptionTier(planName);
-            
-            logger.debug('Access check', { 
-              planName, 
-              tier,
-              userId: user.id,
-              subscriptionCount: subscriptions.length
-            });
-            
-            // Check if user's plan includes Midjourney prompts feature
-            hasAccess = hasFeatureInPlan(planFeatures, 'Midjourney prompts');
-            
-            logger.debug('Access result', { hasAccess });
-          } else {
-            logger.debug('No active subscriptions', { userId: user.id });
+            access = hasFeatureInPlan(planFeatures, 'Midjourney prompts');
           }
           
           setUserTier(tier);
-          setHasAccess(hasAccess);
+          setHasAccess(access);
         }
         
-        // Fetch Midjourney prompts regardless of access
+        // Fetch Midjourney prompts with uploader info
         const { data, error: promptsError } = await supabase
           .from("prompts")
-          .select("*")
+          .select(`
+            *,
+            profiles:user_id(
+              first_name,
+              last_name,
+              username,
+              avatar_url
+            )
+          `)
           .eq("prompt_type", "image")
           .order("created_at", { ascending: false });
         
         if (promptsError) {
           logger.error('Error fetching prompts', { error: promptsError.message });
         } else if (data) {
-          // Transform data to ensure it matches the Prompt type
-          const transformedData: Prompt[] = data.map(item => ({
-            id: item.id,
-            user_id: item.user_id,
-            title: item.title,
-            prompt_text: item.prompt_text,
-            image_path: item.image_path,
-            default_image_path: item.default_image_path || null,
-            prompt_type: item.prompt_type as 'text' | 'image' | 'button' | 'image-selection' | 'workflow',
-            created_at: item.created_at || "",
-            metadata: item.metadata as any || {}
-          }));
+          const transformedData: PromptRow[] = data.map(item => {
+            const profile = item.profiles as any;
+            return {
+              id: item.id,
+              user_id: item.user_id,
+              title: item.title,
+              prompt_text: item.prompt_text,
+              image_path: item.image_path,
+              default_image_path: item.default_image_path || null,
+              prompt_type: item.prompt_type as any,
+              created_at: item.created_at || "",
+              metadata: item.metadata as any || {},
+              uploader_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : undefined,
+              uploader_username: profile?.username,
+              uploader_avatar_url: profile?.avatar_url
+            };
+          });
           
           setPrompts(transformedData);
         }
@@ -160,7 +157,7 @@ export default function MidjourneyPromptsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {prompts.map((prompt) => (
-            <PromptCard 
+            <ModernPromptCard 
               key={prompt.id} 
               prompt={prompt}
               isLocked={false}
