@@ -1,3 +1,10 @@
+/**
+ * @deprecated This component is deprecated. Use ModernDetailModal instead.
+ * @see src/components/ui/modern-detail-modal/ModernDetailModal.tsx
+ * 
+ * This file is kept for backwards compatibility with AdminPromptCard and legacy code.
+ * All new code should use ModernDetailModal which has better styling and features.
+ */
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";

@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { ModernPromptCard } from "@/components/ui/modern-prompt-card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { type PromptRow } from "@/types/prompts";
 import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, isCategoryLocked } from "@/utils/subscription";
+import { PageLoadingState, EmptyState } from "@/components/ui/loading-states";
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('WORKFLOW_PROMPTS');
@@ -106,11 +107,7 @@ export default function WorkflowPromptsPage() {
   }, [user, navigate, isAdmin]);
   
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoadingState message="Loading workflow prompts..." />;
   }
   
   if (!hasAccess) {

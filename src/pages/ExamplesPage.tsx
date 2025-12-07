@@ -7,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { type PromptRow } from '@/types/prompts';
 import { useCategories } from '@/hooks/useCategories';
 import { ModernPromptCard } from '@/components/ui/modern-prompt-card';
+import { CategoryFilter } from '@/components/ui/category-filter';
+import { PageLoadingState, EmptyState } from '@/components/ui/loading-states';
 import { useAuth } from '@/contexts/AuthContext';
 import { createLogger } from '@/utils/logging';
 
@@ -87,11 +89,8 @@ export default function ExamplesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 border-2 border-warm-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground font-light">Loading examples...</p>
-        </div>
+      <div className="min-h-screen bg-white">
+        <PageLoadingState message="Loading examples..." />
       </div>
     );
   }
@@ -127,45 +126,13 @@ export default function ExamplesPage() {
       {/* Categories Filter */}
       <section className="pb-8">
         <Container>
-          {/* Mobile: Horizontal scroll with fade gradient hint */}
-          <div className="md:hidden relative">
-            <div className="overflow-x-auto pb-2 scrollbar-hide">
-              <div className="flex gap-2 px-1 min-w-max">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`py-2.5 px-4 text-sm font-medium rounded-full whitespace-nowrap transition-colors duration-300 min-h-[44px] touch-manipulation ${
-                      selectedCategory === category 
-                        ? 'bg-warm-gold text-white' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {category === 'all' ? 'All' : category}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Right fade gradient indicator */}
-            <div className="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none" />
-          </div>
-          
-          {/* Desktop: Gap-px grid pattern */}
-          <div className="hidden md:grid grid-cols-5 gap-px bg-gray-200 rounded-xl overflow-hidden max-w-2xl mx-auto">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`py-3 px-4 text-sm font-medium transition-colors duration-300 ${
-                  selectedCategory === category 
-                    ? 'bg-warm-gold/5 text-warm-gold' 
-                    : 'bg-white text-muted-foreground hover:bg-gray-50/50'
-                }`}
-              >
-                {category === 'all' ? 'All' : category}
-              </button>
-            ))}
-          </div>
+          <CategoryFilter
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+            allLabel="All"
+            className="max-w-2xl mx-auto"
+          />
         </Container>
       </section>
 

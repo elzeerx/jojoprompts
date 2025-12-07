@@ -1,3 +1,10 @@
+/**
+ * @deprecated This component is deprecated. Use ModernPromptCard instead.
+ * @see src/components/ui/modern-prompt-card/ModernPromptCard.tsx
+ * 
+ * This file is kept for backwards compatibility with any remaining usages.
+ * All new code should use ModernPromptCard which has better styling and features.
+ */
 import React from "react";
 import { type Prompt, type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";

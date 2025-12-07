@@ -3,9 +3,10 @@ import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { ModernPromptCard } from '@/components/ui/modern-prompt-card';
-import { Loader2 } from 'lucide-react';
 import { type PromptRow } from '@/types/prompts';
 import { PromptService } from '@/services/PromptService';
+import { PromptGridSkeleton, EmptyState } from '@/components/ui/loading-states';
+import { Search } from 'lucide-react';
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('SEARCH_PAGE');
@@ -116,9 +117,7 @@ export default function SearchPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
+            <PromptGridSkeleton count={6} />
           ) : searchResults.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {searchResults.map((prompt) => (
@@ -129,17 +128,17 @@ export default function SearchPage() {
               ))}
             </div>
           ) : currentQuery || currentFilters.promptTypes.length > 0 || currentFilters.categories.length > 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                No prompts found matching your search criteria.
-              </p>
-            </div>
+            <EmptyState
+              icon={<Search className="h-6 w-6 text-muted-foreground" />}
+              title="No results found"
+              description="No prompts found matching your search criteria. Try adjusting your filters."
+            />
           ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                Enter a search query or apply filters to find prompts.
-              </p>
-            </div>
+            <EmptyState
+              icon={<Search className="h-6 w-6 text-muted-foreground" />}
+              title="Start searching"
+              description="Enter a search query or apply filters to find prompts."
+            />
           )}
         </CardContent>
       </Card>
