@@ -57,50 +57,8 @@ export interface Prompt {
   created_at: string;
 }
 
-export interface PromptRow {
-  id: string;
-  user_id: string;
-  title: string;
-  title_ar?: string | null;
-  prompt_text: string;
-  prompt_text_ar?: string | null;
-  image_path: string | null;
-  image_url?: string | null;
-  default_image_path?: string | null;
-  created_at: string | null;
-  metadata: {
-    category?: string;
-    style?: string;
-    tags?: string[];
-    target_model?: string;
-    use_case?: string;
-    button_text?: string;
-    button_action?: string;
-    image_options?: string[];
-    model_type?: string;
-    model_fields?: Record<string, any>;
-    translations?: {
-      arabic?: LocalePrompt;
-      english?: LocalePrompt;
-    };
-    media_files?: Array<{
-      type: 'image' | 'video' | 'audio';
-      path: string;
-      name: string;
-    }>;
-    workflow_steps?: {
-      name: string;
-      description: string;
-    }[];
-    workflow_files?: Array<{
-      type: 'json' | 'zip';
-      path: string;
-      name: string;
-    }>;
-    buttons?: Array<{ id: string; name: string; description: string; type: string }>;
-  };
-  prompt_type: 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection';
-}
+// PromptRow is now defined in @/types/prompts.ts - re-export for backwards compatibility
+export type { PromptRow } from '@/types/prompts';
 
 // UserProfile has been moved to @/types/user.ts for better organization
 export type { UserProfile, ExtendedUserProfile, UserRole } from "@/types/user";
