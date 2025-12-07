@@ -1,110 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight, Lock, Eye, Zap, Crown } from 'lucide-react';
+import { Sparkles, ArrowRight, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { type Prompt } from '@/types';
+import { type PromptRow } from '@/types/prompts';
 import { useCategories } from '@/hooks/useCategories';
-import { ImageWrapper } from '@/components/ui/prompt-card/ImageWrapper';
-import { useImageLoading } from '@/components/ui/prompt-card/hooks/useImageLoading';
+import { ModernPromptCard } from '@/components/ui/modern-prompt-card';
 import { useAuth } from '@/contexts/AuthContext';
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('EXAMPLES_PAGE');
 
-interface ExamplePrompt extends Prompt {
-  previewText: string;
-  isLocked: boolean;
-}
-
-function ExampleCard({ prompt }: { prompt: ExamplePrompt }) {
-  const imageUrl = useImageLoading(prompt);
-  const firstThreeWords = prompt.prompt_text.split(' ').slice(0, 3).join(' ') + '...';
-
-  return (
-    <div className="bg-white p-6 group hover:bg-gray-50/50 transition-colors duration-300 relative">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-medium text-dark-base mb-2 group-hover:text-warm-gold transition-colors">
-            {prompt.title}
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            <span className="text-xs text-warm-gold bg-warm-gold/5 px-2 py-1 rounded">
-              {prompt.prompt_type}
-            </span>
-            {prompt.metadata.category && (
-              <span className="text-xs text-muted-teal bg-muted-teal/5 px-2 py-1 rounded">
-                {prompt.metadata.category}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1 text-warm-gold">
-          <Crown className="h-4 w-4" />
-          <span className="text-xs font-medium">Premium</span>
-        </div>
-      </div>
-      
-      {/* Image */}
-      <div className="relative mb-4">
-        <div className="relative overflow-hidden rounded-xl">
-          <div className="aspect-video">
-            <ImageWrapper
-              src={imageUrl}
-              alt={prompt.title}
-              aspect={1}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          {prompt.metadata.media_files && prompt.metadata.media_files.length > 1 && (
-            <div className="absolute top-2 right-2 bg-dark-base/70 text-white text-xs px-2 py-1 rounded">
-              +{prompt.metadata.media_files.length - 1} files
-            </div>
-          )}
-        </div>
-        
-        {prompt.isLocked && (
-          <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center rounded-xl">
-            <div className="text-center">
-              <Lock className="h-5 w-5 text-warm-gold mx-auto mb-2" />
-              <p className="text-warm-gold font-medium text-sm">Premium Content</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Preview text */}
-      <p className="text-sm text-muted-foreground font-light mb-4">
-        {firstThreeWords}
-      </p>
-      
-      {/* CTA Button */}
-      <Button 
-        asChild
-        variant="outline" 
-        className="w-full border-gray-200 hover:bg-gray-50 text-dark-base hover:text-warm-gold transition-colors"
-      >
-        <Link to="/pricing" className="flex items-center justify-center gap-2">
-          <Zap className="h-4 w-4" />
-          Unlock This Prompt
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </Button>
-
-      {/* Accent line */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
-    </div>
-  );
-}
-
 export default function ExamplesPage() {
-  const [examplePrompts, setExamplePrompts] = useState<ExamplePrompt[]>([]);
+  const [examplePrompts, setExamplePrompts] = useState<PromptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const { categories: dbCategories } = useCategories();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchExamplePrompts();
@@ -114,73 +28,40 @@ export default function ExamplesPage() {
     try {
       setLoading(true);
       
-      let data, error;
-      
-      if (user) {
-        const response = await supabase
-          .from('prompts')
-          .select(`
-            *,
-            profiles!fk_prompts_user_id(username)
-          `)
-          .limit(12)
-          .order('created_at', { ascending: false });
-        
-        data = response.data;
-        error = response.error;
-      } else {
-        const response = await supabase.rpc('get_public_prompt_previews', { limit_count: 12 });
-        data = response.data;
-        error = response.error;
-      }
+      // Fetch prompts with uploader info
+      const { data, error } = await supabase
+        .from('prompts')
+        .select(`
+          *,
+          profiles:user_id(
+            first_name,
+            last_name,
+            username,
+            avatar_url
+          )
+        `)
+        .limit(12)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const transformedData: ExamplePrompt[] = (data || []).map((item: any) => {
-        let metadata, category, profile, prompt_text, previewText;
+      const transformedData: PromptRow[] = (data || []).map((item: any) => {
+        const profile = item.profiles;
+        const metadata = typeof item.metadata === 'object' && item.metadata !== null ? item.metadata : {};
         
-        if (user) {
-          metadata = typeof item.metadata === 'object' && item.metadata !== null ? item.metadata : {};
-          const metadataObj = metadata as Record<string, any>;
-          category = metadataObj.category || "";
-          profile = item.profiles as any;
-          prompt_text = item.prompt_text;
-          previewText = prompt_text.length > 100 ? prompt_text.substring(0, 100) + "..." : prompt_text;
-        } else {
-          metadata = { category: item.category || "" };
-          category = item.category || "";
-          profile = null;
-          prompt_text = item.prompt_preview || "";
-          previewText = prompt_text;
-        }
-
         return {
           id: item.id,
           user_id: item.user_id || '',
           title: item.title,
-          prompt_text: prompt_text,
+          prompt_text: item.prompt_text,
           image_path: item.image_path,
           default_image_path: item.default_image_path,
-          image_url: null,
-          prompt_type: item.prompt_type as 'text' | 'image' | 'workflow' | 'video' | 'sound' | 'button' | 'image-selection',
+          prompt_type: item.prompt_type,
           created_at: item.created_at || "",
-          uploader_name: profile?.username || 'Expert Creator',
-          metadata: {
-            category: category,
-            style: undefined,
-            tags: [],
-            media_files: [],
-            target_model: undefined,
-            use_case: undefined,
-            workflow_steps: undefined,
-            workflow_files: [],
-            buttons: undefined,
-            image_options: undefined,
-            button_text: undefined,
-            button_action: undefined,
-          },
-          previewText,
-          isLocked: !user
+          metadata: metadata,
+          uploader_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username : 'Expert Creator',
+          uploader_username: profile?.username,
+          uploader_avatar_url: profile?.avatar_url
         };
       });
 
@@ -195,10 +76,14 @@ export default function ExamplesPage() {
   const filteredPrompts = selectedCategory === 'all' 
     ? examplePrompts 
     : examplePrompts.filter(prompt => 
-        prompt.metadata.category?.toLowerCase() === selectedCategory.toLowerCase()
+        prompt.metadata?.category?.toLowerCase() === selectedCategory.toLowerCase()
       );
 
   const categories = ['all', 'ChatGPT', 'Midjourney', 'Claude', 'Workflow'];
+
+  const handleUpgradeClick = () => {
+    navigate('/pricing');
+  };
 
   if (loading) {
     return (
@@ -250,10 +135,10 @@ export default function ExamplesPage() {
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`py-2.5 px-4 text-sm font-medium rounded-lg whitespace-nowrap transition-colors duration-300 min-h-[44px] ${
+                    className={`py-2.5 px-4 text-sm font-medium rounded-full whitespace-nowrap transition-colors duration-300 min-h-[44px] touch-manipulation ${
                       selectedCategory === category 
-                        ? 'bg-warm-gold/10 text-warm-gold border border-warm-gold/20' 
-                        : 'bg-white text-muted-foreground border border-gray-200 hover:bg-gray-50'
+                        ? 'bg-warm-gold text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     {category === 'all' ? 'All' : category}
@@ -284,14 +169,25 @@ export default function ExamplesPage() {
         </Container>
       </section>
 
-      {/* Examples Grid */}
+      {/* Examples Grid - Using ModernPromptCard */}
       <section className="pb-16">
         <Container>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-200 rounded-2xl overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPrompts.map((prompt) => (
-              <ExampleCard key={prompt.id} prompt={prompt} />
+              <ModernPromptCard
+                key={prompt.id}
+                prompt={prompt}
+                isLocked={!user}
+                onUpgradeClick={handleUpgradeClick}
+              />
             ))}
           </div>
+          
+          {filteredPrompts.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No prompts found in this category.</p>
+            </div>
+          )}
         </Container>
       </section>
 
