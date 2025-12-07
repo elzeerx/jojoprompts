@@ -1,12 +1,11 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { PromptCard } from "@/components/ui/prompt-card";
+import { ModernPromptCard } from "@/components/ui/modern-prompt-card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Prompt } from "@/types";
+import { type PromptRow } from "@/types/prompts";
 import { Container } from "@/components/ui/container";
 import { getSubscriptionTier, isCategoryLocked } from "@/utils/subscription";
 import { createLogger } from '@/utils/logging';
@@ -14,9 +13,9 @@ import { createLogger } from '@/utils/logging';
 const logger = createLogger('WORKFLOW_PROMPTS');
 
 export default function WorkflowPromptsPage() {
-  const { user, session, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userTier, setUserTier] = useState<string>('none');
@@ -34,7 +33,6 @@ export default function WorkflowPromptsPage() {
           setHasAccess(true);
           setUserTier('ultimate');
         } else {
-          // Check user's subscription
           const { data: subscriptions, error } = await supabase
             .from("user_subscriptions")
             .select("plan_id, subscription_plans:plan_id(name, features)")
@@ -55,32 +53,45 @@ export default function WorkflowPromptsPage() {
           setUserTier(tier);
           
           // Check if user has access to workflow prompts (premium plan requirement)
-          const hasAccess = !isCategoryLocked('premium', tier, isAdmin);
-          setHasAccess(hasAccess);
+          const access = !isCategoryLocked('premium', tier, isAdmin);
+          setHasAccess(access);
         }
         
-        // Fetch workflow prompts regardless of access
+        // Fetch workflow prompts with uploader info
         const { data, error: promptsError } = await supabase
           .from("prompts")
-          .select("*")
+          .select(`
+            *,
+            profiles:user_id(
+              first_name,
+              last_name,
+              username,
+              avatar_url
+            )
+          `)
           .eq("prompt_type", "workflow")
           .order("created_at", { ascending: false });
         
         if (promptsError) {
           logger.error('Error fetching prompts', { error: promptsError.message });
         } else if (data) {
-          // Transform data to ensure it matches the Prompt type
-          const transformedData: Prompt[] = data.map(item => ({
-            id: item.id,
-            user_id: item.user_id,
-            title: item.title,
-            prompt_text: item.prompt_text,
-            image_path: item.image_path,
-            default_image_path: item.default_image_path || null,
-            prompt_type: item.prompt_type as 'text' | 'image' | 'button' | 'image-selection' | 'workflow',
-            created_at: item.created_at || "",
-            metadata: item.metadata as any || {}
-          }));
+          const transformedData: PromptRow[] = data.map(item => {
+            const profile = item.profiles as any;
+            return {
+              id: item.id,
+              user_id: item.user_id,
+              title: item.title,
+              prompt_text: item.prompt_text,
+              image_path: item.image_path,
+              default_image_path: item.default_image_path || null,
+              prompt_type: item.prompt_type as any,
+              created_at: item.created_at || "",
+              metadata: item.metadata as any || {},
+              uploader_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : undefined,
+              uploader_username: profile?.username,
+              uploader_avatar_url: profile?.avatar_url
+            };
+          });
           
           setPrompts(transformedData);
         }
@@ -145,7 +156,7 @@ export default function WorkflowPromptsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {prompts.map((prompt) => (
-            <PromptCard 
+            <ModernPromptCard 
               key={prompt.id} 
               prompt={prompt}
               isLocked={false}

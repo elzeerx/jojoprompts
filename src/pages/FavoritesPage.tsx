@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { PromptCard } from "@/components/ui/prompt-card";
+import { ModernPromptCard } from "@/components/ui/modern-prompt-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 import { useState, useEffect } from "react";
-import { type Prompt } from "@/types";
+import { type PromptRow } from "@/types/prompts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -13,7 +13,7 @@ const logger = createLogger('FAVORITES_PAGE');
 
 export default function FavoritesPage() {
   const [selectedFavoritePrompts, setSelectedFavoritePrompts] = useState<string[]>([]);
-  const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
+  const [favoritePrompts, setFavoritePrompts] = useState<PromptRow[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
@@ -30,27 +30,39 @@ export default function FavoritesPage() {
       try {
         const { data, error } = await supabase
           .from("favorites")
-          .select("prompt:prompts(*)")
+          .select(`
+            prompt:prompts(
+              *,
+              profiles:user_id(
+                first_name,
+                last_name,
+                username,
+                avatar_url
+              )
+            )
+          `)
           .eq("user_id", user.id);
 
         if (error) throw error;
         if (!mounted) return;
 
-        const transformedPrompts = data?.map(item => {
+        const transformedPrompts: PromptRow[] = data?.map(item => {
           const promptData = item.prompt as any;
+          const profile = promptData?.profiles;
           return {
             id: promptData.id,
             user_id: promptData.user_id,
             title: promptData.title,
             prompt_text: promptData.prompt_text,
             image_path: promptData.image_path,
+            default_image_path: promptData.default_image_path,
+            prompt_type: promptData.prompt_type,
             created_at: promptData.created_at || "",
-            metadata: {
-              category: promptData.metadata?.category || undefined,
-              style: promptData.metadata?.style || undefined,
-              tags: Array.isArray(promptData.metadata?.tags) ? promptData.metadata?.tags : []
-            }
-          } as Prompt;
+            metadata: promptData.metadata || {},
+            uploader_name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : undefined,
+            uploader_username: profile?.username,
+            uploader_avatar_url: profile?.avatar_url
+          };
         }) || [];
 
         setFavoritePrompts(transformedPrompts);
@@ -142,9 +154,9 @@ export default function FavoritesPage() {
     }
 
     return (
-      <div className="mobile-grid gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {favoritePrompts.map((prompt) => (
-          <PromptCard
+          <ModernPromptCard
             key={prompt.id}
             prompt={prompt}
             isSelectable={true}

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
-import { PromptCard } from '@/components/ui/prompt-card';
+import { ModernPromptCard } from '@/components/ui/modern-prompt-card';
 import { Loader2 } from 'lucide-react';
-import { type PromptRow } from '@/types';
+import { type PromptRow } from '@/types/prompts';
 import { PromptService } from '@/services/PromptService';
 import { createLogger } from '@/utils/logging';
 
@@ -38,7 +38,6 @@ export default function SearchPage() {
     setLoading(true);
 
     try {
-      // Use unified PromptService for search
       const result = await PromptService.getPrompts({
         search: query.trim() || undefined,
         type: filters.promptTypes.length > 0 ? filters.promptTypes[0] as any : 'all',
@@ -123,13 +122,9 @@ export default function SearchPage() {
           ) : searchResults.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {searchResults.map((prompt) => (
-                <PromptCard
+                <ModernPromptCard
                   key={prompt.id}
                   prompt={prompt}
-                  onDelete={() => {
-                    // Refresh search results after deletion
-                    handleSearch(currentQuery, currentFilters);
-                  }}
                 />
               ))}
             </div>
