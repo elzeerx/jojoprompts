@@ -17,12 +17,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { SimplifiedPromptDialog } from '@/components/prompts/SimplifiedPromptDialog';
 
 export interface ModernPromptCardProps {
   prompt: Prompt | PromptRow;
   isAdmin?: boolean;
   onEdit?: (promptId: string) => void;
   onDelete?: (promptId: string) => void;
+  onEditSuccess?: () => void;
   initiallyFavorited?: boolean;
   isLocked?: boolean;
   onUpgradeClick?: () => void;
@@ -39,6 +51,7 @@ export function ModernPromptCard({
   isAdmin = false,
   onEdit,
   onDelete,
+  onEditSuccess,
   initiallyFavorited = false,
   isLocked = false,
   onUpgradeClick,
@@ -57,6 +70,8 @@ export function ModernPromptCard({
   
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Get uploader info (cast to any for optional fields)
   const uploaderName = (prompt as any).uploader_name as string | undefined;
@@ -76,13 +91,23 @@ export function ModernPromptCard({
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     setAdminMenuOpen(false);
-    onEdit?.(prompt.id);
+    setEditDialogOpen(true);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setAdminMenuOpen(false);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setDeleteDialogOpen(false);
     onDelete?.(prompt.id);
+  };
+
+  const handleEditSuccess = () => {
+    setEditDialogOpen(false);
+    onEditSuccess?.();
   };
 
   return (
@@ -194,6 +219,37 @@ export function ModernPromptCard({
           open={detailsOpen}
           onOpenChange={setDetailsOpen}
           prompt={prompt as PromptRow}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Prompt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Dialog */}
+      {isAdmin && (
+        <SimplifiedPromptDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          editingPrompt={prompt as PromptRow}
+          onSuccess={handleEditSuccess}
         />
       )}
     </>
