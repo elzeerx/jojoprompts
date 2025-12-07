@@ -45,6 +45,37 @@ interface ApiResponse<T = any> {
 }
 
 export class PromptService {
+  // Cache for category subcategory mappings
+  private static categoryMappingsCache: Map<string, string[]> | null = null;
+  private static mappingsCacheTime: number = 0;
+  private static readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  // Fetch and cache category subcategory mappings
+  private static async getCategoryMappings(): Promise<Map<string, string[]>> {
+    const now = Date.now();
+    if (this.categoryMappingsCache && (now - this.mappingsCacheTime) < this.CACHE_TTL) {
+      return this.categoryMappingsCache;
+    }
+
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('name, subcategories')
+      .eq('is_active', true);
+
+    const mappings = new Map<string, string[]>();
+    if (categories) {
+      for (const cat of categories) {
+        const subcats = (cat.subcategories as string[]) || [];
+        // Include the category name itself (lowercase) plus all subcategories
+        mappings.set(cat.name.toLowerCase(), [cat.name.toLowerCase(), ...subcats.map(s => s.toLowerCase())]);
+      }
+    }
+
+    this.categoryMappingsCache = mappings;
+    this.mappingsCacheTime = now;
+    return mappings;
+  }
+
   // Enhanced getPrompts with safe profile fetching
   static async getPrompts(query: PromptQuery = {}): Promise<PromptQueryResult> {
     try {
@@ -66,10 +97,21 @@ export class PromptService {
           ascending: query.orderDirection === 'asc' 
         });
 
-      // Apply filters - use ilike for case-insensitive partial matching
+      // Apply category filter using subcategory mappings
       if (query.category && query.category !== 'all') {
-        const categoryPattern = `%${query.category.toLowerCase()}%`;
-        supabaseQuery = supabaseQuery.ilike('metadata->>category', categoryPattern);
+        const mappings = await this.getCategoryMappings();
+        const categoryKey = query.category.toLowerCase();
+        const subcategories = mappings.get(categoryKey);
+
+        if (subcategories && subcategories.length > 0) {
+          // Build OR filter for all subcategories
+          const orConditions = subcategories.map(sub => `metadata->>category.ilike.%${sub}%`).join(',');
+          supabaseQuery = supabaseQuery.or(orConditions);
+        } else {
+          // Fallback to partial matching if no mapping exists
+          const categoryPattern = `%${categoryKey}%`;
+          supabaseQuery = supabaseQuery.ilike('metadata->>category', categoryPattern);
+        }
       }
 
       if (query.type && query.type !== 'all') {

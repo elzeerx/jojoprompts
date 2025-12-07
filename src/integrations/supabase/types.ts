@@ -485,6 +485,7 @@ export type Database = {
           link_path: string
           name: string
           required_plan: string
+          subcategories: string[] | null
           updated_at: string
         }
         Insert: {
@@ -501,6 +502,7 @@ export type Database = {
           link_path: string
           name: string
           required_plan?: string
+          subcategories?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -517,6 +519,7 @@ export type Database = {
           link_path?: string
           name?: string
           required_plan?: string
+          subcategories?: string[] | null
           updated_at?: string
         }
         Relationships: []

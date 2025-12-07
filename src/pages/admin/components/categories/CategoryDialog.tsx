@@ -69,11 +69,13 @@ export function CategoryDialog({
     icon_name: "Sparkles",
     icon_image_path: "",
     features: [],
+    subcategories: [],
     bg_gradient: "from-warm-gold/20 via-warm-gold/10 to-transparent",
     link_path: "",
     is_active: true,
   });
   const [newFeature, setNewFeature] = useState("");
+  const [newSubcategory, setNewSubcategory] = useState("");
   const [loading, setLoading] = useState(false);
   const [iconType, setIconType] = useState<'lucide' | 'custom'>('lucide');
 
@@ -87,6 +89,7 @@ export function CategoryDialog({
         icon_name: category.icon_name,
         icon_image_path: (category as any).icon_image_path || "",
         features: category.features || [],
+        subcategories: category.subcategories || [],
         bg_gradient: category.bg_gradient,
         link_path: category.link_path,
         is_active: category.is_active,
@@ -101,6 +104,7 @@ export function CategoryDialog({
         icon_name: "Sparkles",
         icon_image_path: "",
         features: [],
+        subcategories: [],
         bg_gradient: "from-warm-gold/20 via-warm-gold/10 to-transparent",
         link_path: "",
         is_active: true,
@@ -146,6 +150,23 @@ export function CategoryDialog({
     setFormData(prev => ({
       ...prev,
       features: prev.features.filter(f => f !== featureToRemove)
+    }));
+  };
+
+  const addSubcategory = () => {
+    if (newSubcategory.trim() && !formData.subcategories.includes(newSubcategory.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        subcategories: [...prev.subcategories, newSubcategory.trim()]
+      }));
+      setNewSubcategory("");
+    }
+  };
+
+  const removeSubcategory = (subcategoryToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      subcategories: prev.subcategories.filter(s => s !== subcategoryToRemove)
     }));
   };
 
@@ -306,6 +327,35 @@ export function CategoryDialog({
                           <X
                             className="h-3 w-3 cursor-pointer"
                             onClick={() => removeFeature(feature)}
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Subcategories (for prompt filtering)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Add metadata values that should map to this category (e.g., "midjourney-style", "midjourney-full")
+                    </p>
+                    <div className="flex gap-2 mb-2">
+                      <Input
+                        value={newSubcategory}
+                        onChange={(e) => setNewSubcategory(e.target.value)}
+                        placeholder="e.g., midjourney-style"
+                        onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addSubcategory())}
+                      />
+                      <Button type="button" onClick={addSubcategory} size="sm">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.subcategories.map((subcategory, index) => (
+                        <Badge key={index} variant="outline" className="flex items-center gap-1 bg-warm-gold/10">
+                          {subcategory}
+                          <X
+                            className="h-3 w-3 cursor-pointer"
+                            onClick={() => removeSubcategory(subcategory)}
                           />
                         </Badge>
                       ))}

@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useDebounce } from './useDebounce';
+import { supabase } from '@/integrations/supabase/client';
 import type { PromptFilters, PromptRow, PromptTypeFilter, SortOption } from '@/types/prompts';
 
 const initialFilters: PromptFilters = {
@@ -14,6 +15,28 @@ const initialFilters: PromptFilters = {
 
 export function usePromptFilters() {
   const [filters, setFilters] = useState<PromptFilters>(initialFilters);
+  const [categoryMappings, setCategoryMappings] = useState<Map<string, string[]>>(new Map());
+  
+  // Fetch category subcategory mappings on mount
+  useEffect(() => {
+    async function fetchMappings() {
+      const { data: categories } = await supabase
+        .from('categories')
+        .select('name, subcategories')
+        .eq('is_active', true);
+
+      const mappings = new Map<string, string[]>();
+      if (categories) {
+        for (const cat of categories) {
+          const subcats = (cat.subcategories as string[]) || [];
+          // Include the category name itself (lowercase) plus all subcategories
+          mappings.set(cat.name.toLowerCase(), [cat.name.toLowerCase(), ...subcats.map(s => s.toLowerCase())]);
+        }
+      }
+      setCategoryMappings(mappings);
+    }
+    fetchMappings();
+  }, []);
   
   // Debounce search query for better performance
   const debouncedSearchQuery = useDebounce(filters.searchQuery, 300);
@@ -43,12 +66,23 @@ export function usePromptFilters() {
   // Filter function for client-side filtering
   const filterPrompts = useCallback((prompts: PromptRow[]) => {
     return prompts.filter(prompt => {
-      // Category filter - case-insensitive partial match
+      // Category filter - use subcategory mappings
       if (filters.category !== 'all') {
         const promptCategory = (prompt.metadata?.category || '').toLowerCase();
-        const filterCategory = filters.category.toLowerCase();
-        if (!promptCategory.includes(filterCategory)) {
-          return false;
+        const filterCategoryKey = filters.category.toLowerCase();
+        const subcategories = categoryMappings.get(filterCategoryKey);
+        
+        if (subcategories && subcategories.length > 0) {
+          // Check if prompt category matches any of the subcategories
+          const matches = subcategories.some(sub => promptCategory.includes(sub));
+          if (!matches) {
+            return false;
+          }
+        } else {
+          // Fallback to partial matching
+          if (!promptCategory.includes(filterCategoryKey)) {
+            return false;
+          }
         }
       }
 
@@ -94,7 +128,7 @@ export function usePromptFilters() {
 
       return true;
     });
-  }, [filters.category, filters.promptType, filters.modelType, debouncedSearchQuery, filters.tags]);
+  }, [filters.category, filters.promptType, filters.modelType, debouncedSearchQuery, filters.tags, categoryMappings]);
 
   // Sort function
   const sortPrompts = useCallback((prompts: PromptRow[]) => {
