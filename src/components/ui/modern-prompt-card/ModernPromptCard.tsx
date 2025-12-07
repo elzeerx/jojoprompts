@@ -52,6 +52,7 @@ export function ModernPromptCard({
   // Get uploader info (cast to any for optional fields)
   const uploaderName = (prompt as any).uploader_name as string | undefined;
   const uploaderUsername = (prompt as any).uploader_username as string | undefined;
+  const uploaderAvatarUrl = (prompt as any).uploader_avatar_url as string | undefined;
 
   const handleCardClick = () => {
     if (isLocked && onUpgradeClick) {
@@ -152,6 +153,7 @@ export function ModernPromptCard({
         <CardFooter
           uploaderName={uploaderName}
           uploaderUsername={uploaderUsername}
+          avatarUrl={uploaderAvatarUrl}
           favorited={favorited}
           onFavoriteClick={toggleFavorite}
           isLocked={isLocked}
