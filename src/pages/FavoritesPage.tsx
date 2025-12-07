@@ -7,6 +7,7 @@ import { type PromptRow } from "@/types/prompts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { SectionLoadingState, EmptyState, ErrorState } from "@/components/ui/loading-states";
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('FAVORITES_PAGE');
@@ -100,56 +101,34 @@ export default function FavoritesPage() {
 
   const renderFavoritesContent = () => {
     if (authLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-muted-foreground mb-2">Checking authentication...</p>
-          <div className="h-1 w-48 sm:w-64 bg-secondary overflow-hidden rounded-full">
-            <div className="h-full bg-primary animate-pulse rounded-full"></div>
-          </div>
-        </div>
-      );
+      return <SectionLoadingState message="Checking authentication..." />;
     }
 
     if (isLoadingFavorites) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-muted-foreground mb-2">Loading your favorite prompts...</p>
-          <div className="h-1 w-48 sm:w-64 bg-secondary overflow-hidden rounded-full">
-            <div className="h-full bg-primary animate-pulse rounded-full"></div>
-          </div>
-        </div>
-      );
+      return <SectionLoadingState message="Loading your favorite prompts..." />;
     }
 
     if (loadError) {
       return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-destructive mb-4">{loadError}</p>
-          <Button
-            variant="outline"
-            onClick={() => window.location.reload()}
-            className="mobile-button-secondary"
-          >
-            Retry
-          </Button>
-        </div>
+        <ErrorState 
+          message={loadError}
+          onRetry={() => window.location.reload()}
+        />
       );
     }
 
     if (favoritePrompts.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="rounded-full bg-primary/10 p-3 mb-4">
-            <Heart className="h-6 w-6 text-primary" />
-          </div>
-          <h3 className="text-lg font-semibold mb-1">No favorite prompts yet</h3>
-          <p className="text-muted-foreground mb-4 max-w-md text-sm sm:text-base px-4">
-            You haven't added any prompts to your favorites. Browse and save the ones you like!
-          </p>
-          <Button asChild className="mobile-button-primary">
-            <a href="/prompts">Browse Prompts</a>
-          </Button>
-        </div>
+        <EmptyState
+          icon={<Heart className="h-6 w-6 text-warm-gold" />}
+          title="No favorite prompts yet"
+          description="You haven't added any prompts to your favorites. Browse and save the ones you like!"
+          action={
+            <Button asChild className="mobile-button-primary">
+              <a href="/prompts">Browse Prompts</a>
+            </Button>
+          }
+        />
       );
     }
 
