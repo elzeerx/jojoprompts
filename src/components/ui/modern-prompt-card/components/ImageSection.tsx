@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ImageSectionProps {
   imageUrl: string;
@@ -15,21 +16,42 @@ export function ImageSection({
   isAdmin = false,
   onAdminClick 
 }: ImageSectionProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
   const handleAdminClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onAdminClick?.(e);
   };
 
+  const handleImageLoad = () => {
+    setIsLoading(false);
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    setIsLoading(false);
+    setHasError(true);
+    e.currentTarget.src = '/placeholder.svg';
+  };
+
   return (
-    <div className="relative h-40 sm:h-48 w-full overflow-hidden bg-gray-100">
+    <div className="relative h-40 sm:h-48 w-full overflow-hidden bg-muted">
+      {/* Skeleton loader */}
+      {isLoading && (
+        <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
+      )}
+      
       <img
         src={imageUrl}
         alt={title}
-        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        className={cn(
+          "h-full w-full object-cover transition-all duration-500 group-hover:scale-105",
+          isLoading && "opacity-0",
+          !isLoading && "opacity-100"
+        )}
         loading="lazy"
-        onError={(e) => {
-          e.currentTarget.src = '/placeholder.svg';
-        }}
+        onLoad={handleImageLoad}
+        onError={handleImageError}
       />
       
       {/* Admin Menu Button - Top Left with hover reveal */}
