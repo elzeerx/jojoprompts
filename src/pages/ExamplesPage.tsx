@@ -10,6 +10,7 @@ import { ModernPromptCard } from '@/components/ui/modern-prompt-card';
 import { CategoryFilter } from '@/components/ui/category-filter';
 import { PageLoadingState, EmptyState } from '@/components/ui/loading-states';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserSubscription } from '@/hooks/useUserSubscription';
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('EXAMPLES_PAGE');
@@ -19,8 +20,16 @@ export default function ExamplesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const { categories: dbCategories } = useCategories();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { userSubscription } = useUserSubscription(user?.id);
   const navigate = useNavigate();
+
+  // Determine if prompts should be locked
+  // Visitors (no user) = always locked
+  // Admins = never locked
+  // Authenticated users = locked if no active subscription
+  const hasActiveSubscription = !!userSubscription;
+  const isLocked = !user || (!isAdmin && !hasActiveSubscription);
 
   useEffect(() => {
     fetchExamplePrompts();
@@ -166,7 +175,7 @@ export default function ExamplesPage() {
               <ModernPromptCard
                 key={prompt.id}
                 prompt={prompt}
-                isLocked={!user}
+                isLocked={isLocked}
                 onUpgradeClick={handleUpgradeClick}
               />
             ))}
