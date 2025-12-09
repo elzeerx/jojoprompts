@@ -1,8 +1,8 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CheckCircle, Sparkles, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -12,6 +12,24 @@ interface PaymentSuccessCardProps {
 
 export function PaymentSuccessCard({ gateway = 'paypal' }: PaymentSuccessCardProps) {
   const isUpayments = gateway === 'upayments';
+  const navigate = useNavigate();
+  const [countdown, setCountdown] = useState(5);
+  
+  // Auto-redirect to browse prompts after 5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          navigate('/prompts');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [navigate]);
   
   return (
     <div className="mobile-container-padding mobile-section-padding relative">
@@ -62,10 +80,16 @@ export function PaymentSuccessCard({ gateway = 'paypal' }: PaymentSuccessCardPro
                 Your email has been automatically verified
               </p>
             </div>
+            {/* Auto-redirect countdown */}
+            <div className="bg-warm-gold/10 border border-warm-gold/20 rounded-lg p-3">
+              <p className="text-sm text-warm-gold font-medium">
+                Redirecting to browse prompts in {countdown} second{countdown !== 1 ? 's' : ''}...
+              </p>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-3 p-6 pt-0">
             <Button className="w-full mobile-button-primary" asChild>
-              <Link to="/prompts">Browse Prompts</Link>
+              <Link to="/prompts">Browse Prompts Now</Link>
             </Button>
             <Button variant="outline" className="w-full mobile-button-secondary" asChild>
               <Link to="/dashboard">View My Account</Link>

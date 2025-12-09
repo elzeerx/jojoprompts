@@ -47,7 +47,8 @@ export function PricingSection() {
 
         if (data && data.length > 0) {
           setPlans(data);
-          setSelectedPlanId(data[0].id);
+          // No default selection - let user choose
+          setSelectedPlanId(null);
         }
       } catch (error: any) {
         logger.error('Error fetching plans', { error: error.message });
@@ -90,6 +91,7 @@ export function PricingSection() {
               key={plan.id}
               plan={plan}
               isSelected={selectedPlanId === plan.id}
+              isPopular={plan.price_usd === 80}
               onSelect={() => handleSelectPlan(plan.id)}
             />
           ))}
