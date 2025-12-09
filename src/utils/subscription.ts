@@ -166,6 +166,58 @@ export function isPromptLocked(
   return !userAccess.includes(promptType);
 }
 
+/**
+ * Determines which subscription tier is required to access a prompt
+ * Returns the minimum tier needed: 'basic', 'standard', or 'premium'
+ */
+export function getRequiredTierForPrompt(
+  promptType: string | undefined,
+  category: string | undefined,
+  modelType: string | undefined
+): 'basic' | 'standard' | 'premium' {
+  const normalizedCategory = (category || '').toLowerCase();
+  const normalizedPromptType = (promptType || '').toLowerCase();
+  const normalizedModelType = (modelType || '').toLowerCase();
+  
+  // Check for advanced/premium content
+  const isGPTBuilder = normalizedPromptType === 'chatgpt-gpt-builder' ||
+                       normalizedModelType === 'chatgpt-gpt-builder' ||
+                       normalizedCategory.includes('gpt-builder') ||
+                       normalizedCategory.includes('gpts');
+                       
+  const isAdvanced = normalizedPromptType === 'workflow' ||
+                     normalizedCategory.includes('workflow') ||
+                     normalizedCategory.includes('gemini') ||
+                     normalizedCategory.includes('flux') ||
+                     normalizedCategory.includes('sora') ||
+                     normalizedCategory.includes('elevenlabs') ||
+                     normalizedCategory.includes('cursor') ||
+                     normalizedModelType.includes('gemini') ||
+                     normalizedModelType.includes('flux') ||
+                     normalizedModelType.includes('sora') ||
+                     normalizedModelType.includes('elevenlabs') ||
+                     normalizedModelType.includes('cursor');
+  
+  // Premium tier required for advanced content
+  if (isGPTBuilder || isAdvanced) {
+    return 'premium';
+  }
+  
+  // Check for Midjourney content
+  const isMidjourney = normalizedCategory.includes('midjourney') ||
+                       normalizedPromptType === 'midjourney-sref' ||
+                       normalizedPromptType === 'image' && normalizedCategory.includes('midjourney') ||
+                       normalizedModelType.includes('midjourney');
+  
+  // Standard tier required for Midjourney
+  if (isMidjourney) {
+    return 'standard';
+  }
+  
+  // Basic tier for ChatGPT/default content
+  return 'basic';
+}
+
 export function isCategoryLocked(
   categoryRequiredPlan: string | null | undefined,
   userTier: string,

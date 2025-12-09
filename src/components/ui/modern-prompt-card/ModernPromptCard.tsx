@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { type Prompt, type PromptRow } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { Check, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Check, Crown, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { getRequiredTierForPrompt } from '@/utils/subscription';
 
 import { useFavoriteLogic } from '../prompt-card/hooks/useFavoriteLogic';
 import { useImageLoading } from '../prompt-card/hooks/useImageLoading';
@@ -44,6 +45,41 @@ export interface ModernPromptCardProps {
   isSelected?: boolean;
   /** Callback when selection changes */
   onSelect?: (promptId: string) => void;
+}
+
+/** Tier badge component showing which plan is required */
+function TierBadge({ 
+  promptType, 
+  category, 
+  modelType 
+}: { 
+  promptType?: string; 
+  category?: string; 
+  modelType?: string; 
+}) {
+  const requiredTier = getRequiredTierForPrompt(promptType, category, modelType);
+  
+  const tierConfig = {
+    basic: { label: 'Basic', price: '$55', color: 'bg-gray-600' },
+    standard: { label: 'Standard', price: '$65', color: 'bg-blue-600' },
+    premium: { label: 'Premium', price: '$80+', color: 'bg-warm-gold' }
+  };
+  
+  const config = tierConfig[requiredTier];
+  
+  return (
+    <div className="absolute top-3 right-3 z-20">
+      <div className={cn(
+        "flex items-center gap-1.5 px-2.5 py-1 rounded-full",
+        "text-white text-xs font-semibold",
+        "shadow-md backdrop-blur-sm",
+        config.color
+      )}>
+        <Crown size={12} />
+        <span>{config.label}</span>
+      </div>
+    </div>
+  );
 }
 
 export function ModernPromptCard({
@@ -142,6 +178,16 @@ export function ModernPromptCard({
             </div>
           </div>
         )}
+
+        {/* Tier Badge for Locked Cards */}
+        {isLocked && (
+          <TierBadge 
+            promptType={prompt_type}
+            category={category}
+            modelType={modelType}
+          />
+        )}
+
         {/* Locked Overlay */}
         {isLocked && <LockedOverlay onUpgradeClick={onUpgradeClick} />}
 
