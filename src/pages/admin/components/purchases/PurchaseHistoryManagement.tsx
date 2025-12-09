@@ -17,6 +17,8 @@ export default function PurchaseHistoryManagement() {
     setSearchTerm,
     statusFilter,
     setStatusFilter,
+    gatewayFilter,
+    setGatewayFilter,
     dateRange,
     setDateRange,
     currentPage,
@@ -54,6 +56,8 @@ export default function PurchaseHistoryManagement() {
             setSearchTerm={setSearchTerm}
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
+            gatewayFilter={gatewayFilter}
+            setGatewayFilter={setGatewayFilter}
             dateRange={dateRange}
             setDateRange={setDateRange}
           />

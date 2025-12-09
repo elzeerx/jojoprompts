@@ -28,6 +28,8 @@ export default function PaymentSuccessPage() {
 
   const params = usePaymentParams();
   const authRequired = searchParams.get('auth_required') === 'true';
+  const gateway = searchParams.get('gateway') || 'paypal';
+  const isUpayments = gateway === 'upayments';
 
   // Enhanced session restoration and payment recovery
   useEffect(() => {
@@ -203,5 +205,5 @@ export default function PaymentSuccessPage() {
     return <PaymentSuccessLoader />;
   }
 
-  return <PaymentSuccessCard />;
+  return <PaymentSuccessCard gateway={gateway} />;
 }
