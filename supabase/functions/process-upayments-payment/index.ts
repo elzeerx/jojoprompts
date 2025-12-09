@@ -308,7 +308,16 @@ serve(async (req) => {
         notificationUrl: `${supabaseUrl}/functions/v1/upayments-webhook`
       };
 
-      logger.info('Creating Upayments charge', { orderId, trackId, amountKWD, environment });
+      logger.info('Creating Upayments charge', { 
+        orderId, 
+        trackId, 
+        amountKWD, 
+        environment,
+        transactionId: transaction.id,
+        returnUrl: upayRequestBody.returnUrl,
+        cancelUrl: upayRequestBody.cancelUrl,
+        siteUrl
+      });
 
       const response = await fetch(`${baseUrl}/charge`, {
         method: 'POST',
@@ -368,22 +377,50 @@ serve(async (req) => {
     if (action === 'verify') {
       const { trackId, invoiceId } = rawBody;
       
-      if (!trackId && !invoiceId) {
-        throw new Error('trackId or invoiceId is required for verification');
-      }
+      logger.info('Verifying Upayments payment', { trackId, invoiceId, planId, userId });
 
-      // Find the transaction
-      let query = supabaseClient.from('transactions').select('*');
+      // Try multiple strategies to find the transaction
+      let transaction = null;
+
+      // Strategy 1: Try track_id
       if (trackId) {
-        query = query.eq('upayments_track_id', trackId);
-      } else {
-        query = query.eq('upayments_invoice_id', invoiceId);
+        const result = await supabaseClient.from('transactions').select('*').eq('upayments_track_id', trackId).single();
+        if (!result.error && result.data) {
+          transaction = result.data;
+          logger.info('Found transaction by track_id', { trackId, txId: transaction.id });
+        }
       }
 
-      const { data: transaction, error: txError } = await query.single();
+      // Strategy 2: Try invoice_id
+      if (!transaction && invoiceId) {
+        const result = await supabaseClient.from('transactions').select('*').eq('upayments_invoice_id', invoiceId).single();
+        if (!result.error && result.data) {
+          transaction = result.data;
+          logger.info('Found transaction by invoice_id', { invoiceId, txId: transaction.id });
+        }
+      }
 
-      if (txError || !transaction) {
-        logger.error('Transaction not found for verification', { trackId, invoiceId, error: txError });
+      // Strategy 3: Fallback - find by user_id + plan_id + pending status
+      if (!transaction && userId && planId) {
+        const result = await supabaseClient
+          .from('transactions')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('plan_id', planId)
+          .eq('status', 'pending')
+          .eq('payment_gateway', 'upayments')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (!result.error && result.data) {
+          transaction = result.data;
+          logger.info('Found transaction by user_id + plan_id fallback', { userId, planId, txId: transaction.id });
+        }
+      }
+
+      if (!transaction) {
+        logger.error('Transaction not found for verification after all strategies', { trackId, invoiceId, userId, planId });
         throw new Error('Transaction not found');
       }
 

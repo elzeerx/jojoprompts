@@ -61,17 +61,33 @@ export default function UpaymentCallbackPage() {
           return;
         }
 
-        // Verify payment with backend
+        // Get invoice_id from URL if present (Upayments might add it)
+        const invoiceId = searchParams.get('invoice_id') || searchParams.get('invoiceId');
+        
+        const effectivePlanId = planId || paymentContext?.planId;
+        const effectiveUserId = userId || paymentContext?.userId;
+
+        console.log('[UpaymentCallback] Attempting verification with:', { 
+          trackId, 
+          invoiceId,
+          planId: effectivePlanId, 
+          userId: effectiveUserId 
+        });
+
+        // Verify payment with backend - includes fallback strategies
         const { data, error } = await supabase.functions.invoke('process-upayments-payment', {
           body: {
             action: 'verify',
             trackId,
-            planId: planId || paymentContext?.planId,
-            userId: userId || paymentContext?.userId,
+            invoiceId,
+            planId: effectivePlanId,
+            userId: effectiveUserId,
             paymentSuccess: true,
             appliedDiscount: paymentContext?.appliedDiscount
           }
         });
+
+        console.log('[UpaymentCallback] Verification response:', { data, error });
 
         // Clean up storage
         localStorage.removeItem('upayments_payment_context');
@@ -89,7 +105,7 @@ export default function UpaymentCallbackPage() {
           
           // Redirect to success page
           setTimeout(() => {
-            navigate(`/payment-success?planId=${planId || paymentContext?.planId}&userId=${userId || paymentContext?.userId}&gateway=upayments&status=completed`);
+            navigate(`/payment-success?planId=${effectivePlanId}&userId=${effectiveUserId}&gateway=upayments&status=completed`);
           }, 1500);
         } else {
           throw new Error(data?.error || 'Payment verification failed');
