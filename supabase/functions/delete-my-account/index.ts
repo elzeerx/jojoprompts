@@ -20,16 +20,22 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') as string;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
     
-    // Create user client for authentication and RPC calls
-    const userClient = createClient(supabaseUrl, supabaseAnonKey);
-    
-    // Create admin client for auth user deletion
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('No authorization header');
     }
+    
+    // Create user client with auth header so auth.uid() works in RPC calls
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
+    
+    // Create admin client for auth user deletion
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await userClient.auth.getUser(token);
