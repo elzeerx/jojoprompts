@@ -25,6 +25,7 @@ const SearchPage = lazy(() => import("@/pages/SearchPage"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
 const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
 const PaymentCallbackPage = lazy(() => import("@/pages/PaymentCallbackPage"));
+const UpaymentCallbackPage = lazy(() => import("@/pages/UpaymentCallbackPage"));
 const MagicLoginPage = lazy(() => import("@/pages/MagicLoginPage").then(m => ({ default: m.MagicLoginPage })));
 const UnsubscribePage = lazy(() => import("@/pages/UnsubscribePage"));
 const PaymentSuccessPage = lazy(() => import("@/pages/PaymentSuccessPage"));
@@ -174,6 +175,11 @@ export const routes: RouteConfig[] = [
   {
     path: "payment/callback",
     component: PaymentCallbackPage,
+    protection: "public"
+  },
+  {
+    path: "payment/upayments-callback",
+    component: UpaymentCallbackPage,
     protection: "public"
   },
   {
