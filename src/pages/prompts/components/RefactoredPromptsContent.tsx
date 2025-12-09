@@ -7,10 +7,7 @@ import type { PromptRow } from "@/types/prompts";
 import type { Prompt } from "@/types";
 import type { usePromptFilters } from "@/hooks/usePromptFilters";
 import { useCategories } from "@/hooks/useCategories";
-import { useAuth } from "@/contexts/AuthContext";
-import { useUserSubscription } from "@/hooks/useUserSubscription";
-import { getSubscriptionTier, isPromptLocked } from "@/utils/subscription";
-import { isPrivilegedUser, isAdmin as isAdminRole } from "@/utils/auth";
+import { usePromptAccess } from "@/hooks/usePromptAccess";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
 import { PromptService } from "@/services/PromptService";
@@ -34,15 +31,8 @@ export function RefactoredPromptsContent({
   const navigate = useNavigate();
   const { t, isRTL } = useTranslation();
   const { categories } = useCategories();
-  const { user, userRole } = useAuth();
-  const { userSubscription } = useUserSubscription(user?.id);
+  const { isAdmin, checkPromptAccess } = usePromptAccess();
   const [view, setView] = useState<"grid" | "list">("grid");
-
-  // Determine user privileges and subscription tier
-  const isPrivileged = isPrivilegedUser(userRole);
-  const userTier = getSubscriptionTier(userSubscription?.subscription_plans?.name);
-  const isAdmin = isAdminRole(userRole);
-  const isLifetime = userSubscription?.subscription_plans?.is_lifetime ?? false;
 
   const categoryNames = categories.map(cat => cat.name);
   
@@ -146,21 +136,17 @@ export function RefactoredPromptsContent({
             ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
             : "grid-cols-1 max-w-4xl mx-auto"
         )}>
-        {processedPrompts.map((prompt) => {
-            const promptIsLocked = isPromptLocked(prompt.prompt_type || 'text', userTier, isPrivileged, isLifetime);
-            
-            return (
-              <ModernPromptCard
-                key={prompt.id}
-                prompt={prompt as unknown as Prompt}
-                isAdmin={isAdmin}
-                onDelete={handleDeletePrompt}
-                onEditSuccess={onReload}
-                isLocked={promptIsLocked}
-                onUpgradeClick={handleUpgradeClick}
-              />
-            );
-          })}
+        {processedPrompts.map((prompt) => (
+            <ModernPromptCard
+              key={prompt.id}
+              prompt={prompt as unknown as Prompt}
+              isAdmin={isAdmin}
+              onDelete={handleDeletePrompt}
+              onEditSuccess={onReload}
+              isLocked={checkPromptAccess(prompt)}
+              onUpgradeClick={handleUpgradeClick}
+            />
+          ))}
         </div>
       )}
     </div>

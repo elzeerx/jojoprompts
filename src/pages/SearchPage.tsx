@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +8,7 @@ import { type PromptRow } from '@/types/prompts';
 import { PromptService } from '@/services/PromptService';
 import { PromptGridSkeleton, EmptyState } from '@/components/ui/loading-states';
 import { Search } from 'lucide-react';
+import { usePromptAccess } from '@/hooks/usePromptAccess';
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('SEARCH_PAGE');
@@ -26,6 +28,12 @@ export default function SearchPage() {
     categories: [],
     isPremium: null
   });
+  const { checkPromptAccess } = usePromptAccess();
+  const navigate = useNavigate();
+
+  const handleUpgradeClick = () => {
+    navigate('/pricing');
+  };
 
   const handleSearch = async (query: string, filters: SearchFilters) => {
     setCurrentQuery(query);
@@ -124,6 +132,8 @@ export default function SearchPage() {
                 <ModernPromptCard
                   key={prompt.id}
                   prompt={prompt}
+                  isLocked={checkPromptAccess(prompt)}
+                  onUpgradeClick={handleUpgradeClick}
                 />
               ))}
             </div>
