@@ -22,7 +22,18 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    // Handle both JSON and form-urlencoded data from Upayments
+    let body;
+    const contentType = req.headers.get('content-type') || '';
+    
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      const formData = await req.formData();
+      body = Object.fromEntries(formData.entries());
+      logger.info('Received form-urlencoded webhook data');
+    } else {
+      body = await req.json();
+    }
+    
     const supabaseClient = makeSupabaseClient();
 
     logger.info('Received Upayments webhook', { 
