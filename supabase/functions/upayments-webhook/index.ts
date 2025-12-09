@@ -36,11 +36,16 @@ serve(async (req) => {
     
     const supabaseClient = makeSupabaseClient();
 
-    logger.info('Received Upayments webhook', { 
+    // Log ALL identifiers for debugging
+    logger.info('Received Upayments webhook - ALL IDENTIFIERS', { 
       paymentId: body.payment_id,
       invoiceId: body.invoice_id,
       status: body.result,
-      orderId: body.order_id
+      orderId: body.order_id,
+      trackId: body.track_id,
+      referenceId: body.reference?.id,
+      customerId: body.customer?.uniqueId,
+      allKeys: Object.keys(body)
     });
 
     // Extract relevant fields from webhook payload
@@ -55,21 +60,83 @@ serve(async (req) => {
       customer_name
     } = body;
 
-    // Find transaction by track_id or invoice_id
-    let query = supabaseClient.from('transactions').select('*');
+    // Try multiple strategies to find the transaction
+    let transaction = null;
+    let txError = null;
+
+    // Strategy 1: Try track_id
     if (track_id) {
-      query = query.eq('upayments_track_id', track_id);
-    } else if (invoice_id) {
-      query = query.eq('upayments_invoice_id', invoice_id);
-    } else {
-      logger.error('No track_id or invoice_id in webhook payload');
-      return new Response(JSON.stringify({ success: false, error: 'Missing identifier' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      const result = await supabaseClient.from('transactions').select('*').eq('upayments_track_id', track_id).single();
+      if (!result.error && result.data) {
+        transaction = result.data;
+        logger.info('Found transaction by track_id', { trackId: track_id, txId: transaction.id });
+      }
     }
 
-    const { data: transaction, error: txError } = await query.single();
+    // Strategy 2: Try invoice_id
+    if (!transaction && invoice_id) {
+      const result = await supabaseClient.from('transactions').select('*').eq('upayments_invoice_id', invoice_id).single();
+      if (!result.error && result.data) {
+        transaction = result.data;
+        logger.info('Found transaction by invoice_id', { invoiceId: invoice_id, txId: transaction.id });
+      }
+    }
+
+    // Strategy 3: Try reference.id (which we set to transaction ID)
+    if (!transaction && body.reference?.id) {
+      // Reference ID might be shortened, try partial match
+      const refId = body.reference.id;
+      const result = await supabaseClient.from('transactions').select('*').ilike('id', `${refId}%`).single();
+      if (!result.error && result.data) {
+        transaction = result.data;
+        logger.info('Found transaction by reference.id', { refId, txId: transaction.id });
+      }
+    }
+
+    // Strategy 4: Parse order_id for user_id and plan_id
+    if (!transaction && order_id) {
+      // order_id format: order_{userId.slice(0,8)}_{planId.slice(0,8)}_{timestamp}
+      const parts = order_id.split('_');
+      if (parts.length >= 4) {
+        const userIdPrefix = parts[1];
+        const planIdPrefix = parts[2];
+        
+        // Find pending transaction for this user/plan combination
+        const result = await supabaseClient
+          .from('transactions')
+          .select('*')
+          .ilike('user_id', `${userIdPrefix}%`)
+          .ilike('plan_id', `${planIdPrefix}%`)
+          .eq('status', 'pending')
+          .eq('payment_gateway', 'upayments')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (!result.error && result.data) {
+          transaction = result.data;
+          logger.info('Found transaction by order_id parsing', { orderId: order_id, txId: transaction.id });
+        }
+      }
+    }
+
+    // Strategy 5: Try customer.uniqueId (which is userId) + pending status
+    if (!transaction && body.customer?.uniqueId) {
+      const result = await supabaseClient
+        .from('transactions')
+        .select('*')
+        .eq('user_id', body.customer.uniqueId)
+        .eq('status', 'pending')
+        .eq('payment_gateway', 'upayments')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (!result.error && result.data) {
+        transaction = result.data;
+        logger.info('Found transaction by customer.uniqueId', { uniqueId: body.customer.uniqueId, txId: transaction.id });
+      }
+    }
 
     if (txError || !transaction) {
       logger.error('Transaction not found for webhook', { track_id, invoice_id, error: txError });
