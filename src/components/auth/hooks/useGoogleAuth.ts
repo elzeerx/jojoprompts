@@ -30,11 +30,21 @@ export function useGoogleAuth() {
       }
 
       // Build redirect URL for Google OAuth
-      const redirectUrl = CheckoutContextManager.buildRedirectUrl(
-        window.location.origin,
-        selectedPlan || undefined,
-        true
-      );
+      // If user has a plan selected, go to checkout; otherwise go to pricing
+      let redirectUrl: string;
+      if (selectedPlan) {
+        redirectUrl = CheckoutContextManager.buildRedirectUrl(
+          window.location.origin,
+          selectedPlan,
+          true
+        );
+      } else {
+        // No plan selected, redirect to pricing after signup
+        redirectUrl = CheckoutContextManager.buildPricingRedirectUrl(
+          window.location.origin,
+          true
+        );
+      }
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
