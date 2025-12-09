@@ -1,6 +1,8 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { CreditCard, Globe, Check, Sparkles } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
+import upaymentLogo from '@/assets/upayments-logo.jpeg';
+import paypalLogo from '@/assets/paypal-logo.svg';
 import { formatKWD, formatUSD } from '@/utils/currencyUtils';
 
 export type PaymentGateway = 'paypal' | 'upayments';
@@ -48,16 +50,12 @@ export function PaymentGatewaySelector({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1">
-            <div className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-              selectedGateway === 'upayments' ? "bg-warm-gold text-white" : "bg-gray-100 text-gray-600"
-            )}>
-              <CreditCard className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-white border border-gray-200 overflow-hidden">
+              <img src={upaymentLogo} alt="Upayments" className="w-7 h-7 object-contain" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-dark-base">Local Payment</span>
-                <span className="text-xs text-muted-foreground">(Kuwait/GCC)</span>
+                <span className="font-semibold text-dark-base">Upayments</span>
                 {recommendedGateway === 'upayments' && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warm-gold/20 text-warm-gold text-xs font-medium">
                     <Sparkles className="w-3 h-3" />
@@ -101,11 +99,8 @@ export function PaymentGatewaySelector({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1">
-            <div className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-              selectedGateway === 'paypal' ? "bg-[#0070ba] text-white" : "bg-gray-100 text-gray-600"
-            )}>
-              <Globe className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-white border border-gray-200 overflow-hidden">
+              <img src={paypalLogo} alt="PayPal" className="w-7 h-7 object-contain" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
