@@ -131,7 +131,7 @@ export default function UpaymentCallbackPage() {
           
           // Redirect to success page
           setTimeout(() => {
-            navigate(`/payment-success?planId=${effectivePlanId}&userId=${effectiveUserId}&gateway=upayments&status=completed`);
+            navigate(`/payment-success?planId=${effectivePlanId}&userId=${effectiveUserId}&payment_id=${paymentId}&gateway=upayments&status=completed`);
           }, 1500);
         } else {
           throw new Error(data?.error || 'Payment verification failed');
