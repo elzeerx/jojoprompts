@@ -62,3 +62,9 @@ verify_jwt = true
 
 [functions.check-email-exists]
 verify_jwt = false
+
+[functions.process-upayments-payment]
+verify_jwt = false
+
+[functions.upayments-webhook]
+verify_jwt = false
