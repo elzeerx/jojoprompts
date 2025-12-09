@@ -72,9 +72,9 @@ export function isPromptLocked(
   const accessLevels = {
     none: [],
     basic: ['text'], // Only ChatGPT prompts
-    standard: ['text', 'image', 'chatgpt-gpt-builder', 'gemini', 'flux', 'code-cursor'], // ChatGPT + Midjourney + new models
-    premium: ['text', 'image', 'workflow', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'], // All prompt types
-    ultimate: ['text', 'image', 'workflow', 'special', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'] // All + special
+    standard: ['text', 'image', 'midjourney-sref'], // ChatGPT + ALL Midjourney types (NOT GPTs Builder, Gemini, Flux, Code)
+    premium: ['text', 'image', 'midjourney-sref', 'workflow', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'], // All prompt types
+    ultimate: ['text', 'image', 'midjourney-sref', 'workflow', 'special', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'] // All + special
   };
   
   const userAccess = accessLevels[userTier as keyof typeof accessLevels] || [];
@@ -153,7 +153,7 @@ export function hasFeatureAccess(
   const featureAccess = {
     none: [],
     basic: ['basic_prompts', 'chatgpt_prompts'],
-    standard: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts', 'gpts_builder', 'gemini_prompts', 'flux_prompts', 'code_prompts'],
+    standard: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts'], // NO gpts_builder, gemini, flux, code - these are Premium+
     premium: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features', 'gpts_builder', 'gemini_prompts', 'flux_prompts', 'video_prompts', 'audio_prompts', 'code_prompts'],
     ultimate: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features', 'special_requests', 'gpts_builder', 'gemini_prompts', 'flux_prompts', 'video_prompts', 'audio_prompts', 'code_prompts']
   };
