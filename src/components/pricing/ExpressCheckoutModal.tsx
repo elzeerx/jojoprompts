@@ -513,6 +513,7 @@ export function ExpressCheckoutModal({ open, onOpenChange, plan }: ExpressChecko
                 {/* Payment Gateway Selection */}
                 <SimplePaymentSelection
                   amount={finalAmount}
+                  originalAmount={plan.price_usd}
                   planName={plan.name}
                   planId={plan.id}
                   userId={user.id}

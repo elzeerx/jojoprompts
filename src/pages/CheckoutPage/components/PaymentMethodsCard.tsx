@@ -114,6 +114,7 @@ export function PaymentMethodsCard({
         <DiscountErrorBoundary>
           <SimplePaymentSelection
             amount={finalAmount}
+            originalAmount={price}
             planName={planName}
             planId={planId}
             userId={userId}

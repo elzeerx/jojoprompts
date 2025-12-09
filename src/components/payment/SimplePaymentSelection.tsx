@@ -8,6 +8,7 @@ import { calculateDiscountedKWD, getKWDPrice } from "@/utils/currencyUtils";
 
 interface SimplePaymentSelectionProps {
   amount: number;
+  originalAmount?: number; // Original USD price before discount (for correct KWD calculation)
   planName: string;
   planId: string;
   userId: string;
@@ -23,6 +24,7 @@ interface SimplePaymentSelectionProps {
 
 export function SimplePaymentSelection({
   amount,
+  originalAmount,
   planName,
   planId,
   userId,
@@ -40,11 +42,13 @@ export function SimplePaymentSelection({
     }
   }, [isGCC, geoLoading]);
 
-  // Calculate KWD price with discount
-  const originalKWD = getKWDPrice(amount);
-  const discountedKWD = appliedDiscount 
-    ? calculateDiscountedKWD(amount, appliedDiscount)
-    : originalKWD;
+  // Calculate KWD price with discount using original price to avoid double-discount
+  // If originalAmount is provided, use it for KWD calculation with discount applied once
+  // Otherwise fall back to amount (backward compatible)
+  const baseUSDForKWD = originalAmount ?? amount;
+  const discountedKWD = appliedDiscount && originalAmount
+    ? calculateDiscountedKWD(originalAmount, appliedDiscount)
+    : getKWDPrice(amount);
 
   return (
     <Card>
