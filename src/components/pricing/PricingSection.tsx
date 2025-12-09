@@ -84,8 +84,8 @@ export function PricingSection() {
   return (
     <>
       <div className="w-full max-w-7xl mx-auto mobile-container-padding">
-        {/* Minimalist grid with 1px gap borders */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-gray-200 rounded-2xl overflow-hidden">
+        {/* Card grid with spacing for badge visibility */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
           {plans.map((plan) => (
             <PlanCard
               key={plan.id}
