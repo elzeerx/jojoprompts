@@ -24,11 +24,11 @@ function getKWDPrice(usdPrice: number): number {
 
 function getSiteUrl(): string {
   const rawFrontendUrl = Deno.env.get('FRONTEND_URL');
-  let siteUrl = rawFrontendUrl;
-  if (!siteUrl) {
-    siteUrl = (Deno.env.get('SUPABASE_URL')?.replace('/supabase', '') ?? '');
+  if (rawFrontendUrl) {
+    return rawFrontendUrl.replace(/\/+$/, '');
   }
-  return siteUrl.replace(/\/+$/, '');
+  // Hardcoded production fallback
+  return 'https://jojoprompts.com';
 }
 
 function makeSupabaseClient() {
