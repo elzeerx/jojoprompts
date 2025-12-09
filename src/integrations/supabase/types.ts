@@ -2229,13 +2229,17 @@ export type Database = {
           amount_usd: number
           completed_at: string | null
           created_at: string
+          currency: string | null
           error_message: string | null
           id: string
           is_upgrade: boolean | null
+          payment_gateway: string | null
           paypal_order_id: string | null
           paypal_payment_id: string | null
           plan_id: string
           status: string
+          upayments_invoice_id: string | null
+          upayments_track_id: string | null
           upgrade_from_plan_id: string | null
           user_id: string
         }
@@ -2243,13 +2247,17 @@ export type Database = {
           amount_usd: number
           completed_at?: string | null
           created_at?: string
+          currency?: string | null
           error_message?: string | null
           id?: string
           is_upgrade?: boolean | null
+          payment_gateway?: string | null
           paypal_order_id?: string | null
           paypal_payment_id?: string | null
           plan_id: string
           status?: string
+          upayments_invoice_id?: string | null
+          upayments_track_id?: string | null
           upgrade_from_plan_id?: string | null
           user_id: string
         }
@@ -2257,13 +2265,17 @@ export type Database = {
           amount_usd?: number
           completed_at?: string | null
           created_at?: string
+          currency?: string | null
           error_message?: string | null
           id?: string
           is_upgrade?: boolean | null
+          payment_gateway?: string | null
           paypal_order_id?: string | null
           paypal_payment_id?: string | null
           plan_id?: string
           status?: string
+          upayments_invoice_id?: string | null
+          upayments_track_id?: string | null
           upgrade_from_plan_id?: string | null
           user_id?: string
         }
