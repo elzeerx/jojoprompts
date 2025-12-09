@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, CreditCard, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
+import upaymentLogo from '@/assets/upayments-logo.jpeg';
 import { supabase } from '@/integrations/supabase/client';
 import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
 import { formatKWD } from '@/utils/currencyUtils';
@@ -177,7 +178,7 @@ export function SimpleUpayButton({
         </>
       ) : (
         <>
-          <CreditCard className="w-4 h-4 mr-2" />
+          <img src={upaymentLogo} alt="Upayments" className="w-5 h-5 mr-2 rounded object-contain" />
           Pay {formatKWD(amountKWD)}
         </>
       )}
