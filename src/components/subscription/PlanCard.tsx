@@ -26,16 +26,21 @@ export function PlanCard({ plan, isSelected, isPopular, onSelect }: PlanCardProp
   return (
     <div 
       className={cn(
-        "relative group flex flex-col h-full bg-white p-6 sm:p-8 cursor-pointer transition-colors duration-200",
-        isSelected ? "bg-warm-gold/5" : "hover:bg-gray-50/50",
-        isPopular && "ring-2 ring-warm-gold bg-warm-gold/5"
+        "relative group flex flex-col h-full",
+        "bg-white rounded-2xl",
+        "border border-gray-100",
+        "shadow-sm transition-all duration-300",
+        "hover:shadow-md hover:-translate-y-1",
+        "p-6 sm:p-8 cursor-pointer",
+        isSelected && "ring-2 ring-warm-gold ring-offset-2",
+        isPopular && "ring-2 ring-warm-gold shadow-lg"
       )}
       onClick={onSelect}
     >
       {/* Most Popular Badge */}
       {isPopular && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-          <span className="bg-warm-gold text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm whitespace-nowrap">
+          <span className="bg-warm-gold text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md whitespace-nowrap">
             Most Popular
           </span>
         </div>
@@ -153,8 +158,6 @@ export function PlanCard({ plan, isSelected, isPopular, onSelect }: PlanCardProp
         </span>
       </Button>
 
-      {/* Subtle hover indicator line */}
-      <div className="mt-6 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-200" />
     </div>
   );
 }
