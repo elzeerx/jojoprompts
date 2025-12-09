@@ -3,9 +3,16 @@ import React from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { CheckCircle, Sparkles } from "lucide-react";
+import { CheckCircle, Sparkles, CreditCard } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-export function PaymentSuccessCard() {
+interface PaymentSuccessCardProps {
+  gateway?: 'paypal' | 'upayments' | string;
+}
+
+export function PaymentSuccessCard({ gateway = 'paypal' }: PaymentSuccessCardProps) {
+  const isUpayments = gateway === 'upayments';
+  
   return (
     <div className="mobile-container-padding mobile-section-padding relative">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -28,6 +35,15 @@ export function PaymentSuccessCard() {
               </div>
             </div>
             <CardTitle className="text-xl sm:text-2xl font-bold text-dark-base">Payment Successful!</CardTitle>
+            <Badge 
+              variant="outline" 
+              className={`mt-2 ${isUpayments 
+                ? 'border-emerald-500/30 text-emerald-700 bg-emerald-50' 
+                : 'border-blue-500/30 text-blue-700 bg-blue-50'}`}
+            >
+              <CreditCard className="h-3 w-3 mr-1" />
+              Paid via {isUpayments ? 'Local Payment (KWD)' : 'PayPal (USD)'}
+            </Badge>
           </CardHeader>
           <CardContent className="text-center space-y-4 sm:space-y-6 p-6">
             <p className="text-base sm:text-lg text-muted-foreground">

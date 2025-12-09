@@ -10,6 +10,8 @@ interface PurchaseFiltersProps {
   setSearchTerm: (v: string) => void;
   statusFilter: string;
   setStatusFilter: (v: string) => void;
+  gatewayFilter: string;
+  setGatewayFilter: (v: string) => void;
   dateRange: DateRange | undefined;
   setDateRange: (v: DateRange | undefined) => void;
 }
@@ -19,11 +21,13 @@ export function PurchaseFilters({
   setSearchTerm,
   statusFilter,
   setStatusFilter,
+  gatewayFilter,
+  setGatewayFilter,
   dateRange,
   setDateRange,
 }: PurchaseFiltersProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div className="space-y-2">
         <label className="text-sm font-medium">Search</label>
         <div className="relative">
@@ -47,6 +51,19 @@ export function PurchaseFilters({
             <SelectItem value="completed">Completed</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Gateway</label>
+        <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Gateways</SelectItem>
+            <SelectItem value="paypal">PayPal</SelectItem>
+            <SelectItem value="upayments">Upayments</SelectItem>
           </SelectContent>
         </Select>
       </div>

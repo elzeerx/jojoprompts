@@ -26,7 +26,8 @@ export function PurchaseHistoryTable({
             <TableHead>Date</TableHead>
             <TableHead>Customer</TableHead>
             <TableHead>Plan</TableHead>
-            <TableHead>Amount (USD)</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Gateway</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>

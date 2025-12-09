@@ -20,6 +20,7 @@ serve(async (req) => {
     const page = parseInt(url.searchParams.get('page') || '1')
     const limit = parseInt(url.searchParams.get('limit') || '20')
     const statusFilter = url.searchParams.get('status')
+    const gatewayFilter = url.searchParams.get('gateway')
     const dateFrom = url.searchParams.get('dateFrom')
     const dateTo = url.searchParams.get('dateTo')
 
@@ -34,13 +35,19 @@ serve(async (req) => {
         plan_id,
         amount_usd,
         status,
-        created_at
+        created_at,
+        payment_gateway,
+        currency
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
     // Apply filters
     if (statusFilter && statusFilter !== 'all') {
       query = query.eq('status', statusFilter)
+    }
+
+    if (gatewayFilter && gatewayFilter !== 'all') {
+      query = query.eq('payment_gateway', gatewayFilter)
     }
 
     if (dateFrom) {
@@ -106,6 +113,8 @@ serve(async (req) => {
         amount_usd: transaction.amount_usd,
         status: transaction.status,
         created_at: transaction.created_at,
+        payment_gateway: transaction.payment_gateway || 'paypal',
+        currency: transaction.currency || 'USD',
         user_email: userEmail || displayName || 'Unknown User',
         plan: {
           name: plan?.name || 'Unknown Plan'

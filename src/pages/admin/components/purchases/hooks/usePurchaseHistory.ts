@@ -26,13 +26,14 @@ export function usePurchaseHistory(itemsPerPage = 20) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [gatewayFilter, setGatewayFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchTransactions();
-  }, [currentPage, statusFilter, dateRange]);
+  }, [currentPage, statusFilter, gatewayFilter, dateRange]);
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -51,6 +52,10 @@ export function usePurchaseHistory(itemsPerPage = 20) {
 
       if (statusFilter !== "all") {
         params.append("status", statusFilter);
+      }
+
+      if (gatewayFilter !== "all") {
+        params.append("gateway", gatewayFilter);
       }
 
       if (dateRange?.from) {
@@ -112,6 +117,8 @@ export function usePurchaseHistory(itemsPerPage = 20) {
     setSearchTerm,
     statusFilter,
     setStatusFilter,
+    gatewayFilter,
+    setGatewayFilter,
     dateRange,
     setDateRange,
     currentPage,
