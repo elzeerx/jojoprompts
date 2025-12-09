@@ -72,9 +72,10 @@ serve(async (req) => {
       logger.info("User action requested", { action, targetUserId });
       
       if (action === 'delete') {
-        // Call the existing admin_delete_user_data function
+        // Call the admin_delete_user_data function with verified admin ID
         const { data, error } = await supabase.rpc('admin_delete_user_data', {
-          target_user_id: targetUserId
+          target_user_id: targetUserId,
+          admin_user_id: userId  // Pass the verified admin ID for authorization
         });
         
         if (error) {

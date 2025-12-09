@@ -2657,10 +2657,12 @@ export type Database = {
         }
         Returns: Json
       }
-      admin_delete_user_data: {
-        Args: { target_user_id: string }
-        Returns: Json
-      }
+      admin_delete_user_data:
+        | { Args: { target_user_id: string }; Returns: Json }
+        | {
+            Args: { admin_user_id?: string; target_user_id: string }
+            Returns: Json
+          }
       anonymize_ip_address: { Args: { ip_address: string }; Returns: string }
       calculate_anomaly_score: {
         Args: { p_current_data: Json; p_metric_type: string; p_user_id: string }
