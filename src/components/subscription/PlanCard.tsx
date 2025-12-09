@@ -15,23 +15,34 @@ interface PlanCardProps {
     is_lifetime: boolean;
   };
   isSelected: boolean;
+  isPopular?: boolean;
   onSelect: () => void;
 }
 
-export function PlanCard({ plan, isSelected, onSelect }: PlanCardProps) {
+export function PlanCard({ plan, isSelected, isPopular, onSelect }: PlanCardProps) {
   const { name, description, price_usd, features, excluded_features, is_lifetime } = plan;
   const { t, isRTL } = useTranslation();
   
   return (
     <div 
       className={cn(
-        "group flex flex-col h-full bg-white p-6 sm:p-8 cursor-pointer transition-colors duration-200",
-        isSelected ? "bg-warm-gold/5" : "hover:bg-gray-50/50"
+        "relative group flex flex-col h-full bg-white p-6 sm:p-8 cursor-pointer transition-colors duration-200",
+        isSelected ? "bg-warm-gold/5" : "hover:bg-gray-50/50",
+        isPopular && "ring-2 ring-warm-gold bg-warm-gold/5"
       )}
       onClick={onSelect}
     >
+      {/* Most Popular Badge */}
+      {isPopular && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+          <span className="bg-warm-gold text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm whitespace-nowrap">
+            Most Popular
+          </span>
+        </div>
+      )}
+      
       {/* Plan Label */}
-      <div className="mb-4">
+      <div className={cn("mb-4", isPopular && "mt-2")}>
         <span className={cn(
           "text-xs font-medium text-muted-foreground uppercase tracking-wider",
           isRTL && "rtl-text"
