@@ -294,6 +294,9 @@ serve(async (req) => {
           currency: 'KWD',
           amount: amountKWD
         },
+        reference: {
+          id: transaction.id
+        },
         customer: {
           uniqueId: userId,
           name: userName,
