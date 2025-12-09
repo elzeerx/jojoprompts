@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GoogleAuthButton } from "@/components/checkout/components/GoogleAuthButton";
 import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
 import { DiscountCodeInput } from "@/components/checkout/DiscountCodeInput";
-import { SimplePayPalButton } from "@/components/payment/SimplePayPalButton";
+import { SimplePaymentSelection } from "@/components/payment/SimplePaymentSelection";
 import { splitFullName, generateUsernameFromEmail } from "@/components/auth/validation";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -510,9 +510,10 @@ export function ExpressCheckoutModal({ open, onOpenChange, plan }: ExpressChecko
                   </div>
                 )}
 
-                {/* PayPal Button */}
-                <SimplePayPalButton
+                {/* Payment Gateway Selection */}
+                <SimplePaymentSelection
                   amount={finalAmount}
+                  planName={plan.name}
                   planId={plan.id}
                   userId={user.id}
                   onSuccess={handlePaymentSuccess}
