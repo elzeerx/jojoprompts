@@ -20,35 +20,32 @@ export function useUserDeletion() {
     setProcessingUserId(userId);
     
     try {
-      logger.info('Attempting to delete user via direct database call', { userId });
+      logger.info('Attempting to delete user via edge function', { userId });
       
-      // Call the database function directly (bypassing edge functions)
-      const { data, error } = await supabase.rpc('admin_delete_user_data', {
-        target_user_id: userId
+      // Call the edge function which handles both profile data AND auth user deletion
+      const { data, error } = await supabase.functions.invoke('get-all-users', {
+        body: { action: 'delete', userId }
       });
       
       if (error) {
-        logger.error('Database error', { error: error.message, userId });
+        logger.error('Edge function error', { error: error.message, userId });
         throw new Error(error.message || 'Failed to delete user');
       }
       
-      // Cast data to proper type
-      const response = data as unknown as DeleteUserResponse;
-      
       // Check if the function returned an error
-      if (response && !response.success) {
-        logger.error('Deletion failed', { error: response.error, userId });
-        throw new Error(response.error || 'Failed to delete user');
+      if (data && !data.success) {
+        logger.error('Deletion failed', { error: data.error, userId });
+        throw new Error(data.error || 'Failed to delete user');
       }
       
       // Success
-      const duration = response?.duration_ms ? ` (${Math.round(response.duration_ms)}ms)` : '';
+      const duration = data?.duration_ms ? ` (${Math.round(data.duration_ms)}ms)` : '';
       toast({
         title: "✅ User deleted",
         description: `User ${email} has been deleted successfully${duration}.`
       });
       
-      logger.info('User deleted successfully', { userId, duration: response?.duration_ms });
+      logger.info('User deleted successfully', { userId, duration: data?.duration_ms });
       return true;
     } catch (error: any) {
       const appError = handleError(error, { component: 'useUserDeletion', action: 'deleteUser' });
