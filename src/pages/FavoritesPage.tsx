@@ -5,10 +5,11 @@ import { Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { type PromptRow } from "@/types/prompts";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePromptAccess } from "@/hooks/usePromptAccess";
 import { toast } from "@/hooks/use-toast";
 import { SectionLoadingState, EmptyState, ErrorState } from "@/components/ui/loading-states";
 import { createLogger } from '@/utils/logging';
+import { useNavigate } from "react-router-dom";
 
 const logger = createLogger('FAVORITES_PAGE');
 
@@ -17,7 +18,13 @@ export default function FavoritesPage() {
   const [favoritePrompts, setFavoritePrompts] = useState<PromptRow[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const { user, loading: authLoading } = useAuth();
+  const { user, checkPromptAccess } = usePromptAccess();
+  const navigate = useNavigate();
+  const authLoading = false; // usePromptAccess handles auth state internally
+
+  const handleUpgradeClick = () => {
+    navigate('/pricing');
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -142,6 +149,8 @@ export default function FavoritesPage() {
             isSelected={selectedFavoritePrompts.includes(prompt.id)}
             onSelect={handleSelectFavorite}
             initiallyFavorited={true}
+            isLocked={checkPromptAccess(prompt)}
+            onUpgradeClick={handleUpgradeClick}
           />
         ))}
       </div>

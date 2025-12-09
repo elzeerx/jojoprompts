@@ -52,6 +52,91 @@ export function hasFullAccess(
   return userTier === 'ultimate' || userTier === 'premium';
 }
 
+/**
+ * Determines if a prompt is locked based on user subscription and prompt metadata
+ * 
+ * Access Tiers:
+ * - $55 (Basic): ChatGPT prompts only (text + image with ChatGPT/Claude category)
+ * - $65 (Standard): ChatGPT + ALL Midjourney prompts (image + --sref)
+ * - $80+ (Premium/Ultimate/Lifetime): Full access to everything
+ * 
+ * @param promptType - The prompt_type field from the prompt
+ * @param category - The metadata.category field from the prompt  
+ * @param modelType - The metadata.model_type field from the prompt
+ * @param userTier - The user's subscription tier
+ * @param isAdmin - Whether the user is an admin
+ * @param isLifetime - Whether the user has a lifetime subscription
+ */
+export function isPromptLockedByContent(
+  promptType: string,
+  category: string | undefined,
+  modelType: string | undefined,
+  userTier: string,
+  isAdmin: boolean = false,
+  isLifetime: boolean = false
+): boolean {
+  // Admins and lifetime users have full access
+  if (isAdmin) return false;
+  if (isLifetime) return false;
+  if (userTier === 'premium' || userTier === 'ultimate') return false;
+  
+  const normalizedCategory = (category || '').toLowerCase();
+  const normalizedPromptType = (promptType || '').toLowerCase();
+  const normalizedModelType = (modelType || '').toLowerCase();
+  
+  // Determine the prompt's platform/source
+  const isChatGPT = normalizedCategory.includes('chatgpt') || 
+                    normalizedCategory === 'claude' ||
+                    normalizedCategory.includes('claude') ||
+                    normalizedModelType.includes('chatgpt') ||
+                    normalizedModelType.includes('claude') ||
+                    // Default text prompts without specific category are ChatGPT
+                    (normalizedPromptType === 'text' && !normalizedCategory.includes('midjourney') && !normalizedCategory.includes('workflow'));
+                    
+  const isMidjourney = normalizedCategory.includes('midjourney') ||
+                       normalizedPromptType === 'midjourney-sref' ||
+                       normalizedPromptType === 'image' && normalizedCategory.includes('midjourney') ||
+                       normalizedModelType.includes('midjourney');
+                       
+  const isGPTBuilder = normalizedPromptType === 'chatgpt-gpt-builder' ||
+                       normalizedModelType === 'chatgpt-gpt-builder' ||
+                       normalizedCategory.includes('gpt-builder') ||
+                       normalizedCategory.includes('gpts');
+                       
+  const isAdvanced = normalizedPromptType === 'workflow' ||
+                     normalizedCategory.includes('workflow') ||
+                     normalizedCategory.includes('gemini') ||
+                     normalizedCategory.includes('flux') ||
+                     normalizedCategory.includes('sora') ||
+                     normalizedCategory.includes('elevenlabs') ||
+                     normalizedCategory.includes('cursor') ||
+                     normalizedModelType.includes('gemini') ||
+                     normalizedModelType.includes('flux') ||
+                     normalizedModelType.includes('sora') ||
+                     normalizedModelType.includes('elevenlabs') ||
+                     normalizedModelType.includes('cursor');
+  
+  // $55 Basic tier: ChatGPT only (no Midjourney, no GPT Builder, no advanced)
+  if (userTier === 'basic') {
+    if (isMidjourney || isGPTBuilder || isAdvanced) return true;
+    return false; // ChatGPT text/image allowed
+  }
+  
+  // $65 Standard tier: ChatGPT + Midjourney (no GPT Builder, no advanced)
+  if (userTier === 'standard') {
+    if (isGPTBuilder || isAdvanced) return true;
+    return false; // ChatGPT and Midjourney allowed
+  }
+  
+  // No subscription = everything locked
+  return true;
+}
+
+/**
+ * @deprecated Use isPromptLockedByContent for more accurate access control
+ * This function only checks prompt_type which doesn't distinguish between
+ * ChatGPT and Midjourney prompts properly.
+ */
 export function isPromptLocked(
   promptType: string,
   userTier: string,
@@ -60,26 +145,24 @@ export function isPromptLocked(
 ): boolean {
   // Admins and lifetime users have access to everything
   if (isAdmin) return false;
-  if (isLifetime) return false; // Lifetime plans unlock ALL content
+  if (isLifetime) return false;
   
   // Input validation
   if (!promptType || typeof promptType !== 'string') {
     logWarn('Invalid prompt type provided', 'security', { promptType });
-    return true; // Default to locked for invalid input
+    return true;
   }
   
-  // Define access levels for each tier (only applies to yearly plans)
+  // Define access levels for each tier
   const accessLevels = {
     none: [],
-    basic: ['text'], // Only ChatGPT prompts
-    standard: ['text', 'image', 'midjourney-sref'], // ChatGPT + ALL Midjourney types (NOT GPTs Builder, Gemini, Flux, Code)
-    premium: ['text', 'image', 'midjourney-sref', 'workflow', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'], // All prompt types
-    ultimate: ['text', 'image', 'midjourney-sref', 'workflow', 'special', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'] // All + special
+    basic: ['text'],
+    standard: ['text', 'image', 'midjourney-sref'],
+    premium: ['text', 'image', 'midjourney-sref', 'workflow', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'],
+    ultimate: ['text', 'image', 'midjourney-sref', 'workflow', 'special', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor']
   };
   
   const userAccess = accessLevels[userTier as keyof typeof accessLevels] || [];
-  
-  // Check if the prompt type is accessible
   return !userAccess.includes(promptType);
 }
 
