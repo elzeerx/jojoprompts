@@ -303,8 +303,10 @@ serve(async (req) => {
           email: userEmail
         },
         language: language || 'en',
-        returnUrl: `${siteUrl}/payment/upayments-callback?success=true&plan_id=${encodeURIComponent(planId)}&user_id=${encodeURIComponent(userId)}&track_id=${encodeURIComponent(trackId)}`,
-        cancelUrl: `${siteUrl}/payment/upayments-callback?success=false&plan_id=${encodeURIComponent(planId)}&user_id=${encodeURIComponent(userId)}&track_id=${encodeURIComponent(trackId)}`,
+        // Clean URLs - no query params, Upayments appends their own params with ? which breaks if we have our own
+        // Our context (planId, userId, trackId) is stored in localStorage before redirect
+        returnUrl: `${siteUrl}/payment/upayments-callback`,
+        cancelUrl: `${siteUrl}/payment-failed`,
         notificationUrl: `${supabaseUrl}/functions/v1/upayments-webhook`
       };
 

@@ -7,6 +7,10 @@ import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
 /**
  * Callback page for Upayments payment returns
  * Handles both success and failure cases from Upayments redirect
+ * 
+ * Upayments appends their params directly to our returnUrl, so we:
+ * 1. Parse Upayments' params (result, payment_id, invoice_id, etc.) from URL
+ * 2. Get our context (planId, userId, trackId) from localStorage
  */
 export default function UpaymentCallbackPage() {
   const [searchParams] = useSearchParams();
@@ -17,12 +21,57 @@ export default function UpaymentCallbackPage() {
   useEffect(() => {
     const processCallback = async () => {
       try {
-        const success = searchParams.get('success') === 'true';
-        const planId = searchParams.get('plan_id');
-        const userId = searchParams.get('user_id');
-        const trackId = searchParams.get('track_id') || localStorage.getItem('upayments_track_id');
+        // Parse Upayments' callback parameters
+        const result = searchParams.get('result'); // CAPTURED, NOT CAPTURED, etc.
+        const paymentId = searchParams.get('payment_id');
+        const invoiceId = searchParams.get('invoice_id');
+        const upayTrackId = searchParams.get('track_id'); // Upayments' track_id
+        const orderId = searchParams.get('order_id');
+        const requestedOrderId = searchParams.get('requested_order_id');
 
-        console.log('[UpaymentCallback] Processing callback', { success, planId, userId, trackId });
+        console.log('[UpaymentCallback] Received Upayments params:', { 
+          result, paymentId, invoiceId, upayTrackId, orderId, requestedOrderId,
+          allParams: Object.fromEntries(searchParams.entries())
+        });
+
+        // Get our payment context from localStorage (stored before redirect)
+        let paymentContext = null;
+        try {
+          const storedContext = localStorage.getItem('upayments_payment_context');
+          if (storedContext) {
+            paymentContext = JSON.parse(storedContext);
+          }
+        } catch (e) {
+          console.warn('[UpaymentCallback] Failed to parse payment context:', e);
+        }
+
+        const ourTrackId = localStorage.getItem('upayments_track_id');
+        
+        console.log('[UpaymentCallback] Retrieved from localStorage:', { 
+          paymentContext, 
+          ourTrackId 
+        });
+
+        // Determine success based on Upayments' result parameter
+        const isSuccess = result === 'CAPTURED' || result === 'SUCCESS';
+        
+        if (!isSuccess) {
+          console.log('[UpaymentCallback] Payment not successful, result:', result);
+          setStatus('failed');
+          setMessage(result ? `Payment ${result.toLowerCase()}` : 'Payment was cancelled or failed');
+          
+          // Clean up storage
+          localStorage.removeItem('upayments_payment_context');
+          localStorage.removeItem('upayments_track_id');
+          SessionManager.cleanup();
+          
+          // Redirect to failure page after delay
+          setTimeout(() => {
+            const planId = paymentContext?.planId;
+            navigate(`/payment-failed?reason=cancelled&gateway=upayments${planId ? `&planId=${planId}` : ''}`);
+          }, 2000);
+          return;
+        }
 
         // Attempt to restore session
         try {
@@ -34,52 +83,29 @@ export default function UpaymentCallbackPage() {
           console.warn('[UpaymentCallback] Session restore failed:', e);
         }
 
-        // Get stored payment context
-        let paymentContext = null;
-        try {
-          const storedContext = localStorage.getItem('upayments_payment_context');
-          if (storedContext) {
-            paymentContext = JSON.parse(storedContext);
-          }
-        } catch (e) {
-          console.warn('[UpaymentCallback] Failed to parse payment context:', e);
-        }
-
-        if (!success) {
-          setStatus('failed');
-          setMessage('Payment was cancelled or failed');
-          
-          // Clean up storage
-          localStorage.removeItem('upayments_payment_context');
-          localStorage.removeItem('upayments_track_id');
-          SessionManager.cleanup();
-          
-          // Redirect to failure page after delay
-          setTimeout(() => {
-            navigate(`/payment-failed?reason=cancelled&gateway=upayments${planId ? `&planId=${planId}` : ''}`);
-          }, 2000);
-          return;
-        }
-
-        // Get invoice_id from URL if present (Upayments might add it)
-        const invoiceId = searchParams.get('invoice_id') || searchParams.get('invoiceId');
-        
-        const effectivePlanId = planId || paymentContext?.planId;
-        const effectiveUserId = userId || paymentContext?.userId;
+        const effectivePlanId = paymentContext?.planId;
+        const effectiveUserId = paymentContext?.userId;
+        const effectiveTrackId = ourTrackId || paymentContext?.trackId;
 
         console.log('[UpaymentCallback] Attempting verification with:', { 
-          trackId, 
-          invoiceId,
+          ourTrackId: effectiveTrackId,
+          upayInvoiceId: invoiceId,
+          upayPaymentId: paymentId,
           planId: effectivePlanId, 
           userId: effectiveUserId 
         });
 
-        // Verify payment with backend - includes fallback strategies
+        if (!effectivePlanId || !effectiveUserId) {
+          console.error('[UpaymentCallback] Missing planId or userId from localStorage');
+          throw new Error('Payment context not found. Please try again.');
+        }
+
+        // Verify payment with backend
         const { data, error } = await supabase.functions.invoke('process-upayments-payment', {
           body: {
             action: 'verify',
-            trackId,
-            invoiceId,
+            trackId: effectiveTrackId,
+            invoiceId: invoiceId,
             planId: effectivePlanId,
             userId: effectiveUserId,
             paymentSuccess: true,
