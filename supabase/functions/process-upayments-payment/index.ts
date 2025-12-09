@@ -311,12 +311,26 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiToken}`
+          'Authorization': `Bearer ${apiToken}`,
+          'Accept': 'application/json'
         },
         body: JSON.stringify(upayRequestBody)
       });
 
-      const responseData = await response.json();
+      // Get raw response text first to handle non-JSON responses
+      const responseText = await response.text();
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseError) {
+        logger.error('Failed to parse Upayments response', { 
+          status: response.status, 
+          responseText: responseText.substring(0, 500),
+          error: parseError.message 
+        });
+        throw new Error(`Upayments API returned invalid response (status ${response.status}): ${responseText.substring(0, 100)}`);
+      }
 
       if (!response.ok || !responseData.status) {
         logger.error('Upayments charge creation failed', { responseData, status: response.status });
