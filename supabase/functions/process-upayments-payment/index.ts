@@ -295,7 +295,7 @@ serve(async (req) => {
           amount: amountKWD
         },
         reference: {
-          id: transaction.id
+          id: transaction.id.replace(/-/g, '').substring(0, 32)
         },
         customer: {
           uniqueId: userId,
