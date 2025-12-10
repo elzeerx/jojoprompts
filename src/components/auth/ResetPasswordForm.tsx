@@ -49,7 +49,8 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
   });
 
   useEffect(() => {
-    const token = searchParams.get('access_token') || searchParams.get('token');
+    // Support both custom token format and Supabase's format
+    const token = searchParams.get('token') || searchParams.get('access_token');
     const type = searchParams.get('type');
     
     if (token && type === 'recovery') {
@@ -65,46 +66,40 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
     setError(null);
 
     try {
-      const token = searchParams.get('access_token') || searchParams.get('token');
+      const token = searchParams.get('token') || searchParams.get('access_token');
       
       if (!token) {
         throw new Error("No reset token found");
       }
 
-      const { error } = await supabase.auth.verifyOtp({
-        token_hash: token,
-        type: 'recovery',
-        options: {
-          redirectTo: window.location.origin
+      // Use custom verification edge function
+      const { data, error: verifyError } = await supabase.functions.invoke('verify-password-reset', {
+        body: { 
+          token: token,
+          newPassword: values.password 
         }
       });
 
-      if (error) {
-        setError(error.message);
+      if (verifyError) {
+        setError(verifyError.message);
         toast({
           variant: "destructive",
           title: t('common.error'),
-          description: error.message,
+          description: verifyError.message,
         });
         return;
       }
 
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: values.password,
-      });
-
-      if (updateError) {
-        setError(updateError.message);
+      if (data && !data.success) {
+        setError(data.error);
         toast({
           variant: "destructive",
           title: t('common.error'),
-          description: updateError.message,
+          description: data.error,
         });
         return;
       }
 
-      await supabase.auth.signOut();
-      
       toast({
         title: t('auth.passwordUpdated'),
         description: t('auth.passwordUpdatedDesc'),

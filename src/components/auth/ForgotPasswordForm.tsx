@@ -42,21 +42,23 @@ export function ForgotPasswordForm() {
     setIsLoading(true);
 
     try {
-      const origin = window.location.origin;
-      const resetUrl = `${origin}/login?type=recovery&tab=reset`;
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        values.email,
-        {
-          redirectTo: resetUrl,
-        }
-      );
+      // Use custom password reset edge function (uses Resend)
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email: values.email }
+      });
 
       if (error) {
+        logger.error('Password reset request failed', { error });
         toast({
           variant: "destructive",
           title: t('common.error'),
-          description: error.message,
+          description: error.message || 'Failed to send password reset email',
+        });
+      } else if (data && !data.success) {
+        toast({
+          variant: "destructive",
+          title: t('common.error'),
+          description: data.error || 'Failed to send password reset email',
         });
       } else {
         setResetRequested(true);
