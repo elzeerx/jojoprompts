@@ -3,13 +3,17 @@ import { DashboardCharts } from "./dashboard/DashboardCharts";
 import { TopPromptsCard } from "./dashboard/TopPromptsCard";
 import { CategoryDistributionCard } from "./dashboard/CategoryDistributionCard";
 import { ActivityTimelineCard } from "./dashboard/ActivityTimelineCard";
+import { QuickActionsPanel } from "./dashboard/QuickActionsPanel";
 import { useDashboardData } from "./dashboard/useDashboardData";
 
 export default function DashboardOverview() {
-  const { kpiData, chartData, insightsData, loading } = useDashboardData();
+  const { kpiData, chartData, insightsData, loading, refetch } = useDashboardData();
 
   return (
     <div className="space-y-6">
+      {/* Quick Actions Panel - Phase 4 */}
+      <QuickActionsPanel onRefresh={refetch} isRefreshing={loading} />
+      
       {/* KPI Cards Grid */}
       <DashboardKPICards data={kpiData} loading={loading} />
       
