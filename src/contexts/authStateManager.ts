@@ -23,11 +23,15 @@ export function setupAuthState({ setSession, setUser, setUserRole, setLoading, s
       const urlParams = new URLSearchParams(window.location.search);
       const type = urlParams.get('type');
       const isPasswordReset = type === 'recovery';
+      const isAlreadyOnResetPage = window.location.pathname.includes('/reset-password');
       
       // If this is a password reset, don't auto-signin
       if (isPasswordReset && event === 'SIGNED_IN') {
-        // Redirect to reset password page instead of auto-signin
-        window.location.href = `/reset-password${window.location.search}`;
+        // Only redirect if NOT already on reset-password page
+        if (!isAlreadyOnResetPage) {
+          window.location.href = `/reset-password${window.location.search}`;
+        }
+        // In either case, don't continue with normal sign-in flow
         return;
       }
 
