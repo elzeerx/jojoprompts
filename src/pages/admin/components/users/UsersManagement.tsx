@@ -6,6 +6,7 @@ import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useUserActions } from "./hooks/useUserActions";
 import { UsersTable } from "./UsersTable";
 import { UsersHeader } from "./components/UsersHeader";
+import { UsersFilters } from "./components/UsersFilters";
 import { UserPerformanceStats } from "./UserPerformanceStats";
 import { MarketingEmailsPanel } from "./components/MarketingEmailsPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +20,8 @@ export default function UsersManagement() {
     totalPages,
     currentPage,
     searchTerm,
+    tierFilter,
+    verificationFilter,
     loading: isLoading,
     error,
     updateUser,
@@ -28,6 +31,8 @@ export default function UsersManagement() {
     bulkProcessing,
     onPageChange: setPage,
     onSearchChange: setSearch,
+    onTierFilterChange,
+    onVerificationFilterChange,
     refetch
   } = useUserManagement();
   
@@ -63,6 +68,14 @@ export default function UsersManagement() {
               searchTerm={searchTerm}
               onSearchChange={setSearch}
               onUserCreated={refetch}
+            />
+
+            {/* Phase 6: User Filters */}
+            <UsersFilters
+              tierFilter={tierFilter}
+              onTierFilterChange={onTierFilterChange}
+              verificationFilter={verificationFilter}
+              onVerificationFilterChange={onVerificationFilterChange}
             />
 
             <UserPerformanceStats 
