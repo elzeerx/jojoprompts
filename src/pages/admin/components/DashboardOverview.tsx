@@ -1,10 +1,12 @@
 import { DashboardKPICards } from "./dashboard/DashboardKPICards";
 import { DashboardCharts } from "./dashboard/DashboardCharts";
-import { RecentActivityCard } from "./dashboard/RecentActivityCard";
+import { TopPromptsCard } from "./dashboard/TopPromptsCard";
+import { CategoryDistributionCard } from "./dashboard/CategoryDistributionCard";
+import { ActivityTimelineCard } from "./dashboard/ActivityTimelineCard";
 import { useDashboardData } from "./dashboard/useDashboardData";
 
 export default function DashboardOverview() {
-  const { kpiData, chartData, loading } = useDashboardData();
+  const { kpiData, chartData, insightsData, loading } = useDashboardData();
 
   return (
     <div className="space-y-6">
@@ -14,9 +16,20 @@ export default function DashboardOverview() {
       {/* Charts Section */}
       <DashboardCharts data={chartData} loading={loading} />
       
-      {/* Recent Activity */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <RecentActivityCard />
+      {/* Quick Insights Grid - Phase 3 */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <TopPromptsCard 
+          prompts={insightsData.topPrompts} 
+          loading={loading} 
+        />
+        <CategoryDistributionCard 
+          categories={insightsData.categoryDistribution} 
+          loading={loading} 
+        />
+        <ActivityTimelineCard 
+          activities={insightsData.recentActivity} 
+          loading={loading} 
+        />
       </div>
     </div>
   );
