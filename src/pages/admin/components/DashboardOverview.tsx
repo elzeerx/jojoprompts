@@ -1,3 +1,4 @@
+import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { DashboardKPICards } from "./dashboard/DashboardKPICards";
 import { DashboardCharts } from "./dashboard/DashboardCharts";
 import { TopPromptsCard } from "./dashboard/TopPromptsCard";
@@ -11,6 +12,9 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
+      {/* Dashboard Header - Phase 5 */}
+      <DashboardHeader pendingTransactions={kpiData.pendingTransactions} />
+      
       {/* Quick Actions Panel - Phase 4 */}
       <QuickActionsPanel onRefresh={refetch} isRefreshing={loading} />
       
