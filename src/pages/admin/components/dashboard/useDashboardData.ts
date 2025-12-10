@@ -42,6 +42,9 @@ export function useDashboardData() {
     promptsByType: { chatgpt: 0, other: 0 },
     conversionRate: 0,
     pendingTransactions: 0,
+    abandonedCarts: 0,
+    recoveredRevenue: 0,
+    recoveryRate: 0,
   });
 
   const [chartData, setChartData] = useState<ChartData>({
@@ -69,6 +72,7 @@ export function useDashboardData() {
         subscriptionsResult,
         plansResult,
         favoritesResult,
+        abandonedCartsResult,
       ] = await Promise.all([
         supabase.from("prompts").select("id, title, prompt_type, metadata, created_at, user_id"),
         supabase.from("profiles").select("id, first_name, last_name, username, avatar_url, created_at"),
@@ -76,6 +80,7 @@ export function useDashboardData() {
         supabase.from("user_subscriptions").select("id, plan_id, status, created_at, user_id"),
         supabase.from("subscription_plans").select("id, tier, name"),
         supabase.from("favorites").select("prompt_id, user_id, created_at"),
+        supabase.from("abandoned_cart_sequences").select("id, status, plan_price, conversion_date"),
       ]);
 
       // Process prompts
@@ -112,6 +117,14 @@ export function useDashboardData() {
         .reduce((sum, t) => sum + (t.amount_usd || 0), 0);
 
       const pendingTransactions = transactions.filter(t => t.status === 'pending').length;
+
+      // Process abandoned cart sequences
+      const abandonedCarts = abandonedCartsResult.data || [];
+      const activeAbandonedCarts = abandonedCarts.filter(c => c.status === 'active').length;
+      const convertedCarts = abandonedCarts.filter(c => c.status === 'converted');
+      const recoveredRevenue = convertedCarts.reduce((sum, c) => sum + (c.plan_price || 0), 0);
+      const totalSequences = abandonedCarts.length;
+      const recoveryRate = totalSequences > 0 ? (convertedCarts.length / totalSequences) * 100 : 0;
 
       // Process subscriptions with plan tiers
       const subscriptions = subscriptionsResult.data || [];
@@ -269,6 +282,9 @@ export function useDashboardData() {
         promptsByType: { chatgpt: chatgptPrompts, other: prompts.length - chatgptPrompts },
         conversionRate,
         pendingTransactions,
+        abandonedCarts: activeAbandonedCarts,
+        recoveredRevenue,
+        recoveryRate,
       });
 
       setChartData({
@@ -309,6 +325,9 @@ export function useDashboardData() {
         .subscribe(),
       supabase.channel('dashboard-favorites')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'favorites' }, fetchDashboardData)
+        .subscribe(),
+      supabase.channel('dashboard-abandoned-carts')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'abandoned_cart_sequences' }, fetchDashboardData)
         .subscribe(),
     ];
 

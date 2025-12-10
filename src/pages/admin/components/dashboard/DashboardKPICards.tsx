@@ -1,4 +1,4 @@
-import { DollarSign, Crown, Users, FileText, TrendingUp, Clock, Loader2 } from "lucide-react";
+import { DollarSign, Crown, Users, FileText, TrendingUp, Clock, Loader2, ShoppingCart, RotateCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,9 @@ export interface KPIData {
   promptsByType: { chatgpt: number; other: number };
   conversionRate: number;
   pendingTransactions: number;
+  abandonedCarts: number;
+  recoveredRevenue: number;
+  recoveryRate: number;
 }
 
 interface DashboardKPICardsProps {
@@ -86,10 +89,28 @@ export function DashboardKPICards({ data, loading }: DashboardKPICardsProps) {
       iconBg: data.pendingTransactions > 10 ? "bg-amber-50" : "bg-gray-50",
       iconColor: data.pendingTransactions > 10 ? "text-amber-600" : "text-gray-500",
     },
+    {
+      title: "Abandoned Carts",
+      value: data.abandonedCarts.toString(),
+      subtext: "Active recovery sequences",
+      subtextColor: data.abandonedCarts > 0 ? "text-orange-600" : "text-muted-foreground",
+      icon: ShoppingCart,
+      iconBg: data.abandonedCarts > 0 ? "bg-orange-50" : "bg-gray-50",
+      iconColor: data.abandonedCarts > 0 ? "text-orange-600" : "text-gray-500",
+    },
+    {
+      title: "Recovered Revenue",
+      value: `$${data.recoveredRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      subtext: `${data.recoveryRate.toFixed(1)}% recovery rate`,
+      subtextColor: data.recoveryRate > 10 ? "text-emerald-600" : "text-muted-foreground",
+      icon: RotateCcw,
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+    },
   ];
 
   return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
       {cards.map((card) => (
         <Card 
           key={card.title} 
