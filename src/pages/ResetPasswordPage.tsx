@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { FileText, Sparkles } from "lucide-react";
 import {
@@ -17,7 +16,8 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     // Check if this is a valid password reset request
-    const token = searchParams.get('access_token') || searchParams.get('token');
+    // Support both custom token format and Supabase's format
+    const token = searchParams.get('token') || searchParams.get('access_token');
     const type = searchParams.get('type');
 
     // If no valid reset token, redirect to login
