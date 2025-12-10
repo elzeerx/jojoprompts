@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.upayments-webhook]
 verify_jwt = false
+
+[functions.send-abandoned-cart-email]
+verify_jwt = true
