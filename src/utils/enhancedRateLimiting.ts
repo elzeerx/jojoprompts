@@ -1,5 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { createLogger } from './logging';
+
+const logger = createLogger('RATE_LIMITER');
 
 interface RateLimitRecord {
   attempts: number;
@@ -102,7 +104,9 @@ class EnhancedRateLimiter {
     }
 
     // Log to server for persistent tracking
-    this.logAttemptToServer(key, metadata).catch(console.error);
+    this.logAttemptToServer(key, metadata).catch((error) => 
+      logger.error('Failed to log rate limit attempt to server', { error, key })
+    );
   }
 
   private async logAttemptToServer(key: string, metadata?: Record<string, any>) {
@@ -111,7 +115,7 @@ class EnhancedRateLimiter {
         body: { key, metadata, timestamp: new Date().toISOString() }
       });
     } catch (error) {
-      console.warn('Failed to log rate limit attempt:', error);
+      logger.warn('Failed to log rate limit attempt', { error, key });
     }
   }
 

@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Languages, ArrowLeftRight, Loader2, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { callEdgeFunction } from "@/utils/edgeFunctions";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('TRANSLATION_BUTTONS');
 
 interface TranslationButtonsProps {
   text: string;
@@ -66,8 +69,8 @@ export function TranslationButtons({ text, onTranslated, onTranslationStored }: 
       } else {
         throw new Error("Translation failed");
       }
-    } catch (error) {
-      console.error("Translation error:", error);
+    } catch (error: any) {
+      logger.error('Translation error', { error: error.message, direction });
       toast({
         variant: "destructive",
         title: "Translation failed",

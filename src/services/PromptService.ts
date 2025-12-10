@@ -1,5 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { PromptQuery, PromptQueryResult, PromptRow, PromptMetadata, PromptType } from '@/types/prompts';
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('PROMPT_SERVICE');
 
 // Enhanced prompt service interfaces for CRUD operations
 export interface CreatePromptData {
@@ -41,6 +45,37 @@ interface ApiResponse<T = any> {
 }
 
 export class PromptService {
+  // Cache for category subcategory mappings
+  private static categoryMappingsCache: Map<string, string[]> | null = null;
+  private static mappingsCacheTime: number = 0;
+  private static readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  // Fetch and cache category subcategory mappings
+  private static async getCategoryMappings(): Promise<Map<string, string[]>> {
+    const now = Date.now();
+    if (this.categoryMappingsCache && (now - this.mappingsCacheTime) < this.CACHE_TTL) {
+      return this.categoryMappingsCache;
+    }
+
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('name, subcategories')
+      .eq('is_active', true);
+
+    const mappings = new Map<string, string[]>();
+    if (categories) {
+      for (const cat of categories) {
+        const subcats = (cat.subcategories as string[]) || [];
+        // Include the category name itself (lowercase) plus all subcategories
+        mappings.set(cat.name.toLowerCase(), [cat.name.toLowerCase(), ...subcats.map(s => s.toLowerCase())]);
+      }
+    }
+
+    this.categoryMappingsCache = mappings;
+    this.mappingsCacheTime = now;
+    return mappings;
+  }
+
   // Enhanced getPrompts with safe profile fetching
   static async getPrompts(query: PromptQuery = {}): Promise<PromptQueryResult> {
     try {
@@ -62,9 +97,21 @@ export class PromptService {
           ascending: query.orderDirection === 'asc' 
         });
 
-      // Apply filters
+      // Apply category filter using subcategory mappings
       if (query.category && query.category !== 'all') {
-        supabaseQuery = supabaseQuery.contains('metadata', { category: query.category });
+        const mappings = await this.getCategoryMappings();
+        const categoryKey = query.category.toLowerCase();
+        const subcategories = mappings.get(categoryKey);
+
+        if (subcategories && subcategories.length > 0) {
+          // Build OR filter for all subcategories
+          const orConditions = subcategories.map(sub => `metadata->>category.ilike.%${sub}%`).join(',');
+          supabaseQuery = supabaseQuery.or(orConditions);
+        } else {
+          // Fallback to partial matching if no mapping exists
+          const categoryPattern = `%${categoryKey}%`;
+          supabaseQuery = supabaseQuery.ilike('metadata->>category', categoryPattern);
+        }
       }
 
       if (query.type && query.type !== 'all') {
@@ -90,7 +137,8 @@ export class PromptService {
       const { data, error, count } = await supabaseQuery;
 
       if (error) {
-        console.error('Error fetching prompts:', error);
+        const appError = handleError(error, { component: 'PromptService', action: 'fetchPrompts' });
+        logger.error('Error fetching prompts', { error: appError });
         return {
           data: [],
           count: 0,
@@ -102,30 +150,35 @@ export class PromptService {
       const uniqueUserIds = [...new Set((data || []).map((prompt: any) => prompt.user_id))];
       
       // Single batch query for all profiles
-      let profileMap: Record<string, string> = {};
+      let profileMap: Record<string, { username: string; avatar_url: string | null }> = {};
       if (uniqueUserIds.length > 0) {
         try {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, username')
+            .select('id, username, avatar_url')
             .in('id', uniqueUserIds);
           
           profileMap = (profiles || []).reduce((acc, profile) => {
-            acc[profile.id] = profile.username || 'Anonymous';
+            acc[profile.id] = {
+              username: profile.username || 'Anonymous',
+              avatar_url: profile.avatar_url
+            };
             return acc;
-          }, {} as Record<string, string>);
+          }, {} as Record<string, { username: string; avatar_url: string | null }>);
         } catch (profileError) {
-          console.debug('Batch profile fetch failed:', profileError);
+          logger.debug('Batch profile fetch failed', { error: profileError });
         }
       }
 
       // Transform data with cached profile info
       const transformedData = (data || []).map((prompt: any) => {
-        const uploader_name = profileMap[prompt.user_id] || 'Anonymous';
+        const profileInfo = profileMap[prompt.user_id];
+        const uploader_name = profileInfo?.username || 'Anonymous';
         return {
           ...prompt,
           uploader_name,
-          uploader_username: uploader_name !== 'Anonymous' ? uploader_name : undefined
+          uploader_username: uploader_name !== 'Anonymous' ? uploader_name : undefined,
+          uploader_avatar_url: profileInfo?.avatar_url || undefined
         };
       }) as PromptRow[];
 
@@ -134,7 +187,8 @@ export class PromptService {
         count: count || transformedData.length
       };
     } catch (error) {
-      console.error('Service error fetching prompts:', error);
+      const appError = handleError(error, { component: 'PromptService', action: 'fetchPrompts' });
+      logger.error('Service error fetching prompts', { error: appError });
       return {
         data: [],
         count: 0,
@@ -162,7 +216,8 @@ export class PromptService {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching prompt:', error);
+        const appError = handleError(error, { component: 'PromptService', action: 'getPromptById' });
+        logger.error('Error fetching prompt', { error: appError, promptId: id });
         return null;
       }
 
@@ -173,20 +228,22 @@ export class PromptService {
       // Safely fetch uploader info
       let uploader_name = 'Anonymous';
       let uploader_username = undefined;
+      let uploader_avatar_url = undefined;
 
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('username, first_name, last_name')
+          .select('username, first_name, last_name, avatar_url')
           .eq('id', data.user_id)
           .maybeSingle();
         
         if (profile) {
           uploader_name = profile.username || 'Anonymous';
           uploader_username = profile.username;
+          uploader_avatar_url = profile.avatar_url || undefined;
         }
       } catch (profileError) {
-        console.debug('Profile fetch failed (expected for non-admin users):', profileError);
+        logger.debug('Profile fetch failed (expected for non-admin users)', { error: profileError });
       }
 
       return {
@@ -200,10 +257,12 @@ export class PromptService {
         metadata: (data.metadata as any) || {},
         created_at: data.created_at,
         uploader_name,
-        uploader_username
+        uploader_username,
+        uploader_avatar_url
       };
     } catch (error) {
-      console.error('Service error fetching prompt:', error);
+      const appError = handleError(error, { component: 'PromptService', action: 'getPromptById' });
+      logger.error('Service error fetching prompt', { error: appError, promptId: id });
       return null;
     }
   }
@@ -491,7 +550,8 @@ export class PromptService {
 
       return { success: true, data };
     } catch (error) {
-      console.error('Error translating prompt:', error);
+      const appError = handleError(error, { component: 'PromptService', action: 'translatePrompt' });
+      logger.error('Error translating prompt', { error: appError, promptId });
       // Extract the actual error message from the edge function response
       const errorMessage = error instanceof Error ? error.message : 'Failed to translate prompt';
       return { 

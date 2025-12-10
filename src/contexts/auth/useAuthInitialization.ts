@@ -109,11 +109,12 @@ export const useAuthInitialization = ({
                 : "Your email is confirmed! Welcome to JoJo Prompts.",
             });
 
-            // Redirect to checkout with plan or to prompts
+            // Redirect to checkout with plan or to pricing to select a plan
             if (planId) {
               navigate(`/checkout?plan_id=${planId}`);
-            } else if (location.pathname !== '/prompts') {
-              navigate('/prompts');
+            } else {
+              // New user without a plan should go to pricing to select one
+              navigate('/pricing');
             }
           }
 

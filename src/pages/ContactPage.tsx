@@ -8,6 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Mail, MessageSquare, Clock, Loader2 } from 'lucide-react';
 import { emailService } from '@/utils/emailService';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('CONTACT_PAGE');
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -54,11 +57,11 @@ export default function ContactPage() {
       }
 
       if (!adminResult.success) {
-        console.warn('Admin notification email failed:', adminResult.error);
+        logger.warn('Admin notification email failed', { error: adminResult.error });
       }
 
     } catch (error: any) {
-      console.error('Contact form error:', error);
+      logger.error('Contact form error', { error: error.message || error });
       toast({
         title: "Error Sending Message",
         description: "There was a problem sending your message. Please try again or contact us directly.",

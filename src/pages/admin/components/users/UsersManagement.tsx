@@ -1,7 +1,7 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUserCRUD } from "@/hooks/useUserCRUD";
+import { useUserManagement } from "./hooks/useUserManagement";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useUserActions } from "./hooks/useUserActions";
 import { UsersTable } from "./UsersTable";
@@ -19,16 +19,19 @@ export default function UsersManagement() {
     totalPages,
     currentPage,
     searchTerm,
-    isLoading,
+    loading: isLoading,
     error,
     updateUser,
     deleteUser,
-    setPage,
-    setSearch,
+    confirmUserEmail,
+    bulkConfirmUsers,
+    bulkProcessing,
+    onPageChange: setPage,
+    onSearchChange: setSearch,
     refetch
-  } = useUserCRUD();
+  } = useUserManagement();
   
-  const { resendConfirmationEmail } = useUserActions();
+  const { resendConfirmationEmail, resendPaymentEmail } = useUserActions();
 
   return (
     <div className="space-y-6">
@@ -106,6 +109,10 @@ export default function UsersManagement() {
                   searchTerm={searchTerm}
                   onDeleteUser={deleteUser}
                   onResendConfirmation={resendConfirmationEmail}
+                  onResendPaymentEmail={resendPaymentEmail}
+                  onConfirmEmail={confirmUserEmail}
+                  onBulkConfirmUsers={bulkConfirmUsers}
+                  bulkProcessing={bulkProcessing}
                   onRefresh={refetch}
                 />
                 <div className="text-sm text-muted-foreground">

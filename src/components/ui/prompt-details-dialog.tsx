@@ -1,3 +1,10 @@
+/**
+ * @deprecated This component is deprecated. Use ModernDetailModal instead.
+ * @see src/components/ui/modern-detail-modal/ModernDetailModal.tsx
+ * 
+ * This file is kept for backwards compatibility with AdminPromptCard and legacy code.
+ * All new code should use ModernDetailModal which has better styling and features.
+ */
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -13,6 +20,9 @@ import { MediaPreviewDialog } from "./prompt-details/MediaPreviewDialog";
 import { LanguageTabs, type Language } from "./LanguageTabs";
 import { PromptService } from "@/services/PromptService";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PromptDetailsDialog');
 
 interface PromptDetailsDialogProps {
   open: boolean;
@@ -44,6 +54,10 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const workflowSteps = metadata?.workflow_steps || [];
   const workflowFiles = metadata?.workflow_files || [];
   const translations = metadata?.translations;
+  
+  // Model-specific fields
+  const modelType = metadata?.model_type;
+  const modelFields = metadata?.model_fields;
   
   // Check if this prompt supports bilingual content (ChatGPT or Claude)
   const supportsBilingual = category.toLowerCase().includes('chatgpt') || category.toLowerCase().includes('claude');
@@ -102,7 +116,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
         });
       }
     } catch (error) {
-      console.error('Translation error:', error);
+      logger.error('Translation error', { error: error instanceof Error ? error.message : error, targetLanguage, promptId: promptData.id });
       toast({
         title: "Translation failed",
         description: "An unexpected error occurred",
@@ -133,7 +147,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
         }
         setImageUrl(url);
       } catch (error) {
-        console.error('Error loading prompt image:', error);
+        logger.error('Error loading prompt image', { error: error instanceof Error ? error.message : error, imagePath: primaryImagePath, promptId: prompt.id });
         setImageUrl('/placeholder.svg');
       }
     }
@@ -181,7 +195,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
         description: favorited ? "Prompt removed from your favorites" : "Prompt added to your favorites"
       });
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      logger.error('Error toggling favorite', { error: error instanceof Error ? error.message : error, promptId: prompt.id, isFavorited: favorited });
       toast({
         title: "Error",
         description: "Failed to update favorites",
@@ -201,7 +215,7 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
       
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error("Error copying to clipboard:", error);
+      logger.error('Error copying to clipboard', { error: error instanceof Error ? error.message : error });
       toast({
         title: "Error",
         description: "Failed to copy to clipboard",
@@ -224,12 +238,24 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
   const getCategoryColor = (category: string) => {
     switch (category?.toLowerCase()) {
       case 'chatgpt':
-        return '#c49d68';
+        return '#10a37f';
       case 'midjourney':
         return '#7a9e9f';
       case 'workflow':
       case 'n8n':
         return '#8b7fb8';
+      case 'gemini':
+        return '#9333ea';
+      case 'flux':
+        return '#4f46e5';
+      case 'sora':
+        return '#e11d48';
+      case 'elevenlabs':
+        return '#059669';
+      case 'suno':
+        return '#7c3aed';
+      case 'claude':
+        return '#f97316';
       default:
         return '#c49d68';
     }
@@ -276,6 +302,8 @@ export function PromptDetailsDialog({ open, onOpenChange, prompt }: PromptDetail
                     tags={tags}
                     onMediaClick={handleMediaClick}
                     isRTL={language === 'arabic'}
+                    modelType={modelType}
+                    modelFields={modelFields}
                   />
                 )}
               </LanguageTabs>

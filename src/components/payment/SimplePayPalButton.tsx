@@ -4,6 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, ArrowRight, CheckCircle } from 'lucide-react';
 import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('PAYPAL_BUTTON');
 
 interface SimplePayPalButtonProps {
   amount: number;
@@ -73,7 +77,8 @@ export function SimplePayPalButton({
       });
 
     } catch (err: any) {
-      console.error('Direct activation failed:', err);
+      const appError = handleError(err, { component: 'SimplePayPalButton', action: 'directActivation' });
+      logger.error('Direct activation failed', { error: appError });
       setIsProcessing(false);
       onError(err);
       toast({
@@ -92,14 +97,15 @@ export function SimplePayPalButton({
       // Enhanced session backup with fallback preservation
       const backupSuccess = await SessionManager.backupSession(userId, planId);
       if (!backupSuccess) {
-        console.warn('Session backup failed, using fallback preservation');
+        logger.warn('Session backup failed, using fallback preservation', { userId, planId });
         // Store critical data in multiple locations as fallback
         try {
           localStorage.setItem('paypal_fallback_user', userId);
           localStorage.setItem('paypal_fallback_plan', planId);
           sessionStorage.setItem('paypal_session_fallback', JSON.stringify({ userId, planId, timestamp: Date.now() }));
         } catch (e) {
-          console.error('Even fallback storage failed:', e);
+          const storageError = handleError(e, { component: 'SimplePayPalButton', action: 'fallbackStorage' });
+          logger.error('Fallback storage failed', { error: storageError });
         }
       }
 
@@ -142,7 +148,8 @@ export function SimplePayPalButton({
       window.location.href = data.approvalUrl;
       
     } catch (err: any) {
-      console.error('PayPal checkout initiation failed:', err);
+      const appError = handleError(err, { component: 'SimplePayPalButton', action: 'paypalCheckout' });
+      logger.error('PayPal checkout initiation failed', { error: appError });
       setIsProcessing(false);
       onError(err);
       toast({

@@ -1,5 +1,16 @@
 import { UserRole } from "@/types/user";
 import { canViewField, isSuperAdmin } from "./fieldPermissions";
+import { 
+  isAdmin, 
+  isPrompter, 
+  isJadmin,
+  canViewUnmaskedEmail,
+  canViewUnmaskedPhone,
+  canViewIpAddresses,
+  canViewUserAgents,
+  canViewSocialLinks,
+  canViewProfileData
+} from "@/utils/auth";
 
 // Data masking utilities for sensitive information
 export interface MaskingOptions {
@@ -68,10 +79,7 @@ function applyFieldMasking(
     
     // Sensitive personal information
     case 'bio':
-      if (userRole === 'prompter') {
-        return '[RESTRICTED]';
-      }
-      return data;
+      return canViewProfileData(userRole) ? data : '[RESTRICTED]';
     
     default:
       return data;
@@ -79,7 +87,7 @@ function applyFieldMasking(
 }
 
 function maskEmail(email: string, userRole: UserRole, options: MaskingOptions): string {
-  if (userRole === 'prompter') {
+  if (!canViewUnmaskedEmail(userRole)) {
     return '[RESTRICTED]';
   }
   
@@ -101,7 +109,7 @@ function maskEmail(email: string, userRole: UserRole, options: MaskingOptions): 
 }
 
 function maskPhoneNumber(phone: string, userRole: UserRole, options: MaskingOptions): string {
-  if (userRole === 'prompter' || userRole === 'jadmin') {
+  if (!canViewUnmaskedPhone(userRole)) {
     return '[RESTRICTED]';
   }
   
@@ -121,7 +129,7 @@ function maskPhoneNumber(phone: string, userRole: UserRole, options: MaskingOpti
 }
 
 function maskSocialLinks(socialLinks: string, userRole: UserRole, options: MaskingOptions): string {
-  if (userRole === 'prompter') {
+  if (!canViewSocialLinks(userRole)) {
     return '[RESTRICTED]';
   }
   
@@ -161,7 +169,7 @@ function maskUrl(url: string, options: MaskingOptions): string {
 }
 
 function maskIpAddress(ip: string, userRole: UserRole, options: MaskingOptions): string {
-  if (userRole !== 'admin') {
+  if (!canViewIpAddresses(userRole)) {
     return '[RESTRICTED]';
   }
   
@@ -178,7 +186,7 @@ function maskIpAddress(ip: string, userRole: UserRole, options: MaskingOptions):
 }
 
 function maskUserAgent(userAgent: string, userRole: UserRole, options: MaskingOptions): string {
-  if (userRole !== 'admin') {
+  if (!canViewUserAgents(userRole)) {
     return '[RESTRICTED]';
   }
   

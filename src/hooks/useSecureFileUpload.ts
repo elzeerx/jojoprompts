@@ -1,7 +1,9 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SECURE_FILE_UPLOAD');
 
 interface FileValidationResult {
   isValid: boolean;
@@ -35,7 +37,7 @@ export function useSecureFileUpload() {
 
       return data as FileValidationResult;
     } catch (error) {
-      console.error('File validation error:', error);
+      logger.error('File validation error', { error, fileType });
       return {
         isValid: false,
         error: error instanceof Error ? error.message : 'File validation failed'

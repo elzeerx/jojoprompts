@@ -1,6 +1,8 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { emailTemplates } from "./emailTemplates";
+import { createLogger } from './logging';
+
+const logger = createLogger('EMAIL_SERVICE');
 
 interface EmailServiceResponse {
   success: boolean;
@@ -12,18 +14,18 @@ class EmailService {
     const maxRetries = 2;
     
     try {
-      console.log(`[EmailService] Sending email to ${to} with subject: ${subject} (attempt ${retryCount + 1})`);
+      logger.debug('Sending email', { to, subject, attempt: retryCount + 1 });
       
       const { data, error } = await supabase.functions.invoke('send-email', {
         body: { to, subject, html, text }
       });
 
       if (error) {
-        console.error(`[EmailService] Email service error (attempt ${retryCount + 1}):`, error);
+        logger.error('Email service error', { error, to, attempt: retryCount + 1 });
         
         // Retry logic for transient failures
         if (retryCount < maxRetries && this.isRetryableError(error)) {
-          console.log(`[EmailService] Retrying email send (attempt ${retryCount + 2})`);
+          logger.info('Retrying email send', { attempt: retryCount + 2 });
           await this.delay(1000 * (retryCount + 1)); // Exponential backoff
           return this.sendEmail(to, subject, html, text, retryCount + 1);
         }
@@ -32,11 +34,11 @@ class EmailService {
       }
 
       if (!data?.success) {
-        console.error(`[EmailService] Email sending failed (attempt ${retryCount + 1}):`, data?.error);
+        logger.error('Email sending failed', { error: data?.error, to, attempt: retryCount + 1 });
         
         // Retry logic for API failures
         if (retryCount < maxRetries && this.isRetryableError(data?.error)) {
-          console.log(`[EmailService] Retrying email send (attempt ${retryCount + 2})`);
+          logger.info('Retrying email send', { attempt: retryCount + 2 });
           await this.delay(1000 * (retryCount + 1));
           return this.sendEmail(to, subject, html, text, retryCount + 1);
         }
@@ -44,14 +46,14 @@ class EmailService {
         return { success: false, error: data?.error || 'Failed to send email' };
       }
 
-      console.log(`[EmailService] Email sent successfully to ${to}`);
+      logger.info('Email sent successfully', { to });
       return { success: true };
     } catch (error: any) {
-      console.error(`[EmailService] Email service exception (attempt ${retryCount + 1}):`, error);
+      logger.error('Email service exception', { error, to, attempt: retryCount + 1 });
       
       // Retry logic for network errors
       if (retryCount < maxRetries) {
-        console.log(`[EmailService] Retrying email send after exception (attempt ${retryCount + 2})`);
+        logger.info('Retrying email send after exception', { attempt: retryCount + 2 });
         await this.delay(1000 * (retryCount + 1));
         return this.sendEmail(to, subject, html, text, retryCount + 1);
       }
@@ -104,20 +106,21 @@ class EmailService {
 
   // Enhanced payment confirmation with better logging
   async sendPaymentConfirmation(name: string, email: string, planName: string, amount: number, transactionId: string): Promise<EmailServiceResponse> {
-    console.log(`[EmailService] Preparing payment confirmation email for ${email}:`, {
-      name,
-      planName,
-      amount,
-      transactionId
+    logger.info('Preparing payment confirmation email', { 
+      email, 
+      name, 
+      planName, 
+      amount, 
+      transactionId 
     });
     
     const template = emailTemplates.paymentConfirmation({ name, planName, amount, transactionId });
     const result = await this.sendEmail(email, template.subject, template.html, template.text);
     
     if (result.success) {
-      console.log(`[EmailService] Payment confirmation email sent successfully to ${email}`);
+      logger.info('Payment confirmation email sent successfully', { email });
     } else {
-      console.error(`[EmailService] Payment confirmation email failed for ${email}:`, result.error);
+      logger.error('Payment confirmation email failed', { email, error: result.error });
     }
     
     return result;

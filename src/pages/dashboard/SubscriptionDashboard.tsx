@@ -10,6 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Download, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SUBSCRIPTION_DASHBOARD');
 
 interface Subscription {
   id: string;
@@ -92,7 +95,7 @@ export default function SubscriptionDashboard() {
         
         setTransactions(transactionData || []);
       } catch (err: any) {
-        console.error('Error fetching subscription data:', err);
+        logger.error('Failed to fetch subscription data', { error: err.message || err, userId: user?.id });
         setError(err.message || 'Failed to load subscription data');
         toast({
           title: "Error",

@@ -1,8 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Category } from "@/types/category";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('CATEGORIES');
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -25,7 +27,7 @@ export function useCategories() {
 
       setCategories(transformedData);
     } catch (error: any) {
-      console.error("Error fetching categories:", error);
+      logger.error('Failed to fetch categories', { error: error.message || error });
       toast({
         title: "Error",
         description: "Failed to load categories",
@@ -53,7 +55,7 @@ export function useCategories() {
       });
       return data;
     } catch (error: any) {
-      console.error("Error creating category:", error);
+      logger.error('Failed to create category', { error: error.message || error });
       toast({
         title: "Error",
         description: "Failed to create category",
@@ -78,7 +80,7 @@ export function useCategories() {
         description: "Category updated successfully",
       });
     } catch (error: any) {
-      console.error("Error updating category:", error);
+      logger.error('Failed to update category', { error: error.message || error, categoryId: id });
       toast({
         title: "Error",
         description: "Failed to update category",
@@ -103,7 +105,7 @@ export function useCategories() {
         description: "Category deleted successfully",
       });
     } catch (error: any) {
-      console.error("Error deleting category:", error);
+      logger.error('Failed to delete category', { error: error.message || error, categoryId: id });
       toast({
         title: "Error",
         description: "Failed to delete category",
@@ -130,7 +132,7 @@ export function useCategories() {
           table: 'categories'
         },
         (payload) => {
-          console.log('Categories real-time update:', payload);
+          logger.debug('Categories real-time update', { event: payload.eventType });
           // Refetch categories when any change occurs
           fetchCategories();
         }

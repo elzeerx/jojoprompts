@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { getPromptImage, getMediaUrl } from "@/utils/image";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('MediaPreviewDialog');
 
 interface MediaPreviewDialogProps {
   open: boolean;
@@ -37,9 +40,9 @@ export function MediaPreviewDialog({
             url = await getPromptImage(selectedMedia.path, 1200, 95);
           }
           setMediaUrl(url);
-          console.log(`Loaded ${selectedMedia.type} URL: ${url}`);
+          logger.debug('Media loaded successfully', { mediaType: selectedMedia.type, path: selectedMedia.path });
         } catch (error) {
-          console.error(`Error loading ${selectedMedia.type}:`, error);
+          logger.error('Error loading media', { error: error instanceof Error ? error.message : error, mediaType: selectedMedia.type, path: selectedMedia.path });
           setMediaUrl('/placeholder.svg');
           toast({
             title: `${selectedMedia.type.charAt(0).toUpperCase() + selectedMedia.type.slice(1)} Error`,
@@ -82,7 +85,7 @@ export function MediaPreviewDialog({
               playsInline
               className="w-full h-auto max-h-[80vh] rounded-lg"
               onError={(e) => {
-                console.error('Video playback error:', e);
+                logger.error('Video playback error', { mediaName: selectedMedia.name });
                 toast({
                   title: "Video Error",
                   description: "There was an error loading the video",
@@ -100,7 +103,7 @@ export function MediaPreviewDialog({
                 preload="metadata"
                 className="w-full max-w-md"
                 onError={(e) => {
-                  console.error('Audio playback error:', e);
+                  logger.error('Audio playback error', { mediaName: selectedMedia.name });
                   toast({
                     title: "Audio Error", 
                     description: "There was an error loading the audio",

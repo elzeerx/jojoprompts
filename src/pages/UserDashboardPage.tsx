@@ -4,6 +4,10 @@ import { Container } from "@/components/ui/container";
 import { DashboardContent } from "@/components/dashboard/DashboardContent";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
 import { useUserStats } from "@/hooks/useUserStats";
+import { SectionLoadingState, EmptyState } from "@/components/ui/loading-states";
+import { LogIn } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 export default function UserDashboardPage() {
   const { user } = useAuth();
@@ -14,9 +18,16 @@ export default function UserDashboardPage() {
   if (!user) {
     return (
       <Container className="py-8">
-        <div className="text-center">
-          <p>Please log in to access your dashboard.</p>
-        </div>
+        <EmptyState
+          icon={<LogIn className="h-6 w-6 text-warm-gold" />}
+          title="Login Required"
+          description="Please log in to access your dashboard."
+          action={
+            <Button asChild className="mobile-button-primary">
+              <Link to="/login">Log In</Link>
+            </Button>
+          }
+        />
       </Container>
     );
   }
@@ -25,16 +36,14 @@ export default function UserDashboardPage() {
 
   return (
     <div className="min-h-screen bg-soft-bg/30">
-      <Container className="py-8">
+      <Container className="pt-20 lg:pt-24 pb-8">
         <div className="mb-8">
           <h1 className="section-title">My Dashboard</h1>
           <p className="text-muted-foreground">Manage your account and view your activity</p>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8">
-            <p>Loading dashboard...</p>
-          </div>
+          <SectionLoadingState message="Loading dashboard..." />
         ) : (
           <DashboardContent
             userSubscription={userSubscription}

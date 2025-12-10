@@ -1,6 +1,8 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { fetchUserProfile } from "./profileService";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('AUTH_STATE');
 
 export function setupAuthState({ setSession, setUser, setUserRole, setLoading, setRecoveredOrphaned, isLoggingOut }: any) {
   let mounted = true;
@@ -13,7 +15,7 @@ export function setupAuthState({ setSession, setUser, setUserRole, setLoading, s
       // If we're in the middle of logging out, ignore auth state changes
       // This prevents the listener from restoring session during logout
       if (isLoggingOut && isLoggingOut()) {
-        console.log("[AUTH] Ignoring auth state change during logout:", event);
+        logger.debug('Ignoring auth state change during logout', { event });
         return;
       }
       
@@ -29,13 +31,17 @@ export function setupAuthState({ setSession, setUser, setUserRole, setLoading, s
         return;
       }
 
-      console.log("[AUTH] Auth state change:", event, { sessionExists: !!currentSession, userEmail: currentSession?.user?.email });
+      logger.info('Auth state change', { 
+        event, 
+        sessionExists: !!currentSession, 
+        userEmail: currentSession?.user?.email 
+      });
       
       // Handle token refresh errors more gracefully
       if (event === 'TOKEN_REFRESHED') {
-        console.log("[AUTH] Token refreshed successfully");
+        logger.debug('Token refreshed successfully');
       } else if (event === 'SIGNED_OUT' && !currentSession) {
-        console.log("[AUTH] User signed out or session expired");
+        logger.info('User signed out or session expired');
         setSession(null);
         setUser(null);
         setUserRole(null);

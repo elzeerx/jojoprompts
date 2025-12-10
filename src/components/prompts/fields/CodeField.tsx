@@ -5,6 +5,9 @@ import { InfoIcon, Code2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FieldComponentProps } from './types';
 import { cn } from '@/lib/utils';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('CODE_FIELD');
 
 export function CodeField({ 
   field, 
@@ -27,7 +30,7 @@ export function CodeField({
       onChange(formatted);
     } catch (e) {
       // If not valid JSON, do nothing
-      console.error('Invalid JSON');
+      logger.debug('Invalid JSON format', { fieldKey: field.field_key });
     }
   };
 

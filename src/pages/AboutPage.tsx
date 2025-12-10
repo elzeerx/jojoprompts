@@ -1,157 +1,142 @@
 
 import { Button } from "@/components/ui/button";
-import { FileText, Sparkles, Copy, Download, Zap, Users, Shield, Star } from "lucide-react";
+import { FileText, Sparkles, Copy, Zap, Users, Star } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
 
 export default function AboutPage() {
+  const { t, isRTL } = useTranslation();
+
+  const specialFeatures = [
+    { icon: Star, titleKey: "about.qualityTitle", descKey: "about.qualityDesc" },
+    { icon: Users, titleKey: "about.personalTitle", descKey: "about.personalDesc" },
+    { icon: Sparkles, titleKey: "about.evolvingTitle", descKey: "about.evolvingDesc" },
+  ];
+
+  const findFeatures = [
+    { icon: Copy, titleKey: "about.copyTitle", descKey: "about.copyDesc" },
+    { icon: Star, titleKey: "about.favoritesTitle", descKey: "about.favoritesDesc" },
+    { icon: Zap, titleKey: "about.searchTitle", descKey: "about.searchDesc" },
+    { icon: Sparkles, titleKey: "about.multiPlatformTitle", descKey: "about.multiPlatformDesc" },
+  ];
+
   return (
-    <div className="mobile-container-padding mobile-section-padding max-w-4xl mx-auto">
-      <div className="text-center mb-8 sm:mb-12">
-        <div className="flex justify-center mb-4">
-          <div className="rounded-full bg-warm-gold/10 p-3 sm:p-4">
-            <FileText className="h-8 w-8 sm:h-10 sm:w-10 text-warm-gold" />
-          </div>
+    <div className="bg-white min-h-screen">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
+        
+        {/* Hero Section */}
+        <div className="text-center mb-12 sm:mb-16">
+          <FileText className="h-8 w-8 sm:h-10 sm:w-10 text-warm-gold mx-auto mb-4" />
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight text-dark-base mb-4">
+            {t("about.title")}
+          </h1>
+          <p className="text-lg text-muted-foreground font-light max-w-2xl mx-auto">
+            {t("about.subtitle")}
+          </p>
         </div>
-        <h1 className="section-title mb-4 text-dark-base">About JojoPrompts</h1>
-        <p className="section-subtitle max-w-3xl mx-auto">
-          A passion project by Nawaf Alsuwaiyed, sharing carefully curated AI prompts that have been tested and refined through real-world use. 
-          Discover prompts that actually work for ChatGPT, Midjourney, Claude, and other AI tools.
-        </p>
-      </div>
-      
-      <div className="mobile-element-spacing">
-        <section>
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-dark-base text-center">The Story Behind JojoPrompts</h2>
-          <div className="bg-warm-gold/5 p-6 sm:p-8 rounded-lg border border-warm-gold/20">
-            <p className="text-base sm:text-lg text-muted-foreground mb-4 leading-relaxed">
-              JojoPrompts was born from a simple frustration: spending hours crafting the perfect AI prompt, only to forget it later. 
-              Nawaf Alsuwaiyed, a passionate AI enthusiast and prompt engineer, decided to solve this problem by creating a centralized 
-              hub for his ever-growing collection of effective prompts.
-            </p>
-            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
-              What started as a personal library has evolved into a curated platform where quality trumps quantity. 
-              Every prompt here has been battle-tested in real projects, refined through iterations, and proven to deliver 
-              exceptional results across different AI platforms.
-            </p>
+        
+        {/* Our Story Section */}
+        <section className="mb-12 sm:mb-16">
+          <h2 className={cn(
+            "text-2xl sm:text-3xl font-light tracking-tight text-dark-base mb-6 sm:mb-8 text-center",
+            isRTL && "text-right"
+          )}>
+            {t("about.storyTitle")}
+          </h2>
+          <div className="grid gap-px bg-gray-200 rounded-2xl overflow-hidden">
+            <div className="bg-white p-6 sm:p-8">
+              <p className="text-base sm:text-lg text-muted-foreground mb-4 leading-relaxed font-light">
+                {t("about.storyParagraph1")}
+              </p>
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed font-light">
+                {t("about.storyParagraph2")}
+              </p>
+            </div>
           </div>
         </section>
 
+        {/* Special Features Section */}
+        <section className="mb-12 sm:mb-16">
+          <h2 className={cn(
+            "text-2xl sm:text-3xl font-light tracking-tight text-dark-base mb-6 sm:mb-8 text-center",
+            isRTL && "text-right"
+          )}>
+            {t("about.specialTitle")}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-gray-200 rounded-2xl overflow-hidden">
+            {specialFeatures.map((feature, index) => (
+              <div key={index} className="bg-white p-6 sm:p-8 group hover:bg-gray-50/50 transition-colors duration-300 text-center relative">
+                <feature.icon className="h-6 w-6 text-warm-gold mx-auto mb-4" />
+                <h3 className="font-medium text-lg mb-3 text-dark-base">
+                  {t(feature.titleKey)}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed font-light">
+                  {t(feature.descKey)}
+                </p>
+                {/* Accent line */}
+                <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
+              </div>
+            ))}
+          </div>
+        </section>
+        
+        {/* Find Your Prompt Section */}
+        <section className="mb-12 sm:mb-16">
+          <h2 className={cn(
+            "text-2xl sm:text-3xl font-light tracking-tight text-dark-base mb-6 sm:mb-8 text-center",
+            isRTL && "text-right"
+          )}>
+            {t("about.findTitle")}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-gray-200 rounded-2xl overflow-hidden">
+            {findFeatures.map((feature, index) => (
+              <div key={index} className="bg-white p-6 sm:p-8 group hover:bg-gray-50/50 transition-colors duration-300 relative">
+                <div className={cn(
+                  "flex items-start gap-4",
+                  isRTL && "flex-row-reverse"
+                )}>
+                  <feature.icon className="h-5 w-5 text-warm-gold flex-shrink-0 mt-1" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-base sm:text-lg mb-2 text-dark-base">
+                      {t(feature.titleKey)}
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed font-light">
+                      {t(feature.descKey)}
+                    </p>
+                  </div>
+                </div>
+                {/* Accent line */}
+                <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA Section */}
         <section>
-          <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-dark-base text-center">What Makes JojoPrompts Special?</h2>
-          <div className="mobile-grid gap-6 sm:gap-8">
-            <div className="mobile-card text-center hover:shadow-md transition-shadow">
-              <div className="rounded-full bg-warm-gold/10 p-4 mb-4 mx-auto w-fit">
-                <Star className="h-6 w-6 text-warm-gold" />
-              </div>
-              <h3 className="font-semibold text-lg sm:text-xl mb-3 text-dark-base">Battle-Tested Quality</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                No fluff, no filler. Every prompt has been used in real projects and refined based on actual results.
+          <div className="grid gap-px bg-gray-200 rounded-2xl overflow-hidden">
+            <div className="bg-white p-8 sm:p-12 text-center group hover:bg-gray-50/50 transition-colors duration-300 relative">
+              <h2 className="text-2xl sm:text-3xl font-light tracking-tight text-dark-base mb-4">
+                {t("about.journeyTitle")}
+              </h2>
+              <p className="text-base sm:text-lg text-muted-foreground mb-8 max-w-2xl mx-auto font-light leading-relaxed">
+                {t("about.journeyDesc")}
               </p>
-            </div>
-            
-            <div className="mobile-card text-center hover:shadow-md transition-shadow">
-              <div className="rounded-full bg-warm-gold/10 p-4 mb-4 mx-auto w-fit">
-                <Users className="h-6 w-6 text-warm-gold" />
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button asChild size="lg" className="bg-warm-gold hover:bg-warm-gold/90 text-white">
+                  <Link to="/prompts">{t("about.browsePrompts")}</Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="border-gray-200 hover:bg-gray-50 text-dark-base">
+                  <Link to="/pricing">{t("about.joinCommunity")}</Link>
+                </Button>
               </div>
-              <h3 className="font-semibold text-lg sm:text-xl mb-3 text-dark-base">Personal Touch</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Each prompt comes with context and tips from real-world usage, not just copy-paste text.
-              </p>
-            </div>
-            
-            <div className="mobile-card text-center hover:shadow-md transition-shadow">
-              <div className="rounded-full bg-warm-gold/10 p-4 mb-4 mx-auto w-fit">
-                <Sparkles className="h-6 w-6 text-warm-gold" />
-              </div>
-              <h3 className="font-semibold text-lg sm:text-xl mb-3 text-dark-base">Constantly Evolving</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                As AI tools evolve, so do our prompts. Regular updates ensure compatibility with the latest models.
-              </p>
+              {/* Accent line */}
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300" />
             </div>
           </div>
         </section>
         
-        <section>
-          <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-dark-base text-center">What You'll Find Here</h2>
-          <div className="mobile-grid-2 gap-6 sm:gap-8">
-            <div className="mobile-card hover:shadow-md transition-shadow">
-              <div className="flex items-start space-x-4">
-                <div className="rounded-full bg-warm-gold/10 p-3 flex-shrink-0">
-                  <Copy className="h-5 w-5 text-warm-gold" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base sm:text-lg mb-2 text-dark-base">One-Click Copy</h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">
-                    Click to copy any prompt instantly. No sign-ups, no downloads, just immediate access 
-                    to prompts you can use right away in your favorite AI tools.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mobile-card hover:shadow-md transition-shadow">
-              <div className="flex items-start space-x-4">
-                <div className="rounded-full bg-warm-gold/10 p-3 flex-shrink-0">
-                  <Star className="h-5 w-5 text-warm-gold" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base sm:text-lg mb-2 text-dark-base">Favorites Collection</h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">
-                    Save your favorite prompts to your personal collection for quick access. 
-                    Build your own curated library of go-to prompts.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mobile-card hover:shadow-md transition-shadow">
-              <div className="flex items-start space-x-4">
-                <div className="rounded-full bg-warm-gold/10 p-3 flex-shrink-0">
-                  <Zap className="h-5 w-5 text-warm-gold" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base sm:text-lg mb-2 text-dark-base">Smart Search</h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">
-                    Find exactly what you need with our intelligent search. Filter by category, 
-                    AI platform, or search through prompt content to discover new possibilities.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mobile-card hover:shadow-md transition-shadow">
-              <div className="flex items-start space-x-4">
-                <div className="rounded-full bg-warm-gold/10 p-3 flex-shrink-0">
-                  <Sparkles className="h-5 w-5 text-warm-gold" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base sm:text-lg mb-2 text-dark-base">Multi-Platform Ready</h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">
-                    Prompts for ChatGPT, Claude, Midjourney, and other AI tools. 
-                    Each prompt is optimized for the platform it's designed for.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-warm-gold/5 p-6 sm:p-8 rounded-lg border border-warm-gold/20">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-dark-base text-center">Start Your Journey</h2>
-          <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8 text-center max-w-3xl mx-auto">
-            Ready to transform your AI interactions? Dive into our collection of proven prompts and discover 
-            how the right words can unlock incredible results. No complicated setups, no lengthy tutorials—just 
-            copy, paste, and create amazing content.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="mobile-button-primary">
-              <Link to="/prompts">Browse All Prompts</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="mobile-button-secondary">
-              <Link to="/pricing">Join the Community</Link>
-            </Button>
-          </div>
-        </section>
       </div>
     </div>
   );

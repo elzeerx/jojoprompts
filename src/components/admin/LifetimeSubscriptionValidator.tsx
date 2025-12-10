@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('LIFETIME_SUB_VALIDATOR');
 
 interface LifetimeSubscriptionData {
   id: string;
@@ -88,7 +92,8 @@ export function LifetimeSubscriptionValidator() {
       });
 
     } catch (error) {
-      console.error('Error validating subscriptions:', error);
+      const appError = handleError(error, { component: 'LifetimeSubscriptionValidator', action: 'validateSubscriptions' });
+      logger.error('Error validating subscriptions', { error: appError });
       toast({
         variant: "destructive",
         title: "Validation Failed",

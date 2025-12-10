@@ -10,6 +10,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { CheckedState } from "@radix-ui/react-checkbox";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('CREATE_COLLECTION_DIALOG');
 
 interface CreateCollectionDialogProps {
   open: boolean;
@@ -50,8 +53,8 @@ export function CreateCollectionDialog({ open, onOpenChange, onCollectionCreated
       setIsPublic(false);
       onCollectionCreated();
       onOpenChange(false);
-    } catch (error) {
-      console.error("Error creating collection:", error);
+    } catch (error: any) {
+      logger.error('Error creating collection', { error: error.message });
       toast({
         title: "Error",
         description: "Failed to create collection. Please try again.",

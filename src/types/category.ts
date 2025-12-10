@@ -8,6 +8,7 @@ export interface Category {
   icon_name: string;
   icon_image_path?: string | null;
   features: string[];
+  subcategories: string[];
   bg_gradient: string;
   link_path: string;
   is_active: boolean;
@@ -24,6 +25,7 @@ export interface CategoryFormData {
   icon_name: string;
   icon_image_path?: string;
   features: string[];
+  subcategories: string[];
   bg_gradient: string;
   link_path: string;
   is_active: boolean;

@@ -1,22 +1,25 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { corsHeaders } from '../_shared/cors.ts';
+import { createEdgeLogger } from '../_shared/logger.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 serve(async (req) => {
+  const logger = createEdgeLogger('translate-prompt');
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('translate-prompt: Starting request');
+    logger.info('Starting translation request');
     
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.log('translate-prompt: No authorization header');
+      logger.warn('Missing authorization header');
       return new Response(
         JSON.stringify({ error: 'Authorization required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -35,9 +38,9 @@ serve(async (req) => {
       if (!userId) {
         throw new Error('No user ID in token');
       }
-      console.log('translate-prompt: Extracted user ID from token');
+      logger.debug('Extracted user ID from token');
     } catch (error) {
-      console.log('translate-prompt: Invalid token format', error);
+      logger.error('Invalid token format', { error });
       return new Response(
         JSON.stringify({ error: 'Invalid authentication token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -52,7 +55,7 @@ serve(async (req) => {
 
     const { data: canManage } = await supabase.rpc('can_manage_prompts', { _user_id: userId });
     if (!canManage) {
-      console.log('translate-prompt: User cannot manage prompts');
+      logger.warn('User lacks prompt management permissions', { userId });
       return new Response(
         JSON.stringify({ error: 'Admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -60,7 +63,7 @@ serve(async (req) => {
     }
 
     const { prompt_id, target_language, overwrite = false } = await req.json();
-    console.log('translate-prompt: Request params', { prompt_id, target_language, overwrite });
+    logger.info('Translation request parameters', { prompt_id, target_language, overwrite });
 
     if (!prompt_id || !target_language || !['arabic', 'english'].includes(target_language)) {
       return new Response(
@@ -77,7 +80,7 @@ serve(async (req) => {
       .single();
 
     if (fetchError || !prompt) {
-      console.log('translate-prompt: Prompt not found', fetchError);
+      logger.error('Prompt not found', { prompt_id, error: fetchError });
       return new Response(
         JSON.stringify({ error: 'Prompt not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -89,7 +92,7 @@ serve(async (req) => {
 
     // Check if translation already exists
     if (translations[target_language] && !overwrite) {
-      console.log('translate-prompt: Translation already exists');
+      logger.info('Translation already exists', { target_language });
       return new Response(
         JSON.stringify({ 
           status: 'already_translated',
@@ -133,7 +136,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('translate-prompt: Calling OpenAI', { sourceLanguage, target_language });
+    logger.info('Calling OpenAI for translation', { sourceLanguage, target_language });
 
     // Call OpenAI for translation
     const translationPrompt = `You are a professional translator. Translate the following prompt title and text from ${sourceLanguage} to ${target_language}.
@@ -168,7 +171,7 @@ ${sourceText}`;
     });
 
     if (!openAIResponse.ok) {
-      console.error('translate-prompt: OpenAI API error', await openAIResponse.text());
+      logger.error('OpenAI API error', { status: openAIResponse.status, text: await openAIResponse.text() });
       return new Response(
         JSON.stringify({ error: 'Translation service unavailable' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -189,7 +192,7 @@ ${sourceText}`;
     try {
       translation = JSON.parse(translatedContent);
     } catch (parseError) {
-      console.error('translate-prompt: Failed to parse OpenAI response', { translatedContent, parseError });
+      logger.error('Failed to parse OpenAI response', { translatedContent, parseError });
       return new Response(
         JSON.stringify({ error: 'Translation parsing failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -197,7 +200,7 @@ ${sourceText}`;
     }
 
     if (!translation.title || !translation.prompt_text) {
-      console.error('translate-prompt: Invalid translation format', translation);
+      logger.error('Invalid translation format', { translation });
       return new Response(
         JSON.stringify({ error: 'Invalid translation format' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -224,14 +227,14 @@ ${sourceText}`;
       .eq('id', prompt_id);
 
     if (updateError) {
-      console.error('translate-prompt: Failed to update prompt', updateError);
+      logger.error('Failed to update prompt', { prompt_id, error: updateError });
       return new Response(
         JSON.stringify({ error: 'Failed to save translation' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('translate-prompt: Translation completed successfully');
+    logger.info('Translation completed successfully', { prompt_id, target_language });
 
     return new Response(
       JSON.stringify({
@@ -244,7 +247,7 @@ ${sourceText}`;
     );
 
   } catch (error) {
-    console.error('translate-prompt: Unexpected error', error);
+    logger.error('Unexpected error in translation', { error });
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

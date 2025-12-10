@@ -1,9 +1,82 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { getPayPalConfig } from './paypalConfig.ts';
 import { fetchPayPalAccessToken } from './paypalToken.ts';
 import { getSiteUrl } from './siteUrl.ts';
 import { makeSupabaseClient, insertTransaction, updateTransactionOnCapture, createUserSubscription, upgradeUserSubscription } from './dbOperations.ts';
+import { createEdgeLogger } from '../_shared/logger.ts';
+import { logEmailAttempt } from '../_shared/emailLogger.ts';
+import { 
+  validatePaymentInput, 
+  ProcessPaymentCreateSchema, 
+  ProcessPaymentCaptureSchema, 
+  ProcessPaymentDirectActivationSchema 
+} from '../_shared/paymentValidation.ts';
+
+const logger = createEdgeLogger('process-paypal-payment');
+
+// Email sending function for payment confirmation
+async function sendPaymentConfirmationEmail(
+  supabaseClient: any,
+  recipientEmail: string,
+  userName: string,
+  planName: string,
+  amount: number,
+  transactionId: string,
+  loggerInstance: any
+): Promise<void> {
+  try {
+    loggerInstance.info('Attempting to send payment confirmation email', { recipientEmail, planName, amount });
+
+    // Format purchase date
+    const purchaseDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    // Prepare email payload with template_slug
+    const payload = {
+      to: recipientEmail,
+      template_slug: 'payment_confirmation',
+      email_type: 'payment_confirmation',
+      variables: {
+        first_name: userName.split(' ')[0] || 'Valued Customer',
+        plan_name: planName,
+        amount: Number(amount || 0).toFixed(2),
+        transaction_id: transactionId,
+        purchase_date: purchaseDate,
+        email: recipientEmail,
+        unsubscribe_link: `${getSiteUrl()}/unsubscribe?email=${encodeURIComponent(recipientEmail)}&type=payment_confirmation`
+      }
+    };
+
+    loggerInstance.debug('Email payload prepared', { to: recipientEmail, template_slug: 'payment_confirmation' });
+
+    // Call send-email edge function with template_slug
+    const { data: emailResponse, error: emailError } = await supabaseClient.functions.invoke('send-email', {
+      body: payload
+    });
+
+    // Check if user is unsubscribed (treat as success, not an error)
+    if (emailResponse?.unsubscribed) {
+      loggerInstance.info('User is unsubscribed from payment emails', { recipientEmail });
+      await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', true, 'User unsubscribed');
+      return;
+    }
+
+    if (emailError) {
+      loggerInstance.error('Failed to send payment confirmation email', { error: emailError });
+      await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', false, emailError.message);
+    } else {
+      loggerInstance.info('Payment confirmation email sent successfully', { recipientEmail });
+      await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', true);
+    }
+  } catch (error) {
+    loggerInstance.error('Exception while sending payment confirmation email', { error });
+    await logEmailAttempt(supabaseClient, recipientEmail, 'payment_confirmation', false, error.message);
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +90,7 @@ function sanitizeAmount(amount: number): { value: string; number: number } {
   const sanitizedNumber = centsValue / 100;
   const sanitizedString = sanitizedNumber.toFixed(2);
   
-  console.log('Amount sanitization:', {
+  logger.debug('Amount sanitization', {
     original: amount,
     centsValue,
     sanitizedNumber,
@@ -35,12 +108,43 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
   try {
-    const { action, orderId, planId, userId, amount, appliedDiscount, isUpgrade, upgradingFromPlanId, currentSubscriptionId } = await req.json();
+    const rawBody = await req.json();
     const supabaseClient = makeSupabaseClient();
+
+    // Validate input based on action type
+    let validationResult;
+    if (rawBody.action === 'create') {
+      validationResult = validatePaymentInput(ProcessPaymentCreateSchema, rawBody);
+    } else if (rawBody.action === 'capture') {
+      validationResult = validatePaymentInput(ProcessPaymentCaptureSchema, rawBody);
+    } else if (rawBody.action === 'direct-activation') {
+      validationResult = validatePaymentInput(ProcessPaymentDirectActivationSchema, rawBody);
+    } else {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Invalid action. Must be "create", "capture", or "direct-activation"' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!validationResult.success) {
+      logger.error('Input validation failed', { error: validationResult.error, action: rawBody.action });
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: validationResult.error 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { action, orderId, planId, userId, amount, appliedDiscount, isUpgrade, upgradingFromPlanId, currentSubscriptionId } = validationResult.data;
 
     // Handle direct activation for 100% discounts
     if (action === 'direct-activation') {
-      console.log('Processing direct activation for 100% discount:', { planId, userId, amount, appliedDiscount });
+      logger.info('Processing direct activation for 100% discount', { planId, userId, amount, appliedDiscount });
 
       if (amount !== 0) {
         throw new Error('Direct activation is only allowed for 100% discounts (amount must be $0)');
@@ -66,11 +170,11 @@ serve(async (req) => {
         .single();
 
       if (transactionError || !transaction) {
-        console.error('Failed to create transaction for direct activation:', transactionError);
+        logger.error('Failed to create transaction for direct activation', { error: transactionError });
         throw new Error('Failed to create transaction record');
       }
 
-      console.log('Created transaction for direct activation:', transaction);
+      logger.info('Created transaction for direct activation', { transactionId: transaction.id });
 
       // Fetch plan details to check if it's lifetime
       const { data: planData } = await supabaseClient
@@ -103,11 +207,59 @@ serve(async (req) => {
         .single();
 
       if (subscriptionError || !subscription) {
-        console.error('Failed to create subscription for direct activation:', subscriptionError);
+        logger.error('Failed to create subscription for direct activation', { error: subscriptionError });
         throw new Error('Failed to create subscription');
       }
 
-      console.log('Created subscription for direct activation:', subscription);
+      logger.info('Created subscription for direct activation', { subscriptionId: subscription.id });
+
+      // Auto-confirm user's email after successful direct activation (deferred verification)
+      try {
+        logger.info('Auto-confirming user email after direct activation', { userId });
+        const { error: confirmError } = await supabaseClient.auth.admin.updateUserById(userId, {
+          email_confirm: true
+        });
+        if (confirmError) {
+          logger.warn('Failed to auto-confirm email after direct activation (non-critical)', { error: confirmError.message });
+        } else {
+          logger.info('User email auto-confirmed after direct activation', { userId });
+        }
+      } catch (confirmErr) {
+        logger.warn('Exception auto-confirming email after direct activation', { error: confirmErr });
+        // Non-critical - don't fail the activation
+      }
+
+      // Send payment confirmation email in background (don't block response)
+      setTimeout(async () => {
+        try {
+          const { data: userProfile } = await supabaseClient
+            .from('profiles')
+            .select('first_name, last_name, email')
+            .eq('id', userId)
+            .single();
+
+          const { data: planDetails } = await supabaseClient
+            .from('subscription_plans')
+            .select('name')
+            .eq('id', planId)
+            .single();
+
+          if (userProfile?.email && planDetails) {
+            const userName = `${userProfile.first_name} ${userProfile.last_name}`.trim() || 'User';
+            await sendPaymentConfirmationEmail(
+              supabaseClient,
+              userProfile.email,
+              userName,
+              planDetails.name,
+              0, // Amount is 0 for 100% discount
+              transaction.id,
+              logger
+            );
+          }
+        } catch (emailError) {
+          logger.warn('Failed to send payment confirmation email for direct activation', { error: emailError });
+        }
+      }, 0);
 
       // Track discount usage
       const { error: discountUsageError } = await supabaseClient
@@ -119,7 +271,7 @@ serve(async (req) => {
         });
 
       if (discountUsageError) {
-        console.error('Failed to track discount usage:', discountUsageError);
+        logger.warn('Failed to track discount usage', { error: discountUsageError });
         // Don't throw error as the main transaction succeeded
       }
 
@@ -140,7 +292,7 @@ serve(async (req) => {
           .eq('id', appliedDiscount.id);
 
         if (incrementError) {
-          console.error('Failed to increment discount usage:', incrementError);
+          logger.warn('Failed to increment discount usage', { error: incrementError });
           // Don't throw error as the main transaction succeeded
         }
       }
@@ -165,7 +317,7 @@ serve(async (req) => {
     if (action === 'create') {
       // Handle 0.00 amounts - redirect to direct activation
       if (amount === 0) {
-        console.log('Amount is 0.00, redirecting to direct activation path');
+        logger.info('Amount is 0.00, redirecting to direct activation path');
         return new Response(JSON.stringify({
           success: false,
           redirectToDirectActivation: true,
@@ -177,24 +329,21 @@ serve(async (req) => {
 
       const siteUrl = getSiteUrl();
       
-      console.log('=== PAYPAL ORDER DEBUG ===');
-      console.log('Received FINAL amount (already discounted):', amount);
+      logger.info('Creating PayPal order', {
+        amount,
+        appliedDiscount,
+        planId,
+        userId
+      });
       
       // Sanitize amount for PayPal precision requirements
       const sanitizedAmount = sanitizeAmount(amount);
-      console.log('Sanitized amount for PayPal:', sanitizedAmount);
-      
-      console.log('Applied discount (for tracking only):', appliedDiscount);
-      console.log('Plan ID:', planId);
-      console.log('User ID:', userId);
-      console.log('NOTE: Amount should already include discount - NO FURTHER CALCULATION NEEDED');
-      console.log('========================');
       
       // FIXED: Include planId and userId in both return and cancel URLs with proper encoding
       const returnUrl = `${siteUrl}/payment/callback?success=true&plan_id=${encodeURIComponent(planId)}&user_id=${encodeURIComponent(userId)}`;
       const cancelUrl = `${siteUrl}/payment/callback?success=false&plan_id=${encodeURIComponent(planId)}&user_id=${encodeURIComponent(userId)}`;
 
-      console.log('Creating PayPal order with URLs:', { returnUrl, cancelUrl, planId, userId });
+      logger.debug('PayPal order URLs configured', { returnUrl, cancelUrl, planId, userId });
 
       const orderRes = await fetch(`${baseUrl}/v2/checkout/orders`, {
         method: 'POST',
@@ -227,7 +376,7 @@ serve(async (req) => {
 
       const orderData = await orderRes.json();
       if (!orderRes.ok) {
-        console.error('PayPal order creation failed:', orderData);
+        logger.error('PayPal order creation failed', { orderData });
         throw new Error(`PayPal order creation failed: ${orderData.message}`);
       }
 
@@ -244,16 +393,14 @@ serve(async (req) => {
       const { error: dbError } = await insertTransaction(supabaseClient, transactionData);
 
       if (dbError) {
-        console.error('Database error (insert transaction):', dbError);
+        logger.error('Database error creating transaction', { error: dbError });
         throw new Error('Failed to create transaction record');
       }
 
-      console.log('PayPal order created successfully:', {
+      logger.info('PayPal order created successfully', {
         orderId: orderData.id,
         status: orderData.status,
-        customId: `${userId}:${planId}:${Date.now()}`,
-        returnUrl,
-        cancelUrl
+        customId: `${userId}:${planId}:${Date.now()}`
       });
 
       return new Response(JSON.stringify({
@@ -267,7 +414,7 @@ serve(async (req) => {
 
     if (action === 'capture') {
       if (!orderId || !userId || !planId) {
-        console.error('Missing required fields for capture:', { orderId, userId, planId });
+        logger.error('Missing required fields for capture', { orderId, userId, planId });
         return new Response(JSON.stringify({ success: false, error: 'Missing required fields for capture.' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -284,7 +431,7 @@ serve(async (req) => {
 
       const captureData = await captureRes.json();
       if (!captureRes.ok) {
-        console.error('PayPal capture failed:', { orderId, captureData });
+        logger.error('PayPal capture failed', { orderId, captureData });
         throw new Error(`PayPal capture failed: ${captureData.message}`);
       }
 
@@ -292,11 +439,11 @@ serve(async (req) => {
       const paymentStatus = captureData.status;
 
       if (!paymentId) {
-        console.error('PayPal capture: paymentId missing in response', { orderId, captureData });
+        logger.error('PayPal capture: paymentId missing in response', { orderId, captureData });
         throw new Error('PayPal capture did not return a paymentId.');
       }
 
-      console.log('PayPal payment captured:', {
+      logger.info('PayPal payment captured', {
         orderId,
         paymentId,
         status: paymentStatus,
@@ -311,14 +458,14 @@ serve(async (req) => {
       });
 
       if (updateError || !transaction) {
-        console.error('Transaction update error (on capture):', updateError, { orderId, paymentId });
+        logger.error('Transaction update error on capture', { error: updateError, orderId, paymentId });
         throw new Error('Failed to update transaction after capture');
       }
 
       if (paymentStatus === 'COMPLETED') {
         // Record discount usage if a discount was applied
         if (appliedDiscount && appliedDiscount.id) {
-          console.log('Recording discount usage:', { discountId: appliedDiscount.id, userId, transactionId: transaction.id });
+          logger.info('Recording discount usage', { discountId: appliedDiscount.id, userId, transactionId: transaction.id });
           try {
             const { data: usageRecorded, error: usageError } = await supabaseClient.rpc('record_discount_usage', {
               discount_code_id_param: appliedDiscount.id,
@@ -327,22 +474,22 @@ serve(async (req) => {
             });
 
             if (usageError) {
-              console.error('Failed to record discount usage:', usageError);
+              logger.warn('Failed to record discount usage', { error: usageError });
               // Don't fail the payment, just log the error
             } else if (usageRecorded) {
-              console.log('Discount usage recorded successfully');
+              logger.info('Discount usage recorded successfully');
             } else {
-              console.log('Discount usage not recorded (possibly already used)');
+              logger.info('Discount usage not recorded (possibly already used)');
             }
           } catch (error) {
-            console.error('Error recording discount usage:', error);
+            logger.error('Error recording discount usage', { error });
             // Don't fail the payment, just log the error
           }
         }
 
         // Check if this is an upgrade transaction
         if (transaction.is_upgrade && currentSubscriptionId) {
-          console.log('Processing subscription upgrade:', { currentSubscriptionId, planId });
+          logger.info('Processing subscription upgrade', { currentSubscriptionId, planId });
           const { error: upgradeError } = await upgradeUserSubscription(supabaseClient, {
             currentSubscriptionId,
             newPlanId: planId,
@@ -351,7 +498,7 @@ serve(async (req) => {
           });
 
           if (upgradeError) {
-            console.error('Subscription upgrade error after capture:', upgradeError);
+            logger.error('Subscription upgrade error after capture', { error: upgradeError });
             // Payment was successful - just log upgrade error, don't abort
           }
         } else {
@@ -364,10 +511,58 @@ serve(async (req) => {
           });
 
           if (subscriptionError) {
-            console.error('Subscription creation error after capture:', subscriptionError);
+            logger.error('Subscription creation error after capture', { error: subscriptionError });
             // Payment was successful - just log subscription error, don't abort
           }
         }
+
+        // Auto-confirm user's email after successful payment (deferred verification)
+        try {
+          logger.info('Auto-confirming user email after successful payment', { userId });
+          const { error: confirmError } = await supabaseClient.auth.admin.updateUserById(userId, {
+            email_confirm: true
+          });
+          if (confirmError) {
+            logger.warn('Failed to auto-confirm email after payment (non-critical)', { error: confirmError.message });
+          } else {
+            logger.info('User email auto-confirmed after successful payment', { userId });
+          }
+        } catch (confirmErr) {
+          logger.warn('Exception auto-confirming email after payment', { error: confirmErr });
+          // Non-critical - don't fail the payment
+        }
+
+        // Send payment confirmation email in background (don't block response)
+        setTimeout(async () => {
+          try {
+            const { data: userProfile } = await supabaseClient
+              .from('profiles')
+              .select('first_name, last_name, email')
+              .eq('id', userId)
+              .single();
+
+            const { data: planDetails } = await supabaseClient
+              .from('subscription_plans')
+              .select('name, price_usd')
+              .eq('id', planId)
+              .single();
+
+            if (userProfile?.email && planDetails) {
+              const userName = `${userProfile.first_name} ${userProfile.last_name}`.trim() || 'User';
+              await sendPaymentConfirmationEmail(
+                supabaseClient,
+                userProfile.email,
+                userName,
+                planDetails.name,
+                transaction.amount_usd || planDetails.price_usd,
+                paymentId,
+                logger
+              );
+            }
+          } catch (emailError) {
+            logger.warn('Failed to send payment confirmation email', { error: emailError });
+          }
+        }, 0);
       }
 
       return new Response(JSON.stringify({
@@ -382,7 +577,7 @@ serve(async (req) => {
 
     throw new Error('Invalid action');
   } catch (error) {
-    console.error('PayPal processing error:', error);
+    logger.error('PayPal processing error', { error });
     return new Response(JSON.stringify({
       success: false,
       error: error.message

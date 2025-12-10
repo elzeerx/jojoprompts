@@ -1,5 +1,7 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('get-all-users:userCreate');
 
 interface UserData {
   email?: string;
@@ -14,7 +16,7 @@ export async function createUser(
   userData: UserData,
   adminId: string
 ) {
-  console.log(`[userCreate] Admin ${adminId} is attempting to create a new user`, userData);
+  logger.info('Admin attempting to create new user', { adminId, email: userData.email });
   try {
     const { data: createData, error: createError } = await supabase.auth.admin.createUser({
       email: userData.email,
@@ -27,7 +29,7 @@ export async function createUser(
     });
 
     if (createError) {
-      console.error(`[userCreate] Error creating user:`, createError);
+      logger.error('Error creating user', { error: createError.message, email: userData.email });
       throw new Error(`Error creating user: ${createError.message}`);
     }
 
@@ -42,18 +44,18 @@ export async function createUser(
         });
 
       if (profileError) {
-        console.error(`[userCreate] Error creating profile for new user:`, profileError);
+        logger.error('Error creating profile for new user', { error: profileError.message, userId: createData.user.id });
       }
     }
 
-    console.log(`[userCreate] Successfully created user ${createData.user.id}`);
+    logger.info('Successfully created user', { userId: createData.user.id, email: userData.email });
     return {
       success: true,
       message: 'User created successfully',
       user: createData.user
     };
   } catch (error) {
-    console.error(`[userCreate] Error in createUser:`, error);
+    logger.error('Error in createUser', { error, email: userData.email });
     throw error;
   }
 }

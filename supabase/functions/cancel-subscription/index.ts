@@ -1,6 +1,9 @@
 
 import { serve, corsHeaders, createSupabaseClient, createClient, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
 import { verifyAdmin, hasPermission, logSecurityEvent, validateAdminRequest } from "../_shared/adminAuth.ts";
+import { createEdgeLogger } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('CANCEL_SUBSCRIPTION');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -12,7 +15,7 @@ serve(async (req) => {
     // Enhanced request validation
     const validation = validateAdminRequest(req);
     if (!validation.isValid) {
-      console.error('Request validation failed:', validation.error);
+      logger.error('Request validation failed', { error: validation.error });
       return createErrorResponse(validation.error!, 400);
     }
 
@@ -130,7 +133,7 @@ serve(async (req) => {
     return createSuccessResponse(data);
 
   } catch (error: any) {
-    console.error('Error in cancel-subscription:', error);
+    logger.error('Cancel subscription failed', { error: error.message });
     
     // Try to log the error if possible
     try {
@@ -144,8 +147,8 @@ serve(async (req) => {
         },
         ip_address: req.headers.get('x-forwarded-for') || 'unknown'
       });
-    } catch (logError) {
-      console.warn('Failed to log error event:', logError);
+    } catch (logError: any) {
+      logger.warn('Failed to log error event', { error: logError.message });
     }
     
     return createErrorResponse(error.message || 'Internal server error', 500);

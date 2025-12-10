@@ -1,12 +1,15 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.36.0";
+import { createEdgeLogger } from "../_shared/logger.ts";
+
+const logger = createEdgeLogger('CREATE_SUBSCRIPTION');
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
-  console.error("Missing Supabase configuration");
+  logger.error('Missing Supabase configuration');
 }
 
 const supabase = createClient(supabaseUrl!, supabaseServiceRoleKey!);
@@ -24,10 +27,10 @@ serve(async (req: Request) => {
   try {
     const { planId, userId, paymentData } = await req.json();
     
-    console.log("Creating subscription:", { planId, userId, paymentMethod: paymentData?.paymentMethod });
+    logger.info('Creating subscription', { planId, userId, paymentMethod: paymentData?.paymentMethod });
 
     if (!planId || !userId || !paymentData) {
-      console.error("Missing required fields:", { planId: !!planId, userId: !!userId, paymentData: !!paymentData });
+      logger.error('Missing required fields', { planId: !!planId, userId: !!userId, paymentData: !!paymentData });
       return new Response(
         JSON.stringify({ success: false, error: "Missing required fields" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
@@ -42,7 +45,7 @@ serve(async (req: Request) => {
       .single();
 
     if (planError || !plan) {
-      console.error("Plan not found:", planError);
+      logger.error('Plan not found', { planId, error: planError?.message });
       return new Response(
         JSON.stringify({ success: false, error: "Plan not found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
@@ -58,7 +61,7 @@ serve(async (req: Request) => {
       .single();
 
     if (existingSubscription) {
-      console.log("User already has active subscription");
+      logger.info('User already has active subscription', { userId });
       return new Response(
         JSON.stringify({ success: false, error: "User already has an active subscription" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
@@ -88,7 +91,7 @@ serve(async (req: Request) => {
       .single();
 
     if (subscriptionError) {
-      console.error("Failed to create subscription:", subscriptionError);
+      logger.error('Failed to create subscription', { error: subscriptionError.message });
       return new Response(
         JSON.stringify({ success: false, error: "Failed to create subscription" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
@@ -102,7 +105,7 @@ serve(async (req: Request) => {
       .eq("id", userId);
 
     if (profileError) {
-      console.error("Failed to update user profile:", profileError);
+      logger.error('Failed to update user profile', { error: profileError.message });
     }
 
     // Create payment history record
@@ -118,10 +121,10 @@ serve(async (req: Request) => {
       });
 
     if (paymentHistoryError) {
-      console.error("Failed to create payment history:", paymentHistoryError);
+      logger.error('Failed to create payment history', { error: paymentHistoryError.message });
     }
 
-    console.log("Subscription created successfully:", subscription.id);
+    logger.info('Subscription created successfully', { subscriptionId: subscription.id });
 
     return new Response(
       JSON.stringify({ 
@@ -132,8 +135,8 @@ serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
-  } catch (error) {
-    console.error("Error in create-subscription:", error);
+  } catch (error: any) {
+    logger.error('Create subscription failed', { error: error.message });
     return new Response(
       JSON.stringify({ success: false, error: "Internal server error" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }

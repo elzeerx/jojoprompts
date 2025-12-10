@@ -1,6 +1,8 @@
-
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('get-image');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,7 +25,7 @@ serve(async (req) => {
     if (getImageIndex !== -1) {
       rawPath = rawPath.substring(getImageIndex + '/get-image/'.length);
     } else {
-      console.error("Path format error: Could not find '/get-image/' in path:", rawPath);
+      logger.error("Path format error: Could not find '/get-image/' in path", { rawPath });
       return new Response(JSON.stringify({ error: 'Invalid path format' }), { 
         status: 400, 
         headers: { 'Content-Type': 'application/json', ...corsHeaders } 
@@ -34,7 +36,7 @@ serve(async (req) => {
     const width = url.searchParams.get('width') || '400';
     const quality = url.searchParams.get('quality') || '80';
     
-    console.log(`Processing image request for: ${imagePath} (width: ${width}, quality: ${quality})`);
+    logger.info('Processing image request', { imagePath, width, quality });
     
     // Create a Supabase client using the service role key for internal operations
     const supabaseAdmin = createClient(
@@ -58,7 +60,7 @@ serve(async (req) => {
       });
 
     if (error) {
-      console.error('Error fetching image:', error);
+      logger.error('Error fetching image', { error: error.message, imagePath });
       return new Response(
         JSON.stringify({ error: 'Failed to fetch image', details: error.message, path: imagePath }),
         { 
@@ -75,7 +77,11 @@ serve(async (req) => {
     const imageData = await data.arrayBuffer();
     const contentType = data.type || 'image/jpeg';
     
-    console.log(`Successfully retrieved image: ${imagePath} (${contentType}, ${imageData.byteLength} bytes)`);
+    logger.info('Successfully retrieved image', { 
+      imagePath, 
+      contentType, 
+      sizeBytes: imageData.byteLength 
+    });
 
     return new Response(imageData, {
       headers: {
@@ -85,7 +91,7 @@ serve(async (req) => {
       }
     });
   } catch (err) {
-    console.error('Error in get-image function:', err);
+    logger.error('Error in get-image function', { error: err });
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: err.message }),
       { 

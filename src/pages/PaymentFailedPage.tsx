@@ -4,19 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { XCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PAYMENT_FAILED_PAGE');
 
 export default function PaymentFailedPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   
   useEffect(() => {
-    console.log('PaymentFailedPage accessed', {
+    logger.info('PaymentFailedPage accessed', {
       hasUser: !!user,
       userId: user?.id,
-      searchParams: window.location.search,
-      fullUrl: window.location.href
+      searchParams: window.location.search
     });
-    
   }, [user, searchParams]);
 
   const planId = searchParams.get('planId');
@@ -101,13 +102,7 @@ export default function PaymentFailedPage() {
 
   const errorDetails = getErrorDetails();
   
-  // Log all parameters for debugging
-  console.log('PaymentFailedPage parameters:', {
-    planId,
-    userId,
-    reason,
-    errorDetails
-  });
+  logger.debug('Payment failure details', { planId, userId, reason, errorType: errorDetails.title });
   
   return (
     <div className="mobile-container-padding mobile-section-padding relative">
@@ -148,17 +143,21 @@ export default function PaymentFailedPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-3 p-6 pt-0">
+            {/* Primary: Retry Payment - Always show */}
+            <Button className="w-full mobile-button-primary" asChild>
+              <Link to={planId ? `/checkout?plan_id=${planId}` : '/pricing'}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry Payment
+              </Link>
+            </Button>
+            
+            {/* Secondary: Choose Different Plan - Only show if planId exists */}
             {planId && (
-              <Button className="w-full mobile-button-primary" asChild>
-                <Link to={`/checkout?plan_id=${planId}`}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Payment Again
-                </Link>
+              <Button variant="outline" className="w-full mobile-button-secondary" asChild>
+                <Link to="/pricing">Choose Different Plan</Link>
               </Button>
             )}
-            <Button variant="outline" className="w-full mobile-button-secondary" asChild>
-              <Link to="/pricing">View All Plans</Link>
-            </Button>
+            
             <Button variant="ghost" className="w-full" asChild>
               <Link to="/contact">Contact Support</Link>
             </Button>

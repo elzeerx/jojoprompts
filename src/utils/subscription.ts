@@ -40,42 +40,193 @@ export function hasFeatureInPlan(features: string[] | any, featureName: string):
   );
 }
 
+// Check if user has full access (lifetime plans or admin)
+export function hasFullAccess(
+  userTier: string,
+  isLifetime: boolean,
+  isAdmin: boolean
+): boolean {
+  if (isAdmin) return true;
+  if (isLifetime) return true; // Lifetime plans = full access to all current and future features
+  // Premium and ultimate tiers also get full access (but this is mainly for yearly premium)
+  return userTier === 'ultimate' || userTier === 'premium';
+}
+
+/**
+ * Determines if a prompt is locked based on user subscription and prompt metadata
+ * 
+ * Access Tiers:
+ * - $55 (Basic): ChatGPT prompts only (text + image with ChatGPT/Claude category)
+ * - $65 (Standard): ChatGPT + ALL Midjourney prompts (image + --sref)
+ * - $80+ (Premium/Ultimate/Lifetime): Full access to everything
+ * 
+ * @param promptType - The prompt_type field from the prompt
+ * @param category - The metadata.category field from the prompt  
+ * @param modelType - The metadata.model_type field from the prompt
+ * @param userTier - The user's subscription tier
+ * @param isAdmin - Whether the user is an admin
+ * @param isLifetime - Whether the user has a lifetime subscription
+ */
+export function isPromptLockedByContent(
+  promptType: string,
+  category: string | undefined,
+  modelType: string | undefined,
+  userTier: string,
+  isAdmin: boolean = false,
+  isLifetime: boolean = false
+): boolean {
+  // Admins and lifetime users have full access
+  if (isAdmin) return false;
+  if (isLifetime) return false;
+  if (userTier === 'premium' || userTier === 'ultimate') return false;
+  
+  const normalizedCategory = (category || '').toLowerCase();
+  const normalizedPromptType = (promptType || '').toLowerCase();
+  const normalizedModelType = (modelType || '').toLowerCase();
+  
+  // Determine the prompt's platform/source
+  const isChatGPT = normalizedCategory.includes('chatgpt') || 
+                    normalizedCategory === 'claude' ||
+                    normalizedCategory.includes('claude') ||
+                    normalizedModelType.includes('chatgpt') ||
+                    normalizedModelType.includes('claude') ||
+                    // Default text prompts without specific category are ChatGPT
+                    (normalizedPromptType === 'text' && !normalizedCategory.includes('midjourney') && !normalizedCategory.includes('workflow'));
+                    
+  const isMidjourney = normalizedCategory.includes('midjourney') ||
+                       normalizedPromptType === 'midjourney-sref' ||
+                       normalizedPromptType === 'image' && normalizedCategory.includes('midjourney') ||
+                       normalizedModelType.includes('midjourney');
+                       
+  const isGPTBuilder = normalizedPromptType === 'chatgpt-gpt-builder' ||
+                       normalizedModelType === 'chatgpt-gpt-builder' ||
+                       normalizedCategory.includes('gpt-builder') ||
+                       normalizedCategory.includes('gpts');
+                       
+  const isAdvanced = normalizedPromptType === 'workflow' ||
+                     normalizedCategory.includes('workflow') ||
+                     normalizedCategory.includes('gemini') ||
+                     normalizedCategory.includes('flux') ||
+                     normalizedCategory.includes('sora') ||
+                     normalizedCategory.includes('elevenlabs') ||
+                     normalizedCategory.includes('cursor') ||
+                     normalizedModelType.includes('gemini') ||
+                     normalizedModelType.includes('flux') ||
+                     normalizedModelType.includes('sora') ||
+                     normalizedModelType.includes('elevenlabs') ||
+                     normalizedModelType.includes('cursor');
+  
+  // $55 Basic tier: ChatGPT only (no Midjourney, no GPT Builder, no advanced)
+  if (userTier === 'basic') {
+    if (isMidjourney || isGPTBuilder || isAdvanced) return true;
+    return false; // ChatGPT text/image allowed
+  }
+  
+  // $65 Standard tier: ChatGPT + Midjourney (no GPT Builder, no advanced)
+  if (userTier === 'standard') {
+    if (isGPTBuilder || isAdvanced) return true;
+    return false; // ChatGPT and Midjourney allowed
+  }
+  
+  // No subscription = everything locked
+  return true;
+}
+
+/**
+ * @deprecated Use isPromptLockedByContent for more accurate access control
+ * This function only checks prompt_type which doesn't distinguish between
+ * ChatGPT and Midjourney prompts properly.
+ */
 export function isPromptLocked(
   promptType: string,
   userTier: string,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  isLifetime: boolean = false
 ): boolean {
-  // Admins have access to everything
+  // Admins and lifetime users have access to everything
   if (isAdmin) return false;
+  if (isLifetime) return false;
   
   // Input validation
   if (!promptType || typeof promptType !== 'string') {
     logWarn('Invalid prompt type provided', 'security', { promptType });
-    return true; // Default to locked for invalid input
+    return true;
   }
   
-  // Define access levels for each tier with enhanced security
+  // Define access levels for each tier
   const accessLevels = {
     none: [],
-    basic: ['text'], // Only ChatGPT prompts
-    standard: ['text', 'image'], // ChatGPT + Midjourney
-    premium: ['text', 'image', 'workflow'], // All standard prompt types
-    ultimate: ['text', 'image', 'workflow', 'special'] // All prompt types + special requests
+    basic: ['text'],
+    standard: ['text', 'image', 'midjourney-sref'],
+    premium: ['text', 'image', 'midjourney-sref', 'workflow', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor'],
+    ultimate: ['text', 'image', 'midjourney-sref', 'workflow', 'special', 'chatgpt-gpt-builder', 'gemini', 'flux', 'video-sora', 'audio-elevenlabs', 'code-cursor']
   };
   
   const userAccess = accessLevels[userTier as keyof typeof accessLevels] || [];
-  
-  // Check if the prompt type is accessible
   return !userAccess.includes(promptType);
+}
+
+/**
+ * Determines which subscription tier is required to access a prompt
+ * Returns the minimum tier needed: 'basic', 'standard', or 'premium'
+ */
+export function getRequiredTierForPrompt(
+  promptType: string | undefined,
+  category: string | undefined,
+  modelType: string | undefined
+): 'basic' | 'standard' | 'premium' {
+  const normalizedCategory = (category || '').toLowerCase();
+  const normalizedPromptType = (promptType || '').toLowerCase();
+  const normalizedModelType = (modelType || '').toLowerCase();
+  
+  // Check for advanced/premium content
+  const isGPTBuilder = normalizedPromptType === 'chatgpt-gpt-builder' ||
+                       normalizedModelType === 'chatgpt-gpt-builder' ||
+                       normalizedCategory.includes('gpt-builder') ||
+                       normalizedCategory.includes('gpts');
+                       
+  const isAdvanced = normalizedPromptType === 'workflow' ||
+                     normalizedCategory.includes('workflow') ||
+                     normalizedCategory.includes('gemini') ||
+                     normalizedCategory.includes('flux') ||
+                     normalizedCategory.includes('sora') ||
+                     normalizedCategory.includes('elevenlabs') ||
+                     normalizedCategory.includes('cursor') ||
+                     normalizedModelType.includes('gemini') ||
+                     normalizedModelType.includes('flux') ||
+                     normalizedModelType.includes('sora') ||
+                     normalizedModelType.includes('elevenlabs') ||
+                     normalizedModelType.includes('cursor');
+  
+  // Premium tier required for advanced content
+  if (isGPTBuilder || isAdvanced) {
+    return 'premium';
+  }
+  
+  // Check for Midjourney content
+  const isMidjourney = normalizedCategory.includes('midjourney') ||
+                       normalizedPromptType === 'midjourney-sref' ||
+                       normalizedPromptType === 'image' && normalizedCategory.includes('midjourney') ||
+                       normalizedModelType.includes('midjourney');
+  
+  // Standard tier required for Midjourney
+  if (isMidjourney) {
+    return 'standard';
+  }
+  
+  // Basic tier for ChatGPT/default content
+  return 'basic';
 }
 
 export function isCategoryLocked(
   categoryRequiredPlan: string | null | undefined,
   userTier: string,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  isLifetime: boolean = false
 ): boolean {
-  // Admins have access to everything
+  // Admins and lifetime users have access to everything
   if (isAdmin) return false;
+  if (isLifetime) return false; // Lifetime plans unlock ALL categories
   
   // If no plan required, it's free for everyone
   if (!categoryRequiredPlan) return false;
@@ -120,10 +271,12 @@ export function isCategoryLocked(
 export function hasFeatureAccess(
   feature: string,
   userTier: string,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  isLifetime: boolean = false
 ): boolean {
-  // Admins have access to everything
+  // Admins and lifetime users have access to everything
   if (isAdmin) return true;
+  if (isLifetime) return true; // Lifetime plans unlock ALL features
   
   // Input validation
   if (!feature || typeof feature !== 'string' || !userTier || typeof userTier !== 'string') {
@@ -131,13 +284,13 @@ export function hasFeatureAccess(
     return false; // Default to no access for invalid input
   }
   
-  // Enhanced feature access mapping with security considerations
+  // Enhanced feature access mapping (only applies to yearly plans)
   const featureAccess = {
     none: [],
-    basic: ['basic_prompts'],
-    standard: ['basic_prompts', 'midjourney_prompts'],
-    premium: ['basic_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features'],
-    ultimate: ['basic_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features', 'special_requests']
+    basic: ['basic_prompts', 'chatgpt_prompts'],
+    standard: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts'], // NO gpts_builder, gemini, flux, code - these are Premium+
+    premium: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features', 'gpts_builder', 'gemini_prompts', 'flux_prompts', 'video_prompts', 'audio_prompts', 'code_prompts'],
+    ultimate: ['basic_prompts', 'chatgpt_prompts', 'midjourney_prompts', 'workflow_prompts', 'advanced_features', 'special_requests', 'gpts_builder', 'gemini_prompts', 'flux_prompts', 'video_prompts', 'audio_prompts', 'code_prompts']
   };
   
   const userFeatures = featureAccess[userTier.toLowerCase() as keyof typeof featureAccess] || [];

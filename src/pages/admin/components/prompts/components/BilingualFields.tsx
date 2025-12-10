@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Languages, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('BILINGUAL_FIELDS');
 
 interface BilingualFieldsProps {
   title: { en: string; ar: string };
@@ -49,7 +53,8 @@ export function BilingualFields({
       
       return data.translatedText;
     } catch (error) {
-      console.error('Translation error:', error);
+      const appError = handleError(error, { component: 'BilingualFields', action: 'translate' });
+      logger.error('Translation failed', { error: appError, targetLanguage });
       toast({
         title: "Translation Failed",
         description: "Failed to translate text. Please try again.",

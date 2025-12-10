@@ -1,4 +1,8 @@
 import { useState, useEffect } from "react";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('USER_ACTIVITY_TIMELINE');
 import {
   Dialog,
   DialogContent,
@@ -83,7 +87,7 @@ export function UserActivityTimeline({
         .range(pageOffset, pageOffset + 19);
 
       if (error) {
-        console.error('Error loading activity timeline:', error);
+        logger.error('Error loading activity timeline', error);
         toast({
           title: "Error loading activity",
           description: "Failed to load user activity timeline.",
@@ -114,7 +118,7 @@ export function UserActivityTimeline({
       setHasMore(formattedData.length === 20);
       setPage(pageOffset);
     } catch (error) {
-      console.error('Activity timeline error:', error);
+      logger.error('Activity timeline error', error);
       toast({
         title: "Error",
         description: "Failed to load activity timeline.",

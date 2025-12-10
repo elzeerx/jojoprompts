@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('USER_SUBSCRIPTION');
 
 interface UserSubscription {
   id: string;
@@ -47,7 +50,7 @@ export function useUserSubscription(userId?: string) {
         setUserSubscription(data[0] as UserSubscription);
       }
     } catch (error) {
-      console.error("Error fetching subscription:", error);
+      logger.error('Failed to fetch subscription', { error, userId });
       setError("Failed to load subscription");
     } finally {
       setIsLoading(false);

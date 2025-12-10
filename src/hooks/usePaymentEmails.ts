@@ -1,6 +1,8 @@
-
 import { useState, useCallback } from 'react';
 import { emailService } from '@/utils/emailService';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PAYMENT_EMAILS');
 
 export function usePaymentEmails() {
   const [isSending, setIsSending] = useState(false);
@@ -16,11 +18,11 @@ export function usePaymentEmails() {
     try {
       const result = await emailService.sendPaymentConfirmation(name, email, planName, amount, transactionId);
       if (!result.success) {
-        console.warn('Payment confirmation email failed to send:', result.error);
+        logger.warn('Payment confirmation email failed', { error: result.error, email });
       }
       return result;
     } catch (error) {
-      console.error('Payment confirmation email error:', error);
+      logger.error('Payment confirmation email error', { error, email });
       return { success: false, error: 'Failed to send payment confirmation email' };
     } finally {
       setIsSending(false);
@@ -38,11 +40,11 @@ export function usePaymentEmails() {
     try {
       const result = await emailService.sendPaymentFailed(name, email, planName, reason, retryLink);
       if (!result.success) {
-        console.warn('Payment failed email failed to send:', result.error);
+        logger.warn('Payment failed email failed', { error: result.error, email });
       }
       return result;
     } catch (error) {
-      console.error('Payment failed email error:', error);
+      logger.error('Payment failed email error', { error, email });
       return { success: false, error: 'Failed to send payment failed email' };
     } finally {
       setIsSending(false);
@@ -59,11 +61,11 @@ export function usePaymentEmails() {
     try {
       const result = await emailService.sendSubscriptionCancelled(name, email, planName, endDate);
       if (!result.success) {
-        console.warn('Subscription cancelled email failed to send:', result.error);
+        logger.warn('Subscription cancelled email failed', { error: result.error, email });
       }
       return result;
     } catch (error) {
-      console.error('Subscription cancelled email error:', error);
+      logger.error('Subscription cancelled email error', { error, email });
       return { success: false, error: 'Failed to send subscription cancelled email' };
     } finally {
       setIsSending(false);

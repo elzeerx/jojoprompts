@@ -1,8 +1,10 @@
-
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw, ExternalLink } from "lucide-react";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PAYMENT_ERROR_BOUNDARY');
 
 interface Props {
   children: ReactNode;
@@ -27,10 +29,9 @@ export class PaymentErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Payment component error:', error, errorInfo);
-    
-    // Log additional context for debugging
-    console.error('Payment Error Details:', {
+    logger.error('Payment component error', {
+      error,
+      errorInfo,
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,

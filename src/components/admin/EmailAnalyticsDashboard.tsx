@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('EMAIL_ANALYTICS');
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -109,7 +112,7 @@ export function EmailAnalyticsDashboard() {
       const { data: emailLogs, error } = await query.limit(1000);
 
       if (error) {
-        console.error('Error loading email logs:', error);
+        logger.error('Error loading email logs', error);
         return;
       }
 
@@ -118,7 +121,7 @@ export function EmailAnalyticsDashboard() {
         setRecentLogs(emailLogs.slice(0, 20));
       }
     } catch (error) {
-      console.error('Error loading email analytics:', error);
+      logger.error('Error loading email analytics', error);
     } finally {
       setLoading(false);
     }

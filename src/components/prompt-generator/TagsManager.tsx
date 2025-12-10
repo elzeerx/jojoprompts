@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, X, Plus, Loader2, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { callEdgeFunction } from "@/utils/edgeFunctions";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('TAGS_MANAGER');
 
 interface TagsManagerProps {
   promptText: string;
@@ -38,8 +41,8 @@ export function TagsManager({ promptText, tags, onChange }: TagsManagerProps) {
         );
         setSuggestedTags(aiTags.slice(0, 8)); // Limit to 8 suggestions
       }
-    } catch (error) {
-      console.error("Error generating tags:", error);
+    } catch (error: any) {
+      logger.error('Error generating tags', { error: error.message });
       // Fallback: Extract basic keywords from prompt
       const words = promptText.toLowerCase()
         .replace(/[^\w\s]/g, ' ')

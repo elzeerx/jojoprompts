@@ -3,11 +3,14 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
 import { AdminPromptCard } from "./components/prompts/AdminPromptCard";
-import { PromptWizardDialog, EditPromptButton } from "@/components/prompts";
+import { SimplifiedPromptDialog } from "@/components/prompts/SimplifiedPromptDialog";
 import { type PromptRow } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('PROMPTS_MANAGEMENT');
 
 interface PromptsManagementProps {
   favoritedPromptIds?: string[];
@@ -16,12 +19,13 @@ interface PromptsManagementProps {
 export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsManagementProps) {
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { user } = useAuth();
   
   const fetchPrompts = async () => {
     setIsLoading(true);
     try {
-      console.log("PromptsManagement - Fetching prompts...");
+      logger.debug('Fetching prompts');
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
@@ -30,11 +34,10 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       
       if (error) throw error;
       
-      console.log("PromptsManagement - Fetched prompts:", data);
-      console.log("PromptsManagement - Sample prompt metadata:", data?.[0]?.metadata);
+      logger.debug('Prompts fetched', { count: data?.length, sampleMetadata: data?.[0]?.metadata });
       return data || [];
     } catch (error) {
-      console.error("PromptsManagement - Error fetching prompts:", error);
+      logger.error('Failed to fetch prompts', { error });
       toast({
         title: "Error",
         description: "Failed to load prompts",
@@ -48,8 +51,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   
   const updatePromptsState = (data: PromptRow[] | null) => {
     if (data) {
-      console.log("PromptsManagement - Updating prompts state with:", data);
-      console.log("PromptsManagement - First prompt metadata in update:", data[0]?.metadata);
+      logger.debug('Updating prompts state', { count: data.length, sampleMetadata: data[0]?.metadata });
       setPrompts(data);
     }
   };
@@ -66,9 +68,9 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
   }, []);
   
   const handlePromptComplete = async () => {
-    console.log("PromptsManagement - Prompt saved successfully, refreshing prompts...");
+    logger.info('Prompt saved, refreshing list');
     const freshPrompts = await fetchPrompts();
-    console.log("PromptsManagement - Fresh prompts after save:", freshPrompts);
+    logger.debug('Refreshed prompts', { count: freshPrompts.length });
     updatePromptsState(freshPrompts);
   };
   
@@ -88,7 +90,7 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
         description: "Prompt deleted successfully",
       });
     } catch (error) {
-      console.error("PromptsManagement - Error deleting prompt:", error);
+      logger.error('Failed to delete prompt', { error, promptId });
       
       // Reload the prompts to restore the state
       fetchPrompts().then(updatePromptsState);
@@ -106,17 +108,20 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-dark-base">Prompts Management</h2>
-        <PromptWizardDialog
-          trigger={
-            <Button className="bg-warm-gold hover:bg-warm-gold/90">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Prompt
-            </Button>
-          }
-          mode="create"
-          onComplete={handlePromptComplete}
-        />
+        <Button 
+          onClick={() => setDialogOpen(true)}
+          className="bg-warm-gold hover:bg-warm-gold/90"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Prompt
+        </Button>
       </div>
+
+      <SimplifiedPromptDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSuccess={handlePromptComplete}
+      />
       
       {isLoading ? (
         <div className="text-center py-8">
@@ -127,15 +132,12 @@ export default function PromptsManagement({ favoritedPromptIds = [] }: PromptsMa
       ) : prompts.length === 0 ? (
         <div className="text-center py-8 bg-soft-bg/30 rounded-xl border border-warm-gold/20 p-8">
           <p className="text-muted-foreground mb-4">No prompts found</p>
-          <PromptWizardDialog
-            trigger={
-              <Button className="bg-warm-gold hover:bg-warm-gold/90">
-                Add Your First Prompt
-              </Button>
-            }
-            mode="create"
-            onComplete={handlePromptComplete}
-          />
+          <Button 
+            onClick={() => setDialogOpen(true)}
+            className="bg-warm-gold hover:bg-warm-gold/90"
+          >
+            Add Your First Prompt
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,3 +1,6 @@
+import { createEdgeLogger } from '../../_shared/logger.ts';
+
+const logger = createEdgeLogger('shared:parameter-validator');
 
 // Main parameter validator with simplified interface
 import { ValidationSchema, ValidationResult } from './types.ts';
@@ -41,7 +44,7 @@ export class ParameterValidator {
       // Check for unexpected fields
       for (const fieldName of Object.keys(data)) {
         if (!schema[fieldName]) {
-          console.warn('Unexpected field in request:', fieldName);
+          logger.warn('Unexpected field in request', { fieldName });
           errors.push(`Unexpected field '${fieldName}'`);
         }
       }
@@ -53,7 +56,7 @@ export class ParameterValidator {
       };
 
     } catch (error) {
-      console.error('Parameter validation error:', error);
+      logger.error('Parameter validation error', { error });
       return {
         isValid: false,
         errors: ['Parameter validation failed'],

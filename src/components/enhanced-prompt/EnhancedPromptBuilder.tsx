@@ -13,6 +13,9 @@ import { mapOpenAIModel, OPENAI_MODEL_ALIAS } from "@/utils/aiModelConfig";
 import { Sparkles, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { useSmartSuggestions } from "@/pages/admin/components/prompts/hooks/useSmartSuggestions";
 import { usePromptValidation } from "@/utils/promptValidation";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('ENHANCED_PROMPT_BUILDER');
 
 // Lightweight form shape for v1
 interface FormData {
@@ -111,7 +114,7 @@ export function EnhancedPromptBuilder() {
         toast({ variant: "destructive", title: "No content returned", description: "The AI did not return an enhanced prompt." });
       }
     } catch (e: any) {
-      console.error(e);
+      logger.error('Enhancement failed', { error: e?.message });
       toast({ variant: "destructive", title: "Enhancement failed", description: e?.message || "Please try again." });
     } finally {
       setEnhancing(false);

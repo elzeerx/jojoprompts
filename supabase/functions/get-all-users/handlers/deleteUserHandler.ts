@@ -1,8 +1,10 @@
-
+import { createEdgeLogger } from '../../_shared/logger.ts';
 import { corsHeaders } from "../../_shared/standardImports.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
 import { deleteUser } from "../userDeletion.ts";
+
+const logger = createEdgeLogger('get-all-users:delete-user');
 
 /**
  * Check if admin has permission to delete the target user
@@ -20,11 +22,19 @@ async function canDeleteUser(
     .single();
 
   if (adminProfileError || !adminProfile) {
-    console.warn('[canDeleteUser] Admin profile not found or error:', adminProfileError);
+    logger.warn('Admin profile not found or error', { error: adminProfileError });
     return { allowed: false, reason: 'Admin privileges required' };
   }
 
-  if (adminProfile.role !== 'admin') {
+  // Check admin role from user_roles table
+  const { data: adminRoleCheck } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', adminId)
+    .eq('role', 'admin')
+    .maybeSingle();
+  
+  if (!adminRoleCheck) {
     return { allowed: false, reason: 'Admin privileges required' };
   }
 
@@ -33,7 +43,7 @@ async function canDeleteUser(
   const adminEmail: string | undefined = adminAuthUser?.user?.email || undefined;
 
   if (adminAuthError) {
-    console.warn('[canDeleteUser] Failed to resolve admin auth user/email:', adminAuthError);
+    logger.warn('Failed to resolve admin auth user/email', { error: adminAuthError });
   }
 
   // Get target user profile
@@ -48,7 +58,15 @@ async function canDeleteUser(
   }
 
   // Only super admin (nawaf@elzeer.com) can delete other admins
-  if (targetProfile.role === 'admin' && adminEmail !== 'nawaf@elzeer.com') {
+  // Check if target user is admin
+  const { data: targetRoleCheck } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .maybeSingle();
+  
+  if (targetRoleCheck && adminEmail !== 'nawaf@elzeer.com') {
     await logSecurityEvent(supabase, {
       user_id: adminId,
       action: 'unauthorized_admin_deletion_attempt',
@@ -84,12 +102,12 @@ async function checkDeletionRateLimit(
     .gte('timestamp', windowStart);
 
   if (error) {
-    console.error('[checkDeletionRateLimit] Error checking rate limit:', error);
+    logger.error('Error checking rate limit', { error });
     return { allowed: true }; // Fail open to not block legitimate deletions
   }
 
   const deletionCount = recentDeletions?.length || 0;
-  console.log(`[checkDeletionRateLimit] Admin ${adminId} has ${deletionCount}/${maxDeletions} deletions in the last ${windowMinutes} minutes`);
+  logger.info('Checking deletion rate limit', { adminId, deletionCount, maxDeletions, windowMinutes });
 
   if (deletionCount >= maxDeletions) {
     const retryAfterSeconds = windowMinutes * 60;
@@ -114,7 +132,7 @@ async function checkDeletionRateLimit(
 
 export async function handleDeleteUser(supabase: any, adminId: string, requestBody: any) {
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-  console.log(`[${requestId}] Starting user deletion request from admin ${adminId}`);
+  logger.info('Starting user deletion request', { requestId, adminId });
 
   try {
     // Extract userId from the already-parsed request body
@@ -122,7 +140,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     const ipAddress = requestBody.ip_address || 'unknown';
     const userAgent = requestBody.user_agent || 'unknown';
     
-    console.log(`[${requestId}] Request details:`, { userId, adminId, ipAddress });
+    logger.info('Request details', { requestId, userId, adminId, ipAddress });
 
     // Validate userId parameter
     const validation = ParameterValidator.validateParameters(
@@ -131,7 +149,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     );
     
     if (!validation.isValid) {
-      console.error(`[${requestId}] Validation failed for userId ${userId}:`, validation.errors);
+      logger.error('Validation failed for userId', { requestId, userId, errors: validation.errors });
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -148,10 +166,10 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     }
 
     // Check rate limiting
-    console.log(`[${requestId}] Checking rate limits for admin ${adminId}`);
+    logger.info('Checking rate limits', { requestId, adminId });
     const rateLimitCheck = await checkDeletionRateLimit(supabase, adminId);
     if (!rateLimitCheck.allowed) {
-      console.warn(`[${requestId}] Rate limit exceeded for admin ${adminId}`);
+      logger.warn('Rate limit exceeded', { requestId, adminId });
       return new Response(
         JSON.stringify({
           success: false,
@@ -171,7 +189,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     }
 
     // Check if user exists BEFORE deletion
-    console.log(`[${requestId}] Verifying target user ${userId} exists`);
+    logger.info('Verifying target user exists', { requestId, userId });
     const { data: existingUser, error: userCheckError } = await supabase
       .from('profiles')
       .select('id, role, first_name, last_name, email')
@@ -179,7 +197,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       .maybeSingle();
       
     if (userCheckError) {
-      console.error(`[${requestId}] Database error checking user:`, userCheckError);
+      logger.error('Database error checking user', { requestId, error: userCheckError });
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -196,7 +214,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     }
 
     if (!existingUser) {
-      console.warn(`[${requestId}] User ${userId} not found`);
+      logger.warn('User not found', { requestId, userId });
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -212,17 +230,18 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       );
     }
 
-    console.log(`[${requestId}] Found user to delete:`, {
+    logger.info('Found user to delete', {
+      requestId,
       id: existingUser.id,
       name: `${existingUser.first_name} ${existingUser.last_name}`,
       role: existingUser.role
     });
 
     // Check if admin has permission to delete this user
-    console.log(`[${requestId}] Checking deletion permissions`);
+    logger.info('Checking deletion permissions', { requestId });
     const permissionCheck = await canDeleteUser(supabase, adminId, userId);
     if (!permissionCheck.allowed) {
-      console.warn(`[${requestId}] Permission denied: ${permissionCheck.reason}`);
+      logger.warn('Permission denied', { requestId, reason: permissionCheck.reason });
       return new Response(
         JSON.stringify({
           success: false,
@@ -235,10 +254,10 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
         }
       );
     }
-    console.log(`[${requestId}] Permission check passed`);
+    logger.info('Permission check passed', { requestId });
 
     // Log the user deletion attempt (critical action) with enhanced details
-    console.log(`[${requestId}] Logging admin action before deletion`);
+    logger.info('Logging admin action before deletion', { requestId });
     await logAdminAction(supabase, adminId, 'delete_user', 'users', {
       target_user_id: userId,
       target_user_name: `${existingUser.first_name} ${existingUser.last_name}`,
@@ -264,13 +283,19 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     });
 
     // Enhanced logging before deletion
-    console.log(`[${requestId}] Starting deletion process for user ${userId} (${existingUser.first_name} ${existingUser.last_name}) by admin ${adminId} from IP ${ipAddress}`);
+    logger.info('Starting deletion process', { 
+      requestId, 
+      userId, 
+      userName: `${existingUser.first_name} ${existingUser.last_name}`,
+      adminId, 
+      ipAddress 
+    });
     
     // Use the comprehensive deleteUser function from userDeletion.ts (with retry logic)
     const deletionResult = await deleteUser(supabase, userId, adminId);
 
     // Log successful user deletion with enhanced details
-    console.log(`[${requestId}] Deletion successful, logging result`);
+    logger.info('Deletion successful, logging result', { requestId });
     await logAdminAction(supabase, adminId, 'user_deletion_success', 'users', {
       target_user_id: userId,
       target_user_name: `${existingUser.first_name} ${existingUser.last_name}`,
@@ -299,7 +324,14 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
       }
     });
 
-    console.log(`[${requestId}] ✅ User ${userId} (${existingUser.first_name} ${existingUser.last_name}) successfully deleted by admin ${adminId} in ${deletionResult.transactionDuration}ms after ${deletionResult.attemptsRequired} attempt(s)`);
+    logger.info('User successfully deleted', { 
+      requestId, 
+      userId, 
+      userName: `${existingUser.first_name} ${existingUser.last_name}`,
+      adminId,
+      transactionDuration: deletionResult.transactionDuration,
+      attemptsRequired: deletionResult.attemptsRequired
+    });
 
     return new Response(
       JSON.stringify({
@@ -330,7 +362,9 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
     const errorMessage = error.message || 'Failed to delete user';
     const isRetryable = error.isRetryable || false;
 
-    console.error(`[${requestId}] ❌ Critical error deleting user ${requestBody.userId}:`, {
+    logger.error('Critical error deleting user', {
+      requestId,
+      userId: requestBody.userId,
       code: errorCode,
       message: errorMessage,
       httpStatus,
@@ -353,7 +387,7 @@ export async function handleDeleteUser(supabase: any, adminId: string, requestBo
         timestamp: new Date().toISOString()
       }, ipAddress);
     } catch (logError) {
-      console.error(`[${requestId}] Error logging failed deletion:`, logError);
+      logger.error('Error logging failed deletion', { requestId, error: logError });
     }
 
     return new Response(

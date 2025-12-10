@@ -1,8 +1,10 @@
-
+import { createEdgeLogger } from '../../_shared/logger.ts';
 // Enhanced updateUserHandler with comprehensive audit logging
 import { corsHeaders } from "../../_shared/standardImports.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
+
+const logger = createEdgeLogger('get-all-users:update-user');
 
 export async function handleUpdateUser(supabase: any, adminId: string, req: Request) {
   try {
@@ -82,8 +84,26 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       }
       profileUpdates.username = validation.sanitizedData.username;
     }
+    // Role updates are handled separately via user_roles table
     if (validation.sanitizedData.role !== undefined) {
-      profileUpdates.role = validation.sanitizedData.role;
+      // Update role in user_roles table
+      const newRole = validation.sanitizedData.role;
+      
+      // Delete existing roles for this user
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+      
+      // Insert new role
+      await supabase
+        .from('user_roles')
+        .insert({
+          user_id: userId,
+          role: newRole,
+          assigned_by: adminId,
+          assigned_at: new Date().toISOString()
+        });
     }
     
     // Extended profile fields
@@ -114,7 +134,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
         .eq('id', userId);
 
       if (profileUpdateError) {
-        console.error('Error updating user profile:', profileUpdateError);
+        logger.error('Error updating user profile', { error: profileUpdateError });
         
         // Provide specific error messages for common profile update failures
         let errorMessage = 'Failed to update user profile';
@@ -168,7 +188,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
               client_user_agent: userAgent
             });
           } catch (auditError) {
-            console.error('Failed to log profile change:', auditError);
+            logger.error('Failed to log profile change', { error: auditError });
             // Don't fail the main operation if audit logging fails
           }
         }
@@ -188,7 +208,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       );
 
       if (statusUpdateError) {
-        console.error('Error updating account status:', statusUpdateError);
+        logger.error('Error updating account status', { error: statusUpdateError });
         return new Response(
           JSON.stringify({ 
             error: 'Failed to update account status', 
@@ -214,7 +234,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       );
 
       if (confirmationError) {
-        console.error('Error updating email confirmation:', confirmationError);
+        logger.error('Error updating email confirmation', { error: confirmationError });
         return new Response(
           JSON.stringify({ 
             error: 'Failed to update email confirmation status', 
@@ -228,58 +248,6 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       }
     }
 
-    // Handle account status changes (enable/disable account)
-    if (validation.sanitizedData.accountStatus !== undefined) {
-      const isEnabled = validation.sanitizedData.accountStatus === 'enabled';
-      
-      const { error: statusUpdateError } = await supabase.auth.admin.updateUserById(
-        userId,
-        { 
-          user_metadata: { account_disabled: !isEnabled },
-          app_metadata: { account_disabled: !isEnabled }
-        }
-      );
-
-      if (statusUpdateError) {
-        console.error('Error updating account status:', statusUpdateError);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to update account status', 
-            details: statusUpdateError.message
-          }), 
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-    }
-
-    // Handle email confirmation status
-    if (validation.sanitizedData.emailConfirmed !== undefined) {
-      const { error: confirmationError } = await supabase.auth.admin.updateUserById(
-        userId,
-        { 
-          email_confirmed_at: validation.sanitizedData.emailConfirmed 
-            ? new Date().toISOString() 
-            : null
-        }
-      );
-
-      if (confirmationError) {
-        console.error('Error updating email confirmation:', confirmationError);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to update email confirmation status', 
-            details: confirmationError.message
-          }), 
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-    }
 
     // Update email if provided
     if (validation.sanitizedData.email) {
@@ -289,7 +257,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       );
 
       if (emailUpdateError) {
-        console.error('Error updating user email:', emailUpdateError);
+        logger.error('Error updating user email', { error: emailUpdateError });
         
         // Provide specific error messages for email update failures
         let errorMessage = 'Failed to update user email';
@@ -340,7 +308,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
     );
     
   } catch (error) {
-    console.error('Error in handleUpdateUser:', error);
+    logger.error('Error in handleUpdateUser', { error });
     return new Response(
       JSON.stringify({ error: 'Failed to update user' }), 
       { 

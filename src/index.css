@@ -777,5 +777,10 @@ body {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  
+  /* RTL Direction Support */
+  .direction-rtl {
+    direction: rtl;
+  }
 }
 

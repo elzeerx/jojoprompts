@@ -1,4 +1,7 @@
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('ADMIN_ERROR_HANDLER');
 
 export interface AdminError {
   message: string;
@@ -9,7 +12,7 @@ export interface AdminError {
 
 export function useAdminErrorHandler() {
   const handleError = (error: any, operation: string = "operation") => {
-    console.error(`Admin ${operation} error:`, error);
+    logger.error('Admin operation failed', { operation, error: error.message || error });
     
     let errorMessage = `Failed to ${operation}`;
     let errorDetails = "An unexpected error occurred";

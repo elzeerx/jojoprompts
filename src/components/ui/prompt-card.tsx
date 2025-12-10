@@ -1,3 +1,10 @@
+/**
+ * @deprecated This component is deprecated. Use ModernPromptCard instead.
+ * @see src/components/ui/modern-prompt-card/ModernPromptCard.tsx
+ * 
+ * This file is kept for backwards compatibility with any remaining usages.
+ * All new code should use ModernPromptCard which has better styling and features.
+ */
 import React from "react";
 import { type Prompt, type PromptRow } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +55,7 @@ export function PromptCard({
   const tags = metadata?.tags || [];
   const mediaFiles = metadata?.media_files || [];
   const workflowSteps = metadata?.workflow_steps || [];
+  const modelType = metadata?.model_type;
   const { session } = useAuth();
   const isMobile = useIsMobile();
   const isSmallMobile = useIsSmallMobile();
@@ -89,6 +97,7 @@ export function PromptCard({
           toggleFavorite={toggleFavorite}
           session={session}
           isSmallMobile={isSmallMobile}
+          modelType={modelType}
         />
 
         <CardContent
@@ -99,6 +108,7 @@ export function PromptCard({
           isN8nWorkflow={isN8nWorkflow}
           workflowSteps={workflowSteps}
           mediaFiles={mediaFiles}
+          isLocked={isLocked}
         />
 
         <CardFooter

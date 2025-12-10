@@ -1,5 +1,8 @@
 import { PlatformField } from '@/types/platform';
 import { ValidationResult } from './types';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('validators');
 
 /**
  * Validates a required field
@@ -109,7 +112,7 @@ export function validatePattern(value: any, field: PlatformField): ValidationRes
       errors: isValid ? [] : [`${field.label} format is invalid`]
     };
   } catch (error) {
-    console.error('Invalid regex pattern:', field.validation_rules.pattern);
+    logger.warn('Invalid regex pattern', { pattern: field.validation_rules.pattern, fieldLabel: field.label });
     return { isValid: true, errors: [] }; // Don't fail on invalid regex
   }
 }

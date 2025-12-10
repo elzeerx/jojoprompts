@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { createEdgeLogger } from "../_shared/logger.ts"
+import { GenerateMetadataSchema, validateAIInput } from "../_shared/aiValidation.ts"
+
+const logger = createEdgeLogger('GENERATE_METADATA');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,14 +13,14 @@ const corsHeaders = {
 
 // Function to clean the OpenAI response by removing Markdown formatting
 function cleanJsonResponse(text: string): string {
-  console.log("Raw OpenAI response:", text);
+  logger.debug("Raw OpenAI response", { responseLength: text.length });
   
   // Check if the response is wrapped in markdown code blocks
   const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)```/;
   const match = text.match(jsonBlockRegex);
   
   if (match && match[1]) {
-    console.log("Found JSON in code block, extracting...");
+    logger.debug("Found JSON in code block, extracting");
     return match[1].trim();
   }
   
@@ -26,18 +30,18 @@ function cleanJsonResponse(text: string): string {
     JSON.parse(text);
     return text;
   } catch {
-    console.log("Response is not directly parseable as JSON, attempting to clean...");
+    logger.debug("Response is not directly parseable as JSON, attempting to clean");
     
     // Try to find anything that looks like a JSON object
     const possibleJsonRegex = /(\{[\s\S]*\})/;
     const jsonMatch = text.match(possibleJsonRegex);
     
     if (jsonMatch && jsonMatch[1]) {
-      console.log("Found possible JSON object in text");
+      logger.debug("Found possible JSON object in text");
       return jsonMatch[1].trim();
     }
     
-    console.log("Could not extract JSON, returning original");
+    logger.debug("Could not extract JSON, returning original");
     return text;
   }
 }
@@ -49,67 +53,84 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt_text } = await req.json()
-    console.log("Received prompt text for metadata generation:", prompt_text);
+    const requestBody = await req.json()
+    
+    // Validate input with Zod schema
+    const validation = validateAIInput(GenerateMetadataSchema, requestBody);
+    if (!validation.success) {
+      logger.warn("Input validation failed", { error: validation.error });
+      return new Response(
+        JSON.stringify({ 
+          error: validation.error,
+          style: "",
+          tags: []
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    
+    const { prompt_text } = validation.data;
+    logger.info("Metadata generation request", { promptLength: prompt_text.length });
     
     const authHeader = req.headers.get('Authorization')
-    console.log("Authorization header present:", !!authHeader);
+    logger.debug("Auth header check", { hasAuth: !!authHeader });
     
     if (!authHeader) {
-      console.error("No authorization header provided");
+      logger.error("Missing authorization header");
       throw new Error('No authorization header')
     }
 
-    // Initialize Supabase client with better error handling
+    // Initialize Supabase client with service role for user verification
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://fxkqgjakbyrxkmevkglv.supabase.co';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4a3FnamFrYnlyeGttZXZrZ2x2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4ODY4NjksImV4cCI6MjA2MDQ2Mjg2OX0.u4O7nvVrW6HZjZj058T9kKpEfa5BsyWT0i_p4UxcZi4';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    console.log("Environment check:", {
+    logger.debug("Environment check", {
       hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
-      hasSupabaseAnonKey: !!Deno.env.get('SUPABASE_ANON_KEY'),
+      hasServiceKey: !!supabaseServiceKey,
       hasOpenAiKey: !!Deno.env.get('OPENAI_API_KEY')
     });
 
-    const supabaseClient = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    )
+    if (!supabaseServiceKey) {
+      logger.error("Missing SUPABASE_SERVICE_ROLE_KEY");
+      throw new Error('Service configuration error');
+    }
 
-    // Verify user authentication - extract token from Authorization header
+    // Extract the JWT token from the Authorization header
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-    console.log("User authentication check:", { 
-      userExists: !!user, 
-      userId: user?.id?.substring(0, 8) + '***',
-      error: userError?.message 
+
+    // Create admin client to verify user
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Verify user authentication using the token
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    logger.debug("User authentication", { 
+      authenticated: !!user, 
+      userId: user?.id?.substring(0, 8)
     });
     
     if (userError || !user) {
-      console.error("Authentication failed:", userError?.message);
-      throw new Error(`Authentication failed: ${userError?.message || 'No user found'}`)
+      logger.error("Authentication failed", { error: userError?.message || 'Auth session missing!' });
+      throw new Error(`Authentication failed: ${userError?.message || 'Auth session missing!'}`);
     }
+
+    // Create a client for user-context operations
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check user permissions using the database function
     const { data: canManagePromptsResult, error: permissionError } = await supabaseClient
       .rpc('can_manage_prompts', { _user_id: user.id });
     
-    console.log("Permission check result:", { 
-      canManagePrompts: canManagePromptsResult,
-      permissionError: permissionError?.message 
+    logger.debug("Permission check", { 
+      canManagePrompts: canManagePromptsResult
     });
     
     if (permissionError) {
-      console.error("Permission check failed:", permissionError);
+      logger.error("Permission check failed", { error: permissionError.message });
       throw new Error(`Permission check failed: ${permissionError.message}`);
     }
     
     if (!canManagePromptsResult) {
-      console.error("User lacks permissions for metadata generation");
+      logger.warn("Insufficient permissions for metadata generation", { userId: user.id });
       return new Response(
         JSON.stringify({ 
           error: 'Insufficient permissions. Only admins, prompters, and jadmins can auto-generate metadata.',
@@ -127,27 +148,25 @@ serve(async (req) => {
       .eq('id', user.id)
       .single();
     
-    console.log("User profile check:", { 
+    logger.debug("User profile", { 
       role: userProfile?.role, 
-      username: userProfile?.username,
-      profileError: profileError?.message 
+      username: userProfile?.username
     });
 
-    console.log("Authentication and permissions verified, checking OpenAI API key...");
+    logger.info("Auth verified, checking OpenAI API key");
 
     // Validate OpenAI API key exists
     const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
-    console.log("OpenAI API key check:", { hasKey: !!openAiApiKey, keyLength: openAiApiKey?.length || 0 });
+    logger.debug("OpenAI API key check", { hasKey: !!openAiApiKey });
     
     if (!openAiApiKey || openAiApiKey.trim() === '') {
-      console.error("OPENAI_API_KEY environment variable is not set or empty");
+      logger.error("Missing OPENAI_API_KEY");
       throw new Error('OpenAI API key is not configured. Please contact the administrator.');
     }
     
-    console.log("OpenAI API key found, calling OpenAI API...");
+    logger.info("Calling OpenAI API for metadata generation");
 
     // Call OpenAI API - Generate only style and tags
-    console.log("Making OpenAI API call...");
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -169,27 +188,27 @@ serve(async (req) => {
       }),
     })
     
-    console.log("OpenAI API response status:", openAiResponse.status);
+    logger.debug("OpenAI API response", { status: openAiResponse.status });
 
     if (!openAiResponse.ok) {
       const errorDetails = await openAiResponse.text();
-      console.error("OpenAI API error:", openAiResponse.status, errorDetails);
+      logger.error("OpenAI API error", { status: openAiResponse.status, details: errorDetails });
       throw new Error(`OpenAI API error: ${openAiResponse.status} ${errorDetails}`);
     }
 
     const openAiData = await openAiResponse.json()
-    console.log("Received response from OpenAI");
+    logger.info("Received OpenAI response");
     
     const rawMetadataStr = openAiData.choices[0].message.content
-    console.log("Raw metadata string:", rawMetadataStr);
+    logger.debug("Raw metadata received", { length: rawMetadataStr?.length });
     
     // Clean the response before parsing
     const cleanedMetadataStr = cleanJsonResponse(rawMetadataStr);
-    console.log("Cleaned metadata string:", cleanedMetadataStr);
+    logger.debug("Metadata cleaned for parsing");
     
     try {
       const metadata = JSON.parse(cleanedMetadataStr);
-      console.log("Successfully parsed metadata:", metadata);
+      logger.debug("Metadata parsed successfully");
       
       // Ensure the metadata has the expected structure (no category)
       const validatedMetadata = {
@@ -197,18 +216,21 @@ serve(async (req) => {
         tags: Array.isArray(metadata.tags) ? metadata.tags : []
       };
       
-      console.log("Validated metadata (without category):", validatedMetadata);
+      logger.info("Metadata generation successful", { 
+        hasStyle: !!validatedMetadata.style,
+        tagCount: validatedMetadata.tags.length 
+      });
       
       return new Response(
         JSON.stringify(validatedMetadata),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     } catch (parseError) {
-      console.error("JSON parse error:", parseError, "for string:", cleanedMetadataStr);
+      logger.error("JSON parse error", { error: parseError.message });
       throw new Error(`Failed to parse metadata: ${parseError.message}`);
     }
   } catch (error) {
-    console.error('Error:', error)
+    logger.error('Metadata generation error', { error: error.message })
     return new Response(
       JSON.stringify({ 
         error: error.message,

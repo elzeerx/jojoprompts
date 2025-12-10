@@ -1,6 +1,6 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
+import { createEdgeLogger, generateRequestId } from "../_shared/logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +21,7 @@ async function verifyWebhookSignature(payload: string, headers: Headers): Promis
     // In production, implement full signature verification
     return !!(authAlgo && transmission && certId && signature && timestamp);
   } catch (error) {
-    console.log('Webhook signature verification error:', error);
+    // Error handled silently for signature verification
     return false;
   }
 }
@@ -30,8 +30,8 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
 
-  const requestId = crypto.randomUUID();
-  const logger = (...args: any[]) => console.log(`[PAYPAL-WEBHOOK][${requestId}]`, ...args);
+  const requestId = generateRequestId();
+  const logger = createEdgeLogger('PAYPAL_WEBHOOK', requestId);
   
   let payload: any;
   let rawBody: string;
@@ -40,11 +40,11 @@ serve(async (req: Request) => {
     rawBody = await req.text();
     payload = JSON.parse(rawBody);
   } catch (e) {
-    logger("Failed to parse webhook body", e);
+    logger.error("Failed to parse webhook body", { error: e.message });
     return new Response("Invalid payload", { status: 400, headers: corsHeaders });
   }
 
-  logger("Webhook received:", {
+  logger.info("Webhook received", {
     eventType: payload.event_type,
     resourceType: payload.resource_type,
     resourceId: payload.resource?.id
@@ -53,14 +53,12 @@ serve(async (req: Request) => {
   // Enhanced signature verification
   const isSignatureValid = await verifyWebhookSignature(rawBody, req.headers);
   if (!isSignatureValid) {
-    logger("Webhook signature verification failed");
-    // In production, return 400. For development, log warning and continue
-    logger("WARNING: Proceeding without signature verification (development mode)");
+    logger.warn("Webhook signature verification failed - proceeding in development mode");
   }
 
   // Check for resource and event type
   if (!payload?.resource || !payload?.event_type) {
-    logger("Invalid webhook format - missing resource or event_type");
+    logger.error("Invalid webhook format - missing resource or event_type");
     return new Response("Invalid webhook format", { status: 400, headers: corsHeaders });
   }
 
@@ -74,7 +72,7 @@ serve(async (req: Request) => {
   const eventType = payload.event_type;
   const resource = payload.resource;
 
-  logger("Processing event type:", eventType);
+  logger.info("Processing event type", { eventType });
 
   try {
     if (eventType === 'CHECKOUT.ORDER.APPROVED') {
@@ -86,10 +84,10 @@ serve(async (req: Request) => {
     } else if (eventType === 'PAYMENT.CAPTURE.DENIED' || eventType === 'PAYMENT.CAPTURE.DECLINED') {
       await handlePaymentFailed(supabase, resource, logger);
     } else {
-      logger("Unhandled event type:", eventType);
+      logger.warn("Unhandled event type", { eventType });
     }
   } catch (error) {
-    logger("Error processing webhook:", error);
+    logger.error("Error processing webhook", { error: error.message });
     return new Response("Webhook processing failed", { status: 500, headers: corsHeaders });
   }
 
@@ -99,7 +97,7 @@ serve(async (req: Request) => {
 // Handle order approved event
 async function handleOrderApproved(supabase: any, resource: any, logger: any) {
   const orderId = resource.id;
-  logger("Order approved:", orderId);
+  logger.info("Order approved", { orderId });
 
   // Find transaction by order ID
   const { data: transaction } = await supabase
@@ -109,7 +107,7 @@ async function handleOrderApproved(supabase: any, resource: any, logger: any) {
     .maybeSingle();
 
   if (transaction && transaction.status === 'pending') {
-    logger("Updating transaction status to approved:", transaction.id);
+    logger.info("Updating transaction status to approved", { transactionId: transaction.id });
     await supabase
       .from("transactions")
       .update({ 
@@ -126,7 +124,7 @@ async function handlePaymentCaptureCompleted(supabase: any, resource: any, logge
   const status = resource.status;
   const orderId = resource.supplementary_data?.related_ids?.order_id;
 
-  logger("Payment capture completed:", { paymentId, status, orderId });
+  logger.info("Payment capture completed", { paymentId, status, orderId });
 
   if (status === "COMPLETED") {
     // Find transaction by payment ID or order ID
@@ -151,7 +149,7 @@ async function handlePaymentCaptureCompleted(supabase: any, resource: any, logge
     }
 
     if (transaction) {
-      logger("Updating transaction to completed:", transaction.id);
+      logger.info("Updating transaction to completed", { transactionId: transaction.id });
       
       // Update transaction
       await supabase
@@ -173,7 +171,7 @@ async function handlePaymentCaptureCompleted(supabase: any, resource: any, logge
         .maybeSingle();
 
       if (!existingSubscription) {
-        logger("Creating subscription for user:", transaction.user_id);
+        logger.info("Creating subscription for user", { userId: transaction.user_id });
         await supabase
           .from("user_subscriptions")
           .insert({
@@ -187,7 +185,7 @@ async function handlePaymentCaptureCompleted(supabase: any, resource: any, logge
           });
       }
     } else {
-      logger("No transaction found for payment:", paymentId);
+      logger.warn("No transaction found for payment", { paymentId });
     }
   }
 }
@@ -197,7 +195,7 @@ async function handleOrderCompleted(supabase: any, resource: any, logger: any) {
   const orderId = resource.id;
   const status = resource.status;
   
-  logger("Order completed:", { orderId, status });
+  logger.info("Order completed", { orderId, status });
 
   if (status === "COMPLETED") {
     // Extract payment ID from purchase units
@@ -212,7 +210,7 @@ async function handleOrderCompleted(supabase: any, resource: any, logger: any) {
         .maybeSingle();
 
       if (transaction && transaction.status !== "completed") {
-        logger("Marking transaction as completed:", transaction.id);
+        logger.info("Marking transaction as completed", { transactionId: transaction.id });
         
         await supabase
           .from("transactions")
@@ -233,7 +231,7 @@ async function handleOrderCompleted(supabase: any, resource: any, logger: any) {
           .maybeSingle();
 
         if (!existingSubscription) {
-          logger("Creating subscription:", transaction.user_id);
+          logger.info("Creating subscription", { userId: transaction.user_id });
           await supabase
             .from("user_subscriptions")
             .insert({
@@ -256,7 +254,7 @@ async function handlePaymentFailed(supabase: any, resource: any, logger: any) {
   const paymentId = resource.id;
   const orderId = resource.supplementary_data?.related_ids?.order_id;
   
-  logger("Payment failed:", { paymentId, orderId });
+  logger.warn("Payment failed", { paymentId, orderId });
 
   // Find transaction and mark as failed
   let transaction = null;
@@ -280,7 +278,7 @@ async function handlePaymentFailed(supabase: any, resource: any, logger: any) {
   }
 
   if (transaction && transaction.status !== "failed") {
-    logger("Marking transaction as failed:", transaction.id);
+    logger.info("Marking transaction as failed", { transactionId: transaction.id });
     await supabase
       .from("transactions")
       .update({ 

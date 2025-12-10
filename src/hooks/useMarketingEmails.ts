@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('MARKETING_EMAILS');
 
 export function useMarketingEmails() {
   const [sending, setSending] = useState(false);
@@ -32,7 +35,7 @@ export function useMarketingEmails() {
 
       return { success: true, data };
     } catch (error: any) {
-      console.error("Error sending reminder email:", error);
+      logger.error('Failed to send reminder email', { error: error.message || error, email: userEmail });
       toast({
         variant: "destructive",
         title: "Failed to send email",
@@ -67,7 +70,7 @@ export function useMarketingEmails() {
 
       return { success: true, data };
     } catch (error: any) {
-      console.error("Error sending bulk reminder emails:", error);
+      logger.error('Failed to send bulk reminder emails', { error: error.message || error, userCount: users.length });
       toast({
         variant: "destructive",
         title: "Failed to send bulk emails",

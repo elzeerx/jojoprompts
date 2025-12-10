@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createEdgeLogger } from '../_shared/logger.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -9,6 +10,8 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  const logger = createEdgeLogger('translate-text');
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -75,7 +78,7 @@ Translation:`;
     });
 
     if (!response.ok) {
-      console.error('OpenAI API error:', response.status, response.statusText);
+      logger.error('OpenAI API error', { status: response.status, statusText: response.statusText });
       return new Response(
         JSON.stringify({ error: 'Translation service unavailable' }),
         { 
@@ -103,7 +106,7 @@ Translation:`;
     );
 
   } catch (error) {
-    console.error('Error in translate-text function:', error);
+    logger.error('Translation error', { error });
     return new Response(
       JSON.stringify({ error: 'Translation failed' }),
       {

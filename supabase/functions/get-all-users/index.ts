@@ -1,120 +1,109 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { verifyAdminSimple } from "./simpleAuth.ts";
+import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
+import { verifyAdmin } from "../_shared/adminAuth.ts";
+import { createEdgeLogger } from "../_shared/logger.ts";
+import { handleGetUsers } from "./handlers/getUsersHandler.ts";
+import { checkRateLimit, RATE_LIMITS, createRateLimitResponse } from "../_shared/rateLimit.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const logger = createEdgeLogger('GET_ALL_USERS');
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCors();
   }
 
   try {
-    // Simple admin authentication using new secure role system
-    const { supabase, userId } = await verifyAdminSimple(req);
+    // Admin authentication using shared module
+    const { supabase, userId } = await verifyAdmin(req);
+    
+    // Check rate limit for admin user
+    const rateLimitResult = await checkRateLimit(supabase, userId, RATE_LIMITS.GET_ALL_USERS);
+    
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded for admin user', {
+        userId,
+        endpoint: 'get-all-users',
+        currentCount: rateLimitResult.currentCount,
+        limit: rateLimitResult.limit
+      });
+      
+      // Log rate limit violation
+      await supabase.from('admin_audit_log').insert({
+        admin_user_id: userId,
+        action: 'rate_limit_exceeded',
+        target_resource: 'get-all-users',
+        metadata: {
+          rate_limit_details: rateLimitResult,
+          method: req.method
+        }
+      });
+      
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
     
     // Handle GET - list users with pagination and search
     if (req.method === 'GET') {
-      const url = new URL(req.url);
-      const page = parseInt(url.searchParams.get('page') || '1');
-      const limit = parseInt(url.searchParams.get('limit') || '10');
-      const search = url.searchParams.get('search') || '';
-      
-      const offset = (page - 1) * limit;
-      
-      console.log(`[GET USERS] Fetching users - page: ${page}, limit: ${limit}, search: "${search}"`);
-      
-      // Build query
-      let query = supabase
-        .from('profiles')
-        .select('*, user_subscriptions(*, subscription_plans(*))', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
-      
-      if (search) {
-        query = query.or(`email.ilike.%${search}%,username.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
-      }
-      
-      const { data: profiles, error, count } = await query;
-      
-      if (error) {
-        console.error('[GET USERS ERROR]', error);
-        throw error;
-      }
-      
-      console.log(`[GET USERS SUCCESS] Found ${count} total users, returning ${profiles?.length || 0} users`);
-      
-      return new Response(
-        JSON.stringify({
-          users: profiles,
-          total: count,
-          totalPages: Math.ceil((count || 0) / limit)
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return await handleGetUsers(supabase, userId, req);
     }
     
     // Handle POST - delete/update operations
     if (req.method === 'POST') {
-      const body = await req.json();
+      // Check if POST has a body
+      const contentLength = req.headers.get('content-length');
+      const hasBody = contentLength && parseInt(contentLength) > 0;
+      
+      if (!hasBody) {
+        // Empty POST body - treat as GET request for user list
+        logger.info("POST request with no body, redirecting to GET logic");
+        return await handleGetUsers(supabase, userId, req);
+      }
+      
+      // Safely parse body
+      let body;
+      try {
+        body = await req.json();
+      } catch (parseError: any) {
+        logger.error('Failed to parse POST body', { error: parseError.message });
+        return createErrorResponse('Invalid JSON body', 400);
+      }
+      
       const { action, userId: targetUserId } = body;
       
-      console.log(`[POST ACTION] Action: ${action}, Target User: ${targetUserId}`);
+      logger.info("User action requested", { action, targetUserId });
       
       if (action === 'delete') {
-        // Call the existing admin_delete_user_data function
+        // Call the admin_delete_user_data function with verified admin ID
         const { data, error } = await supabase.rpc('admin_delete_user_data', {
-          target_user_id: targetUserId
+          target_user_id: targetUserId,
+          admin_user_id: userId  // Pass the verified admin ID for authorization
         });
         
         if (error) {
-          console.error('[DELETE USER ERROR]', error);
+          logger.error('User deletion failed', { error: error.message, targetUserId });
           throw error;
         }
         
-        console.log('[DELETE USER SUCCESS]', data);
+        logger.info("User deleted successfully", { targetUserId });
         
-        return new Response(
-          JSON.stringify(data),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return createSuccessResponse(data);
       }
       
-      return new Response(
-        JSON.stringify({ error: 'Invalid action' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createErrorResponse('Invalid action', 400);
     }
     
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse('Method not allowed', 405);
 
   } catch (error: any) {
-    console.error('[ERROR] get-all-users function failed:', {
-      message: error.message,
-      timestamp: new Date().toISOString(),
+    logger.error('Function error', {
+      error: error.message,
       method: req.method,
-      hasAuthHeader: !!req.headers.get('authorization')
+      hasAuth: !!req.headers.get('authorization')
     });
 
     // Determine appropriate status code based on error
     const status = error.message === 'UNAUTHORIZED' ? 401 :
                    error.message === 'FORBIDDEN' ? 403 : 500;
     
-    const errorCode = error.message === 'UNAUTHORIZED' ? 'UNAUTHORIZED' :
-                      error.message === 'FORBIDDEN' ? 'FORBIDDEN' : 'INTERNAL_ERROR';
-    
-    return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        code: errorCode
-      }),
-      { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse(error.message, status);
   }
 });

@@ -2,9 +2,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Instagram, Twitter } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const { t, isRTL } = useTranslation();
   
   return (
     <footer className="bg-dark-base text-soft-bg mobile-section-padding">
@@ -21,11 +24,10 @@ export function Footer() {
               />
             </div>
             <p className="mb-6 text-soft-bg/80 max-w-md text-sm sm:text-base leading-relaxed">
-              Discover a curated collection of high-quality, ready-to-use AI prompts for ChatGPT, Midjourney, and more.
-              Pay once, use forever.
+              {t('footer.description')}
             </p>
             {/* Mobile-optimized social links */}
-            <div className="flex space-x-4">
+            <div className={cn("flex gap-4", isRTL && "flex-row-reverse justify-end")}>
               <a 
                 href="https://instagram.com/jojoprompts" 
                 target="_blank" 
@@ -49,38 +51,55 @@ export function Footer() {
           
           {/* Quick Links */}
           <div>
-            <h3 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-warm-gold">Quick Links</h3>
+            <h3 className={cn(
+              "font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-warm-gold",
+              isRTL && "text-right"
+            )}>
+              {t('footer.quickLinks')}
+            </h3>
             <ul className="space-y-2 sm:space-y-3">
               <li>
                 <Link 
                   to="/" 
-                  className="text-soft-bg/80 hover:text-warm-gold transition-colors text-sm sm:text-base block py-1 sm:py-0"
+                  className={cn(
+                    "text-soft-bg/80 hover:text-warm-gold transition-colors text-sm sm:text-base block py-1 sm:py-0",
+                    isRTL && "text-right"
+                  )}
                 >
-                  Home
+                  {t('nav.home')}
                 </Link>
               </li>
               <li>
                 <Link 
                   to="/prompts" 
-                  className="text-soft-bg/80 hover:text-warm-gold transition-colors text-sm sm:text-base block py-1 sm:py-0"
+                  className={cn(
+                    "text-soft-bg/80 hover:text-warm-gold transition-colors text-sm sm:text-base block py-1 sm:py-0",
+                    isRTL && "text-right"
+                  )}
                 >
-                  Browse Prompts
+                  {t('nav.prompts')}
                 </Link>
               </li>
               <li>
                 <Link 
                   to="/pricing" 
-                  className="text-soft-bg/80 hover:text-warm-gold transition-colors text-sm sm:text-base block py-1 sm:py-0"
+                  className={cn(
+                    "text-soft-bg/80 hover:text-warm-gold transition-colors text-sm sm:text-base block py-1 sm:py-0",
+                    isRTL && "text-right"
+                  )}
                 >
-                  Pricing
+                  {t('nav.pricing')}
                 </Link>
               </li>
               <li>
                 <Link 
                   to="/about" 
-                  className="text-soft-bg/80 hover:text-warm-gold transition-colors text-sm sm:text-base block py-1 sm:py-0"
+                  className={cn(
+                    "text-soft-bg/80 hover:text-warm-gold transition-colors text-sm sm:text-base block py-1 sm:py-0",
+                    isRTL && "text-right"
+                  )}
                 >
-                  About Us
+                  {t('nav.about')}
                 </Link>
               </li>
             </ul>
@@ -88,10 +107,15 @@ export function Footer() {
           
           {/* Contact */}
           <div>
-            <h3 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-warm-gold">Contact</h3>
+            <h3 className={cn(
+              "font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-warm-gold",
+              isRTL && "text-right"
+            )}>
+              {t('footer.contact')}
+            </h3>
             <ul className="space-y-2 sm:space-y-3">
-              <li className="text-soft-bg/80 flex items-start">
-                <span className="mr-2 text-base">📧</span>
+              <li className={cn("text-soft-bg/80 flex items-start", isRTL && "flex-row-reverse")}>
+                <span className={cn("text-base", isRTL ? "ml-2" : "mr-2")}>📧</span>
                 <a 
                   href="mailto:info@jojoprompts.com" 
                   className="hover:text-warm-gold transition-colors text-sm sm:text-base break-all"
@@ -99,22 +123,22 @@ export function Footer() {
                   info@jojoprompts.com
                 </a>
               </li>
-              <li className="text-soft-bg/80 flex items-start">
-                <span className="mr-2 text-base">🔒</span>
+              <li className={cn("text-soft-bg/80 flex items-start", isRTL && "flex-row-reverse")}>
+                <span className={cn("text-base", isRTL ? "ml-2" : "mr-2")}>🔒</span>
                 <Link 
                   to="/privacy" 
                   className="hover:text-warm-gold transition-colors text-sm sm:text-base"
                 >
-                  Privacy Policy
+                  {t('footer.privacyPolicy')}
                 </Link>
               </li>
-              <li className="text-soft-bg/80 flex items-start">
-                <span className="mr-2 text-base">📄</span>
+              <li className={cn("text-soft-bg/80 flex items-start", isRTL && "flex-row-reverse")}>
+                <span className={cn("text-base", isRTL ? "ml-2" : "mr-2")}>📄</span>
                 <Link 
                   to="/terms" 
                   className="hover:text-warm-gold transition-colors text-sm sm:text-base"
                 >
-                  Terms of Service
+                  {t('footer.termsOfService')}
                 </Link>
               </li>
             </ul>
@@ -124,7 +148,7 @@ export function Footer() {
         {/* Copyright */}
         <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-soft-bg/10 text-center">
           <p className="text-soft-bg/70 font-mono text-sm sm:text-base">
-            © {currentYear} JojoPrompts. All rights reserved.
+            {t('footer.copyright', { year: currentYear.toString() })}
           </p>
         </div>
       </div>

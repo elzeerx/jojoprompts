@@ -4,6 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { TransactionRecord } from "@/types/transaction";
 import { DateRange } from "react-day-picker";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('PURCHASE_HISTORY');
 
 interface PaginationInfo {
   page: number;
@@ -22,13 +26,14 @@ export function usePurchaseHistory(itemsPerPage = 20) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [gatewayFilter, setGatewayFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchTransactions();
-  }, [currentPage, statusFilter, dateRange]);
+  }, [currentPage, statusFilter, gatewayFilter, dateRange]);
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -47,6 +52,10 @@ export function usePurchaseHistory(itemsPerPage = 20) {
 
       if (statusFilter !== "all") {
         params.append("status", statusFilter);
+      }
+
+      if (gatewayFilter !== "all") {
+        params.append("gateway", gatewayFilter);
       }
 
       if (dateRange?.from) {
@@ -78,7 +87,8 @@ export function usePurchaseHistory(itemsPerPage = 20) {
       setTotalPages(data.pagination?.totalPages || 1);
 
     } catch (error) {
-      console.error("Error fetching transactions:", error);
+      const appError = handleError(error, { component: 'usePurchaseHistory', action: 'fetchTransactions' });
+      logger.error('Error fetching transactions', { error: appError });
       toast({
         title: "Error",
         description: "Failed to fetch transaction history",
@@ -107,6 +117,8 @@ export function usePurchaseHistory(itemsPerPage = 20) {
     setSearchTerm,
     statusFilter,
     setStatusFilter,
+    gatewayFilter,
+    setGatewayFilter,
     dateRange,
     setDateRange,
     currentPage,

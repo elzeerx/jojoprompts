@@ -1,11 +1,13 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 import type { AuthContext } from '../../_shared/adminAuth.ts';
 import { logSecurityEvent } from '../../_shared/adminAuth.ts';
+import { createEdgeLogger } from '../../_shared/logger.ts';
 import { validateEnvironment } from './environmentValidator.ts';
 import { parseAuthHeader } from './authHeaderParser.ts';
 import { validateToken } from './tokenValidator.ts';
 import { verifyProfile } from './profileVerifier.ts';
+
+const logger = createEdgeLogger('get-all-users:auth:admin-verifier');
 
 /**
  * Enhanced auth logic for admin functions with comprehensive security:
@@ -52,8 +54,17 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
 
     const { profile, permissions } = profileResult;
 
-    // Step 6: Log successful authentication
-    console.log(`Successfully authenticated admin user ${user.id} with role ${profile.role}`);
+    // Step 6: Get user role from user_roles table for logging
+    const { data: userRoleData } = await serviceClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    const userRole = userRoleData?.role || 'unknown';
+    
+    // Step 7: Log successful authentication
+    logger.info('Successfully authenticated admin user', { userId: user.id, role: userRole });
     
     await logSecurityEvent(serviceClient, {
       user_id: user.id,
@@ -61,7 +72,7 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
       details: { 
         function: 'get-all-users', 
         success: true,
-        role: profile.role,
+        role: userRole,
         permissions: permissions
       }
     });
@@ -75,7 +86,7 @@ export async function verifyAdmin(req: Request): Promise<AuthContext> {
 
   } catch (error: any) {
     // Enhanced error logging with security context
-    console.error('[AUTH ERROR] Authentication failed:', {
+    logger.error('Authentication failed', {
       message: error.message,
       stack: error.stack?.substring(0, 500),
       timestamp: new Date().toISOString(),

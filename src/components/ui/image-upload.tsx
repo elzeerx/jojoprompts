@@ -6,6 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, Link, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('ImageUpload');
 
 interface ImageUploadProps {
   value?: string;
@@ -54,7 +57,7 @@ export function ImageUpload({
         description: "Image has been uploaded successfully",
       });
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('Upload error', { error: error instanceof Error ? error.message : error, fileName: file.name });
       toast({
         title: "Upload failed",
         description: "Failed to upload image. Please try again.",

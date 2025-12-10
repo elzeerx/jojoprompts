@@ -1,5 +1,5 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createEdgeLogger } from '../_shared/logger.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,6 +82,8 @@ function detectMaliciousPatterns(filename: string, content?: ArrayBuffer): boole
 }
 
 serve(async (req: Request) => {
+  const logger = createEdgeLogger('validate-file-upload');
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders, status: 204 });
   }
@@ -169,7 +171,7 @@ serve(async (req: Request) => {
     });
 
   } catch (error) {
-    console.error("File validation error:", error);
+    logger.error('File validation error', { error });
     return new Response(JSON.stringify({ 
       isValid: false, 
       error: "File validation failed" 

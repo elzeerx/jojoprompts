@@ -5,6 +5,10 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Check, X } from "lucide-react";
+import { createLogger } from '@/utils/logging';
+import { AvatarUpload } from "@/components/admin/AvatarUpload";
+
+const logger = createLogger('BASIC_INFO_SECTION');
 
 interface UserProfile {
   id: string;
@@ -12,6 +16,7 @@ interface UserProfile {
   last_name: string;
   username: string;
   role: string;
+  avatar_url?: string | null;
 }
 
 interface BasicInfoSectionProps {
@@ -24,9 +29,20 @@ export function BasicInfoSection({ userProfile, userEmail, onUpdate }: BasicInfo
   const [firstName, setFirstName] = useState(userProfile.first_name || "");
   const [lastName, setLastName] = useState(userProfile.last_name || "");
   const [username, setUsername] = useState(userProfile.username || "");
+  const [avatarUrl, setAvatarUrl] = useState(userProfile.avatar_url || null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleAvatarChange = async (url: string | null) => {
+    setAvatarUrl(url);
+    // Immediately save avatar change
+    try {
+      await onUpdate({ avatar_url: url });
+    } catch (error) {
+      logger.error('Failed to save avatar', { error });
+    }
+  };
 
   const checkUsernameAvailability = async (newUsername: string) => {
     if (!newUsername || newUsername === userProfile.username) {
@@ -45,7 +61,7 @@ export function BasicInfoSection({ userProfile, userEmail, onUpdate }: BasicInfo
       if (error) throw error;
       setUsernameAvailable(data.length === 0);
     } catch (error) {
-      console.error("Error checking username:", error);
+      logger.error('Error checking username', { error, username: newUsername });
     } finally {
       setIsCheckingUsername(false);
     }
@@ -87,8 +103,21 @@ export function BasicInfoSection({ userProfile, userEmail, onUpdate }: BasicInfo
     lastName !== userProfile.last_name ||
     username !== userProfile.username;
 
+  const userName = `${firstName} ${lastName}`.trim() || username;
+
   return (
     <div className="space-y-6">
+      {/* Profile Picture */}
+      <div className="pb-6 border-b">
+        <Label className="text-base font-medium mb-4 block">Profile Picture</Label>
+        <AvatarUpload
+          currentAvatarUrl={avatarUrl}
+          userId={userProfile.id}
+          userName={userName}
+          onAvatarChange={handleAvatarChange}
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="firstName">First Name</Label>

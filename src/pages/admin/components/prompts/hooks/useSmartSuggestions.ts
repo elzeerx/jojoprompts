@@ -1,6 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { type PromptRow } from "@/types";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('SMART_SUGGESTIONS');
 
 interface SmartSuggestions {
   tags: string[];
@@ -24,7 +28,8 @@ export function useSmartSuggestions(promptText: string, category: string) {
         if (error) throw error;
         setPromptMetadata(data || []);
       } catch (error) {
-        console.error("Error fetching prompts for suggestions:", error);
+        const appError = handleError(error, { component: 'useSmartSuggestions', action: 'fetchPrompts' });
+        logger.error('Error fetching prompts for suggestions', { error: appError });
       } finally {
         setLoading(false);
       }

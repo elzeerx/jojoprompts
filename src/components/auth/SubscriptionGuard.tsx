@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Crown, ArrowRight } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
+import { isPrivilegedUser } from '@/utils/auth';
 
 interface SubscriptionGuardProps {
   children: React.ReactNode;
@@ -32,7 +33,7 @@ export function SubscriptionGuard({
   }
 
   // Allow access for admin, prompter, and jadmin roles regardless of subscription
-  if (userRole === 'admin' || userRole === 'prompter' || userRole === 'jadmin') {
+  if (isPrivilegedUser(userRole)) {
     return <>{children}</>;
   }
 

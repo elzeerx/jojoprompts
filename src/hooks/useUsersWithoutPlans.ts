@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('USERS_WITHOUT_PLANS');
 
 interface UserWithoutPlan {
   id: string;
@@ -29,7 +32,7 @@ export function useUsersWithoutPlans() {
 
       setUsers(data.users || []);
     } catch (error: any) {
-      console.error("Error fetching users without plans:", error);
+      logger.error('Failed to fetch users without plans', { error: error.message || error });
       setError(error.message || "Failed to load users");
       toast({
         variant: "destructive",

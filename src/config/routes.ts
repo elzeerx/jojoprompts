@@ -19,11 +19,13 @@ const PromptsPage = lazy(() => import("@/pages/PromptsPage"));
 const ChatGPTPromptsPage = lazy(() => import("@/pages/prompts/ChatGPTPromptsPage"));
 const MidjourneyPromptsPage = lazy(() => import("@/pages/prompts/MidjourneyPromptsPage"));
 const WorkflowPromptsPage = lazy(() => import("@/pages/prompts/WorkflowPromptsPage"));
+const GPTsBuilderPage = lazy(() => import("@/pages/prompts/GPTsBuilderPage"));
 const FavoritesPage = lazy(() => import("@/pages/FavoritesPage"));
 const SearchPage = lazy(() => import("@/pages/SearchPage"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
 const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
 const PaymentCallbackPage = lazy(() => import("@/pages/PaymentCallbackPage"));
+const UpaymentCallbackPage = lazy(() => import("@/pages/UpaymentCallbackPage"));
 const MagicLoginPage = lazy(() => import("@/pages/MagicLoginPage").then(m => ({ default: m.MagicLoginPage })));
 const UnsubscribePage = lazy(() => import("@/pages/UnsubscribePage"));
 const PaymentSuccessPage = lazy(() => import("@/pages/PaymentSuccessPage"));
@@ -35,7 +37,6 @@ const SubscriptionDashboard = lazy(() => import("@/pages/dashboard/SubscriptionD
 const PrompterDashboard = lazy(() => import("@/pages/prompter/PrompterDashboard"));
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const PromptsManagement = lazy(() => import("@/pages/admin/PromptsManagement"));
-const PromptGeneratorPage = lazy(() => import("@/pages/PromptGeneratorPage"));
 const PlatformTest = lazy(() => import("@/pages/PlatformTest"));
 const AboutPage = lazy(() => import("@/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));
@@ -84,11 +85,6 @@ export const routes: RouteConfig[] = [
   {
     path: "login",
     component: LoginPage,
-    protection: "public"
-  },
-  {
-    path: "reset-password",
-    component: ResetPasswordPage,
     protection: "public"
   },
   {
@@ -157,6 +153,11 @@ export const routes: RouteConfig[] = [
     protection: "public"
   },
   {
+    path: "prompts/gpts-builder",
+    component: GPTsBuilderPage,
+    protection: "public"
+  },
+  {
     path: "search",
     component: SearchPage,
     protection: "public"
@@ -177,6 +178,11 @@ export const routes: RouteConfig[] = [
     protection: "public"
   },
   {
+    path: "payment/upayments-callback",
+    component: UpaymentCallbackPage,
+    protection: "public"
+  },
+  {
     path: "payment-success",
     component: PaymentSuccessPage,
     protection: "public"
@@ -189,11 +195,6 @@ export const routes: RouteConfig[] = [
   {
     path: "payment-recovery",
     component: PaymentRecoveryPage,
-    protection: "public"
-  },
-  {
-    path: "prompt-generator",
-    component: PromptGeneratorPage,
     protection: "public"
   },
   {

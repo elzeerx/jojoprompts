@@ -1,43 +1,46 @@
 import React, { useState } from 'react';
-import { Check, X, ArrowRight, Sparkles, Copy, CheckCircle } from 'lucide-react';
+import { Check, X, ArrowRight, Copy, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { useCopyToClipboard } from "@/hooks/ui/useCopyToClipboard";
-
-const demoPrompts = [
-  {
-    category: "Creative Writing",
-    generic: "Write a story about a cat",
-    premium: "Create a captivating 500-word short story about a mysterious alley cat who discovers an ancient secret in the heart of Tokyo. Include sensory details, dialogue, and a surprising twist that reveals the cat's true identity. Write in a noir style with Japanese cultural elements.",
-    results: {
-      generic: "Basic story, lacks depth and engagement",
-      premium: "Rich, detailed narrative with cultural authenticity and compelling plot"
-    }
-  },
-  {
-    category: "Business Content",
-    generic: "Write marketing copy for a product",
-    premium: "Craft a persuasive product description for [PRODUCT] targeting [AUDIENCE] that highlights 3 key benefits, addresses the main objection of [OBJECTION], includes emotional triggers related to [DESIRE], and ends with a compelling call-to-action. Use the PAS (Problem-Agitate-Solution) framework and include social proof elements.",
-    results: {
-      generic: "Generic sales copy that sounds robotic",
-      premium: "Conversion-focused copy with psychological triggers and clear structure"
-    }
-  },
-  {
-    category: "Arabic Content",
-    generic: "اكتب مقال عن التكنولوجيا",
-    premium: "اكتب مقالًا شيقًا من 800 كلمة عن تأثير الذكاء الاصطناعي على مستقبل التعليم في الوطن العربي، مع التركيز على الفرص والتحديات، وتضمين أمثلة من دول مختلفة، واستخدام أسلوب صحفي احترافي يناسب القارئ المثقف العربي.",
-    results: {
-      generic: "مقال عام بدون عمق أو تخصص",
-      premium: "محتوى متخصص ومفصل يناسب الثقافة العربية"
-    }
-  }
-];
+import { useTranslation } from '@/hooks/useTranslation';
+import { cn } from '@/lib/utils';
 
 export function InteractiveDemo() {
+  const { t, isRTL } = useTranslation();
   const [activeDemo, setActiveDemo] = useState(0);
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
   const { copyToClipboard: copy } = useCopyToClipboard();
+
+  const demoPrompts = [
+    {
+      category: t('interactiveDemo.categoryCreative'),
+      generic: t('interactiveDemo.demo1Generic'),
+      premium: t('interactiveDemo.demo1Premium'),
+      results: {
+        generic: t('interactiveDemo.demo1ResultGeneric'),
+        premium: t('interactiveDemo.demo1ResultPremium')
+      }
+    },
+    {
+      category: t('interactiveDemo.categoryBusiness'),
+      generic: t('interactiveDemo.demo2Generic'),
+      premium: t('interactiveDemo.demo2Premium'),
+      results: {
+        generic: t('interactiveDemo.demo2ResultGeneric'),
+        premium: t('interactiveDemo.demo2ResultPremium')
+      }
+    },
+    {
+      category: t('interactiveDemo.categoryArabic'),
+      generic: t('interactiveDemo.demo3Generic'),
+      premium: t('interactiveDemo.demo3Premium'),
+      results: {
+        generic: t('interactiveDemo.demo3ResultGeneric'),
+        premium: t('interactiveDemo.demo3ResultPremium')
+      }
+    }
+  ];
 
   const copyToClipboard = (text: string, type: string) => {
     copy(text);
@@ -46,133 +49,148 @@ export function InteractiveDemo() {
   };
 
   return (
-    <section className="mobile-section-padding bg-gradient-to-br from-soft-bg via-white to-warm-gold/5">
+    <section className="mobile-section-padding bg-white">
       <Container>
         {/* Header */}
         <div className="text-center mb-12 sm:mb-16">
-          <h2 className="section-title animate-fade-in">
-            See the
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-warm-gold to-muted-teal block sm:inline sm:ml-3">
-              Difference
+          <h2 className={cn("section-title", isRTL && "rtl-text")}>
+            {t('interactiveDemo.title')}
+            <span className={cn(
+              "text-warm-gold block sm:inline",
+              isRTL ? "sm:mr-3" : "sm:ml-3"
+            )}>
+              {t('interactiveDemo.titleHighlight')}
             </span>
           </h2>
-          <p className="section-subtitle animate-fade-in delay-200">
-            Compare generic prompts vs our premium, hand-crafted prompts
+          <p className={cn("section-subtitle", isRTL && "rtl-text")}>
+            {t('interactiveDemo.subtitle')}
           </p>
         </div>
 
-        {/* Demo Categories */}
-        <div className="flex flex-wrap gap-2 sm:gap-4 justify-center mb-8 sm:mb-12">
+        {/* Demo Categories - Minimal Tab Style */}
+        <div className="flex flex-wrap gap-1 justify-center mb-10 sm:mb-14 border-b border-gray-200 pb-4">
           {demoPrompts.map((demo, index) => (
-            <Button
+            <button
               key={index}
-              variant={activeDemo === index ? "default" : "outline"}
               onClick={() => setActiveDemo(index)}
-              className={`mobile-tab transition-all duration-300 ${
+              className={cn(
+                "px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base font-medium transition-all duration-200 relative",
                 activeDemo === index 
-                  ? 'bg-warm-gold text-white shadow-lg scale-105' 
-                  : 'border-warm-gold/30 hover:border-warm-gold/50'
-              }`}
+                  ? 'text-warm-gold' 
+                  : 'text-muted-foreground hover:text-dark-base'
+              )}
             >
               {demo.category}
-            </Button>
+              {activeDemo === index && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-warm-gold -mb-4" />
+              )}
+            </button>
           ))}
         </div>
 
-        {/* Comparison */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 max-w-6xl mx-auto">
+        {/* Comparison - Minimalist Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-gray-200 rounded-2xl overflow-hidden max-w-5xl mx-auto">
           {/* Generic Prompt */}
-          <div className="space-y-4 sm:space-y-6 animate-fade-in">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                <X className="h-5 w-5 text-red-600" />
+          <div className="bg-white p-6 sm:p-8 lg:p-10 group">
+            <div className={cn("flex items-center gap-3 mb-6", isRTL && "flex-row-reverse")}>
+              <div className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center">
+                <X className="h-4 w-4 text-muted-foreground" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-700">Generic Prompt</h3>
+              <h3 className={cn("text-lg sm:text-xl font-semibold text-dark-base", isRTL && "rtl-text")}>
+                {t('interactiveDemo.genericPromptTitle')}
+              </h3>
             </div>
             
-            <div className="bg-white border-2 border-red-200 rounded-xl p-4 sm:p-6 relative group hover:shadow-lg transition-all duration-300">
-              <div className="absolute top-3 right-3">
+            <div className="relative mb-6">
+              <div className={cn("absolute top-2", isRTL ? "left-2" : "right-2")}>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => copyToClipboard(demoPrompts[activeDemo].generic, 'generic')}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
                 >
                   {copiedPrompt === 'generic' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-warm-gold" />
                   ) : (
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-4 w-4 text-muted-foreground" />
                   )}
                 </Button>
               </div>
               
-              <p className="text-gray-600 text-sm sm:text-base leading-relaxed mb-4">
+              <p className={cn("text-muted-foreground text-sm sm:text-base leading-relaxed pr-10", isRTL && "rtl-text text-right pl-10 pr-0")}>
                 {demoPrompts[activeDemo].generic}
               </p>
-              
-              <div className="border-t border-red-100 pt-4">
-                <p className="text-red-600 text-sm font-medium flex items-center gap-2">
-                  <X className="h-4 w-4" />
-                  Result: {demoPrompts[activeDemo].results.generic}
-                </p>
-              </div>
             </div>
+            
+            <div className="pt-4 border-t border-gray-100">
+              <p className={cn("text-muted-foreground text-sm flex items-center gap-2", isRTL && "flex-row-reverse rtl-text")}>
+                <X className="h-4 w-4" />
+                {t('interactiveDemo.resultLabel')} {demoPrompts[activeDemo].results.generic}
+              </p>
+            </div>
+            
+            {/* Hover indicator line */}
+            <div className="h-px bg-gray-100 group-hover:bg-gray-200 transition-colors duration-300 mt-6" />
           </div>
 
           {/* Premium Prompt */}
-          <div className="space-y-4 sm:space-y-6 animate-fade-in delay-200">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-warm-gold to-muted-teal rounded-full flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-white" />
+          <div className="bg-white p-6 sm:p-8 lg:p-10 group">
+            <div className={cn("flex items-center gap-3 mb-6", isRTL && "flex-row-reverse")}>
+              <div className="w-8 h-8 rounded-full border border-warm-gold/40 flex items-center justify-center">
+                <Check className="h-4 w-4 text-warm-gold" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-warm-gold">JojoPrompts Premium</h3>
+              <h3 className={cn("text-lg sm:text-xl font-semibold text-dark-base", isRTL && "rtl-text")}>
+                {t('interactiveDemo.premiumPromptTitle')}
+              </h3>
             </div>
             
-            <div className="bg-gradient-to-br from-warm-gold/5 to-muted-teal/5 border-2 border-warm-gold/30 rounded-xl p-4 sm:p-6 relative group hover:shadow-xl hover:border-warm-gold/50 transition-all duration-300">
-              <div className="absolute top-3 right-3">
+            <div className="relative mb-6">
+              <div className={cn("absolute top-2", isRTL ? "left-2" : "right-2")}>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => copyToClipboard(demoPrompts[activeDemo].premium, 'premium')}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
                 >
                   {copiedPrompt === 'premium' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-warm-gold" />
                   ) : (
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-4 w-4 text-muted-foreground" />
                   )}
                 </Button>
               </div>
               
-              <p className="text-dark-base text-sm sm:text-base leading-relaxed mb-4">
+              <p className={cn("text-dark-base text-sm sm:text-base leading-relaxed pr-10", isRTL && "rtl-text text-right pl-10 pr-0")}>
                 {demoPrompts[activeDemo].premium}
               </p>
-              
-              <div className="border-t border-warm-gold/20 pt-4">
-                <p className="text-green-600 text-sm font-medium flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  Result: {demoPrompts[activeDemo].results.premium}
-                </p>
-              </div>
             </div>
+            
+            <div className="pt-4 border-t border-warm-gold/10">
+              <p className={cn("text-warm-gold text-sm flex items-center gap-2", isRTL && "flex-row-reverse rtl-text")}>
+                <Check className="h-4 w-4" />
+                {t('interactiveDemo.resultLabel')} {demoPrompts[activeDemo].results.premium}
+              </p>
+            </div>
+            
+            {/* Hover indicator line */}
+            <div className="h-px bg-gray-100 group-hover:bg-warm-gold/30 transition-colors duration-300 mt-6" />
           </div>
         </div>
 
-        {/* CTA */}
+        {/* CTA - Minimal */}
         <div className="text-center mt-12 sm:mt-16">
           <Button 
             asChild
             size="lg"
-            className="mobile-button-primary bg-gradient-to-r from-warm-gold to-muted-teal hover:from-warm-gold/90 hover:to-muted-teal/90 text-white font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+            className="bg-warm-gold hover:bg-warm-gold/90 text-white font-semibold px-8"
           >
-            <a href="#pricing" className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              Get Premium Prompts Now
-              <ArrowRight className="h-5 w-5" />
+            <a href="#pricing" className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+              {t('interactiveDemo.ctaButton')}
+              <ArrowRight className={cn("h-4 w-4", isRTL && "rotate-180")} />
             </a>
           </Button>
-          <p className="text-muted-foreground text-sm mt-3">
-            Join thousands of creators getting 10x better AI results
+          <p className={cn("text-muted-foreground text-sm mt-3", isRTL && "rtl-text")}>
+            {t('interactiveDemo.ctaSubtext')}
           </p>
         </div>
       </Container>

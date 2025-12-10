@@ -146,8 +146,21 @@ export function UserProfileCard({
           <div className="flex items-center gap-2 text-sm">
             <Mail className="h-4 w-4 text-muted-foreground" />
             <span className="flex-1 truncate">{user.email}</span>
-            <Badge variant={user.is_email_confirmed ? "default" : "destructive"} className="text-xs">
-              {user.is_email_confirmed ? "Verified" : "Unverified"}
+            <Badge 
+              variant={
+                user.is_email_confirmed === true 
+                  ? "default" 
+                  : user.is_email_confirmed === false 
+                  ? "destructive" 
+                  : "secondary"
+              } 
+              className="text-xs"
+            >
+              {user.is_email_confirmed === true 
+                ? "Verified" 
+                : user.is_email_confirmed === false 
+                ? "Unverified" 
+                : "Unknown"}
             </Badge>
           </div>
 

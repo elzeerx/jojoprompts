@@ -2,6 +2,9 @@
 import { useState, useEffect } from "react";
 import { getPromptImage, getTextPromptDefaultImage } from "@/utils/image";
 import { Prompt, PromptRow } from "@/types";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('useImageLoading');
 
 export function useImageLoading(prompt: Prompt | PromptRow) {
   const { title, prompt_type, default_image_path, image_path, image_url, metadata } = prompt;
@@ -31,7 +34,7 @@ export function useImageLoading(prompt: Prompt | PromptRow) {
 
         setImageUrl(finalImageUrl);
       } catch (error) {
-        console.error('Image loading error:', error);
+        logger.error('Image loading error', { error: error instanceof Error ? error.message : error, promptType: prompt_type, imagePath: image_path });
         setImageUrl('/placeholder.svg');
       }
     }

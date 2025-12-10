@@ -1,5 +1,7 @@
-
+import { createEdgeLogger } from '../_shared/logger.ts';
 import { RequestValidationResult } from './types.ts';
+
+const logger = createEdgeLogger('get-all-users:auth:request-validator');
 
 // Enhanced request validation with security focus
 export function validateAdminRequest(req: Request): RequestValidationResult {
@@ -50,7 +52,7 @@ export function validateAdminRequest(req: Request): RequestValidationResult {
       if (typeof headerValue === 'string') {
         for (const pattern of suspiciousPatterns) {
           if (pattern.test(headerValue)) {
-            console.warn('Suspicious header content detected', { headerName, pattern: pattern.toString() });
+            logger.warn('Suspicious header content detected', { headerName, pattern: pattern.toString() });
             return { isValid: false, error: 'Suspicious request content detected' };
           }
         }
@@ -65,7 +67,7 @@ export function validateAdminRequest(req: Request): RequestValidationResult {
 
     return { isValid: true };
   } catch (error) {
-    console.error('Request validation error:', error);
+    logger.error('Request validation error', { error });
     return { isValid: false, error: 'Request validation failed' };
   }
 }

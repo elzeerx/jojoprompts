@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Workflow } from "lucide-react";
 import { MediaThumbnail } from "./MediaThumbnail";
 import { WorkflowDownloadSection } from "@/components/ui/workflow-download-section";
+import { ModelFieldsDisplay } from "./ModelFieldsDisplay";
+import { GPTConfigDisplay, transformModelFieldsToGPTConfig } from "@/components/gpts-builder";
 
 interface PromptDetailsContentProps {
   imageUrl: string;
@@ -18,6 +20,9 @@ interface PromptDetailsContentProps {
   tags: string[];
   onMediaClick: (index: number) => void;
   isRTL?: boolean;
+  isLocked?: boolean;
+  modelType?: string;
+  modelFields?: Record<string, any>;
 }
 
 export function PromptDetailsContent({
@@ -33,7 +38,10 @@ export function PromptDetailsContent({
   style,
   tags,
   onMediaClick,
-  isRTL = false
+  isRTL = false,
+  isLocked = false,
+  modelType,
+  modelFields
 }: PromptDetailsContentProps) {
   return (
     <div className={`bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200 space-y-6 ${isRTL ? 'text-right' : 'text-left'}`}>
@@ -73,7 +81,7 @@ export function PromptDetailsContent({
 
       {/* Workflow Steps Section for n8n prompts */}
       {isN8nWorkflow && workflowSteps.length > 0 ? (
-        <div>
+        <div className={isLocked ? 'blur-md select-none pointer-events-none' : ''}>
           <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
             <Workflow className="h-5 w-5 text-blue-600" />
             Workflow Steps ({workflowSteps.length})
@@ -99,7 +107,7 @@ export function PromptDetailsContent({
         </div>
       ) : (
         /* Show prompt text for non-workflow prompts */
-        <div>
+        <div className={isLocked ? 'blur-md select-none pointer-events-none' : ''}>
           <h3 className="text-xl font-bold text-gray-900 mb-4">
             {isRTL ? 'نص الطلب' : 'Prompt Text'}
           </h3>
@@ -109,6 +117,24 @@ export function PromptDetailsContent({
             </p>
           </div>
         </div>
+      )}
+
+      {/* GPT Configuration Display for GPTs Builder prompts */}
+      {modelType === 'chatgpt-gpt-builder' && modelFields && (
+        <GPTConfigDisplay
+          config={transformModelFieldsToGPTConfig(modelFields)}
+          className={isLocked ? 'blur-md select-none pointer-events-none' : ''}
+        />
+      )}
+
+      {/* Model-Specific Fields Section for other model types */}
+      {modelType && modelType !== 'chatgpt-gpt-builder' && modelFields && Object.keys(modelFields).length > 0 && (
+        <ModelFieldsDisplay
+          modelType={modelType}
+          modelFields={modelFields}
+          isRTL={isRTL}
+          isLocked={isLocked}
+        />
       )}
 
       {/* Workflow Files Download Section for n8n prompts */}

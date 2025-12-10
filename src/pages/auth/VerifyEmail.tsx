@@ -5,6 +5,9 @@ import { Mail, RefreshCw, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('VERIFY_EMAIL');
 
 export default function VerifyEmail() {
   const [isResending, setIsResending] = useState(false);
@@ -49,7 +52,7 @@ export default function VerifyEmail() {
         description: "Please check your inbox for the verification link.",
       });
     } catch (error) {
-      console.error('Resend error:', error);
+      logger.error('Resend verification error', { error });
       toast({
         variant: "destructive",
         title: "Error",

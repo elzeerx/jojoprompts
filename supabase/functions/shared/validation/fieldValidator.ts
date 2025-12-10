@@ -1,3 +1,6 @@
+import { createEdgeLogger } from '../../_shared/logger.ts';
+
+const logger = createEdgeLogger('shared:field-validator');
 
 // Field-level validation logic
 import { ValidationRule, FieldValidationResult } from './types.ts';
@@ -85,7 +88,7 @@ export class FieldValidator {
       }
 
     } catch (error) {
-      console.error(`Field validation error for ${fieldName}:`, error);
+      logger.error('Field validation error', { fieldName, error });
       errors.push(`Validation failed for field '${fieldName}'`);
     }
 

@@ -4,6 +4,9 @@ import { ImgHTMLAttributes, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { IMAGE_BUCKET } from "@/utils/buckets";
 import { AlertCircle } from "lucide-react";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('ImageWrapper');
 
 export function ImageWrapper({
   src,
@@ -44,7 +47,7 @@ export function ImageWrapper({
 
   useEffect(() => {
     if (imageSrc && typeof imageSrc === 'string' && imageSrc.includes('/api/get-image/') && retries === 0) {
-      console.log(`Loading image via edge function: ${imageSrc}`);
+      logger.debug('Loading image via edge function', { imageSrc });
     }
   }, [imageSrc, retries]);
 
@@ -60,7 +63,7 @@ export function ImageWrapper({
           
           const path = decodeURIComponent(encodedPath);
           
-          console.log(`Trying direct authenticated fetch for: ${path}`);
+          logger.debug('Trying direct authenticated fetch', { path });
           
           const { data, error: supabaseError } = await supabase
             .storage
@@ -68,7 +71,7 @@ export function ImageWrapper({
             .createSignedUrl(path, 300);
             
           if (supabaseError || !data?.signedUrl) {
-            console.error('Error getting signed URL:', supabaseError);
+            logger.error('Error getting signed URL', { error: supabaseError?.message, path });
             return;
           }
           
@@ -77,7 +80,7 @@ export function ImageWrapper({
           setLoading(true);
           setRetries(2);
         } catch (err) {
-          console.error('Error in direct fetch fallback:', err);
+          logger.error('Error in direct fetch fallback', { error: err instanceof Error ? err.message : err });
           setRetries(MAX_RETRIES);
         }
       }
@@ -105,7 +108,7 @@ export function ImageWrapper({
   const containerProps = disableAspectRatio ? {} : { ratio: aspect };
 
   const handleError = () => {
-    console.error(`Image failed to load: ${imageSrc}`);
+    logger.warn('Image failed to load', { imageSrc, retries });
     setError(true);
     setLoading(false);
     onError?.();
@@ -115,7 +118,7 @@ export function ImageWrapper({
   };
 
   const handleLoad = () => {
-    console.log(`Image loaded successfully: ${imageSrc}`);
+    logger.debug('Image loaded successfully', { imageSrc });
     setLoading(false);
     setError(false);
     onLoad?.();

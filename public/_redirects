@@ -1,0 +1,6 @@
+# Upayments callback routes - must be first to take precedence
+/payment/upayments-callback    /index.html    200
+/payment/callback              /index.html    200
+
+# SPA fallback - all routes fall back to index.html for client-side routing
+/*    /index.html    200

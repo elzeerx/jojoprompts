@@ -14,11 +14,34 @@ export interface PromptMetadata {
   [key: string]: any;
 }
 
-// Extended prompt type with uploader info for display
+/**
+ * Extended prompt type with uploader info for display
+ * This is the canonical PromptRow type - use this instead of the one in types/index.ts
+ */
 export interface PromptRow extends BasePrompt {
+  // Uploader information from profiles table join
   uploader_name?: string;
   uploader_username?: string;
-  // Add any display-specific fields
+  uploader_avatar_url?: string;
+  
+  // Extended metadata fields (flattened for convenience)
+  category?: string;
+  tags?: string[];
+  style?: string;
+  model_type?: string;
+  use_case?: string;
+  target_model?: string;
+  required_plan?: string;
+  
+  // Workflow-specific fields
+  workflow_steps?: { step_number: number; title: string; description: string; }[];
+  
+  // Media fields
+  media_files?: { type: string; path: string; }[];
+  workflow_files?: { type: string; path: string; name: string; }[];
+  
+  // UI state fields
+  buttons?: { label: string; action: string; }[];
 }
 
 // Filter and search types
@@ -26,6 +49,7 @@ export interface PromptFilters {
   category: string;
   searchQuery: string;
   promptType: PromptTypeFilter;
+  modelType: string;
   tags: string[];
   sortBy: SortOption;
   sortOrder: 'asc' | 'desc';

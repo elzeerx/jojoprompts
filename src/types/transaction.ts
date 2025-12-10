@@ -11,4 +11,6 @@ export interface TransactionRecord {
     name: string;
   };
   user_email?: string;
+  payment_gateway?: 'paypal' | 'upayments' | string;
+  currency?: 'USD' | 'KWD' | string;
 }

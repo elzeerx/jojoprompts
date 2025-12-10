@@ -2,6 +2,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('SUBSCRIPTION_PLANS');
 
 interface SubscriptionPlan {
   id: string;
@@ -24,7 +28,8 @@ export function useSubscriptionPlans() {
         if (error) throw error;
         setPlans(data || []);
       } catch (error) {
-        console.error('Error fetching subscription plans:', error);
+        const appError = handleError(error, { component: 'useSubscriptionPlans', action: 'fetchPlans' });
+        logger.error('Error fetching subscription plans', { error: appError });
         toast({
           title: "Error",
           description: "Failed to load subscription plans",

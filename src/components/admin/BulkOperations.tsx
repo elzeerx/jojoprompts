@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('BULK_OPERATIONS');
 import {
   Dialog,
   DialogContent,
@@ -120,7 +124,8 @@ export function BulkOperations({
       
       resetForm();
     } catch (error) {
-      console.error('Bulk update error:', error);
+      const appError = handleError(error, { component: 'BulkOperations', action: 'bulkUpdate' });
+      logger.error('Bulk update error', appError);
       toast({
         title: "Bulk update failed",
         description: "Some users may not have been updated. Please check the logs.",
@@ -152,7 +157,8 @@ export function BulkOperations({
       
       resetForm();
     } catch (error) {
-      console.error('Bulk delete error:', error);
+      const appError = handleError(error, { component: 'BulkOperations', action: 'bulkDelete' });
+      logger.error('Bulk delete error', appError);
       toast({
         title: "Bulk deletion failed",
         description: "Some users may not have been deleted. Please check the logs.",
@@ -191,7 +197,8 @@ export function BulkOperations({
       
       resetForm();
     } catch (error) {
-      console.error('Export error:', error);
+      const appError = handleError(error, { component: 'BulkOperations', action: 'export' });
+      logger.error('Export error', appError);
       toast({
         title: "Export failed",
         description: "Failed to generate export. Please try again.",

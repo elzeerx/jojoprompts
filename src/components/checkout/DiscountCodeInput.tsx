@@ -5,6 +5,10 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Percent, X } from "lucide-react";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('DISCOUNT_CODE');
 
 interface DiscountCodeInputProps {
   onDiscountApplied: (discount: {
@@ -67,7 +71,7 @@ export function DiscountCodeInput({
       });
 
       if (error) {
-        console.error('Discount validation error:', error);
+        logger.error('Discount validation error', error);
         throw error;
       }
 
@@ -111,7 +115,8 @@ export function DiscountCodeInput({
 
       setCode("");
     } catch (error: any) {
-      console.error("Error validating discount code:", error);
+      const appError = handleError(error, { component: 'DiscountCodeInput', action: 'validateCode' });
+      logger.error('Error validating discount code', appError);
       toast({
         title: "Error",
         description: "Failed to validate discount code. Please try again.",

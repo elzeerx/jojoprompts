@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('POST_PURCHASE_EMAIL');
 
 export function usePostPurchaseEmail() {
   const [sending, setSending] = useState(false);
@@ -33,9 +36,9 @@ export function usePostPurchaseEmail() {
         }
       });
 
-      console.log('Post-purchase emails sent successfully');
+      logger.info('Post-purchase emails sent successfully', { email: userEmail, planName });
     } catch (error) {
-      console.warn('Post-purchase emails failed (non-critical):', error);
+      logger.warn('Post-purchase emails failed (non-critical)', { error, email: userEmail });
       // Don't show error to user - this is non-critical
     } finally {
       setSending(false);
@@ -56,7 +59,7 @@ export function usePostPurchaseEmail() {
         description: "Check your email to verify your account for enhanced security.",
       });
     } catch (error) {
-      console.warn('Email confirmation reminder failed:', error);
+      logger.warn('Email confirmation reminder failed', { error, email: userEmail });
       toast({
         variant: "destructive",
         title: "Failed to send confirmation",

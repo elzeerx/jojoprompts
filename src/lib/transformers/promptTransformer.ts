@@ -9,7 +9,7 @@ export function transformPromptToFormData(prompt: any): PromptFormData {
     title_ar: prompt.title_ar || '',
     prompt_text: prompt.prompt_text || '',
     prompt_text_ar: prompt.prompt_text_ar || '',
-    category_id: (prompt.metadata as any)?.category_id || '',
+    category_id: (prompt.metadata as any)?.category || '',
     thumbnail: null, // File will be handled separately
     thumbnail_url: prompt.image_path || '',
     platform_id: prompt.platform_id,

@@ -2,6 +2,10 @@ import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserSubscription } from "./useUserSubscription";
+import { isPrivilegedUser, isRegularUser } from "@/utils/auth";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('SUBSCRIPTION_REDIRECT');
 
 export function useSubscriptionRedirect() {
   const navigate = useNavigate();
@@ -14,7 +18,7 @@ export function useSubscriptionRedirect() {
     if (authLoading || subscriptionLoading || !user) return;
     
     // Don't redirect admins, prompters, or jadmins
-    if (userRole === 'admin' || userRole === 'prompter' || userRole === 'jadmin') return;
+    if (isPrivilegedUser(userRole)) return;
     
     // Don't redirect if user already has an active subscription
     if (userSubscription) return;
@@ -24,7 +28,7 @@ export function useSubscriptionRedirect() {
     const excludedPaths = [
       '/pricing', '/checkout', '/auth', '/signup', '/login',
       '/prompts', '/examples', '/about', '/contact', '/faq', 
-      '/privacy', '/terms', '/search', '/prompt-generator'
+      '/privacy', '/terms', '/search'
     ];
     if (excludedPaths.some(path => currentPath.startsWith(path))) return;
     
@@ -32,8 +36,8 @@ export function useSubscriptionRedirect() {
     const premiumPaths = ['/dashboard', '/favorites', '/payment-dashboard'];
     const isPremiumRoute = premiumPaths.some(path => currentPath.startsWith(path));
     
-    if (userRole === 'user' && isPremiumRoute) {
-      console.log('Redirecting user without subscription from premium route to pricing page');
+    if (isRegularUser(userRole) && isPremiumRoute) {
+      logger.info('Redirecting user without subscription', { path: currentPath, userRole });
       navigate('/pricing', { replace: true });
     }
   }, [authLoading, subscriptionLoading, user, userRole, userSubscription, location.pathname, navigate]);

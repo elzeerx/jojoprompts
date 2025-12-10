@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key, User as UserIcon } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key, User as UserIcon, Receipt, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -40,7 +39,7 @@ interface UserTableRowProps {
       is_lifetime: boolean;
       price_usd: number;
     } | null;
-    is_email_confirmed?: boolean;
+    is_email_confirmed?: boolean | null;
   };
   isUpdating: boolean;
   onUpdateUser: (userId: string, data: Partial<ExtendedUserProfile>) => void;
@@ -48,6 +47,8 @@ interface UserTableRowProps {
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string, firstName: string, lastName: string, role: string) => void;
   onResendConfirmation: (userId: string, email: string) => void;
+  onResendPaymentEmail: (userId: string, email: string) => void;
+  onConfirmEmail: (userId: string, userName?: string) => Promise<boolean>;
   onRefresh: () => void;
   onViewProfile?: () => void;
 }
@@ -60,6 +61,8 @@ export function UserTableRow({
   onSendResetEmail,
   onDeleteUser,
   onResendConfirmation,
+  onResendPaymentEmail,
+  onConfirmEmail,
   onRefresh,
   onViewProfile
 }: UserTableRowProps) {
@@ -148,13 +151,17 @@ export function UserTableRow({
             {user.role || 'user'}
           </span>
           <div>
-            {user.is_email_confirmed === false ? (
+            {user.is_email_confirmed === true ? (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Confirmed
+              </span>
+            ) : user.is_email_confirmed === false ? (
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                 Unconfirmed
               </span>
             ) : (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Confirmed
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                Unknown
               </span>
             )}
           </div>
@@ -236,6 +243,25 @@ export function UserTableRow({
             {user.is_email_confirmed === false && (
               <DropdownMenuItem onClick={() => onResendConfirmation(user.id, user.email!)}>
                 <Send className="mr-2 h-4 w-4" /> Resend Confirmation
+              </DropdownMenuItem>
+            )}
+            {user.is_email_confirmed === false && canFullCRUD && (
+              <DropdownMenuItem 
+                onClick={async () => {
+                  const success = await onConfirmEmail(user.id, `${user.first_name} ${user.last_name}`);
+                  if (success) {
+                    onRefresh();
+                  }
+                }}
+              >
+                <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                <span className="text-green-600">Confirm Email (Admin)</span>
+              </DropdownMenuItem>
+            )}
+            {user.subscription && (
+              <DropdownMenuItem onClick={() => onResendPaymentEmail(user.id, user.email!)}>
+                <Receipt className="mr-2 h-4 w-4 text-blue-600" />
+                <span className="text-blue-600">Resend Payment Email</span>
               </DropdownMenuItem>
             )}
             

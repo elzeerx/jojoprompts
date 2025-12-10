@@ -8,6 +8,9 @@ import { SliderField } from './SliderField';
 import { ToggleField } from './ToggleField';
 import { CodeField } from './CodeField';
 import { FieldComponentProps } from './types';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('DYNAMIC_FIELD_RENDERER');
 
 export interface DynamicFieldRendererProps {
   field: PlatformField;
@@ -115,7 +118,7 @@ export const DynamicFieldRenderer = memo(function DynamicFieldRenderer({
     
     default:
       // Fallback to TextField for unknown types
-      console.warn(`Unknown field type: ${field.field_type}, falling back to TextField`);
+      logger.warn('Unknown field type, falling back to TextField', { fieldType: field.field_type, fieldKey: field.field_key });
       return <TextField {...commonProps} />;
   }
 });

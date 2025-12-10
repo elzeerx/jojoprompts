@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { createEdgeLogger } from '../_shared/logger.ts';
 
+const logger = createEdgeLogger('send-email-confirmation-reminder');
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -51,12 +53,12 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Email confirmation reminder sent:", emailResponse);
+    logger.info('Email confirmation reminder sent', { email, emailResponse });
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
-    console.error("Error sending email confirmation reminder:", error);
+    logger.error('Error sending email confirmation reminder', { error: error.message, email: req.url });
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

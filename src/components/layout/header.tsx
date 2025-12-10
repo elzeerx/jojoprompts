@@ -1,15 +1,38 @@
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import headerLogo from "@/assets/logo-header.png";
+import headerLogoDark from "@/assets/logo-header-dark.png";
 import { useAuth } from "@/contexts/AuthContext";
-import { Menu, X, User, LogOut, Settings, Heart, Edit, Wand2 } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { Menu, X, User, LogOut, Settings, Heart, Edit } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { createLogger } from '@/utils/logging';
+import { cn } from "@/lib/utils";
+
+const logger = createLogger('HEADER');
 
 export function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { t, isRTL } = useTranslation();
+  
+  // Check if we're on the landing page
+  const isLandingPage = location.pathname === "/";
+  
+  // Scroll detection for transparent-to-glass effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   
   // Safe auth hook with fallback
   let user = null;
@@ -26,16 +49,16 @@ export function Header() {
     isPrompter = authContext.isPrompter;
     canManagePrompts = authContext.canManagePrompts;
   } catch (error) {
-    console.warn('Auth context unavailable in Header:', error);
+    logger.warn('Auth context unavailable in Header', error);
   }
 
   const handleLogout = async () => {
     try {
-      console.log("[HEADER] Starting logout process");
+      logger.info('Starting logout process');
       await signOut();
-      console.log("[HEADER] Logout completed");
+      logger.info('Logout completed');
     } catch (error) {
-      console.error("[HEADER] Logout error:", error);
+      logger.error('Logout error', error);
     }
   };
 
@@ -46,19 +69,54 @@ export function Header() {
   // Handler for conditional logo navigation
   const handleLogoClick = () => {
     if (user) {
-      // If logged in, send to /prompts
       navigate("/prompts");
     } else {
-      // Not logged in, send to the main page
       navigate("/");
     }
   };
 
+  // Dynamic header background based on route and scroll
+  const headerBgClass = isLandingPage
+    ? isScrolled 
+      ? "bg-dark-base/85 backdrop-blur-md border-b border-white/10 shadow-lg" 
+      : "bg-transparent border-b border-transparent"
+    : "bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm";
+
+  // Dynamic text color based on route
+  const textColorClass = isLandingPage
+    ? "text-white/90 hover:text-warm-gold"
+    : "text-dark-base hover:text-warm-gold";
+
+  // Dynamic mobile menu button color
+  const mobileMenuBtnClass = isLandingPage
+    ? "text-white/90 hover:bg-white/10"
+    : "text-dark-base hover:bg-dark-base/10";
+
+  // Dynamic mobile menu background
+  const mobileMenuBgClass = isLandingPage
+    ? "bg-dark-base/95 backdrop-blur-md border-t border-white/10"
+    : "bg-white/95 backdrop-blur-md border-t border-gray-200";
+
+  // Dynamic mobile menu item colors
+  const mobileMenuItemClass = isLandingPage
+    ? "text-white/90 hover:text-warm-gold hover:bg-white/5"
+    : "text-dark-base hover:text-warm-gold hover:bg-dark-base/5";
+
+  // Dynamic mobile menu border color
+  const mobileMenuBorderClass = isLandingPage
+    ? "border-white/10"
+    : "border-gray-200";
+
   return (
-    <header className="bg-white/95 backdrop-blur-sm border-b border-warm-gold/20 sticky top-0 z-50">
-      <div className="container mx-auto">
-        <div className="flex items-center justify-between h-14 sm:h-16">
-          {/* Logo - Mobile optimized */}
+    <header 
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        headerBgClass
+      )}
+    >
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16 lg:h-18">
+          {/* Logo */}
           <button
             onClick={handleLogoClick}
             className="flex items-center space-x-2 touch-manipulation focus:outline-none"
@@ -69,49 +127,59 @@ export function Header() {
           >
             <img
               alt="JojoPrompts"
-              className="h-6 w-auto sm:h-8 transition-all duration-200"
-              src="/lovable-uploads/2207fac5-9e06-4da3-a1b4-da690a123a56.png"
+              className="h-8 w-auto sm:h-10 transition-all duration-200"
+              src={isLandingPage ? headerLogo : headerLogoDark}
             />
           </button>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
+          {/* Desktop Navigation - Centered */}
+          <nav className={cn(
+            "hidden md:flex items-center gap-8",
+            isRTL && "flex-row-reverse"
+          )}>
             <Link
               to="/examples"
-              className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+              className={cn(textColorClass, "transition-colors font-medium text-sm lg:text-base py-2 px-1")}
             >
-              Examples
+              {t('nav.examples')}
             </Link>
             <Link
               to="/prompts"
-              className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+              className={cn(textColorClass, "transition-colors font-medium text-sm lg:text-base py-2 px-1")}
             >
-              Prompts
+              {t('nav.prompts')}
             </Link>
             {!user && (
               <Link
                 to="/pricing"
-                className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+                className={cn(textColorClass, "transition-colors font-medium text-sm lg:text-base py-2 px-1")}
               >
-                Pricing
+                {t('nav.pricing')}
               </Link>
             )}
             <Link
               to="/about"
-              className="text-dark-base hover:text-warm-gold transition-colors font-medium text-sm lg:text-base py-2 px-1"
+              className={cn(textColorClass, "transition-colors font-medium text-sm lg:text-base py-2 px-1")}
             >
-              About
+              {t('nav.about')}
             </Link>
           </nav>
 
-          {/* Desktop Auth */}
-          <div className="hidden md:flex items-center space-x-3">
+          {/* Desktop Auth - Right Side */}
+          <div className={cn(
+            "hidden md:flex items-center gap-3",
+            isRTL && "flex-row-reverse"
+          )}>
+            <LanguageSwitcher variant="desktop" isScrolled={isScrolled} isLandingPage={isLandingPage} />
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="relative h-9 w-9 lg:h-10 lg:w-10 rounded-full hover:bg-warm-gold/10 transition-colors touch-manipulation"
+                    className={cn(
+                      "relative h-9 w-9 lg:h-10 lg:w-10 rounded-full transition-colors touch-manipulation",
+                      isLandingPage ? "hover:bg-white/10" : "hover:bg-dark-base/10"
+                    )}
                   >
                     <Avatar className="h-7 w-7 lg:h-8 lg:w-8">
                       <AvatarFallback className="bg-warm-gold text-white font-medium text-sm">
@@ -121,85 +189,99 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="w-60 lg:w-64 bg-white border border-warm-gold/20 shadow-lg rounded-lg p-2"
+                  className="w-60 lg:w-64 bg-dark-base/95 backdrop-blur-md border border-white/10 shadow-lg rounded-lg p-2"
                   align="end"
                   forceMount
                 >
                   <DropdownMenuItem
                     onClick={() => navigate("/dashboard")}
-                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                    className={cn(
+                      "hover:bg-white/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                      isRTL && "flex-row-reverse"
+                    )}
                   >
-                    <User className="mr-3 h-4 w-4 text-warm-gold" />
-                    <span className="text-dark-base font-medium">Dashboard</span>
+                    <User className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                    <span className="text-white/90 font-medium">{t('nav.dashboard')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => navigate("/favorites")}
-                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                    className={cn(
+                      "hover:bg-white/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                      isRTL && "flex-row-reverse"
+                    )}
                   >
-                    <Heart className="mr-3 h-4 w-4 text-warm-gold" />
-                    <span className="text-dark-base font-medium">Favorites</span>
+                    <Heart className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                    <span className="text-white/90 font-medium">{t('nav.favorites')}</span>
                   </DropdownMenuItem>
                   {isPrompter && (
                     <DropdownMenuItem
                       onClick={() => navigate("/dashboard/prompter")}
-                      className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                      className={cn(
+                        "hover:bg-white/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                        isRTL && "flex-row-reverse"
+                      )}
                     >
-                      <Edit className="mr-3 h-4 w-4 text-warm-gold" />
-                      <span className="text-dark-base font-medium">My Prompts</span>
+                      <Edit className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                      <span className="text-white/90 font-medium">{t('nav.myPrompts')}</span>
                     </DropdownMenuItem>
-                   )}
-                   {canManagePrompts && (
-                     <DropdownMenuItem
-                       onClick={() => navigate("/prompt-generator")}
-                       className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
-                     >
-                       <Wand2 className="mr-3 h-4 w-4 text-warm-gold" />
-                       <span className="text-dark-base font-medium">Prompt Generator</span>
-                     </DropdownMenuItem>
                    )}
                    {isAdmin && (
                      <DropdownMenuItem
                        onClick={() => navigate("/admin")}
-                       className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                       className={cn(
+                         "hover:bg-white/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                         isRTL && "flex-row-reverse"
+                       )}
                      >
-                       <Settings className="mr-3 h-4 w-4 text-warm-gold" />
-                       <span className="text-dark-base font-medium">Admin</span>
+                       <Settings className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                       <span className="text-white/90 font-medium">{t('nav.admin')}</span>
                      </DropdownMenuItem>
                    )}
-                  <DropdownMenuSeparator className="my-2 bg-warm-gold/20" />
+                  <DropdownMenuSeparator className="my-2 bg-white/10" />
                   <DropdownMenuItem
                     onClick={handleLogout}
-                    className="hover:bg-warm-gold/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation"
+                    className={cn(
+                      "hover:bg-white/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
+                      isRTL && "flex-row-reverse"
+                    )}
                   >
-                    <LogOut className="mr-3 h-4 w-4 text-warm-gold" />
-                    <span className="text-dark-base font-medium">Log out</span>
+                    <LogOut className={cn("h-4 w-4 text-warm-gold", isRTL ? "ml-3" : "mr-3")} />
+                    <span className="text-white/90 font-medium">{t('nav.logout')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
                 <Button
                   variant="ghost"
                   onClick={() => navigate("/login")}
-                  className="text-dark-base hover:text-warm-gold text-sm lg:text-base py-2 px-3 touch-manipulation"
+                  className={cn(
+                    "text-sm lg:text-base py-2 px-3 touch-manipulation",
+                    isLandingPage 
+                      ? "text-white/90 hover:text-warm-gold hover:bg-white/10"
+                      : "text-dark-base hover:text-warm-gold hover:bg-dark-base/10"
+                  )}
                 >
-                  Login
+                  {t('nav.login')}
                 </Button>
                 <Button
                   onClick={() => navigate("/pricing")}
-                  className="bg-warm-gold hover:bg-warm-gold/90 text-white text-sm lg:text-base py-2 px-3 lg:px-4 touch-manipulation"
+                  className="bg-warm-gold hover:bg-warm-gold/90 text-white text-sm lg:text-base py-2 px-4 lg:px-5 touch-manipulation"
                 >
-                  Get Started
+                  {t('nav.signup')}
                 </Button>
               </div>
             )}
           </div>
 
-          {/* Mobile menu button - Enhanced touch target */}
+          {/* Mobile menu button */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden touch-manipulation min-h-[44px] min-w-[44px] p-2"
+            className={cn(
+              "md:hidden touch-manipulation min-h-[44px] min-w-[44px] p-2",
+              mobileMenuBtnClass
+            )}
             onClick={toggleMobileMenu}
           >
             {isMobileMenuOpen ?
@@ -209,83 +291,77 @@ export function Header() {
           </Button>
         </div>
 
-        {/* Mobile Navigation - Enhanced animations and touch targets */}
+        {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden animate-slide-down bg-white/95 backdrop-blur-sm border-t border-warm-gold/20">
+          <div className={cn("md:hidden animate-fade-in rounded-b-lg", mobileMenuBgClass)}>
             <nav className="py-3 space-y-1">
+              <div className={cn("px-3 pb-3 border-b", mobileMenuBorderClass)}>
+                <LanguageSwitcher variant="mobile" isLandingPage={isLandingPage} />
+              </div>
               <Link
                 to="/examples"
-                className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Examples
+                {t('nav.examples')}
               </Link>
               <Link
                 to="/prompts"
-                className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Prompts
+                {t('nav.prompts')}
               </Link>
               {!user && (
                 <Link
                   to="/pricing"
-                  className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                  className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Pricing
+                  {t('nav.pricing')}
                 </Link>
               )}
               <Link
                 to="/about"
-                className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                About
+                {t('nav.about')}
               </Link>
 
               {user ? (
                 <>
-                  <div className="border-t border-warm-gold/10 mt-2 pt-2">
+                  <div className={cn("border-t mt-2 pt-2", mobileMenuBorderClass)}>
                     <Link
                       to="/dashboard"
-                      className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                      className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      Dashboard
+                      {t('nav.dashboard')}
                     </Link>
                     <Link
                       to="/favorites"
-                      className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                      className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      Favorites
+                      {t('nav.favorites')}
                     </Link>
-                    {isPrompter && (
-                      <Link
-                        to="/dashboard/prompter"
-                        className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        My Prompts
-                      </Link>
-                     )}
-                     {canManagePrompts && (
+                     {isPrompter && (
                        <Link
-                         to="/prompt-generator"
-                         className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                         to="/dashboard/prompter"
+                         className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                          onClick={() => setIsMobileMenuOpen(false)}
                        >
-                         Prompt Generator
+                         {t('nav.myPrompts')}
                        </Link>
-                     )}
-                     {isAdmin && (
+                      )}
+                      {isAdmin && (
                        <Link
                          to="/admin"
-                         className="block px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                         className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                          onClick={() => setIsMobileMenuOpen(false)}
                        >
-                         Admin
+                         {t('nav.admin')}
                        </Link>
                      )}
                     <button
@@ -293,23 +369,33 @@ export function Header() {
                         handleLogout();
                         setIsMobileMenuOpen(false);
                       }}
-                      className="block w-full text-left px-4 py-3 text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 transition-all font-medium touch-manipulation rounded-lg mx-2"
+                      className={cn(
+                        "block w-full px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2",
+                        mobileMenuItemClass,
+                        isRTL ? "text-right" : "text-left"
+                      )}
                     >
-                      Log out
+                      {t('nav.logout')}
                     </button>
                   </div>
                 </>
               ) : (
-                <div className="border-t border-warm-gold/10 mt-2 pt-2 px-2 space-y-2">
+                <div className={cn("border-t mt-2 pt-3 px-3 space-y-2", mobileMenuBorderClass)}>
                   <Button
                     variant="ghost"
                     onClick={() => {
                       navigate("/login");
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full justify-start text-dark-base hover:text-warm-gold hover:bg-warm-gold/5 touch-manipulation h-12"
+                    className={cn(
+                      "w-full touch-manipulation h-12",
+                      isLandingPage 
+                        ? "text-white/90 hover:text-warm-gold hover:bg-white/10"
+                        : "text-dark-base hover:text-warm-gold hover:bg-dark-base/10",
+                      isRTL ? "justify-end" : "justify-start"
+                    )}
                   >
-                    Login
+                    {t('nav.login')}
                   </Button>
                   <Button
                     onClick={() => {
@@ -318,7 +404,7 @@ export function Header() {
                     }}
                     className="w-full bg-warm-gold hover:bg-warm-gold/90 text-white touch-manipulation h-12"
                   >
-                    Get Started
+                    {t('nav.signup')}
                   </Button>
                 </div>
               )}

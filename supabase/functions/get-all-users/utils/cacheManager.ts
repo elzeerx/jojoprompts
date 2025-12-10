@@ -1,3 +1,7 @@
+import { createEdgeLogger } from '../../_shared/logger.ts';
+
+const logger = createEdgeLogger('get-all-users:cache-manager');
+
 // Advanced cache management for user data
 export interface CacheEntry {
   data: any;
@@ -57,7 +61,7 @@ class UserCacheManager {
   invalidate(pattern?: string): void {
     if (!pattern) {
       this.cache.clear();
-      console.log('[Cache] Full cache invalidation');
+      logger.info('Full cache invalidation');
       return;
     }
 
@@ -66,7 +70,7 @@ class UserCacheManager {
         this.cache.delete(key);
       }
     }
-    console.log(`[Cache] Pattern invalidation: ${pattern}`);
+    logger.info('Pattern cache invalidation', { pattern });
   }
 
   getStats(): { size: number; entries: string[]; hitRate?: number } {

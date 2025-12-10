@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createEdgeLogger } from '../_shared/logger.ts';
 
-console.log("resend-confirmation-email function initialized");
+const logger = createEdgeLogger('resend-confirmation-email');
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +25,7 @@ serve(async (req: Request) => {
   try {
     const { email, firstName }: ResendConfirmationRequest = await req.json();
 
-    console.log(`Resending confirmation email for: ${email}`);
+    logger.info('Resending confirmation email', { email });
 
     // Create admin client to resend confirmation
     const supabaseAdmin = createClient(
@@ -36,7 +37,7 @@ serve(async (req: Request) => {
     const { data: authUserData, error: userLookupError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (userLookupError) {
-      console.error("Error looking up users:", userLookupError);
+      logger.error('Error looking up users', { error: userLookupError.message });
       throw new Error("Failed to lookup user");
     }
 
@@ -70,17 +71,17 @@ serve(async (req: Request) => {
     });
 
     if (linkError || !linkData?.properties?.action_link) {
-      console.error("Error generating confirmation link:", linkError);
+      logger.error('Error generating confirmation link', { error: linkError?.message, email });
       throw new Error(`Failed to generate confirmation link: ${linkError?.message || 'No action link returned'}`);
     }
 
     const confirmationLink = linkData.properties.action_link;
-    console.log(`Generated confirmation link for ${email}`);
+    logger.info('Generated confirmation link', { email });
 
     const userName = firstName || email.split('@')[0];
 
     // Send email via our send-email function with Resend
-    console.log(`Calling send-email function for ${email} (domain: ${email.split('@')[1]})`);
+    logger.info('Calling send-email function', { email, domain: email.split('@')[1] });
     
     const emailPayload = {
       to: email,
@@ -95,11 +96,10 @@ serve(async (req: Request) => {
       }
     };
 
-    console.log('Email payload:', { 
+    logger.debug('Email payload prepared', { 
       to: emailPayload.to, 
       template: emailPayload.template, 
-      email_type: emailPayload.email_type,
-      userName: userName 
+      email_type: emailPayload.email_type 
     });
 
     const { data: emailData, error: emailError } = await supabaseAdmin.functions.invoke('send-email', {
@@ -107,15 +107,15 @@ serve(async (req: Request) => {
     });
 
     if (emailError) {
-      console.error("Error sending confirmation email via Resend:", emailError);
-      console.error("Full error details:", emailError);
+      logger.error('Error sending confirmation email', { 
+        error: emailError.message, 
+        email,
+        details: emailError 
+      });
       throw new Error(`Failed to send confirmation email: ${emailError.message || 'Unknown error from send-email function'}`);
     }
 
-    console.log("Email function response:", emailData);
-    console.log(`Successfully sent confirmation email via Resend to ${email}`);
-
-    console.log(`Successfully resent confirmation email to ${email}`);
+    logger.info('Confirmation email sent successfully', { email, emailData });
 
     return new Response(
       JSON.stringify({ 
@@ -129,7 +129,7 @@ serve(async (req: Request) => {
     );
 
   } catch (error: any) {
-    console.error("Error in resend-confirmation-email function:", error);
+    logger.error('Error in resend-confirmation-email', { error: error.message });
     
     return new Response(
       JSON.stringify({ 

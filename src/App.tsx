@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
 import { RootLayout } from "./components/layout/root-layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthPremiumGuard, RoleGuard, AdminGuard } from "./components/auth/Guard";
@@ -62,26 +63,28 @@ function App() {
         <TooltipProvider>
           <BrowserRouter>
             <ErrorBoundary>
-              <AuthProvider>
-                <SecurityMonitoringWrapper>
-                  <Suspense fallback={<SuspenseLoader />}>
-                    <Routes>
-                      <Route path="/" element={<RootLayout />}>
-                        {routes.map((route) => (
-                          <Route
-                            key={route.path}
-                            path={route.path}
-                            element={createGuardedRoute(route)}
-                            index={route.index}
-                          />
-                        ))}
-                      </Route>
-                    </Routes>
-                  </Suspense>
-                  <Toaster />
-                  <Sonner />
-                </SecurityMonitoringWrapper>
-              </AuthProvider>
+              <LanguageProvider>
+                <AuthProvider>
+                  <SecurityMonitoringWrapper>
+                    <Suspense fallback={<SuspenseLoader />}>
+                      <Routes>
+                        <Route path="/" element={<RootLayout />}>
+                          {routes.map((route) => (
+                            <Route
+                              key={route.path}
+                              path={route.path}
+                              element={createGuardedRoute(route)}
+                              index={route.index}
+                            />
+                          ))}
+                        </Route>
+                      </Routes>
+                    </Suspense>
+                    <Toaster />
+                    <Sonner />
+                  </SecurityMonitoringWrapper>
+                </AuthProvider>
+              </LanguageProvider>
             </ErrorBoundary>
           </BrowserRouter>
         </TooltipProvider>

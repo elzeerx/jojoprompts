@@ -6,6 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { callEdgeFunction } from "@/utils/edgeFunctions";
+import { createLogger } from '@/utils/logging';
+import { handleError, ErrorTypes } from '@/utils/errorHandler';
+
+const logger = createLogger('AUTO_GENERATE');
 
 interface AutoGenerateButtonProps {
   promptText: string;
@@ -50,35 +54,30 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
     setIsGenerating(true);
     
     try {
-      console.log("AutoGenerateButton - Starting metadata generation");
-      console.log("AutoGenerateButton - User session check:", {
-        promptLength: promptText.length
-      });
+      logger.info('Starting metadata generation', { promptLength: promptText.length });
 
       // Verify we have a valid session before making the call
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.error("AutoGenerateButton - Session error:", sessionError);
-        throw new Error(`Session error: ${sessionError.message}`);
+        throw ErrorTypes.AUTH_INVALID({ component: 'AutoGenerateButton' });
       }
       
       if (!session) {
-        console.error("AutoGenerateButton - No active session found");
-        throw new Error("No active session found. Please log in again.");
+        throw ErrorTypes.AUTH_REQUIRED({ component: 'AutoGenerateButton' });
       }
 
-      console.log("AutoGenerateButton - Session verified, calling edge function");
-      console.log("AutoGenerateButton - Session details:", {
+      logger.debug('Session verified, calling edge function', {
         userId: session.user?.id?.substring(0, 8) + '***',
-        tokenType: session.token_type,
         hasAccessToken: !!session.access_token
       });
       
       const data = await callEdgeFunction('generate-metadata', { prompt_text: promptText });
 
-
-      console.log("AutoGenerateButton - Generated metadata from edge function:", data);
+      logger.debug('Generated metadata from edge function', { 
+        hasStyle: !!data.style, 
+        tagsCount: data.tags?.length || 0 
+      });
 
       // Updated to only handle style and tags (no category)
       const metadata = {
@@ -86,7 +85,7 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
         tags: data.tags || []
       };
 
-      console.log("AutoGenerateButton - Processed metadata (without category):", metadata);
+      logger.info('Processed metadata', { style: metadata.style, tagsCount: metadata.tags.length });
 
       // Call the callback with the generated metadata
       onMetadataGenerated(metadata);
@@ -97,7 +96,8 @@ export function AutoGenerateButton({ promptText, onMetadataGenerated, disabled }
       });
 
     } catch (error) {
-      console.error("AutoGenerateButton - Error generating metadata:", error);
+      const appError = handleError(error, { component: 'AutoGenerateButton', action: 'generateMetadata' });
+      logger.error('Error generating metadata', { error: appError });
       
       // Provide more specific error messages
       let errorMessage = "Could not auto-generate metadata. You can still fill it manually.";

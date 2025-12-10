@@ -4,6 +4,10 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CheckoutContextManager } from "@/utils/checkoutContext";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('GOOGLE_AUTH');
 
 export function useGoogleAuth() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -26,11 +30,21 @@ export function useGoogleAuth() {
       }
 
       // Build redirect URL for Google OAuth
-      const redirectUrl = CheckoutContextManager.buildRedirectUrl(
-        window.location.origin,
-        selectedPlan || undefined,
-        true
-      );
+      // If user has a plan selected, go to checkout; otherwise go to pricing
+      let redirectUrl: string;
+      if (selectedPlan) {
+        redirectUrl = CheckoutContextManager.buildRedirectUrl(
+          window.location.origin,
+          selectedPlan,
+          true
+        );
+      } else {
+        // No plan selected, redirect to pricing after signup
+        redirectUrl = CheckoutContextManager.buildPricingRedirectUrl(
+          window.location.origin,
+          true
+        );
+      }
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -47,7 +61,8 @@ export function useGoogleAuth() {
         });
       }
     } catch (error) {
-      console.error("Google sign-up error:", error);
+      const appError = handleError(error, { component: 'useGoogleAuth', action: 'googleSignUp' });
+      logger.error('Google sign-up error', appError);
       toast({
         variant: "destructive",
         title: "Error",

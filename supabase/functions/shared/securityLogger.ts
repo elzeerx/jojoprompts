@@ -1,3 +1,6 @@
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('shared:security-logger');
 
 // Shared security logging utilities for edge functions
 export interface SecurityEvent {
@@ -20,7 +23,7 @@ export async function logSecurityEvent(
         created_at: new Date().toISOString()
       });
   } catch (error) {
-    console.warn('Failed to log security event:', error);
+    logger.warn('Failed to log security event', { error });
     // Don't throw - logging failures shouldn't block operations
   }
 }
@@ -45,7 +48,7 @@ export async function logAdminAction(
         ip_address: ipAddress || 'edge-function'
       });
   } catch (error) {
-    console.warn('Failed to log admin action:', error);
+    logger.warn('Failed to log admin action', { error });
     // Don't throw - logging failures shouldn't block operations
   }
 }

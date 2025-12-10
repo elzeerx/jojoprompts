@@ -4,6 +4,9 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('DragDropUpload');
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -126,8 +129,7 @@ export function DragDropUpload({
     }
 
     if (errors.length > 0) {
-      console.error('File validation errors:', errors);
-      // You can show these errors in a toast or alert
+      logger.warn('File validation errors', { errors, errorCount: errors.length });
     }
 
     if (newFiles.length > 0) {

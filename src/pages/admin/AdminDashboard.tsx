@@ -35,7 +35,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-soft-bg/30">
-      <Container className="py-4 sm:py-6 lg:py-8">
+      <Container className="pt-20 lg:pt-24 pb-4 sm:pb-6 lg:pb-8">
         {/* Mobile-optimized header */}
         <div className="mb-4 sm:mb-6 lg:mb-8">
           <h1 className="section-title text-xl sm:text-2xl lg:text-3xl">Admin Dashboard</h1>

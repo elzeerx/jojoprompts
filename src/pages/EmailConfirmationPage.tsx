@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, CheckCircle, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('EMAIL_CONFIRMATION_PAGE');
 
 export default function EmailConfirmationPage() {
   const [searchParams] = useSearchParams();
@@ -59,7 +62,7 @@ export default function EmailConfirmationPage() {
         });
       }
     } catch (error: any) {
-      console.error('Resend confirmation error:', error);
+      logger.error('Resend confirmation error', { error: error.message || error });
       toast({
         variant: "destructive",
         title: "Error",

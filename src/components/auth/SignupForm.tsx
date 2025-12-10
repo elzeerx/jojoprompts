@@ -1,9 +1,12 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { SignupFormValues } from "./validation";
+import { SignupFormValues } from "./validation/schemas";
 import { UseFormReturn } from "react-hook-form";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
+import { PasswordStrengthIndicator } from "./PasswordStrengthIndicator";
+import { useState } from "react";
 
 interface SignupFormProps {
   form: UseFormReturn<SignupFormValues>;
@@ -20,50 +23,32 @@ export function SignupForm({
   onSubmit, 
   onFormError 
 }: SignupFormProps) {
+  const { t, isRTL } = useTranslation();
+  const [password, setPassword] = useState("");
+  
   return (
     <Form {...form}>
       <form 
         onSubmit={form.handleSubmit(onSubmit, onFormError)} 
         className="space-y-4"
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium">First Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John" {...field} className="mobile-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium">Last Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Doe" {...field} className="mobile-input" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
         <FormField
           control={form.control}
-          name="username"
+          name="fullName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">Username</FormLabel>
+              <FormLabel className={cn("text-sm font-medium", isRTL && "rtl-text")}>
+                {t('auth.fullName')}
+              </FormLabel>
               <FormControl>
-                <Input placeholder="johndoe123" {...field} className="mobile-input" />
+                <Input 
+                  placeholder={t('auth.fullNamePlaceholder')} 
+                  className={cn("mobile-input min-h-[44px]", isRTL && "text-right rtl-text")}
+                  dir={isRTL ? "rtl" : "ltr"}
+                  {...field} 
+                />
               </FormControl>
-              <FormMessage />
+              <FormMessage className={isRTL ? "rtl-text" : ""} />
             </FormItem>
           )}
         />
@@ -72,11 +57,19 @@ export function SignupForm({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">Email</FormLabel>
+              <FormLabel className={cn("text-sm font-medium", isRTL && "rtl-text")}>
+                {t('auth.email')}
+              </FormLabel>
               <FormControl>
-                <Input type="email" placeholder="name@example.com" {...field} className="mobile-input" />
+                <Input 
+                  type="email" 
+                  placeholder={t('auth.emailPlaceholder')} 
+                  className={cn("mobile-input min-h-[44px]", isRTL && "text-right rtl-text")}
+                  dir={isRTL ? "rtl" : "ltr"}
+                  {...field} 
+                />
               </FormControl>
-              <FormMessage />
+              <FormMessage className={isRTL ? "rtl-text" : ""} />
             </FormItem>
           )}
         />
@@ -85,32 +78,39 @@ export function SignupForm({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">Password</FormLabel>
+              <FormLabel className={cn("text-sm font-medium", isRTL && "rtl-text")}>
+                {t('auth.password')}
+              </FormLabel>
               <FormControl>
-                <Input type="password" placeholder="Enter your password" {...field} className="mobile-input" />
+                <Input 
+                  type="password" 
+                  placeholder={t('auth.passwordPlaceholder')} 
+                  className={cn("mobile-input min-h-[44px]", isRTL && "text-right rtl-text")}
+                  dir={isRTL ? "rtl" : "ltr"}
+                  {...field}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setPassword(e.target.value);
+                  }}
+                />
               </FormControl>
-              <FormMessage />
+              <PasswordStrengthIndicator password={password} />
+              <FormMessage className={isRTL ? "rtl-text" : ""} />
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="confirmPassword"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-sm font-medium">Confirm Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="Confirm your password" {...field} className="mobile-input" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" className="w-full mobile-button-primary" disabled={isLoading || isGoogleLoading}>
-          {isLoading ? "Creating account..." : "Create Account"}
+        <Button 
+          type="submit" 
+          className={cn(
+            "w-full mobile-button-primary min-h-[44px]",
+            isRTL && "flex-row-reverse"
+          )} 
+          disabled={isLoading || isGoogleLoading}
+        >
+          {isLoading ? t('auth.creatingAccount') : t('auth.createAccount')}
         </Button>
-        <p className="text-xs text-muted-foreground text-center">
-          Create your account to continue to checkout. No email confirmation required.
+        <p className={cn("text-xs text-muted-foreground text-center", isRTL && "rtl-text")}>
+          {t('auth.noConfirmationRequired')}
         </p>
       </form>
     </Form>

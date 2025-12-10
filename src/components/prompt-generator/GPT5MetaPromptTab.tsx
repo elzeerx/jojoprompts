@@ -12,6 +12,9 @@ import { Copy, Wand2, Sparkles, Loader2, Save, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { callEdgeFunction } from "@/utils/edgeFunctions";
 import type { GPT5MetapromptRequest, GPT5MetapromptResponse, MetapromptFieldOptions } from "@/types/gpt5-metaprompt";
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('GPT5_METAPROMPT_TAB');
 
 // Default field options
 const defaultFieldOptions: MetapromptFieldOptions = {
@@ -144,8 +147,8 @@ export function GPT5MetaPromptTab() {
         description: "Review and adjust the suggested fields below."
       });
       
-    } catch (error) {
-      console.error('Error suggesting fields:', error);
+    } catch (error: any) {
+      logger.error('Error suggesting fields', { error: error.message });
       toast({
         variant: "destructive",
         title: "Error",
@@ -187,8 +190,8 @@ export function GPT5MetaPromptTab() {
         description: "Your GPT-5 metaprompt is ready to use."
       });
 
-    } catch (error) {
-      console.error('Error generating metaprompt:', error);
+    } catch (error: any) {
+      logger.error('Error generating metaprompt', { error: error.message });
       toast({
         variant: "destructive",
         title: "Generation failed",

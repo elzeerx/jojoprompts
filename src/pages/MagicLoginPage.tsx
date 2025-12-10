@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { createLogger } from '@/utils/logging';
+
+const logger = createLogger('MAGIC_LOGIN_PAGE');
 
 export function MagicLoginPage() {
   const [searchParams] = useSearchParams();
@@ -21,7 +24,7 @@ export function MagicLoginPage() {
       }
 
       try {
-        console.log('Processing magic login with token:', token);
+        logger.info('Processing magic login', { hasToken: !!token });
 
         // Call the magic-login edge function
         const { data, error } = await supabase.functions.invoke('magic-login', {
@@ -36,7 +39,7 @@ export function MagicLoginPage() {
           throw new Error(data.error || 'Magic login failed');
         }
 
-        console.log('Magic login response:', data);
+        logger.info('Magic login successful', { hasAuthUrl: !!data.authUrl });
 
         // The magic login function returns an auth URL that we need to use
         if (data.authUrl) {
@@ -54,7 +57,7 @@ export function MagicLoginPage() {
         navigate(redirectTo);
 
       } catch (error: any) {
-        console.error('Magic login error:', error);
+        logger.error('Magic login failed', { error: error.message || error });
         setError(error.message || 'Failed to process magic login');
         
         toast({

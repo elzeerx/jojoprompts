@@ -1,5 +1,9 @@
 
 import React, { useState } from "react";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('DELETE_ACCOUNT');
 import {
   Dialog,
   DialogContent,
@@ -74,7 +78,8 @@ export function DeleteAccountDialog({
       navigate('/');
       
     } catch (error: any) {
-      console.error("Error deleting account:", error);
+      const appError = handleError(error, { component: 'DeleteAccountDialog', action: 'deleteAccount' });
+      logger.error('Error deleting account', appError);
       toast({
         title: "Deletion Failed",
         description: error.message || "Failed to delete account. Please try again.",

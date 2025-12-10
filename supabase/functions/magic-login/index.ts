@@ -1,14 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createEdgeLogger } from '../_shared/logger.ts';
+
+const logger = createEdgeLogger('magic-login');
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[MAGIC-LOGIN] ${step}${detailsStr}`);
 };
 
 // Helper function to construct URLs safely
@@ -27,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    logStep("Function started");
+    logger.info("Function started");
 
     // Create Supabase client with service role key
     const supabaseClient = createClient(
@@ -42,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Magic token is required");
     }
 
-    logStep("Validating magic token", { tokenLength: token.length });
+    logger.info("Validating magic token", { tokenLength: token.length });
 
     // Find and validate the magic token
     const { data: magicTokenData, error: tokenError } = await supabaseClient
@@ -55,11 +53,11 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (tokenError || !magicTokenData) {
-      logStep("Invalid or expired token", { error: tokenError?.message });
+      logger.warn("Invalid or expired token", { error: tokenError?.message });
       throw new Error("Invalid or expired magic link");
     }
 
-    logStep("Magic token found", { 
+    logger.info("Magic token found", { 
       userId: magicTokenData.user_id, 
       email: magicTokenData.email,
       createdAt: magicTokenData.created_at 
@@ -90,7 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Failed to generate session: ${sessionError.message}`);
     }
 
-    logStep("Session generated successfully", { 
+    logger.info("Session generated successfully", { 
       userId: userData.user.id,
       email: userData.user.email,
       redirectTo: magicTokenData.metadata?.redirect_to
@@ -122,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   } catch (error: any) {
     const errorMessage = error.message || String(error);
-    logStep("ERROR", { message: errorMessage });
+    logger.error("Error in magic-login", { error: errorMessage });
     
     return new Response(
       JSON.stringify({ 

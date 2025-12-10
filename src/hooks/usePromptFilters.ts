@@ -1,11 +1,13 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useDebounce } from './useDebounce';
+import { supabase } from '@/integrations/supabase/client';
 import type { PromptFilters, PromptRow, PromptTypeFilter, SortOption } from '@/types/prompts';
 
 const initialFilters: PromptFilters = {
   category: 'all',
   searchQuery: '',
   promptType: 'all',
+  modelType: 'all',
   tags: [],
   sortBy: 'created_at',
   sortOrder: 'desc'
@@ -13,6 +15,28 @@ const initialFilters: PromptFilters = {
 
 export function usePromptFilters() {
   const [filters, setFilters] = useState<PromptFilters>(initialFilters);
+  const [categoryMappings, setCategoryMappings] = useState<Map<string, string[]>>(new Map());
+  
+  // Fetch category subcategory mappings on mount
+  useEffect(() => {
+    async function fetchMappings() {
+      const { data: categories } = await supabase
+        .from('categories')
+        .select('name, subcategories')
+        .eq('is_active', true);
+
+      const mappings = new Map<string, string[]>();
+      if (categories) {
+        for (const cat of categories) {
+          const subcats = (cat.subcategories as string[]) || [];
+          // Include the category name itself (lowercase) plus all subcategories
+          mappings.set(cat.name.toLowerCase(), [cat.name.toLowerCase(), ...subcats.map(s => s.toLowerCase())]);
+        }
+      }
+      setCategoryMappings(mappings);
+    }
+    fetchMappings();
+  }, []);
   
   // Debounce search query for better performance
   const debouncedSearchQuery = useDebounce(filters.searchQuery, 300);
@@ -34,6 +58,7 @@ export function usePromptFilters() {
       category: 'all',
       searchQuery: '',
       promptType: 'all',
+      modelType: 'all',
       tags: []
     }));
   }, []);
@@ -41,14 +66,37 @@ export function usePromptFilters() {
   // Filter function for client-side filtering
   const filterPrompts = useCallback((prompts: PromptRow[]) => {
     return prompts.filter(prompt => {
-      // Category filter
-      if (filters.category !== 'all' && prompt.metadata?.category !== filters.category) {
-        return false;
+      // Category filter - use subcategory mappings
+      if (filters.category !== 'all') {
+        const promptCategory = (prompt.metadata?.category || '').toLowerCase();
+        const filterCategoryKey = filters.category.toLowerCase();
+        const subcategories = categoryMappings.get(filterCategoryKey);
+        
+        if (subcategories && subcategories.length > 0) {
+          // Check if prompt category matches any of the subcategories
+          const matches = subcategories.some(sub => promptCategory.includes(sub));
+          if (!matches) {
+            return false;
+          }
+        } else {
+          // Fallback to partial matching
+          if (!promptCategory.includes(filterCategoryKey)) {
+            return false;
+          }
+        }
       }
 
       // Type filter
       if (filters.promptType !== 'all' && prompt.prompt_type !== filters.promptType) {
         return false;
+      }
+
+      // Model type filter - check metadata.model_type or prompt_type
+      if (filters.modelType !== 'all') {
+        const promptModelType = prompt.metadata?.model_type || prompt.prompt_type;
+        if (promptModelType !== filters.modelType) {
+          return false;
+        }
       }
 
       // Search filter (use debounced value)
@@ -57,11 +105,12 @@ export function usePromptFilters() {
         const titleMatch = prompt.title.toLowerCase().includes(searchLower);
         const textMatch = prompt.prompt_text.toLowerCase().includes(searchLower);
         const categoryMatch = prompt.metadata?.category?.toLowerCase().includes(searchLower);
+        const modelTypeMatch = prompt.metadata?.model_type?.toLowerCase().includes(searchLower);
         const tagsMatch = prompt.metadata?.tags?.some(tag => 
           tag.toLowerCase().includes(searchLower)
         );
         
-        if (!titleMatch && !textMatch && !categoryMatch && !tagsMatch) {
+        if (!titleMatch && !textMatch && !categoryMatch && !tagsMatch && !modelTypeMatch) {
           return false;
         }
       }
@@ -79,7 +128,7 @@ export function usePromptFilters() {
 
       return true;
     });
-  }, [filters.category, filters.promptType, debouncedSearchQuery, filters.tags]);
+  }, [filters.category, filters.promptType, filters.modelType, debouncedSearchQuery, filters.tags, categoryMappings]);
 
   // Sort function
   const sortPrompts = useCallback((prompts: PromptRow[]) => {
@@ -120,6 +169,7 @@ export function usePromptFilters() {
       filters.category !== 'all' ||
       filters.searchQuery !== '' ||
       filters.promptType !== 'all' ||
+      filters.modelType !== 'all' ||
       filters.tags.length > 0
     );
   }, [filters]);
@@ -136,6 +186,7 @@ export function usePromptFilters() {
     setCategory: (category: string) => updateFilter('category', category),
     setSearchQuery: (query: string) => updateFilter('searchQuery', query),
     setPromptType: (type: PromptTypeFilter) => updateFilter('promptType', type),
+    setModelType: (modelType: string) => updateFilter('modelType', modelType),
     setTags: (tags: string[]) => updateFilter('tags', tags),
     setSortBy: (sortBy: SortOption) => updateFilter('sortBy', sortBy),
     setSortOrder: (order: 'asc' | 'desc') => updateFilter('sortOrder', order)

@@ -1,10 +1,11 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
 import {
   Form,
   FormControl,
@@ -15,15 +16,23 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { ForgotPasswordFormValues, forgotPasswordSchema } from "./validation";
+import { createLocalizedSchemas, ForgotPasswordFormValues } from "./validation/schemas";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
+
+const logger = createLogger('FORGOT_PASSWORD');
 
 export function ForgotPasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
   const { toast } = useToast();
+  const { t, isRTL } = useTranslation();
+
+  // Create localized schema
+  const schemas = createLocalizedSchemas(t);
 
   const form = useForm<ForgotPasswordFormValues>({
-    resolver: zodResolver(forgotPasswordSchema),
+    resolver: zodResolver(schemas.forgotPasswordSchema),
     defaultValues: {
       email: "",
     },
@@ -34,7 +43,6 @@ export function ForgotPasswordForm() {
 
     try {
       const origin = window.location.origin;
-      // Update redirect URL to use the reset-password route with type parameter
       const resetUrl = `${origin}/login?type=recovery&tab=reset`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(
@@ -47,21 +55,22 @@ export function ForgotPasswordForm() {
       if (error) {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t('common.error'),
           description: error.message,
         });
       } else {
         setResetRequested(true);
         toast({
-          title: "Password Reset Email Sent",
-          description: "Check your inbox for the password reset link.",
+          title: t('auth.passwordResetSent'),
+          description: t('auth.checkInbox'),
         });
       }
     } catch (error) {
-      console.error("Password reset request error:", error);
+      const appError = handleError(error, { component: 'ForgotPasswordForm', action: 'requestReset' });
+      logger.error('Password reset request error', appError);
       toast({
         variant: "destructive",
-        title: "Error",
+        title: t('common.error'),
         description: "An unexpected error occurred. Please try again.",
       });
     }
@@ -71,22 +80,21 @@ export function ForgotPasswordForm() {
 
   if (resetRequested) {
     return (
-      <div className="text-center py-4">
-        <p className="mb-4">Password reset email sent!</p>
+      <div className={cn("text-center py-4", isRTL && "rtl-text")}>
+        <p className="mb-4">{t('auth.passwordResetSuccess')}</p>
         <p className="text-sm text-muted-foreground">
-          Check your inbox for a link to reset your password. If it doesn't appear
-          within a few minutes, check your spam folder.
+          {t('auth.passwordResetDesc')}
         </p>
         <Button
           type="button"
           variant="outline"
-          className="mt-4 w-full"
+          className="mt-4 w-full min-h-[44px]"
           onClick={() => {
             setResetRequested(false);
             form.reset();
           }}
         >
-          Try Again
+          {t('auth.tryAgain')}
         </Button>
       </div>
     );
@@ -100,27 +108,36 @@ export function ForgotPasswordForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel className={isRTL ? "rtl-text" : ""}>{t('auth.email')}</FormLabel>
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="name@example.com"
+                  placeholder={t('auth.emailPlaceholder')}
+                  className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                  dir={isRTL ? "rtl" : "ltr"}
                   {...field}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className={isRTL ? "rtl-text" : ""} />
             </FormItem>
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button 
+          type="submit" 
+          className={cn(
+            "w-full min-h-[44px]",
+            isRTL && "flex-row-reverse"
+          )} 
+          disabled={isLoading}
+        >
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sending...
+              <Loader2 className={cn("h-4 w-4 animate-spin", isRTL ? "ml-2" : "mr-2")} />
+              {t('auth.sending')}
             </>
           ) : (
-            "Send Reset Link"
+            t('auth.sendResetLink')
           )}
         </Button>
       </form>

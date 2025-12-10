@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -17,10 +16,12 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock } from "lucide-react";
-import { LoginFormValues, MagicLinkFormValues, loginSchema, magicLinkSchema } from "./validation";
+import { createLocalizedSchemas, LoginFormValues, MagicLinkFormValues } from "./validation/schemas";
 import { CheckoutContextManager } from "@/utils/checkoutContext";
 import { createLogger } from "@/utils/logging";
 import { securityLogger } from "@/utils/logging/security";
+import { useTranslation } from "@/hooks/useTranslation";
+import { cn } from "@/lib/utils";
 
 type AuthMode = 'password' | 'magic-link';
 
@@ -32,6 +33,7 @@ export function LoginForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { t, isRTL } = useTranslation();
   
   const logger = createLogger('LOGIN_FORM');
   
@@ -39,8 +41,11 @@ export function LoginForm() {
   const redirectTo = searchParams.get('redirect');
   const selectedPlan = searchParams.get('plan');
 
+  // Create localized schemas
+  const schemas = createLocalizedSchemas(t);
+
   const passwordForm = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(schemas.loginSchema),
     defaultValues: {
       email: "",
       password: "",
@@ -48,7 +53,7 @@ export function LoginForm() {
   });
 
   const magicLinkForm = useForm<MagicLinkFormValues>({
-    resolver: zodResolver(magicLinkSchema),
+    resolver: zodResolver(schemas.magicLinkSchema),
     defaultValues: {
       email: "",
     },
@@ -202,11 +207,14 @@ export function LoginForm() {
   if (magicLinkSent) {
     return (
       <div className="space-y-4 text-center">
-        <div className="rounded-lg bg-green-50 p-4 border border-green-200">
+        <div className={cn(
+          "rounded-lg bg-green-50 p-4 border border-green-200",
+          isRTL && "rtl-text"
+        )}>
           <Mail className="h-12 w-12 text-green-600 mx-auto mb-2" />
-          <h3 className="text-lg font-medium text-green-900 mb-1">Magic link sent!</h3>
+          <h3 className="text-lg font-medium text-green-900 mb-1">{t('auth.magicLinkSent')}</h3>
           <p className="text-sm text-green-700">
-            We've sent a secure login link to your email. Click the link to sign in instantly.
+            {t('auth.magicLinkSentDesc')}
           </p>
         </div>
         <Button 
@@ -215,9 +223,9 @@ export function LoginForm() {
             setMagicLinkSent(false);
             setAuthMode('password');
           }}
-          className="w-full"
+          className="w-full min-h-[44px]"
         >
-          Back to login options
+          {t('auth.backToLogin')}
         </Button>
       </div>
     );
@@ -229,14 +237,17 @@ export function LoginForm() {
       <Button
         type="button"
         variant="outline"
-        className="w-full"
+        className={cn(
+          "w-full min-h-[44px]",
+          isRTL && "flex-row-reverse"
+        )}
         onClick={handleGoogleSignIn}
         disabled={isGoogleLoading || isLoading}
       >
         {isGoogleLoading ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className={cn("h-4 w-4 animate-spin", isRTL ? "ml-2" : "mr-2")} />
         ) : (
-          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+          <svg className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} viewBox="0 0 24 24">
             <path
               fill="currentColor"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -255,7 +266,7 @@ export function LoginForm() {
             />
           </svg>
         )}
-        Continue with Google
+        {t('auth.continueWithGoogle')}
       </Button>
 
       <div className="relative">
@@ -264,7 +275,7 @@ export function LoginForm() {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-2 text-muted-foreground">
-            Or choose your login method
+            {t('auth.orChooseMethod')}
           </span>
         </div>
       </div>
@@ -276,20 +287,20 @@ export function LoginForm() {
           variant={authMode === 'password' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setAuthMode('password')}
-          className="h-9"
+          className={cn("h-9 min-h-[44px]", isRTL && "flex-row-reverse")}
         >
-          <Lock className="mr-2 h-4 w-4" />
-          Password
+          <Lock className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+          {t('auth.passwordMethod')}
         </Button>
         <Button
           type="button"
           variant={authMode === 'magic-link' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setAuthMode('magic-link')}
-          className="h-9"
+          className={cn("h-9 min-h-[44px]", isRTL && "flex-row-reverse")}
         >
-          <Mail className="mr-2 h-4 w-4" />
-          Magic Link
+          <Mail className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+          {t('auth.magicLinkMethod')}
         </Button>
       </div>
 
@@ -302,15 +313,17 @@ export function LoginForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className={isRTL ? "rtl-text" : ""}>{t('auth.email')}</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="name@example.com"
+                      placeholder={t('auth.emailPlaceholder')}
+                      className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                      dir={isRTL ? "rtl" : "ltr"}
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className={isRTL ? "rtl-text" : ""} />
                 </FormItem>
               )}
             />
@@ -320,25 +333,38 @@ export function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel className={isRTL ? "rtl-text" : ""}>{t('auth.password')}</FormLabel>
                   <FormControl>
-                    <Input type="password" {...field} />
+                    <Input 
+                      type="password" 
+                      placeholder={t('auth.passwordPlaceholder')}
+                      className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                      dir={isRTL ? "rtl" : "ltr"}
+                      {...field} 
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className={isRTL ? "rtl-text" : ""} />
                 </FormItem>
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+            <Button 
+              type="submit" 
+              className={cn(
+                "w-full min-h-[44px]",
+                isRTL && "flex-row-reverse"
+              )} 
+              disabled={isLoading || isGoogleLoading}
+            >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  <Loader2 className={cn("h-4 w-4 animate-spin", isRTL ? "ml-2" : "mr-2")} />
+                  {t('auth.signingIn')}
                 </>
               ) : (
                 <>
-                  <Lock className="mr-2 h-4 w-4" />
-                  Sign In
+                  <Lock className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                  {t('auth.signIn')}
                 </>
               )}
             </Button>
@@ -355,46 +381,62 @@ export function LoginForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className={isRTL ? "rtl-text" : ""}>{t('auth.email')}</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="name@example.com"
+                      placeholder={t('auth.emailPlaceholder')}
+                      className={cn("min-h-[44px]", isRTL && "text-right rtl-text")}
+                      dir={isRTL ? "rtl" : "ltr"}
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className={isRTL ? "rtl-text" : ""} />
                 </FormItem>
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+            <Button 
+              type="submit" 
+              className={cn(
+                "w-full min-h-[44px]",
+                isRTL && "flex-row-reverse"
+              )} 
+              disabled={isLoading || isGoogleLoading}
+            >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending magic link...
+                  <Loader2 className={cn("h-4 w-4 animate-spin", isRTL ? "ml-2" : "mr-2")} />
+                  {t('auth.sendingMagicLink')}
                 </>
               ) : (
                 <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Send Magic Link
+                  <Mail className={cn("h-4 w-4", isRTL ? "ml-2" : "mr-2")} />
+                  {t('auth.sendMagicLink')}
                 </>
               )}
             </Button>
 
-            <p className="text-sm text-muted-foreground text-center">
-              We'll send you a secure link to sign in instantly without a password.
+            <p className={cn(
+              "text-sm text-muted-foreground text-center",
+              isRTL && "rtl-text"
+            )}>
+              {t('auth.magicLinkInfo')}
             </p>
           </form>
         </Form>
       )}
       
       {selectedPlan && (
-        <div className="pt-2 text-center">
+        <div className={cn("pt-2 text-center", isRTL && "rtl-text")}>
           <p className="text-sm text-muted-foreground">
-            Don't have an account yet?{" "}
-            <Button variant="link" className="p-0" onClick={() => navigate(`/signup?plan=${selectedPlan}`)}>
-              Sign up
+            {t('auth.dontHaveAccount')}{" "}
+            <Button 
+              variant="link" 
+              className="p-0" 
+              onClick={() => navigate(`/signup?plan=${selectedPlan}`)}
+            >
+              {t('auth.signUp')}
             </Button>
           </p>
         </div>

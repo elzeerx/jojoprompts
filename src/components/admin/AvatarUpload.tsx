@@ -6,6 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Upload, Link, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { createLogger } from '@/utils/logging';
+import { handleError } from '@/utils/errorHandler';
+
+const logger = createLogger('AVATAR_UPLOAD');
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string | null;
@@ -30,19 +34,20 @@ export function AvatarUpload({
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const fileName = `${Date.now()}.${fileExt}`;
+      // Store in userId folder for RLS policy compliance
+      const filePath = `${userId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('prompt-images')
-        .upload(filePath, file);
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) {
         throw uploadError;
       }
 
       const { data } = supabase.storage
-        .from('prompt-images')
+        .from('avatars')
         .getPublicUrl(filePath);
 
       onAvatarChange(data.publicUrl);
@@ -51,7 +56,8 @@ export function AvatarUpload({
         description: "Avatar uploaded successfully."
       });
     } catch (error: any) {
-      console.error('Error uploading avatar:', error);
+      const appError = handleError(error, { component: 'AvatarUpload', action: 'uploadAvatar' });
+      logger.error('Error uploading avatar', appError);
       toast({
         title: "Upload failed",
         description: error.message || "Failed to upload avatar.",
