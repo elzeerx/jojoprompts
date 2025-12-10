@@ -1,4 +1,3 @@
-
 import { Loader2, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { PurchaseHistoryTable } from "./PurchaseHistoryTable";
 import { PurchaseHistoryStats } from "./PurchaseHistoryStats";
 import { usePurchaseHistory } from "./hooks/usePurchaseHistory";
 import { PurchaseFilters } from "./PurchaseFilters";
+import { FailedPaymentsAlert } from "./FailedPaymentsAlert";
 import { exportTransactionsToCSV } from "./utils/exportTransactionsToCSV";
 import { PaymentRecoveryTool } from "../transactions/PaymentRecoveryTool";
 
@@ -39,6 +39,9 @@ export default function PurchaseHistoryManagement() {
         </Button>
       </div>
 
+      {/* Phase 6: Failed Payments Alert */}
+      <FailedPaymentsAlert />
+
       <PurchaseHistoryStats payments={transactions} />
 
       <PaymentRecoveryTool />
@@ -46,7 +49,6 @@ export default function PurchaseHistoryManagement() {
       <Card className="border-warm-gold/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {/* Removed the Filter icon as it's not available */}
             Filters
           </CardTitle>
         </CardHeader>

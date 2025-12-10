@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useUserUpdate } from "./useUserUpdate";
@@ -11,6 +10,8 @@ import { UserUpdateData, UserRole } from "@/types/user";
 export function useUserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const [tierFilter, setTierFilter] = useState("all");
+  const [verificationFilter, setVerificationFilter] = useState("all");
   const pageSize = 10;
   
   // Use unified view-based hook
@@ -22,14 +23,27 @@ export function useUserManagement() {
   } = useAdminUsers();
   
   // Client-side filtering and pagination
-  const filteredUsers = searchTerm 
-    ? allUsers.filter(user => 
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.username?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : allUsers;
+  const filteredUsers = allUsers.filter(user => {
+    // Search filter
+    const matchesSearch = !searchTerm || 
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.username?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Tier filter - subscription is nested object
+    const planName = user.subscription?.plan_name?.toLowerCase() || '';
+    const matchesTier = tierFilter === 'all' || 
+      (tierFilter === 'free' && !user.subscription?.plan_name) ||
+      planName.includes(tierFilter.toLowerCase());
+    
+    // Verification filter
+    const matchesVerification = verificationFilter === 'all' ||
+      (verificationFilter === 'verified' && user.is_email_confirmed) ||
+      (verificationFilter === 'unverified' && !user.is_email_confirmed);
+    
+    return matchesSearch && matchesTier && matchesVerification;
+  });
   
   const totalPages = Math.ceil(filteredUsers.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -48,6 +62,16 @@ export function useUserManagement() {
   const handleSearchChange = (search: string) => {
     setSearchTerm(search);
     setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const handleTierFilterChange = (tier: string) => {
+    setTierFilter(tier);
+    setCurrentPage(1);
+  };
+
+  const handleVerificationFilterChange = (verification: string) => {
+    setVerificationFilter(verification);
+    setCurrentPage(1);
   };
 
   const handleUpdateUser = async (userId: string, data: UserUpdateData) => {
@@ -88,8 +112,12 @@ export function useUserManagement() {
     currentPage,
     totalPages,
     searchTerm,
+    tierFilter,
+    verificationFilter,
     onPageChange: handlePageChange,
     onSearchChange: handleSearchChange,
+    onTierFilterChange: handleTierFilterChange,
+    onVerificationFilterChange: handleVerificationFilterChange,
     updatingUserId: processingUserId,
     refetch: refetch,
     updateUser: handleUpdateUser,
