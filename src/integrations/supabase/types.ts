@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      abandoned_cart_sequences: {
+        Row: {
+          conversion_date: string | null
+          created_at: string | null
+          currency: string | null
+          email_1_sent_at: string | null
+          email_2_sent_at: string | null
+          email_3_sent_at: string | null
+          id: string
+          magic_link_expires_at: string | null
+          magic_link_token: string | null
+          next_email_scheduled_at: string | null
+          plan_id: string | null
+          plan_name: string | null
+          plan_price: number | null
+          sequence_step: number | null
+          status: string | null
+          transaction_id: string | null
+          updated_at: string | null
+          user_email: string
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          conversion_date?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email_1_sent_at?: string | null
+          email_2_sent_at?: string | null
+          email_3_sent_at?: string | null
+          id?: string
+          magic_link_expires_at?: string | null
+          magic_link_token?: string | null
+          next_email_scheduled_at?: string | null
+          plan_id?: string | null
+          plan_name?: string | null
+          plan_price?: number | null
+          sequence_step?: number | null
+          status?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+          user_email: string
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          conversion_date?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email_1_sent_at?: string | null
+          email_2_sent_at?: string | null
+          email_3_sent_at?: string | null
+          id?: string
+          magic_link_expires_at?: string | null
+          magic_link_token?: string | null
+          next_email_scheduled_at?: string | null
+          plan_id?: string | null
+          plan_name?: string | null
+          plan_price?: number | null
+          sequence_step?: number | null
+          status?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+          user_email?: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abandoned_cart_sequences_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abandoned_cart_sequences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abandoned_cart_sequences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_role"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abandoned_cart_sequences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       access_evaluations: {
         Row: {
           action: string
