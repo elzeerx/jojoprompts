@@ -4,6 +4,9 @@ import { createLogger } from "@/utils/logging";
 import { handleError } from "@/utils/errorHandler";
 import { KPIData } from "./DashboardKPICards";
 import { ChartData } from "./DashboardCharts";
+import { TopPrompt } from "./TopPromptsCard";
+import { CategoryData, CATEGORY_COLORS } from "./CategoryDistributionCard";
+import { ActivityItem } from "./ActivityTimelineCard";
 
 const logger = createLogger("DASHBOARD_DATA");
 
@@ -20,6 +23,12 @@ const getLastSixMonths = (): string[] => {
   }
   return months;
 };
+
+export interface InsightsData {
+  topPrompts: TopPrompt[];
+  categoryDistribution: CategoryData[];
+  recentActivity: ActivityItem[];
+}
 
 export function useDashboardData() {
   const [kpiData, setKpiData] = useState<KPIData>({
@@ -40,6 +49,12 @@ export function useDashboardData() {
     usersByMonth: [],
   });
 
+  const [insightsData, setInsightsData] = useState<InsightsData>({
+    topPrompts: [],
+    categoryDistribution: [],
+    recentActivity: [],
+  });
+
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
@@ -53,16 +68,24 @@ export function useDashboardData() {
         transactionsResult,
         subscriptionsResult,
         plansResult,
+        favoritesResult,
       ] = await Promise.all([
-        supabase.from("prompts").select("id, prompt_type, metadata, created_at"),
-        supabase.from("profiles").select("id, created_at"),
-        supabase.from("transactions").select("id, amount_usd, status, completed_at, created_at"),
-        supabase.from("user_subscriptions").select("id, plan_id, status, created_at"),
-        supabase.from("subscription_plans").select("id, tier"),
+        supabase.from("prompts").select("id, title, prompt_type, metadata, created_at, user_id"),
+        supabase.from("profiles").select("id, first_name, last_name, username, avatar_url, created_at"),
+        supabase.from("transactions").select("id, amount_usd, status, completed_at, created_at, user_id"),
+        supabase.from("user_subscriptions").select("id, plan_id, status, created_at, user_id"),
+        supabase.from("subscription_plans").select("id, tier, name"),
+        supabase.from("favorites").select("prompt_id, user_id, created_at"),
       ]);
 
       // Process prompts
       const prompts = promptsResult.data || [];
+      const users = usersResult.data || [];
+      const favorites = favoritesResult.data || [];
+      
+      // Create user lookup map
+      const userMap = new Map(users.map(u => [u.id, u]));
+
       const chatgptPrompts = prompts.filter(p => {
         const metadata = p.metadata as Record<string, unknown> | null;
         return p.prompt_type === 'chatgpt' || 
@@ -71,7 +94,6 @@ export function useDashboardData() {
       }).length;
 
       // Process users
-      const users = usersResult.data || [];
       const now = new Date();
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -95,6 +117,7 @@ export function useDashboardData() {
       const subscriptions = subscriptionsResult.data || [];
       const plans = plansResult.data || [];
       const planTierMap = new Map(plans.map(p => [p.id, p.tier]));
+      const planNameMap = new Map(plans.map(p => [p.id, p.name]));
 
       const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
       const subscribersByTier = { basic: 0, standard: 0, premium: 0, ultimate: 0 };
@@ -133,6 +156,108 @@ export function useDashboardData() {
         return { month, users: monthUsers };
       });
 
+      // ============ PHASE 3: Insights Data ============
+
+      // Top prompts by favorites count
+      const favoritesCountMap = new Map<string, number>();
+      favorites.forEach(f => {
+        const count = favoritesCountMap.get(f.prompt_id) || 0;
+        favoritesCountMap.set(f.prompt_id, count + 1);
+      });
+
+      const topPrompts: TopPrompt[] = prompts
+        .map(p => {
+          const metadata = p.metadata as Record<string, unknown> | null;
+          return {
+            id: p.id,
+            title: p.title,
+            category: (metadata?.category as string) || p.prompt_type || 'General',
+            favoritesCount: favoritesCountMap.get(p.id) || 0,
+          };
+        })
+        .filter(p => p.favoritesCount > 0)
+        .sort((a, b) => b.favoritesCount - a.favoritesCount)
+        .slice(0, 5);
+
+      // Category distribution
+      const categoryCountMap = new Map<string, number>();
+      prompts.forEach(p => {
+        const metadata = p.metadata as Record<string, unknown> | null;
+        const category = ((metadata?.category as string) || p.prompt_type || 'other').toLowerCase();
+        const count = categoryCountMap.get(category) || 0;
+        categoryCountMap.set(category, count + 1);
+      });
+
+      const categoryDistribution: CategoryData[] = Array.from(categoryCountMap.entries())
+        .map(([name, count]) => ({
+          name,
+          count,
+          color: CATEGORY_COLORS[name] || CATEGORY_COLORS.other,
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      // Recent activity (combine prompts, users, and transactions)
+      const recentActivity: ActivityItem[] = [];
+
+      // Recent prompts
+      prompts
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 3)
+        .forEach(p => {
+          const user = userMap.get(p.user_id);
+          recentActivity.push({
+            id: `prompt-${p.id}`,
+            type: 'prompt_created',
+            title: 'New Prompt Created',
+            description: p.title,
+            timestamp: p.created_at,
+            user: user ? {
+              name: user.username || `${user.first_name} ${user.last_name}`,
+              avatar: user.avatar_url || undefined,
+            } : undefined,
+          });
+        });
+
+      // Recent signups
+      users
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 3)
+        .forEach(u => {
+          recentActivity.push({
+            id: `user-${u.id}`,
+            type: 'user_signup',
+            title: 'New User Signed Up',
+            description: u.username || `${u.first_name} ${u.last_name}`,
+            timestamp: u.created_at,
+            user: {
+              name: u.username || `${u.first_name} ${u.last_name}`,
+              avatar: u.avatar_url || undefined,
+            },
+          });
+        });
+
+      // Recent payments
+      completedTransactions
+        .sort((a, b) => new Date(b.completed_at || b.created_at).getTime() - new Date(a.completed_at || a.created_at).getTime())
+        .slice(0, 3)
+        .forEach(t => {
+          const user = userMap.get(t.user_id);
+          recentActivity.push({
+            id: `transaction-${t.id}`,
+            type: 'payment_completed',
+            title: 'Payment Completed',
+            description: `$${t.amount_usd.toFixed(2)}`,
+            timestamp: t.completed_at || t.created_at,
+            user: user ? {
+              name: user.username || `${user.first_name} ${user.last_name}`,
+              avatar: user.avatar_url || undefined,
+            } : undefined,
+          });
+        });
+
+      // Sort all activities by timestamp and take top 8
+      recentActivity.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
       setKpiData({
         totalRevenue,
         revenueThisMonth,
@@ -149,6 +274,12 @@ export function useDashboardData() {
       setChartData({
         revenueByMonth,
         usersByMonth,
+      });
+
+      setInsightsData({
+        topPrompts,
+        categoryDistribution,
+        recentActivity: recentActivity.slice(0, 8),
       });
 
       setLoading(false);
@@ -176,6 +307,9 @@ export function useDashboardData() {
       supabase.channel('dashboard-subscriptions')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'user_subscriptions' }, fetchDashboardData)
         .subscribe(),
+      supabase.channel('dashboard-favorites')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'favorites' }, fetchDashboardData)
+        .subscribe(),
     ];
 
     return () => {
@@ -183,5 +317,5 @@ export function useDashboardData() {
     };
   }, []);
 
-  return { kpiData, chartData, loading, refetch: fetchDashboardData };
+  return { kpiData, chartData, insightsData, loading, refetch: fetchDashboardData };
 }
