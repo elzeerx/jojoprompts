@@ -60,6 +60,8 @@ export interface UserUpdateData {
   social_links?: SocialLinks | null;
   timezone?: string | null;
   membership_tier?: string | null;
+  email_confirmed?: boolean;
+  account_status?: 'enabled' | 'disabled';
 }
 
 // Profile update data for user self-service (excludes role and email)
