@@ -195,38 +195,65 @@ export function UserTableRow({
             )}
             {canChangePasswords && (
               <DropdownMenuItem 
-                onClick={() => setChangePasswordDialogOpen(true)}
-                disabled={user.has_auth_account === false}
+                onClick={() => {
+                  if (user.has_auth_account === false) {
+                    toast({
+                      title: "Cannot change password",
+                      description: "This user has an orphaned profile without a Supabase Auth account.",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+                  setChangePasswordDialogOpen(true);
+                }}
                 className={user.has_auth_account === false ? "opacity-50" : ""}
               >
                 <Key className="mr-2 h-4 w-4" /> 
                 Change Password
                 {user.has_auth_account === false && (
-                  <span className="ml-2 text-xs text-amber-500">(No Auth)</span>
+                  <span className="ml-2 text-xs text-amber-500">(Orphaned)</span>
                 )}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem 
-              onClick={() => onSendResetEmail(user.email!)}
-              disabled={user.has_auth_account === false}
+              onClick={() => {
+                if (user.has_auth_account === false) {
+                  toast({
+                    title: "Cannot send reset email",
+                    description: "This user has an orphaned profile without a Supabase Auth account. Create an auth account first or delete this profile.",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+                onSendResetEmail(user.email!);
+              }}
               className={user.has_auth_account === false ? "opacity-50" : ""}
             >
               <Send className="mr-2 h-4 w-4" /> 
               Send Reset Email
               {user.has_auth_account === false && (
-                <span className="ml-2 text-xs text-amber-500">(No Auth)</span>
+                <span className="ml-2 text-xs text-amber-500">(Orphaned)</span>
               )}
             </DropdownMenuItem>
             {user.is_email_confirmed === false && (
               <DropdownMenuItem 
-                onClick={() => onResendConfirmation(user.id, user.email!)}
-                disabled={user.has_auth_account === false}
+                onClick={() => {
+                  if (user.has_auth_account === false) {
+                    toast({
+                      title: "Cannot resend confirmation",
+                      description: "This user has an orphaned profile without a Supabase Auth account.",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+                  onResendConfirmation(user.id, user.email!);
+                }}
                 className={user.has_auth_account === false ? "opacity-50" : ""}
               >
                 <Send className="mr-2 h-4 w-4" /> 
                 Resend Confirmation
                 {user.has_auth_account === false && (
-                  <span className="ml-2 text-xs text-amber-500">(No Auth)</span>
+                  <span className="ml-2 text-xs text-amber-500">(Orphaned)</span>
                 )}
               </DropdownMenuItem>
             )}
