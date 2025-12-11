@@ -159,7 +159,7 @@ export function enrichUserProfiles(
       created_at: profile.created_at,
       
       // Auth data
-      email: authUser?.email || null,
+      email: authUser?.email || profile.email || null,
       email_confirmed_at: authUser?.email_confirmed_at || null,
       is_email_confirmed: authUser?.email_confirmed_at ? true : (authUser ? false : null),
       last_sign_in_at: authUser?.last_sign_in_at || null,
