@@ -29,7 +29,7 @@ interface AssignPlanDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
-  onAssign: (planId: string) => void;
+  onAssign: (planId: string) => Promise<boolean>;
 }
 
 export function AssignPlanDialog({
@@ -105,9 +105,16 @@ export function AssignPlanDialog({
     try {
       setSubmitting(true);
       
-      // Call the onAssign function to handle the action
-      onAssign(selectedPlanId);
+      // Call the onAssign function and await the result
+      const success = await onAssign(selectedPlanId);
       
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Plan assigned successfully",
+        });
+        onOpenChange(false);
+      }
     } catch (error) {
       const appError = handleError(error, { component: 'AssignPlanDialog', action: 'assignPlan' });
       logger.error('Error assigning plan', { error: appError, userId, planId: selectedPlanId });

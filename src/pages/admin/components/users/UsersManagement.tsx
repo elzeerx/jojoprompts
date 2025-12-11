@@ -45,6 +45,8 @@ export default function UsersManagement() {
     onAccountStatusFilterChange,
     refetch,
     sendPasswordResetEmail,
+    assignPlanToUser,
+    cancelUserSubscription,
   } = useUserManagement();
   
   const { resendConfirmationEmail, resendPaymentEmail } = useUserActions();
@@ -179,7 +181,7 @@ export default function UsersManagement() {
                   onPageChange={setPage}
                   updatingUserId={null}
                   onUpdateUser={updateUser}
-                  onAssignPlan={async () => {}}
+                  onAssignPlan={assignPlanToUser}
                   onSendResetEmail={sendPasswordResetEmail}
                   onSearchChange={setSearch}
                   searchTerm={searchTerm}
@@ -190,6 +192,7 @@ export default function UsersManagement() {
                   onBulkConfirmUsers={bulkConfirmUsers}
                   bulkProcessing={bulkProcessing}
                   onRefresh={refetch}
+                  onCancelSubscription={cancelUserSubscription}
                 />
                 <div className="text-sm text-muted-foreground">
                   Total users: {total}

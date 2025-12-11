@@ -42,7 +42,7 @@ interface UsersTableProps {
   onPageChange: (page: number) => void;
   updatingUserId: string | null;
   onUpdateUser: (userId: string, data: Partial<ExtendedUserProfile>) => void;
-  onAssignPlan: (userId: string, planId: string) => void;
+  onAssignPlan: (userId: string, planId: string) => Promise<boolean>;
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string, firstName: string, lastName: string, role: string) => void;
   onResendConfirmation: (userId: string, email: string) => void;
@@ -51,6 +51,7 @@ interface UsersTableProps {
   onBulkConfirmUsers: (startDate?: string, endDate?: string, onlyWithActiveSubscriptions?: boolean, dryRun?: boolean) => Promise<any>;
   bulkProcessing: boolean;
   onRefresh: () => void;
+  onCancelSubscription?: (userId: string, userEmail: string) => Promise<boolean>;
   searchTerm?: string;
   onSearchChange?: (search: string) => void;
 }
@@ -72,6 +73,7 @@ export function UsersTable({
   onBulkConfirmUsers,
   bulkProcessing,
   onRefresh,
+  onCancelSubscription,
   searchTerm = "",
   onSearchChange
 }: UsersTableProps) {
@@ -238,6 +240,7 @@ export function UsersTable({
               onAssignPlan={() => handleAssignPlan(user)}
               onSendResetEmail={() => onSendResetEmail(user.email!)}
               onDeleteUser={() => onDeleteUser(user.id, user.email!, user.first_name, user.last_name, user.role)}
+              onCancelSubscription={onCancelSubscription ? () => onCancelSubscription(user.id, user.email!) : undefined}
               isUpdating={updatingUserId === user.id}
             />
           ))}
@@ -277,9 +280,8 @@ export function UsersTable({
           userId={selectedUser.id}
           open={assignPlanDialogOpen}
           onOpenChange={setAssignPlanDialogOpen}
-          onAssign={(planId) => {
-            onAssignPlan(selectedUser.id, planId);
-            setAssignPlanDialogOpen(false);
+          onAssign={async (planId) => {
+            return await onAssignPlan(selectedUser.id, planId);
           }}
         />
       )}

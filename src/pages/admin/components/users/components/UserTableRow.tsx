@@ -47,7 +47,7 @@ interface UserTableRowProps {
   };
   isUpdating: boolean;
   onUpdateUser: (userId: string, data: Partial<ExtendedUserProfile>) => void;
-  onAssignPlan: (userId: string, planId: string) => void;
+  onAssignPlan: (userId: string, planId: string) => Promise<boolean>;
   onSendResetEmail: (email: string) => void;
   onDeleteUser: (userId: string, email: string, firstName: string, lastName: string, role: string) => void;
   onResendConfirmation: (userId: string, email: string) => void;
@@ -348,9 +348,8 @@ export function UserTableRow({
         userId={user.id}
         open={assignPlanDialogOpen}
         onOpenChange={setAssignPlanDialogOpen}
-        onAssign={(planId) => {
-          onAssignPlan(user.id, planId);
-          setAssignPlanDialogOpen(false);
+        onAssign={async (planId) => {
+          return await onAssignPlan(user.id, planId);
         }}
       />
 
