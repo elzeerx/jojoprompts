@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key, User as UserIcon, Receipt, CheckCircle, Ghost } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key, User as UserIcon, Receipt, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,24 +18,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { EditUserDialog } from './EditUserDialog';
 import { AssignPlanDialog } from './AssignPlanDialog';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
-import { UserProfile } from "@/types";
 import { TableCell } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionActions } from "../hooks/useSubscriptionActions";
-
 import { ExtendedUserProfile } from "@/types/user";
+import { 
+  RoleBadge, 
+  VerificationBadge, 
+  SubscriptionBadge,
+  OrphanedBadge 
+} from "./shared";
 
 interface UserTableRowProps {
   user: ExtendedUserProfile & { 
@@ -92,38 +89,6 @@ export function UserTableRow({
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'text-warm-gold bg-warm-gold/10';
-      case 'jadmin':
-        return 'text-orange-600 bg-orange-100';
-      case 'prompter':
-        return 'text-blue-600 bg-blue-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getSubscriptionBadgeColor = (planName: string | null) => {
-    if (!planName || planName === 'None') {
-      return 'text-gray-500 bg-gray-100';
-    }
-    
-    switch (planName.toLowerCase()) {
-      case 'basic':
-        return 'text-green-600 bg-green-100';
-      case 'standard':
-        return 'text-blue-600 bg-blue-100';
-      case 'premium':
-        return 'text-purple-600 bg-purple-100';
-      case 'lifetime':
-        return 'text-warm-gold bg-warm-gold/10';
-      default:
-        return 'text-indigo-600 bg-indigo-100';
-    }
-  };
-
   return (
     <tr className="border-b hover:bg-muted/50">
       {/* User Info */}
@@ -153,42 +118,11 @@ export function UserTableRow({
 
       {/* Role & Status */}
       <TableCell>
-        <div className="space-y-1">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role || 'user')}`}>
-            {user.role || 'user'}
-          </span>
+        <div className="space-y-1.5">
+          <RoleBadge role={user.role || 'user'} size="sm" />
           <div className="flex flex-wrap gap-1">
-            {user.is_email_confirmed === true ? (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Confirmed
-              </span>
-            ) : user.is_email_confirmed === false ? (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                Unconfirmed
-              </span>
-            ) : (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                Unknown
-              </span>
-            )}
-            
-            {user.has_auth_account === false && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 cursor-help">
-                      <Ghost className="h-3 w-3" />
-                      Orphaned
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[250px]">
-                    <p className="text-sm">
-                      This profile has no auth account. Password resets, email confirmations, and login will not work.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+            <VerificationBadge isVerified={user.is_email_confirmed} size="sm" showIcon={false} />
+            <OrphanedBadge hasAuthAccount={user.has_auth_account ?? true} size="sm" />
           </div>
         </div>
       </TableCell>
@@ -196,9 +130,11 @@ export function UserTableRow({
       {/* Subscription */}
       <TableCell>
         <div className="space-y-1">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSubscriptionBadgeColor(user.subscription?.plan_name || null)}`}>
-            {user.subscription?.plan_name || 'None'}
-          </span>
+          <SubscriptionBadge 
+            planName={user.subscription?.plan_name} 
+            isLifetime={user.subscription?.is_lifetime}
+            size="sm"
+          />
           {user.subscription && (
             <div className="text-xs text-muted-foreground">
               ${user.subscription.price_usd}
