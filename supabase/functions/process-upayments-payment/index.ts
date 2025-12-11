@@ -1,9 +1,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { createEdgeLogger } from '../_shared/logger.ts';
 import { logEmailAttempt } from '../_shared/emailLogger.ts';
 
 const logger = createEdgeLogger('process-upayments-payment');
+
+// UUID validation helper
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -120,6 +126,22 @@ serve(async (req) => {
     const rawBody = await req.json();
     const supabaseClient = makeSupabaseClient();
     const { action, planId, userId, amountKWD, amountUSD, appliedDiscount, language } = rawBody;
+
+    // Validate UUID formats to prevent type errors
+    if (planId && !isValidUUID(planId)) {
+      logger.error('Invalid planId format', { planId });
+      return new Response(JSON.stringify({ success: false, error: 'Invalid planId format' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    if (userId && !isValidUUID(userId)) {
+      logger.error('Invalid userId format', { userId });
+      return new Response(JSON.stringify({ success: false, error: 'Invalid userId format' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     logger.info('Processing Upayments request', { action, planId, userId, amountKWD, amountUSD });
 
