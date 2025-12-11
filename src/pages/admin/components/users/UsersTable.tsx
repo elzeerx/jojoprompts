@@ -1,9 +1,8 @@
-
 import React, { useState } from "react";
 import { ExtendedUserProfile } from "@/types/user";
 import { UserTableRow } from "./components/UserTableRow";
 import { UserProfileCard } from "./components/UserProfileCard";
-import { UserProfileModal } from "./components/UserProfileModal";
+import { UserProfileSheet } from "./components/UserProfileSheet";
 import { PaginationSection } from "./components/PaginationSection";
 import { EditUserDialog } from "./components/EditUserDialog";
 import { AssignPlanDialog } from "./components/AssignPlanDialog";
@@ -35,6 +34,7 @@ interface UsersTableProps {
       price_usd: number;
     } | null;
     is_email_confirmed?: boolean | null;
+    has_auth_account?: boolean;
   })[];
   currentPage: number;
   totalPages: number;
@@ -76,8 +76,8 @@ export function UsersTable({
   onSearchChange
 }: UsersTableProps) {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
-  const [selectedUser, setSelectedUser] = useState<ExtendedUserProfile | null>(null);
-  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<typeof users[0] | null>(null);
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [assignPlanDialogOpen, setAssignPlanDialogOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchTerm);
@@ -89,17 +89,17 @@ export function UsersTable({
     return user.role === roleFilter;
   });
 
-  const handleViewProfile = (user: ExtendedUserProfile) => {
+  const handleViewProfile = (user: typeof users[0]) => {
     setSelectedUser(user);
-    setProfileModalOpen(true);
+    setProfileSheetOpen(true);
   };
 
-  const handleEditUser = (user: ExtendedUserProfile) => {
+  const handleEditUser = (user: typeof users[0]) => {
     setSelectedUser(user);
     setEditDialogOpen(true);
   };
 
-  const handleAssignPlan = (user: ExtendedUserProfile) => {
+  const handleAssignPlan = (user: typeof users[0]) => {
     setSelectedUser(user);
     setAssignPlanDialogOpen(true);
   };
@@ -255,10 +255,10 @@ export function UsersTable({
         </div>
       )}
 
-      {/* Modals */}
-      <UserProfileModal
-        open={profileModalOpen}
-        onOpenChange={setProfileModalOpen}
+      {/* Slide-out Profile Sheet */}
+      <UserProfileSheet
+        open={profileSheetOpen}
+        onOpenChange={setProfileSheetOpen}
         user={selectedUser}
         onSave={onUpdateUser}
         isLoading={updatingUserId === selectedUser?.id}
