@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Database, Search, Zap } from "lucide-react";
+import { Clock, Database, Search, Zap, Ghost, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface UserPerformanceStatsProps {
   performance?: {
@@ -8,17 +9,19 @@ interface UserPerformanceStatsProps {
     totalDuration: number;
     cacheHit: boolean;
     searchActive: boolean;
-  };
+  } | null;
   retryCount: number;
   total: number;
   loading: boolean;
+  orphanedCount?: number;
 }
 
 export function UserPerformanceStats({ 
   performance, 
   retryCount, 
   total, 
-  loading 
+  loading,
+  orphanedCount = 0
 }: UserPerformanceStatsProps) {
   if (loading || !performance) {
     return null;
@@ -84,6 +87,27 @@ export function UserPerformanceStats({
               <div className="text-muted-foreground">{total.toLocaleString()}</div>
             </div>
           </div>
+          
+          {orphanedCount > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-help">
+                    <Ghost className="h-4 w-4 text-amber-500" />
+                    <div>
+                      <div className="font-medium">Orphaned Profiles</div>
+                      <div className="text-amber-600 font-semibold">{orphanedCount}</div>
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[250px]">
+                  <p className="text-sm">
+                    Profiles without auth accounts. These users cannot log in or reset passwords.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
         
         {retryCount > 0 && (

@@ -12,6 +12,7 @@ export function useUserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [tierFilter, setTierFilter] = useState("all");
   const [verificationFilter, setVerificationFilter] = useState("all");
+  const [accountStatusFilter, setAccountStatusFilter] = useState("all");
   const pageSize = 10;
   
   // Use unified view-based hook
@@ -42,8 +43,16 @@ export function useUserManagement() {
       (verificationFilter === 'verified' && user.is_email_confirmed) ||
       (verificationFilter === 'unverified' && !user.is_email_confirmed);
     
-    return matchesSearch && matchesTier && matchesVerification;
+    // Account status filter (orphaned profiles)
+    const matchesAccountStatus = accountStatusFilter === 'all' ||
+      (accountStatusFilter === 'active' && user.has_auth_account === true) ||
+      (accountStatusFilter === 'orphaned' && user.has_auth_account === false);
+    
+    return matchesSearch && matchesTier && matchesVerification && matchesAccountStatus;
   });
+  
+  // Calculate orphaned count
+  const orphanedCount = allUsers.filter(u => u.has_auth_account === false).length;
   
   const totalPages = Math.ceil(filteredUsers.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -71,6 +80,11 @@ export function useUserManagement() {
 
   const handleVerificationFilterChange = (verification: string) => {
     setVerificationFilter(verification);
+    setCurrentPage(1);
+  };
+
+  const handleAccountStatusFilterChange = (status: string) => {
+    setAccountStatusFilter(status);
     setCurrentPage(1);
   };
 
@@ -114,10 +128,13 @@ export function useUserManagement() {
     searchTerm,
     tierFilter,
     verificationFilter,
+    accountStatusFilter,
+    orphanedCount,
     onPageChange: handlePageChange,
     onSearchChange: handleSearchChange,
     onTierFilterChange: handleTierFilterChange,
     onVerificationFilterChange: handleVerificationFilterChange,
+    onAccountStatusFilterChange: handleAccountStatusFilterChange,
     updatingUserId: processingUserId,
     refetch: refetch,
     updateUser: handleUpdateUser,
