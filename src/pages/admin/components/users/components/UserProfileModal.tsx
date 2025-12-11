@@ -92,6 +92,9 @@ export function UserProfileModal({
         phone_number: user.phone_number,
         timezone: user.timezone,
         membership_tier: user.membership_tier,
+        // Auth-related fields
+        email_confirmed: user.email_confirmed_at ? true : false,
+        account_status: user.account_disabled ? 'disabled' : 'enabled',
       });
       setSocialLinks(user.social_links || {});
       setErrors({});
@@ -555,8 +558,8 @@ export function UserProfileModal({
                         </Label>
                         {isEditing ? (
                           <Select
-                            value={user.account_disabled ? 'disabled' : 'enabled'}
-                            onValueChange={(value) => handleChange('account_status' as any, value)}
+                            value={formData.account_status || 'enabled'}
+                            onValueChange={(value) => handleChange('account_status', value as 'enabled' | 'disabled')}
                           >
                             <SelectTrigger className="mobile-select">
                               <SelectValue />
@@ -602,8 +605,8 @@ export function UserProfileModal({
                         </Label>
                         {isEditing ? (
                           <Select
-                            value={user.email_confirmed_at ? 'verified' : 'unverified'}
-                            onValueChange={(value) => handleChange('email_confirmed' as any, value)}
+                            value={formData.email_confirmed ? 'verified' : 'unverified'}
+                            onValueChange={(value) => handleChange('email_confirmed', value === 'verified')}
                           >
                             <SelectTrigger className="mobile-select">
                               <SelectValue />
