@@ -34,6 +34,7 @@ export interface ExtendedUserProfile extends UserProfile {
   last_sign_in_at?: string | null;
   updated_at?: string | null;
   is_email_confirmed?: boolean;
+  has_auth_account?: boolean;
 }
 
 // User creation data structure

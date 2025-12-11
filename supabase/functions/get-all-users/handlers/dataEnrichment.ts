@@ -166,6 +166,9 @@ export function enrichUserProfiles(
       auth_created_at: authUser?.created_at || null,
       auth_updated_at: authUser?.updated_at || null,
       
+      // Orphaned profile detection
+      has_auth_account: !!authUser,
+      
       // Subscription data
       subscription: subscription ? {
         plan_id: subscription.subscription_plans?.id,

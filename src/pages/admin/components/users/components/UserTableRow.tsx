@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key, User as UserIcon, Receipt, CheckCircle } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, UserPlus, Send, AlertTriangle, CreditCard, Key, User as UserIcon, Receipt, CheckCircle, Ghost } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +20,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { EditUserDialog } from './EditUserDialog';
 import { AssignPlanDialog } from './AssignPlanDialog';
@@ -40,6 +46,7 @@ interface UserTableRowProps {
       price_usd: number;
     } | null;
     is_email_confirmed?: boolean | null;
+    has_auth_account?: boolean;
   };
   isUpdating: boolean;
   onUpdateUser: (userId: string, data: Partial<ExtendedUserProfile>) => void;
@@ -150,7 +157,7 @@ export function UserTableRow({
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role || 'user')}`}>
             {user.role || 'user'}
           </span>
-          <div>
+          <div className="flex flex-wrap gap-1">
             {user.is_email_confirmed === true ? (
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 Confirmed
@@ -163,6 +170,24 @@ export function UserTableRow({
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                 Unknown
               </span>
+            )}
+            
+            {user.has_auth_account === false && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 cursor-help">
+                      <Ghost className="h-3 w-3" />
+                      Orphaned
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[250px]">
+                    <p className="text-sm">
+                      This profile has no auth account. Password resets, email confirmations, and login will not work.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
         </div>
@@ -233,19 +258,43 @@ export function UserTableRow({
               </DropdownMenuItem>
             )}
             {canChangePasswords && (
-              <DropdownMenuItem onClick={() => setChangePasswordDialogOpen(true)}>
-                <Key className="mr-2 h-4 w-4" /> Change Password
+              <DropdownMenuItem 
+                onClick={() => setChangePasswordDialogOpen(true)}
+                disabled={user.has_auth_account === false}
+                className={user.has_auth_account === false ? "opacity-50" : ""}
+              >
+                <Key className="mr-2 h-4 w-4" /> 
+                Change Password
+                {user.has_auth_account === false && (
+                  <span className="ml-2 text-xs text-amber-500">(No Auth)</span>
+                )}
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={() => onSendResetEmail(user.email)}>
-              <Send className="mr-2 h-4 w-4" /> Send Reset Email
+            <DropdownMenuItem 
+              onClick={() => onSendResetEmail(user.email!)}
+              disabled={user.has_auth_account === false}
+              className={user.has_auth_account === false ? "opacity-50" : ""}
+            >
+              <Send className="mr-2 h-4 w-4" /> 
+              Send Reset Email
+              {user.has_auth_account === false && (
+                <span className="ml-2 text-xs text-amber-500">(No Auth)</span>
+              )}
             </DropdownMenuItem>
             {user.is_email_confirmed === false && (
-              <DropdownMenuItem onClick={() => onResendConfirmation(user.id, user.email!)}>
-                <Send className="mr-2 h-4 w-4" /> Resend Confirmation
+              <DropdownMenuItem 
+                onClick={() => onResendConfirmation(user.id, user.email!)}
+                disabled={user.has_auth_account === false}
+                className={user.has_auth_account === false ? "opacity-50" : ""}
+              >
+                <Send className="mr-2 h-4 w-4" /> 
+                Resend Confirmation
+                {user.has_auth_account === false && (
+                  <span className="ml-2 text-xs text-amber-500">(No Auth)</span>
+                )}
               </DropdownMenuItem>
             )}
-            {user.is_email_confirmed === false && canFullCRUD && (
+            {user.is_email_confirmed === false && canFullCRUD && user.has_auth_account !== false && (
               <DropdownMenuItem 
                 onClick={async () => {
                   const success = await onConfirmEmail(user.id, `${user.first_name} ${user.last_name}`);

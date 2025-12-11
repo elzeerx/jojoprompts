@@ -22,6 +22,8 @@ export default function UsersManagement() {
     searchTerm,
     tierFilter,
     verificationFilter,
+    accountStatusFilter,
+    orphanedCount,
     loading: isLoading,
     error,
     updateUser,
@@ -33,6 +35,7 @@ export default function UsersManagement() {
     onSearchChange: setSearch,
     onTierFilterChange,
     onVerificationFilterChange,
+    onAccountStatusFilterChange,
     refetch,
     sendPasswordResetEmail,
   } = useUserManagement();
@@ -77,6 +80,8 @@ export default function UsersManagement() {
               onTierFilterChange={onTierFilterChange}
               verificationFilter={verificationFilter}
               onVerificationFilterChange={onVerificationFilterChange}
+              accountStatusFilter={accountStatusFilter}
+              onAccountStatusFilterChange={onAccountStatusFilterChange}
             />
 
             <UserPerformanceStats 
@@ -84,6 +89,7 @@ export default function UsersManagement() {
               performance={null}
               retryCount={0}
               loading={isLoading}
+              orphanedCount={orphanedCount}
             />
 
             {error && (

@@ -1,12 +1,14 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Filter, Crown, Users, CheckCircle, XCircle } from "lucide-react";
+import { Filter, Crown, Users, CheckCircle, XCircle, AlertTriangle, UserCheck, Ghost } from "lucide-react";
 
 interface UsersFiltersProps {
   tierFilter: string;
   onTierFilterChange: (value: string) => void;
   verificationFilter: string;
   onVerificationFilterChange: (value: string) => void;
+  accountStatusFilter: string;
+  onAccountStatusFilterChange: (value: string) => void;
 }
 
 export function UsersFilters({
@@ -14,6 +16,8 @@ export function UsersFilters({
   onTierFilterChange,
   verificationFilter,
   onVerificationFilterChange,
+  accountStatusFilter,
+  onAccountStatusFilterChange,
 }: UsersFiltersProps) {
   return (
     <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50/50 rounded-xl border border-gray-100">
@@ -74,6 +78,28 @@ export function UsersFilters({
             <div className="flex items-center gap-2">
               <XCircle className="h-3.5 w-3.5 text-rose-500" />
               Unverified
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select value={accountStatusFilter} onValueChange={onAccountStatusFilterChange}>
+        <SelectTrigger className="w-[180px] h-9">
+          <AlertTriangle className="h-3.5 w-3.5 mr-2 text-amber-500" />
+          <SelectValue placeholder="Account Status" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Accounts</SelectItem>
+          <SelectItem value="active">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-3.5 w-3.5 text-emerald-500" />
+              Active (Has Auth)
+            </div>
+          </SelectItem>
+          <SelectItem value="orphaned">
+            <div className="flex items-center gap-2">
+              <Ghost className="h-3.5 w-3.5 text-amber-500" />
+              Orphaned (No Auth)
             </div>
           </SelectItem>
         </SelectContent>
