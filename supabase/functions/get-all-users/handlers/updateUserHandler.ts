@@ -6,9 +6,10 @@ import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts
 
 const logger = createEdgeLogger('get-all-users:update-user');
 
-export async function handleUpdateUser(supabase: any, adminId: string, req: Request) {
+export async function handleUpdateUser(supabase: any, adminId: string, req: Request, parsedBody?: any) {
   try {
-    const body = await req.json();
+    // Use pre-parsed body if provided, otherwise parse from request
+    const body = parsedBody || await req.json();
     
     // Get client information for audit logging
     const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';

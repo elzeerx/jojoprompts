@@ -2,6 +2,7 @@ import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessRespo
 import { verifyAdmin } from "../_shared/adminAuth.ts";
 import { createEdgeLogger } from "../_shared/logger.ts";
 import { handleGetUsers } from "./handlers/getUsersHandler.ts";
+import { handleUpdateUser } from "./handlers/updateUserHandler.ts";
 import { checkRateLimit, RATE_LIMITS, createRateLimitResponse } from "../_shared/rateLimit.ts";
 
 const logger = createEdgeLogger('GET_ALL_USERS');
@@ -86,6 +87,11 @@ serve(async (req) => {
         logger.info("User deleted successfully", { targetUserId });
         
         return createSuccessResponse(data);
+      }
+      
+      if (action === 'update') {
+        logger.info("User update requested", { targetUserId: body.userId });
+        return await handleUpdateUser(supabase, userId, req, body);
       }
       
       return createErrorResponse('Invalid action', 400);
