@@ -1,150 +1,156 @@
-import { useState } from "react";
-import { useAdminUsers } from "@/hooks/useAdminUsers";
-import { useUserUpdate } from "./useUserUpdate";
-import { usePlanAssignment } from "./usePlanAssignment";
-import { usePasswordReset } from "./usePasswordReset";
-import { useUserDeletion } from "./useUserDeletion";
-import { useEmailConfirmation } from "./useEmailConfirmation";
-import { UserUpdateData, UserRole } from "@/types/user";
+import { useUserService } from "./useUserService";
+import { useUserList, UserFilters } from "./useUserList";
+import { useUserBulkActions } from "./useUserBulkActions";
+import { UserUpdateData } from "@/types/user";
 
+/**
+ * Main hook that combines all user management functionality
+ * Uses consolidated hooks: useUserService, useUserList, useUserBulkActions
+ */
 export function useUserManagement() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [tierFilter, setTierFilter] = useState("all");
-  const [verificationFilter, setVerificationFilter] = useState("all");
-  const [accountStatusFilter, setAccountStatusFilter] = useState("all");
-  const pageSize = 10;
-  
-  // Use unified view-based hook
-  const { 
-    users: allUsers,
+  // List management (fetching, filtering, pagination)
+  const {
+    users,
+    allUsers,
+    filteredUsers,
     loading,
     error,
+    stats,
+    currentPage,
+    totalPages,
+    total,
+    searchTerm,
+    filters,
+    setPage,
+    setSearch,
+    setFilter,
+    resetFilters,
     refetch
-  } = useAdminUsers();
-  
-  // Client-side filtering and pagination
-  const filteredUsers = allUsers.filter(user => {
-    // Search filter
-    const matchesSearch = !searchTerm || 
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.username?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Tier filter - subscription is nested object
-    const planName = user.subscription?.plan_name?.toLowerCase() || '';
-    const matchesTier = tierFilter === 'all' || 
-      (tierFilter === 'free' && !user.subscription?.plan_name) ||
-      planName.includes(tierFilter.toLowerCase());
-    
-    // Verification filter
-    const matchesVerification = verificationFilter === 'all' ||
-      (verificationFilter === 'verified' && user.is_email_confirmed) ||
-      (verificationFilter === 'unverified' && !user.is_email_confirmed);
-    
-    // Account status filter (orphaned profiles)
-    const matchesAccountStatus = accountStatusFilter === 'all' ||
-      (accountStatusFilter === 'active' && user.has_auth_account === true) ||
-      (accountStatusFilter === 'orphaned' && user.has_auth_account === false);
-    
-    return matchesSearch && matchesTier && matchesVerification && matchesAccountStatus;
-  });
-  
-  // Calculate orphaned count
-  const orphanedCount = allUsers.filter(u => u.has_auth_account === false).length;
-  
-  const totalPages = Math.ceil(filteredUsers.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const users = filteredUsers.slice(startIndex, endIndex);
-  
-  const { processingUserId: updateProcessingUserId, updateUser } = useUserUpdate();
-  const { processingUserId: planProcessingUserId, assignPlanToUser } = usePlanAssignment();
-  const { sendPasswordResetEmail } = usePasswordReset();
-  const { confirmUserEmail, bulkConfirmUsers, processingUserId: confirmProcessingUserId, bulkProcessing } = useEmailConfirmation();
+  } = useUserList({ pageSize: 10 });
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  // CRUD operations
+  const {
+    processingUserId,
+    isProcessing,
+    createUser,
+    updateUser,
+    deleteUser,
+    updateUserRole,
+    confirmUserEmail,
+    sendPasswordResetEmail,
+    assignPlanToUser,
+    cancelUserSubscription
+  } = useUserService();
 
-  const handleSearchChange = (search: string) => {
-    setSearchTerm(search);
-    setCurrentPage(1); // Reset to first page when searching
-  };
+  // Bulk operations
+  const {
+    isProcessing: bulkProcessing,
+    selectedUserIds,
+    bulkConfirmUsers,
+    exportUsers,
+    toggleUserSelection,
+    selectAllUsers,
+    clearSelection
+  } = useUserBulkActions();
 
-  const handleTierFilterChange = (tier: string) => {
-    setTierFilter(tier);
-    setCurrentPage(1);
-  };
-
-  const handleVerificationFilterChange = (verification: string) => {
-    setVerificationFilter(verification);
-    setCurrentPage(1);
-  };
-
-  const handleAccountStatusFilterChange = (status: string) => {
-    setAccountStatusFilter(status);
-    setCurrentPage(1);
-  };
-
+  // Handler wrappers (for backward compatibility)
   const handleUpdateUser = async (userId: string, data: UserUpdateData) => {
-    try {
-      await updateUser(userId, data);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  };
-
-  const handleAssignPlanToUser = async (userId: string, planId: string) => {
-    try {
-      await assignPlanToUser(userId, planId);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  };
-
-  const { processingUserId: deletionProcessingUserId, deleteUser: performDelete } = useUserDeletion();
-
-  const handleDeleteUser = async (userId: string, email: string, firstName: string, lastName: string, role: string) => {
-    const success = await performDelete(userId, email);
-    if (success) {
-      await refetch(); // Refresh user list after successful deletion
-    }
+    const success = await updateUser(userId, data);
+    if (success) await refetch();
     return success;
   };
 
-  const processingUserId = updateProcessingUserId || planProcessingUserId || deletionProcessingUserId || confirmProcessingUserId || null;
+  const handleDeleteUser = async (userId: string, email: string) => {
+    const success = await deleteUser(userId, email);
+    if (success) await refetch();
+    return success;
+  };
+
+  const handleAssignPlanToUser = async (userId: string, planId: string) => {
+    const success = await assignPlanToUser(userId, planId);
+    if (success) await refetch();
+    return success;
+  };
+
+  const handleConfirmUserEmail = async (userId: string, userName?: string) => {
+    const success = await confirmUserEmail(userId, userName);
+    if (success) await refetch();
+    return success;
+  };
 
   return {
+    // Data
     users,
+    allUsers,
+    filteredUsers,
+    
+    // Loading states
     loading,
-    error: error || null,
-    total: filteredUsers.length,
+    error,
+    
+    // Stats
+    stats,
+    total,
+    orphanedCount: stats.orphaned,
+    
+    // Pagination
     currentPage,
     totalPages,
+    
+    // Search & Filters
     searchTerm,
-    tierFilter,
-    verificationFilter,
-    accountStatusFilter,
-    orphanedCount,
-    onPageChange: handlePageChange,
-    onSearchChange: handleSearchChange,
-    onTierFilterChange: handleTierFilterChange,
-    onVerificationFilterChange: handleVerificationFilterChange,
-    onAccountStatusFilterChange: handleAccountStatusFilterChange,
+    tierFilter: filters.tier,
+    verificationFilter: filters.verification,
+    accountStatusFilter: filters.accountStatus,
+    roleFilter: filters.role,
+    
+    // Filter handlers (backward compatible names)
+    onPageChange: setPage,
+    onSearchChange: setSearch,
+    onTierFilterChange: (value: string) => setFilter('tier', value),
+    onVerificationFilterChange: (value: string) => setFilter('verification', value),
+    onAccountStatusFilterChange: (value: string) => setFilter('accountStatus', value),
+    onRoleFilterChange: (value: string) => setFilter('role', value),
+    resetFilters,
+    
+    // Processing state
     updatingUserId: processingUserId,
-    refetch: refetch,
+    isProcessing,
+    
+    // CRUD Operations
+    createUser,
     updateUser: handleUpdateUser,
-    assignPlanToUser: handleAssignPlanToUser,
-    sendPasswordResetEmail,
     deleteUser: handleDeleteUser,
-    confirmUserEmail,
-    bulkConfirmUsers,
+    updateUserRole,
+    
+    // Email Operations
+    confirmUserEmail: handleConfirmUserEmail,
+    sendPasswordResetEmail,
+    
+    // Subscription Operations
+    assignPlanToUser: handleAssignPlanToUser,
+    cancelUserSubscription,
+    
+    // Bulk Operations
     bulkProcessing,
+    selectedUserIds,
+    bulkConfirmUsers,
+    exportUsers,
+    toggleUserSelection,
+    selectAllUsers,
+    clearSelection,
+    
+    // Refresh
+    refetch,
+    
+    // Deprecated (for backward compatibility)
     DeleteDialog: null,
     performance: undefined
   };
 }
+
+// Re-export types and hooks for direct usage
+export type { UserFilters };
+export { useUserService } from "./useUserService";
+export { useUserList } from "./useUserList";
+export { useUserBulkActions } from "./useUserBulkActions";

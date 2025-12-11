@@ -62,7 +62,7 @@ async function canDeleteUser(
   const { data: targetRoleCheck } = await supabase
     .from('user_roles')
     .select('role')
-    .eq('user_id', userId)
+    .eq('user_id', targetUserId)
     .eq('role', 'admin')
     .maybeSingle();
   
