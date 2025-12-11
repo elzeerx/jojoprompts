@@ -33,7 +33,8 @@ export default function UsersManagement() {
     onSearchChange: setSearch,
     onTierFilterChange,
     onVerificationFilterChange,
-    refetch
+    refetch,
+    sendPasswordResetEmail,
   } = useUserManagement();
   
   const { resendConfirmationEmail, resendPaymentEmail } = useUserActions();
@@ -117,7 +118,7 @@ export default function UsersManagement() {
                   updatingUserId={null}
                   onUpdateUser={updateUser}
                   onAssignPlan={async () => {}}
-                  onSendResetEmail={async () => {}}
+                  onSendResetEmail={sendPasswordResetEmail}
                   onSearchChange={setSearch}
                   searchTerm={searchTerm}
                   onDeleteUser={deleteUser}
