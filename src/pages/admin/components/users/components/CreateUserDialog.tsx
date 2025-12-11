@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Dialog,
@@ -19,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUserCreation } from "../hooks/useUserCreation";
+import { useUserService } from "../hooks/useUserService";
 
 interface CreateUserDialogProps {
   open: boolean;
@@ -39,7 +38,7 @@ export function CreateUserDialog({
     password: "",
     role: "user",
   });
-  const { isCreating, createUser } = useUserCreation();
+  const { isProcessing: isCreating, createUser } = useUserService();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

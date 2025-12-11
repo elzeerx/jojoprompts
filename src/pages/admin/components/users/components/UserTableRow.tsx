@@ -25,7 +25,7 @@ import { AssignPlanDialog } from './AssignPlanDialog';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { TableCell } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSubscriptionActions } from "../hooks/useSubscriptionActions";
+import { useUserService } from "../hooks/useUserService";
 import { ExtendedUserProfile } from "@/types/user";
 import { 
   RoleBadge, 
@@ -71,7 +71,7 @@ export function UserTableRow({
   onViewProfile
 }: UserTableRowProps) {
   const { canDeleteUsers, canCancelSubscriptions, canChangePasswords, canFullCRUD } = useAuth();
-  const { processingUserId, cancelUserSubscription } = useSubscriptionActions();
+  const { processingUserId, cancelUserSubscription } = useUserService();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [assignPlanDialogOpen, setAssignPlanDialogOpen] = useState(false);
