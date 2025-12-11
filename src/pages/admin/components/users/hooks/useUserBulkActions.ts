@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { callEdgeFunction } from "@/utils/edgeFunctions";
 import { createLogger } from '@/utils/logging';
+import { ExtendedUserProfile } from "@/types/user";
 
 const logger = createLogger('USER_BULK_ACTIONS');
 
@@ -14,14 +15,13 @@ interface BulkConfirmResult {
 
 /**
  * Consolidated hook for bulk user operations
- * Replaces bulk operations from useEmailConfirmation
+ * Includes: email confirmation, export, role change, bulk delete
  */
 export function useUserBulkActions() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
   // ==================== BULK EMAIL CONFIRMATION ====================
-  // Supports both old signature (positional args) and new signature (options object)
   const bulkConfirmUsers = async (
     startDateOrOptions?: string | {
       userIds?: string[];
@@ -34,7 +34,6 @@ export function useUserBulkActions() {
     onlyWithActiveSubscriptions = false,
     dryRun = true
   ): Promise<BulkConfirmResult | null> => {
-    // Handle both call signatures
     let options: {
       userIds?: string[];
       startDate?: string;
@@ -167,6 +166,107 @@ export function useUserBulkActions() {
     }
   };
 
+  // ==================== BULK ROLE CHANGE ====================
+  const bulkChangeRole = async (userIds: string[], newRole: string): Promise<boolean> => {
+    if (userIds.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No users selected",
+        description: "Please select users to change role",
+      });
+      return false;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      const result = await callEdgeFunction("get-all-users", {
+        action: 'bulk_role_change',
+        userIds,
+        newRole
+      });
+
+      if (result.success) {
+        toast({
+          title: "Role Change Complete",
+          description: `Changed role to ${newRole} for ${result.updated || userIds.length} users`,
+        });
+        logger.info('Bulk role change completed', { count: userIds.length, newRole });
+        return true;
+      } else {
+        throw new Error(result.error || 'Failed to change roles');
+      }
+    } catch (error: any) {
+      logger.error('Bulk role change failed', { error: error.message });
+      toast({
+        variant: "destructive",
+        title: "Role Change Failed",
+        description: error.message || "Failed to change user roles",
+      });
+      return false;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ==================== BULK DELETE ====================
+  const bulkDeleteUsers = async (userIds: string[]): Promise<boolean> => {
+    if (userIds.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No users selected",
+        description: "Please select users to delete",
+      });
+      return false;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      
+      // Delete users one by one (safer approach)
+      for (const userId of userIds) {
+        try {
+          const result = await callEdgeFunction("get-all-users", {
+            action: 'delete',
+            targetUserId: userId
+          });
+          
+          if (result.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch {
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast({
+          title: "Bulk Delete Complete",
+          description: `Deleted ${successCount} users${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+        });
+        logger.info('Bulk delete completed', { successCount, errorCount });
+        return true;
+      } else {
+        throw new Error('Failed to delete any users');
+      }
+    } catch (error: any) {
+      logger.error('Bulk delete failed', { error: error.message });
+      toast({
+        variant: "destructive",
+        title: "Bulk Delete Failed",
+        description: error.message || "Failed to delete users",
+      });
+      return false;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // ==================== SELECTION MANAGEMENT ====================
   const toggleUserSelection = (userId: string) => {
     setSelectedUserIds(prev => 
@@ -192,6 +292,8 @@ export function useUserBulkActions() {
     // Bulk Operations
     bulkConfirmUsers,
     exportUsers,
+    bulkChangeRole,
+    bulkDeleteUsers,
     
     // Selection Management
     toggleUserSelection,

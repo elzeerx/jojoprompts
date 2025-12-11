@@ -1,19 +1,26 @@
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUserManagement } from "./hooks/useUserManagement";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { useUserActions } from "./hooks/useUserActions";
+import { useUserBulkActions } from "./hooks/useUserBulkActions";
 import { UsersTable } from "./UsersTable";
 import { UsersHeader } from "./components/UsersHeader";
 import { UsersFilters } from "./components/UsersFilters";
 import { UserPerformanceStats } from "./UserPerformanceStats";
 import { MarketingEmailsPanel } from "./components/MarketingEmailsPanel";
+import { UserActivityLog } from "./components/UserActivityLog";
+import { QuickActionsPanel } from "./components/QuickActionsPanel";
+import { BulkActionsBar } from "./components/BulkActionsBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import { CreateUserDialog } from "./components/CreateUserDialog";
 
 export default function UsersManagement() {
   const { isSuperAdmin } = useSuperAdmin();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  
   const {
     users,
     total,
@@ -41,14 +48,63 @@ export default function UsersManagement() {
   } = useUserManagement();
   
   const { resendConfirmationEmail, resendPaymentEmail } = useUserActions();
+  
+  const {
+    selectedUserIds,
+    isProcessing,
+    exportUsers,
+    bulkChangeRole,
+    bulkDeleteUsers,
+    toggleUserSelection,
+    selectAllUsers,
+    clearSelection,
+  } = useUserBulkActions();
+
+  // Get selected user objects
+  const selectedUsers = users.filter(u => selectedUserIds.includes(u.id));
+
+  // Handlers for bulk actions
+  const handleBulkExport = async (format: 'csv' | 'json') => {
+    return await exportUsers(selectedUsers, format);
+  };
+
+  const handleBulkRoleChange = async (userIds: string[], newRole: string) => {
+    const success = await bulkChangeRole(userIds, newRole);
+    if (success) refetch();
+    return success;
+  };
+
+  const handleBulkDelete = async (userIds: string[]) => {
+    const success = await bulkDeleteUsers(userIds);
+    if (success) refetch();
+    return success;
+  };
+
+  const handleBulkConfirmEmails = async (userIds: string[]) => {
+    const result = await bulkConfirmUsers({ userIds, dryRun: false });
+    if (result) refetch();
+    return result;
+  };
+
+  const handleExportAll = async () => {
+    await exportUsers(users, 'csv');
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Users Management</h2>
-        <p className="text-muted-foreground">
-          Manage user accounts, roles, subscriptions, and marketing campaigns
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Users Management</h2>
+          <p className="text-muted-foreground">
+            Manage user accounts, roles, subscriptions, and marketing campaigns
+          </p>
+        </div>
+        <QuickActionsPanel
+          onCreateUser={() => setCreateDialogOpen(true)}
+          onExportAll={handleExportAll}
+          onRefresh={refetch}
+          isLoading={isLoading}
+        />
       </div>
 
       <div className="space-y-6">
@@ -62,8 +118,9 @@ export default function UsersManagement() {
         )}
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[500px]">
             <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="activity">Activity Log</TabsTrigger>
             <TabsTrigger value="marketing">Marketing Emails</TabsTrigger>
           </TabsList>
 
@@ -74,7 +131,6 @@ export default function UsersManagement() {
               onUserCreated={refetch}
             />
 
-            {/* Phase 6: User Filters */}
             <UsersFilters
               tierFilter={tierFilter}
               onTierFilterChange={onTierFilterChange}
@@ -142,11 +198,34 @@ export default function UsersManagement() {
             )}
           </TabsContent>
 
+          <TabsContent value="activity" className="mt-6">
+            <UserActivityLog />
+          </TabsContent>
+
           <TabsContent value="marketing" className="mt-6">
             <MarketingEmailsPanel />
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Bulk Actions Floating Bar */}
+      <BulkActionsBar
+        selectedCount={selectedUserIds.length}
+        selectedUsers={selectedUsers}
+        onClearSelection={clearSelection}
+        onBulkExport={handleBulkExport}
+        onBulkRoleChange={handleBulkRoleChange}
+        onBulkDelete={handleBulkDelete}
+        onBulkConfirmEmails={handleBulkConfirmEmails}
+        isProcessing={isProcessing || bulkProcessing}
+      />
+
+      {/* Create User Dialog */}
+      <CreateUserDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onUserCreated={refetch}
+      />
     </div>
   );
 }
