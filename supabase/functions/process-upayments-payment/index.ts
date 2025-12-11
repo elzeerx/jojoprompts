@@ -2,14 +2,14 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { createEdgeLogger } from '../_shared/logger.ts';
 import { logEmailAttempt } from '../_shared/emailLogger.ts';
+import { 
+  validatePaymentInput, 
+  UpaymentCreateSchema, 
+  UpaymentDirectActivationSchema, 
+  UpaymentVerifySchema 
+} from '../_shared/paymentValidation.ts';
 
 const logger = createEdgeLogger('process-upayments-payment');
-
-// UUID validation helper
-function isValidUUID(str: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
-}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -125,25 +125,44 @@ serve(async (req) => {
   try {
     const rawBody = await req.json();
     const supabaseClient = makeSupabaseClient();
-    const { action, planId, userId, amountKWD, amountUSD, appliedDiscount, language } = rawBody;
+    const { action } = rawBody;
 
-    // Validate UUID formats to prevent type errors
-    if (planId && !isValidUUID(planId)) {
-      logger.error('Invalid planId format', { planId });
-      return new Response(JSON.stringify({ success: false, error: 'Invalid planId format' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    if (userId && !isValidUUID(userId)) {
-      logger.error('Invalid userId format', { userId });
-      return new Response(JSON.stringify({ success: false, error: 'Invalid userId format' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    logger.info('Processing Upayments request', { action });
+
+    // Validate input based on action type
+    if (action === 'create') {
+      const validation = validatePaymentInput(UpaymentCreateSchema, rawBody);
+      if (!validation.success) {
+        logger.error('Create validation failed', { error: validation.error });
+        return new Response(JSON.stringify({ success: false, error: validation.error }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } else if (action === 'direct-activation') {
+      const validation = validatePaymentInput(UpaymentDirectActivationSchema, rawBody);
+      if (!validation.success) {
+        logger.error('Direct activation validation failed', { error: validation.error });
+        return new Response(JSON.stringify({ success: false, error: validation.error }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } else if (action === 'verify') {
+      const validation = validatePaymentInput(UpaymentVerifySchema, rawBody);
+      if (!validation.success) {
+        logger.error('Verify validation failed', { error: validation.error });
+        return new Response(JSON.stringify({ success: false, error: validation.error }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
-    logger.info('Processing Upayments request', { action, planId, userId, amountKWD, amountUSD });
+    // Extract validated fields
+    const { planId, userId, amountKWD, amountUSD, appliedDiscount, language } = rawBody;
+
+    logger.info('Validated Upayments request', { action, planId, userId, amountKWD, amountUSD });
 
     // Handle direct activation for 100% discounts (reuses same logic as PayPal)
     if (action === 'direct-activation') {

@@ -57,6 +57,47 @@ export const VerifyPaymentSchema = z.object({
   { message: 'Either orderId or paymentId must be provided' }
 );
 
+// Upayments-specific schemas
+export const UpaymentCreateSchema = z.object({
+  action: z.literal('create'),
+  planId: z.string().uuid('Invalid plan ID format'),
+  userId: z.string().uuid('Invalid user ID format'),
+  amountKWD: z.number().min(0, 'Amount must be non-negative').max(999999, 'Amount exceeds maximum'),
+  amountUSD: z.number().min(0, 'Amount must be non-negative').max(999999, 'Amount exceeds maximum'),
+  appliedDiscount: z.object({
+    id: z.string().uuid('Invalid discount ID format'),
+    code: z.string().min(1).max(50),
+    discount_value: z.number().min(0).max(100)
+  }).optional().nullable(),
+  language: z.string().max(10).optional()
+});
+
+export const UpaymentDirectActivationSchema = z.object({
+  action: z.literal('direct-activation'),
+  planId: z.string().uuid('Invalid plan ID format'),
+  userId: z.string().uuid('Invalid user ID format'),
+  amountKWD: z.literal(0, { errorMap: () => ({ message: 'Amount must be 0 for direct activation' }) }),
+  amountUSD: z.literal(0, { errorMap: () => ({ message: 'Amount must be 0 for direct activation' }) }),
+  appliedDiscount: z.object({
+    id: z.string().uuid('Invalid discount ID format'),
+    code: z.string().min(1).max(50),
+    discount_value: z.number().min(0).max(100)
+  }),
+  language: z.string().max(10).optional()
+});
+
+export const UpaymentVerifySchema = z.object({
+  action: z.literal('verify'),
+  trackId: z.string().min(1).max(255).optional(),
+  invoiceId: z.string().min(1).max(255).optional(),
+  planId: z.string().uuid('Invalid plan ID format').optional(),
+  userId: z.string().uuid('Invalid user ID format').optional(),
+  paymentSuccess: z.boolean().optional()
+}).refine(
+  (data) => data.trackId || data.invoiceId || (data.userId && data.planId),
+  { message: 'Either trackId, invoiceId, or userId+planId must be provided' }
+);
+
 // Helper function to validate and return typed data
 export function validatePaymentInput<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
   try {
