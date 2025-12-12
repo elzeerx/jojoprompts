@@ -653,13 +653,6 @@ export type Database = {
             referencedRelation: "prompts"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "collection_prompts_prompt_id_fkey"
-            columns: ["prompt_id"]
-            isOneToOne: false
-            referencedRelation: "prompts_secure"
-            referencedColumns: ["id"]
-          },
         ]
       }
       collections: {
@@ -1207,13 +1200,6 @@ export type Database = {
             referencedRelation: "prompts"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "favorites_prompt_id_fkey"
-            columns: ["prompt_id"]
-            isOneToOne: false
-            referencedRelation: "prompts_secure"
-            referencedColumns: ["id"]
-          },
         ]
       }
       ml_models: {
@@ -1611,13 +1597,6 @@ export type Database = {
             referencedRelation: "prompts"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "prompt_shares_prompt_id_fkey"
-            columns: ["prompt_id"]
-            isOneToOne: false
-            referencedRelation: "prompts_secure"
-            referencedColumns: ["id"]
-          },
         ]
       }
       prompt_templates: {
@@ -1689,13 +1668,6 @@ export type Database = {
             columns: ["prompt_id"]
             isOneToOne: false
             referencedRelation: "prompts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompt_usage_history_prompt_id_fkey"
-            columns: ["prompt_id"]
-            isOneToOne: false
-            referencedRelation: "prompts_secure"
             referencedColumns: ["id"]
           },
         ]
@@ -2740,107 +2712,6 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
-      }
-      prompts_secure: {
-        Row: {
-          created_at: string | null
-          default_image_path: string | null
-          id: string | null
-          image_path: string | null
-          metadata: Json | null
-          platform_fields: Json | null
-          platform_id: string | null
-          prompt_text: string | null
-          prompt_text_ar: string | null
-          prompt_type: string | null
-          title: string | null
-          title_ar: string | null
-          user_id: string | null
-          version: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          default_image_path?: string | null
-          id?: string | null
-          image_path?: string | null
-          metadata?: Json | null
-          platform_fields?: Json | null
-          platform_id?: string | null
-          prompt_text?: never
-          prompt_text_ar?: string | null
-          prompt_type?: string | null
-          title?: string | null
-          title_ar?: string | null
-          user_id?: string | null
-          version?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          default_image_path?: string | null
-          id?: string | null
-          image_path?: string | null
-          metadata?: Json | null
-          platform_fields?: Json | null
-          platform_id?: string | null
-          prompt_text?: never
-          prompt_text_ar?: string | null
-          prompt_type?: string | null
-          title?: string | null
-          title_ar?: string | null
-          user_id?: string | null
-          version?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_prompts_user_id"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_prompts_user_id"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_with_role"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_prompts_user_id"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "v_admin_users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompts_platform_id_fkey"
-            columns: ["platform_id"]
-            isOneToOne: false
-            referencedRelation: "platforms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_with_role"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "v_admin_users"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       v_admin_users: {
         Row: {

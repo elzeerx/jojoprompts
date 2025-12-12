@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -8,24 +7,39 @@ import { usePromptFilters } from "@/hooks/usePromptFilters";
 import { PromptService } from "@/services/PromptService";
 import type { PromptRow } from "@/types/prompts";
 import { createLogger } from '@/utils/logging';
+import { useUserSubscription } from "@/hooks/useUserSubscription";
+import { isPrivilegedUser } from "@/utils/auth";
 
 const logger = createLogger('PROMPTS_PAGE');
 
 export default function PromptsPage() {
-  const { loading: authLoading, session } = useAuth();
+  const { loading: authLoading, session, userRole } = useAuth();
   const navigate = useNavigate();
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
+  const { userSubscription, isLoading: subLoading } = useUserSubscription(session?.user?.id);
   const filters = usePromptFilters();
 
-  // Handle authentication redirect
+  // Handle authentication and subscription redirect
   useEffect(() => {
-    if (!authLoading && !session) {
+    if (authLoading || subLoading) return;
+    
+    // Not logged in -> redirect to login
+    if (!session) {
       navigate("/login");
+      return;
     }
-  }, [authLoading, session, navigate]);
+    
+    // Privileged users (admin, prompter, jadmin) always have access
+    if (isPrivilegedUser(userRole)) return;
+    
+    // Regular users without subscription -> redirect to pricing
+    if (!userSubscription) {
+      navigate("/pricing", { replace: true });
+    }
+  }, [authLoading, subLoading, session, userRole, userSubscription, navigate]);
 
   // Load prompts with optimizations
   const loadPrompts = async () => {

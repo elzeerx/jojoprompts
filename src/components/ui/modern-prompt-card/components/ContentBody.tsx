@@ -32,8 +32,11 @@ export function ContentBody({
         <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 leading-tight line-clamp-1">
           {title}
         </h3>
-        <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed">
-          {description}
+        <p className={cn(
+          "text-sm line-clamp-2 leading-relaxed",
+          isLocked ? "text-gray-400 italic" : "text-gray-500"
+        )}>
+          {isLocked ? "🔒 Premium content - upgrade to view" : description}
         </p>
       </div>
 
