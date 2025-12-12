@@ -106,15 +106,15 @@ export const useAuthInitialization = ({
               title: "Welcome! 🎉",
               description: planId 
                 ? "Your email is confirmed! Complete your subscription below."
-                : "Your email is confirmed! Welcome to JoJo Prompts.",
+                : "Your email is confirmed! Choose a plan to unlock all prompts.",
             });
 
-            // Redirect to checkout with plan or to pricing to select a plan
+            // ALWAYS redirect to pricing or checkout - users MUST subscribe
             if (planId) {
               navigate(`/checkout?plan_id=${planId}`);
             } else {
-              // New user without a plan should go to pricing to select one
-              navigate('/pricing');
+              // New user without a plan MUST go to pricing to select one
+              navigate('/pricing?from_signup=true');
             }
           }
 

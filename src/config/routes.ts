@@ -135,27 +135,27 @@ export const routes: RouteConfig[] = [
   {
     path: "prompts",
     component: PromptsPage,
-    protection: "public"
+    protection: "premium"  // Require subscription to access prompts catalog
   },
   {
     path: "prompts/chatgpt",
     component: ChatGPTPromptsPage,
-    protection: "public"
+    protection: "premium"
   },
   {
     path: "prompts/midjourney",
     component: MidjourneyPromptsPage,
-    protection: "public"
+    protection: "premium"
   },
   {
     path: "prompts/workflow",
     component: WorkflowPromptsPage,
-    protection: "public"
+    protection: "premium"
   },
   {
     path: "prompts/gpts-builder",
     component: GPTsBuilderPage,
-    protection: "public"
+    protection: "premium"
   },
   {
     path: "search",

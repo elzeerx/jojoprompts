@@ -27,18 +27,21 @@ export function useSubscriptionRedirect() {
     const currentPath = location.pathname;
     const excludedPaths = [
       '/pricing', '/checkout', '/auth', '/signup', '/login',
-      '/prompts', '/examples', '/about', '/contact', '/faq', 
-      '/privacy', '/terms', '/search'
+      '/examples', '/about', '/contact', '/faq', 
+      '/privacy', '/terms', '/search', '/'
     ];
-    if (excludedPaths.some(path => currentPath.startsWith(path))) return;
+    if (excludedPaths.some(path => currentPath === path || (path !== '/' && currentPath.startsWith(path)))) return;
     
-    // Only redirect if trying to access premium/dashboard routes
-    const premiumPaths = ['/dashboard', '/favorites', '/payment-dashboard'];
+    // Premium paths that require subscription
+    const premiumPaths = [
+      '/dashboard', '/favorites', '/payment-dashboard',
+      '/prompts'  // All prompts routes now require subscription
+    ];
     const isPremiumRoute = premiumPaths.some(path => currentPath.startsWith(path));
     
     if (isRegularUser(userRole) && isPremiumRoute) {
       logger.info('Redirecting user without subscription', { path: currentPath, userRole });
-      navigate('/pricing', { replace: true });
+      navigate('/pricing?upgrade=true', { replace: true });
     }
   }, [authLoading, subscriptionLoading, user, userRole, userSubscription, location.pathname, navigate]);
 }

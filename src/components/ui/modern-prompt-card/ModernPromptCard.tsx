@@ -238,10 +238,10 @@ export function ModernPromptCard({
           )}
         </div>
 
-        {/* Content Body */}
+        {/* Content Body - Don't show actual prompt content for locked cards */}
         <ContentBody
           title={title}
-          description={prompt_text}
+          description={isLocked ? "Subscribe to unlock this premium content..." : prompt_text}
           category={category}
           tags={tags}
           modelType={modelType}

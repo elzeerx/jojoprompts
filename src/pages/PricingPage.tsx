@@ -1,11 +1,11 @@
-
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PricingComparison } from '@/components/pricing/PricingComparison';
 import { PricingSection } from '@/components/pricing/PricingSection';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Container } from '@/components/ui/container';
-import { Check, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight, Sparkles, Crown } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,11 @@ export default function PricingPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const { t, isRTL } = useTranslation();
+  const [searchParams] = useSearchParams();
+  
+  // Check if user was redirected from signup or prompts page
+  const fromSignup = searchParams.get('from_signup') === 'true';
+  const needsUpgrade = searchParams.get('upgrade') === 'true';
   
   const keyFeatures = [
     t('pricingPage.feature1'),
@@ -32,6 +37,39 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-white">
       <Container className="pt-20 lg:pt-24 pb-8">
+        {/* Conversion Banner for redirected users */}
+        {(fromSignup || needsUpgrade) && (
+          <div className="mb-8 sm:mb-12 max-w-3xl mx-auto">
+            <div className={cn(
+              "rounded-2xl p-6 sm:p-8 text-center",
+              "bg-gradient-to-r from-warm-gold/10 via-warm-gold/5 to-warm-gold/10",
+              "border border-warm-gold/20"
+            )}>
+              <div className="flex items-center justify-center gap-2 mb-3">
+                {fromSignup ? (
+                  <Sparkles className="h-5 w-5 text-warm-gold" />
+                ) : (
+                  <Crown className="h-5 w-5 text-warm-gold" />
+                )}
+                <span className="text-sm font-semibold text-warm-gold uppercase tracking-wider">
+                  {fromSignup ? "Welcome! One more step" : "Subscription Required"}
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-dark-base mb-2">
+                {fromSignup 
+                  ? "Choose Your Plan to Unlock All Prompts" 
+                  : "Subscribe to Access Premium Content"
+                }
+              </h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                {fromSignup 
+                  ? "Your account is ready! Select a plan below to get instant access to 500+ premium AI prompts."
+                  : "The prompts you're trying to access require an active subscription. Choose a plan to continue."
+                }
+              </p>
+            </div>
+          </div>
+        )}
         {/* Hero Section - Minimalist */}
         <div className="text-center mobile-container-padding mb-12 sm:mb-16">
           <h1 className={cn(
