@@ -286,6 +286,53 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       }
     }
 
+    // Update password if provided (admin password change)
+    if (validation.sanitizedData.password) {
+      logger.info('Admin changing user password', { adminId, targetUserId: userId });
+      
+      const { error: passwordUpdateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { password: validation.sanitizedData.password }
+      );
+
+      if (passwordUpdateError) {
+        logger.error('Error updating user password', { error: passwordUpdateError.message });
+        
+        // Log security event for failed password change attempt
+        await logSecurityEvent(supabase, {
+          user_id: adminId,
+          action: 'admin_password_change_failed',
+          details: { 
+            target_user_id: userId,
+            error: passwordUpdateError.message
+          }
+        });
+        
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update password', 
+            details: passwordUpdateError.message
+          }), 
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      // Log successful password change for audit trail
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: 'admin_password_change_success',
+        details: { 
+          target_user_id: userId,
+          changed_at: new Date().toISOString()
+        }
+      });
+      
+      logger.info('Password changed successfully by admin', { adminId, targetUserId: userId });
+    }
+
     // Log successful user update
     await logSecurityEvent(supabase, {
       user_id: adminId,

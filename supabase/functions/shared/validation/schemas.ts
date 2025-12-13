@@ -29,6 +29,12 @@ export class ValidationSchemas {
   static readonly USER_UPDATE: ValidationSchema = {
     userId: { required: true, type: 'uuid' },
     email: { required: false, type: 'email' },
+    password: {
+      required: false,
+      type: 'string',
+      minLength: 8,
+      maxLength: 128
+    },
     firstName: { 
       required: false, 
       type: 'string', 
