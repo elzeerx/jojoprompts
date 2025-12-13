@@ -81,11 +81,19 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
       });
 
       if (verifyError) {
-        setError(verifyError.message);
+        // Try to extract detailed error message from response
+        let errorMessage = verifyError.message;
+        
+        // Check if the error message is the generic edge function error
+        if (errorMessage.includes('non-2xx status code') || errorMessage.includes('Edge Function')) {
+          errorMessage = "Invalid or expired reset link. Please request a new password reset.";
+        }
+        
+        setError(errorMessage);
         toast({
           variant: "destructive",
           title: t('common.error'),
-          description: verifyError.message,
+          description: errorMessage,
         });
         return;
       }

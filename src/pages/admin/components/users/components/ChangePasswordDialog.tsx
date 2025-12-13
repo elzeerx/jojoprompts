@@ -50,10 +50,10 @@ export function ChangePasswordDialog({
       return;
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       toast({
         title: "Password too short",
-        description: "Password must be at least 6 characters long.",
+        description: "Password must be at least 8 characters long.",
         variant: "destructive",
       });
       return;
@@ -62,16 +62,23 @@ export function ChangePasswordDialog({
     setLoading(true);
 
     try {
-      // Use Supabase RPC to change password (admin function)
-      const { error } = await supabase.rpc('admin_change_user_password' as any, {
-        user_id: user.id,
-        new_password: newPassword
-      }) as { data: any, error: any };
+      // Use edge function to change password via admin API
+      const { data, error } = await supabase.functions.invoke('get-all-users', {
+        body: {
+          action: 'update',
+          userId: user.id,
+          password: newPassword
+        }
+      });
 
       if (error) throw error;
+      
+      if (data && !data.success && data.error) {
+        throw new Error(data.error);
+      }
 
       toast({
-        title: "Password changed successfully! 🎉",
+        title: "Password changed successfully!",
         description: `Password has been updated for ${user.email}`,
       });
       
@@ -115,7 +122,7 @@ export function ChangePasswordDialog({
                     placeholder="Enter new password"
                     className="h-12 text-base pr-12"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                   <Button
                     type="button"
@@ -146,7 +153,7 @@ export function ChangePasswordDialog({
                     placeholder="Confirm new password"
                     className="h-12 text-base pr-12"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                   <Button
                     type="button"
@@ -170,7 +177,7 @@ export function ChangePasswordDialog({
                   <div>
                     <h4 className="font-medium text-blue-900">Password Requirements</h4>
                     <ul className="text-sm text-blue-700 mt-1 space-y-1">
-                      <li>• Minimum 6 characters long</li>
+                      <li>• Minimum 8 characters long</li>
                       <li>• User will be able to login immediately with the new password</li>
                       <li>• No email notification will be sent to the user</li>
                     </ul>

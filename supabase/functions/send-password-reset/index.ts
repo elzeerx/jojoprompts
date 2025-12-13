@@ -110,7 +110,7 @@ serve(async (req: Request) => {
 
     // Generate new token
     const token = generateSecureToken();
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiration
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hour expiration
 
     // Store token in database
     const { error: insertError } = await supabase
@@ -190,7 +190,7 @@ serve(async (req: Request) => {
               </table>
 
               <p style="color: #666; font-size: 13px; line-height: 1.5; margin: 20px 0 0 0; font-family: Arial, sans-serif;">
-                <strong>This link will expire in 1 hour.</strong>
+                <strong>This link will expire in 24 hours.</strong>
               </p>
               
               <p style="color: #999; font-size: 12px; line-height: 1.5; margin: 15px 0 0 0; font-family: Arial, sans-serif;">
@@ -230,7 +230,7 @@ We received a request to reset your password for your JoJo Prompts account.
 Click the link below to create a new password:
 ${resetUrl}
 
-This link will expire in 1 hour.
+This link will expire in 24 hours.
 
 If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
 
