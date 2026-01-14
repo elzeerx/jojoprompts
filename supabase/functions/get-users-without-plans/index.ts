@@ -70,19 +70,43 @@ serve(async (req) => {
       throw new Error(`Database error: ${usersError.message}`);
     }
 
-    // Get email addresses for these users from auth.users
-    const userIds = usersWithoutPlans?.map(u => u.id) || [];
-    const usersWithEmails = [];
-
-    for (const userProfile of usersWithoutPlans || []) {
-      // Get email from auth metadata or use a placeholder
-      const { data: authUser } = await supabase.auth.admin.getUserById(userProfile.id);
-      
-      usersWithEmails.push({
-        ...userProfile,
-        email: authUser.user?.email || null
+    // Batch fetch all auth users to get emails efficiently
+    const userIdsToFetch = usersWithoutPlans?.map(u => u.id) || [];
+    const emailMap = new Map<string, string | null>();
+    
+    // Fetch users in batches using listUsers with pagination
+    let page = 1;
+    const perPage = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+        page,
+        perPage
       });
+      
+      if (authError) {
+        logger.error('Error fetching auth users', { error: authError.message });
+        break;
+      }
+      
+      // Build email lookup map for users we care about
+      for (const authUser of authData.users || []) {
+        if (userIdsToFetch.includes(authUser.id)) {
+          emailMap.set(authUser.id, authUser.email || null);
+        }
+      }
+      
+      // Check if we have more pages
+      hasMore = (authData.users?.length || 0) === perPage;
+      page++;
     }
+    
+    // Enrich profiles with emails from the map
+    const usersWithEmails = (usersWithoutPlans || []).map(userProfile => ({
+      ...userProfile,
+      email: emailMap.get(userProfile.id) || null
+    }));
 
     logger.info('Users without plans fetched', { count: usersWithEmails.length });
 

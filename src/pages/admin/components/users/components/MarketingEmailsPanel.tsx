@@ -131,7 +131,7 @@ export function MarketingEmailsPanel() {
                 </label>
               </div>
 
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
                 {users.map((user) => (
                   <div
                     key={user.id}
