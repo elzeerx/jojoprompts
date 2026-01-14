@@ -71,15 +71,20 @@ serve(async (req: Request) => {
       );
     }
 
-    // Find user by email using admin API
-    const { data: { users }, error: userError } = await supabase.auth.admin.listUsers();
+    // Find user by email using direct database query (efficient for any number of users)
+    const { data: profileUser, error: userError } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .ilike('email', email)
+      .maybeSingle();
     
     if (userError) {
-      logger.error('Error listing users', { error: userError.message });
+      logger.error('Error finding user', { error: userError.message });
       throw new Error('Failed to verify user');
     }
 
-    const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    // Map to expected user format
+    const user = profileUser ? { id: profileUser.id, email: profileUser.email } : null;
 
     // Always return success to prevent email enumeration attacks
     // But only send email if user exists
