@@ -26,7 +26,9 @@ export function useMarketingEmails() {
         }
       });
 
-      if (error) throw error;
+      if (error || (data && !data.success)) {
+        throw new Error(error?.message || data?.error || "There was an error sending the reminder email");
+      }
 
       toast({
         title: "Email sent successfully",
@@ -61,7 +63,9 @@ export function useMarketingEmails() {
         }
       });
 
-      if (error) throw error;
+      if (error || (data && !data.success)) {
+        throw new Error(error?.message || data?.error || "There was an error sending the reminder emails");
+      }
 
       toast({
         title: "Bulk emails sent successfully",
