@@ -119,14 +119,15 @@ const handler = async (req: Request): Promise<Response> => {
     const user = userData.user;
     if (!user) throw new Error("User not authenticated");
 
-    // Check if user is admin
-    const { data: profile, error: profileError } = await supabaseClient
-      .from("profiles")
+    // Check if user is admin using user_roles table
+    const { data: userRole, error: roleError } = await supabaseClient
+      .from("user_roles")
       .select("role")
-      .eq("id", user.id)
-      .single();
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
 
-    if (profileError || profile?.role !== "admin") {
+    if (roleError || !userRole) {
       throw new Error("Insufficient permissions");
     }
 
