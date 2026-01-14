@@ -30,25 +30,41 @@ serve(async (req) => {
     
     logger.debug('Active subscription users found', { count: activeUserIds.length });
 
-    // Get all users without active subscriptions
-    let query = supabase
+    // Get users with 'user' role from user_roles table
+    const { data: userRoleRecords, error: rolesError } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "user");
+
+    if (rolesError) {
+      throw new Error(`Error fetching user roles: ${rolesError.message}`);
+    }
+
+    const regularUserIds = userRoleRecords?.map(r => r.user_id) || [];
+    
+    // Filter out users who have active subscriptions
+    const usersWithoutPlanIds = regularUserIds.filter(id => !activeUserIds.includes(id));
+
+    if (usersWithoutPlanIds.length === 0) {
+      logger.info('No users without plans found');
+      return createSuccessResponse({
+        success: true,
+        users: [],
+        total: 0
+      });
+    }
+
+    // Get profile data for these users
+    const { data: usersWithoutPlans, error: usersError } = await supabase
       .from("profiles")
       .select(`
         id,
         first_name,
         last_name,
         username,
-        role,
         created_at
       `)
-      .eq("role", "user");
-
-    // If there are active users, exclude them
-    if (activeUserIds.length > 0) {
-      query = query.not("id", "in", `(${activeUserIds.join(',')})`);
-    }
-
-    const { data: usersWithoutPlans, error: usersError } = await query;
+      .in("id", usersWithoutPlanIds);
 
     if (usersError) {
       throw new Error(`Database error: ${usersError.message}`);
