@@ -10,7 +10,6 @@ interface UserWithoutPlan {
   first_name: string;
   last_name: string;
   username: string;
-  role: string;
   created_at: string;
   email?: string;
 }
