@@ -42,7 +42,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     label: "Insights",
     items: [
       { label: "Overview", to: "/admin", icon: LayoutDashboard, end: true },
-      { label: "Analytics", to: "/admin/analytics", icon: BarChart3, disabled: true },
+      { label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
       { label: "Security", to: "/admin/security", icon: Shield },
     ],
   },
@@ -73,7 +73,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { label: "Templates", to: "/admin/emails/templates", icon: Mail },
       { label: "Email Analytics", to: "/admin/emails/analytics", icon: MailOpen },
-      { label: "Marketing", to: "/admin/emails/marketing", icon: Send, disabled: true },
+      { label: "Marketing", to: "/admin/emails/marketing", icon: Send },
     ],
   },
   {
