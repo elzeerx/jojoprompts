@@ -111,7 +111,7 @@ export class UserService extends BaseService<UserProfile> {
           avatar_url: data.avatar_url,
           bio: data.bio,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('id', userId)
         .select('*')
         .single(),
