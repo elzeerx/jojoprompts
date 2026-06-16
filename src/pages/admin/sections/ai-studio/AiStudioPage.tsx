@@ -70,6 +70,7 @@ export default function AiStudioPage() {
     setMessages,
     setAsset,
     setTitle,
+    setThumbnailPath,
     draft,
     save,
   } = useAiStudioDraft(draftId);
