@@ -101,6 +101,13 @@ export function useAiStudioDraft(draftId: string | undefined): UseDraftReturn {
     await load();
   }, [draftId, asset, kind, targetLlm, messages, title, load]);
 
+  const setThumbnailPath = useCallback(
+    (path: string) => {
+      setDraft((prev) => (prev ? { ...prev, thumbnail_path: path } : prev));
+    },
+    [],
+  );
+
   return {
     draft,
     loading,
@@ -114,6 +121,7 @@ export function useAiStudioDraft(draftId: string | undefined): UseDraftReturn {
     setMessages,
     setAsset,
     setTitle,
+    setThumbnailPath,
     save,
     refetch: load,
   };
