@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Loader2 } from "lucide-react";
+import { AdminSectionSkeleton } from "./AdminSectionSkeleton";
 
 // Lazy-load existing section components. No business logic touched.
 const DashboardOverview = lazy(() => import("../components/DashboardOverview"));
