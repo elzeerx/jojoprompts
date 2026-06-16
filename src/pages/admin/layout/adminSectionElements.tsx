@@ -3,6 +3,11 @@ import { Loader2 } from "lucide-react";
 
 // Lazy-load existing section components. No business logic touched.
 const DashboardOverview = lazy(() => import("../components/DashboardOverview"));
+const AnalyticsPage = lazy(() => import("../sections/analytics/AnalyticsPage"));
+const CommunicationsLayout = lazy(
+  () => import("../sections/communications/CommunicationsLayout")
+);
+const MarketingPage = lazy(() => import("../sections/communications/MarketingPage"));
 const PromptsManagement = lazy(() => import("../PromptsManagement"));
 const CategoriesManagement = lazy(() =>
   import("../components/categories/CategoriesManagement").then((m) => ({
@@ -51,13 +56,16 @@ const wrap = (Comp: React.ComponentType) => (
 
 export const adminSectionElements = {
   overview: wrap(DashboardOverview),
+  analytics: wrap(AnalyticsPage),
   prompts: wrap(PromptsManagement),
   categories: wrap(CategoriesManagement),
   users: wrap(UsersManagement),
   purchases: wrap(PurchaseHistoryManagement),
   discounts: wrap(DiscountCodesManagement),
   abandonedCart: wrap(AbandonedCartDashboard),
+  communications: wrap(CommunicationsLayout),
   emailTemplates: wrap(EmailTemplatesManagement),
   emailAnalytics: wrap(EmailAnalyticsDashboard),
+  marketing: wrap(MarketingPage),
   security: wrap(SecurityMonitoringDashboard),
 };
