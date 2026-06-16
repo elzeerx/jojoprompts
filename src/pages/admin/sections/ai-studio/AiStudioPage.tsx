@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Sparkles } from "lucide-react";
+import { Loader2, Rocket, Save, Sparkles, Undo2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAiStudioDraft } from "./useAiStudioDraft";
 import { AiStudioChat } from "./AiStudioChat";
 import { AssetPreviewPane } from "./AssetPreviewPane";
 import { DraftsSidebar } from "./DraftsSidebar";
 import { ImagePreviewStream } from "./ImagePreviewStream";
+import { PublishDialog } from "./PublishDialog";
 import type { AiAssetKind } from "./types";
 
 const KIND_OPTIONS: { value: AiAssetKind; label: string }[] = [
@@ -71,9 +73,14 @@ export default function AiStudioPage() {
     setAsset,
     setTitle,
     setThumbnailPath,
+    markPublished,
+    unpublish,
     draft,
     save,
   } = useAiStudioDraft(draftId);
+
+  const [publishOpen, setPublishOpen] = useState(false);
+  const isPublished = draft?.status === "published";
 
   if (!draftId || loading) {
     return (
@@ -146,13 +153,13 @@ export default function AiStudioPage() {
       </div>
 
       <div className="flex flex-col gap-3 min-h-0">
-        <div className="flex justify-end gap-2">
-          <Button
-            onClick={save}
-            disabled={saving}
-            size="sm"
-            variant="outline"
-          >
+        <div className="flex justify-end items-center gap-2">
+          {isPublished && (
+            <Badge variant="default" className="mr-auto">
+              Published
+            </Badge>
+          )}
+          <Button onClick={save} disabled={saving} size="sm" variant="outline">
             {saving ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -160,9 +167,22 @@ export default function AiStudioPage() {
             )}
             Save draft
           </Button>
-          <Button size="sm" disabled title="Publishing arrives in Phase 3">
-            Publish
-          </Button>
+          {isPublished ? (
+            <Button size="sm" variant="destructive" onClick={unpublish}>
+              <Undo2 className="h-4 w-4 mr-2" />
+              Unpublish
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => setPublishOpen(true)}
+              disabled={!asset}
+              title={!asset ? "Generate an asset first" : "Publish to prompts catalog"}
+            >
+              <Rocket className="h-4 w-4 mr-2" />
+              Publish
+            </Button>
+          )}
         </div>
         <div className="flex-1 min-h-0 overflow-auto space-y-3 pr-1">
           <AssetPreviewPane asset={asset} />
@@ -174,6 +194,16 @@ export default function AiStudioPage() {
           />
         </div>
       </div>
+
+      <PublishDialog
+        open={publishOpen}
+        onOpenChange={setPublishOpen}
+        draft={draft}
+        asset={asset}
+        kind={kind}
+        targetLlm={targetLlm}
+        onPublished={markPublished}
+      />
     </div>
   );
 }
