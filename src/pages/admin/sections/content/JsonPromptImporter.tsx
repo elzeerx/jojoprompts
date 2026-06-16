@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Copy,
   Download,
   FileJson,
   Save,
@@ -22,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { CopyButton } from "@/components/ui/copy-button";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   formatJsonPrompt,
