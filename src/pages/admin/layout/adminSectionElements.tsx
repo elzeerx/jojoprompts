@@ -43,14 +43,8 @@ const SecurityMonitoringDashboard = lazy(() =>
   }))
 );
 
-const SectionLoader = () => (
-  <div className="flex items-center justify-center py-20">
-    <Loader2 className="h-6 w-6 animate-spin text-warm-gold" />
-  </div>
-);
-
 const wrap = (Comp: React.ComponentType) => (
-  <Suspense fallback={<SectionLoader />}>
+  <Suspense fallback={<AdminSectionSkeleton />}>
     <Comp />
   </Suspense>
 );
