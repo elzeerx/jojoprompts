@@ -10,7 +10,7 @@ import { UsersTable } from "./UsersTable";
 import { UsersHeader } from "./components/UsersHeader";
 import { UsersFilters } from "./components/UsersFilters";
 import { UserPerformanceStats } from "./UserPerformanceStats";
-import { MarketingEmailsPanel } from "./components/MarketingEmailsPanel";
+// Marketing panel moved to /admin/emails/marketing in Phase 2.
 import { UserActivityLog } from "./components/UserActivityLog";
 import { QuickActionsPanel } from "./components/QuickActionsPanel";
 import { BulkActionsBar } from "./components/BulkActionsBar";
@@ -120,10 +120,9 @@ export default function UsersManagement() {
         )}
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[500px]">
+          <TabsList className="grid w-full grid-cols-2 lg:w-[360px]">
             <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="activity">Activity Log</TabsTrigger>
-            <TabsTrigger value="marketing">Marketing Emails</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-6 mt-6">
@@ -203,10 +202,6 @@ export default function UsersManagement() {
 
           <TabsContent value="activity" className="mt-6">
             <UserActivityLog />
-          </TabsContent>
-
-          <TabsContent value="marketing" className="mt-6">
-            <MarketingEmailsPanel />
           </TabsContent>
         </Tabs>
       </div>
