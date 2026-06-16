@@ -59,6 +59,7 @@ export const adminSectionElements = {
   overview: wrap(DashboardOverview),
   analytics: wrap(AnalyticsPage),
   prompts: wrap(PromptsManagement),
+  promptsImport: wrap(JsonPromptImporter),
   categories: wrap(CategoriesManagement),
   users: wrap(UsersManagement),
   purchases: wrap(PurchaseHistoryManagement),

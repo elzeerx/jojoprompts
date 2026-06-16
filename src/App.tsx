@@ -84,6 +84,7 @@ function App() {
                             <Route index element={adminSectionElements.overview} />
                             <Route path="analytics" element={adminSectionElements.analytics} />
                             <Route path="prompts" element={adminSectionElements.prompts} />
+                            <Route path="prompts/import" element={adminSectionElements.promptsImport} />
                             <Route path="categories" element={adminSectionElements.categories} />
                             <Route path="users" element={adminSectionElements.users} />
                             <Route path="purchases" element={adminSectionElements.purchases} />
