@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -12,6 +12,9 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthPremiumGuard, RoleGuard, AdminGuard } from "./components/auth/Guard";
 import { SecurityMonitoringWrapper } from "./components/SecurityMonitoringWrapper";
 import { routes } from "./config/routes";
+import { adminSectionElements } from "./pages/admin/layout/adminSectionElements";
+
+const AdminLayout = lazy(() => import("./pages/admin/layout/AdminLayout"));
 
 const queryClient = new QueryClient();
 
@@ -69,6 +72,27 @@ function App() {
                     <Suspense fallback={<SuspenseLoader />}>
                       <Routes>
                         <Route path="/" element={<RootLayout />}>
+                          {/* Nested admin routes with sidebar layout */}
+                          <Route
+                            path="admin"
+                            element={
+                              <AdminGuard fallbackRoute="/prompts">
+                                <AdminLayout />
+                              </AdminGuard>
+                            }
+                          >
+                            <Route index element={adminSectionElements.overview} />
+                            <Route path="prompts" element={adminSectionElements.prompts} />
+                            <Route path="categories" element={adminSectionElements.categories} />
+                            <Route path="users" element={adminSectionElements.users} />
+                            <Route path="purchases" element={adminSectionElements.purchases} />
+                            <Route path="discounts" element={adminSectionElements.discounts} />
+                            <Route path="abandoned-cart" element={adminSectionElements.abandonedCart} />
+                            <Route path="emails/templates" element={adminSectionElements.emailTemplates} />
+                            <Route path="emails/analytics" element={adminSectionElements.emailAnalytics} />
+                            <Route path="security" element={adminSectionElements.security} />
+                          </Route>
+
                           {routes.map((route) => (
                             <Route
                               key={route.path}

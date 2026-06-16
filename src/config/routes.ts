@@ -35,7 +35,6 @@ const PaymentRecoveryPage = lazy(() => import("@/pages/PaymentRecoveryPage"));
 const UserDashboardPage = lazy(() => import("@/pages/UserDashboardPage"));
 const SubscriptionDashboard = lazy(() => import("@/pages/dashboard/SubscriptionDashboard"));
 const PrompterDashboard = lazy(() => import("@/pages/prompter/PrompterDashboard"));
-const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const PromptsManagement = lazy(() => import("@/pages/admin/PromptsManagement"));
 const PlatformTest = lazy(() => import("@/pages/PlatformTest"));
 const AboutPage = lazy(() => import("@/pages/AboutPage"));
@@ -259,19 +258,9 @@ export const routes: RouteConfig[] = [
     requiredRole: "prompter"
   },
 
-  // Admin routes
-  {
-    path: "admin",
-    component: AdminDashboard,
-    protection: "admin",
-    fallbackRoute: "/prompts"
-  },
-  {
-    path: "admin/prompts",
-    component: PromptsManagement,
-    protection: "admin",
-    fallbackRoute: "/prompts"
-  },
+  // Admin routes are mounted as nested routes directly in App.tsx
+  // (see <Route path="admin/*"> with AdminLayout). Standalone admin
+  // utility routes still live here:
   {
     path: "admin/platform-test",
     component: PlatformTest,
