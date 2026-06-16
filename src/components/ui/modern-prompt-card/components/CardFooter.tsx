@@ -22,7 +22,9 @@ export function CardFooter({
   favorited = false,
   favoriteCount = 0,
   onFavoriteClick,
-  isLocked = false
+  isLocked = false,
+  promptText,
+  promptTitle,
 }: CardFooterProps) {
   // Generate avatar URL from dicebear if not provided
   const displayName = uploaderUsername || uploaderName || 'User';
