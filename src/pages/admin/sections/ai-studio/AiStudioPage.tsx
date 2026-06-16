@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Sparkles } from "lucide-react";
+import { Loader2, Rocket, Save, Sparkles, Undo2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAiStudioDraft } from "./useAiStudioDraft";
 import { AiStudioChat } from "./AiStudioChat";
 import { AssetPreviewPane } from "./AssetPreviewPane";
 import { DraftsSidebar } from "./DraftsSidebar";
 import { ImagePreviewStream } from "./ImagePreviewStream";
+import { PublishDialog } from "./PublishDialog";
 import type { AiAssetKind } from "./types";
 
 const KIND_OPTIONS: { value: AiAssetKind; label: string }[] = [
