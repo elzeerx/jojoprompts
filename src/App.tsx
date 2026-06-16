@@ -82,14 +82,19 @@ function App() {
                             }
                           >
                             <Route index element={adminSectionElements.overview} />
+                            <Route path="analytics" element={adminSectionElements.analytics} />
                             <Route path="prompts" element={adminSectionElements.prompts} />
                             <Route path="categories" element={adminSectionElements.categories} />
                             <Route path="users" element={adminSectionElements.users} />
                             <Route path="purchases" element={adminSectionElements.purchases} />
                             <Route path="discounts" element={adminSectionElements.discounts} />
                             <Route path="abandoned-cart" element={adminSectionElements.abandonedCart} />
-                            <Route path="emails/templates" element={adminSectionElements.emailTemplates} />
-                            <Route path="emails/analytics" element={adminSectionElements.emailAnalytics} />
+                            <Route path="emails" element={adminSectionElements.communications}>
+                              <Route index element={adminSectionElements.emailTemplates} />
+                              <Route path="templates" element={adminSectionElements.emailTemplates} />
+                              <Route path="analytics" element={adminSectionElements.emailAnalytics} />
+                              <Route path="marketing" element={adminSectionElements.marketing} />
+                            </Route>
                             <Route path="security" element={adminSectionElements.security} />
                           </Route>
 
