@@ -1,6 +1,7 @@
 import React from 'react';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface CardFooterProps {
   uploaderName?: string;
@@ -10,6 +11,8 @@ interface CardFooterProps {
   favoriteCount?: number;
   onFavoriteClick?: (e: React.MouseEvent) => void;
   isLocked?: boolean;
+  promptText?: string;
+  promptTitle?: string;
 }
 
 export function CardFooter({
