@@ -21,6 +21,7 @@ interface UseDraftReturn {
   setMessages: (m: ChatMsg[] | ((prev: ChatMsg[]) => ChatMsg[])) => void;
   setAsset: (a: AiAssetPayload | null) => void;
   setTitle: (t: string) => void;
+  setThumbnailPath: (p: string) => void;
   save: () => Promise<void>;
   refetch: () => Promise<void>;
 }
