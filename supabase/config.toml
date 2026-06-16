@@ -77,3 +77,9 @@ verify_jwt = false
 
 [functions.verify-password-reset]
 verify_jwt = false
+
+[functions.ai-studio-chat]
+verify_jwt = true
+
+[functions.ai-studio-image]
+verify_jwt = true
