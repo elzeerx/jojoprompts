@@ -264,7 +264,7 @@ export class AdvancedSessionManager {
     try {
       const { error } = await supabase
         .from('user_sessions')
-        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .update({ is_active: false, updated_at: new Date().toISOString() } as any)
         .eq('id', sessionId)
         .eq('user_id', userId);
 
