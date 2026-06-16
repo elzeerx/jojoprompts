@@ -13,6 +13,7 @@ import {
   MailOpen,
   Send,
   ScrollText,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -52,6 +53,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: "Prompts", to: "/admin/prompts", icon: FileText },
       { label: "Categories", to: "/admin/categories", icon: Tags },
       { label: "JSON Importer", to: "/admin/prompts/import", icon: FileJson },
+      { label: "AI Studio", to: "/admin/ai-studio", icon: Sparkles },
     ],
   },
   {
