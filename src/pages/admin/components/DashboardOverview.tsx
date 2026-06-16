@@ -1,43 +1,23 @@
 import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { DashboardKPICards } from "./dashboard/DashboardKPICards";
-import { DashboardCharts } from "./dashboard/DashboardCharts";
 import { TopPromptsCard } from "./dashboard/TopPromptsCard";
-import { CategoryDistributionCard } from "./dashboard/CategoryDistributionCard";
-import { ActivityTimelineCard } from "./dashboard/ActivityTimelineCard";
 import { QuickActionsPanel } from "./dashboard/QuickActionsPanel";
 import { useDashboardData } from "./dashboard/useDashboardData";
 
+/**
+ * Overview = lightweight landing for /admin
+ * Heavy charts and breakdowns moved to /admin/analytics.
+ */
 export default function DashboardOverview() {
-  const { kpiData, chartData, insightsData, loading, refetch } = useDashboardData();
+  const { kpiData, insightsData, loading, refetch } = useDashboardData();
 
   return (
     <div className="space-y-6">
-      {/* Dashboard Header - Phase 5 */}
       <DashboardHeader pendingTransactions={kpiData.pendingTransactions} />
-      
-      {/* Quick Actions Panel - Phase 4 */}
       <QuickActionsPanel onRefresh={refetch} isRefreshing={loading} />
-      
-      {/* KPI Cards Grid */}
       <DashboardKPICards data={kpiData} loading={loading} />
-      
-      {/* Charts Section */}
-      <DashboardCharts data={chartData} loading={loading} />
-      
-      {/* Quick Insights Grid - Phase 3 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <TopPromptsCard 
-          prompts={insightsData.topPrompts} 
-          loading={loading} 
-        />
-        <CategoryDistributionCard 
-          categories={insightsData.categoryDistribution} 
-          loading={loading} 
-        />
-        <ActivityTimelineCard 
-          activities={insightsData.recentActivity} 
-          loading={loading} 
-        />
+      <div className="grid gap-4 md:grid-cols-1">
+        <TopPromptsCard prompts={insightsData.topPrompts} loading={loading} />
       </div>
     </div>
   );
