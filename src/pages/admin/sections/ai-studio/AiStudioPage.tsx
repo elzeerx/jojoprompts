@@ -153,13 +153,13 @@ export default function AiStudioPage() {
       </div>
 
       <div className="flex flex-col gap-3 min-h-0">
-        <div className="flex justify-end gap-2">
-          <Button
-            onClick={save}
-            disabled={saving}
-            size="sm"
-            variant="outline"
-          >
+        <div className="flex justify-end items-center gap-2">
+          {isPublished && (
+            <Badge variant="default" className="mr-auto">
+              Published
+            </Badge>
+          )}
+          <Button onClick={save} disabled={saving} size="sm" variant="outline">
             {saving ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -167,9 +167,22 @@ export default function AiStudioPage() {
             )}
             Save draft
           </Button>
-          <Button size="sm" disabled title="Publishing arrives in Phase 3">
-            Publish
-          </Button>
+          {isPublished ? (
+            <Button size="sm" variant="destructive" onClick={unpublish}>
+              <Undo2 className="h-4 w-4 mr-2" />
+              Unpublish
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => setPublishOpen(true)}
+              disabled={!asset}
+              title={!asset ? "Generate an asset first" : "Publish to prompts catalog"}
+            >
+              <Rocket className="h-4 w-4 mr-2" />
+              Publish
+            </Button>
+          )}
         </div>
         <div className="flex-1 min-h-0 overflow-auto space-y-3 pr-1">
           <AssetPreviewPane asset={asset} />
@@ -181,6 +194,16 @@ export default function AiStudioPage() {
           />
         </div>
       </div>
+
+      <PublishDialog
+        open={publishOpen}
+        onOpenChange={setPublishOpen}
+        draft={draft}
+        asset={asset}
+        kind={kind}
+        targetLlm={targetLlm}
+        onPublished={markPublished}
+      />
     </div>
   );
 }
