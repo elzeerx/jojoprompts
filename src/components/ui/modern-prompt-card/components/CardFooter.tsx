@@ -1,6 +1,7 @@
 import React from 'react';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface CardFooterProps {
   uploaderName?: string;
@@ -10,6 +11,8 @@ interface CardFooterProps {
   favoriteCount?: number;
   onFavoriteClick?: (e: React.MouseEvent) => void;
   isLocked?: boolean;
+  promptText?: string;
+  promptTitle?: string;
 }
 
 export function CardFooter({
@@ -19,7 +22,9 @@ export function CardFooter({
   favorited = false,
   favoriteCount = 0,
   onFavoriteClick,
-  isLocked = false
+  isLocked = false,
+  promptText,
+  promptTitle,
 }: CardFooterProps) {
   // Generate avatar URL from dicebear if not provided
   const displayName = uploaderUsername || uploaderName || 'User';
@@ -55,29 +60,44 @@ export function CardFooter({
         </span>
       </div>
 
-      {/* Favorite Button with Count */}
-      <button
-        onClick={handleFavoriteClick}
-        disabled={isLocked}
-        className={cn(
-          "flex items-center gap-1 transition-colors duration-200",
-          "min-h-[36px] min-w-[36px] justify-center",
-          "touch-manipulation",
-          favorited 
-            ? "text-red-500" 
-            : "text-gray-400 group-hover:text-red-500",
-          isLocked && "cursor-not-allowed opacity-50"
+      {/* Actions */}
+      <div className="flex items-center gap-1">
+        {!isLocked && promptText && (
+          <CopyButton
+            value={promptText}
+            variant="ghost"
+            size="sm"
+            showLabel={false}
+            className="h-9 w-9 p-0 text-gray-400 hover:text-warm-gold"
+            successDescription={
+              promptTitle ? `"${promptTitle}" copied to clipboard` : "Prompt copied to clipboard"
+            }
+          />
         )}
-        aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
-      >
-        <Heart 
-          size={16} 
-          className={cn(favorited && "fill-current")}
-        />
-        {favoriteCount > 0 && (
-          <span className="text-xs font-medium">{favoriteCount}</span>
-        )}
-      </button>
+
+        <button
+          onClick={handleFavoriteClick}
+          disabled={isLocked}
+          className={cn(
+            "flex items-center gap-1 transition-colors duration-200",
+            "min-h-[36px] min-w-[36px] justify-center px-2 rounded-md",
+            "touch-manipulation",
+            favorited
+              ? "text-red-500"
+              : "text-gray-400 group-hover:text-red-500",
+            isLocked && "cursor-not-allowed opacity-50"
+          )}
+          aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+        >
+          <Heart
+            size={16}
+            className={cn(favorited && "fill-current")}
+          />
+          {favoriteCount > 0 && (
+            <span className="text-xs font-medium">{favoriteCount}</span>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
