@@ -51,7 +51,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { label: "Prompts", to: "/admin/prompts", icon: FileText },
       { label: "Categories", to: "/admin/categories", icon: Tags },
-      { label: "JSON Importer", to: "/admin/prompts/import", icon: FileJson, disabled: true },
+      { label: "JSON Importer", to: "/admin/prompts/import", icon: FileJson },
     ],
   },
   {
