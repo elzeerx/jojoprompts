@@ -164,8 +164,14 @@ export default function AiStudioPage() {
             Publish
           </Button>
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-auto space-y-3 pr-1">
           <AssetPreviewPane asset={asset} />
+          <ImagePreviewStream
+            prompt={asset?.body || ""}
+            draftId={draftId}
+            initialThumbnailPath={draft?.thumbnail_path || null}
+            onSaved={setThumbnailPath}
+          />
         </div>
       </div>
     </div>
