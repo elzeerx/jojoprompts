@@ -64,7 +64,7 @@ class SecureLogger {
     };
     
     // In development, log to console with sanitized data
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console[level === 'debug' ? 'log' : level](`[${category}] ${message}`, sanitizedMetadata);
     }
     

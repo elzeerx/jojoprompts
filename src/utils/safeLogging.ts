@@ -2,7 +2,7 @@
 export const safeLog = {
   // Only log in development
   debug: (message: string, data?: any) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log(`[DEBUG] ${message}`, data);
     }
   },
@@ -14,7 +14,7 @@ export const safeLog = {
 
   // Only warn in development
   warn: (message: string, data?: any) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.warn(`[WARN] ${message}`, data);
     }
   },

@@ -34,11 +34,11 @@ class Logger {
 
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = {
-      level: process.env.NODE_ENV === 'production' ? LogLevel.WARN : LogLevel.DEBUG,
-      enableConsole: process.env.NODE_ENV !== 'production',
+      level: import.meta.env.PROD ? LogLevel.WARN : LogLevel.DEBUG,
+      enableConsole: !import.meta.env.PROD,
       enableStorage: true,
       maxStorageEntries: 1000,
-      enableRemoteLogging: process.env.NODE_ENV === 'production',
+      enableRemoteLogging: import.meta.env.PROD,
       ...config
     };
   }
