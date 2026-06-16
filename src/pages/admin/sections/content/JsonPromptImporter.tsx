@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Copy,
   Download,
   FileJson,
   Save,
@@ -22,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { CopyButton } from "@/components/ui/copy-button";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   formatJsonPrompt,
@@ -299,20 +299,10 @@ export default function JsonPromptImporter() {
                           {item.formatted}
                         </pre>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handleCopy(`fmt-${idx}`, item.formatted)
-                            }
-                          >
-                            {copied === `fmt-${idx}` ? (
-                              <Check className="h-3 w-3 mr-1" />
-                            ) : (
-                              <Copy className="h-3 w-3 mr-1" />
-                            )}
-                            Copy
-                          </Button>
+                          <CopyButton
+                            value={item.formatted}
+                            successDescription={`"${item.title}" copied as formatted prompt`}
+                          />
                           <Button
                             size="sm"
                             variant="outline"
@@ -334,18 +324,10 @@ export default function JsonPromptImporter() {
                           {item.json}
                         </pre>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCopy(`json-${idx}`, item.json)}
-                          >
-                            {copied === `json-${idx}` ? (
-                              <Check className="h-3 w-3 mr-1" />
-                            ) : (
-                              <Copy className="h-3 w-3 mr-1" />
-                            )}
-                            Copy
-                          </Button>
+                          <CopyButton
+                            value={item.json}
+                            successDescription={`"${item.title}" copied as JSON`}
+                          />
                           <Button
                             size="sm"
                             variant="outline"
