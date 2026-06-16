@@ -259,19 +259,9 @@ export const routes: RouteConfig[] = [
     requiredRole: "prompter"
   },
 
-  // Admin routes
-  {
-    path: "admin",
-    component: AdminDashboard,
-    protection: "admin",
-    fallbackRoute: "/prompts"
-  },
-  {
-    path: "admin/prompts",
-    component: PromptsManagement,
-    protection: "admin",
-    fallbackRoute: "/prompts"
-  },
+  // Admin routes are mounted as nested routes directly in App.tsx
+  // (see <Route path="admin/*"> with AdminLayout). Standalone admin
+  // utility routes still live here:
   {
     path: "admin/platform-test",
     component: PlatformTest,
