@@ -17,6 +17,7 @@ import { useAiStudioDraft } from "./useAiStudioDraft";
 import { AiStudioChat } from "./AiStudioChat";
 import { AssetPreviewPane } from "./AssetPreviewPane";
 import { DraftsSidebar } from "./DraftsSidebar";
+import { ImagePreviewStream } from "./ImagePreviewStream";
 import type { AiAssetKind } from "./types";
 
 const KIND_OPTIONS: { value: AiAssetKind; label: string }[] = [
