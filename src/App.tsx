@@ -98,6 +98,8 @@ function App() {
                             </Route>
                             <Route path="security" element={adminSectionElements.security} />
                             <Route path="audit" element={adminSectionElements.audit} />
+                            <Route path="ai-studio" element={adminSectionElements.aiStudio} />
+                            <Route path="ai-studio/:draftId" element={adminSectionElements.aiStudio} />
                           </Route>
 
                           {routes.map((route) => (

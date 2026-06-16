@@ -262,6 +262,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_studio_drafts: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          messages: Json
+          payload: Json
+          published_prompt_id: string | null
+          status: string
+          target_llm: string | null
+          thumbnail_path: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          messages?: Json
+          payload?: Json
+          published_prompt_id?: string | null
+          status?: string
+          target_llm?: string | null
+          thumbnail_path?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          messages?: Json
+          payload?: Json
+          published_prompt_id?: string | null
+          status?: string
+          target_llm?: string | null
+          thumbnail_path?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       api_request_logs: {
         Row: {
           created_at: string | null

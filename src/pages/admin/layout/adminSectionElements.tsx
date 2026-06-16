@@ -10,6 +10,7 @@ const CommunicationsLayout = lazy(
 const MarketingPage = lazy(() => import("../sections/communications/MarketingPage"));
 const JsonPromptImporter = lazy(() => import("../sections/content/JsonPromptImporter"));
 const AuditLogPage = lazy(() => import("../sections/system/AuditLogPage"));
+const AiStudioPage = lazy(() => import("../sections/ai-studio/AiStudioPage"));
 const PromptsManagement = lazy(() => import("../PromptsManagement"));
 const CategoriesManagement = lazy(() =>
   import("../components/categories/CategoriesManagement").then((m) => ({
@@ -66,4 +67,5 @@ export const adminSectionElements = {
   marketing: wrap(MarketingPage),
   security: wrap(SecurityMonitoringDashboard),
   audit: wrap(AuditLogPage),
+  aiStudio: wrap(AiStudioPage),
 };
