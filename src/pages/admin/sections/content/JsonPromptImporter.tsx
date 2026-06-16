@@ -324,18 +324,10 @@ export default function JsonPromptImporter() {
                           {item.json}
                         </pre>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCopy(`json-${idx}`, item.json)}
-                          >
-                            {copied === `json-${idx}` ? (
-                              <Check className="h-3 w-3 mr-1" />
-                            ) : (
-                              <Copy className="h-3 w-3 mr-1" />
-                            )}
-                            Copy
-                          </Button>
+                          <CopyButton
+                            value={item.json}
+                            successDescription={`"${item.title}" copied as JSON`}
+                          />
                           <Button
                             size="sm"
                             variant="outline"
