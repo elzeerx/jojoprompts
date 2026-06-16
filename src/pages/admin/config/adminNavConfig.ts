@@ -79,7 +79,7 @@ export const adminNavGroups: AdminNavGroup[] = [
   {
     label: "System",
     items: [
-      { label: "Audit Log", to: "/admin/audit", icon: ScrollText, disabled: true },
+      { label: "Audit Log", to: "/admin/audit", icon: ScrollText },
     ],
   },
 ];

@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Loader2 } from "lucide-react";
+import { AdminSectionSkeleton } from "./AdminSectionSkeleton";
 
 // Lazy-load existing section components. No business logic touched.
 const DashboardOverview = lazy(() => import("../components/DashboardOverview"));
@@ -9,6 +9,7 @@ const CommunicationsLayout = lazy(
 );
 const MarketingPage = lazy(() => import("../sections/communications/MarketingPage"));
 const JsonPromptImporter = lazy(() => import("../sections/content/JsonPromptImporter"));
+const AuditLogPage = lazy(() => import("../sections/system/AuditLogPage"));
 const PromptsManagement = lazy(() => import("../PromptsManagement"));
 const CategoriesManagement = lazy(() =>
   import("../components/categories/CategoriesManagement").then((m) => ({
@@ -43,14 +44,8 @@ const SecurityMonitoringDashboard = lazy(() =>
   }))
 );
 
-const SectionLoader = () => (
-  <div className="flex items-center justify-center py-20">
-    <Loader2 className="h-6 w-6 animate-spin text-warm-gold" />
-  </div>
-);
-
 const wrap = (Comp: React.ComponentType) => (
-  <Suspense fallback={<SectionLoader />}>
+  <Suspense fallback={<AdminSectionSkeleton />}>
     <Comp />
   </Suspense>
 );
@@ -70,4 +65,5 @@ export const adminSectionElements = {
   emailAnalytics: wrap(EmailAnalyticsDashboard),
   marketing: wrap(MarketingPage),
   security: wrap(SecurityMonitoringDashboard),
+  audit: wrap(AuditLogPage),
 };

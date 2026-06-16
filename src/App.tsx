@@ -97,6 +97,7 @@ function App() {
                               <Route path="marketing" element={adminSectionElements.marketing} />
                             </Route>
                             <Route path="security" element={adminSectionElements.security} />
+                            <Route path="audit" element={adminSectionElements.audit} />
                           </Route>
 
                           {routes.map((route) => (
