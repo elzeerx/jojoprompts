@@ -73,9 +73,14 @@ export default function AiStudioPage() {
     setAsset,
     setTitle,
     setThumbnailPath,
+    markPublished,
+    unpublish,
     draft,
     save,
   } = useAiStudioDraft(draftId);
+
+  const [publishOpen, setPublishOpen] = useState(false);
+  const isPublished = draft?.status === "published";
 
   if (!draftId || loading) {
     return (
