@@ -8,6 +8,7 @@ const CommunicationsLayout = lazy(
   () => import("../sections/communications/CommunicationsLayout")
 );
 const MarketingPage = lazy(() => import("../sections/communications/MarketingPage"));
+const JsonPromptImporter = lazy(() => import("../sections/content/JsonPromptImporter"));
 const PromptsManagement = lazy(() => import("../PromptsManagement"));
 const CategoriesManagement = lazy(() =>
   import("../components/categories/CategoriesManagement").then((m) => ({
