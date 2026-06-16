@@ -31,7 +31,7 @@ export function useErrorRecovery(options: ErrorRecoveryOptions = {}) {
     lastError: null
   });
 
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetRetryState = useCallback(() => {
     setRetryState({
