@@ -299,20 +299,10 @@ export default function JsonPromptImporter() {
                           {item.formatted}
                         </pre>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handleCopy(`fmt-${idx}`, item.formatted)
-                            }
-                          >
-                            {copied === `fmt-${idx}` ? (
-                              <Check className="h-3 w-3 mr-1" />
-                            ) : (
-                              <Copy className="h-3 w-3 mr-1" />
-                            )}
-                            Copy
-                          </Button>
+                          <CopyButton
+                            value={item.formatted}
+                            successDescription={`"${item.title}" copied as formatted prompt`}
+                          />
                           <Button
                             size="sm"
                             variant="outline"
