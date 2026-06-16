@@ -256,6 +256,8 @@ export function ModernPromptCard({
           favorited={favorited}
           onFavoriteClick={toggleFavorite}
           isLocked={isLocked}
+          promptText={prompt_text}
+          promptTitle={title}
         />
       </div>
 
