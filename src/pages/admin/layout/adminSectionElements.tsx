@@ -65,4 +65,5 @@ export const adminSectionElements = {
   emailAnalytics: wrap(EmailAnalyticsDashboard),
   marketing: wrap(MarketingPage),
   security: wrap(SecurityMonitoringDashboard),
+  audit: wrap(AuditLogPage),
 };
