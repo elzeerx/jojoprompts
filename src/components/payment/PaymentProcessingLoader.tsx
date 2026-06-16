@@ -193,7 +193,7 @@ export function PaymentProcessingLoader({
         </div>
 
         {/* Debug info in development */}
-        {process.env.NODE_ENV === "development" && debugInfo && (
+        {import.meta.env.DEV && debugInfo && (
           <details className="text-left text-xs bg-gray-100 rounded-md p-3 mt-6 overflow-x-auto">
             <summary className="text-xs font-medium cursor-pointer">Debug info</summary>
             <pre className="whitespace-pre-wrap mt-2">{JSON.stringify(debugInfo, null, 2)}</pre>

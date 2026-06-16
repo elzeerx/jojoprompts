@@ -15,7 +15,7 @@ export function PaymentProcessingError({ error, debugInfo }: PaymentProcessingEr
         <h2 className="text-xl font-semibold mb-2">Payment Verification Error</h2>
         <p className="text-gray-600 mb-4">{error}</p>
         <p className="text-sm text-gray-500">Redirecting to payment failed page...</p>
-        {process.env.NODE_ENV === "development" && debugInfo && (
+        {import.meta.env.DEV && debugInfo && (
           <details className="text-left text-xs bg-gray-100 rounded-md p-3 mt-6 overflow-x-auto">
             <summary className="text-xs font-medium cursor-pointer">Debug info</summary>
             <pre className="whitespace-pre-wrap">{JSON.stringify(debugInfo, null, 2)}</pre>

@@ -186,7 +186,7 @@ export class PaymentErrorBoundary extends Component<Props, State> {
               )}
             </div>
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="text-xs text-gray-500 mt-4">
                 <summary className="cursor-pointer font-medium">
                   Technical Details (Development)

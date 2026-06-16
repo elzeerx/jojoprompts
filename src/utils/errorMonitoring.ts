@@ -84,7 +84,7 @@ class ErrorMonitor {
     });
 
     // In production, you'd send this to your error reporting service
-    if (process.env.NODE_ENV === 'production') {
+    if (import.meta.env.PROD) {
       this.sendToErrorService(errorReport);
     }
 

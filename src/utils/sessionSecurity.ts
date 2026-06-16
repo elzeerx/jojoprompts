@@ -8,7 +8,7 @@ export class SessionSecurity {
   private static readonly ACTIVITY_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
   private static readonly MAX_CONCURRENT_SESSIONS = 3;
   
-  private static activityTimer: NodeJS.Timeout | null = null;
+  private static activityTimer: ReturnType<typeof setTimeout> | null = null;
   private static lastActivity: number = Date.now();
 
   static initialize() {

@@ -162,7 +162,7 @@ function PaymentErrorFallback({
           )}
 
           {/* Error Details (only in development) */}
-          {process.env.NODE_ENV === 'development' && error && (
+          {import.meta.env.DEV && error && (
             <div className="bg-red-50 p-4 rounded-lg border border-red-200">
               <h4 className="font-semibold text-red-800 mb-2">Error Details:</h4>
               <p className="text-sm text-red-700 mb-2">{error.message}</p>
