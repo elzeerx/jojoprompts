@@ -17,6 +17,7 @@ import { useAiStudioDraft } from "./useAiStudioDraft";
 import { AiStudioChat } from "./AiStudioChat";
 import { AssetPreviewPane } from "./AssetPreviewPane";
 import { DraftsSidebar } from "./DraftsSidebar";
+import { ImagePreviewStream } from "./ImagePreviewStream";
 import type { AiAssetKind } from "./types";
 
 const KIND_OPTIONS: { value: AiAssetKind; label: string }[] = [
@@ -69,6 +70,7 @@ export default function AiStudioPage() {
     setMessages,
     setAsset,
     setTitle,
+    setThumbnailPath,
     draft,
     save,
   } = useAiStudioDraft(draftId);
@@ -162,8 +164,14 @@ export default function AiStudioPage() {
             Publish
           </Button>
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-auto space-y-3 pr-1">
           <AssetPreviewPane asset={asset} />
+          <ImagePreviewStream
+            prompt={asset?.body || ""}
+            draftId={draftId}
+            initialThumbnailPath={draft?.thumbnail_path || null}
+            onSaved={setThumbnailPath}
+          />
         </div>
       </div>
     </div>
