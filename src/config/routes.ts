@@ -48,6 +48,11 @@ const MagicLinkSentPage = lazy(() => import("@/pages/MagicLinkSentPage"));
 const DemoHub = lazy(() => import("@/pages/demos"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
+// V2 pages (Phase C) — anonymous discovery + auth-only library
+const V2ExplorePage = lazy(() => import("@/pages/v2/ExplorePage"));
+const V2ResourceDetailPage = lazy(() => import("@/pages/v2/ResourceDetailPage"));
+const V2LibraryPage = lazy(() => import("@/pages/v2/LibraryPage"));
+
 /**
  * Route protection types
  */
