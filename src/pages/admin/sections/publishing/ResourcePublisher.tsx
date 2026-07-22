@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { PackageUploader } from "./PackageUploader";
 
 type ResourceType =
   | "skill" | "automation" | "prompt" | "prompt_pack" | "image_style" | "bundle";
