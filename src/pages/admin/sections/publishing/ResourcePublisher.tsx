@@ -25,7 +25,9 @@ import { toast } from "@/hooks/use-toast";
 
 type ResourceType =
   | "skill" | "automation" | "prompt" | "prompt_pack" | "image_style" | "bundle";
-type ProductType = "free" | "individual" | "bundle" | "lifetime";
+// Per-resource lifetime is intentionally excluded.
+// V2 has exactly one global 30.000 KWD lifetime pass; resources use free / individual, bundles use bundle.
+type ProductType = "free" | "individual" | "bundle";
 type PermissionKind = "capability" | "dependency" | "service" | "secret";
 
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -61,6 +63,11 @@ interface FormState {
   title_en: string; title_ar: string;
   summary_en: string; summary_ar: string;
   description_en: string; description_ar: string;
+  examples_en: string; examples_ar: string;
+  limitations_en: string; limitations_ar: string;
+  uninstall_en: string; uninstall_ar: string;
+  support_en: string; support_ar: string;
+  update_info_en: string; update_info_ar: string;
   category: string; tags: string; hero_image_path: string; effort_minutes: string;
   version: string; changelog_en: string; is_new_version: boolean;
   platform_compatibility: PlatformRow[];
@@ -76,6 +83,11 @@ const emptyForm = (type: ResourceType = "skill"): FormState => ({
   title_en: "", title_ar: "",
   summary_en: "", summary_ar: "",
   description_en: "", description_ar: "",
+  examples_en: "", examples_ar: "",
+  limitations_en: "", limitations_ar: "",
+  uninstall_en: "", uninstall_ar: "",
+  support_en: "", support_ar: "",
+  update_info_en: "", update_info_ar: "",
   category: "", tags: "", hero_image_path: "", effort_minutes: "",
   version: "1.0.0", changelog_en: "", is_new_version: false,
   platform_compatibility: [],
@@ -86,20 +98,31 @@ const emptyForm = (type: ResourceType = "skill"): FormState => ({
   bundle_items: [],
 });
 
+
+// Approved V2 pricing hints (KWD). Admin remains free to override.
 const TYPE_PRICE_HINT: Record<ResourceType, string> = {
-  skill: "Suggested 2.000–8.000 KWD; free is fine for teasers.",
-  automation: "Suggested 3.000–15.000 KWD.",
-  prompt: "Suggested 0.500–3.000 KWD.",
-  prompt_pack: "Suggested 2.000–10.000 KWD.",
-  image_style: "Suggested 1.000–5.000 KWD.",
-  bundle: "Bundle price sums its items; set independently if promotional.",
+  skill: "Approved range 1.500–3.000 KWD.",
+  automation: "Approved range 2.500–5.000 KWD.",
+  prompt: "Approved default 0.900 KWD.",
+  prompt_pack: "Approved default 1.500 KWD.",
+  image_style: "Approved default 0.900 KWD.",
+  bundle: "Approved range 4.500–12.000 KWD (bundle offer is a single positive price).",
+};
+
+const APPROVED_DEFAULT_PRICE_FILS: Record<ResourceType, number> = {
+  skill: 1500,
+  automation: 2500,
+  prompt: 900,
+  prompt_pack: 1500,
+  image_style: 900,
+  bundle: 4500,
 };
 
 async function fetchResource(id: string) {
   const { data, error } = await (supabase as any)
     .from("resources")
     .select(
-      "id, slug, type, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar), products(id,sku,product_type,title_en,price_fils,is_active), product_bundle_items:product_bundle_items!bundle_product_id(resource_id)",
+      "id, slug, type, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar), products(id,sku,product_type,title_en,price_fils,is_active), product_bundle_items:product_bundle_items!bundle_product_id(resource_id)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -142,6 +165,11 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
       title_en: existing.title_en ?? "", title_ar: existing.title_ar ?? "",
       summary_en: existing.summary_en ?? "", summary_ar: existing.summary_ar ?? "",
       description_en: existing.description_en ?? "", description_ar: existing.description_ar ?? "",
+      examples_en: existing.examples_en ?? "", examples_ar: existing.examples_ar ?? "",
+      limitations_en: existing.limitations_en ?? "", limitations_ar: existing.limitations_ar ?? "",
+      uninstall_en: existing.uninstall_en ?? "", uninstall_ar: existing.uninstall_ar ?? "",
+      support_en: existing.support_en ?? "", support_ar: existing.support_ar ?? "",
+      update_info_en: existing.update_info_en ?? "", update_info_ar: existing.update_info_ar ?? "",
       category: existing.category ?? "", tags: (existing.tags ?? []).join(", "),
       hero_image_path: existing.hero_image_path ?? "",
       effort_minutes: existing.effort_minutes == null ? "" : String(existing.effort_minutes),
@@ -214,6 +242,16 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
       summary_ar: form.summary_ar.trim() || null,
       description_en: form.description_en.trim() || null,
       description_ar: form.description_ar.trim() || null,
+      examples_en: form.examples_en.trim() || null,
+      examples_ar: form.examples_ar.trim() || null,
+      limitations_en: form.limitations_en.trim() || null,
+      limitations_ar: form.limitations_ar.trim() || null,
+      uninstall_en: form.uninstall_en.trim() || null,
+      uninstall_ar: form.uninstall_ar.trim() || null,
+      support_en: form.support_en.trim() || null,
+      support_ar: form.support_ar.trim() || null,
+      update_info_en: form.update_info_en.trim() || null,
+      update_info_ar: form.update_info_ar.trim() || null,
       category: form.category.trim() || null,
       tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       hero_image_path: form.hero_image_path.trim() || null,
@@ -284,16 +322,68 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
     onError: (err: any) => toast({ variant: "destructive", title: "Publish failed", description: err?.message ?? "unknown" }),
   });
 
+  // Client-side publish gates. Server remains authoritative.
+  const clientPublishGates = (): string[] => {
+    const gates: string[] = [];
+    if (!form.title_en.trim()) gates.push("Title (EN) is required to publish.");
+    if (!form.summary_en.trim()) gates.push("Summary (EN) is required to publish.");
+    if (!form.description_en.trim()) gates.push("Description (EN) is required to publish.");
+    if (form.type === "skill" || form.type === "automation") {
+      if (form.platform_compatibility.length === 0) gates.push("At least one platform compatibility entry is required.");
+      if (form.installation_guides.length === 0) gates.push("At least one installation guide is required.");
+    }
+    if (!form.version.trim()) gates.push("Version is required.");
+    if (!/^[0-9]+\.[0-9]+\.[0-9]+([.\-+][A-Za-z0-9._-]+)?$/.test(form.version.trim())) {
+      gates.push("Version must look like 1.0.0.");
+    }
+    const products = form.products.filter((p) => p.sku.trim());
+    if (products.length === 0) gates.push("Add at least one product (free or paid).");
+    for (const p of products) {
+      const price = parseInt(p.price_fils || "0", 10);
+      if (p.product_type === "free" && price !== 0) gates.push(`Free product ${p.sku} must have price 0.`);
+      if (p.product_type !== "free" && price <= 0) gates.push(`Paid product ${p.sku} must have a positive price.`);
+      if (form.type === "bundle" && p.product_type === "individual") gates.push(`Bundle resources cannot have individual products.`);
+      if (form.type !== "bundle" && p.product_type === "bundle") gates.push(`Only bundle resources can have bundle products.`);
+    }
+    if (form.type === "bundle") {
+      const hasPositiveBundle = products.some((p) => p.product_type === "bundle" && parseInt(p.price_fils || "0", 10) > 0);
+      if (!hasPositiveBundle) gates.push("A bundle resource needs at least one positive-priced bundle product.");
+      const seen = new Set<string>();
+      for (const id of form.bundle_items) {
+        if (id === resourceId) { gates.push("A bundle cannot include itself."); break; }
+        if (seen.has(id)) { gates.push("Bundle items must be unique."); break; }
+        seen.add(id);
+      }
+    }
+    return gates;
+  };
+
+  // Persist first, always, when the form is dirty or when this is a new/new-version flow.
+  const ensureSaved = async (): Promise<string> => {
+    const needsSave = dirty || !resourceId || form.is_new_version || mode === "new-version";
+    if (!needsSave && resourceId) return resourceId;
+    const res = await saveDraft.mutateAsync();
+    return res.resource_id;
+  };
+
   const onSave = async () => { if (!validate()) return; await saveDraft.mutateAsync(); };
+
   const onSubmit = async () => {
     if (!validate()) return;
-    const saved = resourceId ? { resource_id: resourceId } : await saveDraft.mutateAsync();
-    await submitReview.mutateAsync((saved as any).resource_id ?? (saved as any).id ?? resourceId!);
+    let id: string;
+    try { id = await ensureSaved(); }
+    catch { return; } // Save error already toasted; do not transition.
+    await submitReview.mutateAsync(id);
   };
+
   const onPublish = async () => {
     if (!validate()) return;
-    const saved = resourceId ? { resource_id: resourceId } : await saveDraft.mutateAsync();
-    await publish.mutateAsync((saved as any).resource_id ?? (saved as any).id ?? resourceId!);
+    const gates = clientPublishGates();
+    if (gates.length > 0) { setPublishErrors(gates); return; }
+    let id: string;
+    try { id = await ensureSaved(); }
+    catch { return; }
+    await publish.mutateAsync(id);
   };
 
   const title = useMemo(() => {
@@ -690,7 +780,7 @@ function ProductEditor({ value, onChange, defaultSku }: { value: ProductRow[]; o
               <SelectItem value="free">Free</SelectItem>
               <SelectItem value="individual">Individual</SelectItem>
               <SelectItem value="bundle">Bundle</SelectItem>
-              <SelectItem value="lifetime">Lifetime</SelectItem>
+              {/* per-resource lifetime intentionally excluded */}
             </SelectContent>
           </Select>
           <Input placeholder="Title (EN)" className="min-h-[44px] sm:col-span-2"

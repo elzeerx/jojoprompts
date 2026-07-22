@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -45,20 +45,25 @@ export default function AiStudioPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // If no draftId, bootstrap a new draft and navigate to it.
-  useEffect(() => {
-    if (draftId || !user?.id) return;
-    (async () => {
+  // Deferred draft creation. We no longer auto-INSERT on mount, so simply
+  // opening /admin/ai-studio does not litter the drafts table.
+  const [creating, setCreating] = useState(false);
+  const createDraft = async () => {
+    if (!user?.id || creating) return;
+    setCreating(true);
+    try {
       const { data, error } = await supabase
         .from("ai_studio_drafts")
         .insert({ user_id: user.id, kind: "text", title: "New draft" })
         .select("id")
         .single();
       if (data?.id && !error) {
-        navigate(`/admin/ai-studio/${data.id}`, { replace: true });
+        navigate(`/admin/ai-studio/${data.id}`);
       }
-    })();
-  }, [draftId, user?.id, navigate]);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const {
     loading,
@@ -82,7 +87,27 @@ export default function AiStudioPage() {
   const [publishOpen, setPublishOpen] = useState(false);
   const isPublished = draft?.status === "published";
 
-  if (!draftId || loading) {
+  if (!draftId) {
+    return (
+      <div className="grid grid-cols-[240px_1fr] h-[calc(100vh-9rem)] gap-3">
+        <DraftsSidebar activeId={undefined} />
+        <div className="flex flex-col items-center justify-center border rounded-lg bg-background p-8 text-center">
+          <Sparkles className="h-8 w-8 text-primary mb-3" />
+          <h2 className="text-lg font-semibold">AI Studio</h2>
+          <p className="mt-1 mb-4 max-w-md text-sm text-muted-foreground">
+            Pick an existing draft from the sidebar or start a new one. Drafts are only
+            created when you explicitly begin, so the drafts table stays clean.
+          </p>
+          <Button onClick={createDraft} disabled={creating || !user?.id}>
+            {creating ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : <Sparkles className="h-4 w-4 me-2" />}
+            Start a new draft
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
