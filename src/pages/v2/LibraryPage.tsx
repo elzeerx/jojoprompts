@@ -6,7 +6,6 @@ import { useDownloadableFiles, type DownloadableFile } from "@/hooks/v2/useDownl
 import { useResourceDownload } from "@/hooks/v2/useResourceDownload";
 import { useInactiveEntitlements } from "@/hooks/v2/useInactiveEntitlements";
 import { LifetimeProgress } from "@/components/v2/LifetimeProgress";
-import { V2SubNav } from "@/components/v2/V2SubNav";
 import { SeoHead } from "@/components/v2/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -121,7 +120,6 @@ export default function LibraryPage() {
         canonicalPath="/library"
         noindex
       />
-      <V2SubNav authed={!!user} />
       <main className="container mx-auto px-4 py-6 space-y-6">
         <header>
           <h1 className="text-2xl font-bold sm:text-3xl">
