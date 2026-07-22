@@ -8,7 +8,6 @@ import { VisualResourceCard } from "@/components/v2/VisualResourceCard";
 import { ExploreFiltersBar } from "@/components/v2/ExploreFiltersBar";
 import { CatalogState } from "@/components/v2/CatalogState";
 import { LifetimeProgress } from "@/components/v2/LifetimeProgress";
-import { V2SubNav } from "@/components/v2/V2SubNav";
 import { QuickPreviewSheet } from "@/components/v2/QuickPreviewSheet";
 import { SeoHead } from "@/components/v2/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -127,7 +126,6 @@ export default function ExplorePage({ fixedType, title }: Props) {
         canonicalPath={location.pathname}
         noindex={emptyCatalog}
       />
-      <V2SubNav authed={!!user} />
       <main className="container mx-auto px-4 py-6 space-y-6">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>

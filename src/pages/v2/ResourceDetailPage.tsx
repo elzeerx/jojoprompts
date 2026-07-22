@@ -10,7 +10,6 @@ import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { V2SubNav } from "@/components/v2/V2SubNav";
 import { SeoHead } from "@/components/v2/SeoHead";
 import { InstallationSteps } from "@/components/v2/InstallationSteps";
 import {
@@ -50,7 +49,6 @@ export default function ResourceDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen">
-        <V2SubNav authed={!!user} />
         <div className="container mx-auto px-4 py-8 space-y-4">
           <Skeleton className="h-8 w-1/3" />
           <Skeleton className="h-64 w-full" />
@@ -66,7 +64,6 @@ export default function ResourceDetailPage() {
           canonicalPath={location.pathname}
           noindex
         />
-        <V2SubNav authed={!!user} />
         <div className="container mx-auto px-4 py-16 text-center">
           <p className="text-lg font-medium">Resource not found.</p>
           <Button variant="outline" className="mt-4" onClick={() => nav("/explore")}>
@@ -128,7 +125,6 @@ export default function ResourceDetailPage() {
         ogType={product && !isFree ? "product" : "article"}
         jsonLd={jsonLd}
       />
-      <V2SubNav authed={!!user} />
       <main className="container mx-auto px-4 py-6 max-w-5xl">
         <button
           onClick={() => nav(-1)}
