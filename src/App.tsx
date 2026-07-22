@@ -106,8 +106,12 @@ function App() {
                           <Route path="catalog/prompts" element={adminSectionElements.catalogPrompts} />
                           <Route path="catalog/image-styles" element={adminSectionElements.catalogImageStyles} />
                           <Route path="catalog/bundles" element={adminSectionElements.catalogBundles} />
+                          <Route path="catalog/prompt-packs" element={adminSectionElements.catalogPromptPacks} />
 
                           {/* Publishing */}
+                          <Route path="publishing/new" element={adminSectionElements.publishingNew} />
+                          <Route path="publishing/resources/:resourceId/edit" element={adminSectionElements.publishingEdit} />
+                          <Route path="publishing/resources/:resourceId/versions/new" element={adminSectionElements.publishingNewVersion} />
                           <Route path="publishing/drafts" element={adminSectionElements.publishingDrafts} />
                           <Route path="publishing/review" element={adminSectionElements.publishingReview} />
                           <Route path="publishing/versions" element={adminSectionElements.publishingVersions} />
@@ -116,6 +120,7 @@ function App() {
                           <Route path="publishing/imports/ai-studio" element={adminSectionElements.publishingImportsAiStudio} />
                           <Route path="publishing/imports/ai-studio/:draftId" element={adminSectionElements.publishingImportsAiStudio} />
                           <Route path="publishing/taxonomy" element={adminSectionElements.publishingTaxonomy} />
+
 
                           {/* Orders */}
                           <Route path="orders" element={adminSectionElements.orders} />
