@@ -279,6 +279,17 @@ export const routes: RouteConfig[] = [
     fallbackRoute: "/prompts"
   },
 
+  // V2 discovery + resource detail + library (Phase C)
+  { path: "explore", component: V2ExplorePage, protection: "public" },
+  {
+    path: "skills",
+    component: (() => {
+      const P = V2ExplorePage as any;
+      const Wrapped = () => <P fixedType="skill" title="Skills" />;
+      return Wrapped;
+    })(),
+    protection: "public",
+  },
   // 404 catch-all route
   {
     path: "*",
@@ -286,6 +297,7 @@ export const routes: RouteConfig[] = [
     protection: "public"
   }
 ];
+
 
 /**
  * Helper function to get routes by protection level
