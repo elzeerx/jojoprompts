@@ -1,3 +1,8 @@
+// This file is bundled by @lovable.dev/mcp-js into a Deno edge function where
+// `process.env` is available via a shim. Declare it locally so the browser
+// TypeScript build stays clean.
+declare const process: { env: Record<string, string | undefined> };
+
 import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 import { z } from "zod";

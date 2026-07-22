@@ -28,7 +28,7 @@ export const JsonPromptSchema = z
     tags: z.array(z.string()).optional(),
     category: z.string().optional(),
     target_model: z.string().optional(),
-    parameters: z.record(z.any()).optional(),
+    parameters: z.record(z.string(), z.any()).optional(),
     // Midjourney-style flags
     aspect_ratio: z.string().optional(),
     version: z.string().optional(),
@@ -67,7 +67,7 @@ export function parseJsonPrompts(raw: string): ParseResult {
   for (let i = 0; i < items.length; i++) {
     const result = JsonPromptSchema.safeParse(items[i]);
     if (!result.success) {
-      const first = result.error.errors[0];
+      const first = result.error.issues[0];
       return {
         ok: false,
         prompts: [],
