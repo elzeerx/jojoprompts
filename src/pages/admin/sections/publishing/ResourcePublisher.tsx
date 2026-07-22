@@ -122,7 +122,7 @@ async function fetchResource(id: string) {
   const { data, error } = await (supabase as any)
     .from("resources")
     .select(
-      "id, slug, type, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar), products(id,sku,product_type,title_en,price_fils,is_active), product_bundle_items:product_bundle_items!bundle_product_id(resource_id)",
+      "id, slug, type, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar), products(id,sku,product_type,title_en,price_fils,is_active), product_bundle_items:product_bundle_items!bundle_product_id(resource_id)",
     )
     .eq("id", id)
     .maybeSingle();
