@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -87,37 +87,83 @@ function App() {
                       <Routes>
                         {/* MCP OAuth consent — standalone, outside RootLayout chrome */}
                         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
-                        <Route path="/" element={<RootLayout />}>
-                          {/* Nested admin routes with sidebar layout */}
-                          <Route
-                            path="admin"
-                            element={
-                              <AdminGuard fallbackRoute="/prompts">
-                                <AdminLayout />
-                              </AdminGuard>
-                            }
-                          >
-                            <Route index element={adminSectionElements.overview} />
-                            <Route path="analytics" element={adminSectionElements.analytics} />
-                            <Route path="prompts" element={adminSectionElements.prompts} />
-                            <Route path="prompts/import" element={adminSectionElements.promptsImport} />
-                            <Route path="categories" element={adminSectionElements.categories} />
-                            <Route path="users" element={adminSectionElements.users} />
-                            <Route path="purchases" element={adminSectionElements.purchases} />
-                            <Route path="discounts" element={adminSectionElements.discounts} />
-                            <Route path="abandoned-cart" element={adminSectionElements.abandonedCart} />
-                            <Route path="emails" element={adminSectionElements.communications}>
-                              <Route index element={adminSectionElements.emailTemplates} />
-                              <Route path="templates" element={adminSectionElements.emailTemplates} />
-                              <Route path="analytics" element={adminSectionElements.emailAnalytics} />
-                              <Route path="marketing" element={adminSectionElements.marketing} />
-                            </Route>
-                            <Route path="security" element={adminSectionElements.security} />
-                            <Route path="audit" element={adminSectionElements.audit} />
-                            <Route path="ai-studio" element={adminSectionElements.aiStudio} />
-                            <Route path="ai-studio/:draftId" element={adminSectionElements.aiStudio} />
-                          </Route>
 
+                        {/* Admin — dedicated shell, no public Header/Footer/FloatingButton */}
+                        <Route
+                          path="/admin"
+                          element={
+                            <AdminGuard fallbackRoute="/prompts">
+                              <AdminLayout />
+                            </AdminGuard>
+                          }
+                        >
+                          <Route index element={adminSectionElements.overview} />
+
+                          {/* Catalog */}
+                          <Route path="catalog" element={adminSectionElements.catalog} />
+                          <Route path="catalog/skills" element={adminSectionElements.catalogSkills} />
+                          <Route path="catalog/automations" element={adminSectionElements.catalogAutomations} />
+                          <Route path="catalog/prompts" element={adminSectionElements.catalogPrompts} />
+                          <Route path="catalog/image-styles" element={adminSectionElements.catalogImageStyles} />
+                          <Route path="catalog/bundles" element={adminSectionElements.catalogBundles} />
+
+                          {/* Publishing */}
+                          <Route path="publishing/drafts" element={adminSectionElements.publishingDrafts} />
+                          <Route path="publishing/review" element={adminSectionElements.publishingReview} />
+                          <Route path="publishing/versions" element={adminSectionElements.publishingVersions} />
+                          <Route path="publishing/imports" element={adminSectionElements.publishingImports} />
+                          <Route path="publishing/imports/json" element={adminSectionElements.publishingImportsJson} />
+                          <Route path="publishing/imports/ai-studio" element={adminSectionElements.publishingImportsAiStudio} />
+                          <Route path="publishing/imports/ai-studio/:draftId" element={adminSectionElements.publishingImportsAiStudio} />
+                          <Route path="publishing/taxonomy" element={adminSectionElements.publishingTaxonomy} />
+
+                          {/* Orders */}
+                          <Route path="orders" element={adminSectionElements.orders} />
+                          <Route path="orders/payment-events" element={adminSectionElements.paymentEvents} />
+                          <Route path="orders/entitlements" element={adminSectionElements.entitlements} />
+                          <Route path="orders/refunds" element={adminSectionElements.refunds} />
+                          <Route path="orders/recovery" element={adminSectionElements.ordersRecovery} />
+                          <Route path="orders/discounts" element={adminSectionElements.discounts} />
+
+                          {/* People */}
+                          <Route path="users" element={adminSectionElements.users} />
+
+                          {/* Communications */}
+                          <Route path="communications/templates" element={adminSectionElements.emailTemplates} />
+                          <Route path="communications/delivery" element={adminSectionElements.emailAnalytics} />
+
+                          {/* Trust & Activity */}
+                          <Route path="trust/reports" element={adminSectionElements.trustReports} />
+                          <Route path="trust/scans" element={adminSectionElements.trustScans} />
+                          <Route path="trust/admin-activity" element={adminSectionElements.audit} />
+                          <Route path="trust/security-events" element={adminSectionElements.security} />
+
+                          {/* Settings */}
+                          <Route path="settings/payments" element={adminSectionElements.settingsPayments} />
+                          <Route path="settings/email" element={adminSectionElements.settingsEmail} />
+                          <Route path="settings/storage" element={adminSectionElements.settingsStorage} />
+                          <Route path="settings/integrations" element={adminSectionElements.settingsIntegrations} />
+                          <Route path="settings/roles" element={adminSectionElements.settingsRoles} />
+
+                          {/* Legacy path redirects */}
+                          <Route path="analytics" element={<Navigate to="/admin" replace />} />
+                          <Route path="prompts" element={<Navigate to="/admin/catalog/prompts" replace />} />
+                          <Route path="prompts/import" element={<Navigate to="/admin/publishing/imports" replace />} />
+                          <Route path="ai-studio" element={<Navigate to="/admin/publishing/imports/ai-studio" replace />} />
+                          <Route path="ai-studio/:draftId" element={<Navigate to="/admin/publishing/imports/ai-studio" replace />} />
+                          <Route path="categories" element={<Navigate to="/admin/publishing/taxonomy" replace />} />
+                          <Route path="purchases" element={<Navigate to="/admin/orders" replace />} />
+                          <Route path="abandoned-cart" element={<Navigate to="/admin/orders/recovery" replace />} />
+                          <Route path="emails" element={<Navigate to="/admin/communications/templates" replace />} />
+                          <Route path="emails/templates" element={<Navigate to="/admin/communications/templates" replace />} />
+                          <Route path="emails/analytics" element={<Navigate to="/admin/communications/delivery" replace />} />
+                          <Route path="emails/marketing" element={<Navigate to="/admin/communications/templates" replace />} />
+                          <Route path="security" element={<Navigate to="/admin/trust/security-events" replace />} />
+                          <Route path="audit" element={<Navigate to="/admin/trust/admin-activity" replace />} />
+                        </Route>
+
+                        {/* Public routes under RootLayout (Header/Footer/etc.) */}
+                        <Route path="/" element={<RootLayout />}>
                           <Route element={<V2Layout />}>
                             {routes.filter((r) => V2_PATHS.has(r.path)).map((route) => (
                               <Route
@@ -137,7 +183,6 @@ function App() {
                               index={route.index}
                             />
                           ))}
-
                         </Route>
                       </Routes>
                     </Suspense>
