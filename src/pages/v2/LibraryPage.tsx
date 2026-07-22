@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLibraryState } from "@/hooks/v2/useLibraryState";
-import { useDownloadableFiles } from "@/hooks/v2/useDownloadableFiles";
+import { useDownloadableFiles, type DownloadableFile } from "@/hooks/v2/useDownloadableFiles";
 import { useResourceDownload } from "@/hooks/v2/useResourceDownload";
+import { useInactiveEntitlements } from "@/hooks/v2/useInactiveEntitlements";
 import { LifetimeProgress } from "@/components/v2/LifetimeProgress";
 import { V2SubNav } from "@/components/v2/V2SubNav";
+import { SeoHead } from "@/components/v2/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,78 +16,132 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Loader2 } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { V2_COPY, V2_RESOURCE_TYPES, type V2ResourceType } from "@/config/v2Flags";
 
-const TABS = [
-  { id: "all", label: "All" },
-  { id: "skill", label: "Skills" },
-  { id: "automation", label: "Automations" },
-  { id: "prompt", label: "Prompts" },
-  { id: "image_style", label: "Image Styles" },
-  { id: "bundle", label: "Bundles" },
+type Lang = "en" | "ar";
+
+interface LibraryResourceRow {
+  id: string;
+  slug: string;
+  type: V2ResourceType;
+  title_en: string;
+  title_ar: string | null;
+  lifecycle: "draft" | "review" | "published" | "archived";
+}
+
+const TABS: Array<{ id: "all" | V2ResourceType; labelKey: keyof typeof V2_COPY.nav | "all" }> = [
+  { id: "all", labelKey: "all" },
+  { id: "skill", labelKey: "skills" },
+  { id: "automation", labelKey: "automations" },
+  { id: "prompt", labelKey: "prompts" },
+  { id: "prompt_pack", labelKey: "prompts" },
+  { id: "image_style", labelKey: "imageStyles" },
+  { id: "bundle", labelKey: "bundles" },
 ];
+
+function tabLabel(id: string, lang: Lang): string {
+  if (id === "all") return lang === "ar" ? "الكل" : "All";
+  const entry = TABS.find((t) => t.id === id);
+  if (!entry || entry.labelKey === "all") return id;
+  return V2_COPY.nav[entry.labelKey][lang];
+}
 
 export default function LibraryPage() {
   const { user, loading } = useAuth();
-  const { data: library, isLoading } = useLibraryState();
-  const { data: files } = useDownloadableFiles();
+  const location = useLocation();
+  const { data: library, isLoading, isError, refetch } = useLibraryState();
+  const { data: files, isLoading: filesLoading } = useDownloadableFiles();
+  const { data: inactive } = useInactiveEntitlements();
   const download = useResourceDownload();
-  const { language } = useTranslation();
+  const { language, isRTL } = useTranslation();
+  const lang: Lang = language === "ar" ? "ar" : "en";
   const [tab, setTab] = useState<string>("all");
 
   useEffect(() => {
     document.title = "My Library · JojoPrompts";
   }, []);
 
-  // Collect entitled resource IDs (resource-scope + library flag handled separately)
-  const resourceIds = useMemo(() => {
-    const ids = new Set<string>();
+  const hasLibrary = !!library?.has_library_access;
+  const entitledIds = useMemo(() => {
+    const ids: string[] = [];
     (library?.entitlements ?? []).forEach((e) => {
-      if (e.scope === "resource" && e.resource_id) ids.add(e.resource_id);
+      if (e.scope === "resource" && e.resource_id) ids.push(e.resource_id);
     });
-    return Array.from(ids);
+    return ids;
   }, [library]);
+  const stableEntitledKey = useMemo(
+    () => [...entitledIds].sort().join(","),
+    [entitledIds],
+  );
 
-  const { data: resources } = useQuery({
-    queryKey: ["v2", "library-resources", resourceIds.sort().join(",")],
-    enabled: resourceIds.length > 0,
+  const {
+    data: resources,
+    isLoading: resourcesLoading,
+    isError: resourcesError,
+    refetch: refetchResources,
+  } = useQuery<LibraryResourceRow[]>({
+    queryKey: ["v2", "library-resources", hasLibrary ? "library" : stableEntitledKey],
+    enabled: !loading && !!user && (hasLibrary || entitledIds.length > 0),
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("resources")
         .select("id, slug, type, title_en, title_ar, lifecycle")
-        .in("id", resourceIds);
+        .in("lifecycle", ["published", "archived"]);
+      if (!hasLibrary) query = query.in("id", entitledIds);
+      const { data, error } = await query.order("updated_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as LibraryResourceRow[];
     },
   });
 
-  if (!loading && !user)
-    return <Navigate to={`/login?redirect=${encodeURIComponent("/library")}`} replace />;
+  if (!loading && !user) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?next=${next}`} replace />;
+  }
 
-  const filesByResource = new Map<string, typeof files>();
-  (files ?? []).forEach((f) => {
-    const list = filesByResource.get(f.resource_id) ?? [];
-    list.push(f);
-    filesByResource.set(f.resource_id, list as any);
-  });
+  const filesByResource = useMemo(() => {
+    const map = new Map<string, DownloadableFile[]>();
+    (files ?? []).forEach((f) => {
+      const list = map.get(f.resource_id) ?? [];
+      list.push(f);
+      map.set(f.resource_id, list);
+    });
+    return map;
+  }, [files]);
 
   const filtered = (resources ?? []).filter(
     (r) => tab === "all" || r.type === tab,
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" dir={isRTL ? "rtl" : "ltr"}>
+      <SeoHead
+        title={`${V2_COPY.library.title[lang]} · JojoPrompts`}
+        description={V2_COPY.library.subtitle[lang]}
+        canonicalPath="/library"
+        noindex
+      />
       <V2SubNav authed={!!user} />
       <main className="container mx-auto px-4 py-6 space-y-6">
         <header>
-          <h1 className="text-2xl font-bold sm:text-3xl">My Library</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">
+            {V2_COPY.library.title[lang]}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Your entitled resources, downloads, and lifetime progress.
+            {V2_COPY.library.subtitle[lang]}
           </p>
         </header>
 
         {isLoading ? (
           <Skeleton className="h-20 w-full max-w-md" />
-        ) : library?.has_library_access ? (
+        ) : isError ? (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
+            {V2_COPY.library.loadError[lang]}
+            <Button size="sm" variant="outline" onClick={() => refetch()} className="ms-3">
+              {V2_COPY.library.retry[lang]}
+            </Button>
+          </div>
+        ) : hasLibrary ? (
           <LifetimeProgress progressFils={0} hasLibrary />
         ) : (
           <LifetimeProgress progressFils={library?.lifetime_progress_fils ?? 0} />
@@ -93,36 +149,50 @@ export default function LibraryPage() {
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap gap-1 h-auto">
-            {TABS.map((t) => (
-              <TabsTrigger key={t.id} value={t.id} className="min-h-[40px]">
-                {t.label}
+            {(["all", ...V2_RESOURCE_TYPES] as const).map((t) => (
+              <TabsTrigger key={t} value={t} className="min-h-[40px]">
+                {tabLabel(t, lang)}
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
 
-        {filtered.length === 0 ? (
+        {resourcesLoading ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+            ))}
+          </div>
+        ) : resourcesError ? (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
+            {V2_COPY.library.loadError[lang]}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => refetchResources()}
+              className="ms-3"
+            >
+              {V2_COPY.library.retry[lang]}
+            </Button>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed p-8 text-center">
             <p className="text-sm text-muted-foreground">
-              Nothing here yet. Browse the{" "}
+              {V2_COPY.library.empty[lang]}{" "}
               <Link to="/explore" className="text-warm-gold hover:underline">
-                catalog
-              </Link>{" "}
-              to add free or paid resources.
+                {V2_COPY.nav.explore[lang]}
+              </Link>
             </p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {filtered.map((r: any) => {
-              const title =
-                language === "ar" && r.title_ar ? r.title_ar : r.title_en;
+            {filtered.map((r) => {
+              const title = lang === "ar" && r.title_ar ? r.title_ar : r.title_en;
               const list = filesByResource.get(r.id) ?? [];
               const archived = r.lifecycle === "archived";
+              const individuallyOwned = entitledIds.includes(r.id);
               return (
-                <article
-                  key={r.id}
-                  className="rounded-2xl border p-4 space-y-3"
-                >
+                <article key={r.id} className="rounded-2xl border p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <Link
@@ -135,43 +205,57 @@ export default function LibraryPage() {
                         <Badge variant="outline" className="capitalize">
                           {r.type?.replace("_", " ")}
                         </Badge>
-                        {archived && (
-                          <Badge variant="secondary">Archived</Badge>
-                        )}
+                        {individuallyOwned ? (
+                          <Badge variant="secondary">
+                            {V2_COPY.library.individualBadge[lang]}
+                          </Badge>
+                        ) : null}
+                        {hasLibrary ? (
+                          <Badge className="bg-warm-gold/20 text-warm-gold hover:bg-warm-gold/25">
+                            {V2_COPY.library.lifetimeBadge[lang]}
+                          </Badge>
+                        ) : null}
+                        {archived ? <Badge variant="outline">Archived</Badge> : null}
                       </div>
                     </div>
                   </div>
-                  {list.length > 0 ? (
+                  {filesLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : list.length > 0 ? (
                     <div className="space-y-1.5">
-                      {(list as any[]).map((f) => (
-                        <div
-                          key={f.resource_file_id}
-                          className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
-                        >
-                          <div className="min-w-0">
-                            <div className="truncate">{f.file_name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              v{f.version}
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => download.mutate(f.resource_file_id)}
-                            disabled={download.isPending}
+                      {list.map((f) => {
+                        const pending =
+                          download.isPending &&
+                          download.variables === f.resource_file_id;
+                        return (
+                          <div
+                            key={f.resource_file_id}
+                            className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
                           >
-                            {download.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Download className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="min-w-0">
+                              <div className="truncate">{f.file_name}</div>
+                              <div className="text-xs text-muted-foreground">v{f.version}</div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => download.mutate(f.resource_file_id)}
+                              disabled={pending}
+                              aria-label={`Download ${f.file_name}`}
+                            >
+                              {pending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4" aria-hidden />
+                              )}
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      No downloadable package for your entitled version yet.
+                      {V2_COPY.library.noPackage[lang]}
                     </p>
                   )}
                 </article>
@@ -179,6 +263,53 @@ export default function LibraryPage() {
             })}
           </div>
         )}
+
+        {inactive && inactive.length > 0 ? (
+          <section aria-label={V2_COPY.library.inactive[lang]} className="space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold">
+                {V2_COPY.library.inactive[lang]}{" "}
+                <span className="text-muted-foreground text-sm">({inactive.length})</span>
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {V2_COPY.library.inactiveDesc[lang]}
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {inactive.map((e) => {
+                const title =
+                  lang === "ar" && e.title_ar ? e.title_ar : e.title_en;
+                const status =
+                  e.status === "revoked"
+                    ? V2_COPY.library.revoked[lang]
+                    : V2_COPY.library.expired[lang];
+                return (
+                  <article
+                    key={e.entitlement_id}
+                    className="rounded-2xl border border-muted p-4 opacity-80"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <Link
+                          to={`/resources/${e.resource_slug}`}
+                          className="font-medium hover:text-warm-gold"
+                        >
+                          {title}
+                        </Link>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          <Badge variant="outline" className="capitalize">
+                            {e.resource_type?.replace("_", " ")}
+                          </Badge>
+                          <Badge variant="destructive">{status}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
       </main>
     </div>
   );
