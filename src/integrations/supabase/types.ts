@@ -3803,7 +3803,7 @@ export type Database = {
           }
       anonymize_ip_address: { Args: { ip_address: string }; Returns: string }
       authorize_resource_download: {
-        Args: { p_file_id: string }
+        Args: { p_file_id: string; p_user_id: string }
         Returns: {
           content_type: string
           file_name: string
