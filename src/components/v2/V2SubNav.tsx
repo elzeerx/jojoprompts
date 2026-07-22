@@ -31,7 +31,7 @@ export function V2SubNav({ authed }: { authed: boolean }) {
   ];
   return (
     <nav
-      className="sticky top-16 z-30 w-full border-b border-border/50 bg-background/95 backdrop-blur"
+      className="sticky top-16 lg:top-18 z-30 w-full border-b border-border/50 bg-background/95 backdrop-blur"
       dir={isRTL ? "rtl" : "ltr"}
       aria-label="V2 catalog navigation"
     >

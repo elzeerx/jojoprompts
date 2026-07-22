@@ -129,7 +129,7 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
   );
 
   return (
-    <div className="sticky top-[7.25rem] z-20 -mx-4 space-y-3 border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur">
+    <div className="sticky top-[8rem] lg:top-[8.5rem] z-20 -mx-4 space-y-3 border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur">
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-0 flex-1">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
