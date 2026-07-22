@@ -239,9 +239,9 @@ export default function OverviewV2() {
           {kpis.map((k, i) => (
             <Card key={i} className="h-[110px]">
               <CardHeader className="p-3 pb-1">
-                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground leading-tight line-clamp-2 min-h-[28px]">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground leading-tight line-clamp-2 min-h-[28px]">
                   {isLoading ? <Skeleton className="h-3 w-24" /> : k.label}
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 {isLoading ? (
