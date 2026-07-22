@@ -17,6 +17,19 @@ import { adminSectionElements } from "./pages/admin/layout/adminSectionElements"
 const AdminLayout = lazy(() => import("./pages/admin/layout/AdminLayout"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 
+const V2_PATHS = new Set([
+  "explore",
+  "skills",
+  "automations",
+  "prompts-catalog",
+  "image-styles",
+  "bundles",
+  "resources/:slug",
+  "library",
+]);
+import { V2Layout } from "./components/v2/V2Layout";
+
+
 const queryClient = new QueryClient();
 
 // Loading component for suspense fallback
@@ -105,7 +118,18 @@ function App() {
                             <Route path="ai-studio/:draftId" element={adminSectionElements.aiStudio} />
                           </Route>
 
-                          {routes.map((route) => (
+                          <Route element={<V2Layout />}>
+                            {routes.filter((r) => V2_PATHS.has(r.path)).map((route) => (
+                              <Route
+                                key={route.path}
+                                path={route.path}
+                                element={createGuardedRoute(route)}
+                                index={route.index}
+                              />
+                            ))}
+                          </Route>
+
+                          {routes.filter((r) => !V2_PATHS.has(r.path)).map((route) => (
                             <Route
                               key={route.path}
                               path={route.path}
@@ -113,6 +137,7 @@ function App() {
                               index={route.index}
                             />
                           ))}
+
                         </Route>
                       </Routes>
                     </Suspense>
