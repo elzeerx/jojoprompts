@@ -10,8 +10,8 @@ interface Props {
 export function CatalogState({ variant = "empty", onRetry }: Props) {
   const { language } = useTranslation();
   const lang = (language as "en" | "ar") ?? "en";
-  let title = V2_COPY.states.emptyCatalogTitle[lang];
-  let desc = V2_COPY.states.emptyCatalogDesc[lang];
+  let title: string = V2_COPY.states.emptyCatalogTitle[lang];
+  let desc: string = V2_COPY.states.emptyCatalogDesc[lang];
   if (variant === "no-results") {
     title = V2_COPY.states.noResultsTitle[lang];
     desc = V2_COPY.states.noResultsDesc[lang];
