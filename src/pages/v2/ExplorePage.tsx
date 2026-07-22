@@ -1,34 +1,46 @@
-import { useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLibraryState } from "@/hooks/v2/useLibraryState";
 import { useExploreResources, type ExploreFilters } from "@/hooks/v2/useExploreResources";
 import { SkillResourceCard } from "@/components/v2/SkillResourceCard";
 import { VisualResourceCard } from "@/components/v2/VisualResourceCard";
 import { ExploreFiltersBar } from "@/components/v2/ExploreFiltersBar";
-import { EmptyCatalog } from "@/components/v2/EmptyCatalog";
+import { CatalogState } from "@/components/v2/CatalogState";
 import { LifetimeProgress } from "@/components/v2/LifetimeProgress";
 import { V2SubNav } from "@/components/v2/V2SubNav";
+import { QuickPreviewSheet } from "@/components/v2/QuickPreviewSheet";
+import { SeoHead } from "@/components/v2/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { V2ResourceType } from "@/config/v2Flags";
+import { V2_COPY, type V2ResourceType } from "@/config/v2Flags";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface Props {
   fixedType?: V2ResourceType;
   title?: string;
 }
 
+// Simple in-memory scroll cache keyed by (path+search minus the preview slug)
+const scrollCache = new Map<string, number>();
+
 export default function ExplorePage({ fixedType, title }: Props) {
   const { user } = useAuth();
+  const location = useLocation();
   const [params, setParams] = useSearchParams();
   const { data: library } = useLibraryState();
+  const { language, isRTL } = useTranslation();
+  const lang = (language as "en" | "ar") ?? "en";
+  const scrollKey = location.pathname + (params.get("q") ?? "") + (params.get("type") ?? "");
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const filters: ExploreFilters = useMemo(
     () => ({
-      type: fixedType ?? ((params.get("type") as any) || "all"),
-      platforms: params.get("p")?.split(",").filter(Boolean) as any,
-      priceMode: (params.get("price") as any) || "all",
+      type: fixedType ?? ((params.get("type") as ExploreFilters["type"]) || "all"),
+      platforms: (params.get("p")?.split(",").filter(Boolean) as ExploreFilters["platforms"]) ?? [],
+      priceMode: (params.get("price") as ExploreFilters["priceMode"]) || "all",
+      effort: (params.get("effort") as ExploreFilters["effort"]) || "all",
       search: params.get("q") ?? "",
-      sortBy: (params.get("sort") as any) || "newest",
+      sortBy: (params.get("sort") as ExploreFilters["sortBy"]) || "newest",
     }),
     [params, fixedType],
   );
@@ -41,114 +53,160 @@ export default function ExplorePage({ fixedType, title }: Props) {
     return s;
   }, [library]);
 
-  const { data: rows, isLoading, isError, refetch } = useExploreResources(
+  const { data: rows, isLoading, isError, refetch, isFetched } = useExploreResources(
     filters,
     ownedIds,
     !!library?.has_library_access,
   );
 
-  useEffect(() => {
-    document.title = `${title ?? "Explore"} · JojoPrompts`;
-  }, [title]);
+  const patch = useCallback(
+    (p: Partial<ExploreFilters>) => {
+      const next = new URLSearchParams(params);
+      if (p.search !== undefined) p.search ? next.set("q", p.search) : next.delete("q");
+      if (p.sortBy) next.set("sort", p.sortBy);
+      if (p.priceMode) next.set("price", p.priceMode);
+      if (p.effort) next.set("effort", p.effort);
+      if (p.platforms)
+        p.platforms.length ? next.set("p", p.platforms.join(",")) : next.delete("p");
+      setParams(next, { replace: true });
+    },
+    [params, setParams],
+  );
 
-  const patch = (p: Partial<ExploreFilters>) => {
-    const next = new URLSearchParams(params);
-    if (p.search !== undefined) p.search ? next.set("q", p.search) : next.delete("q");
-    if (p.sortBy) next.set("sort", p.sortBy);
-    if (p.priceMode) next.set("price", p.priceMode);
-    if (p.platforms) p.platforms.length ? next.set("p", p.platforms.join(",")) : next.delete("p");
+  const reset = useCallback(() => {
+    const next = new URLSearchParams();
+    if (params.get("type")) next.set("type", params.get("type")!);
     setParams(next, { replace: true });
+  }, [params, setParams]);
+
+  const [previewSlug, setPreviewSlug] = useState<string | null>(null);
+  const rowsMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (rows ?? []).forEach((r) => m.set(r.id, r.slug));
+    return m;
+  }, [rows]);
+
+  const openPreview = (id: string) => {
+    scrollCache.set(scrollKey, window.scrollY);
+    setPreviewSlug(rowsMap.get(id) ?? null);
   };
+
+  // Restore scroll after data has loaded
+  useEffect(() => {
+    if (!isFetched) return;
+    const saved = scrollCache.get(scrollKey);
+    if (typeof saved === "number") {
+      requestAnimationFrame(() => window.scrollTo({ top: saved }));
+    }
+  }, [isFetched, scrollKey]);
 
   const structured = (rows ?? []).filter(
     (r) => r.type === "skill" || r.type === "automation",
   );
   const visual = (rows ?? []).filter(
-    (r) => r.type === "prompt" || r.type === "image_style",
+    (r) => r.type === "prompt" || r.type === "prompt_pack" || r.type === "image_style",
   );
   const bundles = (rows ?? []).filter((r) => r.type === "bundle");
 
+  const noResults =
+    isFetched && !isLoading && !isError && (rows?.length ?? 0) === 0 &&
+    (filters.search || (filters.platforms?.length ?? 0) > 0 ||
+      (filters.priceMode && filters.priceMode !== "all") ||
+      (filters.effort && filters.effort !== "all"));
+
+  const emptyCatalog =
+    isFetched && !isLoading && !isError && (rows?.length ?? 0) === 0 && !noResults;
+
+  const pageTitle = title ?? V2_COPY.nav.explore[lang];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" ref={containerRef} dir={isRTL ? "rtl" : "ltr"}>
+      <SeoHead
+        title={`${pageTitle} · JojoPrompts`}
+        description={V2_COPY.states.emptyCatalogDesc.en}
+        canonicalPath={location.pathname}
+        noindex={emptyCatalog}
+      />
       <V2SubNav authed={!!user} />
       <main className="container mx-auto px-4 py-6 space-y-6">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold sm:text-3xl">{title ?? "Explore"}</h1>
+            <h1 className="text-2xl font-bold sm:text-3xl">{pageTitle}</h1>
             <p className="text-sm text-muted-foreground">
-              Verified Jojo resources for your workflow.
+              {V2_COPY.library.subtitle[lang]}
             </p>
           </div>
-          {user && library && !library.has_library_access && (
+          {user && library && !library.has_library_access ? (
             <div className="w-full max-w-xs">
               <LifetimeProgress progressFils={library.lifetime_progress_fils} />
             </div>
-          )}
-          {user && library?.has_library_access && (
+          ) : null}
+          {user && library?.has_library_access ? (
             <div className="w-full max-w-xs">
               <LifetimeProgress progressFils={0} hasLibrary />
             </div>
-          )}
+          ) : null}
         </header>
 
-        <ExploreFiltersBar filters={filters} onChange={patch} />
+        <ExploreFiltersBar filters={filters} onChange={patch} onReset={reset} />
 
-        {isLoading && (
+        {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-40 w-full rounded-2xl" />
             ))}
           </div>
-        )}
+        ) : null}
 
-        {isError && (
-          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-center">
-            <p className="text-sm">Something went wrong loading the catalog.</p>
-            <button
-              onClick={() => refetch()}
-              className="mt-3 rounded-md bg-warm-gold px-4 py-2 text-sm font-medium text-dark-base min-h-[44px]"
-            >
-              Retry
-            </button>
-          </div>
-        )}
+        {isError ? <CatalogState variant="error" onRetry={() => refetch()} /> : null}
 
-        {!isLoading && !isError && (rows?.length ?? 0) === 0 && <EmptyCatalog />}
+        {noResults ? <CatalogState variant="no-results" /> : null}
+        {emptyCatalog ? <CatalogState variant="empty" /> : null}
 
-        {!isLoading && !isError && (rows?.length ?? 0) > 0 && (
+        {!isLoading && !isError && (rows?.length ?? 0) > 0 ? (
           <div className="space-y-8">
-            {structured.length > 0 && (
+            {structured.length > 0 ? (
               <section aria-label="Skills and automations">
                 <div className="grid gap-4 md:grid-cols-2">
                   {structured.map((r) => (
-                    <SkillResourceCard key={r.id} r={r} />
+                    <SkillResourceCard key={r.id} r={r} onQuickPreview={openPreview} />
                   ))}
                 </div>
               </section>
-            )}
-            {visual.length > 0 && (
+            ) : null}
+            {visual.length > 0 ? (
               <section aria-label="Prompts and image styles">
-                <h2 className="mb-3 text-lg font-semibold">Prompts & Image Styles</h2>
+                <h2 className="mb-3 text-lg font-semibold">
+                  {V2_COPY.nav.prompts[lang]} & {V2_COPY.nav.imageStyles[lang]}
+                </h2>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                   {visual.map((r) => (
-                    <VisualResourceCard key={r.id} r={r} />
+                    <VisualResourceCard key={r.id} r={r} onQuickPreview={openPreview} />
                   ))}
                 </div>
               </section>
-            )}
-            {bundles.length > 0 && (
+            ) : null}
+            {bundles.length > 0 ? (
               <section aria-label="Bundles">
-                <h2 className="mb-3 text-lg font-semibold">Bundles</h2>
+                <h2 className="mb-3 text-lg font-semibold">
+                  {V2_COPY.nav.bundles[lang]}
+                </h2>
                 <div className="grid gap-4 md:grid-cols-2">
                   {bundles.map((r) => (
-                    <SkillResourceCard key={r.id} r={r} />
+                    <SkillResourceCard key={r.id} r={r} onQuickPreview={openPreview} />
                   ))}
                 </div>
               </section>
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
       </main>
+
+      <QuickPreviewSheet
+        slug={previewSlug}
+        open={!!previewSlug}
+        onOpenChange={(v) => (v ? null : setPreviewSlug(null))}
+      />
     </div>
   );
 }
