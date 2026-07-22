@@ -157,6 +157,42 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_events: {
+        Row: {
+          action: string
+          actor_type: string
+          actor_user_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json
+        }
+        Insert: {
+          action: string
+          actor_type?: string
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+        }
+        Update: {
+          action?: string
+          actor_type?: string
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+        }
+        Relationships: []
+      }
       admin_access_tokens: {
         Row: {
           admin_user_id: string
@@ -613,6 +649,75 @@ export type Database = {
           testing_schedule?: Json | null
           updated_at?: string | null
           version_number?: string | null
+        }
+        Relationships: []
+      }
+      cart_items: {
+        Row: {
+          cart_id: string
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          unit_price_fils: number
+          updated_at: string
+        }
+        Insert: {
+          cart_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity?: number
+          unit_price_fils: number
+          updated_at?: string
+        }
+        Update: {
+          cart_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          unit_price_fils?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      carts: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1224,6 +1329,66 @@ export type Database = {
         }
         Relationships: []
       }
+      entitlements: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          grant_reason: Database["public"]["Enums"]["v2_grant_reason"]
+          granted_at: string
+          id: string
+          legacy_source: string | null
+          order_id: string | null
+          resource_id: string | null
+          revoke_reason: string | null
+          revoked_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          grant_reason: Database["public"]["Enums"]["v2_grant_reason"]
+          granted_at?: string
+          id?: string
+          legacy_source?: string | null
+          order_id?: string | null
+          resource_id?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          grant_reason?: Database["public"]["Enums"]["v2_grant_reason"]
+          granted_at?: string
+          id?: string
+          legacy_source?: string | null
+          order_id?: string | null
+          resource_id?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entitlements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entitlements_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favorites: {
         Row: {
           created_at: string | null
@@ -1246,6 +1411,139 @@ export type Database = {
             columns: ["prompt_id"]
             isOneToOne: false
             referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      installation_guides: {
+        Row: {
+          created_at: string
+          estimated_minutes: number | null
+          id: string
+          platform_slug: string
+          resource_id: string
+          steps_ar: Json
+          steps_en: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_minutes?: number | null
+          id?: string
+          platform_slug: string
+          resource_id: string
+          steps_ar?: Json
+          steps_en?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          estimated_minutes?: number | null
+          id?: string
+          platform_slug?: string
+          resource_id?: string
+          steps_ar?: Json
+          steps_en?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installation_guides_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      licenses: {
+        Row: {
+          allows_commercial: boolean
+          allows_redistribution: boolean
+          created_at: string
+          id: string
+          license_key: string
+          resource_id: string
+          terms_ar: string | null
+          terms_en: string | null
+          updated_at: string
+        }
+        Insert: {
+          allows_commercial?: boolean
+          allows_redistribution?: boolean
+          created_at?: string
+          id?: string
+          license_key: string
+          resource_id: string
+          terms_ar?: string | null
+          terms_en?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allows_commercial?: boolean
+          allows_redistribution?: boolean
+          created_at?: string
+          id?: string
+          license_key?: string
+          resource_id?: string
+          terms_ar?: string | null
+          terms_en?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "licenses_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: true
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lifetime_credit_entries: {
+        Row: {
+          amount_fils: number
+          created_at: string
+          id: string
+          occurred_at: string
+          order_id: string | null
+          reason: string
+          refund_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_fils: number
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          order_id?: string | null
+          reason: string
+          refund_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_fils?: number
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          order_id?: string | null
+          reason?: string
+          refund_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lifetime_credit_entries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lifetime_credit_entries_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
             referencedColumns: ["id"]
           },
         ]
@@ -1291,6 +1589,264 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total_fils: number
+          order_id: string
+          product_id: string
+          quantity: number
+          resource_id: string | null
+          unit_price_fils: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total_fils: number
+          order_id: string
+          product_id: string
+          quantity?: number
+          resource_id?: string | null
+          unit_price_fils: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total_fils?: number
+          order_id?: string
+          product_id?: string
+          quantity?: number
+          resource_id?: string | null
+          unit_price_fils?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          currency: string
+          discount_code: string | null
+          discount_fils: number
+          id: string
+          idempotency_key: string | null
+          legacy_transaction_id: string | null
+          order_number: string
+          paid_fils: number
+          placed_at: string | null
+          provider: string | null
+          provider_reference: string | null
+          settled_at: string | null
+          status: Database["public"]["Enums"]["v2_order_status"]
+          subtotal_fils: number
+          total_fils: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          discount_code?: string | null
+          discount_fils?: number
+          id?: string
+          idempotency_key?: string | null
+          legacy_transaction_id?: string | null
+          order_number: string
+          paid_fils?: number
+          placed_at?: string | null
+          provider?: string | null
+          provider_reference?: string | null
+          settled_at?: string | null
+          status?: Database["public"]["Enums"]["v2_order_status"]
+          subtotal_fils?: number
+          total_fils?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          discount_code?: string | null
+          discount_fils?: number
+          id?: string
+          idempotency_key?: string | null
+          legacy_transaction_id?: string | null
+          order_number?: string
+          paid_fils?: number
+          placed_at?: string | null
+          provider?: string | null
+          provider_reference?: string | null
+          settled_at?: string | null
+          status?: Database["public"]["Enums"]["v2_order_status"]
+          subtotal_fils?: number
+          total_fils?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_legacy_transaction_id_fkey"
+            columns: ["legacy_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_scans: {
+        Row: {
+          created_at: string
+          findings: Json
+          id: string
+          resource_version_id: string
+          scanned_at: string | null
+          scanner: string
+          status: Database["public"]["Enums"]["v2_scan_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          findings?: Json
+          id?: string
+          resource_version_id: string
+          scanned_at?: string | null
+          scanner: string
+          status?: Database["public"]["Enums"]["v2_scan_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          findings?: Json
+          id?: string
+          resource_version_id?: string
+          scanned_at?: string | null
+          scanner?: string
+          status?: Database["public"]["Enums"]["v2_scan_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_scans_resource_version_id_fkey"
+            columns: ["resource_version_id"]
+            isOneToOne: false
+            referencedRelation: "resource_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_events: {
+        Row: {
+          amount_fils: number | null
+          created_at: string
+          currency: string
+          event_type: Database["public"]["Enums"]["v2_payment_event_type"]
+          external_event_id: string
+          id: string
+          order_id: string | null
+          provider: string
+          raw_payload: Json
+          received_at: string
+        }
+        Insert: {
+          amount_fils?: number | null
+          created_at?: string
+          currency?: string
+          event_type: Database["public"]["Enums"]["v2_payment_event_type"]
+          external_event_id: string
+          id?: string
+          order_id?: string | null
+          provider: string
+          raw_payload?: Json
+          received_at?: string
+        }
+        Update: {
+          amount_fils?: number | null
+          created_at?: string
+          currency?: string
+          event_type?: Database["public"]["Enums"]["v2_payment_event_type"]
+          external_event_id?: string
+          id?: string
+          order_id?: string | null
+          provider?: string
+          raw_payload?: Json
+          received_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_compatibility: {
+        Row: {
+          created_at: string
+          id: string
+          is_verified: boolean
+          min_version: string | null
+          notes_ar: string | null
+          notes_en: string | null
+          platform_slug: string
+          resource_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          min_version?: string | null
+          notes_ar?: string | null
+          notes_en?: string | null
+          platform_slug: string
+          resource_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          min_version?: string | null
+          notes_ar?: string | null
+          notes_en?: string | null
+          platform_slug?: string
+          resource_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_compatibility_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_fields: {
         Row: {
@@ -1392,6 +1948,92 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      product_bundle_items: {
+        Row: {
+          bundle_product_id: string
+          created_at: string
+          id: string
+          resource_id: string
+        }
+        Insert: {
+          bundle_product_id: string
+          created_at?: string
+          id?: string
+          resource_id: string
+        }
+        Update: {
+          bundle_product_id?: string
+          created_at?: string
+          id?: string
+          resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_bundle_items_bundle_product_id_fkey"
+            columns: ["bundle_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_bundle_items_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          is_active: boolean
+          price_fils: number
+          product_type: Database["public"]["Enums"]["v2_product_type"]
+          resource_id: string | null
+          sku: string
+          title_ar: string | null
+          title_en: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          price_fils?: number
+          product_type: Database["public"]["Enums"]["v2_product_type"]
+          resource_id?: string | null
+          sku: string
+          title_ar?: string | null
+          title_en: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          price_fils?: number
+          product_type?: Database["public"]["Enums"]["v2_product_type"]
+          resource_id?: string | null
+          sku?: string
+          title_ar?: string | null
+          title_en?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1895,6 +2537,331 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      refunds: {
+        Row: {
+          amount_fils: number
+          created_at: string
+          id: string
+          order_id: string
+          processed_at: string | null
+          provider_reference: string | null
+          reason: string | null
+          requested_at: string
+          status: Database["public"]["Enums"]["v2_refund_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_fils: number
+          created_at?: string
+          id?: string
+          order_id: string
+          processed_at?: string | null
+          provider_reference?: string | null
+          reason?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["v2_refund_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_fils?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          processed_at?: string | null
+          provider_reference?: string | null
+          reason?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["v2_refund_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          category: string
+          created_at: string
+          details: string | null
+          id: string
+          reporter_user_id: string
+          resolved_at: string | null
+          resolver_notes: string | null
+          resource_id: string | null
+          status: Database["public"]["Enums"]["v2_report_status"]
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          reporter_user_id: string
+          resolved_at?: string | null
+          resolver_notes?: string | null
+          resource_id?: string | null
+          status?: Database["public"]["Enums"]["v2_report_status"]
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          reporter_user_id?: string
+          resolved_at?: string | null
+          resolver_notes?: string | null
+          resource_id?: string | null
+          status?: Database["public"]["Enums"]["v2_report_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_files: {
+        Row: {
+          checksum_sha256: string | null
+          content_type: string | null
+          created_at: string
+          file_name: string
+          id: string
+          resource_version_id: string
+          size_bytes: number | null
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+        }
+        Insert: {
+          checksum_sha256?: string | null
+          content_type?: string | null
+          created_at?: string
+          file_name: string
+          id?: string
+          resource_version_id: string
+          size_bytes?: number | null
+          storage_bucket?: string
+          storage_path: string
+          updated_at?: string
+        }
+        Update: {
+          checksum_sha256?: string | null
+          content_type?: string | null
+          created_at?: string
+          file_name?: string
+          id?: string
+          resource_version_id?: string
+          size_bytes?: number | null
+          storage_bucket?: string
+          storage_path?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_files_resource_version_id_fkey"
+            columns: ["resource_version_id"]
+            isOneToOne: false
+            referencedRelation: "resource_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          is_required: boolean
+          key: string
+          kind: string
+          label_ar: string | null
+          label_en: string | null
+          resource_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          key: string
+          kind: string
+          label_ar?: string | null
+          label_en?: string | null
+          resource_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          key?: string
+          kind?: string
+          label_ar?: string | null
+          label_en?: string | null
+          resource_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_permissions_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_versions: {
+        Row: {
+          changelog_ar: string | null
+          changelog_en: string | null
+          created_at: string
+          id: string
+          is_current: boolean
+          package_checksum: string | null
+          package_size_bytes: number | null
+          published_at: string | null
+          resource_id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          changelog_ar?: string | null
+          changelog_en?: string | null
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          package_checksum?: string | null
+          package_size_bytes?: number | null
+          published_at?: string | null
+          resource_id: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          changelog_ar?: string | null
+          changelog_en?: string | null
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          package_checksum?: string | null
+          package_size_bytes?: number | null
+          published_at?: string | null
+          resource_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_versions_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resources: {
+        Row: {
+          archived_at: string | null
+          category: string | null
+          created_at: string
+          current_version_id: string | null
+          description_ar: string | null
+          description_en: string | null
+          effort_minutes: number | null
+          hero_image_path: string | null
+          id: string
+          legacy_prompt_id: string | null
+          lifecycle: Database["public"]["Enums"]["v2_resource_lifecycle"]
+          owner_id: string | null
+          published_at: string | null
+          slug: string
+          summary_ar: string | null
+          summary_en: string | null
+          tags: string[]
+          title_ar: string | null
+          title_en: string
+          type: Database["public"]["Enums"]["v2_resource_type"]
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          category?: string | null
+          created_at?: string
+          current_version_id?: string | null
+          description_ar?: string | null
+          description_en?: string | null
+          effort_minutes?: number | null
+          hero_image_path?: string | null
+          id?: string
+          legacy_prompt_id?: string | null
+          lifecycle?: Database["public"]["Enums"]["v2_resource_lifecycle"]
+          owner_id?: string | null
+          published_at?: string | null
+          slug: string
+          summary_ar?: string | null
+          summary_en?: string | null
+          tags?: string[]
+          title_ar?: string | null
+          title_en: string
+          type: Database["public"]["Enums"]["v2_resource_type"]
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          category?: string | null
+          created_at?: string
+          current_version_id?: string | null
+          description_ar?: string | null
+          description_en?: string | null
+          effort_minutes?: number | null
+          hero_image_path?: string | null
+          id?: string
+          legacy_prompt_id?: string | null
+          lifecycle?: Database["public"]["Enums"]["v2_resource_lifecycle"]
+          owner_id?: string | null
+          published_at?: string | null
+          slug?: string
+          summary_ar?: string | null
+          summary_en?: string | null
+          tags?: string[]
+          title_ar?: string | null
+          title_en?: string
+          type?: Database["public"]["Enums"]["v2_resource_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_current_version_fk"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "resource_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resources_legacy_prompt_id_fkey"
+            columns: ["legacy_prompt_id"]
+            isOneToOne: true
+            referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       response_executions: {
         Row: {
@@ -3033,6 +4000,50 @@ export type Database = {
     Enums: {
       app_role: "admin" | "jadmin" | "prompter" | "user"
       data_classification: "public" | "internal" | "sensitive" | "restricted"
+      v2_grant_reason:
+        | "purchase"
+        | "free_acquisition"
+        | "lifetime_purchase"
+        | "lifetime_threshold"
+        | "legacy_migration"
+        | "admin_grant"
+      v2_order_status:
+        | "pending"
+        | "paid"
+        | "failed"
+        | "refunded"
+        | "partially_refunded"
+        | "cancelled"
+      v2_payment_event_type:
+        | "created"
+        | "authorized"
+        | "captured"
+        | "failed"
+        | "refunded"
+        | "chargeback"
+        | "reversal"
+      v2_product_type: "free" | "individual" | "bundle" | "lifetime"
+      v2_refund_status:
+        | "pending"
+        | "approved"
+        | "denied"
+        | "processed"
+        | "failed"
+      v2_report_status: "open" | "reviewing" | "resolved" | "dismissed"
+      v2_resource_lifecycle: "draft" | "review" | "published" | "archived"
+      v2_resource_type:
+        | "skill"
+        | "automation"
+        | "prompt"
+        | "prompt_pack"
+        | "image_style"
+        | "bundle"
+      v2_scan_status:
+        | "pending"
+        | "clean"
+        | "suspicious"
+        | "malicious"
+        | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3162,6 +4173,50 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "jadmin", "prompter", "user"],
       data_classification: ["public", "internal", "sensitive", "restricted"],
+      v2_grant_reason: [
+        "purchase",
+        "free_acquisition",
+        "lifetime_purchase",
+        "lifetime_threshold",
+        "legacy_migration",
+        "admin_grant",
+      ],
+      v2_order_status: [
+        "pending",
+        "paid",
+        "failed",
+        "refunded",
+        "partially_refunded",
+        "cancelled",
+      ],
+      v2_payment_event_type: [
+        "created",
+        "authorized",
+        "captured",
+        "failed",
+        "refunded",
+        "chargeback",
+        "reversal",
+      ],
+      v2_product_type: ["free", "individual", "bundle", "lifetime"],
+      v2_refund_status: [
+        "pending",
+        "approved",
+        "denied",
+        "processed",
+        "failed",
+      ],
+      v2_report_status: ["open", "reviewing", "resolved", "dismissed"],
+      v2_resource_lifecycle: ["draft", "review", "published", "archived"],
+      v2_resource_type: [
+        "skill",
+        "automation",
+        "prompt",
+        "prompt_pack",
+        "image_style",
+        "bundle",
+      ],
+      v2_scan_status: ["pending", "clean", "suspicious", "malicious", "failed"],
     },
   },
 } as const
