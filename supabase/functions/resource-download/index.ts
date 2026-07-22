@@ -86,11 +86,17 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: claims, error: claimsErr } = await userClient.auth.getClaims(jwt);
-  if (claimsErr || !claims?.claims?.sub) {
+  let userId: string;
+  try {
+    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(jwt);
+    if (claimsErr || !claims?.claims?.sub) {
+      return json(ERRORS.UNAUTHENTICATED, 401, cors);
+    }
+    userId = claims.claims.sub as string;
+  } catch {
     return json(ERRORS.UNAUTHENTICATED, 401, cors);
   }
-  const userId = claims.claims.sub as string;
+
 
   // Service client only for RPC (SECURITY DEFINER still checks auth.uid via user client)
   // We route the authorization RPC through the USER client so auth.uid() resolves.
