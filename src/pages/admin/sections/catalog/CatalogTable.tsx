@@ -269,20 +269,21 @@ export function CatalogTable({ lockedType, title }: Props) {
       // Per-id updates so RLS denials or errors report per row.
       const results = await Promise.all(
         args.ids.map(async (id) => {
-          const { error } = await supabase.from("resources").update(patch).eq("id", id);
+          const { error } = await (supabase as any).from("resources").update(patch).eq("id", id);
           return { id, ok: !error, error: error?.message ?? null };
         }),
       );
       // Best-effort activity log; ignore failure.
       if (user) {
-        await supabase
+        await (supabase as any)
           .from("activity_events")
           .insert(
             args.ids.map((id) => ({
-              actor_id: user.id,
+              actor_user_id: user.id,
+              actor_type: "admin",
               action: `resource.${args.action}`,
-              target_type: "resource",
-              target_id: id,
+              entity_type: "resource",
+              entity_id: id,
             })),
           )
           .then(() => undefined, () => undefined);

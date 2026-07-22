@@ -100,7 +100,7 @@ async function fetchOverview() {
       .range(0, 999),
     supabase
       .from("activity_events")
-      .select("id, actor_id, action, target_type, target_id, created_at")
+      .select("id, actor_user_id, action, entity_type, entity_id, created_at")
       .order("created_at", { ascending: false })
       .range(0, 9),
   ]);
@@ -312,7 +312,7 @@ export default function OverviewV2() {
                   <li key={r.id} className="flex items-center justify-between py-2">
                     <div className="min-w-0 flex-1 truncate">
                       <span className="font-medium text-dark-base">{r.action}</span>
-                      <span className="text-muted-foreground"> · {r.target_type ?? "—"}</span>
+                      <span className="text-muted-foreground"> · {r.entity_type ?? "—"}</span>
                     </div>
                     <time className="ml-3 shrink-0 text-xs text-muted-foreground" dateTime={r.created_at}>
                       {new Date(r.created_at).toLocaleString()}
