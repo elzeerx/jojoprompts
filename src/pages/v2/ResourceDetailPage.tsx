@@ -175,8 +175,17 @@ export default function ResourceDetailPage() {
               <section>
                 <h2 className="mb-2 text-lg font-semibold">License</h2>
                 <p className="text-sm text-muted-foreground">
-                  {data.license.name ?? data.license.slug}
+                  {data.license.license_key}
                 </p>
+                {(language === "ar"
+                  ? data.license.terms_ar
+                  : data.license.terms_en) && (
+                  <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">
+                    {language === "ar"
+                      ? data.license.terms_ar
+                      : data.license.terms_en}
+                  </p>
+                )}
               </section>
             )}
 
