@@ -63,6 +63,11 @@ interface FormState {
   title_en: string; title_ar: string;
   summary_en: string; summary_ar: string;
   description_en: string; description_ar: string;
+  examples_en: string; examples_ar: string;
+  limitations_en: string; limitations_ar: string;
+  uninstall_en: string; uninstall_ar: string;
+  support_en: string; support_ar: string;
+  update_info_en: string; update_info_ar: string;
   category: string; tags: string; hero_image_path: string; effort_minutes: string;
   version: string; changelog_en: string; is_new_version: boolean;
   platform_compatibility: PlatformRow[];
@@ -78,6 +83,11 @@ const emptyForm = (type: ResourceType = "skill"): FormState => ({
   title_en: "", title_ar: "",
   summary_en: "", summary_ar: "",
   description_en: "", description_ar: "",
+  examples_en: "", examples_ar: "",
+  limitations_en: "", limitations_ar: "",
+  uninstall_en: "", uninstall_ar: "",
+  support_en: "", support_ar: "",
+  update_info_en: "", update_info_ar: "",
   category: "", tags: "", hero_image_path: "", effort_minutes: "",
   version: "1.0.0", changelog_en: "", is_new_version: false,
   platform_compatibility: [],
@@ -87,6 +97,7 @@ const emptyForm = (type: ResourceType = "skill"): FormState => ({
   products: [{ sku: "", product_type: "free", title_en: "", price_fils: "0" }],
   bundle_items: [],
 });
+
 
 // Approved V2 pricing hints (KWD). Admin remains free to override.
 const TYPE_PRICE_HINT: Record<ResourceType, string> = {
