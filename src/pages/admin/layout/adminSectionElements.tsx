@@ -59,7 +59,8 @@ const Empty = (
 const AllCatalog = () => <CatalogPage />;
 const SkillsCatalog = () => <CatalogPage lockedType="skill" />;
 const AutomationsCatalog = () => <CatalogPage lockedType="automation" />;
-const PromptsCatalog = () => <CatalogPage lockedType="prompt" />;
+const PromptsCatalog = () => <CatalogPage includeTypes={["prompt", "prompt_pack"]} title="Prompts & Prompt Packs" />;
+const PromptPacksCatalog = () => <CatalogPage lockedType="prompt_pack" />;
 const ImageStylesCatalog = () => <CatalogPage lockedType="image_style" />;
 const BundlesCatalog = () => <CatalogPage lockedType="bundle" />;
 
@@ -72,8 +73,15 @@ export const adminSectionElements = {
   catalogSkills: wrap(<SkillsCatalog />),
   catalogAutomations: wrap(<AutomationsCatalog />),
   catalogPrompts: wrap(<PromptsCatalog />),
+  catalogPromptPacks: wrap(<PromptPacksCatalog />),
   catalogImageStyles: wrap(<ImageStylesCatalog />),
   catalogBundles: wrap(<BundlesCatalog />),
+
+  // Publishing — unified publisher
+  publishingNew: wrap(<ResourcePublisher mode="new" />),
+  publishingEdit: wrap(<ResourcePublisher mode="edit" />),
+  publishingNewVersion: wrap(<ResourcePublisher mode="new-version" />),
+
 
   // Publishing
   publishingDrafts: Empty(
