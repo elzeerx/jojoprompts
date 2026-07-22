@@ -1,8 +1,11 @@
 // resource-download
 // Server-authoritative signed download for V2 resource files.
-// Requires a valid Supabase user JWT. Authorizes via SECURITY DEFINER RPC,
-// then issues a 60-second private signed URL. Never accepts a caller-provided
-// bucket/path.
+// - Verifies the caller's bearer JWT via a user-scoped client.
+// - Invokes the server-only authorization RPC through the service-role client
+//   passing the *verified* user id extracted from the JWT. No caller-supplied
+//   user id is ever honored.
+// - Returns only a 60s signed URL + safe file metadata. Never returns storage
+//   bucket / path / service keys / scan findings.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -17,14 +20,18 @@ const ALLOWED_ORIGINS = new Set<string>([
 
 function buildCors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
-  const allow = ALLOWED_ORIGINS.has(origin) ? origin : "https://jojoprompts.com";
-  return {
-    "Access-Control-Allow-Origin": allow,
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
   };
+  // Only echo Allow-Origin for known origins. For disallowed origins we omit
+  // the header entirely so browsers block the response.
+  if (ALLOWED_ORIGINS.has(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
 }
 
 function json(body: unknown, status: number, cors: Record<string, string>) {
@@ -34,7 +41,6 @@ function json(body: unknown, status: number, cors: Record<string, string>) {
   });
 }
 
-// Stable, non-enumerating error codes
 const ERRORS = {
   UNAUTHENTICATED: { code: "unauthenticated", message: "Authentication required." },
   FORBIDDEN: { code: "forbidden", message: "Not authorized to download this file." },
@@ -56,19 +62,30 @@ Deno.serve(async (req: Request) => {
     return json(ERRORS.BAD_REQUEST, 405, cors);
   }
 
-  // Parse & validate body strictly
+  // Strict body validation: object with exactly one known key.
   let body: unknown;
   try {
     body = await req.json();
   } catch {
     return json(ERRORS.BAD_REQUEST, 400, cors);
   }
-  const fileId = (body as { resource_file_id?: unknown })?.resource_file_id;
+  if (
+    body === null ||
+    typeof body !== "object" ||
+    Array.isArray(body)
+  ) {
+    return json(ERRORS.BAD_REQUEST, 400, cors);
+  }
+  const keys = Object.keys(body as Record<string, unknown>);
+  if (keys.length !== 1 || keys[0] !== "resource_file_id") {
+    return json(ERRORS.BAD_REQUEST, 400, cors);
+  }
+  const fileId = (body as { resource_file_id?: unknown }).resource_file_id;
   if (typeof fileId !== "string" || !UUID_RE.test(fileId)) {
     return json(ERRORS.BAD_REQUEST, 400, cors);
   }
 
-  // Require bearer token
+  // Require bearer token.
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) {
     return json(ERRORS.UNAUTHENTICATED, 401, cors);
@@ -80,7 +97,7 @@ Deno.serve(async (req: Request) => {
   const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  // Identity: user-scoped client. Never leak the JWT to logs.
+  // Identity: user-scoped client. Never log the JWT.
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${jwt}` } },
     auth: { persistSession: false, autoRefreshToken: false },
@@ -96,28 +113,31 @@ Deno.serve(async (req: Request) => {
   } catch {
     return json(ERRORS.UNAUTHENTICATED, 401, cors);
   }
+  if (!UUID_RE.test(userId)) {
+    return json(ERRORS.UNAUTHENTICATED, 401, cors);
+  }
 
+  // Service-role client: sole caller of the server-only authorization RPC.
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
-  // Service client only for RPC (SECURITY DEFINER still checks auth.uid via user client)
-  // We route the authorization RPC through the USER client so auth.uid() resolves.
-  const { data: authzRows, error: authzErr } = await userClient.rpc(
+  const { data: authzRows, error: authzErr } = await admin.rpc(
     "authorize_resource_download",
-    { p_file_id: fileId },
+    { p_file_id: fileId, p_user_id: userId },
   );
 
   if (authzErr) {
-    // Map postgres error codes without leaking details
     const code = (authzErr as { code?: string }).code;
     if (code === "28000") return json(ERRORS.UNAUTHENTICATED, 401, cors);
     if (code === "42501") {
-      // Distinguish scan-gate vs authorization by message; both surface as 403
       const msg = (authzErr.message || "").toLowerCase();
       if (msg.includes("package unavailable")) {
         return json(ERRORS.UNAVAILABLE, 403, cors);
       }
       return json(ERRORS.FORBIDDEN, 403, cors);
     }
-    console.error("authorize_resource_download error", { code, userId });
+    console.error("authorize_resource_download error", { code });
     return json(ERRORS.SERVER, 500, cors);
   }
 
@@ -126,11 +146,6 @@ Deno.serve(async (req: Request) => {
     return json(ERRORS.FORBIDDEN, 403, cors);
   }
 
-  // Service client for signed URL only. Never returned to caller.
-  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
   const { data: signed, error: signErr } = await admin.storage
     .from(row.storage_bucket as string)
     .createSignedUrl(row.storage_path as string, 60, {
@@ -138,11 +153,10 @@ Deno.serve(async (req: Request) => {
     });
 
   if (signErr || !signed?.signedUrl) {
-    console.error("signed url error", { userId });
+    console.error("signed url error");
     return json(ERRORS.SERVER, 500, cors);
   }
 
-  // Best-effort server-side audit; do not fail the request if it errors.
   try {
     await admin.from("activity_events").insert({
       actor_user_id: userId,
@@ -153,9 +167,10 @@ Deno.serve(async (req: Request) => {
       metadata: { file_name: row.file_name ?? null },
     });
   } catch (_) {
-    // swallow: audit failure must not block downloads
+    // audit failure must not block downloads
   }
 
+  // Response never includes storage bucket/path.
   return json(
     {
       url: signed.signedUrl,
