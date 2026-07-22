@@ -64,8 +64,10 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: "Skills", to: "/admin/catalog/skills", icon: Wand2 },
       { label: "Automations", to: "/admin/catalog/automations", icon: Bot },
       { label: "Prompts", to: "/admin/catalog/prompts", icon: FileText },
+      { label: "Prompt Packs", to: "/admin/catalog/prompt-packs", icon: FileText },
       { label: "Image Styles", to: "/admin/catalog/image-styles", icon: ImageIcon },
       { label: "Bundles", to: "/admin/catalog/bundles", icon: Package },
+
     ],
   },
   {
