@@ -1344,6 +1344,7 @@ export type Database = {
           scope: Database["public"]["Enums"]["v2_entitlement_scope"]
           updated_at: string
           user_id: string
+          version_major: number | null
         }
         Insert: {
           created_at?: string
@@ -1359,6 +1360,7 @@ export type Database = {
           scope: Database["public"]["Enums"]["v2_entitlement_scope"]
           updated_at?: string
           user_id: string
+          version_major?: number | null
         }
         Update: {
           created_at?: string
@@ -1374,6 +1376,7 @@ export type Database = {
           scope?: Database["public"]["Enums"]["v2_entitlement_scope"]
           updated_at?: string
           user_id?: string
+          version_major?: number | null
         }
         Relationships: [
           {
@@ -1595,6 +1598,7 @@ export type Database = {
       }
       order_items: {
         Row: {
+          acquired_major_version: number | null
           created_at: string
           id: string
           line_total_fils: number
@@ -1602,9 +1606,11 @@ export type Database = {
           product_id: string
           quantity: number
           resource_id: string | null
+          resource_version_id: string | null
           unit_price_fils: number
         }
         Insert: {
+          acquired_major_version?: number | null
           created_at?: string
           id?: string
           line_total_fils: number
@@ -1612,9 +1618,11 @@ export type Database = {
           product_id: string
           quantity?: number
           resource_id?: string | null
+          resource_version_id?: string | null
           unit_price_fils: number
         }
         Update: {
+          acquired_major_version?: number | null
           created_at?: string
           id?: string
           line_total_fils?: number
@@ -1622,6 +1630,7 @@ export type Database = {
           product_id?: string
           quantity?: number
           resource_id?: string | null
+          resource_version_id?: string | null
           unit_price_fils?: number
         }
         Relationships: [
@@ -1644,6 +1653,13 @@ export type Database = {
             columns: ["resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_resource_version_id_fkey"
+            columns: ["resource_version_id"]
+            isOneToOne: false
+            referencedRelation: "resource_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -2739,6 +2755,7 @@ export type Database = {
           created_at: string
           id: string
           is_current: boolean
+          major_version: number
           package_checksum: string | null
           package_size_bytes: number | null
           published_at: string | null
@@ -2752,6 +2769,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_current?: boolean
+          major_version?: number
           package_checksum?: string | null
           package_size_bytes?: number | null
           published_at?: string | null
@@ -2765,6 +2783,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_current?: boolean
+          major_version?: number
           package_checksum?: string | null
           package_size_bytes?: number | null
           published_at?: string | null
@@ -3783,6 +3802,15 @@ export type Database = {
             Returns: Json
           }
       anonymize_ip_address: { Args: { ip_address: string }; Returns: string }
+      authorize_resource_download: {
+        Args: { p_file_id: string }
+        Returns: {
+          content_type: string
+          file_name: string
+          storage_bucket: string
+          storage_path: string
+        }[]
+      }
       calculate_anomaly_score: {
         Args: { p_current_data: Json; p_metric_type: string; p_user_id: string }
         Returns: number
@@ -3864,6 +3892,7 @@ export type Database = {
         Returns: undefined
       }
       export_user_data: { Args: { target_user_id: string }; Returns: Json }
+      get_my_library_state: { Args: never; Returns: Json }
       get_public_profile_safe: {
         Args: { user_id_param: string }
         Returns: {
@@ -3917,6 +3946,15 @@ export type Database = {
       get_user_subscription_tier: {
         Args: { user_id_param: string }
         Returns: string
+      }
+      grant_free_acquisition: {
+        Args: { p_resource_id: string }
+        Returns: {
+          already_owned: boolean
+          entitlement_id: string
+          resource_id: string
+          version_major: number
+        }[]
       }
       has_active_subscription: { Args: never; Returns: boolean }
       has_role: {
