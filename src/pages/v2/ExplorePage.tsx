@@ -133,7 +133,7 @@ export default function ExplorePage({ fixedType, title }: Props) {
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">{pageTitle}</h1>
             <p className="text-sm text-muted-foreground">
-              {V2_COPY.library.subtitle[lang]}
+              {V2_COPY.explore.subtitle[lang]}
             </p>
           </div>
           {user && library && !library.has_library_access ? (

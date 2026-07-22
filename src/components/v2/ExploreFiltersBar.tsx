@@ -130,22 +130,67 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
 
   return (
     <div className="sticky top-[7.25rem] z-20 -mx-4 space-y-3 border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input
             placeholder={V2_COPY.filters.searchPlaceholder[lang]}
-            className="ps-9 min-h-[44px]"
+            className="ps-9 min-h-[44px] w-full"
             value={filters.search ?? ""}
             onChange={(e) => onChange({ search: e.target.value })}
             aria-label={V2_COPY.filters.searchPlaceholder[lang]}
           />
         </div>
+        {/* Desktop inline controls */}
+        <div className="hidden md:flex md:items-center md:gap-2">
+          <Select
+            value={filters.sortBy ?? "newest"}
+            onValueChange={(v) => onChange({ sortBy: v as ExploreFilters["sortBy"] })}
+          >
+            <SelectTrigger className="min-h-[44px] w-[180px]" aria-label={V2_COPY.filters.sort[lang]}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">{V2_COPY.filters.sortNewest[lang]}</SelectItem>
+              <SelectItem value="updated">{V2_COPY.filters.sortUpdated[lang]}</SelectItem>
+              <SelectItem value="price_asc">{V2_COPY.filters.sortPriceAsc[lang]}</SelectItem>
+              <SelectItem value="price_desc">{V2_COPY.filters.sortPriceDesc[lang]}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.priceMode ?? "all"}
+            onValueChange={(v) => onChange({ priceMode: v as ExploreFilters["priceMode"] })}
+          >
+            <SelectTrigger className="min-h-[44px] w-[150px]" aria-label={V2_COPY.filters.price[lang]}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{V2_COPY.filters.priceAll[lang]}</SelectItem>
+              <SelectItem value="free">{V2_COPY.filters.priceFree[lang]}</SelectItem>
+              <SelectItem value="paid">{V2_COPY.filters.pricePaid[lang]}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.effort ?? "all"}
+            onValueChange={(v) => onChange({ effort: v as ExploreFilters["effort"] })}
+          >
+            <SelectTrigger className="min-h-[44px] w-[170px]" aria-label={V2_COPY.filters.effort[lang]}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{V2_COPY.filters.effortAll[lang]}</SelectItem>
+              <SelectItem value="quick">{V2_COPY.filters.effortQuick[lang]}</SelectItem>
+              <SelectItem value="standard">{V2_COPY.filters.effortStandard[lang]}</SelectItem>
+              <SelectItem value="advanced">{V2_COPY.filters.effortAdvanced[lang]}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Mobile Filters trigger + desktop Platform trigger */}
         <Button
           type="button"
           variant="outline"
           onClick={() => setOpen(true)}
-          className="min-h-[44px] gap-2"
+          className="min-h-[44px] gap-2 md:hidden"
         >
           <SlidersHorizontal className="h-4 w-4" aria-hidden />
           {V2_COPY.filters.filters[lang]}
@@ -153,7 +198,20 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
             <Badge className="ms-1 h-5 min-w-5 px-1.5">{activeCount}</Badge>
           ) : null}
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setOpen(true)}
+          className="hidden min-h-[44px] gap-2 md:inline-flex"
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
+          {V2_COPY.filters.platform[lang]}
+          {(filters.platforms?.length ?? 0) > 0 ? (
+            <Badge className="ms-1 h-5 min-w-5 px-1.5">{filters.platforms!.length}</Badge>
+          ) : null}
+        </Button>
       </div>
+
 
       {isMobile ? (
         <Drawer open={open} onOpenChange={setOpen}>
