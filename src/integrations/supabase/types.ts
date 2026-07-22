@@ -2810,19 +2810,29 @@ export type Database = {
           description_ar: string | null
           description_en: string | null
           effort_minutes: number | null
+          examples_ar: string | null
+          examples_en: string | null
           hero_image_path: string | null
           id: string
           legacy_prompt_id: string | null
           lifecycle: Database["public"]["Enums"]["v2_resource_lifecycle"]
+          limitations_ar: string | null
+          limitations_en: string | null
           owner_id: string | null
           published_at: string | null
           slug: string
           summary_ar: string | null
           summary_en: string | null
+          support_ar: string | null
+          support_en: string | null
           tags: string[]
           title_ar: string | null
           title_en: string
           type: Database["public"]["Enums"]["v2_resource_type"]
+          uninstall_ar: string | null
+          uninstall_en: string | null
+          update_info_ar: string | null
+          update_info_en: string | null
           updated_at: string
         }
         Insert: {
@@ -2833,19 +2843,29 @@ export type Database = {
           description_ar?: string | null
           description_en?: string | null
           effort_minutes?: number | null
+          examples_ar?: string | null
+          examples_en?: string | null
           hero_image_path?: string | null
           id?: string
           legacy_prompt_id?: string | null
           lifecycle?: Database["public"]["Enums"]["v2_resource_lifecycle"]
+          limitations_ar?: string | null
+          limitations_en?: string | null
           owner_id?: string | null
           published_at?: string | null
           slug: string
           summary_ar?: string | null
           summary_en?: string | null
+          support_ar?: string | null
+          support_en?: string | null
           tags?: string[]
           title_ar?: string | null
           title_en: string
           type: Database["public"]["Enums"]["v2_resource_type"]
+          uninstall_ar?: string | null
+          uninstall_en?: string | null
+          update_info_ar?: string | null
+          update_info_en?: string | null
           updated_at?: string
         }
         Update: {
@@ -2856,19 +2876,29 @@ export type Database = {
           description_ar?: string | null
           description_en?: string | null
           effort_minutes?: number | null
+          examples_ar?: string | null
+          examples_en?: string | null
           hero_image_path?: string | null
           id?: string
           legacy_prompt_id?: string | null
           lifecycle?: Database["public"]["Enums"]["v2_resource_lifecycle"]
+          limitations_ar?: string | null
+          limitations_en?: string | null
           owner_id?: string | null
           published_at?: string | null
           slug?: string
           summary_ar?: string | null
           summary_en?: string | null
+          support_ar?: string | null
+          support_en?: string | null
           tags?: string[]
           title_ar?: string | null
           title_en?: string
           type?: Database["public"]["Enums"]["v2_resource_type"]
+          uninstall_ar?: string | null
+          uninstall_en?: string | null
+          update_info_ar?: string | null
+          update_info_en?: string | null
           updated_at?: string
         }
         Relationships: [
