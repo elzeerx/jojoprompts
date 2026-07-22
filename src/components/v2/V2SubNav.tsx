@@ -6,7 +6,7 @@ const LINKS = [
   { to: "/explore", label_en: "Explore", label_ar: "استكشف" },
   { to: "/skills", label_en: "Skills", label_ar: "مهارات" },
   { to: "/automations", label_en: "Automations", label_ar: "أتمتة" },
-  { to: "/prompts", label_en: "Prompts", label_ar: "برومبتات" },
+  { to: "/prompts-catalog", label_en: "Prompts", label_ar: "برومبتات" },
   { to: "/image-styles", label_en: "Image Styles", label_ar: "أنماط الصور" },
   { to: "/bundles", label_en: "Bundles", label_ar: "حزم" },
   { to: "/library", label_en: "My Library", label_ar: "مكتبتي", auth: true },
