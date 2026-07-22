@@ -16,5 +16,7 @@ try {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <App />
+  <HelmetProvider>
+    <App />
+  </HelmetProvider>
 );
