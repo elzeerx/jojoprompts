@@ -3906,6 +3906,23 @@ export type Database = {
           version: string
         }[]
       }
+      get_my_inactive_entitlements: {
+        Args: never
+        Returns: {
+          entitlement_id: string
+          expires_at: string
+          granted_at: string
+          resource_id: string
+          resource_slug: string
+          resource_type: Database["public"]["Enums"]["v2_resource_type"]
+          revoke_reason: string
+          revoked_at: string
+          status: string
+          title_ar: string
+          title_en: string
+          version_major: number
+        }[]
+      }
       get_my_library_state: { Args: never; Returns: Json }
       get_public_profile_safe: {
         Args: { user_id_param: string }
