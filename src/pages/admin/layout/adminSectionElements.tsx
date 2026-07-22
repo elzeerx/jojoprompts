@@ -5,6 +5,8 @@ import { EmptyRouteState } from "../sections/common/EmptyRouteState";
 // Real V2 sections
 const OverviewV2 = lazy(() => import("../sections/overview/OverviewV2"));
 const CatalogPage = lazy(() => import("../sections/catalog/CatalogPage"));
+const ResourcePublisher = lazy(() => import("../sections/publishing/ResourcePublisher"));
+
 
 // Existing legacy sections retained where they map cleanly onto V2 routes.
 const JsonPromptImporter = lazy(() => import("../sections/content/JsonPromptImporter"));
