@@ -48,7 +48,7 @@ async function headCount(
   table: string,
   build?: (q: any) => any,
 ): Promise<number | null> {
-  let q = supabase.from(table).select("id", { count: "exact", head: true });
+  let q: any = (supabase as any).from(table).select("id", { count: "exact", head: true });
   if (build) q = build(q);
   const { count, error } = await q;
   if (error) return null;
