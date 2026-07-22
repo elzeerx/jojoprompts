@@ -3892,6 +3892,20 @@ export type Database = {
         Returns: undefined
       }
       export_user_data: { Args: { target_user_id: string }; Returns: Json }
+      get_my_downloadable_files: {
+        Args: { p_resource_id?: string }
+        Returns: {
+          checksum: string
+          content_type: string
+          file_name: string
+          major_version: number
+          resource_file_id: string
+          resource_id: string
+          size_bytes: number
+          updated_at: string
+          version: string
+        }[]
+      }
       get_my_library_state: { Args: never; Returns: Json }
       get_public_profile_safe: {
         Args: { user_id_param: string }
@@ -4015,6 +4029,10 @@ export type Database = {
         Returns: boolean
       }
       user_has_any_role: { Args: { _user_id: string }; Returns: boolean }
+      v2_user_owns_resource: {
+        Args: { p_resource_id: string }
+        Returns: boolean
+      }
       validate_api_request: {
         Args: {
           p_endpoint: string
