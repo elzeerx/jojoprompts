@@ -1,21 +1,28 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bookmark, ShieldCheck, Loader2 } from "lucide-react";
+import { ShieldCheck, Loader2, Timer, Info } from "lucide-react";
 import type { ExploreResource } from "@/hooks/v2/useExploreResources";
-import { V2_COMMERCE_ENABLED, formatKwd } from "@/config/v2Flags";
+import { V2_COMMERCE_ENABLED, formatKwd, V2_COPY } from "@/config/v2Flags";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { useFreeAcquisition } from "@/hooks/v2/useFreeAcquisition";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
 
-export function SkillResourceCard({ r }: { r: ExploreResource }) {
+interface Props {
+  r: ExploreResource;
+  onQuickPreview?: (id: string) => void;
+}
+
+export function SkillResourceCard({ r, onQuickPreview }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const acquire = useFreeAcquisition();
   const { language } = useTranslation();
-  const title = language === "ar" && r.title_ar ? r.title_ar : r.title_en;
-  const summary = language === "ar" && r.summary_ar ? r.summary_ar : r.summary_en;
+  const lang = (language as "en" | "ar") ?? "en";
+  const nextPath = useNextLoginPath();
+  const title = lang === "ar" && r.title_ar ? r.title_ar : r.title_en;
+  const summary = lang === "ar" && r.summary_ar ? r.summary_ar : r.summary_en;
 
   const isFree = r.product?.product_type === "free";
   const priceLabel =
@@ -23,7 +30,7 @@ export function SkillResourceCard({ r }: { r: ExploreResource }) {
 
   const handleAcquire = () => {
     if (!user) {
-      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      navigate(nextPath);
       return;
     }
     acquire.mutate(r.id);
@@ -50,15 +57,22 @@ export function SkillResourceCard({ r }: { r: ExploreResource }) {
                 </p>
               )}
             </div>
-            <button
-              aria-label="Save"
-              className="rounded-lg p-2 text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-warm-gold min-h-[44px] min-w-[44px]"
-            >
-              <Bookmark className="h-4 w-4" />
-            </button>
+            {onQuickPreview ? (
+              <button
+                type="button"
+                aria-label={V2_COPY.cards.quickPreview[lang]}
+                onClick={() => onQuickPreview(r.id)}
+                className="rounded-lg p-2 text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-warm-gold min-h-[44px] min-w-[44px]"
+              >
+                <Info className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+            <Badge variant="outline" className="capitalize">
+              {r.type.replace("_", " ")}
+            </Badge>
             {r.platforms.slice(0, 3).map((p) => (
               <Badge key={p} variant="secondary" className="capitalize">
                 {p}
@@ -67,10 +81,16 @@ export function SkillResourceCard({ r }: { r: ExploreResource }) {
             {r.current_version && (
               <Badge variant="outline">v{r.current_version.version}</Badge>
             )}
+            {r.effort_minutes ? (
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                <Timer className="h-3 w-3" aria-hidden />
+                {r.effort_minutes} {V2_COPY.cards.minutes[lang]}
+              </span>
+            ) : null}
             {r.trust?.scan_status === "clean" && (
               <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <ShieldCheck className="h-3 w-3" />
-                Verified
+                <ShieldCheck className="h-3 w-3" aria-hidden />
+                {V2_COPY.cards.verified[lang]}
               </span>
             )}
           </div>
@@ -78,16 +98,16 @@ export function SkillResourceCard({ r }: { r: ExploreResource }) {
           <div className="mt-3 flex items-center justify-between gap-2">
             <div className="text-sm font-medium">
               {r.owned ? (
-                <span className="text-emerald-600">Owned</span>
+                <span className="text-emerald-600">{V2_COPY.cards.owned[lang]}</span>
               ) : isFree ? (
-                <span className="text-warm-gold">Free</span>
+                <span className="text-warm-gold">{V2_COPY.cards.free[lang]}</span>
               ) : (
                 <span>{priceLabel}</span>
               )}
             </div>
             {r.owned ? (
-              <Button asChild size="sm" variant="outline">
-                <Link to={`/resources/${r.slug}`}>Open</Link>
+              <Button asChild size="sm" variant="outline" className="min-h-[44px]">
+                <Link to={`/resources/${r.slug}`}>{V2_COPY.cards.open[lang]}</Link>
               </Button>
             ) : isFree ? (
               <Button
@@ -99,22 +119,23 @@ export function SkillResourceCard({ r }: { r: ExploreResource }) {
                 {acquire.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  "Add to library"
+                  V2_COPY.cards.addToLibrary[lang]
                 )}
               </Button>
             ) : V2_COMMERCE_ENABLED ? (
               <Button asChild size="sm" className="min-h-[44px]">
-                <Link to={`/resources/${r.slug}`}>View details</Link>
+                <Link to={`/resources/${r.slug}`}>
+                  {V2_COPY.cards.viewDetails[lang]}
+                </Link>
               </Button>
             ) : (
               <Button
                 size="sm"
                 variant="outline"
                 disabled
-                title="Checkout coming next"
                 className="min-h-[44px]"
               >
-                Checkout coming
+                {V2_COPY.cards.checkoutSoon[lang]}
               </Button>
             )}
           </div>
