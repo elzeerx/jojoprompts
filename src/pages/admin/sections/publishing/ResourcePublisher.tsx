@@ -25,7 +25,9 @@ import { toast } from "@/hooks/use-toast";
 
 type ResourceType =
   | "skill" | "automation" | "prompt" | "prompt_pack" | "image_style" | "bundle";
-type ProductType = "free" | "individual" | "bundle" | "lifetime";
+// Per-resource lifetime is intentionally excluded.
+// V2 has exactly one global 30.000 KWD lifetime pass; resources use free / individual, bundles use bundle.
+type ProductType = "free" | "individual" | "bundle";
 type PermissionKind = "capability" | "dependency" | "service" | "secret";
 
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -86,13 +88,23 @@ const emptyForm = (type: ResourceType = "skill"): FormState => ({
   bundle_items: [],
 });
 
+// Approved V2 pricing hints (KWD). Admin remains free to override.
 const TYPE_PRICE_HINT: Record<ResourceType, string> = {
-  skill: "Suggested 2.000–8.000 KWD; free is fine for teasers.",
-  automation: "Suggested 3.000–15.000 KWD.",
-  prompt: "Suggested 0.500–3.000 KWD.",
-  prompt_pack: "Suggested 2.000–10.000 KWD.",
-  image_style: "Suggested 1.000–5.000 KWD.",
-  bundle: "Bundle price sums its items; set independently if promotional.",
+  skill: "Approved range 1.500–3.000 KWD.",
+  automation: "Approved range 2.500–5.000 KWD.",
+  prompt: "Approved default 0.900 KWD.",
+  prompt_pack: "Approved default 1.500 KWD.",
+  image_style: "Approved default 0.900 KWD.",
+  bundle: "Approved range 4.500–12.000 KWD (bundle offer is a single positive price).",
+};
+
+const APPROVED_DEFAULT_PRICE_FILS: Record<ResourceType, number> = {
+  skill: 1500,
+  automation: 2500,
+  prompt: 900,
+  prompt_pack: 1500,
+  image_style: 900,
+  bundle: 4500,
 };
 
 async function fetchResource(id: string) {
@@ -284,16 +296,68 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
     onError: (err: any) => toast({ variant: "destructive", title: "Publish failed", description: err?.message ?? "unknown" }),
   });
 
+  // Client-side publish gates. Server remains authoritative.
+  const clientPublishGates = (): string[] => {
+    const gates: string[] = [];
+    if (!form.title_en.trim()) gates.push("Title (EN) is required to publish.");
+    if (!form.summary_en.trim()) gates.push("Summary (EN) is required to publish.");
+    if (!form.description_en.trim()) gates.push("Description (EN) is required to publish.");
+    if (form.type === "skill" || form.type === "automation") {
+      if (form.platform_compatibility.length === 0) gates.push("At least one platform compatibility entry is required.");
+      if (form.installation_guides.length === 0) gates.push("At least one installation guide is required.");
+    }
+    if (!form.version.trim()) gates.push("Version is required.");
+    if (!/^[0-9]+\.[0-9]+\.[0-9]+([.\-+][A-Za-z0-9._-]+)?$/.test(form.version.trim())) {
+      gates.push("Version must look like 1.0.0.");
+    }
+    const products = form.products.filter((p) => p.sku.trim());
+    if (products.length === 0) gates.push("Add at least one product (free or paid).");
+    for (const p of products) {
+      const price = parseInt(p.price_fils || "0", 10);
+      if (p.product_type === "free" && price !== 0) gates.push(`Free product ${p.sku} must have price 0.`);
+      if (p.product_type !== "free" && price <= 0) gates.push(`Paid product ${p.sku} must have a positive price.`);
+      if (form.type === "bundle" && p.product_type === "individual") gates.push(`Bundle resources cannot have individual products.`);
+      if (form.type !== "bundle" && p.product_type === "bundle") gates.push(`Only bundle resources can have bundle products.`);
+    }
+    if (form.type === "bundle") {
+      const hasPositiveBundle = products.some((p) => p.product_type === "bundle" && parseInt(p.price_fils || "0", 10) > 0);
+      if (!hasPositiveBundle) gates.push("A bundle resource needs at least one positive-priced bundle product.");
+      const seen = new Set<string>();
+      for (const id of form.bundle_items) {
+        if (id === resourceId) { gates.push("A bundle cannot include itself."); break; }
+        if (seen.has(id)) { gates.push("Bundle items must be unique."); break; }
+        seen.add(id);
+      }
+    }
+    return gates;
+  };
+
+  // Persist first, always, when the form is dirty or when this is a new/new-version flow.
+  const ensureSaved = async (): Promise<string> => {
+    const needsSave = dirty || !resourceId || form.is_new_version || mode === "new-version";
+    if (!needsSave && resourceId) return resourceId;
+    const res = await saveDraft.mutateAsync();
+    return res.resource_id;
+  };
+
   const onSave = async () => { if (!validate()) return; await saveDraft.mutateAsync(); };
+
   const onSubmit = async () => {
     if (!validate()) return;
-    const saved = resourceId ? { resource_id: resourceId } : await saveDraft.mutateAsync();
-    await submitReview.mutateAsync((saved as any).resource_id ?? (saved as any).id ?? resourceId!);
+    let id: string;
+    try { id = await ensureSaved(); }
+    catch { return; } // Save error already toasted; do not transition.
+    await submitReview.mutateAsync(id);
   };
+
   const onPublish = async () => {
     if (!validate()) return;
-    const saved = resourceId ? { resource_id: resourceId } : await saveDraft.mutateAsync();
-    await publish.mutateAsync((saved as any).resource_id ?? (saved as any).id ?? resourceId!);
+    const gates = clientPublishGates();
+    if (gates.length > 0) { setPublishErrors(gates); return; }
+    let id: string;
+    try { id = await ensureSaved(); }
+    catch { return; }
+    await publish.mutateAsync(id);
   };
 
   const title = useMemo(() => {
@@ -690,7 +754,7 @@ function ProductEditor({ value, onChange, defaultSku }: { value: ProductRow[]; o
               <SelectItem value="free">Free</SelectItem>
               <SelectItem value="individual">Individual</SelectItem>
               <SelectItem value="bundle">Bundle</SelectItem>
-              <SelectItem value="lifetime">Lifetime</SelectItem>
+              {/* per-resource lifetime intentionally excluded */}
             </SelectContent>
           </Select>
           <Input placeholder="Title (EN)" className="min-h-[44px] sm:col-span-2"
