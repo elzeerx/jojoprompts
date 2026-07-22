@@ -140,6 +140,13 @@ export const V2_COPY = {
     minutes: { en: "min", ar: "د" },
     quickPreview: { en: "Quick preview", ar: "معاينة سريعة" },
   },
+  explore: {
+    subtitle: {
+      en: "Verified Jojo resources for your AI workflow.",
+      ar: "موارد جوجو موثّقة لسير عملك مع الذكاء الاصطناعي.",
+    },
+  },
+
   detail: {
     back: { en: "Back", ar: "رجوع" },
     overview: { en: "Overview", ar: "نظرة عامة" },
