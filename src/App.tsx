@@ -15,6 +15,7 @@ import { routes } from "./config/routes";
 import { adminSectionElements } from "./pages/admin/layout/adminSectionElements";
 
 const AdminLayout = lazy(() => import("./pages/admin/layout/AdminLayout"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,8 @@ function App() {
                   <SecurityMonitoringWrapper>
                     <Suspense fallback={<SuspenseLoader />}>
                       <Routes>
+                        {/* MCP OAuth consent — standalone, outside RootLayout chrome */}
+                        <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                         <Route path="/" element={<RootLayout />}>
                           {/* Nested admin routes with sidebar layout */}
                           <Route
