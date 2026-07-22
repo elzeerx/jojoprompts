@@ -615,6 +615,26 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
             ) : null}
           </AccordionContent>
         </AccordionItem>
+
+        {/* Package upload — skill/automation only, after first save creates a version */}
+        {needsPackage ? (
+          <AccordionItem value="package">
+            <AccordionTrigger>Package files & scan</AccordionTrigger>
+            <AccordionContent>
+              {!resourceId || !existing?.current_version_id ? (
+                <p className="text-sm text-muted-foreground">
+                  Save the draft first — an initial version is created on save, and uploads attach to that version.
+                </p>
+              ) : (
+                <PackageUploader
+                  resourceId={resourceId}
+                  resourceVersionId={existing.current_version_id}
+                  resourceType={form.type as "skill" | "automation"}
+                />
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        ) : null}
       </Accordion>
 
       <Dialog open={!!publishErrors} onOpenChange={(v) => (v ? null : setPublishErrors(null))}>
