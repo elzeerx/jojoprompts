@@ -399,6 +399,23 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
 
   if (loadingResource) return <div className="p-6 text-sm text-muted-foreground">Loading resource…</div>;
 
+  // Not-found guard: an edit/new-version route with a resourceId that returned no row
+  // must never render a blank editable form (which would silently create a new resource on save).
+  if ((mode === "edit" || mode === "new-version") && resourceId && !existing) {
+    return (
+      <div className="space-y-3 p-6">
+        <h1 className="text-xl font-semibold text-dark-base">Resource not found</h1>
+        <p className="text-sm text-muted-foreground">
+          The resource <code className="rounded bg-muted px-1 py-0.5 text-xs">{resourceId}</code> does not exist
+          or you do not have access to it. It may have been archived or the link may be wrong.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => navigate("/admin/catalog")}>
+          Back to Catalog
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
