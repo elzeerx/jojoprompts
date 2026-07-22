@@ -3801,6 +3801,11 @@ export type Database = {
             Args: { admin_user_id?: string; target_user_id: string }
             Returns: Json
           }
+      admin_publish_resource: { Args: { p_resource_id: string }; Returns: Json }
+      admin_transition_resource_lifecycle: {
+        Args: { p_action: string; p_resource_id: string }
+        Returns: Json
+      }
       anonymize_ip_address: { Args: { ip_address: string }; Returns: string }
       authorize_resource_download: {
         Args: { p_file_id: string; p_user_id: string }
@@ -3892,6 +3897,7 @@ export type Database = {
         Returns: undefined
       }
       export_user_data: { Args: { target_user_id: string }; Returns: Json }
+      get_admin_v2_overview: { Args: { p_period_days?: number }; Returns: Json }
       get_my_downloadable_files: {
         Args: { p_resource_id?: string }
         Returns: {
@@ -4028,6 +4034,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      save_admin_resource_draft: { Args: { payload: Json }; Returns: Json }
       schedule_security_assessment: {
         Args: {
           p_assessment_type: string
