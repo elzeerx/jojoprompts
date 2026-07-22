@@ -1390,13 +1390,6 @@ export type Database = {
             referencedRelation: "resources"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "entitlements_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
-          },
         ]
       }
       favorites: {
@@ -1464,13 +1457,6 @@ export type Database = {
             referencedRelation: "resources"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "installation_guides_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
-          },
         ]
       }
       licenses: {
@@ -1514,13 +1500,6 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "resources"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "licenses_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: true
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
           },
         ]
       }
@@ -1666,13 +1645,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "resources"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
           },
         ]
       }
@@ -1877,13 +1849,6 @@ export type Database = {
             referencedRelation: "resources"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "platform_compatibility_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
-          },
         ]
       }
       platform_fields: {
@@ -2021,13 +1986,6 @@ export type Database = {
             referencedRelation: "resources"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "product_bundle_items_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
-          },
         ]
       }
       products: {
@@ -2077,13 +2035,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "resources"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
           },
         ]
       }
@@ -2685,13 +2636,6 @@ export type Database = {
             referencedRelation: "resources"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "reports_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
-          },
         ]
       }
       resource_files: {
@@ -2786,13 +2730,6 @@ export type Database = {
             referencedRelation: "resources"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "resource_permissions_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
-          },
         ]
       }
       resource_versions: {
@@ -2842,13 +2779,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "resources"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "resource_versions_resource_id_fkey"
-            columns: ["resource_id"]
-            isOneToOne: false
-            referencedRelation: "v2_resource_trust_badges"
-            referencedColumns: ["resource_id"]
           },
         ]
       }
@@ -3830,23 +3760,6 @@ export type Database = {
         }
         Relationships: []
       }
-      v2_resource_trust_badges: {
-        Row: {
-          resource_id: string | null
-          scan_status: Database["public"]["Enums"]["v2_scan_status"] | null
-          scanned_at: string | null
-          version_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "resources_current_version_fk"
-            columns: ["version_id"]
-            isOneToOne: false
-            referencedRelation: "resource_versions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Functions: {
       admin_change_user_password: {
@@ -3973,6 +3886,15 @@ export type Database = {
           prompt_preview: string
           prompt_type: string
           title: string
+        }[]
+      }
+      get_public_resource_trust_badges: {
+        Args: { resource_ids?: string[] }
+        Returns: {
+          resource_id: string
+          scan_status: string
+          scanned_at: string
+          version_id: string
         }[]
       }
       get_user_profile_safe: {
