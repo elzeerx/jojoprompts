@@ -1,4 +1,5 @@
-import { RefreshCw, ShieldAlert, Lock } from "lucide-react";
+import { RefreshCw, ShieldAlert, Lock, ExternalLink, Sparkles, FileJson } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,15 +9,16 @@ import {
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMigrationPreview } from "@/hooks/admin/v2/useAdminCommerce";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 function fmtInt(n: unknown): string {
   const v = typeof n === "number" ? n : Number(n ?? 0);
-  return Number.isFinite(v) ? v.toLocaleString() : "0";
+  return Number.isFinite(v) ? v.toLocaleString("en-US") : "0";
 }
 function fmtFilsAsKwd(fils: unknown): string {
   const v = typeof fils === "number" ? fils : Number(fils ?? 0);
   if (!Number.isFinite(v)) return "—";
-  return `${(v / 1000).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })} KWD`;
+  return `${(v / 1000).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} KWD`;
 }
 
 function Stat({ label, labelAr, value, hint }: { label: string; labelAr?: string; value: React.ReactNode; hint?: string }) {
@@ -25,14 +27,16 @@ function Stat({ label, labelAr, value, hint }: { label: string; labelAr?: string
       <div className="text-xs text-muted-foreground">
         {label}{labelAr ? ` / ${labelAr}` : ""}
       </div>
-      <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
-      {hint && <div className="mt-1 text-[11px] text-muted-foreground">{hint}</div>}
+      {/* Keep numeric tokens LTR even in RTL layout */}
+      <div className="mt-1 text-lg font-semibold tabular-nums" dir="ltr">{value}</div>
+      {hint && <div className="mt-1 text-[11px] text-muted-foreground" dir="ltr">{hint}</div>}
     </div>
   );
 }
 
 export default function LegacyMigrationPreview() {
   const q = useMigrationPreview();
+  const { dir } = useLanguage();
 
   if (q.isLoading) {
     return (
@@ -54,27 +58,15 @@ export default function LegacyMigrationPreview() {
   }
 
   const d = q.data!;
-  const upay = d.transactions_upayments as {
-    ambiguity_note?: string;
-    total_count?: number;
-    completed_count?: number;
-    raw_value_total?: number;
-    interpretation_A_values_as_KWD?: { conversion?: string; total_fils?: number; completed_fils?: number };
-    interpretation_B_values_as_legacy_USD?: { conversion?: string; total_fils?: number; completed_fils?: number };
-    duplicate_provider_reference_groups?: number;
-  };
-  const paypal = d.transactions_paypal as {
-    total_count?: number;
-    by_status?: Array<{ status: string; n: number; usd_total: number; fils_total: number }>;
-    proposed_credit_fils_completed?: number;
-    zero_amount_count?: number;
-    missing_subscription_link?: number;
-    duplicate_provider_reference_groups?: number;
-  };
+  const upay = d.transactions_upayments;
+  const paypal = d.transactions_paypal;
+  const ents = d.proposed_entitlements;
+  const anom = d.anomalies;
 
   return (
     <TooltipProvider>
-      <div className="space-y-6" dir="ltr">
+      {/* Layout direction follows app language; numeric/technical values stay LTR via inner dir="ltr". */}
+      <div className="space-y-6" dir={dir}>
         {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -85,15 +77,23 @@ export default function LegacyMigrationPreview() {
               Read-only reconciliation. No customer entitlements, credits, or V1 data are changed by opening this page.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            className="min-h-[44px] min-w-[44px]"
-            onClick={() => q.refetch()}
-            aria-label="Refresh"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" className="min-h-[44px]">
+              <Link to="/admin/publishing/imports/json"><FileJson className="me-1.5 h-4 w-4" /> JSON Importer</Link>
+            </Button>
+            <Button asChild variant="outline" className="min-h-[44px]">
+              <Link to="/admin/publishing/imports/ai-studio"><Sparkles className="me-1.5 h-4 w-4" /> AI Studio</Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="min-h-[44px] min-w-[44px]"
+              onClick={() => q.refetch()}
+              aria-label="Refresh"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Execution status banner */}
@@ -105,11 +105,16 @@ export default function LegacyMigrationPreview() {
                 <div className="font-medium">
                   Execute migration is disabled / تنفيذ الترحيل معطّل
                 </div>
-                <div className="text-muted-foreground">
-                  Fixed conversion rate: <strong>1 USD = {d.conversion_rate_fils_per_usd} fils</strong>. Blockers:{" "}
+                <div className="text-muted-foreground" dir="ltr">
+                  Fixed conversion rate: <strong>1 USD = {d.conversion_rate_fils_per_usd} fils</strong>. Per-user lifetime credit cap:{" "}
+                  <strong>{fmtInt(d.threshold_fils)} fils</strong>. Blockers:{" "}
                   {d.execution_blockers.length === 0
                     ? "none — awaiting scope sign-off"
                     : d.execution_blockers.join(", ")}.
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  No <code>v2_admin_execute_migration</code> function is exposed. Preview stays read-only until the UPayments
+                  currency policy is resolved and an execution RPC is separately designed and reviewed.
                 </div>
               </div>
             </div>
@@ -117,7 +122,7 @@ export default function LegacyMigrationPreview() {
               <TooltipTrigger asChild>
                 <span className="inline-flex">
                   <Button disabled className="min-h-[44px]">
-                    <Lock className="mr-2 h-4 w-4" />
+                    <Lock className="me-2 h-4 w-4" />
                     Execute migration
                   </Button>
                 </span>
@@ -161,7 +166,7 @@ export default function LegacyMigrationPreview() {
           <Card>
             <CardHeader><CardTitle className="text-base">Unmatched sample (first 25)</CardTitle></CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" dir="ltr">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -195,7 +200,7 @@ export default function LegacyMigrationPreview() {
               <Stat label="Total subscriptions" value={fmtInt(d.subscriptions.total_subscriptions)} />
               <Stat label="Distinct users" value={fmtInt(d.subscriptions.distinct_users)} />
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" dir="ltr">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -217,7 +222,11 @@ export default function LegacyMigrationPreview() {
                       <TableCell className="tabular-nums">{fmtInt(r.count)}</TableCell>
                       <TableCell className="tabular-nums">{fmtInt(r.expired)}</TableCell>
                       <TableCell className="tabular-nums">{fmtInt(r.active_or_perpetual)}</TableCell>
-                      <TableCell><Badge>{r.proposed_scope}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant={r.proposed_scope === "no_grant_review" ? "destructive" : "default"}>
+                          {r.proposed_scope}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {d.subscriptions.rows.length === 0 && (
@@ -231,15 +240,18 @@ export default function LegacyMigrationPreview() {
 
         {/* PayPal */}
         <Card>
-          <CardHeader><CardTitle className="text-base">PayPal transactions (USD → fils @ {d.conversion_rate_fils_per_usd})</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">PayPal transactions ({paypal.classification})</CardTitle></CardHeader>
           <CardContent className="space-y-3">
+            <div className="text-xs text-muted-foreground">
+              {paypal.rounding}. Per-user cap: <strong>{fmtInt(paypal.per_user_cap_fils)}</strong> fils.
+            </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Total" value={fmtInt(paypal.total_count)} />
               <Stat label="Zero amount" value={fmtInt(paypal.zero_amount_count)} />
               <Stat label="Missing subscription link" value={fmtInt(paypal.missing_subscription_link)} />
               <Stat label="Duplicate provider refs" value={fmtInt(paypal.duplicate_provider_reference_groups)} />
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" dir="ltr">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -255,7 +267,7 @@ export default function LegacyMigrationPreview() {
                     <TableRow key={r.status}>
                       <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
                       <TableCell className="tabular-nums">{fmtInt(r.n)}</TableCell>
-                      <TableCell className="tabular-nums">{Number(r.usd_total ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="tabular-nums">{Number(r.usd_total ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       <TableCell className="tabular-nums">{fmtInt(r.fils_total)}</TableCell>
                       <TableCell className="tabular-nums">{fmtFilsAsKwd(r.fils_total)}</TableCell>
                     </TableRow>
@@ -263,10 +275,10 @@ export default function LegacyMigrationPreview() {
                 </TableBody>
               </Table>
             </div>
-            <div className="rounded-md border bg-muted/40 p-3 text-xs">
+            <div className="rounded-md border bg-muted/40 p-3 text-xs" dir="ltr">
               Proposed credit for completed payments (pre-cap):{" "}
-              <strong>{fmtInt(paypal.proposed_credit_fils_completed)}</strong> fils
-              {" · "}{fmtFilsAsKwd(paypal.proposed_credit_fils_completed)}
+              <strong>{fmtInt(paypal.proposed_credit_fils_completed_precap)}</strong> fils
+              {" · "}{fmtFilsAsKwd(paypal.proposed_credit_fils_completed_precap)}
             </div>
           </CardContent>
         </Card>
@@ -284,21 +296,36 @@ export default function LegacyMigrationPreview() {
               <Stat label="Duplicate provider refs" value={fmtInt(upay.duplicate_provider_reference_groups)} />
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-md border p-3">
+              <div className="rounded-md border p-3" dir="ltr">
                 <div className="text-xs font-semibold">Interpretation A — values as KWD</div>
-                <div className="text-[11px] text-muted-foreground mb-2">{upay.interpretation_A_values_as_KWD?.conversion}</div>
-                <div>Completed fils: <strong className="tabular-nums">{fmtInt(upay.interpretation_A_values_as_KWD?.completed_fils)}</strong></div>
-                <div>Total fils: <strong className="tabular-nums">{fmtInt(upay.interpretation_A_values_as_KWD?.total_fils)}</strong></div>
-                <div className="text-xs text-muted-foreground">≈ {fmtFilsAsKwd(upay.interpretation_A_values_as_KWD?.completed_fils)} completed</div>
+                <div className="text-[11px] text-muted-foreground mb-2">{upay.interpretation_A_values_as_KWD.conversion}</div>
+                <div>Completed capped credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_A_values_as_KWD.completed_capped_credit_fils)}</strong> fils</div>
+                <div>Users with credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_A_values_as_KWD.users_with_credit)}</strong></div>
+                <div className="text-xs text-muted-foreground">≈ {fmtFilsAsKwd(upay.interpretation_A_values_as_KWD.completed_capped_credit_fils)} total capped</div>
               </div>
-              <div className="rounded-md border p-3">
+              <div className="rounded-md border p-3" dir="ltr">
                 <div className="text-xs font-semibold">Interpretation B — values as legacy USD</div>
-                <div className="text-[11px] text-muted-foreground mb-2">{upay.interpretation_B_values_as_legacy_USD?.conversion}</div>
-                <div>Completed fils: <strong className="tabular-nums">{fmtInt(upay.interpretation_B_values_as_legacy_USD?.completed_fils)}</strong></div>
-                <div>Total fils: <strong className="tabular-nums">{fmtInt(upay.interpretation_B_values_as_legacy_USD?.total_fils)}</strong></div>
-                <div className="text-xs text-muted-foreground">≈ {fmtFilsAsKwd(upay.interpretation_B_values_as_legacy_USD?.completed_fils)} completed</div>
+                <div className="text-[11px] text-muted-foreground mb-2">{upay.interpretation_B_values_as_legacy_USD.conversion}</div>
+                <div>Completed capped credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_B_values_as_legacy_USD.completed_capped_credit_fils)}</strong> fils</div>
+                <div>Users with credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_B_values_as_legacy_USD.users_with_credit)}</strong></div>
+                <div className="text-xs text-muted-foreground">≈ {fmtFilsAsKwd(upay.interpretation_B_values_as_legacy_USD.completed_capped_credit_fils)} total capped</div>
               </div>
             </div>
+
+            {/* Threshold outcome comparison */}
+            <Card className="border-dashed">
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Threshold outcome by interpretation</CardTitle></CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Stat label="Reach on PayPal only" value={fmtInt(upay.threshold_users.reach_on_paypal_only)} />
+                <Stat label="Reach only if UPayments = KWD" value={fmtInt(upay.threshold_users.reach_only_if_upayments_kwd)} />
+                <Stat label="Reach only if UPayments = legacy USD" value={fmtInt(upay.threshold_users.reach_only_if_upayments_legacy_usd)} />
+                <Stat
+                  label="Ambiguous outcome users"
+                  value={fmtInt(upay.threshold_users.ambiguous_outcome_users)}
+                  hint="lifetime outcome differs between interpretations"
+                />
+              </CardContent>
+            </Card>
           </CardContent>
         </Card>
 
@@ -306,38 +333,97 @@ export default function LegacyMigrationPreview() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Card>
             <CardHeader><CardTitle className="text-base">Proposed entitlements</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
-              <Stat label="Library users" value={fmtInt(d.proposed_entitlements.library_users)} />
-              <Stat label="Collection users" value={fmtInt(d.proposed_entitlements.collection_users)} />
-              <Stat label="Estimated active" value={fmtInt(d.proposed_entitlements.estimated_active_entitlements)} />
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Stat label="Active total" value={fmtInt(ents.active_total)} />
+                <Stat label="Expired total" value={fmtInt(ents.expired_total)} hint="historical only, not granted" />
+                <Stat label="Unique users (active)" value={fmtInt(ents.unique_users_active)} />
+                <Stat label="Unique users (expired)" value={fmtInt(ents.unique_users_expired)} />
+                <Stat
+                  label="Cancelled lifetime — flagged"
+                  value={fmtInt(ents.cancelled_lifetime_flagged_users)}
+                  hint="no automatic grant"
+                />
+              </div>
+              <div className="rounded-md border p-3 text-xs" dir="ltr">
+                <div className="font-semibold mb-1">By scope</div>
+                <pre className="whitespace-pre-wrap">{JSON.stringify(ents.by_scope, null, 2)}</pre>
+                <div className="font-semibold mt-2 mb-1">Active by collection key</div>
+                <pre className="whitespace-pre-wrap">{JSON.stringify(ents.by_collection_key_active, null, 2)}</pre>
+                <div className="font-semibold mt-2 mb-1">Expired by collection key</div>
+                <pre className="whitespace-pre-wrap">{JSON.stringify(ents.by_collection_key_expired, null, 2)}</pre>
+                <div className="font-semibold mt-2 mb-1">By source</div>
+                <pre className="whitespace-pre-wrap">{JSON.stringify(ents.by_source, null, 2)}</pre>
+              </div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Proposed lifetime credit</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
-              <Stat label="Users with credit" value={fmtInt(d.proposed_lifetime_credit.users_with_credit)} />
-              <Stat label="Users capped @ threshold" value={fmtInt(d.proposed_lifetime_credit.users_capped_at_threshold)} />
-              <Stat
-                label="Total credit"
-                value={fmtInt(d.proposed_lifetime_credit.total_credit_fils)}
-                hint={`≈ ${fmtFilsAsKwd(d.proposed_lifetime_credit.total_credit_fils)}`}
-              />
-              <Stat label="Threshold" value={fmtInt(d.proposed_lifetime_credit.threshold_fils)} hint="fils" />
+            <CardHeader><CardTitle className="text-base">Proposed lifetime credit (PayPal only)</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-xs text-muted-foreground">{d.proposed_lifetime_credit.source}</div>
+              <div className="grid grid-cols-2 gap-3">
+                <Stat label="Users with credit" value={fmtInt(d.proposed_lifetime_credit.users_with_credit)} />
+                <Stat label="Users capped @ threshold" value={fmtInt(d.proposed_lifetime_credit.users_capped_at_threshold)} />
+                <Stat
+                  label="Total credit"
+                  value={fmtInt(d.proposed_lifetime_credit.total_credit_fils)}
+                  hint={`≈ ${fmtFilsAsKwd(d.proposed_lifetime_credit.total_credit_fils)}`}
+                />
+                <Stat label="Threshold" value={fmtInt(d.proposed_lifetime_credit.threshold_fils)} hint="fils" />
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Anomalies */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Anomalies / تنبيهات</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Stat label="Zero-amount PayPal completed" value={fmtInt(d.anomalies.zero_amount_paypal_completed)} />
-            <Stat label="Transactions w/o subscription" value={fmtInt(d.anomalies.transactions_without_subscription)} />
-            <Stat label="Subscriptions w/o plan" value={fmtInt(d.anomalies.subscriptions_without_plan)} />
+          <CardHeader><CardTitle className="text-base">Anomalies / تنبيهات (read-only)</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Stat label="Missing auth users (subs)" value={fmtInt(anom.missing_auth_users_for_subscriptions)} />
+            <Stat label="Missing auth users (tx)" value={fmtInt(anom.missing_auth_users_for_transactions)} />
+            <Stat label="Tx without subscription" value={fmtInt(anom.transactions_without_subscription)} />
+            <Stat label="Subs without transaction" value={fmtInt(anom.subscriptions_without_transaction)} />
+            <Stat label="Subs → missing tx" value={fmtInt(anom.subscriptions_with_missing_transaction)} />
+            <Stat label="Subs without plan" value={fmtInt(anom.subscriptions_without_plan)} />
+            <Stat label="Duplicate PayPal refs" value={fmtInt(anom.duplicate_paypal_reference_groups)} />
+            <Stat label="Duplicate UPayments refs" value={fmtInt(anom.duplicate_upayments_reference_groups)} />
+            <Stat label="Zero-amount PayPal completed" value={fmtInt(anom.zero_amount_paypal_completed)} />
+            <Stat label="Zero-amount UPayments completed" value={fmtInt(anom.zero_amount_upayments_completed)} />
+            <Stat label="Unsupported currencies" value={fmtInt(anom.unsupported_currencies)} />
+            <Stat label="Unsupported gateways" value={fmtInt(anom.unsupported_gateways)} />
+            <Stat label="Completed but zero amount" value={fmtInt(anom.transactions_status_mismatch_completed_zero)} />
+            <Stat label="Expired but status=active" value={fmtInt(anom.subscriptions_expired_but_status_active)} />
+            <Stat label="Cancelled lifetime users" value={fmtInt(anom.cancelled_lifetime_users)} />
+            <Stat label="Ambiguous UPayments rows" value={fmtInt(anom.ambiguous_upayments_amount_rows)} />
+            <Stat label="Unmatched legacy prompts" value={fmtInt(anom.unmatched_legacy_prompts)} />
           </CardContent>
         </Card>
 
-        <div className="text-xs text-muted-foreground">
+        {/* Grant/import contract */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Grant &amp; import contract (deferred)</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-xs text-muted-foreground">{d.grant_contract.note}</div>
+            <ul className="space-y-2 text-sm">
+              {d.grant_contract.rules.map((r) => (
+                <li key={r.rule} className="rounded-md border p-3">
+                  <div className="font-semibold" dir="ltr"><code>{r.rule}</code></div>
+                  <div className="text-xs text-muted-foreground mt-1">{r.detail}</div>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/admin/publishing/imports/json"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> Legacy JSON Importer</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/admin/publishing/imports/ai-studio"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> AI Studio</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="text-xs text-muted-foreground" dir="ltr">
           Generated at {d.generated_at} · Read-only preview · No execution endpoint exposed.
         </div>
       </div>
