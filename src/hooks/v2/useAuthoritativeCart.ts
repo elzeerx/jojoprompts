@@ -52,13 +52,29 @@ export function useAuthoritativeCart() {
       if (productIds.length === 0) {
         return { lines: [], chargeableIds: [], chargeableTotalFils: 0, hasBlockers: false };
       }
-      const { data: products, error } = await supabase
+      const { data: productRows, error } = await supabase
         .from("products")
-        .select(
-          "id, product_type, price_fils, is_active, resource_id, resources:resources(id, slug, type, title_en, title_ar)",
-        )
+        .select("id, product_type, price_fils, is_active, resource_id")
         .in("id", productIds);
       if (error) throw error;
+      const products = (productRows ?? []) as Array<{
+        id: string;
+        product_type: "individual" | "bundle" | "lifetime" | "free";
+        price_fils: number;
+        is_active: boolean;
+        resource_id: string | null;
+      }>;
+      const linkedResourceIds = Array.from(
+        new Set(products.map((p) => p.resource_id).filter((x): x is string => !!x)),
+      );
+      let resourcesById = new Map<string, { id: string; slug: string; type: string; title_en: string; title_ar: string | null }>();
+      if (linkedResourceIds.length > 0) {
+        const { data: rrows } = await supabase
+          .from("resources")
+          .select("id, slug, type, title_en, title_ar")
+          .in("id", linkedResourceIds);
+        (rrows ?? []).forEach((r: any) => resourcesById.set(r.id, r));
+      }
 
       const byId = new Map<string, any>();
       (products ?? []).forEach((p: any) => byId.set(p.id, p));
