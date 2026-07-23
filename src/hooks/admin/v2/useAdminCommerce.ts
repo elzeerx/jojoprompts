@@ -249,3 +249,195 @@ export function useAdminEntitlements(params: EntitlementsListParams) {
     staleTime: 15_000,
   });
 }
+
+// ---------- Phase 5.3: Refunds + Recovery ----------
+
+export interface AdminRefundRow {
+  id: string;
+  order_id: string;
+  order_number: string | null;
+  user_id: string | null;
+  user_email_masked: string | null;
+  status: string;
+  amount_fils: number;
+  reason: string | null;
+  provider_reference: string | null;
+  provider_refund_order_id: string | null;
+  provider_submission_state: string | null;
+  requested_at: string;
+  processed_at: string | null;
+  next_check_after: string | null;
+  last_checked_at: string | null;
+}
+
+export interface AdminRecoveryRow {
+  kind: string;
+  severity: "low" | "medium" | "high";
+  order_id: string | null;
+  order_number: string | null;
+  order_status: string | null;
+  refund_id: string | null;
+  user_id: string | null;
+  user_email_masked: string | null;
+  age_seconds: number;
+  last_activity_at: string | null;
+  last_checked_at: string | null;
+  reason: string;
+  meta: Record<string, unknown>;
+}
+
+export function useAdminRefunds(params: RefundsListParams) {
+  return useQuery({
+    queryKey: adminCommerceKeys.refundsList(params),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("v2_admin_list_refunds", {
+        p_status: params.status ?? undefined,
+        p_search: params.search ?? undefined,
+        p_date_from: params.dateFrom ?? undefined,
+        p_date_to: params.dateTo ?? undefined,
+        p_limit: params.limit ?? 50,
+        p_offset: params.offset ?? 0,
+      });
+      if (error) throw error;
+      return unwrap<PagedResult<AdminRefundRow>>(data);
+    },
+    staleTime: 15_000,
+  });
+}
+
+export function useAdminRefundDetail(refundId: string | null) {
+  return useQuery({
+    queryKey: adminCommerceKeys.refundDetail(refundId),
+    enabled: !!refundId,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("v2_admin_get_refund_detail", {
+        p_refund_id: refundId!,
+      });
+      if (error) throw error;
+      return data as Record<string, unknown>;
+    },
+  });
+}
+
+export function useAdminRefundableOrder(orderId: string | null) {
+  return useQuery({
+    queryKey: adminCommerceKeys.refundableOrder(orderId),
+    enabled: !!orderId,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("v2_admin_get_refundable_order", {
+        p_order_id: orderId!,
+      });
+      if (error) throw error;
+      return data as Record<string, unknown>;
+    },
+  });
+}
+
+export function useAdminRecovery(params: RecoveryListParams) {
+  return useQuery({
+    queryKey: adminCommerceKeys.recoveryList(params),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("v2_admin_list_recovery", {
+        p_kind: params.kind ?? undefined,
+        p_min_age_minutes: params.minAgeMinutes ?? 0,
+        p_limit: params.limit ?? 100,
+        p_offset: params.offset ?? 0,
+      });
+      if (error) throw error;
+      return unwrap<PagedResult<AdminRecoveryRow>>(data);
+    },
+    staleTime: 15_000,
+  });
+}
+
+export function useAdminRecoveryCounts() {
+  return useQuery({
+    queryKey: adminCommerceKeys.recoveryCounts(),
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("v2_admin_recovery_counts");
+      if (error) throw error;
+      return data as { total: number; by_kind: Record<string, number> };
+    },
+    staleTime: 30_000,
+  });
+}
+
+// ---------- Refund mutation invocations (v2-upayments-refund) ----------
+
+export type RefundInvokeError =
+  | "provider_disabled"
+  | "insufficient_permissions"
+  | "invalid_body"
+  | "not_eligible"
+  | "duplicate_idempotency_key"
+  | "server_error"
+  | "unknown_error"
+  | string;
+
+interface CreateRefundArgs {
+  order_id: string;
+  idempotency_key: string;
+  allocations: { order_item_id: string; amount_fils: number }[];
+  reason?: string;
+}
+
+export function useCreateRefundRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: CreateRefundArgs) => {
+      const { data, error } = await supabase.functions.invoke("v2-upayments-refund", {
+        body: { action: "create", ...args },
+      });
+      if (error) {
+        const code = await extractInvokeErrorCode(error);
+        throw new Error(code ?? "unknown_error");
+      }
+      return data as { refund_id?: string; ok?: boolean; error?: string; [k: string]: unknown };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "refunds"] });
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "orders"] });
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "recovery"] });
+    },
+  });
+}
+
+export function useCheckRefundStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (refund_id: string) => {
+      const { data, error } = await supabase.functions.invoke("v2-upayments-refund", {
+        body: { action: "status", refund_id },
+      });
+      if (error) {
+        const code = await extractInvokeErrorCode(error);
+        throw new Error(code ?? "unknown_error");
+      }
+      return data as Record<string, unknown>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "refunds"] });
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "recovery"] });
+    },
+  });
+}
+
+export function useCheckPaymentStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (order_id: string) => {
+      const { data, error } = await supabase.functions.invoke("v2-upayments-status", {
+        body: { order_id },
+      });
+      if (error) {
+        const code = await extractInvokeErrorCode(error);
+        throw new Error(code ?? "unknown_error");
+      }
+      return data as Record<string, unknown>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "orders"] });
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "recovery"] });
+    },
+  });
+}
