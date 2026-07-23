@@ -106,14 +106,7 @@ export const adminSectionElements = {
     "Versions",
     "Per-resource version history and package promotion is being wired against resource_versions and package_scans. Individual versions are visible from a resource's row action ‘New version’.",
   ),
-  publishingImports: Empty(
-    "Imports",
-    "Use the legacy JSON importer and AI Studio drafts while the V2 unified importer is built.",
-    [
-      { label: "JSON Importer (legacy)", to: "/admin/publishing/imports/json" },
-      { label: "AI Studio (legacy)", to: "/admin/publishing/imports/ai-studio" },
-    ],
-  ),
+  publishingImports: wrap(<LegacyMigrationPreview />),
   publishingImportsJson: wrap(<JsonPromptImporter />),
   publishingImportsAiStudio: wrap(<AiStudioPage />),
   publishingTaxonomy: wrap(<CategoriesManagement />),
