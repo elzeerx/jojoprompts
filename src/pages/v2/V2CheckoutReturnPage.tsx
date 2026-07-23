@@ -13,9 +13,10 @@ import { extractInvokeErrorCode } from "@/lib/v2/invokeErrors";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ATTEMPTS = 8;
-const MIN_INTERVAL_MS = 4000;
-const MAX_INTERVAL_MS = 30_000;
-const HARD_TIMEOUT_MS = 120_000;
+const MIN_INTERVAL_MS = 4_000;
+/** Honor the server's per-provider 5-minute cap plus a small clock-skew margin. */
+const MAX_INTERVAL_MS = 310_000;
+const HARD_TIMEOUT_MS = 15 * 60_000;
 
 type Verdict =
   | { kind: "loading" }
@@ -27,12 +28,29 @@ type Verdict =
   | { kind: "provider_down" }
   | { kind: "invalid" };
 
+/**
+ * Parse the server's `next_check_after` ISO timestamp into a wait duration in
+ * ms. The server enforces a 5-minute cap; we clamp to [MIN_INTERVAL_MS,
+ * MAX_INTERVAL_MS] so we never poll faster than the server allows and never
+ * truncate a longer cooldown down to a quick retry.
+ */
 function parseNextCheckMs(raw: unknown): number {
   if (typeof raw !== "string" || raw.length === 0) return MIN_INTERVAL_MS;
   const ts = Date.parse(raw);
   if (!Number.isFinite(ts)) return MIN_INTERVAL_MS;
   const delta = ts - Date.now();
   return Math.min(MAX_INTERVAL_MS, Math.max(MIN_INTERVAL_MS, delta));
+}
+
+/**
+ * Extract the response body's `reason` field. Successful 202 responses from
+ * the status function may carry `provider_disabled`/`configuration_unavailable`
+ * even though `error` is absent — we treat that identically to the error
+ * pathway.
+ */
+function readProviderDownReason(data: unknown): boolean {
+  const reason = (data as { reason?: unknown } | null | undefined)?.reason;
+  return reason === "provider_disabled" || reason === "configuration_unavailable";
 }
 
 export default function V2CheckoutReturnPage() {
@@ -46,7 +64,12 @@ export default function V2CheckoutReturnPage() {
   const [state, setState] = useState<Verdict>({ kind: "loading" });
   /** Bumping this re-runs the polling effect (manual retry). */
   const [pollNonce, setPollNonce] = useState(0);
+  /** ms epoch at which manual "Check again" is allowed. */
+  const [nextAllowedAt, setNextAllowedAt] = useState<number>(0);
+  const [now, setNow] = useState<number>(() => Date.now());
+  const [inFlight, setInFlight] = useState(false);
   const clearedCartRef = useRef(false);
+  const terminalRef = useRef(false);
 
   const t = useMemo(
     () => ({
@@ -77,6 +100,9 @@ export default function V2CheckoutReturnPage() {
       library: lang === "ar" ? "افتح المكتبة" : "Open library",
       orders: lang === "ar" ? "طلباتي" : "My orders",
       retry: lang === "ar" ? "تحقق مرة أخرى" : "Check again",
+      retryIn: (s: number) =>
+        lang === "ar" ? `أعد المحاولة خلال ${s}ث` : `Retry in ${s}s`,
+      inFlight: lang === "ar" ? "جارٍ التحقق…" : "Checking…",
       backToCart: lang === "ar" ? "الرجوع إلى السلة" : "Back to cart",
       needAuth:
         lang === "ar"
@@ -85,6 +111,15 @@ export default function V2CheckoutReturnPage() {
     }),
     [lang],
   );
+
+  // Lightweight "now" ticker to enable the retry button when cooldown expires.
+  useEffect(() => {
+    if (state.kind !== "pending") return;
+    const remaining = nextAllowedAt - Date.now();
+    if (remaining <= 0) return;
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(id);
+  }, [state.kind, nextAllowedAt]);
 
   useEffect(() => {
     if (!orderId) {
@@ -98,7 +133,10 @@ export default function V2CheckoutReturnPage() {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let attempts = 0;
     const startedAt = Date.now();
+    terminalRef.current = false;
     setState({ kind: "loading" });
+    setInFlight(false);
+    setNextAllowedAt(0);
 
     const schedule = (ms: number) => {
       if (cancelled) return;
@@ -106,9 +144,9 @@ export default function V2CheckoutReturnPage() {
     };
 
     const tick = async () => {
-      if (cancelled) return;
+      if (cancelled || terminalRef.current) return;
       if (document.hidden) {
-        schedule(2000);
+        schedule(2_000);
         return;
       }
       if (Date.now() - startedAt > HARD_TIMEOUT_MS) {
@@ -120,25 +158,39 @@ export default function V2CheckoutReturnPage() {
         return;
       }
       attempts += 1;
+      setInFlight(true);
       try {
         const { data, error } = await supabase.functions.invoke(
           "v2-upayments-status",
           { body: { order_id: orderId } },
         );
         if (cancelled) return;
+
+        // Provider-off may arrive on either the error pathway (non-2xx) OR
+        // as a successful 202 body with `reason: provider_disabled`.
+        const errorCode = error
+          ? await extractInvokeErrorCode(data, error)
+          : undefined;
+        const providerDown =
+          errorCode === "provider_disabled" ||
+          errorCode === "configuration_unavailable" ||
+          readProviderDownReason(data);
+        if (providerDown) {
+          terminalRef.current = true;
+          setState({ kind: "provider_down" });
+          return;
+        }
+
+        const wait = parseNextCheckMs((data as any)?.next_check_after);
+        setNextAllowedAt(Date.now() + wait);
+
         if (error) {
-          const code = await extractInvokeErrorCode(data, error);
-          if (code === "provider_disabled" || code === "configuration_unavailable") {
-            setState({ kind: "provider_down" });
-            return;
-          }
-          const wait = parseNextCheckMs((data as any)?.next_check_after);
           setState({ kind: "pending" });
           schedule(wait);
           return;
         }
+
         const status = (data as any)?.status;
-        const wait = parseNextCheckMs((data as any)?.next_check_after);
         if (status === "paid") {
           const raw = (data as any)?.product_ids;
           const productIds: string[] = Array.isArray(raw)
@@ -146,35 +198,44 @@ export default function V2CheckoutReturnPage() {
             : [];
           if (!clearedCartRef.current) {
             clearedCartRef.current = true;
-            // Only clear items the server confirms were purchased. If empty,
-            // leave the cart intact so nothing is lost.
             if (productIds.length > 0) {
               cartStore.removeMany(productIds);
             }
             clearIdempotencyKey();
           }
           qc.invalidateQueries({ queryKey: ["v2"] });
+          terminalRef.current = true;
           setState({ kind: "paid", orderId, purchasedProductIds: productIds });
           return;
         }
         if (status === "failed") {
+          // Verified terminal failure — rotate idempotency key so the next
+          // attempt is fresh, but preserve the cart.
+          clearIdempotencyKey();
+          terminalRef.current = true;
           setState({ kind: "failed" });
           return;
         }
         if (status === "cancelled") {
+          clearIdempotencyKey();
+          terminalRef.current = true;
           setState({ kind: "cancelled" });
           return;
         }
         if (status === "not_found") {
+          terminalRef.current = true;
           setState({ kind: "not_found" });
           return;
         }
-        // pending / backoff / global_backoff → schedule next.
+        // pending / backoff / global_backoff → schedule next respecting server.
         setState({ kind: "pending" });
         schedule(wait);
       } catch {
         setState({ kind: "pending" });
+        setNextAllowedAt(Date.now() + MIN_INTERVAL_MS);
         schedule(MIN_INTERVAL_MS);
+      } finally {
+        if (!cancelled) setInFlight(false);
       }
     };
 
@@ -185,10 +246,19 @@ export default function V2CheckoutReturnPage() {
     };
   }, [orderId, user, authLoading, qc, pollNonce]);
 
+  const cooldownRemainingMs = Math.max(0, nextAllowedAt - now);
+  const retryDisabled = inFlight || cooldownRemainingMs > 0;
+  const retryLabel = inFlight
+    ? t.inFlight
+    : cooldownRemainingMs > 0
+      ? t.retryIn(Math.ceil(cooldownRemainingMs / 1000))
+      : t.retry;
+
   const manualCheck = useCallback(() => {
-    // Reset the terminal-cart flag only if we haven't confirmed payment yet.
+    if (inFlight) return;
+    if (Date.now() < nextAllowedAt) return;
     setPollNonce((n) => n + 1);
-  }, []);
+  }, [inFlight, nextAllowedAt]);
 
   return (
     <div className="min-h-[70vh]" dir={isRTL ? "rtl" : "ltr"}>
@@ -237,8 +307,15 @@ export default function V2CheckoutReturnPage() {
             <Clock className="mx-auto h-10 w-10 text-warm-gold" aria-hidden />
             <h1 className="text-xl font-semibold">{t.pending}</h1>
             <p className="text-muted-foreground">{t.pendingDesc}</p>
-            <Button onClick={manualCheck} className="min-h-[44px]">
-              {t.retry}
+            <Button
+              onClick={manualCheck}
+              disabled={retryDisabled}
+              className="min-h-[44px]"
+            >
+              {inFlight ? (
+                <Loader2 className="me-1 h-4 w-4 animate-spin" aria-hidden />
+              ) : null}
+              {retryLabel}
             </Button>
           </>
         ) : state.kind === "provider_down" ? (
