@@ -9,6 +9,8 @@ const ResourcePublisher = lazy(() => import("../sections/publishing/ResourcePubl
 const OrdersV2Page = lazy(() => import("../sections/orders/OrdersV2Page"));
 const PaymentEventsPage = lazy(() => import("../sections/orders/PaymentEventsPage"));
 const EntitlementsPage = lazy(() => import("../sections/orders/EntitlementsPage"));
+const RefundsPage = lazy(() => import("../sections/orders/RefundsPage"));
+const RecoveryPage = lazy(() => import("../sections/orders/RecoveryPage"));
 
 
 
@@ -119,13 +121,10 @@ export const adminSectionElements = {
   orders: wrap(<OrdersV2Page />),
   paymentEvents: wrap(<PaymentEventsPage />),
   entitlements: wrap(<EntitlementsPage />),
-  refunds: Empty(
-    "Refunds",
-    "Refund requests, approvals, and processed refunds. UI lands in Phase 5.3.",
-  ),
+  refunds: wrap(<RefundsPage />),
   // Legacy admin tools retained as contextual links until fully replaced.
   ordersLegacyPurchases: wrap(<PurchaseHistoryManagement />),
-  ordersRecovery: wrap(<AbandonedCartDashboard />),
+  ordersRecovery: wrap(<RecoveryPage />),
   discounts: wrap(<DiscountCodesManagement />),
 
   // People

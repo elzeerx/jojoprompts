@@ -6,6 +6,7 @@ import {
   FileEdit,
   Flag,
   RotateCcw,
+  ShieldAlert,
   ShieldCheck,
   ShoppingBag,
   Wallet,
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminRecoveryCounts } from "@/hooks/admin/v2/useAdminCommerce";
 
 function formatKWD(fils: number | null | undefined): string {
   if (fils == null) return "—";
@@ -70,13 +72,15 @@ export default function OverviewV2() {
     queryFn: () => fetchOverview(periodDays),
     staleTime: 30_000,
   });
+  const recoveryCounts = useAdminRecoveryCounts();
 
   const attention = [
     { key: "drafts", label: "Drafts", to: "/admin/publishing/drafts", icon: FileEdit, value: data?.attention.drafts },
     { key: "review", label: "Awaiting review", to: "/admin/publishing/review", icon: ClipboardCheck, value: data?.attention.review },
     { key: "scans", label: "Scans need action", to: "/admin/trust/scans", icon: ShieldCheck, value: data?.attention.scans },
-    { key: "failed_payments", label: "Failed payments", to: "/admin/orders", icon: ShoppingBag, value: data?.attention.failed_payments },
-    { key: "pending_refunds", label: "Pending refunds", to: "/admin/orders/refunds", icon: RotateCcw, value: data?.attention.pending_refunds },
+    { key: "failed_payments", label: "Failed payments", to: "/admin/orders?status=failed", icon: ShoppingBag, value: data?.attention.failed_payments },
+    { key: "pending_refunds", label: "Pending refunds", to: "/admin/orders/refunds?status=pending", icon: RotateCcw, value: data?.attention.pending_refunds },
+    { key: "recovery", label: "Recovery queue", to: "/admin/orders/recovery", icon: ShieldAlert, value: recoveryCounts.data?.total },
     { key: "open_reports", label: "Open reports", to: "/admin/trust/reports", icon: Flag, value: data?.attention.open_reports },
   ];
 

@@ -4405,6 +4405,14 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: Json
       }
+      v2_admin_get_refund_detail: {
+        Args: { p_refund_id: string }
+        Returns: Json
+      }
+      v2_admin_get_refundable_order: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       v2_admin_list_entitlements: {
         Args: {
           p_limit?: number
@@ -4493,6 +4501,7 @@ export type Database = {
         Returns: Json
       }
       v2_admin_reconciliation_summary: { Args: never; Returns: Json }
+      v2_admin_recovery_counts: { Args: never; Returns: Json }
       v2_apply_paid_order_locked: {
         Args: { p_order_id: string }
         Returns: Json

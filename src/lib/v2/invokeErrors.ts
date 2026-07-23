@@ -27,6 +27,14 @@ export const ALLOWED_ERROR_CODES = new Set<string>([
   "discount_invalid",
   "cart_empty",
   "product_unavailable",
+  // Refund-specific codes
+  "not_eligible",
+  "duplicate_idempotency_key",
+  "amount_mismatch",
+  "allocation_invalid",
+  "refund_not_found",
+  "refund_conflict",
+  "server_error",
 ]);
 
 async function extractFromResponse(res: unknown): Promise<string | undefined> {
