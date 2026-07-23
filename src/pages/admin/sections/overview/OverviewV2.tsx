@@ -6,6 +6,7 @@ import {
   FileEdit,
   Flag,
   RotateCcw,
+  ShieldAlert,
   ShieldCheck,
   ShoppingBag,
   Wallet,
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminRecoveryCounts } from "@/hooks/admin/v2/useAdminCommerce";
 
 function formatKWD(fils: number | null | undefined): string {
   if (fils == null) return "—";
