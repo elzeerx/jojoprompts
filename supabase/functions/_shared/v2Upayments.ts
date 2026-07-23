@@ -1,18 +1,18 @@
 // V2 UPayments shared helpers (hosted non-whitelabel checkout).
 //
-// Official endpoints (see UPayments API v1 docs):
+// Official endpoints (UPayments API v1):
 //   POST   {BASE}/charge
-//   GET    {BASE}/get-payment-status/{track_id}    (or ?session_id=)
+//   GET    {BASE}/get-payment-status/{track_id}       (by track id)
+//   GET    {BASE}/get-payment-status?session_id=...   (by session id)
 //   POST   {BASE}/create-refund
-//   GET    {BASE}/check-refund/{provider_order_id}
+//   GET    {BASE}/check-refund/{provider_reference}   (provider check id)
 //
 // Bases:
 //   sandbox    = https://sandboxapi.upayments.com/api/v1
 //   production = https://uapi.upayments.com/api/v1
 //
 // Provider calls are disabled unless V2_UPAYMENTS_ENABLED === "true".
-// Never log tokens, request/response bodies, PII, emails, names, URLs
-// carrying tokens, or raw webhook payloads.
+// Never log tokens, request/response bodies, PII, or raw webhook payloads.
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
@@ -27,15 +27,15 @@ const ALLOWED_ORIGINS = new Set<string>([
   "http://localhost:5173",
 ]);
 
-// Redirect/notification URLs the provider is allowed to point back to.
-const ALLOWED_REDIRECT_HOSTS = new Set<string>([
-  "jojoprompts.com",
-  "www.jojoprompts.com",
-  "jojoprompts.lovable.app",
-  "id-preview--766f3370-d38c-42e5-8566-5e4946986dd2.lovable.app",
+// Public browser redirect origins we will build /checkout URLs for.
+const ALLOWED_SITE_URLS = new Set<string>([
+  "https://jojoprompts.com",
+  "https://www.jojoprompts.com",
+  "https://jojoprompts.lovable.app",
 ]);
+const DEFAULT_SITE_URL = "https://jojoprompts.com";
 
-// Only https://*.upayments.com hosts are acceptable for a payment redirect.
+// Only https://*.upayments.com hosts are acceptable for a provider redirect.
 export function isValidUpaymentsRedirectUrl(raw: string): boolean {
   if (typeof raw !== "string" || raw.length === 0 || raw.length > 2048) return false;
   let u: URL;
@@ -68,9 +68,7 @@ export function jsonResponse(
   });
 }
 
-export function methodGuard(
-  req: Request, method: "POST",
-): Response | null {
+export function methodGuard(req: Request, method: "POST"): Response | null {
   const origin = req.headers.get("origin");
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeadersFor(origin) });
@@ -103,6 +101,15 @@ export async function readBoundedJson<T = unknown>(
   }
 }
 
+// Reject objects whose top-level keys are outside a documented allowlist.
+export function hasOnlyAllowedKeys(
+  obj: Record<string, unknown>, allowed: readonly string[],
+): boolean {
+  const set = new Set(allowed);
+  for (const k of Object.keys(obj)) if (!set.has(k)) return false;
+  return true;
+}
+
 // ---------------------------------------------------------- Env / config
 
 export type UpaymentsConfig = {
@@ -110,10 +117,17 @@ export type UpaymentsConfig = {
   environment: "sandbox" | "production";
   baseUrl: string;
   token: string;
+  siteUrl: string;
 };
 
 const SANDBOX_BASE = "https://sandboxapi.upayments.com/api/v1";
 const PROD_BASE = "https://uapi.upayments.com/api/v1";
+
+export function loadPublicSiteUrl(): string {
+  const raw = (Deno.env.get("V2_PUBLIC_SITE_URL") ?? "").trim();
+  if (raw && ALLOWED_SITE_URLS.has(raw)) return raw;
+  return DEFAULT_SITE_URL;
+}
 
 export function loadUpaymentsConfig(): UpaymentsConfig | null {
   const enabled = Deno.env.get("V2_UPAYMENTS_ENABLED") === "true";
@@ -126,7 +140,7 @@ export function loadUpaymentsConfig(): UpaymentsConfig | null {
   if (env === "sandbox") { baseUrl = SANDBOX_BASE; environment = "sandbox"; }
   else if (env === "production") { baseUrl = PROD_BASE; environment = "production"; }
   else return null;
-  return { enabled: true, environment, baseUrl, token };
+  return { enabled: true, environment, baseUrl, token, siteUrl: loadPublicSiteUrl() };
 }
 
 // --------------------------------------------------------- Supabase / auth
@@ -176,6 +190,50 @@ export async function requireAdmin(
   return { userId: u.userId };
 }
 
+// -------------------------------- Customer identity (server-side only)
+
+export type CustomerFields = {
+  uniqueId: string;
+  name?: string;
+  email?: string;
+  mobile?: string;
+};
+
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-zA-Z]{2,}$/;
+const MOBILE_RE = /^\+[1-9][0-9]{6,14}$/;
+
+// Loads verified server-side identity; never returns caller-supplied fields
+// or dummy placeholders. Optional fields are dropped when invalid/missing.
+export async function loadCustomerFields(
+  svc: SupabaseClient, userId: string,
+): Promise<CustomerFields> {
+  const out: CustomerFields = { uniqueId: userId };
+  const { data: prof } = await svc
+    .from("profiles")
+    .select("first_name,last_name,email,phone_number")
+    .eq("id", userId)
+    .maybeSingle();
+
+  let email = typeof prof?.email === "string" ? prof.email.trim() : "";
+  if (!email) {
+    try {
+      const { data } = await svc.auth.admin.getUserById(userId);
+      email = (data?.user?.email ?? "").trim();
+    } catch { /* ignore */ }
+  }
+  if (email && EMAIL_RE.test(email) && email.length <= 254) out.email = email;
+
+  const first = typeof prof?.first_name === "string" ? prof.first_name.trim() : "";
+  const last = typeof prof?.last_name === "string" ? prof.last_name.trim() : "";
+  const name = `${first} ${last}`.trim();
+  if (name && name.length >= 1 && name.length <= 128) out.name = name;
+
+  const phone = typeof prof?.phone_number === "string" ? prof.phone_number.trim() : "";
+  if (phone && MOBILE_RE.test(phone)) out.mobile = phone;
+
+  return out;
+}
+
 // ------------------------------------------------------- KWD conversions
 
 // KWD authoritative unit is fils (1 KWD = 1000 fils). Provider expects a
@@ -215,7 +273,8 @@ export type ProviderCallResult =
   | { kind: "invalid_response"; status?: number };
 
 export async function providerFetch(
-  cfg: UpaymentsConfig, path: string, init: { method: "GET" | "POST"; body?: unknown },
+  cfg: UpaymentsConfig, path: string,
+  init: { method: "GET" | "POST"; body?: unknown },
 ): Promise<ProviderCallResult> {
   const url = `${cfg.baseUrl}${path}`;
   const controller = new AbortController();
@@ -237,11 +296,11 @@ export async function providerFetch(
     }
     const text = new TextDecoder().decode(buf);
     if (!res.ok) {
-      // Do not surface provider body to caller. Bounded safe hint only.
       return { kind: "http_error", status: res.status, safeText: `status_${res.status}` };
     }
     let json: unknown = null;
-    try { json = text ? JSON.parse(text) : {}; } catch { return { kind: "invalid_response", status: res.status }; }
+    try { json = text ? JSON.parse(text) : {}; }
+    catch { return { kind: "invalid_response", status: res.status }; }
     if (json === null || typeof json !== "object" || Array.isArray(json)) {
       return { kind: "invalid_response", status: res.status };
     }
@@ -252,15 +311,18 @@ export async function providerFetch(
   } finally { clearTimeout(timer); }
 }
 
-// ---------------------------------------------- Response field extraction
+// Official provider top-level success flag. Provider returns `status: true|false`.
+export function providerSuccessFlag(json: Record<string, unknown>): boolean {
+  return json["status"] === true;
+}
 
-// Provider responses vary between snake_case / camelCase / nested `data`.
-// Extract cautiously; a successful HTTP status is NEVER settlement.
+// ---------------------------------------------- Response field extraction
 
 function pickPath(obj: unknown, path: string[]): unknown {
   let cur: unknown = obj;
   for (const k of path) {
-    if (cur && typeof cur === "object" && !Array.isArray(cur) && k in (cur as Record<string, unknown>)) {
+    if (cur && typeof cur === "object" && !Array.isArray(cur)
+        && k in (cur as Record<string, unknown>)) {
       cur = (cur as Record<string, unknown>)[k];
     } else return undefined;
   }
@@ -286,36 +348,55 @@ export type ChargeExtract = {
 export function extractChargeFields(json: Record<string, unknown>): ChargeExtract {
   return {
     trackId: firstString(json, [
-      ["data", "track_id"], ["data", "trackId"], ["track_id"], ["trackId"],
+      ["data","track_id"],["data","trackId"],["track_id"],["trackId"],
     ]),
     sessionId: firstString(json, [
-      ["data", "session_id"], ["data", "sessionId"], ["session_id"], ["sessionId"],
+      ["data","session_id"],["data","sessionId"],["session_id"],["sessionId"],
     ]),
     providerOrderId: firstString(json, [
-      ["data", "order_id"], ["data", "orderId"], ["data", "reference"],
-      ["order_id"], ["orderId"], ["reference"],
+      ["data","order_id"],["data","orderId"],["data","reference"],
+      ["order_id"],["orderId"],["reference"],
     ]),
     paymentUrl: firstString(json, [
-      ["data", "payment_url"], ["data", "paymentUrl"],
-      ["data", "link"], ["payment_url"], ["paymentUrl"], ["link"],
+      ["data","payment_url"],["data","paymentUrl"],
+      ["data","link"],["payment_url"],["paymentUrl"],["link"],
     ]),
   };
 }
 
-const RESULT_CAPTURED = new Set(["CAPTURED", "SUCCESS", "PAID", "SUCCESSFUL", "COMPLETED"]);
-const RESULT_FAILED = new Set(["FAILED", "DECLINED", "ERROR", "REJECTED"]);
-const RESULT_CANCELLED = new Set(["CANCELLED", "CANCELED", "USER_CANCELLED"]);
-const RESULT_PENDING = new Set(["PENDING", "INITIATED", "PROCESSING", "AUTHORIZED"]);
+// Explicit allowlists. NO substring/contains matching. Unknown => pending.
+// Aligned to public.v2_payment_status paid outcomes.
+const PAY_CAPTURED = new Set(["CAPTURED","SUCCESS","PAID","SUCCESSFUL","COMPLETED"]);
+const PAY_FAILED = new Set(["FAILED","DECLINED","ERROR","REJECTED"]);
+const PAY_CANCELLED = new Set(["CANCELLED","CANCELED","USER_CANCELLED","VOIDED"]);
+const PAY_PENDING = new Set(["PENDING","INITIATED","PROCESSING","AUTHORIZED","IN_PROGRESS"]);
 
-export type StatusVerdict = "captured" | "failed" | "cancelled" | "pending" | "unknown";
-
-export function normalizeStatusResult(raw: string | null): { verdict: StatusVerdict; normalized: string } {
+export type PaymentVerdict = "captured" | "failed" | "cancelled" | "pending" | "unknown";
+export function normalizePaymentStatus(
+  raw: string | null,
+): { verdict: PaymentVerdict; normalized: string } {
   if (!raw) return { verdict: "unknown", normalized: "" };
   const n = raw.trim().toUpperCase().slice(0, 64);
-  if (RESULT_CAPTURED.has(n)) return { verdict: "captured", normalized: n };
-  if (RESULT_FAILED.has(n)) return { verdict: "failed", normalized: n };
-  if (RESULT_CANCELLED.has(n)) return { verdict: "cancelled", normalized: n };
-  if (RESULT_PENDING.has(n)) return { verdict: "pending", normalized: n };
+  if (PAY_CAPTURED.has(n)) return { verdict: "captured", normalized: n };
+  if (PAY_FAILED.has(n)) return { verdict: "failed", normalized: n };
+  if (PAY_CANCELLED.has(n)) return { verdict: "cancelled", normalized: n };
+  if (PAY_PENDING.has(n)) return { verdict: "pending", normalized: n };
+  return { verdict: "unknown", normalized: n };
+}
+
+const REF_PROCESSED = new Set(["REFUNDED","PROCESSED","SUCCESS","SUCCESSFUL","COMPLETED"]);
+const REF_FAILED = new Set(["FAILED","DECLINED","ERROR","REJECTED","CANCELLED","CANCELED"]);
+const REF_PENDING = new Set(["PENDING","INITIATED","PROCESSING","APPROVED"]);
+
+export type RefundVerdict = "processed" | "failed" | "pending" | "unknown";
+export function normalizeRefundStatus(
+  raw: string | null,
+): { verdict: RefundVerdict; normalized: string } {
+  if (!raw) return { verdict: "unknown", normalized: "" };
+  const n = raw.trim().toUpperCase().slice(0, 64);
+  if (REF_PROCESSED.has(n)) return { verdict: "processed", normalized: n };
+  if (REF_FAILED.has(n)) return { verdict: "failed", normalized: n };
+  if (REF_PENDING.has(n)) return { verdict: "pending", normalized: n };
   return { verdict: "unknown", normalized: n };
 }
 
@@ -331,59 +412,78 @@ export type StatusExtract = {
 
 export function extractStatusFields(json: Record<string, unknown>): StatusExtract {
   return {
-    trackId: firstString(json, [["data","track_id"],["data","trackId"],["track_id"],["trackId"]]),
-    sessionId: firstString(json, [["data","session_id"],["data","sessionId"],["session_id"],["sessionId"]]),
-    providerOrderId: firstString(json, [["data","order_id"],["data","orderId"],["order_id"],["orderId"]]),
+    trackId: firstString(json, [
+      ["data","track_id"],["data","trackId"],["track_id"],["trackId"],
+    ]),
+    sessionId: firstString(json, [
+      ["data","session_id"],["data","sessionId"],["session_id"],["sessionId"],
+    ]),
+    providerOrderId: firstString(json, [
+      ["data","order_id"],["data","orderId"],["order_id"],["orderId"],
+    ]),
     merchantReference: firstString(json, [
-      ["data","reference"], ["data","merchant_reference"], ["data","merchantReference"],
-      ["reference"], ["merchant_reference"], ["merchantReference"],
+      // Official aliases include requested_order_id / requestedOrderId.
+      ["data","requested_order_id"],["data","requestedOrderId"],
+      ["requested_order_id"],["requestedOrderId"],
+      ["data","reference"],["data","merchant_reference"],["data","merchantReference"],
+      ["reference"],["merchant_reference"],["merchantReference"],
     ]),
     amountRaw: firstString(json, [
-      ["data","amount"], ["data","total_paid"], ["data","totalPaid"],
-      ["amount"], ["total_paid"], ["totalPaid"],
+      ["data","amount"],["data","total_paid"],["data","totalPaid"],
+      ["amount"],["total_paid"],["totalPaid"],
     ]),
     currency: firstString(json, [["data","currency"],["currency"]]),
     result: firstString(json, [
-      ["data","result"], ["data","payment_status"], ["data","paymentStatus"],
-      ["data","status"], ["result"], ["payment_status"], ["paymentStatus"], ["status"],
+      ["data","result"],["data","payment_status"],["data","paymentStatus"],
+      ["data","status"],["result"],["payment_status"],["paymentStatus"],["status"],
     ]),
   };
 }
 
-export type RefundStatusExtract = {
-  providerRefundOrderId: string | null;
-  originalProviderOrderId: string | null;
+export type RefundResponseExtract = {
+  providerReference: string | null;      // data.orderId (check id)
+  providerRefundOrderId: string | null;  // data.refundOrderId
+  refundArn: string | null;
   amountRaw: string | null;
   currency: string | null;
   result: string | null;
 };
 
-export function extractRefundStatusFields(json: Record<string, unknown>): RefundStatusExtract {
+// For POST /create-refund and GET /check-refund/{provider_reference}.
+export function extractRefundResponseFields(
+  json: Record<string, unknown>,
+): RefundResponseExtract {
   return {
+    // "orderId" here is UPayments' provider refund CHECK order id.
+    providerReference: firstString(json, [
+      ["data","orderId"],["data","order_id"],["orderId"],["order_id"],
+    ]),
     providerRefundOrderId: firstString(json, [
-      ["data","refund_order_id"], ["data","refundOrderId"], ["data","order_id"],
-      ["refund_order_id"], ["refundOrderId"], ["order_id"],
+      ["data","refundOrderId"],["data","refund_order_id"],
+      ["refundOrderId"],["refund_order_id"],
     ]),
-    originalProviderOrderId: firstString(json, [
-      ["data","original_order_id"], ["data","originalOrderId"], ["data","reference"],
-      ["original_order_id"], ["originalOrderId"], ["reference"],
+    refundArn: firstString(json, [
+      ["data","refundArn"],["data","refund_arn"],["refundArn"],["refund_arn"],
     ]),
-    amountRaw: firstString(json, [["data","amount"],["amount"]]),
+    amountRaw: firstString(json, [
+      ["data","amount"],["data","totalPrice"],["amount"],["totalPrice"],
+    ]),
     currency: firstString(json, [["data","currency"],["currency"]]),
     result: firstString(json, [
-      ["data","status"], ["data","result"], ["status"], ["result"],
+      ["data","status"],["data","result"],["status"],["result"],
     ]),
   };
 }
 
 // ---------------------------------------------------------- Sanitizers
 
-// Allowlist top-level keys and depth. Cap final payload at 64 KiB.
+// Allowlist of scalar keys we are willing to persist in event payloads.
+// Nothing else — never provider tokens, PII, customer names/emails.
 const SAFE_KEYS = new Set([
   "kind","status","result","reference","merchant_reference","order_id",
   "orderId","track_id","trackId","session_id","sessionId","refund_order_id",
-  "refundOrderId","original_order_id","originalOrderId","amount","currency",
-  "payment_url","paymentUrl","link","http_status",
+  "refundOrderId","requested_order_id","requestedOrderId",
+  "refund_arn","refundArn","amount","currency","http_status",
 ]);
 
 function coerceScalar(v: unknown): unknown {
@@ -398,7 +498,9 @@ export function sanitizeProviderPayload(
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { kind };
   if (typeof httpStatus === "number") out.http_status = httpStatus;
-  const flat = { ...source, ...(source["data"] && typeof source["data"] === "object" ? source["data"] as Record<string, unknown> : {}) };
+  const nested = source["data"] && typeof source["data"] === "object" && !Array.isArray(source["data"])
+    ? source["data"] as Record<string, unknown> : {};
+  const flat = { ...source, ...nested };
   for (const k of Object.keys(flat)) {
     if (!SAFE_KEYS.has(k)) continue;
     out[k] = coerceScalar(flat[k]);
@@ -408,18 +510,51 @@ export function sanitizeProviderPayload(
   return out;
 }
 
+// -------------------------------------------------- Safe error surfacing
+
+// Never surface raw Postgres/RPC messages. Map a small allowlist of
+// caller-safe codes; everything else becomes "server_error".
+const SAFE_ERROR_CODES = new Set([
+  "actor_not_owner","actor_not_authorized","order_not_pending","order_not_found",
+  "attempt_not_found","provider_mismatch","recovery_required","backoff_active",
+  "global_backoff","refund_not_pending","refund_not_pollable","refund_not_found",
+  "refund_identifier_mismatch","refund_identifier_replay_mismatch",
+  "missing_refund_identifiers","missing_provider_reference",
+  "missing_provider_refund_order_id","insufficient_permissions",
+  "external_event_conflict","currency_mismatch","amount_mismatch",
+  "identifier_mismatch","invalid_body","invalid_json","invalid_amount",
+  "invalid_merchant_reference","invalid_provider_reference",
+  "invalid_provider_refund_order_id","order_zero_total","submission_state_invalid",
+]);
+
+export function safeRpcError(err: unknown): string {
+  const msg = (err && typeof err === "object" && "message" in err)
+    ? String((err as { message: unknown }).message) : "";
+  const head = msg.split(":", 1)[0]?.trim();
+  if (head && SAFE_ERROR_CODES.has(head)) return head;
+  return "server_error";
+}
+
 // -------------------------------------------------- Deterministic event ids
 
-// Stable, bounded ids that never contain PII or secrets.
 export function eventIdForCharge(attemptId: string, providerId: string | null): string {
   const suffix = (providerId ?? "unknown").slice(0, 64);
   return `upay:charge:${attemptId}:${suffix}`.slice(0, 256);
 }
-export function eventIdForStatus(orderId: string, providerId: string | null, verdict: string): string {
+export function eventIdForStatus(
+  orderId: string, providerId: string | null, verdict: string,
+): string {
   const suffix = (providerId ?? "no_pid").slice(0, 64);
   return `upay:status:${orderId}:${verdict}:${suffix}`.slice(0, 256);
 }
-export function eventIdForRefund(refundId: string, providerRefundOrderId: string | null): string {
+export function eventIdForRefund(
+  refundId: string, providerRefundOrderId: string | null,
+): string {
   const suffix = (providerRefundOrderId ?? "unknown").slice(0, 64);
   return `upay:refund:${refundId}:${suffix}`.slice(0, 256);
+}
+
+// Local, stable refund reference sent to provider (bounded, no PII).
+export function localRefundReference(refundId: string): string {
+  return `REF-${refundId}`.slice(0, 40);
 }

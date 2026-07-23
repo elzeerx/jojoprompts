@@ -2,12 +2,18 @@
 // Provider hint only. We ignore any status/amount from the payload and
 // re-verify via GET /get-payment-status. Actor comes from the resolved
 // local attempt's owner; nothing about the sender is trusted.
+//
+// Order:
+//   1) parse capped body (no auth)
+//   2) load config → if disabled, return pending/provider_disabled with ZERO DB action
+//   3) resolve local attempt from hinted identifiers
+//   4) claim → GET status → verify → settle/fail
 
 import {
   jsonResponse, methodGuard, readBoundedJson, serviceClient,
-  loadUpaymentsConfig, providerFetch, extractStatusFields,
-  normalizeStatusResult, kwdDecimalToFils, sanitizeProviderPayload,
-  eventIdForStatus,
+  loadUpaymentsConfig, providerFetch, providerSuccessFlag,
+  extractStatusFields, normalizePaymentStatus, kwdDecimalToFils,
+  sanitizeProviderPayload, eventIdForStatus, safeRpcError,
 } from "../_shared/v2Upayments.ts";
 
 Deno.serve(async (req) => {
@@ -15,10 +21,17 @@ Deno.serve(async (req) => {
   const g = methodGuard(req, "POST");
   if (g) return g;
 
+  // 1. Parse capped JSON. No auth. No DB touched yet.
   const parsed = await readBoundedJson<Record<string, unknown>>(req);
   if (!parsed.ok) return jsonResponse({ error: parsed.error }, parsed.status, origin);
 
-  // Hints only — never trusted for state.
+  // 2. Feature-flag gate BEFORE any DB lookup/claim/update.
+  const cfg = loadUpaymentsConfig();
+  if (!cfg) {
+    return jsonResponse({ status: "pending", reason: "provider_disabled" }, 202, origin);
+  }
+
+  // 3. Extract hints (never trusted for state).
   const ex = extractStatusFields(parsed.body);
   if (!ex.trackId && !ex.sessionId && !ex.providerOrderId && !ex.merchantReference) {
     return jsonResponse({ error: "unresolvable" }, 400, origin);
@@ -26,7 +39,6 @@ Deno.serve(async (req) => {
 
   const svc = serviceClient();
 
-  // Resolve exactly one local attempt.
   let query = svc.from("payment_attempts")
     .select("id, order_id, provider")
     .eq("provider", "upayments")
@@ -37,7 +49,7 @@ Deno.serve(async (req) => {
   else if (ex.merchantReference) query = query.eq("merchant_reference", ex.merchantReference);
 
   const { data: rows, error: qErr } = await query;
-  if (qErr) return jsonResponse({ error: qErr.message }, 500, origin);
+  if (qErr) return jsonResponse({ error: "server_error" }, 500, origin);
   if (!rows || rows.length !== 1) {
     return jsonResponse({ error: "unresolvable" }, 400, origin);
   }
@@ -48,19 +60,20 @@ Deno.serve(async (req) => {
   if (oErr || !order) return jsonResponse({ error: "no_order" }, 400, origin);
   const actorUserId = order.user_id as string;
 
+  // 4. Claim.
   const { data: claim, error: clErr } = await svc.rpc("v2_claim_payment_status_check", {
     p_actor_user_id: actorUserId, p_order_id: order.id, p_attempt_id: attempt.id,
     p_allow_admin: false,
   });
-  if (clErr) return jsonResponse({ error: clErr.message }, 400, origin);
+  if (clErr) return jsonResponse({ error: safeRpcError(clErr) }, 400, origin);
   const cl = (claim ?? {}) as Record<string, unknown>;
   if (cl.ok === false && cl.error === "backoff_active") {
     return jsonResponse({ status: "pending", reason: "backoff_active" }, 202, origin);
   }
+  if (cl.ok === false && cl.error === "global_backoff") {
+    return jsonResponse({ status: "pending", reason: "global_backoff" }, 202, origin);
+  }
   if (cl.claimed !== true) return jsonResponse({ status: "pending" }, 202, origin);
-
-  const cfg = loadUpaymentsConfig();
-  if (!cfg) return jsonResponse({ status: "pending", reason: "provider_disabled" }, 202, origin);
 
   const trackId = cl.track_id ? String(cl.track_id) : null;
   const sessionId = cl.session_id ? String(cl.session_id) : null;
@@ -72,28 +85,38 @@ Deno.serve(async (req) => {
 
   const path = trackId
     ? `/get-payment-status/${encodeURIComponent(trackId)}`
-    : `/get-payment-status/?session_id=${encodeURIComponent(sessionId ?? "")}`;
+    : `/get-payment-status?session_id=${encodeURIComponent(sessionId ?? "")}`;
   const res = await providerFetch(cfg, path, { method: "GET" });
-  if (res.kind !== "ok") return jsonResponse({ status: "pending", reason: res.kind }, 202, origin);
+  if (res.kind !== "ok") {
+    return jsonResponse({ status: "pending", reason: res.kind }, 202, origin);
+  }
+  if (!providerSuccessFlag(res.json)) {
+    return jsonResponse({ status: "pending", reason: "provider_rejected" }, 202, origin);
+  }
 
   const sx = extractStatusFields(res.json);
-  const verdict = normalizeStatusResult(sx.result);
+  const verdict = normalizePaymentStatus(sx.result);
 
-  if (sx.merchantReference && sx.merchantReference !== merchantRef) {
-    return jsonResponse({ status: "pending", reason: "identifier_mismatch" }, 202, origin);
+  if (!sx.merchantReference || sx.merchantReference !== merchantRef) {
+    return jsonResponse({ status: "pending", reason: "merchant_reference_mismatch" }, 202, origin);
   }
-  if (sx.trackId && trackId && sx.trackId !== trackId) {
-    return jsonResponse({ status: "pending", reason: "track_id_mismatch" }, 202, origin);
+  if (trackId) {
+    if (!sx.trackId || sx.trackId !== trackId) {
+      return jsonResponse({ status: "pending", reason: "track_id_mismatch" }, 202, origin);
+    }
+  } else if (sessionId) {
+    if (!sx.sessionId || sx.sessionId !== sessionId) {
+      return jsonResponse({ status: "pending", reason: "session_id_mismatch" }, 202, origin);
+    }
   }
-  if (sx.sessionId && sessionId && sx.sessionId !== sessionId) {
-    return jsonResponse({ status: "pending", reason: "session_id_mismatch" }, 202, origin);
-  }
-  if (sx.providerOrderId && providerOrderId && sx.providerOrderId !== providerOrderId) {
+  if (providerOrderId && sx.providerOrderId && sx.providerOrderId !== providerOrderId) {
     return jsonResponse({ status: "pending", reason: "provider_order_id_mismatch" }, 202, origin);
   }
+  const effectiveProviderOrderId = providerOrderId ?? sx.providerOrderId ?? null;
 
   const sanitized = sanitizeProviderPayload("payment_status_webhook", res.json, res.status);
-  const evtId = eventIdForStatus(orderId, sx.providerOrderId ?? providerOrderId ?? sx.trackId ?? trackId, verdict.verdict);
+  const evtId = eventIdForStatus(orderId,
+    effectiveProviderOrderId ?? sx.trackId ?? trackId, verdict.verdict);
 
   if (verdict.verdict === "captured") {
     if (!sx.currency || sx.currency.toUpperCase() !== "KWD") {
@@ -108,12 +131,13 @@ Deno.serve(async (req) => {
     const { error: sErr } = await svc.rpc("v2_settle_verified_upayments_payment", {
       p_actor_user_id: actorUserId, p_order_id: orderId, p_attempt_id: attemptId,
       p_merchant_reference: merchantRef,
-      p_track_id: trackId, p_session_id: sessionId, p_provider_order_id: providerOrderId,
+      p_track_id: trackId, p_session_id: sessionId,
+      p_provider_order_id: effectiveProviderOrderId,
       p_amount_fils: amountFils, p_currency: "KWD",
       p_result: verdict.normalized, p_external_event_id: evtId,
       p_sanitized_verified_payload: sanitized,
     });
-    if (sErr) return jsonResponse({ error: sErr.message }, 500, origin);
+    if (sErr) return jsonResponse({ error: safeRpcError(sErr) }, 500, origin);
     return jsonResponse({ status: "paid" }, 200, origin);
   }
 
@@ -123,7 +147,7 @@ Deno.serve(async (req) => {
       p_merchant_reference: merchantRef, p_result: verdict.normalized,
       p_external_event_id: evtId, p_sanitized_payload: sanitized,
     });
-    if (fErr) return jsonResponse({ error: fErr.message }, 500, origin);
+    if (fErr) return jsonResponse({ error: safeRpcError(fErr) }, 500, origin);
     return jsonResponse({ status: verdict.verdict }, 200, origin);
   }
 

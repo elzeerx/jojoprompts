@@ -3998,6 +3998,24 @@ export type Database = {
           },
         ]
       }
+      v2_provider_status_rate_limit: {
+        Row: {
+          count: number
+          minute_bucket: string
+          updated_at: string
+        }
+        Insert: {
+          count?: number
+          minute_bucket: string
+          updated_at?: string
+        }
+        Update: {
+          count?: number
+          minute_bucket?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       admin_activity_summary: {
@@ -4445,6 +4463,14 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_assert_refund_identifiers: {
+        Args: {
+          p_provider_reference: string
+          p_provider_refund_order_id: string
+          p_refund_id: string
+        }
+        Returns: undefined
+      }
       v2_checkout_state: { Args: { p_order_id: string }; Returns: Json }
       v2_claim_charge_submission: {
         Args: {
@@ -4591,6 +4617,7 @@ export type Database = {
         Args: {
           p_admin_actor_id: string
           p_external_event_id: string
+          p_provider_reference: string
           p_provider_refund_order_id: string
           p_refund_id: string
           p_sanitized_payload: Json
@@ -4598,6 +4625,7 @@ export type Database = {
         Returns: Json
       }
       v2_refund_state: { Args: { p_refund_id: string }; Returns: Json }
+      v2_reserve_status_slot: { Args: { p_cap?: number }; Returns: Json }
       v2_settle_verified_upayments_payment: {
         Args: {
           p_actor_user_id: string
