@@ -4441,6 +4441,18 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_insert_or_verify_payment_event: {
+        Args: {
+          p_amount_fils: number
+          p_currency: string
+          p_event_type: Database["public"]["Enums"]["v2_payment_event_type"]
+          p_external_event_id: string
+          p_order_id: string
+          p_provider: string
+          p_raw: Json
+        }
+        Returns: boolean
+      }
       v2_lifetime_progress: { Args: never; Returns: Json }
       v2_mark_verified_payment_failure: {
         Args: {
