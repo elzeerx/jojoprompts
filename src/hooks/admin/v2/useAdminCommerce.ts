@@ -456,28 +456,123 @@ export function useCheckPaymentStatus() {
 }
 
 // ---------- Phase 6A.3: read-only legacy access migration preview ----------
+export interface MigrationPreviewCatalog {
+  legacy_prompt_count: number;
+  matched_resource_count: number;
+  legacy_version_count: number;
+  legacy_product_count: number;
+  unmatched_legacy_prompt_count: number;
+}
+export interface MigrationPreviewCollections {
+  chatgpt_prompts: number;
+  midjourney_prompts: number;
+  unmatched_or_ambiguous: number;
+}
+export interface MigrationPreviewSubRow {
+  tier: string; is_lifetime: boolean; status: string;
+  count: number; expired: number; active_or_perpetual: number;
+  proposed_scope: string;
+}
+export interface MigrationPreviewSubscriptions {
+  rows: MigrationPreviewSubRow[];
+  total_subscriptions: number;
+  distinct_users: number;
+}
+export interface MigrationPreviewPayPal {
+  classification: string;
+  conversion_rate_fils_per_usd: number;
+  rounding: string;
+  per_user_cap_fils: number;
+  total_count: number;
+  by_status: Array<{ status: string; n: number; usd_total: number; fils_total: number }>;
+  proposed_credit_fils_completed_precap: number;
+  zero_amount_count: number;
+  missing_subscription_link: number;
+  duplicate_provider_reference_groups: number;
+}
+export interface MigrationPreviewUPayInterp {
+  conversion: string;
+  completed_capped_credit_fils: number;
+  users_with_credit: number;
+}
+export interface MigrationPreviewUPayments {
+  ambiguity_note: string;
+  total_count: number;
+  completed_count: number;
+  raw_value_total: number;
+  interpretation_A_values_as_KWD: MigrationPreviewUPayInterp;
+  interpretation_B_values_as_legacy_USD: MigrationPreviewUPayInterp;
+  threshold_users: {
+    reach_on_paypal_only: number;
+    reach_only_if_upayments_kwd: number;
+    reach_only_if_upayments_legacy_usd: number;
+    ambiguous_outcome_users: number;
+  };
+  duplicate_provider_reference_groups: number;
+}
+export interface MigrationPreviewEntitlements {
+  by_scope: Record<string, number>;
+  by_collection_key_active: Record<string, number>;
+  by_collection_key_expired: Record<string, number>;
+  active_total: number;
+  expired_total: number;
+  unique_users_active: number;
+  unique_users_expired: number;
+  cancelled_lifetime_flagged_users: number;
+  by_source: Record<string, number>;
+}
+export interface MigrationPreviewCredits {
+  source: string;
+  users_with_credit: number;
+  total_credit_fils: number;
+  users_capped_at_threshold: number;
+  threshold_fils: number;
+  conversion_rate_fils_per_usd: number;
+}
+export interface MigrationPreviewAnomalies {
+  missing_auth_users_for_subscriptions: number;
+  missing_auth_users_for_transactions: number;
+  transactions_without_subscription: number;
+  subscriptions_without_transaction: number;
+  subscriptions_with_missing_transaction: number;
+  subscriptions_without_plan: number;
+  duplicate_paypal_reference_groups: number;
+  duplicate_upayments_reference_groups: number;
+  zero_amount_paypal_completed: number;
+  zero_amount_upayments_completed: number;
+  unsupported_currencies: number;
+  unsupported_gateways: number;
+  transactions_status_mismatch_completed_zero: number;
+  subscriptions_expired_but_status_active: number;
+  cancelled_lifetime_users: number;
+  ambiguous_upayments_amount_rows: number;
+  unmatched_legacy_prompts: number;
+}
+export interface MigrationPreviewContractRule { rule: string; detail: string }
+export interface MigrationPreviewGrantContract {
+  note: string;
+  rules: MigrationPreviewContractRule[];
+}
 export interface MigrationPreview {
   generated_at: string;
   conversion_rate_fils_per_usd: number;
+  threshold_fils: number;
   execute_enabled: boolean;
   execution_blockers: string[];
-  catalog: Record<string, number>;
-  collections: Record<string, number>;
+  catalog: MigrationPreviewCatalog;
+  collections: MigrationPreviewCollections;
   unmatched_sample: Array<{ resource_id: string; resource_type: string; slug: string; legacy_prompt_type: string | null }>;
-  subscriptions: {
-    rows: Array<{ tier: string; is_lifetime: boolean; status: string; count: number; expired: number; active_or_perpetual: number; proposed_scope: string }>;
-    total_subscriptions: number;
-    distinct_users: number;
-  };
-  transactions_paypal: Record<string, unknown>;
-  transactions_upayments: Record<string, unknown>;
-  proposed_entitlements: Record<string, number>;
-  proposed_lifetime_credit: Record<string, number>;
-  anomalies: Record<string, number>;
+  subscriptions: MigrationPreviewSubscriptions;
+  transactions_paypal: MigrationPreviewPayPal;
+  transactions_upayments: MigrationPreviewUPayments;
+  proposed_entitlements: MigrationPreviewEntitlements;
+  proposed_lifetime_credit: MigrationPreviewCredits;
+  anomalies: MigrationPreviewAnomalies;
+  grant_contract: MigrationPreviewGrantContract;
 }
 
 export function useMigrationPreview() {
-  return useQuery({
+  return useQuery<MigrationPreview>({
     queryKey: ["admin", "v2", "migration-preview"],
     queryFn: async () => {
       // rpc name not yet in generated types; safe cast.
