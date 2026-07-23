@@ -4456,34 +4456,18 @@ export type Database = {
           verified_payload_size: number
         }[]
       }
-      v2_admin_list_payment_events:
-        | {
-            Args: {
-              p_date_from?: string
-              p_date_to?: string
-              p_event_type?: string
-              p_limit?: number
-              p_offset?: number
-              p_order_id?: string
-              p_provider?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: { p_limit?: number; p_offset?: number; p_order_id?: string }
-            Returns: {
-              amount_fils: number
-              created_at: string
-              currency: string
-              event_type: Database["public"]["Enums"]["v2_payment_event_type"]
-              external_event_id: string
-              id: string
-              order_id: string
-              provider: string
-              raw_payload_size: number
-              received_at: string
-            }[]
-          }
+      v2_admin_list_payment_events: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_event_type?: string
+          p_limit?: number
+          p_offset?: number
+          p_order_id?: string
+          p_provider?: string
+        }
+        Returns: Json
+      }
       v2_admin_list_recovery: {
         Args: {
           p_kind?: string
