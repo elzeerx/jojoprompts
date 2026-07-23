@@ -1,5 +1,6 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { extractInvokeErrorCode } from "@/lib/v2/invokeErrors";
 
 /**
  * Shared query keys for Phase 5 admin commerce read RPCs.
@@ -17,7 +18,10 @@ export const adminCommerceKeys = {
   entitlementsList: (params: EntitlementsListParams) =>
     ["admin", "v2", "entitlements", "list", params] as const,
   refundsList: (params: RefundsListParams) => ["admin", "v2", "refunds", "list", params] as const,
+  refundDetail: (id: string | null) => ["admin", "v2", "refunds", "detail", id] as const,
+  refundableOrder: (id: string | null) => ["admin", "v2", "refunds", "refundable", id] as const,
   recoveryList: (params: RecoveryListParams) => ["admin", "v2", "recovery", "list", params] as const,
+  recoveryCounts: () => ["admin", "v2", "recovery", "counts"] as const,
 };
 
 // ---------- Types (shapes returned by the JSON RPCs) ----------
