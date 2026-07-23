@@ -3886,7 +3886,11 @@ export type Database = {
       }
       v2_discount_codes: {
         Row: {
+          applicable_product_ids: string[]
           applies_to_all: boolean
+          applies_to_lifetime: boolean
+          archived_at: string | null
+          archived_by: string | null
           code: string
           code_normalized: string | null
           created_at: string
@@ -3901,10 +3905,15 @@ export type Database = {
           notes: string | null
           starts_at: string | null
           updated_at: string
+          updated_by: string | null
           value: number
         }
         Insert: {
+          applicable_product_ids?: string[]
           applies_to_all?: boolean
+          applies_to_lifetime?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
           code: string
           code_normalized?: string | null
           created_at?: string
@@ -3919,10 +3928,15 @@ export type Database = {
           notes?: string | null
           starts_at?: string | null
           updated_at?: string
+          updated_by?: string | null
           value: number
         }
         Update: {
+          applicable_product_ids?: string[]
           applies_to_all?: boolean
+          applies_to_lifetime?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
           code?: string
           code_normalized?: string | null
           created_at?: string
@@ -3937,6 +3951,7 @@ export type Database = {
           notes?: string | null
           starts_at?: string | null
           updated_at?: string
+          updated_by?: string | null
           value?: number
         }
         Relationships: []
@@ -4111,6 +4126,17 @@ export type Database = {
       _v2_bounded_limit: {
         Args: { p_limit: number; p_max?: number }
         Returns: number
+      }
+      _v2_discount_status_label: {
+        Args: {
+          p_archived_at: string
+          p_expires_at: string
+          p_is_active: boolean
+          p_max_total_uses: number
+          p_starts_at: string
+          p_used_count: number
+        }
+        Returns: string
       }
       _v2_mask_email: { Args: { p_email: string }; Returns: string }
       _v2_require_admin: { Args: never; Returns: string }
@@ -4400,6 +4426,8 @@ export type Database = {
         Returns: boolean
       }
       user_has_any_role: { Args: { _user_id: string }; Returns: boolean }
+      v2_admin_archive_discount: { Args: { p_id: string }; Returns: Json }
+      v2_admin_get_discount: { Args: { p_id: string }; Returns: Json }
       v2_admin_get_order_detail: { Args: { p_order_id: string }; Returns: Json }
       v2_admin_get_payment_event: {
         Args: { p_event_id: string }
@@ -4411,6 +4439,16 @@ export type Database = {
       }
       v2_admin_get_refundable_order: {
         Args: { p_order_id: string }
+        Returns: Json
+      }
+      v2_admin_list_discounts: {
+        Args: {
+          p_kind?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+        }
         Returns: Json
       }
       v2_admin_list_entitlements: {
@@ -4502,6 +4540,33 @@ export type Database = {
       }
       v2_admin_reconciliation_summary: { Args: never; Returns: Json }
       v2_admin_recovery_counts: { Args: never; Returns: Json }
+      v2_admin_search_products_for_discount: {
+        Args: { p_limit?: number; p_search?: string }
+        Returns: Json
+      }
+      v2_admin_set_discount_active: {
+        Args: { p_id: string; p_is_active: boolean }
+        Returns: Json
+      }
+      v2_admin_upsert_discount: {
+        Args: {
+          p_applicable_product_ids: string[]
+          p_applies_to_all: boolean
+          p_applies_to_lifetime: boolean
+          p_code: string
+          p_expires_at: string
+          p_id: string
+          p_is_active: boolean
+          p_kind: string
+          p_max_total_uses: number
+          p_max_uses_per_user: number
+          p_min_order_fils: number
+          p_notes: string
+          p_starts_at: string
+          p_value: number
+        }
+        Returns: Json
+      }
       v2_apply_paid_order_locked: {
         Args: { p_order_id: string }
         Returns: Json
