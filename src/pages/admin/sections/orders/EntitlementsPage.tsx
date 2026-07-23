@@ -14,10 +14,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useAdminEntitlements } from "@/hooks/admin/v2/useAdminCommerce";
+import { useAdminEntitlements, describeEntitlementTarget } from "@/hooks/admin/v2/useAdminCommerce";
 import { formatDateTime, copyToClipboard, bi } from "@/lib/v2/admin/format";
 
-const SCOPES = ["resource", "library"];
+const SCOPES = ["resource", "collection", "library"];
 const STATES = ["active", "revoked", "expired"];
 const REASONS = ["purchase", "free_acquisition", "lifetime_purchase", "lifetime_threshold", "legacy_migration", "admin_grant"];
 const PAGE_SIZE = 25;
