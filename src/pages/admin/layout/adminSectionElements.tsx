@@ -6,6 +6,11 @@ import { EmptyRouteState } from "../sections/common/EmptyRouteState";
 const OverviewV2 = lazy(() => import("../sections/overview/OverviewV2"));
 const CatalogPage = lazy(() => import("../sections/catalog/CatalogPage"));
 const ResourcePublisher = lazy(() => import("../sections/publishing/ResourcePublisher"));
+const OrdersV2Page = lazy(() => import("../sections/orders/OrdersV2Page"));
+const PaymentEventsPage = lazy(() => import("../sections/orders/PaymentEventsPage"));
+const EntitlementsPage = lazy(() => import("../sections/orders/EntitlementsPage"));
+
+
 
 
 // Existing legacy sections retained where they map cleanly onto V2 routes.
@@ -110,20 +115,16 @@ export const adminSectionElements = {
   publishingImportsAiStudio: wrap(<AiStudioPage />),
   publishingTaxonomy: wrap(<CategoriesManagement />),
 
-  // Orders
-  orders: wrap(<PurchaseHistoryManagement />),
-  paymentEvents: Empty(
-    "Payment Events",
-    "Provider webhooks (created / authorized / captured / failed / refunded / chargeback / reversal) will render here with reconciliation status. Data lives in payment_events.",
-  ),
-  entitlements: Empty(
-    "Entitlements",
-    "Grants ledger from the entitlements table with scope, grant reason, expiry, and revoke controls. Read-only inspection available today via the database; UI lands next.",
-  ),
+  // Orders (V2 commerce ops — Phase 5.2)
+  orders: wrap(<OrdersV2Page />),
+  paymentEvents: wrap(<PaymentEventsPage />),
+  entitlements: wrap(<EntitlementsPage />),
   refunds: Empty(
     "Refunds",
-    "Refund requests, approvals, and processed refunds from the refunds table. UI is scaffolded but pending Phase 2.",
+    "Refund requests, approvals, and processed refunds. UI lands in Phase 5.3.",
   ),
+  // Legacy admin tools retained as contextual links until fully replaced.
+  ordersLegacyPurchases: wrap(<PurchaseHistoryManagement />),
   ordersRecovery: wrap(<AbandonedCartDashboard />),
   discounts: wrap(<DiscountCodesManagement />),
 
