@@ -81,13 +81,16 @@ export function AddToCartButton({
         });
         if (res.ok) {
           toast({ title: t.added });
-        } else if (res.reason === "cap_reached") {
+          return;
+        }
+        if (res.reason === "cap_reached") {
           toast({ variant: "destructive", title: t.capTitle, description: t.capDesc });
         } else if (res.reason === "duplicate") {
           toast({ title: t.dupTitle });
         } else {
           toast({ variant: "destructive", title: t.invalid });
         }
+
       }}
     >
       <ShoppingBag className="h-4 w-4 me-1" aria-hidden />
