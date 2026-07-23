@@ -4427,6 +4427,10 @@ export type Database = {
       }
       user_has_any_role: { Args: { _user_id: string }; Returns: boolean }
       v2_admin_archive_discount: { Args: { p_id: string }; Returns: Json }
+      v2_admin_backfill_legacy_prompts: {
+        Args: { p_dry_run?: boolean }
+        Returns: Json
+      }
       v2_admin_get_discount: { Args: { p_id: string }; Returns: Json }
       v2_admin_get_order_detail: { Args: { p_order_id: string }; Returns: Json }
       v2_admin_get_payment_event: {
