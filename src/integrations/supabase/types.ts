@@ -4463,6 +4463,18 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_apply_verified_refund_correlated: {
+        Args: {
+          p_admin_actor_id: string
+          p_external_event_id: string
+          p_provider_reference: string
+          p_provider_refund_order_id: string
+          p_refund_id: string
+          p_result: string
+          p_sanitized_payload: Json
+        }
+        Returns: Json
+      }
       v2_assert_refund_identifiers: {
         Args: {
           p_provider_reference: string
@@ -4552,6 +4564,18 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_mark_verified_refund_failure_correlated: {
+        Args: {
+          p_admin_actor_id: string
+          p_external_event_id: string
+          p_provider_reference: string
+          p_provider_refund_order_id: string
+          p_refund_id: string
+          p_result: string
+          p_sanitized_payload: Json
+        }
+        Returns: Json
+      }
       v2_my_payment_attempts: {
         Args: { p_order_id: string }
         Returns: {
@@ -4624,8 +4648,27 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_record_upayments_verification_rejection: {
+        Args: {
+          p_actor_user_id: string
+          p_attempt_id: string
+          p_external_event_id: string
+          p_order_id: string
+          p_reason: string
+          p_sanitized_payload: Json
+        }
+        Returns: Json
+      }
       v2_refund_state: { Args: { p_refund_id: string }; Returns: Json }
       v2_reserve_status_slot: { Args: { p_cap?: number }; Returns: Json }
+      v2_resolve_owned_latest_upayments_attempt: {
+        Args: {
+          p_actor_user_id: string
+          p_allow_admin?: boolean
+          p_order_id: string
+        }
+        Returns: Json
+      }
       v2_settle_verified_upayments_payment: {
         Args: {
           p_actor_user_id: string
