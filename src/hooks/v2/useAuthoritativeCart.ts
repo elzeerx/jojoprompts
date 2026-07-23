@@ -76,20 +76,20 @@ export function useAuthoritativeCart() {
         (rrows ?? []).forEach((r: any) => resourcesById.set(r.id, r));
       }
 
-      const byId = new Map<string, any>();
-      (products ?? []).forEach((p: any) => byId.set(p.id, p));
+      const byId = new Map<string, typeof products[number]>();
+      products.forEach((p) => byId.set(p.id, p));
 
       // For bundles, expand member resources to detect lifetime coverage.
-      const bundleIds = (products ?? [])
-        .filter((p: any) => p.product_type === "bundle")
-        .map((p: any) => p.id as string);
+      const bundleIds = products
+        .filter((p) => p.product_type === "bundle")
+        .map((p) => p.id);
       let bundleItems: Array<{ product_id: string; resource_id: string }> = [];
       if (bundleIds.length > 0) {
-        const { data: bi } = await supabase
+        const { data: bi } = await (supabase as any)
           .from("product_bundle_items")
           .select("product_id, resource_id")
           .in("product_id", bundleIds);
-        bundleItems = (bi ?? []) as any;
+        bundleItems = (bi ?? []) as Array<{ product_id: string; resource_id: string }>;
       }
       const bundleMembers = new Map<string, string[]>();
       bundleItems.forEach((row) => {
@@ -114,15 +114,16 @@ export function useAuthoritativeCart() {
             resource_type: snap.resource_type,
           };
         }
+        const linkedResource = p.resource_id ? resourcesById.get(p.resource_id) : null;
         const base = {
           product_id: p.id,
           product_type: p.product_type,
           price_fils: p.price_fils ?? 0,
           resource_id: p.resource_id,
-          resource_slug: p.resources?.slug ?? null,
-          title_en: p.resources?.title_en ?? snap.title_en,
-          title_ar: p.resources?.title_ar ?? snap.title_ar,
-          resource_type: p.resources?.type ?? snap.resource_type,
+          resource_slug: linkedResource?.slug ?? null,
+          title_en: linkedResource?.title_en ?? snap.title_en,
+          title_ar: linkedResource?.title_ar ?? snap.title_ar,
+          resource_type: linkedResource?.type ?? snap.resource_type,
         };
         if (!p.is_active) return { ...base, status: "inactive" as const };
         if (hasLibrary && p.product_type !== "lifetime") {
