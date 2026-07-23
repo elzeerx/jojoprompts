@@ -9,6 +9,8 @@ const ResourcePublisher = lazy(() => import("../sections/publishing/ResourcePubl
 const OrdersV2Page = lazy(() => import("../sections/orders/OrdersV2Page"));
 const PaymentEventsPage = lazy(() => import("../sections/orders/PaymentEventsPage"));
 const EntitlementsPage = lazy(() => import("../sections/orders/EntitlementsPage"));
+const RefundsPage = lazy(() => import("../sections/orders/RefundsPage"));
+const RecoveryPage = lazy(() => import("../sections/orders/RecoveryPage"));
 
 
 
