@@ -21,6 +21,8 @@ import {
 } from "@/config/v2Flags";
 import { ShieldCheck, Download, Loader2, ArrowLeft, Timer } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { AddToCartButton } from "@/components/v2/AddToCartButton";
+
 
 type Lang = "en" | "ar";
 
@@ -356,14 +358,21 @@ export default function ResourceDetailPage() {
                   )}
                 </Button>
               ) : product && V2_COMMERCE_ENABLED ? (
-                <Button className="w-full min-h-[44px]" disabled>
-                  {V2_COPY.cards.checkoutSoon[lang]}
-                </Button>
+                <AddToCartButton
+                  productId={product.id}
+                  productType={product.product_type as "individual" | "bundle" | "lifetime" | "free"}
+                  titleEn={r.title_en}
+                  titleAr={r.title_ar}
+                  resourceType={r.type ?? null}
+                  size="default"
+                  fullWidth
+                />
               ) : product ? (
                 <Button className="w-full min-h-[44px]" variant="outline" disabled>
                   {V2_COPY.cards.checkoutSoon[lang]}
                 </Button>
               ) : null}
+
               <div className="rounded-lg bg-warm-gold/10 p-3 text-xs">
                 <div className="font-semibold text-warm-gold">
                   {V2_COPY.detail.lifetimeTitle[lang]}
