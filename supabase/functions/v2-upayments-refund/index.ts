@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
         reason: "missing_provider_refund_ids" }, 502, origin);
     }
 
-    const evtId = eventIdForRefund(refundId, rex.providerRefundOrderId);
+    const evtId = eventIdForRefund(refundId, "create_authorized", rex.providerRefundOrderId);
     const { error: rrErr } = await svc.rpc("v2_record_upayments_refund_response", {
       p_admin_actor_id: auth.userId, p_refund_id: refundId,
       p_provider_reference: rex.providerReference,
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
   }
 
   const rex = extractRefundResponseFields(res.json);
-  // Verify any returned check/refund IDs equal what we already stored.
+  // Any returned check/refund IDs must equal what we already stored.
   if (rex.providerReference && rex.providerReference !== providerReference) {
     return jsonResponse({ status: "pending", reason: "provider_reference_mismatch" }, 202, origin);
   }
@@ -227,7 +227,6 @@ Deno.serve(async (req) => {
 
   const verdict = normalizeRefundStatus(rex.result);
   const sanitized = sanitizeProviderPayload("refund_status", res.json, res.status);
-  const evtId = eventIdForRefund(refundId, providerRefundOrderId);
 
   if (verdict.verdict === "processed") {
     if (rex.currency && rex.currency.toUpperCase() !== "KWD") {
@@ -242,16 +241,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Gate: assert both stored identifiers still match before terminal apply.
-    const { error: gErr } = await svc.rpc("v2_assert_refund_identifiers", {
-      p_refund_id: refundId,
-      p_provider_reference: providerReference,
-      p_provider_refund_order_id: providerRefundOrderId,
-    });
-    if (gErr) return jsonResponse({ error: safeRpcError(gErr) }, 409, origin);
-
-    const { error: aErr } = await svc.rpc("v2_apply_verified_refund", {
+    // Atomic correlated apply — verifies BOTH provider ids under per-user lock
+    // and invokes v2_apply_verified_refund in the same transaction.
+    const evtId = eventIdForRefund(refundId, "status_processed", providerRefundOrderId);
+    const { error: aErr } = await svc.rpc("v2_apply_verified_refund_correlated", {
       p_admin_actor_id: auth.userId, p_refund_id: refundId,
+      p_provider_reference: providerReference,
       p_provider_refund_order_id: providerRefundOrderId,
       p_result: verdict.normalized, p_external_event_id: evtId,
       p_sanitized_payload: sanitized,
@@ -261,15 +256,10 @@ Deno.serve(async (req) => {
   }
 
   if (verdict.verdict === "failed") {
-    const { error: gErr } = await svc.rpc("v2_assert_refund_identifiers", {
-      p_refund_id: refundId,
-      p_provider_reference: providerReference,
-      p_provider_refund_order_id: providerRefundOrderId,
-    });
-    if (gErr) return jsonResponse({ error: safeRpcError(gErr) }, 409, origin);
-
-    const { error: fErr } = await svc.rpc("v2_mark_verified_refund_failure", {
+    const evtId = eventIdForRefund(refundId, "status_failed", providerRefundOrderId);
+    const { error: fErr } = await svc.rpc("v2_mark_verified_refund_failure_correlated", {
       p_admin_actor_id: auth.userId, p_refund_id: refundId,
+      p_provider_reference: providerReference,
       p_provider_refund_order_id: providerRefundOrderId,
       p_result: verdict.normalized, p_external_event_id: evtId,
       p_sanitized_payload: sanitized,
@@ -278,6 +268,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ status: "failed", refund_id: refundId }, 200, origin);
   }
 
-  // pending / unknown: never revoke automatically.
+  // pending / unknown: never revoke, never mutate credit/ownership.
   return jsonResponse({ status: "pending", reason: verdict.verdict }, 202, origin);
 });

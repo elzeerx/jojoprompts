@@ -3,11 +3,12 @@
 //
 // Order:
 //   1) validate body + auth
-//   2) load config → if disabled, return pending/provider_disabled with ZERO DB mutation
-//   3) find latest upayments attempt → v2_claim_payment_status_check
-//   4) GET /get-payment-status/{track_id}  OR  /get-payment-status?session_id=...
+//   2) load config → if disabled, return pending/provider_disabled with ZERO DB action
+//   3) ownership-first attempt resolution via SECURITY DEFINER RPC
+//   4) v2_claim_payment_status_check → GET provider status
 //   5) verify official status===true, merchant reference, lookup identifier,
-//      amount/currency BEFORE settle/fail. Never trusts redirect URLs.
+//      amount/currency BEFORE settle/fail. Terminal-correlation rejections are
+//      audit-recorded as a sanitized rejection event; no money state changes.
 
 import {
   jsonResponse, methodGuard, readBoundedJson, hasOnlyAllowedKeys, requireUser,
@@ -25,12 +26,17 @@ function validBody(b: unknown): b is { order_id: string } {
   return typeof o.order_id === "string" && UUID_RE.test(o.order_id);
 }
 
+type RejectionReason =
+  | "missing_merchant_reference" | "merchant_reference_mismatch"
+  | "track_id_mismatch" | "session_id_mismatch" | "provider_order_id_mismatch"
+  | "currency_missing" | "currency_mismatch"
+  | "amount_missing" | "amount_unparseable" | "amount_mismatch";
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   const g = methodGuard(req, "POST");
   if (g) return g;
 
-  // 1. Auth + validation.
   const auth = await requireUser(req);
   if ("error" in auth) return auth.error;
 
@@ -39,7 +45,6 @@ Deno.serve(async (req) => {
   if (!validBody(parsed.body)) return jsonResponse({ error: "invalid_body" }, 400, origin);
   const orderId = parsed.body.order_id;
 
-  // 2. Feature-flag gate BEFORE any DB mutation.
   const cfg = loadUpaymentsConfig();
   if (!cfg) {
     return jsonResponse({ status: "pending", reason: "provider_disabled" }, 202, origin);
@@ -47,20 +52,23 @@ Deno.serve(async (req) => {
 
   const svc = serviceClient();
 
-  // 3. Lookup latest upayments attempt (read-only, ownership enforced by claim).
-  const { data: att, error: aErr } = await svc
-    .from("payment_attempts")
-    .select("id")
-    .eq("order_id", orderId)
-    .eq("provider", "upayments")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (aErr) return jsonResponse({ error: "server_error" }, 500, origin);
-  if (!att) return jsonResponse({ error: "no_attempt" }, 404, origin);
+  // Ownership-first attempt lookup (no direct table read).
+  const { data: resolve, error: rErr } = await svc.rpc(
+    "v2_resolve_owned_latest_upayments_attempt",
+    { p_actor_user_id: auth.userId, p_order_id: orderId, p_allow_admin: false },
+  );
+  if (rErr) return jsonResponse({ error: "server_error" }, 500, origin);
+  const rs = (resolve ?? {}) as Record<string, unknown>;
+  if (rs.ok !== true) {
+    const err = String(rs.error ?? "not_found");
+    // Do not reveal whether the order exists for another user.
+    return jsonResponse({ error: err === "no_attempt" ? "no_attempt" : "not_found" },
+      404, origin);
+  }
+  const attemptId = String(rs.attempt_id);
 
   const { data: claim, error: clErr } = await svc.rpc("v2_claim_payment_status_check", {
-    p_actor_user_id: auth.userId, p_order_id: orderId, p_attempt_id: att.id,
+    p_actor_user_id: auth.userId, p_order_id: orderId, p_attempt_id: attemptId,
     p_allow_admin: false,
   });
   if (clErr) return jsonResponse({ error: safeRpcError(clErr) }, 400, origin);
@@ -79,9 +87,8 @@ Deno.serve(async (req) => {
   const providerOrderId = cl.provider_order_id ? String(cl.provider_order_id) : null;
   const merchantRef = String(cl.merchant_reference);
   const amountFils = Number(cl.amount_fils);
-  const attemptId = String(cl.attempt_id);
+  const settledAttemptId = String(cl.attempt_id);
 
-  // 4. Query provider. Fix: no double slash before session_id form.
   const path = trackId
     ? `/get-payment-status/${encodeURIComponent(trackId)}`
     : `/get-payment-status?session_id=${encodeURIComponent(sessionId ?? "")}`;
@@ -96,44 +103,61 @@ Deno.serve(async (req) => {
 
   const ex = extractStatusFields(res.json);
   const verdict = normalizePaymentStatus(ex.result);
+  const sanitized = sanitizeProviderPayload("payment_status", res.json, res.status);
+  const providerIdForEvt = providerOrderId ?? ex.providerOrderId ?? ex.trackId ?? trackId;
+  const rejectEvt = (reason: RejectionReason) =>
+    eventIdForStatus(orderId, providerIdForEvt, `reject:${reason}`);
 
-  // 5. Identifier correlation. Merchant reference MUST match.
-  if (!ex.merchantReference || ex.merchantReference !== merchantRef) {
-    return jsonResponse({ status: "pending", reason: "merchant_reference_mismatch" }, 202, origin);
+  const recordRejection = async (reason: RejectionReason) => {
+    const { error } = await svc.rpc("v2_record_upayments_verification_rejection", {
+      p_actor_user_id: auth.userId,
+      p_order_id: orderId,
+      p_attempt_id: settledAttemptId,
+      p_external_event_id: rejectEvt(reason),
+      p_reason: reason,
+      p_sanitized_payload: sanitized,
+    });
+    return error;
+  };
+  const rejectResponse = async (reason: RejectionReason) => {
+    const err = await recordRejection(reason);
+    if (err) return jsonResponse({ error: "recovery_required" }, 500, origin);
+    return jsonResponse({ status: "pending", reason }, 202, origin);
+  };
+
+  // Terminal correlation. Merchant reference MUST match.
+  if (!ex.merchantReference) return await rejectResponse("missing_merchant_reference");
+  if (ex.merchantReference !== merchantRef) {
+    return await rejectResponse("merchant_reference_mismatch");
   }
-  // The lookup identifier we used MUST match provider echo when returned.
   if (trackId) {
     if (!ex.trackId || ex.trackId !== trackId) {
-      return jsonResponse({ status: "pending", reason: "track_id_mismatch" }, 202, origin);
+      return await rejectResponse("track_id_mismatch");
     }
   } else if (sessionId) {
     if (!ex.sessionId || ex.sessionId !== sessionId) {
-      return jsonResponse({ status: "pending", reason: "session_id_mismatch" }, 202, origin);
+      return await rejectResponse("session_id_mismatch");
     }
   }
-  // If we already had a provider_order_id, echo must match. If we didn't,
-  // use the newly returned one when settling.
   if (providerOrderId && ex.providerOrderId && ex.providerOrderId !== providerOrderId) {
-    return jsonResponse({ status: "pending", reason: "provider_order_id_mismatch" }, 202, origin);
+    return await rejectResponse("provider_order_id_mismatch");
   }
   const effectiveProviderOrderId = providerOrderId ?? ex.providerOrderId ?? null;
 
-  const sanitized = sanitizeProviderPayload("payment_status", res.json, res.status);
   const evtId = eventIdForStatus(orderId,
     effectiveProviderOrderId ?? ex.trackId ?? trackId, verdict.verdict);
 
   if (verdict.verdict === "captured") {
-    if (!ex.currency || ex.currency.toUpperCase() !== "KWD") {
-      return jsonResponse({ status: "pending", reason: "currency_mismatch" }, 202, origin);
-    }
+    if (!ex.currency) return await rejectResponse("currency_missing");
+    if (ex.currency.toUpperCase() !== "KWD") return await rejectResponse("currency_mismatch");
+    if (!ex.amountRaw) return await rejectResponse("amount_missing");
     let providerAmount: number;
-    try { providerAmount = kwdDecimalToFils(ex.amountRaw ?? ""); }
-    catch { return jsonResponse({ status: "pending", reason: "amount_unparseable" }, 202, origin); }
-    if (providerAmount !== amountFils) {
-      return jsonResponse({ status: "pending", reason: "amount_mismatch" }, 202, origin);
-    }
+    try { providerAmount = kwdDecimalToFils(ex.amountRaw); }
+    catch { return await rejectResponse("amount_unparseable"); }
+    if (providerAmount !== amountFils) return await rejectResponse("amount_mismatch");
+
     const { error: sErr } = await svc.rpc("v2_settle_verified_upayments_payment", {
-      p_actor_user_id: auth.userId, p_order_id: orderId, p_attempt_id: attemptId,
+      p_actor_user_id: auth.userId, p_order_id: orderId, p_attempt_id: settledAttemptId,
       p_merchant_reference: merchantRef,
       p_track_id: trackId, p_session_id: sessionId,
       p_provider_order_id: effectiveProviderOrderId,
@@ -147,7 +171,7 @@ Deno.serve(async (req) => {
 
   if (verdict.verdict === "failed" || verdict.verdict === "cancelled") {
     const { error: fErr } = await svc.rpc("v2_mark_verified_payment_failure", {
-      p_actor_user_id: auth.userId, p_order_id: orderId, p_attempt_id: attemptId,
+      p_actor_user_id: auth.userId, p_order_id: orderId, p_attempt_id: settledAttemptId,
       p_merchant_reference: merchantRef, p_result: verdict.normalized,
       p_external_event_id: evtId, p_sanitized_payload: sanitized,
     });
@@ -155,6 +179,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ status: verdict.verdict, order_id: orderId }, 200, origin);
   }
 
-  // pending / unknown: never mutate money state.
+  // pending / unknown: never mutate money state, never audit-record.
   return jsonResponse({ status: "pending", reason: verdict.verdict }, 202, origin);
 });

@@ -4,17 +4,25 @@
 // local attempt's owner; nothing about the sender is trusted.
 //
 // Order:
-//   1) parse capped body (no auth)
-//   2) load config → if disabled, return pending/provider_disabled with ZERO DB action
-//   3) resolve local attempt from hinted identifiers
-//   4) claim → GET status → verify → settle/fail
+//   1) parse capped body (no auth, no DB)
+//   2) strict envelope validation (unknown keys, plain data, ≥1 hint) — no DB
+//   3) feature-flag gate → if disabled, return pending/provider_disabled (no DB)
+//   4) resolve local attempt from hinted identifiers
+//   5) claim → GET status → verify → settle/fail / record sanitized rejection
 
 import {
   jsonResponse, methodGuard, readBoundedJson, serviceClient,
   loadUpaymentsConfig, providerFetch, providerSuccessFlag,
   extractStatusFields, normalizePaymentStatus, kwdDecimalToFils,
   sanitizeProviderPayload, eventIdForStatus, safeRpcError,
+  validateWebhookEnvelope,
 } from "../_shared/v2Upayments.ts";
+
+type RejectionReason =
+  | "missing_merchant_reference" | "merchant_reference_mismatch"
+  | "track_id_mismatch" | "session_id_mismatch" | "provider_order_id_mismatch"
+  | "currency_missing" | "currency_mismatch"
+  | "amount_missing" | "amount_unparseable" | "amount_mismatch";
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
@@ -25,17 +33,17 @@ Deno.serve(async (req) => {
   const parsed = await readBoundedJson<Record<string, unknown>>(req);
   if (!parsed.ok) return jsonResponse({ error: parsed.error }, parsed.status, origin);
 
-  // 2. Feature-flag gate BEFORE any DB lookup/claim/update.
+  // 2. Strict envelope validation BEFORE any DB access or feature gate.
+  const env = validateWebhookEnvelope(parsed.body);
+  if (!env.ok) return jsonResponse({ error: env.error }, 400, origin);
+
+  // 3. Feature-flag gate BEFORE any DB lookup/claim/update.
   const cfg = loadUpaymentsConfig();
   if (!cfg) {
     return jsonResponse({ status: "pending", reason: "provider_disabled" }, 202, origin);
   }
 
-  // 3. Extract hints (never trusted for state).
   const ex = extractStatusFields(parsed.body);
-  if (!ex.trackId && !ex.sessionId && !ex.providerOrderId && !ex.merchantReference) {
-    return jsonResponse({ error: "unresolvable" }, 400, origin);
-  }
 
   const svc = serviceClient();
 
@@ -96,38 +104,48 @@ Deno.serve(async (req) => {
 
   const sx = extractStatusFields(res.json);
   const verdict = normalizePaymentStatus(sx.result);
+  const sanitized = sanitizeProviderPayload("payment_status_webhook", res.json, res.status);
+  const providerIdForEvt = providerOrderId ?? sx.providerOrderId ?? sx.trackId ?? trackId;
+  const rejectEvt = (reason: RejectionReason) =>
+    eventIdForStatus(orderId, providerIdForEvt, `reject:${reason}`);
 
-  if (!sx.merchantReference || sx.merchantReference !== merchantRef) {
-    return jsonResponse({ status: "pending", reason: "merchant_reference_mismatch" }, 202, origin);
-  }
+  const rejectResponse = async (reason: RejectionReason) => {
+    const { error } = await svc.rpc("v2_record_upayments_verification_rejection", {
+      p_actor_user_id: actorUserId,
+      p_order_id: orderId,
+      p_attempt_id: attemptId,
+      p_external_event_id: rejectEvt(reason),
+      p_reason: reason,
+      p_sanitized_payload: sanitized,
+    });
+    if (error) return jsonResponse({ error: "recovery_required" }, 500, origin);
+    return jsonResponse({ status: "pending", reason }, 202, origin);
+  };
+
+  if (!sx.merchantReference) return await rejectResponse("missing_merchant_reference");
+  if (sx.merchantReference !== merchantRef) return await rejectResponse("merchant_reference_mismatch");
   if (trackId) {
-    if (!sx.trackId || sx.trackId !== trackId) {
-      return jsonResponse({ status: "pending", reason: "track_id_mismatch" }, 202, origin);
-    }
+    if (!sx.trackId || sx.trackId !== trackId) return await rejectResponse("track_id_mismatch");
   } else if (sessionId) {
-    if (!sx.sessionId || sx.sessionId !== sessionId) {
-      return jsonResponse({ status: "pending", reason: "session_id_mismatch" }, 202, origin);
-    }
+    if (!sx.sessionId || sx.sessionId !== sessionId) return await rejectResponse("session_id_mismatch");
   }
   if (providerOrderId && sx.providerOrderId && sx.providerOrderId !== providerOrderId) {
-    return jsonResponse({ status: "pending", reason: "provider_order_id_mismatch" }, 202, origin);
+    return await rejectResponse("provider_order_id_mismatch");
   }
   const effectiveProviderOrderId = providerOrderId ?? sx.providerOrderId ?? null;
 
-  const sanitized = sanitizeProviderPayload("payment_status_webhook", res.json, res.status);
   const evtId = eventIdForStatus(orderId,
     effectiveProviderOrderId ?? sx.trackId ?? trackId, verdict.verdict);
 
   if (verdict.verdict === "captured") {
-    if (!sx.currency || sx.currency.toUpperCase() !== "KWD") {
-      return jsonResponse({ status: "pending", reason: "currency_mismatch" }, 202, origin);
-    }
+    if (!sx.currency) return await rejectResponse("currency_missing");
+    if (sx.currency.toUpperCase() !== "KWD") return await rejectResponse("currency_mismatch");
+    if (!sx.amountRaw) return await rejectResponse("amount_missing");
     let providerAmount: number;
-    try { providerAmount = kwdDecimalToFils(sx.amountRaw ?? ""); }
-    catch { return jsonResponse({ status: "pending", reason: "amount_unparseable" }, 202, origin); }
-    if (providerAmount !== amountFils) {
-      return jsonResponse({ status: "pending", reason: "amount_mismatch" }, 202, origin);
-    }
+    try { providerAmount = kwdDecimalToFils(sx.amountRaw); }
+    catch { return await rejectResponse("amount_unparseable"); }
+    if (providerAmount !== amountFils) return await rejectResponse("amount_mismatch");
+
     const { error: sErr } = await svc.rpc("v2_settle_verified_upayments_payment", {
       p_actor_user_id: actorUserId, p_order_id: orderId, p_attempt_id: attemptId,
       p_merchant_reference: merchantRef,
