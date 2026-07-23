@@ -11,6 +11,7 @@ const PaymentEventsPage = lazy(() => import("../sections/orders/PaymentEventsPag
 const EntitlementsPage = lazy(() => import("../sections/orders/EntitlementsPage"));
 const RefundsPage = lazy(() => import("../sections/orders/RefundsPage"));
 const RecoveryPage = lazy(() => import("../sections/orders/RecoveryPage"));
+const DiscountsPage = lazy(() => import("../sections/orders/DiscountsPage"));
 
 
 
@@ -125,7 +126,8 @@ export const adminSectionElements = {
   // Legacy admin tools retained as contextual links until fully replaced.
   ordersLegacyPurchases: wrap(<PurchaseHistoryManagement />),
   ordersRecovery: wrap(<RecoveryPage />),
-  discounts: wrap(<DiscountCodesManagement />),
+  discounts: wrap(<DiscountsPage />),
+  discountsLegacy: wrap(<DiscountCodesManagement />),
 
   // People
   users: wrap(<UsersManagement />),
