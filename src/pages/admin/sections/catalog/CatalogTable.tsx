@@ -544,8 +544,10 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
           <table className="w-full min-w-[960px] border-collapse text-sm" aria-busy={isFetching} aria-label="V2 catalog">
             <thead>
               <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="w-10 px-3 py-2">
-                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all on page" className="h-5 w-5" />
+                <th className="w-12 px-1 py-2">
+                  <label className="mx-auto flex h-11 w-11 cursor-pointer items-center justify-center" aria-label="Select all on page">
+                    <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all on page" className="h-5 w-5" />
+                  </label>
                 </th>
                 <th className="px-3 py-2">Resource</th>
                 <th className="px-3 py-2">Type</th>
