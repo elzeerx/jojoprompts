@@ -12,6 +12,8 @@ import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatKwd, safeHeroImageUrl, V2_COMMERCE_ENABLED, V2_COPY } from "@/config/v2Flags";
 import { ShieldCheck, Loader2, Timer } from "lucide-react";
+import { AddToCartButton } from "@/components/v2/AddToCartButton";
+
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Props {
@@ -159,15 +161,21 @@ export function QuickPreviewSheet({ slug, open, onOpenChange }: Props) {
                       V2_COPY.cards.addToLibrary[lang]
                     )}
                   </Button>
+                ) : product && V2_COMMERCE_ENABLED ? (
+                  <AddToCartButton
+                    productId={product.id}
+                    productType={product.product_type as "individual" | "bundle" | "lifetime" | "free"}
+                    titleEn={data.resource.title_en}
+                    titleAr={data.resource.title_ar}
+                    resourceType={data.resource.type ?? null}
+                    size="default"
+                  />
                 ) : product ? (
-                  <Button
-                    disabled
-                    variant={V2_COMMERCE_ENABLED ? "default" : "outline"}
-                    className="min-h-[44px]"
-                  >
+                  <Button disabled variant="outline" className="min-h-[44px]">
                     {V2_COPY.cards.checkoutSoon[lang]}
                   </Button>
                 ) : null}
+
               </div>
             </div>
           </div>
