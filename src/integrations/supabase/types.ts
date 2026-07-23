@@ -4551,6 +4551,7 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_admin_migration_preview: { Args: never; Returns: Json }
       v2_admin_order_metrics: {
         Args: { p_period_days?: number }
         Returns: Json
