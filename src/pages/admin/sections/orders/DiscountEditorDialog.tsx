@@ -197,7 +197,8 @@ export function DiscountEditorDialog({ open, onClose, discountId }: Props) {
             {hasUsage && (
               <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
                 This code has been used. Its <b>code, type, value, and lifetime flag</b> can no
-                longer change — archive it and create a new one instead.
+                longer change — archive it and create a new <b>unique</b> code instead (codes are
+                unique forever, including archived history).
                 <br />
                 <span dir="rtl">
                   تم استخدام هذا الرمز. لا يمكن تعديل الرمز أو النوع أو القيمة أو خيار الاشتراك مدى
@@ -215,6 +216,11 @@ export function DiscountEditorDialog({ open, onClose, discountId }: Props) {
                 maxLength={40}
                 disabled={hasUsage}
               />
+              <p className="text-xs text-muted-foreground">
+                Codes are globally unique forever, including archived history. Reusing a past code is not allowed.
+                <br />
+                <span dir="rtl">الرموز فريدة دائمًا بما في ذلك المؤرشفة — لا يمكن إعادة استخدام رمز سابق.</span>
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

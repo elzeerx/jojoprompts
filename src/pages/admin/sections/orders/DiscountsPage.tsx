@@ -432,11 +432,13 @@ export default function DiscountsPage() {
             <AlertDialogTitle>Archive discount / أرشفة الخصم</AlertDialogTitle>
             <AlertDialogDescription>
               <span className="font-mono">{archiveTarget?.code}</span> will be deactivated and hidden
-              from future checkouts. Historical redemptions on paid orders remain unchanged. This
-              cannot be undone.
+              from future checkouts. Historical redemptions on paid orders remain unchanged. Discount
+              codes are unique forever — this code cannot be reused after archiving; create a new
+              unique code instead. This cannot be undone.
               <br />
               <span dir="rtl" className="block mt-2">
                 سيتم إيقاف الرمز وإخفاؤه من عمليات الشراء المستقبلية مع الحفاظ على السجلات السابقة.
+                الرموز فريدة دائمًا — لا يمكن إعادة استخدام هذا الرمز بعد الأرشفة؛ أنشئ رمزًا جديدًا فريدًا.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
