@@ -180,12 +180,12 @@ export const routes: RouteConfig[] = [
   },
   {
     path: "pricing",
-    component: PricingPage,
+    component: V2PricingPage,
     protection: "public"
   },
   {
     path: "checkout",
-    component: CheckoutPage,
+    component: V2CheckoutPage,
     protection: "public"
   },
   {
