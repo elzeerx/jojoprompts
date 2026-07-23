@@ -86,3 +86,15 @@ verify_jwt = true
 
 [functions.mcp]
 verify_jwt = false
+
+[functions.v2-upayments-checkout]
+verify_jwt = false
+
+[functions.v2-upayments-status]
+verify_jwt = false
+
+[functions.v2-upayments-webhook]
+verify_jwt = false
+
+[functions.v2-upayments-refund]
+verify_jwt = false
