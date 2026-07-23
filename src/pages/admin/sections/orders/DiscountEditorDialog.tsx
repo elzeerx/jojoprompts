@@ -197,7 +197,8 @@ export function DiscountEditorDialog({ open, onClose, discountId }: Props) {
             {hasUsage && (
               <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
                 This code has been used. Its <b>code, type, value, and lifetime flag</b> can no
-                longer change — archive it and create a new one instead.
+                longer change — archive it and create a new <b>unique</b> code instead (codes are
+                unique forever, including archived history).
                 <br />
                 <span dir="rtl">
                   تم استخدام هذا الرمز. لا يمكن تعديل الرمز أو النوع أو القيمة أو خيار الاشتراك مدى
