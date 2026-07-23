@@ -4333,6 +4333,78 @@ export type Database = {
         Returns: boolean
       }
       user_has_any_role: { Args: { _user_id: string }; Returns: boolean }
+      v2_admin_list_payment_attempts: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_order_id?: string
+          p_status?: string
+        }
+        Returns: {
+          check_count: number
+          checkout_url: string
+          created_at: string
+          currency: string
+          expected_amount_fils: number
+          id: string
+          last_checked_at: string
+          merchant_reference: string
+          next_check_after: string
+          order_id: string
+          provider: string
+          provider_order_id: string
+          request_payload_size: number
+          response_payload_size: number
+          session_id: string
+          status: string
+          track_id: string
+          updated_at: string
+          verified_payload_size: number
+        }[]
+      }
+      v2_admin_list_payment_events: {
+        Args: { p_limit?: number; p_offset?: number; p_order_id?: string }
+        Returns: {
+          amount_fils: number
+          created_at: string
+          currency: string
+          event_type: Database["public"]["Enums"]["v2_payment_event_type"]
+          external_event_id: string
+          id: string
+          order_id: string
+          provider: string
+          raw_payload_size: number
+          received_at: string
+        }[]
+      }
+      v2_admin_reconciliation_summary: { Args: never; Returns: Json }
+      v2_apply_paid_order_locked: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
+      v2_checkout_state: { Args: { p_order_id: string }; Returns: Json }
+      v2_create_checkout_order: {
+        Args: {
+          p_actor_user_id: string
+          p_discount_code?: string
+          p_idempotency_key: string
+          p_product_ids: string[]
+        }
+        Returns: Json
+      }
+      v2_lifetime_progress: { Args: never; Returns: Json }
+      v2_mark_verified_payment_failure: {
+        Args: {
+          p_actor_user_id: string
+          p_attempt_id: string
+          p_external_event_id: string
+          p_merchant_reference: string
+          p_order_id: string
+          p_result: string
+          p_sanitized_payload: Json
+        }
+        Returns: Json
+      }
       v2_my_payment_attempts: {
         Args: { p_order_id: string }
         Returns: {
@@ -4359,6 +4431,38 @@ export type Database = {
           provider: string
           received_at: string
         }[]
+      }
+      v2_record_upayments_charge_response: {
+        Args: {
+          p_actor_user_id: string
+          p_attempt_id: string
+          p_checkout_url: string
+          p_external_event_id: string
+          p_merchant_reference: string
+          p_order_id: string
+          p_provider_order_id: string
+          p_sanitized_response: Json
+          p_session_id: string
+          p_track_id: string
+        }
+        Returns: Json
+      }
+      v2_settle_verified_upayments_payment: {
+        Args: {
+          p_actor_user_id: string
+          p_amount_fils: number
+          p_attempt_id: string
+          p_currency: string
+          p_external_event_id: string
+          p_merchant_reference: string
+          p_order_id: string
+          p_provider_order_id: string
+          p_result: string
+          p_sanitized_verified_payload: Json
+          p_session_id: string
+          p_track_id: string
+        }
+        Returns: Json
       }
       v2_user_owns_resource: {
         Args: { p_resource_id: string }
