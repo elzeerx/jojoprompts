@@ -216,6 +216,11 @@ export function DiscountEditorDialog({ open, onClose, discountId }: Props) {
                 maxLength={40}
                 disabled={hasUsage}
               />
+              <p className="text-xs text-muted-foreground">
+                Codes are globally unique forever, including archived history. Reusing a past code is not allowed.
+                <br />
+                <span dir="rtl">الرموز فريدة دائمًا بما في ذلك المؤرشفة — لا يمكن إعادة استخدام رمز سابق.</span>
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
