@@ -389,7 +389,7 @@ export function useCreateRefundRequest() {
         body: { action: "create", ...args },
       });
       if (error) {
-        const code = await extractInvokeErrorCode(error);
+        const code = await extractInvokeErrorCode(null, error);
         throw new Error(code ?? "unknown_error");
       }
       return data as { refund_id?: string; ok?: boolean; error?: string; [k: string]: unknown };
@@ -410,7 +410,7 @@ export function useCheckRefundStatus() {
         body: { action: "status", refund_id },
       });
       if (error) {
-        const code = await extractInvokeErrorCode(error);
+        const code = await extractInvokeErrorCode(null, error);
         throw new Error(code ?? "unknown_error");
       }
       return data as Record<string, unknown>;
@@ -430,7 +430,7 @@ export function useCheckPaymentStatus() {
         body: { order_id },
       });
       if (error) {
-        const code = await extractInvokeErrorCode(error);
+        const code = await extractInvokeErrorCode(null, error);
         throw new Error(code ?? "unknown_error");
       }
       return data as Record<string, unknown>;
