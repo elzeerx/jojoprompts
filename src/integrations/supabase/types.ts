@@ -3831,34 +3831,20 @@ export type Database = {
             Args: { admin_user_id?: string; target_user_id: string }
             Returns: Json
           }
-      admin_finalize_resource_package:
-        | {
-            Args: {
-              p_actor_user_id: string
-              p_checksum_sha256_client: string
-              p_content_type: string
-              p_file_name: string
-              p_resource_id: string
-              p_resource_version_id: string
-              p_size_bytes: number
-              p_storage_bucket: string
-              p_storage_path: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_actor_user_id: string
-              p_file_name: string
-              p_file_size: number
-              p_mime_type: string
-              p_resource_id: string
-              p_sha256: string
-              p_storage_path: string
-              p_version_id: string
-            }
-            Returns: Json
-          }
+      admin_finalize_resource_package: {
+        Args: {
+          p_actor_user_id: string
+          p_checksum_sha256_client: string
+          p_content_type: string
+          p_file_name: string
+          p_resource_id: string
+          p_resource_version_id: string
+          p_size_bytes: number
+          p_storage_bucket: string
+          p_storage_path: string
+        }
+        Returns: Json
+      }
       admin_publish_resource: { Args: { p_resource_id: string }; Returns: Json }
       admin_transition_resource_lifecycle: {
         Args: { p_action: string; p_resource_id: string }
