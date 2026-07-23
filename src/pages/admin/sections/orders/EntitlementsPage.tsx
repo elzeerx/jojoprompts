@@ -149,8 +149,13 @@ export default function EntitlementsPage() {
               {(query.data?.rows ?? []).map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="text-xs">{e.user_email_masked ?? "—"}</TableCell>
-                  <TableCell><Badge variant="outline">{e.scope}</Badge></TableCell>
-                  <TableCell className="text-xs">{e.resource_title ?? (e.scope === "library" ? "Full library" : "—")}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{e.scope}</Badge>
+                    {e.collection_key && (
+                      <Badge variant="secondary" className="ml-1 text-[10px]">{e.collection_key}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs">{describeEntitlementTarget(e)}</TableCell>
                   <TableCell><Badge variant="secondary">{e.grant_reason}</Badge></TableCell>
                   <TableCell><Badge variant={stateTone(e.state) as never}>{e.state}</Badge></TableCell>
                   <TableCell className="text-xs">{formatDateTime(e.granted_at)}</TableCell>
