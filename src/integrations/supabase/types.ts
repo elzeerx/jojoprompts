@@ -1673,6 +1673,7 @@ export type Database = {
           id: string
           idempotency_key: string | null
           legacy_transaction_id: string | null
+          lifetime_credit_applied_fils: number
           order_number: string
           paid_fils: number
           placed_at: string | null
@@ -1693,6 +1694,7 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           legacy_transaction_id?: string | null
+          lifetime_credit_applied_fils?: number
           order_number: string
           paid_fils?: number
           placed_at?: string | null
@@ -1713,6 +1715,7 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           legacy_transaction_id?: string | null
+          lifetime_credit_applied_fils?: number
           order_number?: string
           paid_fils?: number
           placed_at?: string | null
@@ -1772,6 +1775,80 @@ export type Database = {
             columns: ["resource_version_id"]
             isOneToOne: false
             referencedRelation: "resource_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_attempts: {
+        Row: {
+          check_count: number
+          checkout_url: string | null
+          created_at: string
+          currency: string
+          expected_amount_fils: number
+          id: string
+          last_checked_at: string | null
+          merchant_reference: string
+          next_check_after: string | null
+          order_id: string
+          provider: string
+          provider_order_id: string | null
+          request_payload: Json
+          response_payload: Json
+          session_id: string | null
+          status: string
+          track_id: string | null
+          updated_at: string
+          verified_payload: Json
+        }
+        Insert: {
+          check_count?: number
+          checkout_url?: string | null
+          created_at?: string
+          currency?: string
+          expected_amount_fils: number
+          id?: string
+          last_checked_at?: string | null
+          merchant_reference: string
+          next_check_after?: string | null
+          order_id: string
+          provider: string
+          provider_order_id?: string | null
+          request_payload?: Json
+          response_payload?: Json
+          session_id?: string | null
+          status?: string
+          track_id?: string | null
+          updated_at?: string
+          verified_payload?: Json
+        }
+        Update: {
+          check_count?: number
+          checkout_url?: string | null
+          created_at?: string
+          currency?: string
+          expected_amount_fils?: number
+          id?: string
+          last_checked_at?: string | null
+          merchant_reference?: string
+          next_check_after?: string | null
+          order_id?: string
+          provider?: string
+          provider_order_id?: string | null
+          request_payload?: Json
+          response_payload?: Json
+          session_id?: string | null
+          status?: string
+          track_id?: string | null
+          updated_at?: string
+          verified_payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_attempts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -2557,14 +2634,55 @@ export type Database = {
         }
         Relationships: []
       }
+      refund_items: {
+        Row: {
+          amount_fils: number
+          created_at: string
+          id: string
+          order_item_id: string
+          refund_id: string
+        }
+        Insert: {
+          amount_fils: number
+          created_at?: string
+          id?: string
+          order_item_id: string
+          refund_id: string
+        }
+        Update: {
+          amount_fils?: number
+          created_at?: string
+          id?: string
+          order_item_id?: string
+          refund_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_items_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       refunds: {
         Row: {
           amount_fils: number
           created_at: string
           id: string
+          last_checked_at: string | null
           order_id: string
           processed_at: string | null
           provider_reference: string | null
+          provider_refund_order_id: string | null
           reason: string | null
           requested_at: string
           status: Database["public"]["Enums"]["v2_refund_status"]
@@ -2575,9 +2693,11 @@ export type Database = {
           amount_fils: number
           created_at?: string
           id?: string
+          last_checked_at?: string | null
           order_id: string
           processed_at?: string | null
           provider_reference?: string | null
+          provider_refund_order_id?: string | null
           reason?: string | null
           requested_at?: string
           status?: Database["public"]["Enums"]["v2_refund_status"]
@@ -2588,9 +2708,11 @@ export type Database = {
           amount_fils?: number
           created_at?: string
           id?: string
+          last_checked_at?: string | null
           order_id?: string
           processed_at?: string | null
           provider_reference?: string | null
+          provider_refund_order_id?: string | null
           reason?: string | null
           requested_at?: string
           status?: Database["public"]["Enums"]["v2_refund_status"]
@@ -3719,6 +3841,120 @@ export type Database = {
           },
         ]
       }
+      v2_discount_codes: {
+        Row: {
+          applies_to_all: boolean
+          code: string
+          code_normalized: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          kind: string
+          max_total_uses: number | null
+          max_uses_per_user: number | null
+          min_order_fils: number
+          notes: string | null
+          starts_at: string | null
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          applies_to_all?: boolean
+          code: string
+          code_normalized?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          kind: string
+          max_total_uses?: number | null
+          max_uses_per_user?: number | null
+          min_order_fils?: number
+          notes?: string | null
+          starts_at?: string | null
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          applies_to_all?: boolean
+          code?: string
+          code_normalized?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          max_total_uses?: number | null
+          max_uses_per_user?: number | null
+          min_order_fils?: number
+          notes?: string | null
+          starts_at?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      v2_discount_redemptions: {
+        Row: {
+          amount_discount_fils: number
+          consumed_at: string | null
+          created_at: string
+          discount_code_id: string
+          id: string
+          order_id: string
+          released_at: string | null
+          reserved_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_discount_fils: number
+          consumed_at?: string | null
+          created_at?: string
+          discount_code_id: string
+          id?: string
+          order_id: string
+          released_at?: string | null
+          reserved_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_discount_fils?: number
+          consumed_at?: string | null
+          created_at?: string
+          discount_code_id?: string
+          id?: string
+          order_id?: string
+          released_at?: string | null
+          reserved_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_discount_redemptions_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "v2_discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "v2_discount_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       admin_activity_summary: {
@@ -4097,6 +4333,33 @@ export type Database = {
         Returns: boolean
       }
       user_has_any_role: { Args: { _user_id: string }; Returns: boolean }
+      v2_my_payment_attempts: {
+        Args: { p_order_id: string }
+        Returns: {
+          checkout_url: string
+          created_at: string
+          currency: string
+          expected_amount_fils: number
+          id: string
+          merchant_reference: string
+          order_id: string
+          provider: string
+          status: string
+          updated_at: string
+        }[]
+      }
+      v2_my_payment_events: {
+        Args: { p_order_id: string }
+        Returns: {
+          amount_fils: number
+          currency: string
+          event_type: Database["public"]["Enums"]["v2_payment_event_type"]
+          id: string
+          order_id: string
+          provider: string
+          received_at: string
+        }[]
+      }
       v2_user_owns_resource: {
         Args: { p_resource_id: string }
         Returns: boolean
