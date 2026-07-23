@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/useTranslation";
 import { V2_COPY } from "@/config/v2Flags";
+import { CartIconButton } from "@/components/v2/CartIconButton";
 
 interface NavItem {
   to: string;
@@ -19,15 +20,17 @@ const CATEGORY_LINKS: NavItem[] = [
   { to: "/bundles", label: V2_COPY.nav.bundles },
 ];
 
-const CONTEXT_LINKS: NavItem[] = [
+const SECONDARY_LINKS: NavItem[] = [
+  { to: "/pricing", label: { en: "Pricing", ar: "الأسعار" } },
   { to: "/library", label: V2_COPY.nav.library, auth: true },
+  { to: "/orders", label: { en: "Orders", ar: "طلباتي" }, auth: true },
 ];
 
 export function V2SubNav({ authed }: { authed: boolean }) {
   const { language, isRTL } = useTranslation();
   const items = [
     ...CATEGORY_LINKS,
-    ...CONTEXT_LINKS.filter((l) => !l.auth || authed),
+    ...SECONDARY_LINKS.filter((l) => !l.auth || authed),
   ];
   return (
     <nav
@@ -35,7 +38,7 @@ export function V2SubNav({ authed }: { authed: boolean }) {
       dir={isRTL ? "rtl" : "ltr"}
       aria-label="V2 catalog navigation"
     >
-      <div className="container mx-auto flex gap-1 overflow-x-auto px-3 py-2">
+      <div className="container mx-auto flex items-center gap-1 overflow-x-auto px-3 py-2">
         {items.map((l) => (
           <NavLink
             key={l.to}
@@ -53,7 +56,11 @@ export function V2SubNav({ authed }: { authed: boolean }) {
             {l.label[language as "en" | "ar"] ?? l.label.en}
           </NavLink>
         ))}
+        <div className="ms-auto shrink-0">
+          <CartIconButton />
+        </div>
       </div>
     </nav>
   );
 }
+
