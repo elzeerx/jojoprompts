@@ -69,26 +69,30 @@ export function useAuthoritativeCart() {
       );
       let resourcesById = new Map<string, { id: string; slug: string; type: string; title_en: string; title_ar: string | null }>();
       if (linkedResourceIds.length > 0) {
-        const { data: rrows } = await supabase
+        const { data: rrows, error: rErr } = await supabase
           .from("resources")
           .select("id, slug, type, title_en, title_ar")
           .in("id", linkedResourceIds);
+        if (rErr) throw rErr;
         (rrows ?? []).forEach((r: any) => resourcesById.set(r.id, r));
       }
 
       const byId = new Map<string, typeof products[number]>();
       products.forEach((p) => byId.set(p.id, p));
 
-      // For bundles, expand member resources to detect lifetime coverage.
+      // For bundles, expand member resources. Server blocks a bundle when ANY
+      // member is already owned — mirror that here so the UI never lets a
+      // partial-overlap bundle appear chargeable.
       const bundleIds = products
         .filter((p) => p.product_type === "bundle")
         .map((p) => p.id);
       let bundleItems: Array<{ product_id: string; resource_id: string }> = [];
       if (bundleIds.length > 0) {
-        const { data: bi } = await (supabase as any)
+        const { data: bi, error: biErr } = await (supabase as any)
           .from("product_bundle_items")
           .select("product_id, resource_id")
           .in("product_id", bundleIds);
+        if (biErr) throw biErr;
         bundleItems = (bi ?? []) as Array<{ product_id: string; resource_id: string }>;
       }
       const bundleMembers = new Map<string, string[]>();
@@ -134,7 +138,8 @@ export function useAuthoritativeCart() {
         }
         if (p.product_type === "bundle") {
           const members = bundleMembers.get(p.id) ?? [];
-          if (members.length > 0 && members.every((rid) => ownedResourceIds.has(rid))) {
+          // ANY-member conflict → matches server checkout guard.
+          if (members.some((rid) => ownedResourceIds.has(rid))) {
             return { ...base, status: "owned" as const };
           }
         }
@@ -151,3 +156,4 @@ export function useAuthoritativeCart() {
     },
   });
 }
+

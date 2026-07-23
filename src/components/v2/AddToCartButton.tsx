@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, Check } from "lucide-react";
-import { useCart } from "@/hooks/v2/useCart";
+import { useCart, CART_MAX_ITEMS } from "@/hooks/v2/useCart";
 import { useTranslation } from "@/hooks/useTranslation";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,13 @@ export function AddToCartButton({
     add: lang === "ar" ? "أضف إلى السلة" : "Add to cart",
     view: lang === "ar" ? "عرض السلة" : "View cart",
     added: lang === "ar" ? "أُضيف إلى السلة" : "Added to cart",
+    dupTitle: lang === "ar" ? "موجود بالفعل في السلة" : "Already in cart",
+    capTitle: lang === "ar" ? "بلغت الحد الأقصى للسلة" : "Cart is full",
+    capDesc:
+      lang === "ar"
+        ? `يمكن أن تحتوي السلة على ${CART_MAX_ITEMS} عناصر كحد أقصى.`
+        : `Your cart can hold up to ${CART_MAX_ITEMS} items.`,
+    invalid: lang === "ar" ? "تعذّر إضافة العنصر." : "Couldn't add this item.",
   };
 
   if (inCart) {
@@ -63,7 +70,7 @@ export function AddToCartButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        cart.add({
+        const res = cart.add({
           product_id: productId,
           snapshot: {
             title_en: titleEn,
@@ -72,7 +79,15 @@ export function AddToCartButton({
             product_type: productType,
           },
         });
-        toast({ title: t.added });
+        if (res.ok) {
+          toast({ title: t.added });
+        } else if (res.reason === "cap_reached") {
+          toast({ variant: "destructive", title: t.capTitle, description: t.capDesc });
+        } else if (res.reason === "duplicate") {
+          toast({ title: t.dupTitle });
+        } else {
+          toast({ variant: "destructive", title: t.invalid });
+        }
       }}
     >
       <ShoppingBag className="h-4 w-4 me-1" aria-hidden />
