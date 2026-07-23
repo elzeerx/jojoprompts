@@ -223,16 +223,20 @@ Deno.serve(async (req) => {
   }
   const path = b.path;
   const checksum = b.checksum_sha256_client;
-  if (typeof path !== "string" || !path.startsWith(pathPrefix) ||
-      path.length > pathPrefix.length + 220) {
-    return json(ERRORS.BAD_REQUEST("path invalid"), 400, cors);
-  }
-  if (typeof checksum !== "string" || !HEX64_RE.test(checksum)) {
+  if (typeof path !== "string" || typeof checksum !== "string" || !HEX64_RE.test(checksum)) {
     return json(ERRORS.BAD_REQUEST("checksum_sha256_client must be 64 hex"), 400, cors);
   }
+  // Strict path shape: <resource_id>/<version_id>/<13-digit-ts>_<file_name>
+  const LEAF_RE = new RegExp(
+    `^${resource_id}/${resource_version_id}/(\\d{13})_([A-Za-z0-9][A-Za-z0-9._-]{0,199})$`,
+  );
+  const m = path.match(LEAF_RE);
+  if (!m || m[2] !== file_name) {
+    return json(ERRORS.BAD_REQUEST("path invalid"), 400, cors);
+  }
+  const objectLeaf = `${m[1]}_${m[2]}`;
 
   // Verify object existence AND actual size by listing the version prefix.
-  const objectLeaf = path.slice(pathPrefix.length);
   const { data: listed, error: lErr } = await admin.storage
     .from(BUCKET)
     .list(pathPrefix.slice(0, -1), { limit: 1000, search: objectLeaf });
@@ -246,90 +250,50 @@ Deno.serve(async (req) => {
     ), 400, cors);
   }
 
-  // Idempotent register on the current version. Duplicate (path) => reuse existing.
-  const { data: existingFile, error: exErr } = await admin
-    .from("resource_files")
-    .select("id")
-    .eq("resource_version_id", resource_version_id)
-    .eq("storage_path", path)
-    .maybeSingle();
-  if (exErr) { console.error("resource_files lookup", exErr.message); return json(ERRORS.SERVER, 500, cors); }
-
-  let resource_file_id: string;
-  if (existingFile?.id) {
-    resource_file_id = existingFile.id;
-  } else {
-    const { data: inserted, error: fErr } = await admin
-      .from("resource_files")
-      .insert({
-        resource_version_id: resource_version_id,
-        storage_bucket: BUCKET,
-        storage_path: path,
-        file_name: file_name,
-        content_type: content_type,
-        size_bytes: size_bytes,
-        checksum_sha256: checksum.toLowerCase(), // stored as client-declared
-      })
-      .select("id")
-      .single();
-    if (fErr || !inserted) {
-      console.error("resource_files insert", fErr?.message);
-      return json(ERRORS.SERVER, 500, cors);
-    }
-    resource_file_id = inserted.id;
-  }
-
-  // Ensure a pending scan exists for this version. If none pending, insert one.
-  // If the enqueue fails, return retryable so the client can retry finalize; the
-  // file is already registered idempotently, so retry is safe.
-  const { data: openScan } = await admin
-    .from("package_scans")
-    .select("id, status")
-    .eq("resource_version_id", resource_version_id)
-    .in("status", ["pending", "clean", "suspicious", "malicious", "failed"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  let scanQueued = openScan?.status === "pending";
-  if (!openScan || openScan.status !== "pending") {
-    const { error: scanErr } = await admin.from("package_scans").insert({
-      resource_version_id: resource_version_id,
-      status: "pending",
-      scanner: "pending-external",
-    });
-    if (scanErr) {
-      console.error("package_scans insert", scanErr.message);
-      return json(ERRORS.RETRYABLE("scan enqueue failed; retry finalize"), 502, cors);
-    }
-    scanQueued = true;
-  }
-
-  // Transactional-ish audit (best-effort, but logged if it fails)
-  const { error: auditErr } = await admin.from("activity_events").insert({
-    actor_user_id: userId,
-    actor_type: "admin",
-    entity_type: "resource_file",
-    entity_id: resource_file_id,
-    action: "package_upload_finalized",
-    metadata: {
-      resource_id,
-      resource_version_id,
-      storage_path: path,
-      file_name,
-      size_bytes,
-      content_type,
-      checksum_sha256_client_declared: true,
+  // Atomic registration + pending scan + audit via SECURITY DEFINER RPC.
+  // If any step fails, the entire transaction rolls back.
+  const { data: rpc, error: rpcErr } = await admin.rpc(
+    "admin_finalize_resource_package",
+    {
+      p_actor_user_id: userId,
+      p_resource_id: resource_id,
+      p_resource_version_id: resource_version_id,
+      p_storage_bucket: BUCKET,
+      p_storage_path: path,
+      p_file_name: file_name,
+      p_content_type: content_type,
+      p_size_bytes: size_bytes,
+      p_checksum_sha256_client: checksum.toLowerCase(),
     },
-  });
-  if (auditErr) console.error("activity_events insert", auditErr.message);
+  );
+  if (rpcErr) {
+    const msg = rpcErr.message ?? "";
+    console.error("admin_finalize_resource_package", msg);
+    if (msg.includes("forbidden")) return json(ERRORS.FORBIDDEN, 403, cors);
+    if (msg.includes("resource_not_found") || msg.includes("version_not_found")) {
+      return json(ERRORS.NOT_FOUND("resource or version"), 404, cors);
+    }
+    if (msg.includes("path_conflict")) return json(ERRORS.CONFLICT("path already registered with different metadata"), 409, cors);
+    if (msg.includes("invalid_resource_type") || msg.includes("resource_archived") || msg.includes("version_not_current")) {
+      return json(ERRORS.BAD_REQUEST(msg.replace(/.*"([^"]+)".*/, "$1")), 400, cors);
+    }
+    return json(ERRORS.RETRYABLE("finalize failed; retry"), 502, cors);
+  }
+  const result = rpc as {
+    ok: boolean;
+    resource_file_id: string;
+    newly_registered: boolean;
+    scan_created: boolean;
+    scan_status: string;
+  };
 
   return json(
     {
       ok: true,
-      resource_file_id,
-      scan_status: "pending",
-      scan_queued: scanQueued,
+      resource_file_id: result.resource_file_id,
+      newly_registered: result.newly_registered,
+      scan_created: result.scan_created,
+      scan_status: result.scan_status,
       checksum_verified: false,
     },
     200,
