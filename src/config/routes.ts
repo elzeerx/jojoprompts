@@ -57,6 +57,12 @@ const V2ImageStylesPage = lazy(() => import("@/pages/v2/ImageStylesPage"));
 const V2BundlesPage = lazy(() => import("@/pages/v2/BundlesPage"));
 const V2ResourceDetailPage = lazy(() => import("@/pages/v2/ResourceDetailPage"));
 const V2LibraryPage = lazy(() => import("@/pages/v2/LibraryPage"));
+const V2CartPage = lazy(() => import("@/pages/v2/CartPage"));
+const V2CheckoutPage = lazy(() => import("@/pages/v2/V2CheckoutPage"));
+const V2CheckoutReturnPage = lazy(() => import("@/pages/v2/V2CheckoutReturnPage"));
+const V2CheckoutCancelPage = lazy(() => import("@/pages/v2/V2CheckoutCancelPage"));
+const V2OrdersPage = lazy(() => import("@/pages/v2/V2OrdersPage"));
+const V2PricingPage = lazy(() => import("@/pages/v2/V2PricingPage"));
 
 
 /**
