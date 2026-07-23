@@ -1331,6 +1331,7 @@ export type Database = {
       }
       entitlements: {
         Row: {
+          collection_key: string | null
           created_at: string
           expires_at: string | null
           grant_reason: Database["public"]["Enums"]["v2_grant_reason"]
@@ -1348,6 +1349,7 @@ export type Database = {
           version_major: number | null
         }
         Insert: {
+          collection_key?: string | null
           created_at?: string
           expires_at?: string | null
           grant_reason: Database["public"]["Enums"]["v2_grant_reason"]
@@ -1365,6 +1367,7 @@ export type Database = {
           version_major?: number | null
         }
         Update: {
+          collection_key?: string | null
           created_at?: string
           expires_at?: string | null
           grant_reason?: Database["public"]["Enums"]["v2_grant_reason"]
@@ -4180,15 +4183,25 @@ export type Database = {
         Returns: Json
       }
       anonymize_ip_address: { Args: { ip_address: string }; Returns: string }
-      authorize_resource_download: {
-        Args: { p_file_id: string; p_user_id: string }
-        Returns: {
-          content_type: string
-          file_name: string
-          storage_bucket: string
-          storage_path: string
-        }[]
-      }
+      authorize_resource_download:
+        | {
+            Args: { p_file_id: string }
+            Returns: {
+              content_type: string
+              file_name: string
+              storage_bucket: string
+              storage_path: string
+            }[]
+          }
+        | {
+            Args: { p_file_id: string; p_user_id: string }
+            Returns: {
+              content_type: string
+              file_name: string
+              storage_bucket: string
+              storage_path: string
+            }[]
+          }
       calculate_anomaly_score: {
         Args: { p_current_data: Json; p_metric_type: string; p_user_id: string }
         Returns: number
@@ -4797,6 +4810,10 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_resource_collection_key: {
+        Args: { p_resource_id: string }
+        Returns: string
+      }
       v2_settle_verified_upayments_payment: {
         Args: {
           p_actor_user_id: string
@@ -4856,7 +4873,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "jadmin" | "prompter" | "user"
       data_classification: "public" | "internal" | "sensitive" | "restricted"
-      v2_entitlement_scope: "resource" | "library"
+      v2_entitlement_scope: "resource" | "library" | "collection"
       v2_grant_reason:
         | "purchase"
         | "free_acquisition"
@@ -5030,7 +5047,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "jadmin", "prompter", "user"],
       data_classification: ["public", "internal", "sensitive", "restricted"],
-      v2_entitlement_scope: ["resource", "library"],
+      v2_entitlement_scope: ["resource", "library", "collection"],
       v2_grant_reason: [
         "purchase",
         "free_acquisition",
