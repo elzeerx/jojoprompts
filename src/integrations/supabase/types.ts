@@ -1801,11 +1801,14 @@ export type Database = {
           expected_amount_fils: number
           id: string
           last_checked_at: string | null
+          last_provider_http_status: number | null
           merchant_reference: string
           next_check_after: string | null
           order_id: string
           provider: string
           provider_order_id: string | null
+          provider_submission_started_at: string | null
+          provider_submission_state: string
           request_payload: Json
           response_payload: Json
           session_id: string | null
@@ -1822,11 +1825,14 @@ export type Database = {
           expected_amount_fils: number
           id?: string
           last_checked_at?: string | null
+          last_provider_http_status?: number | null
           merchant_reference: string
           next_check_after?: string | null
           order_id: string
           provider: string
           provider_order_id?: string | null
+          provider_submission_started_at?: string | null
+          provider_submission_state?: string
           request_payload?: Json
           response_payload?: Json
           session_id?: string | null
@@ -1843,11 +1849,14 @@ export type Database = {
           expected_amount_fils?: number
           id?: string
           last_checked_at?: string | null
+          last_provider_http_status?: number | null
           merchant_reference?: string
           next_check_after?: string | null
           order_id?: string
           provider?: string
           provider_order_id?: string | null
+          provider_submission_started_at?: string | null
+          provider_submission_state?: string
           request_payload?: Json
           response_payload?: Json
           session_id?: string | null
@@ -2689,14 +2698,19 @@ export type Database = {
       refunds: {
         Row: {
           amount_fils: number
+          check_count: number
           created_at: string
           id: string
           idempotency_key: string | null
           last_checked_at: string | null
+          last_provider_http_status: number | null
+          next_check_after: string | null
           order_id: string
           processed_at: string | null
           provider_reference: string | null
           provider_refund_order_id: string | null
+          provider_submission_started_at: string | null
+          provider_submission_state: string
           reason: string | null
           requested_at: string
           sanitized_provider_payload: Json
@@ -2706,14 +2720,19 @@ export type Database = {
         }
         Insert: {
           amount_fils: number
+          check_count?: number
           created_at?: string
           id?: string
           idempotency_key?: string | null
           last_checked_at?: string | null
+          last_provider_http_status?: number | null
+          next_check_after?: string | null
           order_id: string
           processed_at?: string | null
           provider_reference?: string | null
           provider_refund_order_id?: string | null
+          provider_submission_started_at?: string | null
+          provider_submission_state?: string
           reason?: string | null
           requested_at?: string
           sanitized_provider_payload?: Json
@@ -2723,14 +2742,19 @@ export type Database = {
         }
         Update: {
           amount_fils?: number
+          check_count?: number
           created_at?: string
           id?: string
           idempotency_key?: string | null
           last_checked_at?: string | null
+          last_provider_http_status?: number | null
+          next_check_after?: string | null
           order_id?: string
           processed_at?: string | null
           provider_reference?: string | null
           provider_refund_order_id?: string | null
+          provider_submission_started_at?: string | null
+          provider_submission_state?: string
           reason?: string | null
           requested_at?: string
           sanitized_provider_payload?: Json
@@ -4422,6 +4446,31 @@ export type Database = {
         Returns: Json
       }
       v2_checkout_state: { Args: { p_order_id: string }; Returns: Json }
+      v2_claim_charge_submission: {
+        Args: {
+          p_actor_user_id: string
+          p_attempt_id: string
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      v2_claim_payment_status_check: {
+        Args: {
+          p_actor_user_id: string
+          p_allow_admin: boolean
+          p_attempt_id: string
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      v2_claim_refund_status_check: {
+        Args: { p_admin_actor_id: string; p_refund_id: string }
+        Returns: Json
+      }
+      v2_claim_refund_submission: {
+        Args: { p_admin_actor_id: string; p_refund_id: string }
+        Returns: Json
+      }
       v2_create_checkout_order: {
         Args: {
           p_actor_user_id: string
@@ -4503,6 +4552,25 @@ export type Database = {
           provider: string
           received_at: string
         }[]
+      }
+      v2_record_charge_submission_unknown: {
+        Args: {
+          p_actor_user_id: string
+          p_attempt_id: string
+          p_http_status: number
+          p_order_id: string
+          p_sanitized_payload: Json
+        }
+        Returns: Json
+      }
+      v2_record_refund_submission_unknown: {
+        Args: {
+          p_admin_actor_id: string
+          p_http_status: number
+          p_refund_id: string
+          p_sanitized_payload: Json
+        }
+        Returns: Json
       }
       v2_record_upayments_charge_response: {
         Args: {
