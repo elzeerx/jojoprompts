@@ -10,7 +10,7 @@ import { useLibraryState } from "@/hooks/v2/useLibraryState";
 import { useFreeAcquisition } from "@/hooks/v2/useFreeAcquisition";
 import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
 import { useTranslation } from "@/hooks/useTranslation";
-import { formatKwd, safeHeroImageUrl, V2_COMMERCE_ENABLED, V2_COPY } from "@/config/v2Flags";
+import { formatKwd, safeHeroImageUrl, V2_COPY } from "@/config/v2Flags";
 import { ShieldCheck, Loader2, Timer } from "lucide-react";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
 
@@ -161,7 +161,7 @@ export function QuickPreviewSheet({ slug, open, onOpenChange }: Props) {
                       V2_COPY.cards.addToLibrary[lang]
                     )}
                   </Button>
-                ) : product && V2_COMMERCE_ENABLED ? (
+                ) : product ? (
                   <AddToCartButton
                     productId={product.id}
                     productType={product.product_type as "individual" | "bundle" | "lifetime" | "free"}
@@ -170,11 +170,17 @@ export function QuickPreviewSheet({ slug, open, onOpenChange }: Props) {
                     resourceType={data.resource.type ?? null}
                     size="default"
                   />
-                ) : product ? (
-                  <Button disabled variant="outline" className="min-h-[44px]">
-                    {V2_COPY.cards.checkoutSoon[lang]}
+                ) : (
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="min-h-[44px]"
+                    aria-label={lang === "ar" ? "غير متاح" : "Unavailable"}
+                  >
+                    {lang === "ar" ? "غير متاح" : "Unavailable"}
                   </Button>
-                ) : null}
+                )}
+
 
               </div>
             </div>

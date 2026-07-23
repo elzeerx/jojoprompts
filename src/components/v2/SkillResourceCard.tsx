@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, Loader2, Timer, Info } from "lucide-react";
 import type { ExploreResource } from "@/hooks/v2/useExploreResources";
-import { V2_COMMERCE_ENABLED, formatKwd, V2_COPY } from "@/config/v2Flags";
+import { formatKwd, V2_COPY } from "@/config/v2Flags";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFreeAcquisition } from "@/hooks/v2/useFreeAcquisition";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -124,7 +124,7 @@ export function SkillResourceCard({ r, onQuickPreview }: Props) {
                   V2_COPY.cards.addToLibrary[lang]
                 )}
               </Button>
-            ) : r.product && V2_COMMERCE_ENABLED ? (
+            ) : r.product ? (
               <AddToCartButton
                 productId={r.product.id}
                 productType={r.product.product_type as "individual" | "bundle" | "lifetime" | "free"}
@@ -134,16 +134,16 @@ export function SkillResourceCard({ r, onQuickPreview }: Props) {
               />
             ) : (
               <Button
-                asChild
                 size="sm"
                 variant="outline"
+                disabled
                 className="min-h-[44px]"
+                aria-label={lang === "ar" ? "غير متاح" : "Unavailable"}
               >
-                <Link to={`/resources/${r.slug}`}>
-                  {V2_COPY.cards.viewDetails[lang]}
-                </Link>
+                {lang === "ar" ? "غير متاح" : "Unavailable"}
               </Button>
             )}
+
 
           </div>
         </div>

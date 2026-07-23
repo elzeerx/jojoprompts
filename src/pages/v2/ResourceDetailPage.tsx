@@ -13,12 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SeoHead } from "@/components/v2/SeoHead";
 import { InstallationSteps } from "@/components/v2/InstallationSteps";
 import {
-  V2_COMMERCE_ENABLED,
   formatKwd,
   LIFETIME_THRESHOLD_FILS,
   safeHeroImageUrl,
   V2_COPY,
 } from "@/config/v2Flags";
+
 import { ShieldCheck, Download, Loader2, ArrowLeft, Timer } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
@@ -357,7 +357,7 @@ export default function ResourceDetailPage() {
                     V2_COPY.cards.addToLibrary[lang]
                   )}
                 </Button>
-              ) : product && V2_COMMERCE_ENABLED ? (
+              ) : product ? (
                 <AddToCartButton
                   productId={product.id}
                   productType={product.product_type as "individual" | "bundle" | "lifetime" | "free"}
@@ -367,11 +367,17 @@ export default function ResourceDetailPage() {
                   size="default"
                   fullWidth
                 />
-              ) : product ? (
-                <Button className="w-full min-h-[44px]" variant="outline" disabled>
-                  {V2_COPY.cards.checkoutSoon[lang]}
+              ) : (
+                <Button
+                  className="w-full min-h-[44px]"
+                  variant="outline"
+                  disabled
+                  aria-label={lang === "ar" ? "غير متاح" : "Unavailable"}
+                >
+                  {lang === "ar" ? "غير متاح" : "Unavailable"}
                 </Button>
-              ) : null}
+              )}
+
 
               <div className="rounded-lg bg-warm-gold/10 p-3 text-xs">
                 <div className="font-semibold text-warm-gold">
