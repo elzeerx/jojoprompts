@@ -112,7 +112,8 @@ export interface AdminEntitlementRow {
   id: string;
   user_id: string;
   user_email_masked: string | null;
-  scope: string;
+  scope: "resource" | "library" | "collection" | string;
+  collection_key: "chatgpt_prompts" | "midjourney_prompts" | string | null;
   resource_id: string | null;
   resource_title: string | null;
   resource_type: string | null;
@@ -125,6 +126,18 @@ export interface AdminEntitlementRow {
   expires_at: string | null;
   version_major: number | null;
   state: "active" | "revoked" | "expired";
+}
+
+/** Bilingual, human-readable label for an entitlement scope + collection_key. */
+export function describeEntitlementTarget(row: Pick<AdminEntitlementRow,
+  "scope" | "collection_key" | "resource_title">): string {
+  if (row.scope === "library") return "Full library / كامل المكتبة";
+  if (row.scope === "collection") {
+    if (row.collection_key === "chatgpt_prompts") return "ChatGPT prompts collection / مجموعة ChatGPT";
+    if (row.collection_key === "midjourney_prompts") return "Midjourney prompts collection / مجموعة Midjourney";
+    return row.collection_key ?? "Collection";
+  }
+  return row.resource_title ?? "—";
 }
 
 export interface RefundsListParams {
@@ -439,5 +452,41 @@ export function useCheckPaymentStatus() {
       qc.invalidateQueries({ queryKey: ["admin", "v2", "orders"] });
       qc.invalidateQueries({ queryKey: ["admin", "v2", "recovery"] });
     },
+  });
+}
+
+// ---------- Phase 6A.3: read-only legacy access migration preview ----------
+export interface MigrationPreview {
+  generated_at: string;
+  conversion_rate_fils_per_usd: number;
+  execute_enabled: boolean;
+  execution_blockers: string[];
+  catalog: Record<string, number>;
+  collections: Record<string, number>;
+  unmatched_sample: Array<{ resource_id: string; resource_type: string; slug: string; legacy_prompt_type: string | null }>;
+  subscriptions: {
+    rows: Array<{ tier: string; is_lifetime: boolean; status: string; count: number; expired: number; active_or_perpetual: number; proposed_scope: string }>;
+    total_subscriptions: number;
+    distinct_users: number;
+  };
+  transactions_paypal: Record<string, unknown>;
+  transactions_upayments: Record<string, unknown>;
+  proposed_entitlements: Record<string, number>;
+  proposed_lifetime_credit: Record<string, number>;
+  anomalies: Record<string, number>;
+}
+
+export function useMigrationPreview() {
+  return useQuery({
+    queryKey: ["admin", "v2", "migration-preview"],
+    queryFn: async () => {
+      // rpc name not yet in generated types; safe cast.
+      const { data, error } = await (supabase as unknown as {
+        rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+      }).rpc("v2_admin_migration_preview", {});
+      if (error) throw error as Error;
+      return data as MigrationPreview;
+    },
+    staleTime: 60_000,
   });
 }

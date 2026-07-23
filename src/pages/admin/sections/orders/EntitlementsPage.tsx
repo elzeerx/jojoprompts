@@ -14,10 +14,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useAdminEntitlements } from "@/hooks/admin/v2/useAdminCommerce";
+import { useAdminEntitlements, describeEntitlementTarget } from "@/hooks/admin/v2/useAdminCommerce";
 import { formatDateTime, copyToClipboard, bi } from "@/lib/v2/admin/format";
 
-const SCOPES = ["resource", "library"];
+const SCOPES = ["resource", "collection", "library"];
 const STATES = ["active", "revoked", "expired"];
 const REASONS = ["purchase", "free_acquisition", "lifetime_purchase", "lifetime_threshold", "legacy_migration", "admin_grant"];
 const PAGE_SIZE = 25;
@@ -118,8 +118,8 @@ export default function EntitlementsPage() {
                   <Badge variant={stateTone(e.state) as never}>{e.state}</Badge>
                   <Badge variant="secondary">{e.grant_reason}</Badge>
                 </div>
-                <div className="text-sm">{e.resource_title ?? (e.scope === "library" ? "Full library" : "—")}</div>
-                <div className="text-xs text-muted-foreground">{e.user_email_masked ?? "—"} · {e.scope}</div>
+                <div className="text-sm">{describeEntitlementTarget(e)}</div>
+                <div className="text-xs text-muted-foreground">{e.user_email_masked ?? "—"} · {e.scope}{e.collection_key ? ` · ${e.collection_key}` : ""}</div>
                 <div className="text-xs text-muted-foreground">granted {formatDateTime(e.granted_at)}</div>
                 {e.revoked_at && <div className="text-xs text-destructive">revoked {formatDateTime(e.revoked_at)} — {e.revoke_reason ?? ""}</div>}
               </CardContent>
@@ -149,8 +149,13 @@ export default function EntitlementsPage() {
               {(query.data?.rows ?? []).map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="text-xs">{e.user_email_masked ?? "—"}</TableCell>
-                  <TableCell><Badge variant="outline">{e.scope}</Badge></TableCell>
-                  <TableCell className="text-xs">{e.resource_title ?? (e.scope === "library" ? "Full library" : "—")}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{e.scope}</Badge>
+                    {e.collection_key && (
+                      <Badge variant="secondary" className="ml-1 text-[10px]">{e.collection_key}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs">{describeEntitlementTarget(e)}</TableCell>
                   <TableCell><Badge variant="secondary">{e.grant_reason}</Badge></TableCell>
                   <TableCell><Badge variant={stateTone(e.state) as never}>{e.state}</Badge></TableCell>
                   <TableCell className="text-xs">{formatDateTime(e.granted_at)}</TableCell>
