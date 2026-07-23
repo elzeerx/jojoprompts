@@ -454,3 +454,39 @@ export function useCheckPaymentStatus() {
     },
   });
 }
+
+// ---------- Phase 6A.3: read-only legacy access migration preview ----------
+export interface MigrationPreview {
+  generated_at: string;
+  conversion_rate_fils_per_usd: number;
+  execute_enabled: boolean;
+  execution_blockers: string[];
+  catalog: Record<string, number>;
+  collections: Record<string, number>;
+  unmatched_sample: Array<{ resource_id: string; resource_type: string; slug: string; legacy_prompt_type: string | null }>;
+  subscriptions: {
+    rows: Array<{ tier: string; is_lifetime: boolean; status: string; count: number; expired: number; active_or_perpetual: number; proposed_scope: string }>;
+    total_subscriptions: number;
+    distinct_users: number;
+  };
+  transactions_paypal: Record<string, unknown>;
+  transactions_upayments: Record<string, unknown>;
+  proposed_entitlements: Record<string, number>;
+  proposed_lifetime_credit: Record<string, number>;
+  anomalies: Record<string, number>;
+}
+
+export function useMigrationPreview() {
+  return useQuery({
+    queryKey: ["admin", "v2", "migration-preview"],
+    queryFn: async () => {
+      // rpc name not yet in generated types; safe cast.
+      const { data, error } = await (supabase as unknown as {
+        rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+      }).rpc("v2_admin_migration_preview", {});
+      if (error) throw error as Error;
+      return data as MigrationPreview;
+    },
+    staleTime: 60_000,
+  });
+}
