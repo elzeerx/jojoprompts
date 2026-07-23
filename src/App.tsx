@@ -26,6 +26,12 @@ const V2_PATHS = new Set([
   "bundles",
   "resources/:slug",
   "library",
+  "cart",
+  "checkout",
+  "checkout/return",
+  "checkout/cancel",
+  "orders",
+  "pricing",
 ]);
 import { V2Layout } from "./components/v2/V2Layout";
 

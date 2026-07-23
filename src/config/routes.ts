@@ -57,6 +57,12 @@ const V2ImageStylesPage = lazy(() => import("@/pages/v2/ImageStylesPage"));
 const V2BundlesPage = lazy(() => import("@/pages/v2/BundlesPage"));
 const V2ResourceDetailPage = lazy(() => import("@/pages/v2/ResourceDetailPage"));
 const V2LibraryPage = lazy(() => import("@/pages/v2/LibraryPage"));
+const V2CartPage = lazy(() => import("@/pages/v2/CartPage"));
+const V2CheckoutPage = lazy(() => import("@/pages/v2/V2CheckoutPage"));
+const V2CheckoutReturnPage = lazy(() => import("@/pages/v2/V2CheckoutReturnPage"));
+const V2CheckoutCancelPage = lazy(() => import("@/pages/v2/V2CheckoutCancelPage"));
+const V2OrdersPage = lazy(() => import("@/pages/v2/V2OrdersPage"));
+const V2PricingPage = lazy(() => import("@/pages/v2/V2PricingPage"));
 
 
 /**
@@ -174,12 +180,12 @@ export const routes: RouteConfig[] = [
   },
   {
     path: "pricing",
-    component: PricingPage,
+    component: V2PricingPage,
     protection: "public"
   },
   {
     path: "checkout",
-    component: CheckoutPage,
+    component: V2CheckoutPage,
     protection: "public"
   },
   {
@@ -294,6 +300,13 @@ export const routes: RouteConfig[] = [
   { path: "bundles", component: V2BundlesPage, protection: "public" },
   { path: "resources/:slug", component: V2ResourceDetailPage, protection: "public" },
   { path: "library", component: V2LibraryPage, protection: "public" },
+
+  // V2 Commerce (Phase 4A) — customer experience.
+  // Overrides prior V1 checkout/pricing UI. V1 page components remain in source.
+  { path: "cart", component: V2CartPage, protection: "public" },
+  { path: "checkout/return", component: V2CheckoutReturnPage, protection: "public" },
+  { path: "checkout/cancel", component: V2CheckoutCancelPage, protection: "public" },
+  { path: "orders", component: V2OrdersPage, protection: "auth" },
 
   // 404 catch-all route
   {
