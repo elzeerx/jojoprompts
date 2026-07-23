@@ -4108,6 +4108,12 @@ export type Database = {
       }
     }
     Functions: {
+      _v2_bounded_limit: {
+        Args: { p_limit: number; p_max?: number }
+        Returns: number
+      }
+      _v2_mask_email: { Args: { p_email: string }; Returns: string }
+      _v2_require_admin: { Args: never; Returns: string }
       admin_change_user_password: {
         Args: { new_password: string; user_id: string }
         Returns: Json
@@ -4394,6 +4400,33 @@ export type Database = {
         Returns: boolean
       }
       user_has_any_role: { Args: { _user_id: string }; Returns: boolean }
+      v2_admin_get_order_detail: { Args: { p_order_id: string }; Returns: Json }
+      v2_admin_get_payment_event: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
+      v2_admin_list_entitlements: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_reason?: string
+          p_scope?: string
+          p_search?: string
+          p_state?: string
+        }
+        Returns: Json
+      }
+      v2_admin_list_orders: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       v2_admin_list_payment_attempts: {
         Args: {
           p_limit?: number
@@ -4423,28 +4456,56 @@ export type Database = {
           verified_payload_size: number
         }[]
       }
-      v2_admin_list_payment_events: {
-        Args: { p_limit?: number; p_offset?: number; p_order_id?: string }
-        Returns: {
-          amount_fils: number
-          created_at: string
-          currency: string
-          event_type: Database["public"]["Enums"]["v2_payment_event_type"]
-          external_event_id: string
-          id: string
-          order_id: string
-          provider: string
-          raw_payload_size: number
-          received_at: string
-        }[]
+      v2_admin_list_payment_events:
+        | {
+            Args: {
+              p_date_from?: string
+              p_date_to?: string
+              p_event_type?: string
+              p_limit?: number
+              p_offset?: number
+              p_order_id?: string
+              p_provider?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: { p_limit?: number; p_offset?: number; p_order_id?: string }
+            Returns: {
+              amount_fils: number
+              created_at: string
+              currency: string
+              event_type: Database["public"]["Enums"]["v2_payment_event_type"]
+              external_event_id: string
+              id: string
+              order_id: string
+              provider: string
+              raw_payload_size: number
+              received_at: string
+            }[]
+          }
+      v2_admin_list_recovery: {
+        Args: {
+          p_kind?: string
+          p_limit?: number
+          p_min_age_minutes?: number
+          p_offset?: number
+        }
+        Returns: Json
       }
       v2_admin_list_refunds: {
         Args: {
+          p_date_from?: string
+          p_date_to?: string
           p_limit?: number
           p_offset?: number
-          p_order_id?: string
+          p_search?: string
           p_status?: string
         }
+        Returns: Json
+      }
+      v2_admin_order_metrics: {
+        Args: { p_period_days?: number }
         Returns: Json
       }
       v2_admin_reconciliation_summary: { Args: never; Returns: Json }
