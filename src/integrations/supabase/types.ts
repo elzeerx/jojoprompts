@@ -1342,6 +1342,7 @@ export type Database = {
           revoke_reason: string | null
           revoked_at: string | null
           scope: Database["public"]["Enums"]["v2_entitlement_scope"]
+          source_order_item_id: string | null
           updated_at: string
           user_id: string
           version_major: number | null
@@ -1358,6 +1359,7 @@ export type Database = {
           revoke_reason?: string | null
           revoked_at?: string | null
           scope: Database["public"]["Enums"]["v2_entitlement_scope"]
+          source_order_item_id?: string | null
           updated_at?: string
           user_id: string
           version_major?: number | null
@@ -1374,6 +1376,7 @@ export type Database = {
           revoke_reason?: string | null
           revoked_at?: string | null
           scope?: Database["public"]["Enums"]["v2_entitlement_scope"]
+          source_order_item_id?: string | null
           updated_at?: string
           user_id?: string
           version_major?: number | null
@@ -1391,6 +1394,13 @@ export type Database = {
             columns: ["resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entitlements_source_order_item_id_fkey"
+            columns: ["source_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
             referencedColumns: ["id"]
           },
         ]
@@ -1603,6 +1613,7 @@ export type Database = {
           id: string
           line_total_fils: number
           order_id: string
+          paid_allocation_fils: number
           product_id: string
           quantity: number
           resource_id: string | null
@@ -1615,6 +1626,7 @@ export type Database = {
           id?: string
           line_total_fils: number
           order_id: string
+          paid_allocation_fils?: number
           product_id: string
           quantity?: number
           resource_id?: string | null
@@ -1627,6 +1639,7 @@ export type Database = {
           id?: string
           line_total_fils?: number
           order_id?: string
+          paid_allocation_fils?: number
           product_id?: string
           quantity?: number
           resource_id?: string | null
@@ -2678,6 +2691,7 @@ export type Database = {
           amount_fils: number
           created_at: string
           id: string
+          idempotency_key: string | null
           last_checked_at: string | null
           order_id: string
           processed_at: string | null
@@ -2685,6 +2699,7 @@ export type Database = {
           provider_refund_order_id: string | null
           reason: string | null
           requested_at: string
+          sanitized_provider_payload: Json
           status: Database["public"]["Enums"]["v2_refund_status"]
           updated_at: string
           user_id: string
@@ -2693,6 +2708,7 @@ export type Database = {
           amount_fils: number
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           last_checked_at?: string | null
           order_id: string
           processed_at?: string | null
@@ -2700,6 +2716,7 @@ export type Database = {
           provider_refund_order_id?: string | null
           reason?: string | null
           requested_at?: string
+          sanitized_provider_payload?: Json
           status?: Database["public"]["Enums"]["v2_refund_status"]
           updated_at?: string
           user_id: string
@@ -2708,6 +2725,7 @@ export type Database = {
           amount_fils?: number
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           last_checked_at?: string | null
           order_id?: string
           processed_at?: string | null
@@ -2715,6 +2733,7 @@ export type Database = {
           provider_refund_order_id?: string | null
           reason?: string | null
           requested_at?: string
+          sanitized_provider_payload?: Json
           status?: Database["public"]["Enums"]["v2_refund_status"]
           updated_at?: string
           user_id?: string
@@ -4377,9 +4396,29 @@ export type Database = {
           received_at: string
         }[]
       }
+      v2_admin_list_refunds: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_order_id?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       v2_admin_reconciliation_summary: { Args: never; Returns: Json }
       v2_apply_paid_order_locked: {
         Args: { p_order_id: string }
+        Returns: Json
+      }
+      v2_apply_verified_refund: {
+        Args: {
+          p_admin_actor_id: string
+          p_external_event_id: string
+          p_provider_refund_order_id: string
+          p_refund_id: string
+          p_result: string
+          p_sanitized_payload: Json
+        }
         Returns: Json
       }
       v2_checkout_state: { Args: { p_order_id: string }; Returns: Json }
@@ -4392,6 +4431,16 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_create_refund_request: {
+        Args: {
+          p_admin_actor_id: string
+          p_allocations: Json
+          p_idempotency_key: string
+          p_order_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       v2_lifetime_progress: { Args: never; Returns: Json }
       v2_mark_verified_payment_failure: {
         Args: {
@@ -4400,6 +4449,17 @@ export type Database = {
           p_external_event_id: string
           p_merchant_reference: string
           p_order_id: string
+          p_result: string
+          p_sanitized_payload: Json
+        }
+        Returns: Json
+      }
+      v2_mark_verified_refund_failure: {
+        Args: {
+          p_admin_actor_id: string
+          p_external_event_id: string
+          p_provider_refund_order_id: string
+          p_refund_id: string
           p_result: string
           p_sanitized_payload: Json
         }
@@ -4447,6 +4507,17 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_record_upayments_refund_response: {
+        Args: {
+          p_admin_actor_id: string
+          p_external_event_id: string
+          p_provider_refund_order_id: string
+          p_refund_id: string
+          p_sanitized_payload: Json
+        }
+        Returns: Json
+      }
+      v2_refund_state: { Args: { p_refund_id: string }; Returns: Json }
       v2_settle_verified_upayments_payment: {
         Args: {
           p_actor_user_id: string
