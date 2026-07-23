@@ -580,8 +580,10 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
                 <tr><td colSpan={10} className="p-10 text-center text-sm text-muted-foreground">No resources match these filters.</td></tr>
               ) : rows.map((r) => (
                 <tr key={r.id} className="border-b hover:bg-muted/30">
-                  <td className="px-3 py-2 align-top">
-                    <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggleOne(r.id)} aria-label={`Select ${r.title_en ?? r.slug}`} className="h-5 w-5" />
+                  <td className="px-1 py-2 align-top">
+                    <label className="mx-auto flex h-11 w-11 cursor-pointer items-center justify-center" aria-label={`Select ${r.title_en ?? r.slug}`}>
+                      <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggleOne(r.id)} aria-label={`Select ${r.title_en ?? r.slug}`} className="h-5 w-5" />
+                    </label>
                   </td>
                   <td className="px-3 py-2 align-top">
                     <div className="flex flex-col">
