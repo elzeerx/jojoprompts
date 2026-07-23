@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { Info } from "lucide-react";
 import type { ExploreResource } from "@/hooks/v2/useExploreResources";
-import { formatKwd, safeHeroImageUrl, V2_COPY } from "@/config/v2Flags";
+import { formatKwd, safeHeroImageUrl, V2_COMMERCE_ENABLED, V2_COPY } from "@/config/v2Flags";
 import { useTranslation } from "@/hooks/useTranslation";
+import { AddToCartButton } from "@/components/v2/AddToCartButton";
 
 interface Props {
   r: ExploreResource;
@@ -15,6 +16,7 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
   const title = lang === "ar" && r.title_ar ? r.title_ar : r.title_en;
   const isFree = r.product?.product_type === "free";
   const heroUrl = safeHeroImageUrl(r.hero_image_path);
+  const canAddToCart = !!r.product && !r.owned && !isFree && V2_COMMERCE_ENABLED;
 
   const priceBadge = r.owned
     ? V2_COPY.cards.owned[lang]
@@ -58,16 +60,34 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
           </span>
         </div>
       </Link>
-      {onQuickPreview ? (
-        <button
-          type="button"
-          onClick={() => onQuickPreview(r.id)}
-          aria-label={V2_COPY.cards.quickPreview[lang]}
-          className="absolute top-2 end-2 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-background/90 text-foreground shadow focus-visible:ring-2 focus-visible:ring-warm-gold"
-        >
-          <Info className="h-4 w-4" aria-hidden />
-        </button>
-      ) : null}
+      <div className="absolute top-2 end-2 flex items-center gap-1">
+        {canAddToCart && r.product ? (
+          <div onClick={(e) => e.stopPropagation()}>
+            <AddToCartButton
+              productId={r.product.id}
+              productType={r.product.product_type as "individual" | "bundle" | "lifetime" | "free"}
+              titleEn={r.title_en}
+              titleAr={r.title_ar}
+              resourceType={r.type ?? null}
+            />
+          </div>
+        ) : null}
+        {onQuickPreview ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onQuickPreview(r.id);
+            }}
+            aria-label={V2_COPY.cards.quickPreview[lang]}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-background/90 text-foreground shadow focus-visible:ring-2 focus-visible:ring-warm-gold"
+          >
+            <Info className="h-4 w-4" aria-hidden />
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
+

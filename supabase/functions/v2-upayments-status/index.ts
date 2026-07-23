@@ -166,8 +166,29 @@ Deno.serve(async (req) => {
       p_sanitized_verified_payload: sanitized,
     });
     if (sErr) return jsonResponse({ error: safeRpcError(sErr) }, 500, origin);
-    return jsonResponse({ status: "paid", order_id: orderId }, 200, origin);
+
+    // Safe product_ids lookup for the owned order so the client can clear
+    // only the exact purchased items. Failure to look up MUST NOT block
+    // the paid response; the client will fall back to "leave cart intact".
+    let productIds: string[] = [];
+    try {
+      const { data: items } = await svc
+        .from("order_items")
+        .select("product_id")
+        .eq("order_id", orderId);
+      productIds = (items ?? [])
+        .map((row: { product_id: string | null }) => row.product_id)
+        .filter((v: string | null): v is string => typeof v === "string");
+    } catch (_) {
+      productIds = [];
+    }
+    return jsonResponse(
+      { status: "paid", order_id: orderId, product_ids: productIds },
+      200,
+      origin,
+    );
   }
+
 
   if (verdict.verdict === "failed" || verdict.verdict === "cancelled") {
     const { error: fErr } = await svc.rpc("v2_mark_verified_payment_failure", {

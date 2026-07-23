@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFreeAcquisition } from "@/hooks/v2/useFreeAcquisition";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
+import { AddToCartButton } from "@/components/v2/AddToCartButton";
+
 
 interface Props {
   r: ExploreResource;
@@ -122,22 +124,27 @@ export function SkillResourceCard({ r, onQuickPreview }: Props) {
                   V2_COPY.cards.addToLibrary[lang]
                 )}
               </Button>
-            ) : V2_COMMERCE_ENABLED ? (
-              <Button asChild size="sm" className="min-h-[44px]">
+            ) : r.product && V2_COMMERCE_ENABLED ? (
+              <AddToCartButton
+                productId={r.product.id}
+                productType={r.product.product_type as "individual" | "bundle" | "lifetime" | "free"}
+                titleEn={r.title_en}
+                titleAr={r.title_ar}
+                resourceType={r.type ?? null}
+              />
+            ) : (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="min-h-[44px]"
+              >
                 <Link to={`/resources/${r.slug}`}>
                   {V2_COPY.cards.viewDetails[lang]}
                 </Link>
               </Button>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled
-                className="min-h-[44px]"
-              >
-                {V2_COPY.cards.checkoutSoon[lang]}
-              </Button>
             )}
+
           </div>
         </div>
       </div>
