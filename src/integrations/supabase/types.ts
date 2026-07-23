@@ -4528,6 +4528,11 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_get_my_order_receipt: { Args: { p_order_id: string }; Returns: Json }
+      v2_get_my_orders: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
       v2_insert_or_verify_payment_event: {
         Args: {
           p_amount_fils: number
