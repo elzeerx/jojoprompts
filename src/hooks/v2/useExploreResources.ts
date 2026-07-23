@@ -17,10 +17,12 @@ export interface ExploreFilters {
 }
 
 export interface ExploreProduct {
+  id: string;
   product_type: "free" | "individual" | "bundle" | "lifetime";
   price_fils: number;
   is_active: boolean;
 }
+
 
 export interface ExploreVersion {
   id: string;
@@ -128,7 +130,7 @@ export function useExploreResources(
           .in("resource_id", resourceIds),
         supabase
           .from("products")
-          .select("resource_id, product_type, price_fils, is_active")
+          .select("id, resource_id, product_type, price_fils, is_active")
           .in("resource_id", resourceIds)
           .eq("is_active", true),
         supabase.rpc("get_public_resource_trust_badges", {
@@ -162,10 +164,12 @@ export function useExploreResources(
       const prodMap = new Map<string, ExploreProduct>();
       (productsRes.data ?? []).forEach((p) => {
         const row: ExploreProduct = {
+          id: p.id,
           product_type: p.product_type as ExploreProduct["product_type"],
           price_fils: p.price_fils ?? 0,
           is_active: !!p.is_active,
         };
+
         const existing = prodMap.get(p.resource_id);
         // Prefer free listing when both exist for the same resource.
         if (!existing || row.product_type === "free") prodMap.set(p.resource_id, row);
