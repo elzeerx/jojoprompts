@@ -123,10 +123,13 @@ export type UpaymentsConfig = {
 const SANDBOX_BASE = "https://sandboxapi.upayments.com/api/v1";
 const PROD_BASE = "https://uapi.upayments.com/api/v1";
 
-export function loadPublicSiteUrl(): string {
+// Returns the effective site URL or null if V2_PUBLIC_SITE_URL is explicitly
+// set to a non-allowlisted value. Unset falls back to the production default.
+export function loadPublicSiteUrl(): string | null {
   const raw = (Deno.env.get("V2_PUBLIC_SITE_URL") ?? "").trim();
-  if (raw && ALLOWED_SITE_URLS.has(raw)) return raw;
-  return DEFAULT_SITE_URL;
+  if (!raw) return DEFAULT_SITE_URL;
+  if (ALLOWED_SITE_URLS.has(raw)) return raw;
+  return null;
 }
 
 export function loadUpaymentsConfig(): UpaymentsConfig | null {
@@ -135,12 +138,14 @@ export function loadUpaymentsConfig(): UpaymentsConfig | null {
   const env = Deno.env.get("V2_UPAYMENTS_ENVIRONMENT");
   const token = Deno.env.get("V2_UPAYMENTS_API_TOKEN") ?? "";
   if (!token) return null;
+  const siteUrl = loadPublicSiteUrl();
+  if (!siteUrl) return null;
   let baseUrl = "";
   let environment: "sandbox" | "production";
   if (env === "sandbox") { baseUrl = SANDBOX_BASE; environment = "sandbox"; }
   else if (env === "production") { baseUrl = PROD_BASE; environment = "production"; }
   else return null;
-  return { enabled: true, environment, baseUrl, token, siteUrl: loadPublicSiteUrl() };
+  return { enabled: true, environment, baseUrl, token, siteUrl };
 }
 
 // --------------------------------------------------------- Supabase / auth
@@ -365,8 +370,9 @@ export function extractChargeFields(json: Record<string, unknown>): ChargeExtrac
 }
 
 // Explicit allowlists. NO substring/contains matching. Unknown => pending.
-// Aligned to public.v2_payment_status paid outcomes.
-const PAY_CAPTURED = new Set(["CAPTURED","SUCCESS","PAID","SUCCESSFUL","COMPLETED"]);
+// Aligned exactly to the SQL functions v2_apply_verified_refund /
+// v2_settle_verified_upayments_payment result allowlists.
+const PAY_CAPTURED = new Set(["CAPTURED","SUCCESS","PAID"]);
 const PAY_FAILED = new Set(["FAILED","DECLINED","ERROR","REJECTED"]);
 const PAY_CANCELLED = new Set(["CANCELLED","CANCELED","USER_CANCELLED","VOIDED"]);
 const PAY_PENDING = new Set(["PENDING","INITIATED","PROCESSING","AUTHORIZED","IN_PROGRESS"]);
@@ -384,7 +390,7 @@ export function normalizePaymentStatus(
   return { verdict: "unknown", normalized: n };
 }
 
-const REF_PROCESSED = new Set(["REFUNDED","PROCESSED","SUCCESS","SUCCESSFUL","COMPLETED"]);
+const REF_PROCESSED = new Set(["REFUNDED","PROCESSED","SUCCESS"]);
 const REF_FAILED = new Set(["FAILED","DECLINED","ERROR","REJECTED","CANCELLED","CANCELED"]);
 const REF_PENDING = new Set(["PENDING","INITIATED","PROCESSING","APPROVED"]);
 
@@ -518,13 +524,15 @@ const SAFE_ERROR_CODES = new Set([
   "actor_not_owner","actor_not_authorized","order_not_pending","order_not_found",
   "attempt_not_found","provider_mismatch","recovery_required","backoff_active",
   "global_backoff","refund_not_pending","refund_not_pollable","refund_not_found",
-  "refund_identifier_mismatch","refund_identifier_replay_mismatch",
+  "refund_not_approved","refund_identifier_mismatch",
+  "refund_identifier_replay_mismatch",
   "missing_refund_identifiers","missing_provider_reference",
   "missing_provider_refund_order_id","insufficient_permissions",
   "external_event_conflict","currency_mismatch","amount_mismatch",
   "identifier_mismatch","invalid_body","invalid_json","invalid_amount",
   "invalid_merchant_reference","invalid_provider_reference",
   "invalid_provider_refund_order_id","order_zero_total","submission_state_invalid",
+  "not_found","no_attempt","not_authorized",
 ]);
 
 export function safeRpcError(err: unknown): string {
@@ -547,14 +555,70 @@ export function eventIdForStatus(
   const suffix = (providerId ?? "no_pid").slice(0, 64);
   return `upay:status:${orderId}:${verdict}:${suffix}`.slice(0, 256);
 }
+
+// Refund event id — MUST include a bounded phase so authorized/create,
+// terminal-processed, and terminal-failed all have distinct external_event_id
+// values while remaining retry-stable within the same phase.
+export type RefundEventPhase =
+  | "create_authorized"
+  | "status_processed"
+  | "status_failed";
 export function eventIdForRefund(
-  refundId: string, providerRefundOrderId: string | null,
+  refundId: string, phase: RefundEventPhase,
+  providerRefundOrderId: string | null,
 ): string {
   const suffix = (providerRefundOrderId ?? "unknown").slice(0, 64);
-  return `upay:refund:${refundId}:${suffix}`.slice(0, 256);
+  return `upay:refund:${refundId}:${phase}:${suffix}`.slice(0, 256);
 }
 
 // Local, stable refund reference sent to provider (bounded, no PII).
 export function localRefundReference(refundId: string): string {
   return `REF-${refundId}`.slice(0, 40);
+}
+
+// ---------------------- Strict webhook envelope validator --------------
+
+const WEBHOOK_TOP_KEYS: ReadonlySet<string> = new Set([
+  "status","message","statusMessage","errorMessage","data","result",
+  "track_id","trackId","session_id","sessionId",
+  "order_id","orderId","reference","requested_order_id","requestedOrderId",
+  "merchant_reference","merchantReference",
+  "payment_status","paymentStatus","amount","currency","total_paid","totalPaid",
+]);
+const WEBHOOK_DATA_KEYS: ReadonlySet<string> = new Set([
+  "track_id","trackId","session_id","sessionId",
+  "order_id","orderId","reference","requested_order_id","requestedOrderId",
+  "merchant_reference","merchantReference",
+  "payment_status","paymentStatus","status","result",
+  "amount","currency","total_paid","totalPaid",
+]);
+
+// Returns { ok: true } or { ok: false, error }. Rejects unknown keys,
+// non-plain data, and payloads with zero identifier hints.
+export function validateWebhookEnvelope(
+  body: unknown,
+): { ok: true } | { ok: false; error: string } {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return { ok: false, error: "invalid_body" };
+  }
+  const obj = body as Record<string, unknown>;
+  for (const k of Object.keys(obj)) {
+    if (!WEBHOOK_TOP_KEYS.has(k)) return { ok: false, error: "invalid_body" };
+  }
+  if ("data" in obj) {
+    const d = obj["data"];
+    if (d != null) {
+      if (typeof d !== "object" || Array.isArray(d)) {
+        return { ok: false, error: "invalid_body" };
+      }
+      for (const k of Object.keys(d as Record<string, unknown>)) {
+        if (!WEBHOOK_DATA_KEYS.has(k)) return { ok: false, error: "invalid_body" };
+      }
+    }
+  }
+  const ex = extractStatusFields(obj);
+  if (!ex.trackId && !ex.sessionId && !ex.providerOrderId && !ex.merchantReference) {
+    return { ok: false, error: "unresolvable" };
+  }
+  return { ok: true };
 }
