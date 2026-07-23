@@ -236,12 +236,12 @@ export function humanizeDiscountError(err: unknown): { en: string; ar: string } 
       ar: "بعض المنتجات المختارة لم تعد موجودة.",
     },
     code_conflict: {
-      en: "Another active discount already uses this code.",
-      ar: "يوجد خصم آخر فعال يستخدم هذا الرمز.",
+      en: "This code has already been used (including archived history). Codes are unique forever — please create a new unique code.",
+      ar: "هذا الرمز مستخدم من قبل (بما في ذلك الرموز المؤرشفة). الرموز فريدة دائمًا — يرجى إنشاء رمز جديد فريد.",
     },
     used_code_immutable_fields: {
-      en: "Code, type, value and lifetime flag cannot change after first use — archive and create a new code instead.",
-      ar: "لا يمكن تغيير الرمز أو النوع أو القيمة أو خيار الاشتراك مدى الحياة بعد أول استخدام — قم بأرشفة الرمز وإنشاء رمز جديد.",
+      en: "Code, type, value and lifetime flag cannot change after first use — archive this discount and create a new unique code instead.",
+      ar: "لا يمكن تغيير الرمز أو النوع أو القيمة أو خيار الاشتراك مدى الحياة بعد أول استخدام — قم بأرشفة هذا الخصم وأنشئ رمزًا جديدًا فريدًا.",
     },
     archived_immutable: {
       en: "Archived discounts cannot be modified.",
