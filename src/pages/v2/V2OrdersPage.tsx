@@ -76,9 +76,8 @@ export default function V2OrdersPage() {
           </div>
         ) : (
           <ul className="space-y-2">
-            {(orders ?? []).map((o: any) => {
+            {(orders ?? []).map((o) => {
               const created = o.placed_at ?? o.created_at;
-              const items = o.order_items ?? [];
               return (
                 <li key={o.id} className="rounded-xl border">
                   <button
@@ -92,19 +91,23 @@ export default function V2OrdersPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs text-muted-foreground">
-                          #{o.id.slice(0, 8)}
+                          {o.order_number ?? `#${o.id.slice(0, 8)}`}
                         </span>
                         <Badge variant={statusVariant(o.status)} className="capitalize">
                           {o.status.replace("_", " ")}
                         </Badge>
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {created ? format(new Date(created), "PPp") : "—"} · {items.length} {t.items}
+                        {created ? format(new Date(created), "PPp") : "—"} · {o.item_count} {t.items}
                       </div>
                     </div>
                     <div className="text-end">
                       <div className="font-semibold">{formatKwd(o.total_fils)} KD</div>
-                      {o.paid_fils !== o.total_fils ? (
+                      {o.refunded_fils > 0 ? (
+                        <div className="text-xs text-destructive">
+                          {t.refunded}: -{formatKwd(o.refunded_fils)}
+                        </div>
+                      ) : o.paid_fils !== o.total_fils ? (
                         <div className="text-xs text-muted-foreground">
                           {t.paid}: {formatKwd(o.paid_fils)}
                         </div>
@@ -121,6 +124,7 @@ export default function V2OrdersPage() {
             })}
           </ul>
         )}
+
       </main>
     </div>
   );
@@ -145,17 +149,19 @@ function OrderDetail({ orderId, lang }: { orderId: string; lang: "en" | "ar" }) 
     paid: lang === "ar" ? "المدفوع" : "Paid",
   };
   const refunded = data.refunds
-    .filter((r: any) => r.status === "processed")
-    .reduce((s: number, r: any) => s + (r.amount_fils ?? 0), 0);
+    .filter((r) => r.status === "processed")
+    .reduce((s, r) => s + (r.amount_fils ?? 0), 0);
+
   return (
     <div className="border-t p-4 space-y-3 text-sm">
       <div>
         <div className="mb-2 font-medium">{t.items}</div>
         <ul className="space-y-1.5">
-          {data.items.map((it: any) => {
-            const snap = it.product_snapshot ?? {};
+          {data.items.map((it) => {
             const title =
-              (lang === "ar" && snap.title_ar) ? snap.title_ar : snap.title_en ?? snap.title ?? "—";
+              lang === "ar" && it.title_ar
+                ? it.title_ar
+                : it.title_en ?? "—";
             return (
               <li key={it.id} className="flex items-center justify-between gap-2">
                 <span className="truncate">{title}</span>
@@ -167,6 +173,7 @@ function OrderDetail({ orderId, lang }: { orderId: string; lang: "en" | "ar" }) 
           })}
         </ul>
       </div>
+
       <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-3 text-xs">
         <div>
           <div className="text-muted-foreground">{t.subtotal}</div>

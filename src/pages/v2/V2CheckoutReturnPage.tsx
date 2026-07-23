@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,31 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cartStore } from "@/hooks/v2/useCart";
 import { clearIdempotencyKey } from "@/hooks/v2/useIdempotencyKey";
 import { useQueryClient } from "@tanstack/react-query";
+import { extractInvokeErrorCode } from "@/lib/v2/invokeErrors";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ATTEMPTS = 8;
-const DEFAULT_INTERVAL_MS = 4000;
+const MIN_INTERVAL_MS = 4000;
+const MAX_INTERVAL_MS = 30_000;
 const HARD_TIMEOUT_MS = 120_000;
 
 type Verdict =
   | { kind: "loading" }
   | { kind: "paid"; orderId: string; purchasedProductIds: string[] }
-  | { kind: "pending"; nextCheckMs: number }
+  | { kind: "pending" }
   | { kind: "failed" }
   | { kind: "cancelled" }
   | { kind: "not_found" }
+  | { kind: "provider_down" }
   | { kind: "invalid" };
+
+function parseNextCheckMs(raw: unknown): number {
+  if (typeof raw !== "string" || raw.length === 0) return MIN_INTERVAL_MS;
+  const ts = Date.parse(raw);
+  if (!Number.isFinite(ts)) return MIN_INTERVAL_MS;
+  const delta = ts - Date.now();
+  return Math.min(MAX_INTERVAL_MS, Math.max(MIN_INTERVAL_MS, delta));
+}
 
 export default function V2CheckoutReturnPage() {
   const [sp] = useSearchParams();
@@ -33,9 +44,8 @@ export default function V2CheckoutReturnPage() {
   const { language, isRTL } = useTranslation();
   const lang = language === "ar" ? "ar" : "en";
   const [state, setState] = useState<Verdict>({ kind: "loading" });
-  const attemptsRef = useRef(0);
-  const startedAtRef = useRef(Date.now());
-  const cancelledRef = useRef(false);
+  /** Bumping this re-runs the polling effect (manual retry). */
+  const [pollNonce, setPollNonce] = useState(0);
   const clearedCartRef = useRef(false);
 
   const t = useMemo(
@@ -59,8 +69,11 @@ export default function V2CheckoutReturnPage() {
           : "You were not charged. Please review and try again.",
       cancelled: lang === "ar" ? "تم إلغاء الدفع" : "Payment cancelled",
       notFound: lang === "ar" ? "الطلب غير موجود" : "Order not found",
-      invalid:
-        lang === "ar" ? "رابط الحالة غير صالح." : "Invalid status link.",
+      invalid: lang === "ar" ? "رابط الحالة غير صالح." : "Invalid status link.",
+      providerDown:
+        lang === "ar"
+          ? "الدفع غير متاح حالياً. تم حفظ سلتك — عُد قريباً."
+          : "Payments are not available yet. Your cart is preserved — check back soon.",
       library: lang === "ar" ? "افتح المكتبة" : "Open library",
       orders: lang === "ar" ? "طلباتي" : "My orders",
       retry: lang === "ar" ? "تحقق مرة أخرى" : "Check again",
@@ -81,51 +94,63 @@ export default function V2CheckoutReturnPage() {
     if (authLoading) return;
     if (!user) return;
 
+    let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+    const startedAt = Date.now();
+    setState({ kind: "loading" });
+
+    const schedule = (ms: number) => {
+      if (cancelled) return;
+      timer = setTimeout(tick, ms);
+    };
 
     const tick = async () => {
-      if (cancelledRef.current) return;
+      if (cancelled) return;
       if (document.hidden) {
-        // Only poll while visible; retry when tab returns.
-        timer = setTimeout(tick, 2000);
+        schedule(2000);
         return;
       }
-      if (Date.now() - startedAtRef.current > HARD_TIMEOUT_MS) {
-        setState({ kind: "pending", nextCheckMs: DEFAULT_INTERVAL_MS });
+      if (Date.now() - startedAt > HARD_TIMEOUT_MS) {
+        setState({ kind: "pending" });
         return;
       }
-      if (attemptsRef.current >= MAX_ATTEMPTS) {
-        setState({ kind: "pending", nextCheckMs: DEFAULT_INTERVAL_MS });
+      if (attempts >= MAX_ATTEMPTS) {
+        setState({ kind: "pending" });
         return;
       }
-      attemptsRef.current += 1;
+      attempts += 1;
       try {
         const { data, error } = await supabase.functions.invoke(
           "v2-upayments-status",
           { body: { order_id: orderId } },
         );
-        if (cancelledRef.current) return;
-        const status = (data as any)?.status;
-        const nextAfter = Number((data as any)?.next_check_after ?? 0);
-        const wait = Math.max(
-          DEFAULT_INTERVAL_MS,
-          Number.isFinite(nextAfter) && nextAfter > 0 ? nextAfter * 1000 : 0,
-        );
+        if (cancelled) return;
         if (error) {
-          setState({ kind: "pending", nextCheckMs: wait });
-          timer = setTimeout(tick, wait);
+          const code = await extractInvokeErrorCode(data, error);
+          if (code === "provider_disabled" || code === "configuration_unavailable") {
+            setState({ kind: "provider_down" });
+            return;
+          }
+          const wait = parseNextCheckMs((data as any)?.next_check_after);
+          setState({ kind: "pending" });
+          schedule(wait);
           return;
         }
+        const status = (data as any)?.status;
+        const wait = parseNextCheckMs((data as any)?.next_check_after);
         if (status === "paid") {
-          const productIds: string[] = Array.isArray((data as any)?.product_ids)
-            ? (data as any).product_ids.filter(
-                (x: unknown): x is string => typeof x === "string",
-              )
+          const raw = (data as any)?.product_ids;
+          const productIds: string[] = Array.isArray(raw)
+            ? raw.filter((x: unknown): x is string => typeof x === "string")
             : [];
           if (!clearedCartRef.current) {
             clearedCartRef.current = true;
-            const toClear = productIds.length > 0 ? productIds : cartStore.read().map((i) => i.product_id);
-            cartStore.removeMany(toClear);
+            // Only clear items the server confirms were purchased. If empty,
+            // leave the cart intact so nothing is lost.
+            if (productIds.length > 0) {
+              cartStore.removeMany(productIds);
+            }
             clearIdempotencyKey();
           }
           qc.invalidateQueries({ queryKey: ["v2"] });
@@ -145,35 +170,25 @@ export default function V2CheckoutReturnPage() {
           return;
         }
         // pending / backoff / global_backoff → schedule next.
-        setState({ kind: "pending", nextCheckMs: wait });
-        timer = setTimeout(tick, wait);
+        setState({ kind: "pending" });
+        schedule(wait);
       } catch {
-        setState({ kind: "pending", nextCheckMs: DEFAULT_INTERVAL_MS });
-        timer = setTimeout(tick, DEFAULT_INTERVAL_MS);
+        setState({ kind: "pending" });
+        schedule(MIN_INTERVAL_MS);
       }
     };
 
-    const onVisible = () => {
-      if (!document.hidden && state.kind === "pending") {
-        // no-op: existing timer will resume
-      }
-    };
-    document.addEventListener("visibilitychange", onVisible);
     tick();
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
       if (timer) clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisible);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId, user, authLoading]);
+  }, [orderId, user, authLoading, qc, pollNonce]);
 
-  const manualCheck = () => {
-    attemptsRef.current = 0;
-    startedAtRef.current = Date.now();
-    cancelledRef.current = false;
-    setState({ kind: "loading" });
-  };
+  const manualCheck = useCallback(() => {
+    // Reset the terminal-cart flag only if we haven't confirmed payment yet.
+    setPollNonce((n) => n + 1);
+  }, []);
 
   return (
     <div className="min-h-[70vh]" dir={isRTL ? "rtl" : "ltr"}>
@@ -222,7 +237,19 @@ export default function V2CheckoutReturnPage() {
             <Clock className="mx-auto h-10 w-10 text-warm-gold" aria-hidden />
             <h1 className="text-xl font-semibold">{t.pending}</h1>
             <p className="text-muted-foreground">{t.pendingDesc}</p>
-            <Button onClick={manualCheck} className="min-h-[44px]">{t.retry}</Button>
+            <Button onClick={manualCheck} className="min-h-[44px]">
+              {t.retry}
+            </Button>
+          </>
+        ) : state.kind === "provider_down" ? (
+          <>
+            <Clock className="mx-auto h-10 w-10 text-warm-gold" aria-hidden />
+            <p className="rounded-md border border-warm-gold/40 bg-warm-gold/10 p-3 text-sm">
+              {t.providerDown}
+            </p>
+            <Button asChild variant="outline" className="min-h-[44px]">
+              <Link to="/cart">{t.backToCart}</Link>
+            </Button>
           </>
         ) : state.kind === "failed" ? (
           <>
