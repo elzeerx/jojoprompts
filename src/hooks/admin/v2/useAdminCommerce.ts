@@ -112,7 +112,8 @@ export interface AdminEntitlementRow {
   id: string;
   user_id: string;
   user_email_masked: string | null;
-  scope: string;
+  scope: "resource" | "library" | "collection" | string;
+  collection_key: "chatgpt_prompts" | "midjourney_prompts" | string | null;
   resource_id: string | null;
   resource_title: string | null;
   resource_type: string | null;
@@ -125,6 +126,18 @@ export interface AdminEntitlementRow {
   expires_at: string | null;
   version_major: number | null;
   state: "active" | "revoked" | "expired";
+}
+
+/** Bilingual, human-readable label for an entitlement scope + collection_key. */
+export function describeEntitlementTarget(row: Pick<AdminEntitlementRow,
+  "scope" | "collection_key" | "resource_title">): string {
+  if (row.scope === "library") return "Full library / كامل المكتبة";
+  if (row.scope === "collection") {
+    if (row.collection_key === "chatgpt_prompts") return "ChatGPT prompts collection / مجموعة ChatGPT";
+    if (row.collection_key === "midjourney_prompts") return "Midjourney prompts collection / مجموعة Midjourney";
+    return row.collection_key ?? "Collection";
+  }
+  return row.resource_title ?? "—";
 }
 
 export interface RefundsListParams {
