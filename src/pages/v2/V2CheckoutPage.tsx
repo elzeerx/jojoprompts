@@ -14,8 +14,10 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { supabase } from "@/integrations/supabase/client";
 import { formatKwd } from "@/config/v2Flags";
 import { toast } from "@/hooks/use-toast";
-
-const UPAY_HOST_RE = /^https:\/\/([a-z0-9-]+\.)*upayments\.com(\/|$)/i;
+import {
+  extractInvokeErrorCode,
+  isValidUpaymentsCheckoutUrl,
+} from "@/lib/v2/invokeErrors";
 
 function friendlyError(code: string | undefined, lang: "en" | "ar"): string {
   const en: Record<string, string> = {
@@ -26,6 +28,10 @@ function friendlyError(code: string | undefined, lang: "en" | "ar"): string {
     ownership_conflict: "You already own one or more items in this cart.",
     recovery_required:
       "We couldn't complete this request. Please try again shortly.",
+    discount_invalid: "That discount code isn't valid for this cart.",
+    cart_empty: "Your cart is empty.",
+    product_unavailable: "One or more items are no longer available.",
+    not_authenticated: "Please sign in to continue.",
   };
   const ar: Record<string, string> = {
     provider_disabled: "الدفع غير متاح حالياً. تم حفظ سلتك.",
@@ -34,6 +40,10 @@ function friendlyError(code: string | undefined, lang: "en" | "ar"): string {
       "لديك عملية دفع معلّقة لأحد هذه العناصر. أعد المحاولة بعد قليل.",
     ownership_conflict: "تمتلك بالفعل أحد العناصر في السلة.",
     recovery_required: "تعذّر إتمام الطلب. حاول مرة أخرى بعد قليل.",
+    discount_invalid: "رمز الخصم غير صالح لهذه السلة.",
+    cart_empty: "سلتك فارغة.",
+    product_unavailable: "أحد العناصر لم يعد متوفراً.",
+    not_authenticated: "يرجى تسجيل الدخول للمتابعة.",
   };
   const map = lang === "ar" ? ar : en;
   return (
@@ -43,6 +53,7 @@ function friendlyError(code: string | undefined, lang: "en" | "ar"): string {
       : "Something went wrong starting checkout. Please try again.")
   );
 }
+
 
 export default function V2CheckoutPage() {
   const { user, loading: authLoading } = useAuth();
@@ -120,8 +131,7 @@ export default function V2CheckoutPage() {
         },
       );
       if (error) {
-        // Extract embedded error code where possible.
-        const code = (resp as any)?.error ?? undefined;
+        const code = await extractInvokeErrorCode(resp, error);
         if (code === "provider_disabled" || code === "configuration_unavailable") {
           setProviderDown(true);
           return;
@@ -129,8 +139,8 @@ export default function V2CheckoutPage() {
         setErrMsg(friendlyError(code, lang));
         return;
       }
-      const url = String((resp as any)?.checkout_url ?? "");
-      if (!url || !UPAY_HOST_RE.test(url)) {
+      const url = (resp as { checkout_url?: unknown } | null)?.checkout_url;
+      if (!isValidUpaymentsCheckoutUrl(url)) {
         setErrMsg(friendlyError("recovery_required", lang));
         return;
       }
@@ -141,6 +151,7 @@ export default function V2CheckoutPage() {
       setSubmitting(false);
     }
   };
+
 
   if (cart.items.length === 0) {
     return (
@@ -186,28 +197,25 @@ export default function V2CheckoutPage() {
               )}
             </div>
 
-            <div className="rounded-2xl border p-4 space-y-3">
+            <div className="rounded-2xl border p-4 space-y-2">
               <label htmlFor="discount" className="block text-sm font-medium">
                 {t.discount}
               </label>
-              <div className="flex gap-2">
-                <Input
-                  id="discount"
-                  value={discount}
-                  maxLength={64}
-                  onChange={(e) => setDiscount(e.target.value)}
-                  className="min-h-[44px]"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-[44px]"
-                  onClick={() => refetch()}
-                >
-                  {t.apply}
-                </Button>
-              </div>
+              <Input
+                id="discount"
+                value={discount}
+                maxLength={64}
+                onChange={(e) => setDiscount(e.target.value)}
+                className="min-h-[44px]"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                {lang === "ar"
+                  ? "سيتم التحقق من الرمز عند إنشاء الطلب."
+                  : "Your code will be validated at checkout."}
+              </p>
             </div>
+
 
             <div className="rounded-2xl border p-4 space-y-2">
               <h2 className="font-semibold">{t.gateway}</h2>
