@@ -118,8 +118,8 @@ export default function EntitlementsPage() {
                   <Badge variant={stateTone(e.state) as never}>{e.state}</Badge>
                   <Badge variant="secondary">{e.grant_reason}</Badge>
                 </div>
-                <div className="text-sm">{e.resource_title ?? (e.scope === "library" ? "Full library" : "—")}</div>
-                <div className="text-xs text-muted-foreground">{e.user_email_masked ?? "—"} · {e.scope}</div>
+                <div className="text-sm">{describeEntitlementTarget(e)}</div>
+                <div className="text-xs text-muted-foreground">{e.user_email_masked ?? "—"} · {e.scope}{e.collection_key ? ` · ${e.collection_key}` : ""}</div>
                 <div className="text-xs text-muted-foreground">granted {formatDateTime(e.granted_at)}</div>
                 {e.revoked_at && <div className="text-xs text-destructive">revoked {formatDateTime(e.revoked_at)} — {e.revoke_reason ?? ""}</div>}
               </CardContent>
