@@ -79,17 +79,19 @@ export function AddToCartButton({
             product_type: productType,
           },
         });
-        if (res.ok) {
+        if (res.ok === true) {
           toast({ title: t.added });
           return;
         }
-        if (res.reason === "cap_reached") {
+        const reason = (res as { ok: false; reason: string }).reason;
+        if (reason === "cap_reached") {
           toast({ variant: "destructive", title: t.capTitle, description: t.capDesc });
-        } else if (res.reason === "duplicate") {
+        } else if (reason === "duplicate") {
           toast({ title: t.dupTitle });
         } else {
           toast({ variant: "destructive", title: t.invalid });
         }
+
 
       }}
     >
