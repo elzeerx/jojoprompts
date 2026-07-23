@@ -1,9 +1,13 @@
-import { Link } from "react-router-dom";
-import { Info } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Info, Loader2 } from "lucide-react";
 import type { ExploreResource } from "@/hooks/v2/useExploreResources";
-import { formatKwd, safeHeroImageUrl, V2_COMMERCE_ENABLED, V2_COPY } from "@/config/v2Flags";
+import { formatKwd, safeHeroImageUrl, V2_COPY } from "@/config/v2Flags";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFreeAcquisition } from "@/hooks/v2/useFreeAcquisition";
+import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   r: ExploreResource;
@@ -13,19 +17,31 @@ interface Props {
 export function VisualResourceCard({ r, onQuickPreview }: Props) {
   const { language } = useTranslation();
   const lang = (language as "en" | "ar") ?? "en";
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const acquire = useFreeAcquisition();
+  const nextPath = useNextLoginPath();
+
   const title = lang === "ar" && r.title_ar ? r.title_ar : r.title_en;
   const isFree = r.product?.product_type === "free";
   const heroUrl = safeHeroImageUrl(r.hero_image_path);
-  const canAddToCart = !!r.product && !r.owned && !isFree && V2_COMMERCE_ENABLED;
 
   const priceBadge = r.owned
     ? V2_COPY.cards.owned[lang]
     : isFree
       ? V2_COPY.cards.free[lang]
-      : `${formatKwd(r.product?.price_fils ?? 0)} KD`;
+      : r.product
+        ? `${formatKwd(r.product.price_fils)} KD`
+        : lang === "ar" ? "غير متاح" : "Unavailable";
+
+  const stopPropagation = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   return (
     <div className="group relative">
+      {/* Card link — no nested interactive markup inside. Overlays are siblings. */}
       <Link
         to={`/resources/${r.slug}`}
         className="block overflow-hidden rounded-2xl border border-border/60 bg-muted focus-visible:ring-2 focus-visible:ring-warm-gold"
@@ -45,7 +61,7 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
             </div>
           )}
         </div>
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent p-3 text-white">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent p-3 text-white">
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{title}</div>
             <div className="text-[11px] opacity-80 capitalize">
@@ -60,24 +76,65 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
           </span>
         </div>
       </Link>
-      <div className="absolute top-2 end-2 flex items-center gap-1">
-        {canAddToCart && r.product ? (
-          <div onClick={(e) => e.stopPropagation()}>
-            <AddToCartButton
-              productId={r.product.id}
-              productType={r.product.product_type as "individual" | "bundle" | "lifetime" | "free"}
-              titleEn={r.title_en}
-              titleAr={r.title_ar}
-              resourceType={r.type ?? null}
-            />
-          </div>
-        ) : null}
+
+      {/* Overlay actions — sibling of the link; block bubbling so the tile
+          navigation never fires when interacting with these controls. */}
+      <div
+        className="absolute top-2 end-2 flex items-center gap-1"
+        onClick={stopPropagation}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") stopPropagation(e);
+        }}
+      >
+        {r.owned ? (
+          <Button asChild size="sm" variant="secondary" className="min-h-[44px] shadow">
+            <Link to="/library">{V2_COPY.cards.open[lang]}</Link>
+          </Button>
+        ) : isFree ? (
+          <Button
+            size="sm"
+            className="min-h-[44px] shadow"
+            disabled={acquire.isPending}
+            onClick={(e) => {
+              stopPropagation(e);
+              if (!user) {
+                navigate(nextPath);
+                return;
+              }
+              acquire.mutate(r.id);
+            }}
+          >
+            {acquire.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              V2_COPY.cards.addToLibrary[lang]
+            )}
+          </Button>
+        ) : r.product ? (
+          <AddToCartButton
+            productId={r.product.id}
+            productType={r.product.product_type as "individual" | "bundle" | "lifetime" | "free"}
+            titleEn={r.title_en}
+            titleAr={r.title_ar}
+            resourceType={r.type ?? null}
+          />
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled
+            className="min-h-[44px] shadow"
+            aria-label={lang === "ar" ? "غير متاح" : "Unavailable"}
+          >
+            {lang === "ar" ? "غير متاح" : "Unavailable"}
+          </Button>
+        )}
+
         {onQuickPreview ? (
           <button
             type="button"
             onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
+              stopPropagation(e);
               onQuickPreview(r.id);
             }}
             aria-label={V2_COPY.cards.quickPreview[lang]}
@@ -90,4 +147,3 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
     </div>
   );
 }
-
