@@ -6,6 +6,7 @@ import { EmptyRouteState } from "../sections/common/EmptyRouteState";
 const OverviewV2 = lazy(() => import("../sections/overview/OverviewV2"));
 const CatalogPage = lazy(() => import("../sections/catalog/CatalogPage"));
 const ResourcePublisher = lazy(() => import("../sections/publishing/ResourcePublisher"));
+const LegacyMigrationPreview = lazy(() => import("../sections/publishing/LegacyMigrationPreview"));
 const OrdersV2Page = lazy(() => import("../sections/orders/OrdersV2Page"));
 const PaymentEventsPage = lazy(() => import("../sections/orders/PaymentEventsPage"));
 const EntitlementsPage = lazy(() => import("../sections/orders/EntitlementsPage"));
