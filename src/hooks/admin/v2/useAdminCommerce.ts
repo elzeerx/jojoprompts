@@ -524,45 +524,55 @@ export interface MigrationPreviewCombinedCredit {
 export interface RehearsalResult {
   generated_at: string;
   execute_available: false;
+  execution_requires_database_approval: boolean;
+  private_executor_ready: boolean;
+  confirmation_phrase_required: string;
   notes: string;
   policy_version: string;
   conversion_rate_fils_per_usd: number;
   threshold_fils: number;
-  planned_library_grants: {
-    active_premium_users: number;
-    active_ultimate_users: number;
-    unique_active_lifetime_users: number;
+  entitlement_plan_hash: string;
+  credit_plan_hash: string;
+  combined_plan_hash: string;
+  planned_writes: {
+    entitlement_rows_total: number;
+    entitlement_unique_users: number;
+    entitlement_lifetime_rows: number;
+    entitlement_lifetime_users: number;
+    entitlement_premium_rows: number;
+    entitlement_ultimate_rows: number;
+    entitlement_standard_users: number;
+    entitlement_standard_grants: number;
+    entitlement_basic_users: number;
+    entitlement_basic_grants: number;
+    credit_rows_total: number;
+    credit_paypal_rows: number;
+    credit_upayments_rows: number;
+    credit_paypal_users: number;
+    credit_upayments_users: number;
   };
-  planned_collection_grants_effective_active: {
-    standard_users: number;
-    standard_grants: number;
-    basic_users: number;
-    basic_grants: number;
-    unique_active_collection_users: number;
+  existing_writes: {
+    entitlements_with_legacy_source: number;
+    credit_entries_with_legacy_transaction_id: number;
   };
-  unique_active_users_total: number;
-  historical_expired_only: { basic_users: number; standard_users: number; note: string };
-  cancelled_review: { lifetime_unresolved_users: number };
-  paypal_verified_credit: { users: number; total_capped_fils: number; rows: number };
-  upayments_verified_credit: {
-    policy: string;
-    users: number;
-    total_capped_fils: number;
-    rows: number;
-    completed_count: number;
-    pending_excluded_count: number;
-    kwd_completed_count: number;
-    negative_linked_review_rows: number;
-    unlinked_review_rows: number;
+  pending_writes: {
+    entitlements_to_insert: number;
+    credit_entries_to_insert: number;
+    threshold_lifetime_grants_needed_now: number;
   };
-  combined_verified_credit: { users: number; total_capped_fils: number };
-  threshold: {
+  credit_totals: {
+    paypal_raw_fils: number;
+    paypal_capped_fils: number;
+    upayments_raw_fils: number;
+    upayments_capped_fils: number;
+    combined_capped_fils: number;
+    combined_users: number;
     users_reaching_threshold: number;
-    users_needing_lifetime_grant_after_excluding_existing_lifetime: number;
   };
-  replay_conflicts: {
-    existing_legacy_source_grants: number;
-    existing_legacy_transaction_credit_entries: number;
+  cohorts: {
+    historical_expired_basic_users: number;
+    historical_expired_standard_users: number;
+    cancelled_lifetime_unresolved_users: number;
   };
 }
 export interface MigrationPreviewEntitlements {

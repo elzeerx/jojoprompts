@@ -44,57 +44,105 @@ function RehearsalCard() {
       </div>
     );
   }
-  const r = q.data as RehearsalResult;
+  const r = (q.data ?? {}) as Partial<RehearsalResult>;
+  const pw = r.planned_writes ?? ({} as Partial<RehearsalResult["planned_writes"]>);
+  const ew = r.existing_writes ?? ({} as Partial<RehearsalResult["existing_writes"]>);
+  const pend = r.pending_writes ?? ({} as Partial<RehearsalResult["pending_writes"]>);
+  const ct = r.credit_totals ?? ({} as Partial<RehearsalResult["credit_totals"]>);
+  const co = r.cohorts ?? ({} as Partial<RehearsalResult["cohorts"]>);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">
-          Migration rehearsal (read-only) · policy {r.policy_version}
+          Migration rehearsal (read-only) · policy {r.policy_version ?? "—"}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-[11px] text-muted-foreground" dir="ltr">
-          {r.notes} · execute_available = <code>false</code>
+          {r.notes ?? ""} · execute_available = <code>false</code> ·{" "}
+          private_executor_ready = <code>{String(r.private_executor_ready ?? false)}</code>
         </div>
+
+        {/* Plan hashes */}
+        <div className="rounded-md border p-3 text-xs" dir="ltr">
+          <div className="font-semibold mb-1">Plan hashes</div>
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
+            <div>Entitlements: <code className="text-[10px]">{r.entitlement_plan_hash ?? "—"}</code></div>
+            <div>Credits: <code className="text-[10px]">{r.credit_plan_hash ?? "—"}</code></div>
+            <div>Combined: <code className="text-[10px]">{r.combined_plan_hash ?? "—"}</code></div>
+          </div>
+          <div className="mt-1 text-muted-foreground">
+            Confirmation phrase required: <code>{r.confirmation_phrase_required ?? "—"}</code>. Execution requires
+            explicit database approval — no public executor is exposed.
+          </div>
+        </div>
+
+        {/* Planned entitlement writes */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Planned lifetime users" value={fmtInt(r.planned_library_grants.unique_active_lifetime_users)} hint={`Premium ${fmtInt(r.planned_library_grants.active_premium_users)} · Ultimate ${fmtInt(r.planned_library_grants.active_ultimate_users)}`} />
-          <Stat label="Standard active users" value={fmtInt(r.planned_collection_grants_effective_active.standard_users)} hint={`${fmtInt(r.planned_collection_grants_effective_active.standard_grants)} collection grants`} />
-          <Stat label="Basic effective users" value={fmtInt(r.planned_collection_grants_effective_active.basic_users)} hint={`${fmtInt(r.planned_collection_grants_effective_active.basic_grants)} collection grants`} />
-          <Stat label="Unique active users total" value={fmtInt(r.unique_active_users_total)} />
-          <Stat label="Historical expired Basic" value={fmtInt(r.historical_expired_only.basic_users)} hint="positive-status expired only" />
-          <Stat label="Historical expired Standard" value={fmtInt(r.historical_expired_only.standard_users)} />
-          <Stat label="Cancelled lifetime unresolved" value={fmtInt(r.cancelled_review.lifetime_unresolved_users)} />
+          <Stat
+            label="Planned lifetime users"
+            value={fmtInt(pw.entitlement_lifetime_users)}
+            hint={`Premium ${fmtInt(pw.entitlement_premium_rows)} · Ultimate ${fmtInt(pw.entitlement_ultimate_rows)}`}
+          />
+          <Stat
+            label="Standard active users"
+            value={fmtInt(pw.entitlement_standard_users)}
+            hint={`${fmtInt(pw.entitlement_standard_grants)} collection grants`}
+          />
+          <Stat
+            label="Basic effective users"
+            value={fmtInt(pw.entitlement_basic_users)}
+            hint={`${fmtInt(pw.entitlement_basic_grants)} collection grants`}
+          />
+          <Stat
+            label="Unique active users total"
+            value={fmtInt(pw.entitlement_unique_users)}
+            hint={`${fmtInt(pw.entitlement_rows_total)} entitlement rows`}
+          />
+          <Stat label="Historical expired Basic" value={fmtInt(co.historical_expired_basic_users)} hint="positive-status expired only" />
+          <Stat label="Historical expired Standard" value={fmtInt(co.historical_expired_standard_users)} />
+          <Stat label="Cancelled lifetime unresolved" value={fmtInt(co.cancelled_lifetime_unresolved_users)} />
         </div>
+
+        {/* Credit totals */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-md border p-3 text-xs" dir="ltr">
             <div className="font-semibold mb-1">PayPal verified</div>
-            <div>Users: <strong className="tabular-nums">{fmtInt(r.paypal_verified_credit.users)}</strong></div>
-            <div>Rows: <strong className="tabular-nums">{fmtInt(r.paypal_verified_credit.rows)}</strong></div>
-            <div>Capped total: <strong className="tabular-nums">{fmtInt(r.paypal_verified_credit.total_capped_fils)}</strong> fils</div>
+            <div>Users: <strong className="tabular-nums">{fmtInt(pw.credit_paypal_users)}</strong></div>
+            <div>Rows: <strong className="tabular-nums">{fmtInt(pw.credit_paypal_rows)}</strong></div>
+            <div>Raw total: <strong className="tabular-nums">{fmtInt(ct.paypal_raw_fils)}</strong> fils</div>
+            <div>Capped total: <strong className="tabular-nums">{fmtInt(ct.paypal_capped_fils)}</strong> fils</div>
           </div>
           <div className="rounded-md border p-3 text-xs" dir="ltr">
             <div className="font-semibold mb-1">UPayments verified (code-reconstructed KWD)</div>
-            <div>Users: <strong className="tabular-nums">{fmtInt(r.upayments_verified_credit.users)}</strong></div>
-            <div>Rows: <strong className="tabular-nums">{fmtInt(r.upayments_verified_credit.rows)}</strong></div>
-            <div>Capped total: <strong className="tabular-nums">{fmtInt(r.upayments_verified_credit.total_capped_fils)}</strong> fils</div>
-            <div className="mt-1 text-muted-foreground">
-              Pending excluded: {fmtInt(r.upayments_verified_credit.pending_excluded_count)} · Neg-linked review:{" "}
-              {fmtInt(r.upayments_verified_credit.negative_linked_review_rows)} · Unlinked review:{" "}
-              {fmtInt(r.upayments_verified_credit.unlinked_review_rows)}
-            </div>
+            <div>Users: <strong className="tabular-nums">{fmtInt(pw.credit_upayments_users)}</strong></div>
+            <div>Rows: <strong className="tabular-nums">{fmtInt(pw.credit_upayments_rows)}</strong></div>
+            <div>Raw total: <strong className="tabular-nums">{fmtInt(ct.upayments_raw_fils)}</strong> fils</div>
+            <div>Capped total: <strong className="tabular-nums">{fmtInt(ct.upayments_capped_fils)}</strong> fils</div>
           </div>
           <div className="rounded-md border p-3 text-xs" dir="ltr">
             <div className="font-semibold mb-1">Combined (per-user capped)</div>
-            <div>Users: <strong className="tabular-nums">{fmtInt(r.combined_verified_credit.users)}</strong></div>
-            <div>Total: <strong className="tabular-nums">{fmtInt(r.combined_verified_credit.total_capped_fils)}</strong> fils</div>
-            <div className="mt-2">Threshold reached: <strong className="tabular-nums">{fmtInt(r.threshold.users_reaching_threshold)}</strong></div>
-            <div>Needing new lifetime grant: <strong className="tabular-nums">{fmtInt(r.threshold.users_needing_lifetime_grant_after_excluding_existing_lifetime)}</strong></div>
+            <div>Users: <strong className="tabular-nums">{fmtInt(ct.combined_users)}</strong></div>
+            <div>Total: <strong className="tabular-nums">{fmtInt(ct.combined_capped_fils)}</strong> fils</div>
+            <div className="mt-2">Threshold reached: <strong className="tabular-nums">{fmtInt(ct.users_reaching_threshold)}</strong></div>
+            <div>Needing new lifetime grant: <strong className="tabular-nums">{fmtInt(pend.threshold_lifetime_grants_needed_now)}</strong></div>
           </div>
         </div>
-        <div className="rounded-md border p-3 text-xs" dir="ltr">
-          <div className="font-semibold mb-1">Replay conflicts</div>
-          <div>Grants with a legacy_source (all history): <strong className="tabular-nums">{fmtInt(r.replay_conflicts.existing_legacy_source_grants)}</strong></div>
-          <div>Credit entries with a legacy_transaction_id: <strong className="tabular-nums">{fmtInt(r.replay_conflicts.existing_legacy_transaction_credit_entries)}</strong></div>
+
+        {/* Pending vs existing writes / replay conflicts */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-md border p-3 text-xs" dir="ltr">
+            <div className="font-semibold mb-1">Pending writes (idempotent)</div>
+            <div>Entitlements to insert: <strong className="tabular-nums">{fmtInt(pend.entitlements_to_insert)}</strong> (of {fmtInt(pw.entitlement_rows_total)} planned)</div>
+            <div>Credit entries to insert: <strong className="tabular-nums">{fmtInt(pend.credit_entries_to_insert)}</strong> (of {fmtInt(pw.credit_rows_total)} planned)</div>
+            <div>Threshold lifetime grants needed now: <strong className="tabular-nums">{fmtInt(pend.threshold_lifetime_grants_needed_now)}</strong></div>
+          </div>
+          <div className="rounded-md border p-3 text-xs" dir="ltr">
+            <div className="font-semibold mb-1">Existing / replay conflicts</div>
+            <div>Grants with a legacy_source (all history): <strong className="tabular-nums">{fmtInt(ew.entitlements_with_legacy_source)}</strong></div>
+            <div>Credit entries with a legacy_transaction_id: <strong className="tabular-nums">{fmtInt(ew.credit_entries_with_legacy_transaction_id)}</strong></div>
+          </div>
         </div>
       </CardContent>
     </Card>
