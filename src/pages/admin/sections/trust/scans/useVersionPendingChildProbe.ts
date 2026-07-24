@@ -5,7 +5,8 @@ import {
   adminScanDetailsKeys,
   type AdminScanDetail,
   type AdminScanDetailScan,
-} from "./useScanProvider";
+} from "@/hooks/admin/v2/useScanProvider";
+
 
 /**
  * For each scan in the version whose aggregate status is *not* clean, probe
