@@ -42,7 +42,8 @@ export default function ComingSoonPage() {
 
   return (
     <main
-      className="relative min-h-screen w-full overflow-hidden bg-[#0B0B0C] text-[#F3EFE6] antialiased"
+      dir="ltr"
+      className="relative flex h-[100dvh] w-full flex-col overflow-x-hidden overflow-y-auto bg-[#0B0B0C] text-[#F3EFE6] antialiased lg:overflow-hidden"
       style={{
         fontFamily:
           '"Playfair Display", "Cormorant Garamond", ui-serif, Georgia, "Times New Roman", serif',
@@ -59,9 +60,12 @@ export default function ComingSoonPage() {
       />
 
       {/* Wordmark */}
-      <header className="relative z-10 px-6 pt-6 sm:px-10 sm:pt-8 lg:px-16 lg:pt-10">
+      <header
+        dir="ltr"
+        className="relative z-10 flex-none px-6 pt-5 sm:px-10 sm:pt-6 lg:px-16 lg:pt-6"
+      >
         <p
-          className="text-2xl tracking-tight text-[#C9A55C] sm:text-3xl lg:text-[28px]"
+          className="text-2xl tracking-tight text-[#C9A55C] sm:text-3xl lg:text-[26px]"
           style={{ letterSpacing: "0.005em" }}
         >
           JojoPrompts
@@ -69,11 +73,11 @@ export default function ComingSoonPage() {
       </header>
 
       {/* Body */}
-      <section className="relative z-10 mx-auto flex min-h-[calc(100vh-8rem)] max-w-[1440px] flex-col items-center justify-center gap-14 px-6 py-14 sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:px-16 lg:py-8">
+      <section className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-1 flex-col items-center justify-center gap-10 px-6 py-8 sm:px-10 sm:py-10 lg:min-h-0 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:px-16 lg:py-4">
         {/* English editorial block */}
-        <div className="max-w-md text-center lg:text-left">
+        <div dir="ltr" lang="en" className="max-w-md text-center lg:max-w-sm lg:text-left">
           <h1
-            className="text-[clamp(2.25rem,5vw,3.75rem)] leading-[1.05] tracking-tight text-[#F3EFE6]"
+            className="text-[clamp(2rem,4.2vw,3.25rem)] leading-[1.05] tracking-tight text-[#F3EFE6]"
             style={{ fontWeight: 500 }}
           >
             Something new
@@ -82,7 +86,7 @@ export default function ComingSoonPage() {
           </h1>
           <Divider />
           <p
-            className="mt-6 text-[15px] leading-relaxed text-[#B8B2A6] sm:text-base"
+            className="mt-5 text-[15px] leading-relaxed text-[#B8B2A6] sm:text-base"
             style={{
               fontFamily:
                 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -99,16 +103,16 @@ export default function ComingSoonPage() {
         </div>
 
         {/* Arabic RTL block */}
-        <div dir="rtl" lang="ar" className="max-w-md text-center lg:text-right">
+        <div dir="rtl" lang="ar" className="max-w-md text-center lg:max-w-sm lg:text-right">
           <h2
-            className="text-[clamp(3.5rem,7vw,6rem)] leading-none text-[#F3EFE6]"
+            className="text-[clamp(3rem,6vw,5rem)] leading-none text-[#F3EFE6]"
             style={{ fontFamily: '"Amiri", "Scheherazade New", serif', fontWeight: 500 }}
           >
             قريباً
           </h2>
           <Divider />
           <p
-            className="mt-6 text-[15px] leading-loose text-[#B8B2A6] sm:text-base"
+            className="mt-5 text-[15px] leading-loose text-[#B8B2A6] sm:text-base"
             style={{ fontFamily: '"Amiri", "Noto Naskh Arabic", serif' }}
           >
             نعيد بناء جوجو برومبتس لعصر جديد من مهارات وأتمتة وأدوات الذكاء
@@ -118,7 +122,7 @@ export default function ComingSoonPage() {
       </section>
 
       {/* Mobile-only "Coming soon" flourish (matches attached mobile concept) */}
-      <div className="relative z-10 -mt-4 px-6 pb-2 text-center lg:hidden">
+      <div className="relative z-10 flex-none px-6 pb-2 text-center lg:hidden">
         <p
           className="text-[clamp(2rem,8vw,2.75rem)] leading-none text-[#C9A55C]"
           style={{ fontWeight: 500 }}
@@ -128,10 +132,10 @@ export default function ComingSoonPage() {
       </div>
 
       {/* Footer */}
-      <footer className="relative z-10 pb-6 text-center sm:pb-8">
+      <footer className="relative z-10 flex-none pb-5 pt-2 text-center sm:pb-6">
         <DiamondRule />
         <p
-          className="mt-4 text-xs tracking-wide text-[#8A8578]"
+          className="mt-3 text-xs tracking-wide text-[#8A8578]"
           style={{
             fontFamily:
               'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
