@@ -173,6 +173,21 @@ export function renderReceiptLineHtml(line: ReceiptLine): string {
   </tr>`;
 }
 
+/**
+ * Render one receipt line as a single plain-text row (no HTML tags, no entities).
+ * Text-only email clients receive this branch, so it must never contain HTML.
+ */
+export function renderReceiptLineText(line: ReceiptLine): string {
+  const en = (line.title_en ?? "").trim();
+  const ar = (line.title_ar ?? "").trim();
+  const rtype = (line.resource_type ?? "").trim();
+  const title = en && ar ? `${en} / ${ar}` : en || ar || "—";
+  const qty = Number.isInteger(line.quantity) && line.quantity > 0 ? line.quantity : 1;
+  const total = formatKwd(line.line_total_fils);
+  const typeSuffix = rtype ? ` [${rtype}]` : "";
+  return `  - ${title}${typeSuffix} — qty ${qty} — ${total}`;
+}
+
 /** Render the full transactional receipt (bilingual, single template). */
 export function renderReceiptHtml(order: ReceiptOrder, siteUrl: string): {
   subject: string;
