@@ -62,6 +62,8 @@ export default function LegacyMigrationPreview() {
   const paypal = d.transactions_paypal;
   const ents = d.proposed_entitlements;
   const anom = d.anomalies;
+  const cohorts = d.plan_cohorts;
+  const policy = d.grandfathering_policy;
 
   return (
     <TooltipProvider>
