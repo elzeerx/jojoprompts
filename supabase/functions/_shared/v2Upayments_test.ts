@@ -401,3 +401,37 @@ Deno.test("event: eventIdForStatus is deterministic for same inputs (idempotency
   assert(a !== c, "verdict change must yield different event id");
 });
 
+
+// ---------------- filsToKwdNumber (Create Refund float requirement) --------
+
+Deno.test("filsToKwdNumber: 900 fils serializes as JSON numeric 0.9 (not '0.9')", () => {
+  const n = filsToKwdNumber(900);
+  assertEquals(n, 0.9);
+  // JSON.stringify must emit an unquoted number — UPayments rejects strings.
+  assertEquals(JSON.stringify({ totalPrice: n }), '{"totalPrice":0.9}');
+});
+
+Deno.test("filsToKwdNumber: 1500 fils serializes as JSON numeric 1.5", () => {
+  const n = filsToKwdNumber(1500);
+  assertEquals(n, 1.5);
+  assertEquals(JSON.stringify({ totalPrice: n }), '{"totalPrice":1.5}');
+});
+
+Deno.test("filsToKwdNumber: integer-fils inputs remain exact to 3 decimals", () => {
+  // Round-trip via filsToKwdDecimal (authoritative 3-decimal string) to
+  // guarantee no float drift is observable at 3 fractional digits.
+  const cases = [1, 100, 250, 999, 1000, 12_345, 25_000, 100_500, 999_999];
+  for (const fils of cases) {
+    const n = filsToKwdNumber(fils);
+    assertEquals(n.toFixed(3), filsToKwdDecimal(fils));
+  }
+});
+
+Deno.test("filsToKwdNumber: rejects zero, negatives, non-integers, and out-of-range", () => {
+  const bad = [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 1_000_000_001];
+  for (const v of bad) {
+    let threw = false;
+    try { filsToKwdNumber(v); } catch { threw = true; }
+    assert(threw, `expected throw for ${v}`);
+  }
+});
