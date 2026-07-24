@@ -5,6 +5,7 @@ import {
   adminScanDetailsKeys,
   type AdminScanDetail,
 } from "@/hooks/admin/v2/useScanProvider";
+import { isProbeResultUnresolved } from "./probeResolution";
 
 interface ProbeScan {
   id: string;
@@ -43,14 +44,27 @@ export function useVersionPendingChildProbe(scans: ProbeScan[] | undefined) {
         return (data as unknown as AdminScanDetail | null) ?? null;
       },
       staleTime: 10_000,
+      retry: 1,
     })),
   });
 
-  const isLoading =
-    targetIds.length > 0 && results.some((r) => r.isLoading || r.isFetching);
+  const isUnresolved =
+    targetIds.length > 0 && results.some((r) => isProbeResultUnresolved(r));
+
   const hasPendingChild = results.some(
     (r) => (r.data?.counts?.pending ?? 0) > 0,
   );
 
-  return { isLoading, hasPendingChild } as const;
+  // Preserve prior field name (`isLoading`) for compatibility while exposing
+  // the stricter fail-closed signal as `isUnresolved`.
+  return { isLoading: isUnresolved, isUnresolved, hasPendingChild } as const;
 }
+
+/**
+ * Re-export the pure predicate so existing importers keep working. The
+ * implementation lives in `./probeResolution` to remain importable from
+ * unit tests without pulling in the Supabase client (which requires
+ * `localStorage`).
+ */
+export { isProbeResultUnresolved } from "./probeResolution";
+export type { ProbeResultShape } from "./probeResolution";
