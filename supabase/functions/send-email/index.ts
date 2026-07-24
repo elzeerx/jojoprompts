@@ -283,12 +283,22 @@ export default async function handler(req: Request): Promise<Response> {
   // service: no per-caller rate limit; unrestricted.
 
   // ---------- Unsubscribe gate (marketing/lifecycle types only)
+  // Essential transactional types bypass this lookup entirely.
+  // Non-transactional types fail closed: any DB error returns 503 before Resend.
   if (!TRANSACTIONAL_EMAIL_TYPES.has(email_type)) {
-    const { data: unsub } = await supabase
+    const { data: unsub, error: unsubErr } = await supabase
       .from('unsubscribed_emails')
       .select('email')
       .eq('email', to)
       .maybeSingle();
+    if (unsubErr) {
+      // Never expose DB error or recipient.
+      return jsonResponse(
+        { success: false, error: 'preference_check_unavailable' },
+        503,
+        origin,
+      );
+    }
     if (unsub) {
       // Do NOT call Resend; return truthful non-success payload.
       await logEmail(supabase, {
