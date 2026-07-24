@@ -23,8 +23,10 @@ function friendlyError(code: string | undefined, lang: "en" | "ar"): string {
   const en: Record<string, string> = {
     provider_disabled: "Payments are not available yet. Your cart is saved.",
     configuration_unavailable: "Payments are not available yet. Your cart is saved.",
+    purchase_in_progress:
+      "A previous payment for these items is still being verified. Please review it in My orders (or the cancelled-payment page) before starting a new checkout.",
     overlap_pending_order:
-      "You already have a pending checkout for one of these items. Try again in a few minutes.",
+      "A previous payment for these items is still being verified. Please review it in My orders before starting a new checkout.",
     ownership_conflict: "You already own one or more items in this cart.",
     recovery_required:
       "We couldn't complete this request. Please try again shortly.",
@@ -36,8 +38,10 @@ function friendlyError(code: string | undefined, lang: "en" | "ar"): string {
   const ar: Record<string, string> = {
     provider_disabled: "الدفع غير متاح حالياً. تم حفظ سلتك.",
     configuration_unavailable: "الدفع غير متاح حالياً. تم حفظ سلتك.",
+    purchase_in_progress:
+      "لا يزال دفعك السابق قيد التحقق. راجعه في «طلباتي» (أو صفحة الدفع الملغى) قبل بدء عملية دفع جديدة.",
     overlap_pending_order:
-      "لديك عملية دفع معلّقة لأحد هذه العناصر. أعد المحاولة بعد قليل.",
+      "لا يزال دفعك السابق قيد التحقق. راجعه في «طلباتي» قبل بدء عملية دفع جديدة.",
     ownership_conflict: "تمتلك بالفعل أحد العناصر في السلة.",
     recovery_required: "تعذّر إتمام الطلب. حاول مرة أخرى بعد قليل.",
     discount_invalid: "رمز الخصم غير صالح لهذه السلة.",

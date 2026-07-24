@@ -172,6 +172,27 @@ Deno.test("status: allowlists unchanged", () => {
   assertEquals(normalizePaymentStatus("SOMETHING_ELSE").verdict, "unknown");
 });
 
+Deno.test("status: NOT CAPTURED aliases normalize to failed with canonical FAILED", () => {
+  const a = normalizePaymentStatus("NOT CAPTURED");
+  assertEquals(a.verdict, "failed");
+  assertEquals(a.normalized, "FAILED");
+  const b = normalizePaymentStatus("NOT_CAPTURED");
+  assertEquals(b.verdict, "failed");
+  assertEquals(b.normalized, "FAILED");
+  const c = normalizePaymentStatus("not captured");
+  assertEquals(c.verdict, "failed");
+  assertEquals(c.normalized, "FAILED");
+  // Guard against substring/fuzzy widening.
+  assertEquals(normalizePaymentStatus("NOTCAPTURED").verdict, "unknown");
+  assertEquals(normalizePaymentStatus("CAPTUREDX").verdict, "unknown");
+  assertEquals(normalizePaymentStatus("XCAPTURED").verdict, "unknown");
+  // Existing verdicts still round-trip their normalized form.
+  assertEquals(normalizePaymentStatus("CAPTURED").normalized, "CAPTURED");
+  assertEquals(normalizePaymentStatus("DECLINED").normalized, "DECLINED");
+  assertEquals(normalizePaymentStatus("CANCELLED").normalized, "CANCELLED");
+  assertEquals(normalizePaymentStatus("PENDING").normalized, "PENDING");
+});
+
 // ---------------- extractChargeFields (non-whitelabel hosted) ----------------
 
 Deno.test("charge: official non-whitelabel response { status, data.link } derives session_id from URL", () => {
