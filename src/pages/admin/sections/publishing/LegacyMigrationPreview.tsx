@@ -93,7 +93,7 @@ function RehearsalCard() {
         </div>
         <div className="rounded-md border p-3 text-xs" dir="ltr">
           <div className="font-semibold mb-1">Replay conflicts</div>
-          <div>Active grants with a legacy_source: <strong className="tabular-nums">{fmtInt(r.replay_conflicts.existing_active_legacy_source_grants)}</strong></div>
+          <div>Grants with a legacy_source (all history): <strong className="tabular-nums">{fmtInt(r.replay_conflicts.existing_legacy_source_grants)}</strong></div>
           <div>Credit entries with a legacy_transaction_id: <strong className="tabular-nums">{fmtInt(r.replay_conflicts.existing_legacy_transaction_credit_entries)}</strong></div>
         </div>
       </CardContent>
