@@ -17,54 +17,16 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
   evaluateReadiness,
-  METADEFENDER_BASE,
+  probeMetadefenderReadiness,
   SCANNER_NAME,
   type ReadinessResult,
 } from "../_shared/metadefender.ts";
 
-const PROBE_TIMEOUT_MS = 5000;
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-function err(code: string, status = 400): Response {
-  return json({ ok: false, error: code }, status);
-}
-
 async function probeProvider(apiKey: string): Promise<ReadinessResult> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${METADEFENDER_BASE}/apikey/`, {
-      method: "GET",
-      headers: { apikey: apiKey, accept: "application/json" },
-      signal: controller.signal,
-    });
-    let account: unknown = null;
-    try {
-      account = await res.json();
-    } catch {
-      account = null;
-    }
-    return evaluateReadiness({
-      hasApiKey: true,
-      hasWorkerSecret: !!Deno.env.get("PACKAGE_SCAN_WORKER_SECRET"),
-      probeStatus: res.status,
-      account,
-    });
-  } catch {
-    return evaluateReadiness({
-      hasApiKey: true,
-      hasWorkerSecret: !!Deno.env.get("PACKAGE_SCAN_WORKER_SECRET"),
-      probeStatus: undefined,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  return await probeMetadefenderReadiness(
+    apiKey,
+    Deno.env.get("PACKAGE_SCAN_WORKER_SECRET"),
+  );
 }
 
 async function requireAdmin(req: Request): Promise<
