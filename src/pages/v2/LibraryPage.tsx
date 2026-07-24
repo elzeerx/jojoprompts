@@ -5,6 +5,7 @@ import { useLibraryState } from "@/hooks/v2/useLibraryState";
 import { useDownloadableFiles, type DownloadableFile } from "@/hooks/v2/useDownloadableFiles";
 import { useResourceDownload } from "@/hooks/v2/useResourceDownload";
 import { useInactiveEntitlements } from "@/hooks/v2/useInactiveEntitlements";
+import { useMyLegacyAccessSummary } from "@/hooks/v2/useMyLegacyAccessSummary";
 import { LifetimeProgress } from "@/components/v2/LifetimeProgress";
 import { LegacyAccessSummary } from "@/components/v2/LegacyAccessSummary";
 import { SeoHead } from "@/components/v2/SeoHead";
