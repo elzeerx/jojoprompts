@@ -10,6 +10,7 @@ import {
   loadCustomerFields,
   kwdDecimalToFils,
   filsToKwdDecimal,
+  filsToKwdNumber,
   normalizePaymentStatus,
   loadUpaymentsConfig,
   extractChargeFields,
