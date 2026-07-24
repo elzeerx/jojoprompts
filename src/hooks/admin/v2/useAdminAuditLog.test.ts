@@ -1,21 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { describe, it, expect } from "bun:test";
+
+// Force a deterministic non-UTC local timezone for these tests.
+// Bun/Node honor the TZ env var for Date computations. Set at module scope
+// so it applies before Date usage below.
+(globalThis as { process?: { env: Record<string, string | undefined> } }).process!.env.TZ =
+  "Asia/Kuwait"; // UTC+03:00, no DST
+
 import {
   normalizeAuditDatetimeToUtcIso,
   serializeAuditParams,
 } from "./useAdminAuditLog";
-
-// Force a deterministic non-UTC local timezone for tests below.
-// Bun/Node honor the TZ env var for Date computations.
-const ORIGINAL_TZ = (globalThis as { process?: { env: Record<string, string | undefined> } })
-  .process?.env.TZ;
-beforeAll(() => {
-  (globalThis as { process?: { env: Record<string, string | undefined> } }).process!.env.TZ =
-    "Asia/Kuwait"; // UTC+03:00, no DST
-});
-afterAll(() => {
-  (globalThis as { process?: { env: Record<string, string | undefined> } }).process!.env.TZ =
-    ORIGINAL_TZ;
-});
 
 describe("normalizeAuditDatetimeToUtcIso", () => {
   it("returns null for null/empty/whitespace", () => {
