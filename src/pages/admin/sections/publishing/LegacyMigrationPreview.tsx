@@ -136,7 +136,109 @@ export default function LegacyMigrationPreview() {
           </CardContent>
         </Card>
 
+        {/* Grandfathering policy — locked contract, per-user-deduplicated cohorts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Grandfathering policy / سياسة الحفاظ على الحقوق
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-xs text-muted-foreground" dir="ltr">
+              Policy version <code>{policy.version}</code>. Lifetime threshold{" "}
+              <strong>{fmtInt(policy.lifetime_threshold_fils)}</strong> fils ({policy.lifetime_threshold_kwd} KWD).
+              1 USD = <strong>{policy.conversion_rate_fils_per_usd}</strong> fils.
+            </div>
+
+            <div className="overflow-x-auto" dir="ltr">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Original promise</TableHead>
+                    <TableHead>Proposed V2 scope</TableHead>
+                    <TableHead>Expiry treatment</TableHead>
+                    <TableHead>Users (dedup)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {policy.plans.map((p) => {
+                    const users =
+                      p.plan === "ultimate"
+                        ? `${fmtInt(cohorts.ultimate_active_lifetime_users)} active · ${fmtInt(cohorts.ultimate_cancelled_review_users)} review`
+                        : p.plan === "premium"
+                          ? `${fmtInt(cohorts.premium_active_lifetime_users)} active · ${fmtInt(cohorts.premium_cancelled_review_users)} review`
+                          : p.plan === "standard"
+                            ? `${fmtInt(cohorts.standard_active_users)} active · ${fmtInt(cohorts.standard_expired_historical_users)} expired · ${fmtInt(cohorts.standard_cancelled_review_users)} review`
+                            : `${fmtInt(cohorts.basic_active_users)} active · ${fmtInt(cohorts.basic_expired_historical_users)} expired · ${fmtInt(cohorts.basic_cancelled_review_users)} review`;
+                    return (
+                      <TableRow key={p.plan}>
+                        <TableCell><Badge variant="outline" className="capitalize">{p.plan}</Badge></TableCell>
+                        <TableCell className="tabular-nums">${p.price_usd} · {p.duration}</TableCell>
+                        <TableCell className="text-xs">{p.original_promise}</TableCell>
+                        <TableCell className="text-xs"><code>{p.proposed_v2_scope}</code></TableCell>
+                        <TableCell className="text-xs">{p.expiry_treatment}</TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">{users}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-md border p-3 text-xs" dir="ltr">
+                <div className="font-semibold mb-1">Lifetime library includes</div>
+                <ul className="list-disc ps-4 space-y-0.5 text-muted-foreground">
+                  {policy.library_scope_includes.map((x) => <li key={x}>{x.replaceAll("_", " ")}</li>)}
+                </ul>
+              </div>
+              <div className="rounded-md border p-3 text-xs" dir="ltr">
+                <div className="font-semibold mb-1">Excluded from lifetime library</div>
+                <ul className="list-disc ps-4 space-y-0.5 text-muted-foreground">
+                  {policy.library_scope_excludes.map((x) => <li key={x}>{x.replaceAll("_", " ")}</li>)}
+                </ul>
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3 text-xs" dir="ltr">
+              <div className="font-semibold mb-1">Lifetime credit rules</div>
+              <ul className="space-y-1 text-muted-foreground">
+                {Object.entries(policy.lifetime_credit_rules).map(([k, v]) => (
+                  <li key={k}><code className="text-[10px]">{k}</code> — {v}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-md border bg-muted/30 p-3 text-xs">
+                <div className="font-semibold mb-1">Customer copy (EN)</div>
+                <ul className="space-y-1 text-muted-foreground">
+                  {Object.entries(policy.copy.en).map(([k, v]) => (
+                    <li key={k}><strong className="capitalize">{k}:</strong> {v}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-md border bg-muted/30 p-3 text-xs" dir="rtl">
+                <div className="font-semibold mb-1">نسخة العميل (AR)</div>
+                <ul className="space-y-1 text-muted-foreground">
+                  {Object.entries(policy.copy.ar).map(([k, v]) => (
+                    <li key={k}><strong>{k}:</strong> {v}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-muted-foreground" dir="ltr">
+              Active definition: <code>{policy.active_definition}</code>. Expired: <code>{policy.expired_definition}</code>.
+              Cancelled: {policy.cancelled_treatment}.
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Catalog reconciliation */}
+
         <Card>
           <CardHeader><CardTitle className="text-base">Catalog / الفهرس</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-5">
