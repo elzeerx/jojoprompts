@@ -95,6 +95,41 @@ export interface ReceiptLine {
   line_total_fils: number;
 }
 
+export interface ReceiptLineSource {
+  title_en: string | null;
+  title_ar: string | null;
+  type: string | null;
+}
+
+/**
+ * Merge resource + product sources into a single receipt line.
+ * Resource fields are preferred when present (non-null, non-empty). Product
+ * fields (title_en/title_ar/product_type) act as fallback so bundles and the
+ * Full Library Lifetime product — which set order_items.resource_id to NULL —
+ * still render a real title/type instead of an em dash.
+ */
+export function buildReceiptLine(
+  row: { quantity: number; unit_price_fils: number; line_total_fils: number },
+  resource: ReceiptLineSource | null | undefined,
+  product: ReceiptLineSource | null | undefined,
+): ReceiptLine {
+  const pick = (a: string | null | undefined, b: string | null | undefined): string | null => {
+    const av = typeof a === "string" ? a.trim() : "";
+    if (av) return av;
+    const bv = typeof b === "string" ? b.trim() : "";
+    return bv ? bv : null;
+  };
+  return {
+    title_en: pick(resource?.title_en, product?.title_en),
+    title_ar: pick(resource?.title_ar, product?.title_ar),
+    resource_type: pick(resource?.type, product?.type),
+    quantity: Number.isInteger(row.quantity) && row.quantity > 0 ? row.quantity : 1,
+    unit_price_fils: row.unit_price_fils ?? 0,
+    line_total_fils: row.line_total_fils ?? 0,
+  };
+}
+
+
 export interface ReceiptOrder {
   order_id: string;
   order_number: string;
@@ -136,6 +171,21 @@ export function renderReceiptLineHtml(line: ReceiptLine): string {
     <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${escapeHtml(unit)}</td>
     <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${escapeHtml(total)}</td>
   </tr>`;
+}
+
+/**
+ * Render one receipt line as a single plain-text row (no HTML tags, no entities).
+ * Text-only email clients receive this branch, so it must never contain HTML.
+ */
+export function renderReceiptLineText(line: ReceiptLine): string {
+  const en = (line.title_en ?? "").trim();
+  const ar = (line.title_ar ?? "").trim();
+  const rtype = (line.resource_type ?? "").trim();
+  const title = en && ar ? `${en} / ${ar}` : en || ar || "—";
+  const qty = Number.isInteger(line.quantity) && line.quantity > 0 ? line.quantity : 1;
+  const total = formatKwd(line.line_total_fils);
+  const typeSuffix = rtype ? ` [${rtype}]` : "";
+  return `  - ${title}${typeSuffix} — qty ${qty} — ${total}`;
 }
 
 /** Render the full transactional receipt (bilingual, single template). */
@@ -236,16 +286,25 @@ export function renderReceiptHtml(order: ReceiptOrder, siteUrl: string): {
 </table>
 </body></html>`;
 
+  const textLines = order.lines.map(renderReceiptLineText);
+  const showDiscountText = Number.isInteger(order.discount_fils) && order.discount_fils > 0;
   const text = [
     `JojoPrompts — Payment receipt`,
     `Order: ${order.order_number}`,
     `Settled: ${order.settled_at ?? ""}`,
     `Provider: ${order.provider || "UPayments"}`,
-    `Total: ${total}`,
+    ``,
+    `Items:`,
+    ...(textLines.length ? textLines : [`  (no line items)`]),
+    ``,
+    `Subtotal: ${subtotal}`,
+    ...(showDiscountText ? [`Discount: -${discount}`] : []),
+    `Total:    ${total}`,
     ``,
     `Library: ${libraryUrl}`,
     `Orders:  ${ordersUrl}`,
   ].join("\n");
+
 
   return { subject, html, text };
 }
@@ -300,36 +359,44 @@ async function loadReceiptOrder(svc: SupabaseClient, orderId: string): Promise<R
       : Promise.resolve({ data: null }),
   ]);
 
-  const resourceIds = Array.from(new Set(
-    ((items ?? []) as Array<{ resource_id: string | null }>)
-      .map((r) => r.resource_id)
-      .filter((v): v is string => typeof v === "string"),
-  ));
-  let resourceById = new Map<string, { title_en: string | null; title_ar: string | null; type: string | null }>();
-  if (resourceIds.length > 0) {
-    const { data: rs } = await svc
-      .from("resources")
-      .select("id, title_en, title_ar, type")
-      .in("id", resourceIds);
-    (rs ?? []).forEach((r: { id: string; title_en: string | null; title_ar: string | null; type: string | null }) => {
-      resourceById.set(r.id, { title_en: r.title_en, title_ar: r.title_ar, type: r.type });
-    });
-  }
-
-  const lines: ReceiptLine[] = ((items ?? []) as Array<{
-    product_id: string; resource_id: string | null; quantity: number;
+  const rows = (items ?? []) as Array<{
+    product_id: string | null; resource_id: string | null; quantity: number;
     unit_price_fils: number; line_total_fils: number;
-  }>).map((row) => {
-    const r = row.resource_id ? resourceById.get(row.resource_id) : undefined;
-    return {
-      title_en: r?.title_en ?? null,
-      title_ar: r?.title_ar ?? null,
-      resource_type: r?.type ?? null,
-      quantity: Number.isInteger(row.quantity) && row.quantity > 0 ? row.quantity : 1,
-      unit_price_fils: row.unit_price_fils ?? 0,
-      line_total_fils: row.line_total_fils ?? 0,
-    };
-  });
+  }>;
+
+  const resourceIds = Array.from(new Set(
+    rows.map((r) => r.resource_id).filter((v): v is string => typeof v === "string"),
+  ));
+  const productIds = Array.from(new Set(
+    rows.map((r) => r.product_id).filter((v): v is string => typeof v === "string"),
+  ));
+
+  const resourceById = new Map<string, ReceiptLineSource>();
+  const productById = new Map<string, ReceiptLineSource>();
+
+  await Promise.all([
+    resourceIds.length
+      ? svc.from("resources").select("id, title_en, title_ar, type").in("id", resourceIds).then(({ data }) => {
+          (data ?? []).forEach((r: { id: string; title_en: string | null; title_ar: string | null; type: string | null }) => {
+            resourceById.set(r.id, { title_en: r.title_en, title_ar: r.title_ar, type: r.type });
+          });
+        })
+      : Promise.resolve(),
+    productIds.length
+      ? svc.from("products").select("id, title_en, title_ar, product_type").in("id", productIds).then(({ data }) => {
+          (data ?? []).forEach((p: { id: string; title_en: string | null; title_ar: string | null; product_type: string | null }) => {
+            productById.set(p.id, { title_en: p.title_en, title_ar: p.title_ar, type: p.product_type });
+          });
+        })
+      : Promise.resolve(),
+  ]);
+
+  const lines: ReceiptLine[] = rows.map((row) => buildReceiptLine(
+    row,
+    row.resource_id ? resourceById.get(row.resource_id) : null,
+    row.product_id ? productById.get(row.product_id) : null,
+  ));
+
 
   const email = (profile as { email?: string | null } | null)?.email;
   if (!email) return null;
