@@ -299,39 +299,47 @@ export default function VersionsRegistryPage() {
         </div>
       ) : isMobile ? (
         <div className="space-y-2">
-          {(query.data?.rows ?? []).map((r) => (
-            <Card
-              key={r.version_id}
-              className="cursor-pointer"
-              onClick={() => setOpenId(r.version_id)}
-            >
-              <CardContent className="p-3 space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <Badge variant="outline" className="capitalize">
-                    {r.resource_type.replace("_", " ")}
-                  </Badge>
-                  <div className="flex items-center gap-1">
-                    {r.is_current && (
-                      <Badge variant="default">current</Badge>
-                    )}
-                    <Badge variant={scanTone(r.latest_scan_status)}>
-                      {r.latest_scan_status ?? "unscanned"}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="text-sm font-medium truncate">
-                  {r.title_en || r.slug}
-                </div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {r.slug} · v{r.version}
-                </div>
-                <div className="text-xs text-muted-foreground flex justify-between">
-                  <span>Files: {r.file_count}</span>
-                  <span>{formatDateTime(r.updated_at)}</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {(query.data?.rows ?? []).map((r) => {
+            const label = `Open ${r.title_en || r.slug} version ${r.version} details`;
+            return (
+              <button
+                key={r.version_id}
+                type="button"
+                onClick={() => setOpenId(r.version_id)}
+                aria-label={label}
+                className="w-full text-left rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Card className="hover:bg-accent/40 transition-colors">
+                  <CardContent className="p-3 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge variant="outline" className="capitalize">
+                        {r.resource_type.replace("_", " ")}
+                      </Badge>
+                      <div className="flex items-center gap-1">
+                        {r.is_current && (
+                          <Badge variant="default">current</Badge>
+                        )}
+                        <Badge variant={scanTone(r.latest_scan_status)}>
+                          {r.latest_scan_status ?? "unscanned"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="text-sm font-medium truncate">
+                      {r.title_en || r.slug}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {r.slug} · v{r.version}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex justify-between">
+                      <span>Files: {r.file_count}</span>
+                      <span>{formatDateTime(r.updated_at)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            );
+          })}
+
           {(query.data?.rows.length ?? 0) === 0 && (
             <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
               No versions match these filters
