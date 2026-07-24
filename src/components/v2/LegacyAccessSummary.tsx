@@ -82,9 +82,23 @@ export function LegacyAccessSummary() {
           <div className="rounded-md border p-3 text-xs" dir="ltr">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
-                {lang === "ar" ? "الرصيد الموثّق من PayPal تجاه العضوية الدائمة" : "Verified historical PayPal credit toward lifetime"}
+                {lang === "ar" ? "رصيد PayPal الموثّق" : "Verified PayPal credit"}
               </span>
               <strong className="tabular-nums">{fmtKwd(data.paypal_verified_credit_fils)}</strong>
+            </div>
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-muted-foreground">
+                {lang === "ar"
+                  ? "رصيد UPayments (مُعاد حسابه من خريطة الأسعار)"
+                  : "UPayments credit (code-reconstructed KWD)"}
+              </span>
+              <strong className="tabular-nums">{fmtKwd(data.upayments_verified_credit_fils)}</strong>
+            </div>
+            <div className="mt-1 flex items-center justify-between border-t pt-1">
+              <span className="text-muted-foreground">
+                {lang === "ar" ? "الإجمالي الموثّق تجاه العضوية الدائمة" : "Combined verified credit"}
+              </span>
+              <strong className="tabular-nums">{fmtKwd(data.combined_legacy_credit_fils)}</strong>
             </div>
             <div className="mt-1 flex items-center justify-between">
               <span className="text-muted-foreground">
@@ -94,14 +108,14 @@ export function LegacyAccessSummary() {
             </div>
             <div className="mt-2 text-[11px] text-muted-foreground">
               {lang === "ar"
-                ? "المشتريات المؤهلة على منصة V2 من موارد جوجو ستُضاف تلقائياً إلى إجمالي الحد الدائم عبر النظام الرئيسي لتتبع الحد. لا تشمل منتجات المبدعين أو المشتريات الخارجية."
-                : "Eligible V2 purchases of Jojo-owned resources will be added to your combined lifetime total through the main lifetime progress system. Creator products and external purchases are not counted."}
+                ? "أرقام UPayments مُعاد حسابها من خريطة الأسعار التاريخية بالدينار (لم يُخزَّن المبلغ الفعلي المُعاد من المزود). المشتريات المؤهلة على منصة V2 من موارد جوجو ستُضاف تلقائياً. لا تشمل منتجات المبدعين."
+                : "UPayments values are code-reconstructed from the historical KWD price map (the provider-returned amount was not persisted). Eligible V2 purchases of Jojo-owned resources will add through the main lifetime progress system. Creator products are not counted."}
             </div>
             {data.payment_history_under_review && (
               <div className="mt-2 rounded-md bg-muted/50 p-2 text-[11px] text-muted-foreground">
                 {lang === "ar"
-                  ? "سجل المدفوعات قيد المراجعة — بعض المدفوعات (UPayments أو PayPal غير المرتبطة/المسترجعة) لم تُحتسب حتى تكتمل المراجعة."
-                  : "Payment history under review — some payments (UPayments, or PayPal payments that are unlinked or refunded) are not counted until review is complete."}
+                  ? "بعض مدفوعاتك (UPayments معلّقة/مسترجعة/غير مرتبطة/خطة غير معروفة أو PayPal غير مرتبطة/مسترجعة) قيد المراجعة ولم تُحتسب."
+                  : "Some of your payments (pending/refunded/unlinked/unknown-plan UPayments, or unlinked/refunded PayPal) are under review and not counted."}
               </div>
             )}
           </div>
