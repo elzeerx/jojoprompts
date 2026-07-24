@@ -106,19 +106,29 @@ export function CreateRefundDialog({ open, onOpenChange, presetOrderId }: Props)
   const lookup = async () => {
     setError(null);
     const trimmed = orderInput.trim();
+    if (!trimmed) { setError("Enter an order # or UUID"); return; }
     if (UUID_RE.test(trimmed)) {
-      setOrderId(trimmed);
+      // If the same id is entered again after a failure, force a refetch.
+      if (orderId === trimmed) {
+        void refundable.refetch();
+      } else {
+        setOrderId(trimmed);
+      }
       return;
     }
-    // Try order_number lookup via a tiny narrow select (RLS: admin has read via has_role).
-    // Fallback: use admin orders list search.
+    // Try order_number lookup via admin orders list search (RLS-scoped).
     const { data, error: rpcErr } = await supabase.rpc("v2_admin_list_orders", {
       p_search: trimmed, p_limit: 1, p_offset: 0,
     });
-    if (rpcErr) { setError(rpcErr.message); return; }
+    if (rpcErr) { setError(formatRefundableLoadError(rpcErr)); return; }
     const rows = (data as { rows?: { id: string }[] } | null)?.rows ?? [];
     if (!rows.length) { setError("Order not found"); return; }
-    setOrderId(rows[0].id);
+    const resolvedId = rows[0].id;
+    if (orderId === resolvedId) {
+      void refundable.refetch();
+    } else {
+      setOrderId(resolvedId);
+    }
   };
 
   const validate = (): string | null => {
