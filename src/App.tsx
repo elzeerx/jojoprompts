@@ -34,7 +34,9 @@ const V2_PATHS = new Set([
   "cart",
   "checkout",
   "checkout/return",
+  "checkout/return/:orderId",
   "checkout/cancel",
+  "checkout/cancel/:orderId",
   "orders",
   "pricing",
 ]);

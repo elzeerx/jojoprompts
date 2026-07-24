@@ -305,7 +305,9 @@ export const routes: RouteConfig[] = [
   // Overrides prior V1 checkout/pricing UI. V1 page components remain in source.
   { path: "cart", component: V2CartPage, protection: "public" },
   { path: "checkout/return", component: V2CheckoutReturnPage, protection: "public" },
+  { path: "checkout/return/:orderId", component: V2CheckoutReturnPage, protection: "public" },
   { path: "checkout/cancel", component: V2CheckoutCancelPage, protection: "public" },
+  { path: "checkout/cancel/:orderId", component: V2CheckoutCancelPage, protection: "public" },
   { path: "orders", component: V2OrdersPage, protection: "auth" },
 
   // 404 catch-all route

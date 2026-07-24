@@ -112,8 +112,13 @@ Deno.serve(async (req) => {
   // 5. Build charge body from verified server-side identity + config.
   const amountDecimal = filsToKwdDecimal(Number(cl.amount_fils));
   const merchantRef = String(cl.merchant_reference);
-  const returnUrl = `${cfg.siteUrl}/checkout/return?order_id=${encodeURIComponent(orderId)}`;
-  const cancelUrl = `${cfg.siteUrl}/checkout/cancel?order_id=${encodeURIComponent(orderId)}`;
+  // Clean, query-free callback bases — UPayments appends its own query
+  // starting with `?` and would otherwise produce a malformed double-`?`
+  // URL when we included our own query parameter. Path parameter wins in
+  // the frontend router; provider-appended params cannot override it.
+  const encodedOrderId = encodeURIComponent(orderId);
+  const returnUrl = `${cfg.siteUrl}/checkout/return/${encodedOrderId}`;
+  const cancelUrl = `${cfg.siteUrl}/checkout/cancel/${encodedOrderId}`;
   const notificationUrl = `${PROJECT_URL}/functions/v1/v2-upayments-webhook`;
 
   const customerFields = await loadCustomerFields(svc, auth.userId);

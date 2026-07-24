@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SeoHead } from "@/components/v2/SeoHead";
@@ -10,8 +10,8 @@ import { cartStore } from "@/hooks/v2/useCart";
 import { clearIdempotencyKey } from "@/hooks/v2/useIdempotencyKey";
 import { useQueryClient } from "@tanstack/react-query";
 import { extractInvokeErrorCode } from "@/lib/v2/invokeErrors";
+import { resolveCallbackOrderId } from "@/lib/v2/callbackOrderId";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ATTEMPTS = 8;
 const MIN_INTERVAL_MS = 4_000;
 /** Honor the server's per-provider 5-minute cap plus a small clock-skew margin. */
@@ -54,9 +54,9 @@ function readProviderDownReason(data: unknown): boolean {
 }
 
 export default function V2CheckoutReturnPage() {
+  const params = useParams<{ orderId?: string }>();
   const [sp] = useSearchParams();
-  const orderIdRaw = sp.get("order_id") ?? "";
-  const orderId = UUID_RE.test(orderIdRaw) ? orderIdRaw : null;
+  const orderId = resolveCallbackOrderId(params.orderId, sp.get("order_id"));
   const { user, loading: authLoading } = useAuth();
   const qc = useQueryClient();
   const { language, isRTL } = useTranslation();
@@ -278,7 +278,7 @@ export default function V2CheckoutReturnPage() {
           <>
             <p className="text-muted-foreground">{t.needAuth}</p>
             <Button asChild className="min-h-[44px]">
-              <Link to={`/login?next=${encodeURIComponent(`/checkout/return?order_id=${orderId}`)}`}>
+              <Link to={`/login?next=${encodeURIComponent(`/checkout/return/${orderId}`)}`}>
                 {t.needAuth}
               </Link>
             </Button>

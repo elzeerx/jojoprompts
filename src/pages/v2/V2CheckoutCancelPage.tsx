@@ -1,16 +1,25 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SeoHead } from "@/components/v2/SeoHead";
 import { useTranslation } from "@/hooks/useTranslation";
+import { resolveCallbackOrderId } from "@/lib/v2/callbackOrderId";
 
 /**
  * Cancel is a display-only page — it never mutates payment state.
  * Cart is preserved untouched.
+ *
+ * Reads the order id from a clean path parameter first
+ * (`/checkout/cancel/:orderId`) and falls back to the legacy
+ * `?order_id=<uuid>` query for backward compatibility. Malformed legacy
+ * links where `order_id` contained provider-appended query parameters are
+ * safely recovered via {@link resolveCallbackOrderId}. Only a validated
+ * UUID is ever displayed.
  */
 export default function V2CheckoutCancelPage() {
+  const params = useParams<{ orderId?: string }>();
   const [sp] = useSearchParams();
-  const orderId = sp.get("order_id");
+  const orderId = resolveCallbackOrderId(params.orderId, sp.get("order_id"));
   const { language, isRTL } = useTranslation();
   const lang = language === "ar" ? "ar" : "en";
 
