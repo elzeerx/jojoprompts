@@ -63,7 +63,8 @@ export default function LibraryPage() {
     document.title = "My Library · JojoPrompts";
   }, []);
 
-  const hasLibrary = !!library?.has_library_access;
+  const hasLegacyLifetime = !!legacySummary?.lifetime;
+  const hasLibrary = !!library?.has_library_access || hasLegacyLifetime;
   const entitledIds = useMemo(() => {
     const ids: string[] = [];
     (library?.entitlements ?? []).forEach((e) => {
