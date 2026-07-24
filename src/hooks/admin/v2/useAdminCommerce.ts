@@ -561,7 +561,7 @@ export interface RehearsalResult {
     users_needing_lifetime_grant_after_excluding_existing_lifetime: number;
   };
   replay_conflicts: {
-    existing_active_legacy_source_grants: number;
+    existing_legacy_source_grants: number;
     existing_legacy_transaction_credit_entries: number;
   };
 }
