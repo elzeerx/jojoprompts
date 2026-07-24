@@ -194,4 +194,4 @@ async function logMinimal(supabase: any, r: {
 
 if (import.meta.main) serve(handler);
 
-export { corsHeadersFor };
+
