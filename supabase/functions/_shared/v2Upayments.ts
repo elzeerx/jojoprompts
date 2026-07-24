@@ -268,6 +268,27 @@ export function filsToKwdDecimal(fils: number): string {
   return `${whole}.${frac.toString().padStart(3, "0")}`;
 }
 
+/**
+ * Convert integer fils to a finite positive JSON number in KWD.
+ *
+ * UPayments' Create Refund API defines `totalPrice` as a mandatory float and
+ * rejects string amounts with HTTP 422. `filsToKwdDecimal` returns a string,
+ * safe for logging/persistence; this returns a number for the wire body.
+ *
+ * Division by the exact power of two-friendly divisor 1000 combined with
+ * shortest-roundtrip JSON serialization yields the correct 3-decimal
+ * representation for every fils value the caller guards (e.g. 900 -> 0.9,
+ * 1500 -> 1.5, 1 -> 0.001). Bounded to mirror `filsToKwdDecimal`.
+ */
+export function filsToKwdNumber(fils: number): number {
+  if (!Number.isInteger(fils) || fils <= 0 || fils > 1_000_000_000) {
+    throw new Error("invalid_fils_amount");
+  }
+  const n = fils / 1000;
+  if (!Number.isFinite(n) || n <= 0) throw new Error("invalid_fils_amount");
+  return n;
+}
+
 export function kwdDecimalToFils(raw: string): number {
   if (typeof raw !== "string") throw new Error("invalid_amount_type");
   const s = raw.trim();
