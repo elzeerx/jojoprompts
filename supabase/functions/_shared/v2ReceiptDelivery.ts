@@ -404,6 +404,7 @@ async function sendReceiptViaResend(
 ): Promise<string | null> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) throw new Error("resend_api_key_missing");
+  const { Resend } = await import("npm:resend@2.0.0");
   const resend = new Resend(apiKey);
 
   const payload = {
