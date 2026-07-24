@@ -34,6 +34,73 @@ function Stat({ label, labelAr, value, hint }: { label: string; labelAr?: string
   );
 }
 
+function RehearsalCard() {
+  const q = useMigrationRehearsal();
+  if (q.isLoading) return <Skeleton className="h-40 w-full" />;
+  if (q.isError) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+        Rehearsal error: {(q.error as Error).message}
+      </div>
+    );
+  }
+  const r = q.data as RehearsalResult;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">
+          Migration rehearsal (read-only) · policy {r.policy_version}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="text-[11px] text-muted-foreground" dir="ltr">
+          {r.notes} · execute_available = <code>false</code>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label="Planned lifetime users" value={fmtInt(r.planned_library_grants.unique_active_lifetime_users)} hint={`Premium ${fmtInt(r.planned_library_grants.active_premium_users)} · Ultimate ${fmtInt(r.planned_library_grants.active_ultimate_users)}`} />
+          <Stat label="Standard active users" value={fmtInt(r.planned_collection_grants_effective_active.standard_users)} hint={`${fmtInt(r.planned_collection_grants_effective_active.standard_grants)} collection grants`} />
+          <Stat label="Basic effective users" value={fmtInt(r.planned_collection_grants_effective_active.basic_users)} hint={`${fmtInt(r.planned_collection_grants_effective_active.basic_grants)} collection grants`} />
+          <Stat label="Unique active users total" value={fmtInt(r.unique_active_users_total)} />
+          <Stat label="Historical expired Basic" value={fmtInt(r.historical_expired_only.basic_users)} hint="positive-status expired only" />
+          <Stat label="Historical expired Standard" value={fmtInt(r.historical_expired_only.standard_users)} />
+          <Stat label="Cancelled lifetime unresolved" value={fmtInt(r.cancelled_review.lifetime_unresolved_users)} />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-md border p-3 text-xs" dir="ltr">
+            <div className="font-semibold mb-1">PayPal verified</div>
+            <div>Users: <strong className="tabular-nums">{fmtInt(r.paypal_verified_credit.users)}</strong></div>
+            <div>Rows: <strong className="tabular-nums">{fmtInt(r.paypal_verified_credit.rows)}</strong></div>
+            <div>Capped total: <strong className="tabular-nums">{fmtInt(r.paypal_verified_credit.total_capped_fils)}</strong> fils</div>
+          </div>
+          <div className="rounded-md border p-3 text-xs" dir="ltr">
+            <div className="font-semibold mb-1">UPayments verified (code-reconstructed KWD)</div>
+            <div>Users: <strong className="tabular-nums">{fmtInt(r.upayments_verified_credit.users)}</strong></div>
+            <div>Rows: <strong className="tabular-nums">{fmtInt(r.upayments_verified_credit.rows)}</strong></div>
+            <div>Capped total: <strong className="tabular-nums">{fmtInt(r.upayments_verified_credit.total_capped_fils)}</strong> fils</div>
+            <div className="mt-1 text-muted-foreground">
+              Pending excluded: {fmtInt(r.upayments_verified_credit.pending_excluded_count)} · Neg-linked review:{" "}
+              {fmtInt(r.upayments_verified_credit.negative_linked_review_rows)} · Unlinked review:{" "}
+              {fmtInt(r.upayments_verified_credit.unlinked_review_rows)}
+            </div>
+          </div>
+          <div className="rounded-md border p-3 text-xs" dir="ltr">
+            <div className="font-semibold mb-1">Combined (per-user capped)</div>
+            <div>Users: <strong className="tabular-nums">{fmtInt(r.combined_verified_credit.users)}</strong></div>
+            <div>Total: <strong className="tabular-nums">{fmtInt(r.combined_verified_credit.total_capped_fils)}</strong> fils</div>
+            <div className="mt-2">Threshold reached: <strong className="tabular-nums">{fmtInt(r.threshold.users_reaching_threshold)}</strong></div>
+            <div>Needing new lifetime grant: <strong className="tabular-nums">{fmtInt(r.threshold.users_needing_lifetime_grant_after_excluding_existing_lifetime)}</strong></div>
+          </div>
+        </div>
+        <div className="rounded-md border p-3 text-xs" dir="ltr">
+          <div className="font-semibold mb-1">Replay conflicts</div>
+          <div>Active grants with a legacy_source: <strong className="tabular-nums">{fmtInt(r.replay_conflicts.existing_active_legacy_source_grants)}</strong></div>
+          <div>Credit entries with a legacy_transaction_id: <strong className="tabular-nums">{fmtInt(r.replay_conflicts.existing_legacy_transaction_credit_entries)}</strong></div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function LegacyMigrationPreview() {
   const q = useMigrationPreview();
   const { dir } = useLanguage();
