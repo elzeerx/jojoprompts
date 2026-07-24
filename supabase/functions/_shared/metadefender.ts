@@ -281,7 +281,9 @@ export function normalizeHexChecksum(raw: string | null | undefined): string | n
 
 // Compute lowercase-hex SHA-256 of bytes using Web Crypto.
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const buf = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buf).set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
   const view = new Uint8Array(digest);
   let out = "";
   for (let i = 0; i < view.length; i++) {
