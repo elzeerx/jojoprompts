@@ -4563,6 +4563,7 @@ export type Database = {
       }
       v2_admin_migration_preview: { Args: never; Returns: Json }
       v2_admin_migration_rehearsal: { Args: never; Returns: Json }
+      v2_admin_migration_verification: { Args: never; Returns: Json }
       v2_admin_order_metrics: {
         Args: { p_period_days?: number }
         Returns: Json
