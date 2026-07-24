@@ -8,7 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useMigrationPreview } from "@/hooks/admin/v2/useAdminCommerce";
+import { useMigrationPreview, useMigrationRehearsal, type RehearsalResult } from "@/hooks/admin/v2/useAdminCommerce";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function fmtInt(n: unknown): string {
