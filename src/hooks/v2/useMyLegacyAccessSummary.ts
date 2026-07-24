@@ -13,6 +13,8 @@ export interface MyLegacyAccessSummary {
   has_expired_historical: boolean;
   manual_review_required: boolean;
   paypal_verified_credit_fils: number;
+  upayments_verified_credit_fils: number;
+  combined_legacy_credit_fils: number;
   lifetime_threshold_fils: number;
   remaining_lifetime_fils: number;
   payment_history_under_review: boolean;
@@ -20,8 +22,8 @@ export interface MyLegacyAccessSummary {
 }
 
 /**
- * Self-only. Reads the caller's proposed legacy classification from the
- * v2_my_legacy_access_summary() SECURITY DEFINER RPC. Never accepts a user id.
+ * Self-only. Reads the caller's proposed legacy classification and combined
+ * verified legacy credit (strict PayPal + code-reconstructed KWD UPayments).
  */
 export function useMyLegacyAccessSummary() {
   const { user } = useAuth();

@@ -498,25 +498,72 @@ export interface MigrationPreviewPayPal {
   verified_total_capped_fils?: number;
   verified_users_capped_at_threshold?: number;
 }
-export interface MigrationPreviewUPayInterp {
-  conversion: string;
-  completed_capped_credit_fils: number;
-  users_with_credit: number;
-}
 export interface MigrationPreviewUPayments {
-  ambiguity_note: string;
+  policy: string;
+  note: string;
+  base_fils_by_tier: { basic: number; standard: number; premium: number; ultimate: number };
+  per_user_cap_fils: number;
   total_count: number;
   completed_count: number;
-  raw_value_total: number;
-  interpretation_A_values_as_KWD: MigrationPreviewUPayInterp;
-  interpretation_B_values_as_legacy_USD: MigrationPreviewUPayInterp;
-  threshold_users: {
-    reach_on_paypal_only: number;
-    reach_only_if_upayments_kwd: number;
-    reach_only_if_upayments_legacy_usd: number;
-    ambiguous_outcome_users: number;
-  };
+  pending_excluded_count: number;
+  kwd_completed_count: number;
+  strict_verified_rows: number;
+  strict_verified_users: number;
+  strict_verified_total_capped_fils: number;
+  negative_linked_review_rows: number;
+  unlinked_review_rows: number;
   duplicate_provider_reference_groups: number;
+}
+export interface MigrationPreviewCombinedCredit {
+  source: string;
+  users_with_credit: number;
+  total_credit_fils: number;
+  users_capped_at_threshold: number;
+  threshold_fils: number;
+}
+export interface RehearsalResult {
+  generated_at: string;
+  execute_available: false;
+  notes: string;
+  policy_version: string;
+  conversion_rate_fils_per_usd: number;
+  threshold_fils: number;
+  planned_library_grants: {
+    active_premium_users: number;
+    active_ultimate_users: number;
+    unique_active_lifetime_users: number;
+  };
+  planned_collection_grants_effective_active: {
+    standard_users: number;
+    standard_grants: number;
+    basic_users: number;
+    basic_grants: number;
+    unique_active_collection_users: number;
+  };
+  unique_active_users_total: number;
+  historical_expired_only: { basic_users: number; standard_users: number; note: string };
+  cancelled_review: { lifetime_unresolved_users: number };
+  paypal_verified_credit: { users: number; total_capped_fils: number; rows: number };
+  upayments_verified_credit: {
+    policy: string;
+    users: number;
+    total_capped_fils: number;
+    rows: number;
+    completed_count: number;
+    pending_excluded_count: number;
+    kwd_completed_count: number;
+    negative_linked_review_rows: number;
+    unlinked_review_rows: number;
+  };
+  combined_verified_credit: { users: number; total_capped_fils: number };
+  threshold: {
+    users_reaching_threshold: number;
+    users_needing_lifetime_grant_after_excluding_existing_lifetime: number;
+  };
+  replay_conflicts: {
+    existing_active_legacy_source_grants: number;
+    existing_legacy_transaction_credit_entries: number;
+  };
 }
 export interface MigrationPreviewEntitlements {
   by_scope: Record<string, number>;
@@ -629,6 +676,7 @@ export interface MigrationPreview {
   transactions_upayments: MigrationPreviewUPayments;
   proposed_entitlements: MigrationPreviewEntitlements;
   proposed_lifetime_credit: MigrationPreviewCredits;
+  combined_legacy_credit: MigrationPreviewCombinedCredit;
   anomalies: MigrationPreviewAnomalies;
   grant_contract: MigrationPreviewGrantContract;
   grandfathering_policy: GrandfatheringPolicy;
@@ -638,12 +686,25 @@ export function useMigrationPreview() {
   return useQuery<MigrationPreview>({
     queryKey: ["admin", "v2", "migration-preview"],
     queryFn: async () => {
-      // rpc name not yet in generated types; safe cast.
       const { data, error } = await (supabase as unknown as {
         rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
       }).rpc("v2_admin_migration_preview", {});
       if (error) throw error as Error;
       return data as MigrationPreview;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useMigrationRehearsal() {
+  return useQuery<RehearsalResult>({
+    queryKey: ["admin", "v2", "migration-rehearsal"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as unknown as {
+        rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+      }).rpc("v2_admin_migration_rehearsal", {});
+      if (error) throw error as Error;
+      return data as RehearsalResult;
     },
     staleTime: 60_000,
   });

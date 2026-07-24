@@ -8,7 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useMigrationPreview } from "@/hooks/admin/v2/useAdminCommerce";
+import { useMigrationPreview, useMigrationRehearsal, type RehearsalResult } from "@/hooks/admin/v2/useAdminCommerce";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function fmtInt(n: unknown): string {
@@ -31,6 +31,73 @@ function Stat({ label, labelAr, value, hint }: { label: string; labelAr?: string
       <div className="mt-1 text-lg font-semibold tabular-nums" dir="ltr">{value}</div>
       {hint && <div className="mt-1 text-[11px] text-muted-foreground" dir="ltr">{hint}</div>}
     </div>
+  );
+}
+
+function RehearsalCard() {
+  const q = useMigrationRehearsal();
+  if (q.isLoading) return <Skeleton className="h-40 w-full" />;
+  if (q.isError) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+        Rehearsal error: {(q.error as Error).message}
+      </div>
+    );
+  }
+  const r = q.data as RehearsalResult;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">
+          Migration rehearsal (read-only) · policy {r.policy_version}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="text-[11px] text-muted-foreground" dir="ltr">
+          {r.notes} · execute_available = <code>false</code>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label="Planned lifetime users" value={fmtInt(r.planned_library_grants.unique_active_lifetime_users)} hint={`Premium ${fmtInt(r.planned_library_grants.active_premium_users)} · Ultimate ${fmtInt(r.planned_library_grants.active_ultimate_users)}`} />
+          <Stat label="Standard active users" value={fmtInt(r.planned_collection_grants_effective_active.standard_users)} hint={`${fmtInt(r.planned_collection_grants_effective_active.standard_grants)} collection grants`} />
+          <Stat label="Basic effective users" value={fmtInt(r.planned_collection_grants_effective_active.basic_users)} hint={`${fmtInt(r.planned_collection_grants_effective_active.basic_grants)} collection grants`} />
+          <Stat label="Unique active users total" value={fmtInt(r.unique_active_users_total)} />
+          <Stat label="Historical expired Basic" value={fmtInt(r.historical_expired_only.basic_users)} hint="positive-status expired only" />
+          <Stat label="Historical expired Standard" value={fmtInt(r.historical_expired_only.standard_users)} />
+          <Stat label="Cancelled lifetime unresolved" value={fmtInt(r.cancelled_review.lifetime_unresolved_users)} />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-md border p-3 text-xs" dir="ltr">
+            <div className="font-semibold mb-1">PayPal verified</div>
+            <div>Users: <strong className="tabular-nums">{fmtInt(r.paypal_verified_credit.users)}</strong></div>
+            <div>Rows: <strong className="tabular-nums">{fmtInt(r.paypal_verified_credit.rows)}</strong></div>
+            <div>Capped total: <strong className="tabular-nums">{fmtInt(r.paypal_verified_credit.total_capped_fils)}</strong> fils</div>
+          </div>
+          <div className="rounded-md border p-3 text-xs" dir="ltr">
+            <div className="font-semibold mb-1">UPayments verified (code-reconstructed KWD)</div>
+            <div>Users: <strong className="tabular-nums">{fmtInt(r.upayments_verified_credit.users)}</strong></div>
+            <div>Rows: <strong className="tabular-nums">{fmtInt(r.upayments_verified_credit.rows)}</strong></div>
+            <div>Capped total: <strong className="tabular-nums">{fmtInt(r.upayments_verified_credit.total_capped_fils)}</strong> fils</div>
+            <div className="mt-1 text-muted-foreground">
+              Pending excluded: {fmtInt(r.upayments_verified_credit.pending_excluded_count)} · Neg-linked review:{" "}
+              {fmtInt(r.upayments_verified_credit.negative_linked_review_rows)} · Unlinked review:{" "}
+              {fmtInt(r.upayments_verified_credit.unlinked_review_rows)}
+            </div>
+          </div>
+          <div className="rounded-md border p-3 text-xs" dir="ltr">
+            <div className="font-semibold mb-1">Combined (per-user capped)</div>
+            <div>Users: <strong className="tabular-nums">{fmtInt(r.combined_verified_credit.users)}</strong></div>
+            <div>Total: <strong className="tabular-nums">{fmtInt(r.combined_verified_credit.total_capped_fils)}</strong> fils</div>
+            <div className="mt-2">Threshold reached: <strong className="tabular-nums">{fmtInt(r.threshold.users_reaching_threshold)}</strong></div>
+            <div>Needing new lifetime grant: <strong className="tabular-nums">{fmtInt(r.threshold.users_needing_lifetime_grant_after_excluding_existing_lifetime)}</strong></div>
+          </div>
+        </div>
+        <div className="rounded-md border p-3 text-xs" dir="ltr">
+          <div className="font-semibold mb-1">Replay conflicts</div>
+          <div>Active grants with a legacy_source: <strong className="tabular-nums">{fmtInt(r.replay_conflicts.existing_active_legacy_source_grants)}</strong></div>
+          <div>Credit entries with a legacy_transaction_id: <strong className="tabular-nums">{fmtInt(r.replay_conflicts.existing_legacy_transaction_credit_entries)}</strong></div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -115,8 +182,8 @@ export default function LegacyMigrationPreview() {
                     : d.execution_blockers.join(", ")}.
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  No <code>v2_admin_execute_migration</code> function is exposed. Preview stays read-only until the UPayments
-                  currency policy is resolved and an execution RPC is separately designed and reviewed.
+                  No <code>v2_admin_execute_migration</code> function exists. Rehearsal below is read-only and computes
+                  planning aggregates only. Production execution still requires explicit approval after rehearsal signoff.
                 </div>
               </div>
             </div>
@@ -399,51 +466,51 @@ export default function LegacyMigrationPreview() {
           </CardContent>
         </Card>
 
-        {/* UPayments — ambiguous */}
-        <Card className="border-warning">
-          <CardHeader><CardTitle className="text-base">UPayments transactions — currency ambiguous</CardTitle></CardHeader>
+        {/* UPayments — code-reconstructed KWD */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">UPayments transactions — code-reconstructed KWD</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="rounded-md border border-warning bg-warning/5 p-3 text-xs">
-              {upay.ambiguity_note ?? "Ambiguous currency; do not choose an interpretation here."}
+            <div className="rounded-md border bg-muted/40 p-3 text-xs" dir="ltr">
+              {upay.note} Base fils per plan: basic {fmtInt(upay.base_fils_by_tier.basic)}, standard{" "}
+              {fmtInt(upay.base_fils_by_tier.standard)}, premium {fmtInt(upay.base_fils_by_tier.premium)}, ultimate{" "}
+              {fmtInt(upay.base_fils_by_tier.ultimate)}.
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Total" value={fmtInt(upay.total_count)} />
               <Stat label="Completed" value={fmtInt(upay.completed_count)} />
+              <Stat label="Pending excluded" value={fmtInt(upay.pending_excluded_count)} />
+              <Stat label="KWD completed" value={fmtInt(upay.kwd_completed_count)} />
+              <Stat label="Strict verified rows" value={fmtInt(upay.strict_verified_rows)} hint="reconstructable + strict linkage" />
+              <Stat label="Strict verified users" value={fmtInt(upay.strict_verified_users)} />
+              <Stat
+                label="Strict verified capped total"
+                value={fmtInt(upay.strict_verified_total_capped_fils)}
+                hint={`≈ ${fmtFilsAsKwd(upay.strict_verified_total_capped_fils)} · code-reconstructed KWD`}
+              />
+              <Stat label="Negative-linked review rows" value={fmtInt(upay.negative_linked_review_rows)} />
+              <Stat label="Unlinked review rows" value={fmtInt(upay.unlinked_review_rows)} />
               <Stat label="Duplicate provider refs" value={fmtInt(upay.duplicate_provider_reference_groups)} />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-md border p-3" dir="ltr">
-                <div className="text-xs font-semibold">Interpretation A — values as KWD</div>
-                <div className="text-[11px] text-muted-foreground mb-2">{upay.interpretation_A_values_as_KWD.conversion}</div>
-                <div>Completed capped credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_A_values_as_KWD.completed_capped_credit_fils)}</strong> fils</div>
-                <div>Users with credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_A_values_as_KWD.users_with_credit)}</strong></div>
-                <div className="text-xs text-muted-foreground">≈ {fmtFilsAsKwd(upay.interpretation_A_values_as_KWD.completed_capped_credit_fils)} total capped</div>
-              </div>
-              <div className="rounded-md border p-3" dir="ltr">
-                <div className="text-xs font-semibold">Interpretation B — values as legacy USD</div>
-                <div className="text-[11px] text-muted-foreground mb-2">{upay.interpretation_B_values_as_legacy_USD.conversion}</div>
-                <div>Completed capped credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_B_values_as_legacy_USD.completed_capped_credit_fils)}</strong> fils</div>
-                <div>Users with credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_B_values_as_legacy_USD.users_with_credit)}</strong></div>
-                <div className="text-xs text-muted-foreground">≈ {fmtFilsAsKwd(upay.interpretation_B_values_as_legacy_USD.completed_capped_credit_fils)} total capped</div>
-              </div>
-            </div>
-
-            {/* Threshold outcome comparison */}
-            <Card className="border-dashed">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Threshold outcome by interpretation</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Stat label="Reach on PayPal only" value={fmtInt(upay.threshold_users.reach_on_paypal_only)} />
-                <Stat label="Reach only if UPayments = KWD" value={fmtInt(upay.threshold_users.reach_only_if_upayments_kwd)} />
-                <Stat label="Reach only if UPayments = legacy USD" value={fmtInt(upay.threshold_users.reach_only_if_upayments_legacy_usd)} />
-                <Stat
-                  label="Ambiguous outcome users"
-                  value={fmtInt(upay.threshold_users.ambiguous_outcome_users)}
-                  hint="lifetime outcome differs between interpretations"
-                />
-              </CardContent>
-            </Card>
           </CardContent>
         </Card>
+
+        {/* Combined verified legacy credit */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Combined verified legacy credit (PayPal + UPayments)</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat label="Users with credit" value={fmtInt(d.combined_legacy_credit.users_with_credit)} />
+            <Stat
+              label="Total capped credit"
+              value={fmtInt(d.combined_legacy_credit.total_credit_fils)}
+              hint={`≈ ${fmtFilsAsKwd(d.combined_legacy_credit.total_credit_fils)}`}
+            />
+            <Stat label="Users capped @ threshold" value={fmtInt(d.combined_legacy_credit.users_capped_at_threshold)} />
+            <Stat label="Threshold" value={fmtInt(d.combined_legacy_credit.threshold_fils)} hint="fils" />
+          </CardContent>
+        </Card>
+
+        <RehearsalCard />
+
 
         {/* Proposed entitlements + credit */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
