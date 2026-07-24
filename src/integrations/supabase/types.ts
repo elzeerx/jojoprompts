@@ -4026,6 +4026,62 @@ export type Database = {
           },
         ]
       }
+      v2_order_receipt_deliveries: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          max_attempts: number
+          next_attempt_at: string
+          order_id: string
+          provider_message_id: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          order_id: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          order_id?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_order_receipt_deliveries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v2_provider_status_rate_limit: {
         Row: {
           count: number
@@ -4650,6 +4706,16 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_claim_order_receipt_delivery: {
+        Args: { p_order_id: string }
+        Returns: {
+          attempts: number
+          claimed: boolean
+          delivery_id: string
+          max_attempts: number
+          order_id: string
+        }[]
+      }
       v2_claim_payment_status_check: {
         Args: {
           p_actor_user_id: string
@@ -4666,6 +4732,10 @@ export type Database = {
       v2_claim_refund_submission: {
         Args: { p_admin_actor_id: string; p_refund_id: string }
         Returns: Json
+      }
+      v2_complete_order_receipt_delivery: {
+        Args: { p_delivery_id: string; p_provider_message_id: string }
+        Returns: undefined
       }
       v2_create_checkout_order: {
         Args: {
@@ -4685,6 +4755,14 @@ export type Database = {
           p_reason: string
         }
         Returns: Json
+      }
+      v2_fail_order_receipt_delivery: {
+        Args: {
+          p_delivery_id: string
+          p_error_code: string
+          p_error_message: string
+        }
+        Returns: undefined
       }
       v2_get_my_order_receipt: { Args: { p_order_id: string }; Returns: Json }
       v2_get_my_orders: {
