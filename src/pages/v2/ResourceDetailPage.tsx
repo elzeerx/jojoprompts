@@ -22,6 +22,7 @@ import {
 import { ShieldCheck, Download, Loader2, ArrowLeft, Timer } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
+import { ReportResourceButton } from "@/components/v2/ReportResourceButton";
 
 
 type Lang = "en" | "ar";
