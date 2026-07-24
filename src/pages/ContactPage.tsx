@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Mail, MessageSquare, Clock, Loader2 } from 'lucide-react';
-import { emailService } from '@/utils/emailService';
+import { supabase } from '@/integrations/supabase/client';
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('CONTACT_PAGE');
@@ -26,51 +26,59 @@ export default function ContactPage() {
     setIsSubmitting(true);
 
     try {
-      // Send confirmation email to user
-      const confirmationResult = await emailService.sendContactConfirmation(
-        formData.name,
-        formData.email,
-        formData.subject,
-        formData.message
-      );
+      const submission_id =
+        (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-      // Send notification email to admin
-      const adminResult = await emailService.sendContactAdminNotification(
-        formData.name,
-        formData.email,
-        formData.subject,
-        formData.message
-      );
+      const { data, error } = await supabase.functions.invoke('submit-contact', {
+        body: {
+          submission_id,
+          name: formData.name,
+          email: formData.email,
+          subject: formData.subject,
+          message: formData.message,
+        },
+      });
 
-      if (confirmationResult.success) {
-        toast({
-          title: "Message Sent Successfully! 📧",
-          description: "Thank you for contacting us. We've sent you a confirmation email and will get back to you within 24 hours.",
-        });
-        setFormData({ name: '', email: '', subject: '', message: '' });
-      } else {
-        toast({
-          title: "Message Received",
-          description: "Your message has been received. However, we couldn't send a confirmation email. We'll still get back to you soon!",
-          variant: "default",
-        });
+      if (error || !data?.success) {
+        const code = (data && (data as any).error) || (error && error.message) || 'submission_failed';
+        if (code === 'rate_limited') {
+          toast({
+            title: 'Too many messages',
+            description: "You've sent several messages recently. Please try again in an hour.",
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Error sending message',
+            description: 'There was a problem sending your message. Please try again or email info@jojoprompts.com.',
+            variant: 'destructive',
+          });
+        }
+        logger.warn('Contact submission failed', { code });
+        return;
       }
 
-      if (!adminResult.success) {
-        logger.warn('Admin notification email failed', { error: adminResult.error });
-      }
-
-    } catch (error: any) {
-      logger.error('Contact form error', { error: error.message || error });
       toast({
-        title: "Error Sending Message",
-        description: "There was a problem sending your message. Please try again or contact us directly.",
-        variant: "destructive",
+        title: 'Message sent successfully! 📧',
+        description: (data as any).confirmation_sent
+          ? "Thank you for contacting us. We've sent you a confirmation email and will get back to you within 24 hours."
+          : "Thank you for contacting us. We'll get back to you within 24 hours.",
+      });
+      setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (err: any) {
+      logger.error('Contact form exception', { error: err?.message });
+      toast({
+        title: 'Error sending message',
+        description: 'There was a problem sending your message. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({

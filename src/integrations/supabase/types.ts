@@ -964,6 +964,36 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_submission_rate_limits: {
+        Row: {
+          created_at: string
+          id: string
+          identifier_hash: string
+          last_request_at: string
+          request_count: number
+          scope: string
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          identifier_hash: string
+          last_request_at?: string
+          request_count?: number
+          scope: string
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          identifier_hash?: string
+          last_request_at?: string
+          request_count?: number
+          scope?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       data_classification_metadata: {
         Row: {
           access_roles: string[] | null
@@ -4287,6 +4317,15 @@ export type Database = {
       can_manage_prompts: { Args: { _user_id: string }; Returns: boolean }
       cancel_user_subscription: {
         Args: { _admin_id: string; _user_id: string }
+        Returns: Json
+      }
+      check_contact_submission_rate_limit: {
+        Args: {
+          p_identifier_hash: string
+          p_max_requests: number
+          p_scope: string
+          p_window_seconds: number
+        }
         Returns: Json
       }
       check_rate_limit: {
