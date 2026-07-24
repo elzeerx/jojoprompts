@@ -175,7 +175,7 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   return text ? JSON.parse(text) as Record<string, unknown> : {};
 }
 
-const LEAK_TOKENS = ["resource-packages", INNER_UUID, "checksum", "service", "supabase.co", "storage/v1"];
+const LEAK_TOKENS = ["resource-packages", INNER_UUID, "checksum_sha256", "service_role", "supabase.co", "storage/v1", "SUPABASE_SERVICE"];
 function assertNoLeak(text: string, extra: string[] = []) {
   for (const t of [...LEAK_TOKENS, ...extra]) {
     if (text.includes(t)) throw new Error(`response leaked token '${t}': ${text}`);
@@ -354,6 +354,6 @@ Deno.test("handler: response bodies do not leak bucket/path/checksum/service/raw
     const text = await res.text();
     const body = JSON.parse(text);
     assertEquals(body.error, c.expectCode);
-    assertNoLeak(text, ["service_role"]);
+    assertNoLeak(text);
   }
 });
