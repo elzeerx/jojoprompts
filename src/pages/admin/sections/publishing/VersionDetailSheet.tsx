@@ -45,7 +45,9 @@ export default function VersionDetailSheet({ versionId, onOpenChange }: Props) {
         side="right"
         className="w-full sm:max-w-2xl overflow-y-auto"
         dir="ltr"
+        closeLabel="Close"
       >
+
         <SheetHeader>
           <SheetTitle>Resource version</SheetTitle>
         </SheetHeader>
