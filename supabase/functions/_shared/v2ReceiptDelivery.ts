@@ -15,7 +15,8 @@
 // Never embeds secrets, raw provider payloads, or permanent download URLs.
 
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { Resend } from "npm:resend@2.0.0";
+// Resend is imported lazily inside sendReceiptViaResend so the pure module
+// stays test-friendly under Deno's specifier check without a nodeModulesDir.
 import { createEdgeLogger } from "./logger.ts";
 
 const logger = createEdgeLogger("v2-receipt-delivery");
