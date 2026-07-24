@@ -553,6 +553,48 @@ export interface MigrationPreviewGrantContract {
   note: string;
   rules: MigrationPreviewContractRule[];
 }
+export interface MigrationPreviewPlanCohorts {
+  ultimate_active_lifetime_users: number;
+  premium_active_lifetime_users: number;
+  ultimate_cancelled_review_users: number;
+  premium_cancelled_review_users: number;
+  basic_active_users: number;
+  standard_active_users: number;
+  basic_expired_historical_users: number;
+  standard_expired_historical_users: number;
+  basic_cancelled_review_users: number;
+  standard_cancelled_review_users: number;
+  raw_row_counts_by_tier_status: Array<{
+    tier: string; is_lifetime: boolean; status: string; rows: number;
+  }>;
+}
+export interface GrandfatheringPolicyPlan {
+  plan: "basic" | "standard" | "premium" | "ultimate";
+  price_usd: number;
+  duration: string;
+  is_lifetime: boolean;
+  original_promise: string;
+  proposed_v2_scope: string;
+  expiry_treatment: string;
+}
+export interface GrandfatheringPolicy {
+  version: string;
+  lifetime_threshold_fils: number;
+  lifetime_threshold_kwd: number;
+  conversion_rate_fils_per_usd: number;
+  library_scope_includes: string[];
+  library_scope_excludes: string[];
+  active_definition: string;
+  expired_definition: string;
+  cancelled_treatment: string;
+  lifetime_credit_rules: Record<string, string>;
+  no_execute_rpc: boolean;
+  plans: GrandfatheringPolicyPlan[];
+  copy: {
+    en: Record<string, string>;
+    ar: Record<string, string>;
+  };
+}
 export interface MigrationPreview {
   generated_at: string;
   conversion_rate_fils_per_usd: number;
@@ -563,12 +605,14 @@ export interface MigrationPreview {
   collections: MigrationPreviewCollections;
   unmatched_sample: Array<{ resource_id: string; resource_type: string; slug: string; legacy_prompt_type: string | null }>;
   subscriptions: MigrationPreviewSubscriptions;
+  plan_cohorts: MigrationPreviewPlanCohorts;
   transactions_paypal: MigrationPreviewPayPal;
   transactions_upayments: MigrationPreviewUPayments;
   proposed_entitlements: MigrationPreviewEntitlements;
   proposed_lifetime_credit: MigrationPreviewCredits;
   anomalies: MigrationPreviewAnomalies;
   grant_contract: MigrationPreviewGrantContract;
+  grandfathering_policy: GrandfatheringPolicy;
 }
 
 export function useMigrationPreview() {

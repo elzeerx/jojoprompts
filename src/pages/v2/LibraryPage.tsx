@@ -6,6 +6,7 @@ import { useDownloadableFiles, type DownloadableFile } from "@/hooks/v2/useDownl
 import { useResourceDownload } from "@/hooks/v2/useResourceDownload";
 import { useInactiveEntitlements } from "@/hooks/v2/useInactiveEntitlements";
 import { LifetimeProgress } from "@/components/v2/LifetimeProgress";
+import { LegacyAccessSummary } from "@/components/v2/LegacyAccessSummary";
 import { SeoHead } from "@/components/v2/SeoHead";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -144,6 +145,9 @@ export default function LibraryPage() {
         ) : (
           <LifetimeProgress progressFils={library?.lifetime_progress_fils ?? 0} />
         )}
+
+        <LegacyAccessSummary />
+
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap gap-1 h-auto">
