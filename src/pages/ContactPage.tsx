@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { Mail, MessageSquare, Clock, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { createLogger } from '@/utils/logging';
+import { generateUuidV4 } from '@/utils/uuid';
 
 const logger = createLogger('CONTACT_PAGE');
 
@@ -26,10 +27,8 @@ export default function ContactPage() {
     setIsSubmitting(true);
 
     try {
-      const submission_id =
-        (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      // Always a canonical RFC 4122 v4 UUID — server rejects any other shape.
+      const submission_id = generateUuidV4();
 
       const { data, error } = await supabase.functions.invoke('submit-contact', {
         body: {
