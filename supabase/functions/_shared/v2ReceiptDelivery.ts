@@ -429,14 +429,7 @@ async function sendReceiptViaResend(
   const options = { idempotencyKey: receiptIdempotencyKey(order.order_id) };
 
   // Resend SDK v2: send(payload, options?) — options carries idempotencyKey.
-  // Cast because older type defs may omit the second arg.
-  const result = await (resend.emails.send as unknown as (
-    p: typeof payload,
-    o: typeof options,
-  ) => Promise<{ data?: { id?: string } | null; error?: { name?: string; message?: string } | null; id?: string }>)(
-    payload,
-    options,
-  );
+  const result = await resend.emails.send(payload, options);
 
   if (result?.error) {
     const name = result.error.name ?? "resend_error";
