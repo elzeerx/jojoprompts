@@ -16,6 +16,11 @@ import { adminSectionElements } from "./pages/admin/layout/adminSectionElements"
 
 const AdminLayout = lazy(() => import("./pages/admin/layout/AdminLayout"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const ComingSoonPage = lazy(() => import("./pages/ComingSoonPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+
+import { isLaunchLocked } from "./config/siteMode";
 
 const V2_PATHS = new Set([
   "explore",
@@ -173,10 +178,33 @@ function App() {
                           <Route path="audit" element={<Navigate to="/admin/trust/admin-activity" replace />} />
                         </Route>
 
-                        {/* Public routes under RootLayout (Header/Footer/etc.) */}
-                        <Route path="/" element={<RootLayout />}>
-                          <Route element={<V2Layout />}>
-                            {routes.filter((r) => V2_PATHS.has(r.path)).map((route) => (
+                        {isLaunchLocked() ? (
+                          <>
+                            {/* Admin-only sign-in surface remains reachable so
+                                admins can authenticate into /admin/**. Signup
+                                UI is stripped from LoginForm while locked. */}
+                            <Route path="/login" element={<LoginPage />} />
+                            <Route path="/reset-password" element={<ResetPasswordPage />} />
+                            {/* Everything else — including /signup, /library,
+                                /checkout, /pricing, resource deep links, and
+                                legacy prompt routes — is Coming Soon. Fail-closed. */}
+                            <Route path="*" element={<ComingSoonPage />} />
+                          </>
+                        ) : (
+                          /* Public routes under RootLayout (Header/Footer/etc.) */
+                          <Route path="/" element={<RootLayout />}>
+                            <Route element={<V2Layout />}>
+                              {routes.filter((r) => V2_PATHS.has(r.path)).map((route) => (
+                                <Route
+                                  key={route.path}
+                                  path={route.path}
+                                  element={createGuardedRoute(route)}
+                                  index={route.index}
+                                />
+                              ))}
+                            </Route>
+
+                            {routes.filter((r) => !V2_PATHS.has(r.path)).map((route) => (
                               <Route
                                 key={route.path}
                                 path={route.path}
@@ -185,16 +213,7 @@ function App() {
                               />
                             ))}
                           </Route>
-
-                          {routes.filter((r) => !V2_PATHS.has(r.path)).map((route) => (
-                            <Route
-                              key={route.path}
-                              path={route.path}
-                              element={createGuardedRoute(route)}
-                              index={route.index}
-                            />
-                          ))}
-                        </Route>
+                        )}
                       </Routes>
                     </Suspense>
                     <Toaster />
