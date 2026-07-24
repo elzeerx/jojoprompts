@@ -16,6 +16,7 @@ import {
   extractStatusFields, normalizePaymentStatus, kwdDecimalToFils,
   sanitizeProviderPayload, eventIdForStatus, safeRpcError,
 } from "../_shared/v2Upayments.ts";
+import { scheduleReceiptDelivery } from "../_shared/v2ReceiptDelivery.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
