@@ -4664,6 +4664,15 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_admin_list_reports: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string[]
+        }
+        Returns: Json
+      }
       v2_admin_migration_preview: { Args: never; Returns: Json }
       v2_admin_migration_rehearsal: { Args: never; Returns: Json }
       v2_admin_migration_verification: { Args: never; Returns: Json }
@@ -4680,6 +4689,10 @@ export type Database = {
       }
       v2_admin_set_discount_active: {
         Args: { p_id: string; p_is_active: boolean }
+        Returns: Json
+      }
+      v2_admin_update_report_status: {
+        Args: { p_next_status: string; p_notes: string; p_report_id: string }
         Returns: Json
       }
       v2_admin_upsert_discount: {
@@ -4977,6 +4990,10 @@ export type Database = {
           p_session_id: string
           p_track_id: string
         }
+        Returns: Json
+      }
+      v2_submit_resource_report: {
+        Args: { p_category: string; p_details: string; p_resource_id: string }
         Returns: Json
       }
       v2_user_owns_resource: {

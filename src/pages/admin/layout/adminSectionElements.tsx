@@ -13,6 +13,7 @@ const EntitlementsPage = lazy(() => import("../sections/orders/EntitlementsPage"
 const RefundsPage = lazy(() => import("../sections/orders/RefundsPage"));
 const RecoveryPage = lazy(() => import("../sections/orders/RecoveryPage"));
 const DiscountsPage = lazy(() => import("../sections/orders/DiscountsPage"));
+const ReportsPage = lazy(() => import("../sections/trust/ReportsPage"));
 
 
 
@@ -131,10 +132,7 @@ export const adminSectionElements = {
   emailAnalytics: wrap(<EmailAnalyticsDashboard />),
 
   // Trust & Activity
-  trustReports: Empty(
-    "Reports",
-    "User-submitted reports on resources from the reports table with triage workflow. UI lands next.",
-  ),
+  trustReports: wrap(<ReportsPage />),
   trustScans: Empty(
     "Package Scans",
     "Latest package_scans by resource version with re-scan controls. Currently viewable via the Catalog table's Scan column.",

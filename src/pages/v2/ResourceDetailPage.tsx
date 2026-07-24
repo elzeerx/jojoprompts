@@ -22,6 +22,7 @@ import {
 import { ShieldCheck, Download, Loader2, ArrowLeft, Timer } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
+import { ReportResourceButton } from "@/components/v2/ReportResourceButton";
 
 
 type Lang = "en" | "ar";
@@ -385,6 +386,10 @@ export default function ResourceDetailPage() {
                 </div>
                 <div className="mt-1 text-muted-foreground">{lifetimeText}</div>
               </div>
+            </div>
+
+            <div className="flex justify-center">
+              <ReportResourceButton resourceId={r.id} lang={lang} />
             </div>
           </aside>
         </div>
