@@ -213,3 +213,40 @@ Deno.test("contract: admin payload without template_slug is rejected shape", () 
   assert(hasRaw(adminBadRaw));
   assert(!("template_slug" in adminBadMissing));
 });
+
+// ---- send-email limiter hash namespace/scope tests ----
+// hmacSha256Hex already imported above
+
+Deno.test("send-email limiter: user hash namespace is distinct from admin for same user id", async () => {
+  const secret = "test-secret-key";
+  const uid = "00000000-0000-4000-8000-000000000001";
+  const u = await hmacSha256Hex(secret, `send-email:user:${uid}`);
+  const a = await hmacSha256Hex(secret, `send-email:admin:${uid}`);
+  assert(u !== a);
+  assertEquals(u.length, 64);
+  assertEquals(a.length, 64);
+});
+
+Deno.test("send-email limiter: hash is deterministic and does not leak raw user id", async () => {
+  const secret = "test-secret-key";
+  const uid = "00000000-0000-4000-8000-000000000042";
+  const h1 = await hmacSha256Hex(secret, `send-email:user:${uid}`);
+  const h2 = await hmacSha256Hex(secret, `send-email:user:${uid}`);
+  assertEquals(h1, h2);
+  assert(!h1.includes(uid));
+});
+
+Deno.test("send-email limiter: namespace differs from contact limiter for identical id", async () => {
+  const secret = "test-secret-key";
+  const id = "abc@example.com";
+  const contactEmail = await hmacSha256Hex(secret, `contact:email:${id}`);
+  const sendUser = await hmacSha256Hex(secret, `send-email:user:${id}`);
+  assert(contactEmail !== sendUser);
+});
+
+Deno.test("send-email limiter: distinct user ids produce distinct hashes", async () => {
+  const secret = "test-secret-key";
+  const a = await hmacSha256Hex(secret, `send-email:user:${"a".repeat(36)}`);
+  const b = await hmacSha256Hex(secret, `send-email:user:${"b".repeat(36)}`);
+  assert(a !== b);
+});
