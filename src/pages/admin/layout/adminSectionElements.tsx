@@ -13,6 +13,7 @@ const EntitlementsPage = lazy(() => import("../sections/orders/EntitlementsPage"
 const RefundsPage = lazy(() => import("../sections/orders/RefundsPage"));
 const RecoveryPage = lazy(() => import("../sections/orders/RecoveryPage"));
 const DiscountsPage = lazy(() => import("../sections/orders/DiscountsPage"));
+const ReportsPage = lazy(() => import("../sections/trust/ReportsPage"));
 
 
 
