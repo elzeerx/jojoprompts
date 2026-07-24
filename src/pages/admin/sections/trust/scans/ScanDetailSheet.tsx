@@ -73,7 +73,7 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
     latestScanStatus: latestStatus,
     hasPendingAggregate,
     hasPendingChild: probe.hasPendingChild,
-    pendingChildProbeLoading: probe.isLoading,
+    pendingChildProbeLoading: probe.isUnresolved,
   });
   const canQueue = guard.canQueue;
 
