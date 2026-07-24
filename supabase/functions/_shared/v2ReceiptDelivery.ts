@@ -404,8 +404,14 @@ async function sendReceiptViaResend(
 ): Promise<string | null> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) throw new Error("resend_api_key_missing");
-  const { Resend } = await import("npm:resend@2.0.0");
-  const resend = new Resend(apiKey);
+  // Variable specifier hides the import from Deno's static graph check
+  // so pure tests do not require resolving npm:resend. Resolved at runtime
+  // by the Edge Functions runtime, which supports npm: specifiers directly.
+  const resendSpec = "npm:" + "resend@2.0.0";
+  const mod = await import(resendSpec) as { Resend: new (k: string) => unknown };
+  const resend = new mod.Resend(apiKey) as {
+    emails: { send: (p: unknown, o: unknown) => Promise<{ data?: { id?: string } | null; error?: { name?: string; message?: string } | null; id?: string }> };
+  };
 
   const payload = {
     from: RECEIPT_FROM,
