@@ -1,4 +1,4 @@
-// Deno.test suite for v2-admin-upload-resource-file pure helpers.
+// Deno.test suite for v2-admin-upload-resource-file (helpers + handler).
 import {
   assertEquals,
   assertStrictEquals,
@@ -6,6 +6,8 @@ import {
 import {
   buildStoragePath,
   extOf,
+  handleRequest,
+  type HandlerDeps,
   isUuid,
   safeBasename,
   sha256Hex,
