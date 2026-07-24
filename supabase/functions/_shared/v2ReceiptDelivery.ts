@@ -359,36 +359,44 @@ async function loadReceiptOrder(svc: SupabaseClient, orderId: string): Promise<R
       : Promise.resolve({ data: null }),
   ]);
 
-  const resourceIds = Array.from(new Set(
-    ((items ?? []) as Array<{ resource_id: string | null }>)
-      .map((r) => r.resource_id)
-      .filter((v): v is string => typeof v === "string"),
-  ));
-  let resourceById = new Map<string, { title_en: string | null; title_ar: string | null; type: string | null }>();
-  if (resourceIds.length > 0) {
-    const { data: rs } = await svc
-      .from("resources")
-      .select("id, title_en, title_ar, type")
-      .in("id", resourceIds);
-    (rs ?? []).forEach((r: { id: string; title_en: string | null; title_ar: string | null; type: string | null }) => {
-      resourceById.set(r.id, { title_en: r.title_en, title_ar: r.title_ar, type: r.type });
-    });
-  }
-
-  const lines: ReceiptLine[] = ((items ?? []) as Array<{
-    product_id: string; resource_id: string | null; quantity: number;
+  const rows = (items ?? []) as Array<{
+    product_id: string | null; resource_id: string | null; quantity: number;
     unit_price_fils: number; line_total_fils: number;
-  }>).map((row) => {
-    const r = row.resource_id ? resourceById.get(row.resource_id) : undefined;
-    return {
-      title_en: r?.title_en ?? null,
-      title_ar: r?.title_ar ?? null,
-      resource_type: r?.type ?? null,
-      quantity: Number.isInteger(row.quantity) && row.quantity > 0 ? row.quantity : 1,
-      unit_price_fils: row.unit_price_fils ?? 0,
-      line_total_fils: row.line_total_fils ?? 0,
-    };
-  });
+  }>;
+
+  const resourceIds = Array.from(new Set(
+    rows.map((r) => r.resource_id).filter((v): v is string => typeof v === "string"),
+  ));
+  const productIds = Array.from(new Set(
+    rows.map((r) => r.product_id).filter((v): v is string => typeof v === "string"),
+  ));
+
+  const resourceById = new Map<string, ReceiptLineSource>();
+  const productById = new Map<string, ReceiptLineSource>();
+
+  await Promise.all([
+    resourceIds.length
+      ? svc.from("resources").select("id, title_en, title_ar, type").in("id", resourceIds).then(({ data }) => {
+          (data ?? []).forEach((r: { id: string; title_en: string | null; title_ar: string | null; type: string | null }) => {
+            resourceById.set(r.id, { title_en: r.title_en, title_ar: r.title_ar, type: r.type });
+          });
+        })
+      : Promise.resolve(),
+    productIds.length
+      ? svc.from("products").select("id, title_en, title_ar, product_type").in("id", productIds).then(({ data }) => {
+          (data ?? []).forEach((p: { id: string; title_en: string | null; title_ar: string | null; product_type: string | null }) => {
+            productById.set(p.id, { title_en: p.title_en, title_ar: p.title_ar, type: p.product_type });
+          });
+        })
+      : Promise.resolve(),
+  ]);
+
+  const lines: ReceiptLine[] = rows.map((row) => buildReceiptLine(
+    row,
+    row.resource_id ? resourceById.get(row.resource_id) : null,
+    row.product_id ? productById.get(row.product_id) : null,
+  ));
+
 
   const email = (profile as { email?: string | null } | null)?.email;
   if (!email) return null;
