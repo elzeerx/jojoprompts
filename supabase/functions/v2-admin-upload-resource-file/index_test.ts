@@ -161,7 +161,7 @@ function multipart(fields: Record<string, string>, files: Array<{ name: string; 
   const fd = new FormData();
   for (const [k, v] of Object.entries(fields)) fd.append(k, v);
   for (const f of files) {
-    fd.append(f.field ?? "file", new File([new Uint8Array(f.content)], f.name, { type: f.type }));
+    fd.append(f.field ?? "file", new File([f.content as BlobPart], f.name, { type: f.type }));
   }
   return fd;
 }
