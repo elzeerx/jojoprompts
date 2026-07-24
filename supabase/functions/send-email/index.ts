@@ -125,20 +125,8 @@ export type CallerClass =
   | { kind: 'user'; userId: string; email: string }
   | { kind: 'anonymous' };
 
-// Exported for tests.
-export function validateTemplateSlug(s: unknown): s is string {
-  return typeof s === 'string' && /^[a-z0-9._-]{1,80}$/.test(s) && s.length <= MAX_TEMPLATE_SLUG;
-}
-export function validateVariables(v: unknown): v is Record<string, unknown> {
-  if (v === undefined || v === null) return true as any;
-  if (typeof v !== 'object' || Array.isArray(v)) return false;
-  const keys = Object.keys(v as any);
-  if (keys.length > MAX_VARIABLES_KEYS) return false;
-  let json: string;
-  try { json = JSON.stringify(v); } catch { return false; }
-  if (json.length > MAX_VARIABLES_JSON) return false;
-  return true;
-}
+import { validateTemplateSlug, validateVariables } from './validation.ts';
+
 
 // ---------------- Handler
 
