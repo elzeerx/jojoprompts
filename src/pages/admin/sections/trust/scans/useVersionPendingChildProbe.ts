@@ -43,14 +43,31 @@ export function useVersionPendingChildProbe(scans: ProbeScan[] | undefined) {
         return (data as unknown as AdminScanDetail | null) ?? null;
       },
       staleTime: 10_000,
+      retry: 1,
     })),
   });
 
-  const isLoading =
-    targetIds.length > 0 && results.some((r) => r.isLoading || r.isFetching);
+  // Fail-closed: any target that is loading/fetching, errored, or has not
+  // returned a valid detail payload with a `counts` object is unresolved.
+  // Callers must gate Queue on this in addition to hasPendingChild.
+  const isUnresolved =
+    targetIds.length > 0 &&
+    results.some((r) => {
+      if (r.isLoading || r.isFetching || r.isPending) return true;
+      if (r.isError || r.error) return true;
+      const detail = r.data as AdminScanDetail | null | undefined;
+      if (!detail || typeof detail !== "object") return true;
+      if (!detail.counts || typeof detail.counts.pending !== "number") {
+        return true;
+      }
+      return false;
+    });
+
   const hasPendingChild = results.some(
     (r) => (r.data?.counts?.pending ?? 0) > 0,
   );
 
-  return { isLoading, hasPendingChild } as const;
+  // Preserve prior field name (`isLoading`) for compatibility while exposing
+  // the stricter fail-closed signal as `isUnresolved`.
+  return { isLoading: isUnresolved, isUnresolved, hasPendingChild } as const;
 }
