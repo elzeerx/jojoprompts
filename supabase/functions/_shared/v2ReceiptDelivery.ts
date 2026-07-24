@@ -15,9 +15,26 @@
 // Never embeds secrets, raw provider payloads, or permanent download URLs.
 
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { Resend } from "npm:resend@2.0.0";
 import { createEdgeLogger } from "./logger.ts";
 
 const logger = createEdgeLogger("v2-receipt-delivery");
+
+// Verified Jojo sender/reply-to (same as legacy send-email transport).
+const RECEIPT_FROM = "JoJo Prompts <info@jojoprompts.com>";
+const RECEIPT_REPLY_TO = "info@jojoprompts.com";
+
+/**
+ * Deterministic Resend idempotency key derived only from the order id.
+ * Bounded to Resend's <=256 char limit. Same order_id => same key across
+ * retries, so a crash after provider acceptance cannot duplicate the send.
+ */
+export function receiptIdempotencyKey(orderId: string): string {
+  const id = typeof orderId === "string" ? orderId.trim() : "";
+  if (!id) throw new Error("receiptIdempotencyKey: empty orderId");
+  const key = `v2-order-receipt/${id}`;
+  return key.length > 256 ? key.slice(0, 256) : key;
+}
 
 // ---------------------------------------------------------------- Pure helpers
 
