@@ -4735,7 +4735,7 @@ export type Database = {
       }
       v2_complete_order_receipt_delivery: {
         Args: { p_delivery_id: string; p_provider_message_id: string }
-        Returns: undefined
+        Returns: boolean
       }
       v2_create_checkout_order: {
         Args: {
@@ -4762,7 +4762,7 @@ export type Database = {
           p_error_code: string
           p_error_message: string
         }
-        Returns: undefined
+        Returns: boolean
       }
       v2_get_my_order_receipt: { Args: { p_order_id: string }; Returns: Json }
       v2_get_my_orders: {
