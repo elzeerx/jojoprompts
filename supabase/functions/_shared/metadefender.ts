@@ -260,3 +260,73 @@ export function sanitizeFileName(name: string): string {
   const cleaned = base.replace(/[^A-Za-z0-9._-]/g, "_");
   return cleaned.slice(0, 120) || "file";
 }
+
+// Byte-array constant-time equality for hex checksums.
+export function bytesEqualConstantTime(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+// Normalize a hex checksum ("SHA256:abc..." | "abc..." | " ABC ") to lowercase hex.
+export function normalizeHexChecksum(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  const stripped = s.includes(":") ? s.split(":").pop()! : s;
+  const lower = stripped.toLowerCase();
+  if (!/^[0-9a-f]+$/.test(lower)) return null;
+  return lower;
+}
+
+// Compute lowercase-hex SHA-256 of bytes using Web Crypto.
+export async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const view = new Uint8Array(digest);
+  let out = "";
+  for (let i = 0; i < view.length; i++) {
+    out += view[i].toString(16).padStart(2, "0");
+  }
+  return out;
+}
+
+export const RESOURCE_PACKAGES_BUCKET = "resource-packages";
+
+// Shared readiness probe. Fails closed on any error. Returns a ReadinessResult.
+export async function probeMetadefenderReadiness(
+  apiKey: string | undefined | null,
+  workerSecret: string | undefined | null,
+  timeoutMs = 5000,
+): Promise<ReadinessResult> {
+  if (!apiKey) {
+    return evaluateReadiness({ hasApiKey: false, hasWorkerSecret: !!workerSecret });
+  }
+  if (!workerSecret) {
+    return evaluateReadiness({ hasApiKey: true, hasWorkerSecret: false });
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${METADEFENDER_BASE}/apikey/`, {
+      method: "GET",
+      headers: { apikey: apiKey, accept: "application/json" },
+      signal: controller.signal,
+    });
+    let account: unknown = null;
+    try { account = await res.json(); } catch { account = null; }
+    return evaluateReadiness({
+      hasApiKey: true,
+      hasWorkerSecret: true,
+      probeStatus: res.status,
+      account,
+    });
+  } catch {
+    return evaluateReadiness({
+      hasApiKey: true,
+      hasWorkerSecret: true,
+      probeStatus: undefined,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
