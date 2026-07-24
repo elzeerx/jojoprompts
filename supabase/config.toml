@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.submit-contact]
 verify_jwt = false
+
+[functions.v2-admin-upload-resource-file]
+verify_jwt = true
