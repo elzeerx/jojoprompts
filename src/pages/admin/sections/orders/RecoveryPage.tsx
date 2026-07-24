@@ -123,8 +123,24 @@ export default function RecoveryPage() {
     const canRecheckPayment =
       (row.kind === "charge_submission_unknown" || row.kind === "stale_payment_attempt")
       && !!row.order_id;
+    // Refund re-check requires the EXACT four pollability conditions the
+    // provider poll endpoint needs: status=approved, submission_state=submitted,
+    // and both provider identifiers present. Row visibility is intentionally
+    // wider so ops can see stuck rows missing IDs, but the button stays off.
+    const submissionState = typeof meta["submission_state"] === "string"
+      ? (meta["submission_state"] as string) : null;
+    const status = typeof meta["status"] === "string" ? (meta["status"] as string) : null;
+    const providerReference = typeof meta["provider_reference"] === "string"
+      && (meta["provider_reference"] as string).length > 0;
+    const providerRefundOrderId = typeof meta["provider_refund_order_id"] === "string"
+      && (meta["provider_refund_order_id"] as string).length > 0;
     const canRecheckRefund =
-      row.kind === "refund_awaiting_status" && !!row.refund_id;
+      row.kind === "refund_awaiting_status"
+      && !!row.refund_id
+      && status === "approved"
+      && submissionState === "submitted"
+      && providerReference
+      && providerRefundOrderId;
     const canFinalize =
       row.kind === "refund_submission_unknown"
       && meta["can_finalize_definite_rejection"] === true
