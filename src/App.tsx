@@ -16,6 +16,11 @@ import { adminSectionElements } from "./pages/admin/layout/adminSectionElements"
 
 const AdminLayout = lazy(() => import("./pages/admin/layout/AdminLayout"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const ComingSoonPage = lazy(() => import("./pages/ComingSoonPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+
+import { isLaunchLocked } from "./config/siteMode";
 
 const V2_PATHS = new Set([
   "explore",
