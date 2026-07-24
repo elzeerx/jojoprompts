@@ -248,7 +248,7 @@ function VerificationCard() {
           <Button
             variant="outline"
             size="sm"
-            className="mt-3 min-h-[36px]"
+            className="mt-3 min-h-[44px] sm:min-h-[36px]"
             onClick={() => q.refetch()}
           >
             <RefreshCw className="me-1.5 h-3.5 w-3.5" /> Retry
