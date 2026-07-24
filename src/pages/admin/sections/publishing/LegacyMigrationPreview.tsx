@@ -8,7 +8,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useMigrationPreview, useMigrationRehearsal, type RehearsalResult } from "@/hooks/admin/v2/useAdminCommerce";
+import {
+  useMigrationPreview,
+  useMigrationRehearsal,
+  useMigrationVerification,
+  type RehearsalResult,
+  type MigrationVerificationResult,
+} from "@/hooks/admin/v2/useAdminCommerce";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function fmtInt(n: unknown): string {
@@ -142,6 +148,233 @@ function RehearsalCard() {
             <div className="font-semibold mb-1">Existing / replay conflicts</div>
             <div>Grants with a legacy_source (all history): <strong className="tabular-nums">{fmtInt(ew.entitlements_with_legacy_source)}</strong></div>
             <div>Credit entries with a legacy_transaction_id: <strong className="tabular-nums">{fmtInt(ew.credit_entries_with_legacy_transaction_id)}</strong></div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6B.3 — Post-migration verification card (read-only, admin-only)
+// ---------------------------------------------------------------------------
+function VerificationRow({
+  label,
+  expected,
+  actual,
+  hint,
+}: {
+  label: string;
+  expected: number | undefined;
+  actual: number | undefined;
+  hint?: string;
+}) {
+  const e = Number.isFinite(Number(expected)) ? Number(expected) : null;
+  const a = Number.isFinite(Number(actual)) ? Number(actual) : null;
+  const inSync = e !== null && a !== null && e === a;
+  return (
+    <div className="flex items-center justify-between rounded-md border p-3 text-xs" dir="ltr">
+      <div>
+        <div className="font-semibold">{label}</div>
+        {hint ? <div className="text-[11px] text-muted-foreground">{hint}</div> : null}
+      </div>
+      <div className="flex items-center gap-3 tabular-nums">
+        <span>expected <strong>{e === null ? "—" : fmtInt(e)}</strong></span>
+        <span>actual <strong>{a === null ? "—" : fmtInt(a)}</strong></span>
+        <Badge variant={inSync ? "secondary" : "destructive"}>{inSync ? "in sync" : "drift"}</Badge>
+      </div>
+    </div>
+  );
+}
+
+function DriftSummary({
+  title,
+  block,
+}: {
+  title: string;
+  block: MigrationVerificationResult["drift"]["entitlements"] | undefined;
+}) {
+  const missing = Number(block?.missing_total ?? 0);
+  const extra = Number(block?.extra_total ?? 0);
+  const mism = Number(block?.mismatched_total ?? 0);
+  const total = missing + extra + mism;
+  const samples = (block?.missing_sample ?? []).concat(block?.extra_sample ?? [], block?.mismatched_sample ?? []);
+  return (
+    <div className="rounded-md border p-3 text-xs" dir="ltr">
+      <div className="mb-1 flex items-center justify-between">
+        <div className="font-semibold">{title}</div>
+        <Badge variant={total === 0 ? "secondary" : "destructive"}>
+          {total === 0 ? "No drift" : `${fmtInt(total)} drift`}
+        </Badge>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-[11px] text-muted-foreground">
+        <div>Missing: <strong className="tabular-nums text-foreground">{fmtInt(missing)}</strong></div>
+        <div>Extra: <strong className="tabular-nums text-foreground">{fmtInt(extra)}</strong></div>
+        <div>Mismatched: <strong className="tabular-nums text-foreground">{fmtInt(mism)}</strong></div>
+      </div>
+      {total > 0 && samples.length > 0 ? (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-[11px] text-muted-foreground">Show first {samples.length} samples</summary>
+          <pre className="mt-2 max-h-56 overflow-auto rounded bg-muted p-2 text-[10px]">
+            {JSON.stringify(samples, null, 2)}
+          </pre>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function VerificationCard() {
+  const q = useMigrationVerification();
+
+  if (q.isLoading) {
+    return (
+      <Card>
+        <CardHeader><CardTitle className="text-base">Post-migration verification</CardTitle></CardHeader>
+        <CardContent><Skeleton className="h-40 w-full" /></CardContent>
+      </Card>
+    );
+  }
+
+  if (q.isError) {
+    const msg = q.error instanceof Error ? q.error.message : String(q.error ?? "unknown error");
+    return (
+      <Card>
+        <CardHeader><CardTitle className="text-base">Post-migration verification</CardTitle></CardHeader>
+        <CardContent>
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" dir="ltr">
+            Verification error: {msg}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 min-h-[36px]"
+            onClick={() => q.refetch()}
+          >
+            <RefreshCw className="me-1.5 h-3.5 w-3.5" /> Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const r = (q.data ?? {}) as Partial<MigrationVerificationResult>;
+  const expected = r.expected ?? ({} as Partial<MigrationVerificationResult["expected"]>);
+  const actual = r.actual ?? ({} as Partial<MigrationVerificationResult["actual"]>);
+  const drift = r.drift ?? ({} as Partial<MigrationVerificationResult["drift"]>);
+  const audit = r.audit_event ?? ({} as Partial<MigrationVerificationResult["audit_event"]>);
+  const hashes = r.plan_hashes ?? ({} as Partial<MigrationVerificationResult["plan_hashes"]>);
+  const extras = r.executor_extras ?? ({} as Partial<MigrationVerificationResult["executor_extras"]>);
+  const hashesMatch = r.hashes_match ?? "not_persisted";
+
+  const totalDrift = Number(drift.total_drift ?? 0);
+  const globalInSync = totalDrift === 0
+    && Number(expected.entitlement_rows ?? -1) === Number(actual.entitlement_rows ?? -2)
+    && Number(expected.credit_rows ?? -1) === Number(actual.credit_rows ?? -2);
+
+  const notRun = !audit.id;
+
+  const hashBadgeVariant: "secondary" | "destructive" | "outline" =
+    hashesMatch === "match" ? "secondary"
+    : hashesMatch === "mismatch" ? "destructive"
+    : "outline";
+
+  const checkedAt = r.checked_at ? new Date(r.checked_at) : null;
+  const executedAt = audit.executed_at ? new Date(audit.executed_at) : null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">
+          Post-migration verification · policy {r.policy_version ?? "6B.2-r1"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground" dir="ltr">
+          <Badge variant={globalInSync ? "secondary" : "destructive"}>
+            {globalInSync ? "In sync" : "Drift detected"}
+          </Badge>
+          <Badge variant={hashBadgeVariant}>
+            hashes: {hashesMatch}
+          </Badge>
+          <span>checked_at: {checkedAt ? checkedAt.toISOString() : "—"}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ms-auto min-h-[32px]"
+            onClick={() => q.refetch()}
+            aria-label="Recheck verification"
+          >
+            <RefreshCw className="me-1.5 h-3.5 w-3.5" /> Recheck
+          </Button>
+        </div>
+
+        {notRun ? (
+          <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-xs" dir="ltr">
+            No <code>v2_legacy_migration_executed</code> audit event was found. The migration has not
+            been executed on this database yet, or the audit event was not persisted.
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-3">
+          <VerificationRow
+            label="Entitlement rows (grant_reason=legacy_migration)"
+            expected={expected.entitlement_rows}
+            actual={actual.entitlement_rows}
+            hint="Deterministic plan vs public.entitlements (legacy_source IS NOT NULL)"
+          />
+          <VerificationRow
+            label="Entitlement unique users"
+            expected={expected.entitlement_unique_users}
+            actual={actual.entitlement_unique_users}
+          />
+          <VerificationRow
+            label="Credit entries (legacy_transaction_id linked)"
+            expected={expected.credit_rows}
+            actual={actual.credit_rows}
+            hint="Deterministic plan vs public.lifetime_credit_entries"
+          />
+          <VerificationRow
+            label="Credit unique users"
+            expected={expected.credit_unique_users}
+            actual={actual.credit_unique_users}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <DriftSummary title="Entitlement drift" block={drift.entitlements} />
+          <DriftSummary title="Credit drift" block={drift.credits} />
+        </div>
+
+        <div className="rounded-md border p-3 text-xs" dir="ltr">
+          <div className="font-semibold mb-1">Plan hashes vs recorded execution</div>
+          <div className="grid grid-cols-1 gap-1">
+            <div>Current combined: <code className="text-[10px]">{hashes.combined_plan_hash ?? "—"}</code></div>
+            <div>
+              Recorded combined: {audit.combined_plan_hash
+                ? <code className="text-[10px]">{audit.combined_plan_hash}</code>
+                : <span className="text-muted-foreground">not_persisted</span>}
+            </div>
+            <div>Current entitlement: <code className="text-[10px]">{hashes.entitlement_plan_hash ?? "—"}</code></div>
+            <div>Current credit: <code className="text-[10px]">{hashes.credit_plan_hash ?? "—"}</code></div>
+          </div>
+        </div>
+
+        <div className="rounded-md border p-3 text-xs" dir="ltr">
+          <div className="font-semibold mb-1">Recorded migration audit event</div>
+          <div>Event id: <code className="text-[10px]">{audit.id ?? "—"}</code></div>
+          <div>Executed at: {executedAt ? executedAt.toISOString() : "—"}</div>
+          <div>Actor user id: <code className="text-[10px]">{audit.actor_user_id ?? "system"}</code></div>
+          <div className="mt-2 text-muted-foreground">
+            Active threshold grants: <strong className="tabular-nums text-foreground">
+              {fmtInt(extras.active_lifetime_threshold_grants)}
+            </strong>
+            {" · "}Legacy_source rows (all history): <strong className="tabular-nums text-foreground">
+              {fmtInt(extras.entitlements_with_any_legacy_source_all_history)}
+            </strong>
+            {" · "}Credit rows linked: <strong className="tabular-nums text-foreground">
+              {fmtInt(extras.credit_entries_with_legacy_transaction_id)}
+            </strong>
           </div>
         </div>
       </CardContent>
@@ -558,6 +791,8 @@ export default function LegacyMigrationPreview() {
         </Card>
 
         <RehearsalCard />
+
+        <VerificationCard />
 
 
         {/* Proposed entitlements + credit */}

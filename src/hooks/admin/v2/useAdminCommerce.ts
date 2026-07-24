@@ -717,3 +717,85 @@ export function useMigrationRehearsal() {
     staleTime: 60_000,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6B.3 — Post-migration verification (read-only, admin-only)
+// ---------------------------------------------------------------------------
+export type MigrationVerificationHashesMatch = "match" | "mismatch" | "not_persisted";
+
+export interface MigrationVerificationDriftSample {
+  user_id?: string | null;
+  legacy_source?: string | null;
+  scope?: string | null;
+  collection_key?: string | null;
+  legacy_transaction_id?: string | null;
+  diff?: Record<string, unknown> | null;
+}
+
+export interface MigrationVerificationDriftBlock {
+  missing_total: number;
+  extra_total: number;
+  mismatched_total: number;
+  missing_sample: MigrationVerificationDriftSample[];
+  extra_sample: MigrationVerificationDriftSample[];
+  mismatched_sample: MigrationVerificationDriftSample[];
+}
+
+export interface MigrationVerificationResult {
+  policy_version: string;
+  checked_at: string;
+  checked_by_actor: string | null;
+  sample_limit: number;
+  notes: string;
+  plan_hashes: {
+    entitlement_plan_hash: string;
+    credit_plan_hash: string;
+    combined_plan_hash: string;
+  };
+  audit_event: {
+    id: string | null;
+    executed_at: string | null;
+    actor_user_id: string | null;
+    entitlement_plan_hash: string | null;
+    credit_plan_hash: string | null;
+    combined_plan_hash: string | null;
+  };
+  hashes_match: MigrationVerificationHashesMatch;
+  expected: {
+    entitlement_rows: number;
+    entitlement_unique_users: number;
+    credit_rows: number;
+    credit_unique_users: number;
+  };
+  actual: {
+    entitlement_rows: number;
+    entitlement_unique_users: number;
+    credit_rows: number;
+    credit_unique_users: number;
+  };
+  executor_extras: {
+    active_lifetime_threshold_grants: number;
+    entitlements_with_any_legacy_source_all_history: number;
+    credit_entries_with_legacy_transaction_id: number;
+  };
+  drift: {
+    entitlements: MigrationVerificationDriftBlock;
+    credits: MigrationVerificationDriftBlock;
+    total_drift: number;
+  };
+}
+
+export function useMigrationVerification() {
+  return useQuery<MigrationVerificationResult>({
+    queryKey: ["admin", "v2", "migration-verification"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as unknown as {
+        rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+      }).rpc("v2_admin_migration_verification", {});
+      if (error) throw error as Error;
+      return data as MigrationVerificationResult;
+    },
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
