@@ -254,6 +254,114 @@ export function nextPollDelayMs(attempt: number): number {
 
 export const MAX_ITEM_ATTEMPTS = 12;
 
+// Given a readiness reason surfaced from the shared probe, decide how the
+// worker should persist state before touching storage/provider I/O.
+// - "proceed": readiness is OK; continue the run.
+// - "retry":   transient upstream unreachability; keep items pending, bump
+//              next_poll_at, record a stable last_error, return 412 to caller.
+// - "fail_now": license/privacy/auth reason that will not self-heal without
+//              operator action; move affected items to failed with a stable
+//              provider_not_ready_<reason> code so the queue does not silently
+//              hold "pending" work forever.
+export type ReadinessPersistenceDecision = "proceed" | "retry" | "fail_now";
+
+export function decideReadinessPersistence(
+  reason: ReadinessReason,
+): ReadinessPersistenceDecision {
+  if (reason === "ok") return "proceed";
+  if (reason === "provider_unreachable") return "retry";
+  // no_api_key, no_worker_secret, provider_unauthorized, not_paid_account,
+  // upload_size_too_small, no_scan_engines, private_scan_not_enforced.
+  return "fail_now";
+}
+
+// Mandatory integrity metadata gate. size_bytes must be a finite non-negative
+// integer; checksum_sha256 must normalize to exactly 64 hex characters.
+export type IntegrityValidation =
+  | { ok: true; size: number; checksumHex: string }
+  | {
+      ok: false;
+      reason:
+        | "integrity_metadata_missing"
+        | "integrity_size_invalid"
+        | "integrity_checksum_invalid";
+    };
+
+export function validateIntegrityMetadata(input: {
+  size_bytes: number | null | undefined;
+  checksum_sha256: string | null | undefined;
+}): IntegrityValidation {
+  const sizeGiven = input.size_bytes != null;
+  const checksumGiven =
+    input.checksum_sha256 != null && String(input.checksum_sha256).trim() !== "";
+
+  if (!sizeGiven && !checksumGiven) {
+    return { ok: false, reason: "integrity_metadata_missing" };
+  }
+  if (!sizeGiven) return { ok: false, reason: "integrity_metadata_missing" };
+  const size = input.size_bytes as number;
+  if (typeof size !== "number" || !Number.isFinite(size) || size < 0 || !Number.isInteger(size)) {
+    return { ok: false, reason: "integrity_size_invalid" };
+  }
+  if (!checksumGiven) return { ok: false, reason: "integrity_metadata_missing" };
+  const hex = normalizeHexChecksum(input.checksum_sha256);
+  if (!hex || hex.length !== 64) {
+    return { ok: false, reason: "integrity_checksum_invalid" };
+  }
+  return { ok: true, size, checksumHex: hex };
+}
+
+// Stop provider I/O for an item when its POST-CLAIM attempt count has reached
+// the configured maximum. Attempt counts are incremented atomically inside the
+// claim RPC, so callers pass the *returned* value (i.e. attempts already spent
+// including this one).
+export function shouldStopForAttempts(attemptCountAfterClaim: number): boolean {
+  return attemptCountAfterClaim >= MAX_ITEM_ATTEMPTS;
+}
+
+// Queue-scan admission logic. Latest scan drives the "already covered" gates,
+// pending-child bag drives the "work-in-flight" gate, and provider readiness
+// plus package files gate the outer preconditions.
+export type QueueAllowedInput = {
+  latestScanStatus: NormalizedStatus | null; // null => no scans yet.
+  hasAnyPendingChild: boolean;
+  hasFiles: boolean;
+  providerReady: boolean;
+};
+export type QueueDecision =
+  | { allow: true }
+  | { allow: false; reason: "not_ready" | "no_files" | "pending_exists" | "already_clean" };
+
+export function decideQueueAllowed(input: QueueAllowedInput): QueueDecision {
+  if (!input.providerReady) return { allow: false, reason: "not_ready" };
+  if (!input.hasFiles) return { allow: false, reason: "no_files" };
+  if (input.hasAnyPendingChild) return { allow: false, reason: "pending_exists" };
+  const s = input.latestScanStatus;
+  if (s === "pending") return { allow: false, reason: "pending_exists" };
+  if (s === "clean" || s === "suspicious" || s === "malicious") {
+    return { allow: false, reason: "already_clean" };
+  }
+  // null (unscanned) or "failed" -> allowed.
+  return { allow: true };
+}
+
+// Refresh-scan admission: allow if the scan exists AND has recoverable
+// pending child work, regardless of aggregate package_scans.status. This
+// keeps pending items reachable even when the aggregate has been driven to
+// failed/suspicious/malicious by precedence.
+export type RefreshDecision =
+  | { allow: true }
+  | { allow: false; reason: "scan_not_found" | "scan_not_pending" };
+
+export function decideRefreshAllowed(input: {
+  scanExists: boolean;
+  pendingItemCount: number;
+}): RefreshDecision {
+  if (!input.scanExists) return { allow: false, reason: "scan_not_found" };
+  if (input.pendingItemCount <= 0) return { allow: false, reason: "scan_not_pending" };
+  return { allow: true };
+}
+
 // Safe file name sanitizer for provider `filename` header.
 export function sanitizeFileName(name: string): string {
   const base = name.split(/[\\/]/).pop() ?? "file";
