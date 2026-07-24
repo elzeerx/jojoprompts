@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { isProbeResultUnresolved } from "./useVersionPendingChildProbe";
+import { isProbeResultUnresolved } from "./probeResolution";
 
 const validDetail = { counts: { pending: 0 } } as any;
 
