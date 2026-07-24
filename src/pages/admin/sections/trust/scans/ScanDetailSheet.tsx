@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -6,10 +7,30 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 import { formatDateTime } from "@/lib/v2/admin/format";
 import { useAdminResourceVersionDetail } from "@/hooks/admin/v2/useAdminResourceVersions";
 import type { PackageScanState } from "@/hooks/admin/v2/useAdminPackageScans";
+import {
+  useAdminPackageScanDetails,
+  useQueueScan,
+  useRefreshScan,
+  useScanProviderStatus,
+} from "@/hooks/admin/v2/useScanProvider";
 import {
   formatBytes,
   formatFindings,
@@ -26,6 +47,43 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
   const query = useAdminResourceVersionDetail(versionId);
   const detail = query.data ?? null;
   const v = detail?.version ?? null;
+
+  const providerStatus = useScanProviderStatus();
+  const ready = providerStatus.data?.readiness.ready ?? false;
+
+  const queueMutation = useQueueScan();
+  const refreshMutation = useRefreshScan();
+
+  const pendingScan = (detail?.scans ?? []).find((s) => s.status === "pending") ?? null;
+  const hasFiles = (detail?.files.length ?? 0) > 0;
+  const canQueue = ready && hasFiles && !pendingScan;
+
+  const handleQueue = async () => {
+    if (!versionId) return;
+    try {
+      await queueMutation.mutateAsync(versionId);
+      toast({ title: "Scan queued", description: "Worker will start uploading shortly." });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Could not queue scan",
+        description: (e as Error).message,
+      });
+    }
+  };
+
+  const handleRefresh = async (scanId: string) => {
+    try {
+      await refreshMutation.mutateAsync(scanId);
+      toast({ title: "Refresh requested" });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Refresh failed",
+        description: (e as Error).message,
+      });
+    }
+  };
 
   return (
     <Sheet open={!!versionId} onOpenChange={onOpenChange}>
@@ -80,6 +138,53 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
               </div>
             </section>
 
+            <section className="rounded-md border p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-xs text-muted-foreground">
+                  {ready
+                    ? "MetaDefender Cloud is ready. Queueing sends the package files for private scanning."
+                    : "Scan actions are disabled until MetaDefender Cloud is configured and validated."}
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      className="min-h-[44px] w-full sm:w-auto"
+                      disabled={!canQueue || queueMutation.isPending}
+                      aria-disabled={!canQueue || queueMutation.isPending}
+                    >
+                      {queueMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="h-4 w-4 mr-2" />
+                      )}
+                      Queue scan
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Queue private scan?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        The worker will upload every file in this version to
+                        MetaDefender Cloud with Private Processing. Files stay
+                        isolated to your paid organization and are not shared.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="min-h-[44px]">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        className="min-h-[44px]"
+                        onClick={handleQueue}
+                      >
+                        Queue scan
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </section>
+
             <section className="grid grid-cols-2 gap-3">
               <Meta label="Published" value={formatDateTime(v.published_at)} />
               <Meta label="Updated" value={formatDateTime(v.updated_at)} />
@@ -127,30 +232,22 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {detail!.scans.map((s) => {
-                    const state = (s.status ?? "unscanned") as PackageScanState;
-                    return (
-                      <div
-                        key={s.id}
-                        className="rounded-md border p-3 text-xs space-y-1"
-                      >
-                        <div className="flex items-center justify-between">
-                          <Badge variant={statusTone(state)}>
-                            {statusLabel(state)}
-                          </Badge>
-                          <span className="text-muted-foreground">
-                            {s.scanner || "—"}
-                          </span>
-                        </div>
-                        <div className="text-muted-foreground">
-                          {formatDateTime(s.scanned_at ?? s.created_at)}
-                        </div>
-                        <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-muted p-2 font-mono text-[10px]">
-                          {formatFindings(s.findings)}
-                        </pre>
-                      </div>
-                    );
-                  })}
+                  {detail!.scans.map((s) => (
+                    <ScanCard
+                      key={s.id}
+                      scanId={s.id}
+                      state={(s.status ?? "unscanned") as PackageScanState}
+                      scanner={s.scanner}
+                      scannedAt={s.scanned_at ?? s.created_at}
+                      findings={s.findings}
+                      canRefresh={
+                        ready &&
+                        s.status === "pending" &&
+                        !refreshMutation.isPending
+                      }
+                      onRefresh={() => handleRefresh(s.id)}
+                    />
+                  ))}
                 </div>
               )}
             </section>
@@ -162,6 +259,121 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function ScanCard({
+  scanId,
+  state,
+  scanner,
+  scannedAt,
+  findings,
+  canRefresh,
+  onRefresh,
+}: {
+  scanId: string;
+  state: PackageScanState;
+  scanner: string | null;
+  scannedAt: string | null;
+  findings: unknown;
+  canRefresh: boolean;
+  onRefresh: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const details = useAdminPackageScanDetails(open ? scanId : null);
+  const counts = details.data?.counts;
+  const items = details.data?.items ?? [];
+
+  return (
+    <div className="rounded-md border p-3 text-xs space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Badge variant={statusTone(state)}>{statusLabel(state)}</Badge>
+          <span className="text-muted-foreground">{scanner || "—"}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {state === "pending" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-[44px]"
+              disabled={!canRefresh}
+              onClick={onRefresh}
+              aria-label="Refresh scan status"
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Refresh
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="min-h-[44px]"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+          >
+            {open ? "Hide details" : "Details"}
+          </Button>
+        </div>
+      </div>
+      <div className="text-muted-foreground">
+        {formatDateTime(scannedAt)}
+      </div>
+
+      {open && (
+        <div className="rounded bg-muted/40 p-2 space-y-2">
+          {details.isLoading ? (
+            <div className="text-muted-foreground">Loading details…</div>
+          ) : details.isError ? (
+            <div className="text-destructive">
+              {(details.error as Error).message}
+            </div>
+          ) : counts ? (
+            <>
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                <span>{counts.items} item{counts.items === 1 ? "" : "s"}</span>
+                <span>progress {counts.progress_pct}%</span>
+                <span>clean {counts.clean}</span>
+                <span>pending {counts.pending}</span>
+                <span>failed {counts.failed}</span>
+                <span>suspicious {counts.suspicious}</span>
+                <span>malicious {counts.malicious}</span>
+                <span>
+                  engines {counts.detected_engines}/{counts.total_engines}
+                </span>
+              </div>
+              <div className="divide-y rounded border bg-background">
+                {items.map((it) => (
+                  <div key={it.id} className="p-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-medium">
+                        {it.file.file_name ?? "—"}
+                      </span>
+                      <Badge variant={statusTone(it.status)}>
+                        {statusLabel(it.status)}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 text-muted-foreground">
+                      <span>progress {it.progress}%</span>
+                      <span>
+                        engines {it.detected_engines ?? 0}/{it.total_engines ?? 0}
+                      </span>
+                      <span>attempts {it.attempt_count}</span>
+                      <span>{formatBytes(it.file.size_bytes)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {(findings || null) && (
+                <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 font-mono text-[10px]">
+                  {formatFindings(findings)}
+                </pre>
+              )}
+            </>
+          ) : null}
+        </div>
+      )}
+    </div>
   );
 }
 
