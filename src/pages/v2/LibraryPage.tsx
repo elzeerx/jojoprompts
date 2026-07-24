@@ -34,7 +34,7 @@ const TABS: Array<{ id: "all" | V2ResourceType; labelKey: keyof typeof V2_COPY.n
   { id: "skill", labelKey: "skills" },
   { id: "automation", labelKey: "automations" },
   { id: "prompt", labelKey: "prompts" },
-  { id: "prompt_pack", labelKey: "prompts" },
+  { id: "prompt_pack", labelKey: "promptPacks" },
   { id: "image_style", labelKey: "imageStyles" },
   { id: "bundle", labelKey: "bundles" },
 ];
