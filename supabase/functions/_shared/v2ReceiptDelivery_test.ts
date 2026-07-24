@@ -1,7 +1,8 @@
-import { assertEquals, assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assert, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   escapeHtml,
   formatKwd,
+  receiptIdempotencyKey,
   renderReceiptHtml,
   renderReceiptLineHtml,
   safeProviderMessageId,
