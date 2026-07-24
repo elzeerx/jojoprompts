@@ -116,13 +116,13 @@ export default function ScansPage() {
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-6" dir="ltr">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+    <div className="space-y-4 sm:space-y-6 min-w-0" dir="ltr">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between min-w-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-semibold tracking-tight break-words">
             Package Scans
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground break-words">
             Read-only queue and history of package files awaiting a clean scan
             result. Uploads for a version remain unavailable until its latest
             scan is clean.
@@ -131,13 +131,14 @@ export default function ScansPage() {
         <Button
           variant="outline"
           size="icon"
-          className="min-h-[44px] min-w-[44px]"
+          className="min-h-[44px] min-w-[44px] shrink-0 self-start sm:self-auto"
           onClick={() => query.refetch()}
           aria-label="Refresh"
         >
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
+
 
       <MetadefenderStatusCard />
 
