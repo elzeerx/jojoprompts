@@ -284,6 +284,12 @@ function ScanCard({
   const counts = details.data?.counts;
   const items = details.data?.items ?? [];
 
+  // Refresh visible when aggregate itself is pending OR the expanded details
+  // report recoverable pending child items (aggregate may be terminal via
+  // precedence even while child items remain pending).
+  const showRefresh =
+    state === "pending" || (open && (counts?.pending ?? 0) > 0);
+
   return (
     <div className="rounded-md border p-3 text-xs space-y-2">
       <div className="flex items-center justify-between gap-2">
@@ -292,7 +298,7 @@ function ScanCard({
           <span className="text-muted-foreground">{scanner || "—"}</span>
         </div>
         <div className="flex items-center gap-2">
-          {state === "pending" && (
+          {showRefresh && (
             <Button
               size="sm"
               variant="outline"
@@ -319,6 +325,7 @@ function ScanCard({
       <div className="text-muted-foreground">
         {formatDateTime(scannedAt)}
       </div>
+
 
       {open && (
         <div className="rounded bg-muted/40 p-2 space-y-2">
