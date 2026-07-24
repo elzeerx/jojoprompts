@@ -4,7 +4,7 @@ import type { PackageScanState } from "@/hooks/admin/v2/useAdminPackageScans";
  * Frontend queue-admission guard for the Package Scans detail sheet.
  *
  * Mirrors the server-authoritative admission rules in
- * `decideQueueAllowed` (supabase/functions/_shared/metadefender.ts). This is
+ * `decideQueueAllowed` (supabase/functions/_shared/scanProvider.ts). This is
  * only a visual gate — the edge function remains authoritative. Values here
  * fail closed (Queue disabled) whenever a required signal is still loading.
  */

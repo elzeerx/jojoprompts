@@ -1,34 +1,34 @@
 // v2-package-scan-worker (verify_jwt=false)
-// Server-to-server worker for MetaDefender Cloud private scans.
+// Server-to-server worker for Cloudmersive Virus Scan (advanced) private scans.
 // - Auth: constant-time comparison against PACKAGE_SCAN_WORKER_SECRET header.
 //   Never accepts a browser JWT as substitute. Not intended for CORS.
 // - Uses service-role client. Claims one item at a time (bounded per invocation),
 //   downloads the private object from the resource-packages bucket ONLY,
 //   verifies size + SHA-256 against the stored resource_files metadata, then
-//   POSTs bytes to /file with samplesharing:0 and privateProcessing:1, and
-//   polls /file/{data_id} via the poll-claim RPC so poll work is leased too.
+//   POSTs bytes to Cloudmersive /virus/scan/file/advanced with strict policy
+//   headers, and persists the normalized result via the apply RPC.
 // - Never logs secrets, file bytes, bucket/path, signed URLs, checksums, or
 //   raw provider response bodies.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   bytesEqualConstantTime,
+  classifyHttpStatus,
+  CLOUDMERSIVE_ADVANCED_SCAN_URL,
+  CLOUDMERSIVE_POLICY_HEADERS,
   constantTimeEqual,
   decideReadinessPersistence,
-  MAX_ITEM_ATTEMPTS,
-  METADEFENDER_BASE,
+  evaluateReadiness,
+  mapAdvancedScanBody,
   nextPollDelayMs,
-  normalizeProviderResponse,
-  probeMetadefenderReadiness,
   RESOURCE_PACKAGES_BUCKET,
   sanitizeFileName,
   sha256Hex,
   shouldStopForAttempts,
   validateIntegrityMetadata,
-} from "../_shared/metadefender.ts";
+} from "../_shared/scanProvider.ts";
 
-const UPLOAD_TIMEOUT_MS = 60_000;
-const POLL_TIMEOUT_MS = 10_000;
+const SCAN_TIMEOUT_MS = 90_000;
 const MAX_WORK_PER_INVOCATION = 3;
 
 function ok(body: unknown = { ok: true }): Response {
@@ -59,7 +59,7 @@ async function fetchWithTimeout(
 }
 
 // deno-lint-ignore no-explicit-any
-async function failItem(supabase: any, itemId: string, reason: string): Promise<void> {
+async function failItem(supabase: any, itemId: string, reason: string, findings: Record<string, unknown> | null = null): Promise<void> {
   await supabase.rpc("v2_internal_apply_scan_item_result", {
     p_item_id: itemId,
     p_status: "failed",
@@ -67,9 +67,24 @@ async function failItem(supabase: any, itemId: string, reason: string): Promise<
     p_progress: 100,
     p_total_engines: null,
     p_detected_engines: null,
-    p_findings: { reason },
+    p_findings: findings ?? { reason },
     p_next_poll_at: null,
     p_last_error_code: reason,
+  });
+}
+
+// deno-lint-ignore no-explicit-any
+async function applyTerminal(supabase: any, itemId: string, status: "clean" | "suspicious" | "malicious", findings: Record<string, unknown>, reason: string): Promise<void> {
+  await supabase.rpc("v2_internal_apply_scan_item_result", {
+    p_item_id: itemId,
+    p_status: status,
+    p_result_code: null,
+    p_progress: 100,
+    p_total_engines: null,
+    p_detected_engines: null,
+    p_findings: findings,
+    p_next_poll_at: null,
+    p_last_error_code: status === "clean" ? null : reason,
   });
 }
 
@@ -89,28 +104,21 @@ async function retryItem(supabase: any, itemId: string, attempt: number, reason:
   });
 }
 
-// Persist readiness state across all pending items for a scan WITHOUT any
-// storage/provider I/O. Called before any file work when the shared readiness
-// probe fails. Uses the same apply RPC so per-item precedence & aggregate
-// recompute remain the single source of truth.
+// Persist readiness fail state across all pending items for a scan WITHOUT any
+// storage/provider I/O. Called before any file work when readiness is not ok.
 // deno-lint-ignore no-explicit-any
-async function persistReadinessOutcome(
+async function persistReadinessFailure(
   supabase: any,
   scanId: string,
-  decision: "fail_now" | "retry",
   reasonSuffix: string,
 ): Promise<void> {
   const { data: pending } = await supabase
     .from("package_scan_items")
-    .select("id, attempt_count")
+    .select("id")
     .eq("scan_id", scanId)
     .eq("status", "pending");
-  for (const item of (pending ?? []) as Array<{ id: string; attempt_count: number | null }>) {
-    if (decision === "fail_now") {
-      await failItem(supabase, item.id, `provider_not_ready_${reasonSuffix}`);
-    } else {
-      await retryItem(supabase, item.id, item.attempt_count ?? 0, "provider_unreachable");
-    }
+  for (const item of (pending ?? []) as Array<{ id: string }>) {
+    await failItem(supabase, item.id, `provider_not_ready_${reasonSuffix}`);
   }
 }
 
@@ -133,35 +141,29 @@ Deno.serve(async (req) => {
   if (!/^[0-9a-f-]{36}$/i.test(scanId)) return fail("invalid_scan_id", 400);
 
   // Initialize the service client BEFORE readiness handling so we can persist
-  // a safe state for pending items even when API key/readiness is bad.
+  // a safe state for pending items even when configuration is bad.
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const apiKey = Deno.env.get("METADEFENDER_API_KEY") ?? "";
+  const apiKey = Deno.env.get("CLOUDMERSIVE_API_KEY") ?? "";
 
-  // Missing API key: persist fail_now on all pending items and return 412.
-  if (!apiKey) {
-    await persistReadinessOutcome(supabase, scanId, "fail_now", "no_api_key");
-    return fail("not_ready:no_api_key", 412);
-  }
-
-  // Probe readiness. Never leak provider text: readiness.reason is enum-safe.
-  const readiness = await probeMetadefenderReadiness(apiKey, expected);
+  // Configuration-only readiness. No provider request.
+  const readiness = evaluateReadiness({
+    hasApiKey: !!apiKey,
+    hasWorkerSecret: !!expected,
+  });
   if (!readiness.ready) {
     const decision = decideReadinessPersistence(readiness.reason);
     if (decision === "fail_now") {
-      await persistReadinessOutcome(supabase, scanId, "fail_now", readiness.reason);
-    } else if (decision === "retry") {
-      await persistReadinessOutcome(supabase, scanId, "retry", readiness.reason);
+      await persistReadinessFailure(supabase, scanId, readiness.reason);
     }
     return fail(`not_ready:${readiness.reason}`, 412);
   }
 
   let workDone = 0;
 
-  // ---------- 1) Submit unsubmitted items (leased claim) ----------
   const { data: claims, error: claimErr } = await supabase.rpc(
     "v2_internal_claim_scan_items",
     { p_scan_id: scanId, p_max: MAX_WORK_PER_INVOCATION },
@@ -217,13 +219,11 @@ Deno.serve(async (req) => {
 
     const bytes = new Uint8Array(await blob.arrayBuffer());
 
-    // Exact size verification against required metadata.
     if (bytes.length !== integrity.size) {
       await failItem(supabase, claim.item_id, "size_mismatch");
       continue;
     }
 
-    // Constant-time SHA-256 comparison against required metadata.
     {
       const actualHex = await sha256Hex(bytes);
       const expectedHex = integrity.checksumHex;
@@ -239,110 +239,55 @@ Deno.serve(async (req) => {
 
     const safeName = sanitizeFileName((file as { file_name: string }).file_name);
 
-    let submitStatus = 0;
-    let submitBody: unknown = null;
+    // Synchronous Cloudmersive advanced scan. Let FormData set the multipart
+    // boundary; do NOT set content-type manually.
+    const form = new FormData();
+    form.append(
+      "inputFile",
+      new Blob([bytes], { type: "application/octet-stream" }),
+      safeName,
+    );
+
+    let httpStatus = 0;
+    let body: unknown = null;
     try {
       const res = await fetchWithTimeout(
-        `${METADEFENDER_BASE}/file`,
+        CLOUDMERSIVE_ADVANCED_SCAN_URL,
         {
           method: "POST",
           headers: {
-            apikey: apiKey,
-            filename: safeName,
-            samplesharing: "0",
-            privateProcessing: "1",
-            "content-type": "application/octet-stream",
+            Apikey: apiKey,
+            accept: "application/json",
+            fileName: safeName,
+            ...CLOUDMERSIVE_POLICY_HEADERS,
           },
-          body: bytes,
+          body: form,
         },
-        UPLOAD_TIMEOUT_MS,
+        SCAN_TIMEOUT_MS,
       );
-      submitStatus = res.status;
-      try { submitBody = await res.json(); } catch { submitBody = null; }
+      httpStatus = res.status;
+      try { body = await res.json(); } catch { body = null; }
     } catch {
-      submitStatus = 0;
+      httpStatus = 0;
     }
 
-    if (submitStatus === 401 || submitStatus === 403) {
-      await failItem(supabase, claim.item_id, "provider_unauthorized");
+    const cls = classifyHttpStatus(httpStatus);
+    if (cls.kind === "terminal") {
+      await failItem(supabase, claim.item_id, cls.reason);
+      continue;
+    }
+    if (cls.kind === "transient") {
+      await retryItem(supabase, claim.item_id, claim.attempt_count, cls.reason);
       continue;
     }
 
-    const dataId =
-      submitBody && typeof submitBody === "object"
-        ? (submitBody as Record<string, unknown>).data_id
-        : null;
-
-    if (submitStatus !== 200 || typeof dataId !== "string" || !dataId) {
-      await retryItem(supabase, claim.item_id, claim.attempt_count, "submit_retry");
-      continue;
+    const mapped = mapAdvancedScanBody(body);
+    const findings = { ...mapped.summary, reason: mapped.reason } as Record<string, unknown>;
+    if (mapped.status === "failed") {
+      await failItem(supabase, claim.item_id, mapped.reason, findings);
+    } else {
+      await applyTerminal(supabase, claim.item_id, mapped.status, findings, mapped.reason);
     }
-
-    const initialDelay = nextPollDelayMs(0);
-    await supabase.rpc("v2_internal_record_scan_submission", {
-      p_item_id: claim.item_id,
-      p_data_id: dataId,
-      p_next_poll_at: new Date(Date.now() + initialDelay).toISOString(),
-    });
-  }
-
-  // ---------- 2) Poll submitted items via leased poll-claim ----------
-  const { data: pollables, error: pollClaimErr } = await supabase.rpc(
-    "v2_internal_claim_scan_poll_items",
-    { p_scan_id: scanId, p_max: MAX_WORK_PER_INVOCATION },
-  );
-  if (pollClaimErr) return ok({ ok: true, work_done: workDone });
-
-  for (const it of (pollables as Array<{ item_id: string; provider_data_id: string; attempt_count: number }> ?? [])) {
-    if (workDone >= MAX_WORK_PER_INVOCATION * 2) break;
-    workDone++;
-
-    if (shouldStopForAttempts(it.attempt_count)) {
-      await failItem(supabase, it.item_id, "max_attempts");
-      continue;
-    }
-
-    let pollStatus = 0;
-    let pollBody: unknown = null;
-    try {
-      const res = await fetchWithTimeout(
-        `${METADEFENDER_BASE}/file/${encodeURIComponent(it.provider_data_id)}`,
-        { method: "GET", headers: { apikey: apiKey, accept: "application/json" } },
-        POLL_TIMEOUT_MS,
-      );
-      pollStatus = res.status;
-      try { pollBody = await res.json(); } catch { pollBody = null; }
-    } catch {
-      pollStatus = 0;
-    }
-
-    if (pollStatus === 401 || pollStatus === 403) {
-      await failItem(supabase, it.item_id, "provider_unauthorized");
-      continue;
-    }
-
-    if (pollStatus !== 200 || !pollBody) {
-      await retryItem(supabase, it.item_id, it.attempt_count, "poll_retry");
-      continue;
-    }
-
-    const { status, summary } = normalizeProviderResponse(pollBody);
-    const nextPoll =
-      status === "pending"
-        ? new Date(Date.now() + nextPollDelayMs(it.attempt_count)).toISOString()
-        : null;
-
-    await supabase.rpc("v2_internal_apply_scan_item_result", {
-      p_item_id: it.item_id,
-      p_status: status,
-      p_result_code: summary.code,
-      p_progress: summary.progress,
-      p_total_engines: summary.total_engines,
-      p_detected_engines: summary.detected_engines,
-      p_findings: summary as unknown as Record<string, unknown>,
-      p_next_poll_at: nextPoll,
-      p_last_error_code: summary.error_code,
-    });
   }
 
   return ok({ ok: true, work_done: workDone });

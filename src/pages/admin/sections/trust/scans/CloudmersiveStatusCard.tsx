@@ -12,58 +12,25 @@ function reasonCopy(r: ScanReadinessReason): { title: string; hint: string } {
   switch (r) {
     case "ok":
       return {
-        title: "Ready for private scanning",
-        hint: "Private Processing enforced. Uploads stay isolated to your paid organization.",
+        title: "Configured",
+        hint: "Credential validity is verified on the first real scan. Cloudmersive Virus Scan (advanced) will scan uploaded package files with strict content policies.",
       };
     case "no_api_key":
       return {
         title: "Not configured",
-        hint: "Add Supabase secret METADEFENDER_API_KEY (a paid OPSWAT MetaDefender Cloud API v4 key with Private Scanning enforced).",
+        hint: "Add CLOUDMERSIVE_API_KEY in Supabase Dashboard → Edge Functions → Secrets. Never prefix it with VITE_ and never place it in Lovable or frontend code.",
       };
     case "no_worker_secret":
       return {
         title: "Configuration incomplete",
-        hint: "Add Supabase secret PACKAGE_SCAN_WORKER_SECRET (any strong random string) so the control function can invoke the private worker.",
-      };
-    case "provider_unreachable":
-      return {
-        title: "Provider unreachable",
-        hint: "MetaDefender Cloud did not respond to the account check. Try again shortly.",
-      };
-    case "provider_unauthorized":
-      return {
-        title: "API key rejected",
-        hint: "Rotate METADEFENDER_API_KEY. Ensure the key belongs to a paid organization with Private Scanning enforced.",
-      };
-    case "not_paid_account":
-      return {
-        title: "Paid account required",
-        hint: "Private scanning requires a paid MetaDefender Cloud plan (paid_user=1).",
-      };
-    case "upload_size_too_small":
-      return {
-        title: "25 MB upload allowance required",
-        hint: "Increase the plan's per-file upload limit to at least 25 MB.",
-      };
-    case "no_scan_engines":
-      return {
-        title: "No scan engines available",
-        hint: "The plan reports scan_with=none. Enable engines in your MetaDefender Cloud plan.",
-      };
-    case "private_scan_not_enforced":
-      return {
-        title: "Private Scanning required",
-        hint: "Turn on Private Scanning enforcement at the API key or organization level in MetaDefender Cloud.",
+        hint: "Add PACKAGE_SCAN_WORKER_SECRET in Supabase Dashboard → Edge Functions → Secrets (any strong random string) so the control function can invoke the private worker.",
       };
   }
 }
 
 function tone(r: ScanReadiness): "default" | "secondary" | "destructive" {
   if (r.ready) return "default";
-  if (r.reason === "no_api_key" || r.reason === "no_worker_secret") {
-    return "secondary";
-  }
-  return "destructive";
+  return "secondary";
 }
 
 function Icon({ ready, configured }: { ready: boolean; configured: boolean }) {
@@ -72,14 +39,11 @@ function Icon({ ready, configured }: { ready: boolean; configured: boolean }) {
   return <ShieldAlert className="h-5 w-5 text-amber-600" />;
 }
 
-export default function MetadefenderStatusCard() {
+export default function CloudmersiveStatusCard() {
   const q = useScanProviderStatus();
   const readiness: ScanReadiness = q.data?.readiness ?? {
     configured: false,
     ready: false,
-    max_upload_mb: null,
-    private_scan_enforced: false,
-    license_ready: false,
     reason: "no_api_key",
   };
   const copy = reasonCopy(readiness.reason);
@@ -98,20 +62,13 @@ export default function MetadefenderStatusCard() {
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2 min-w-0">
                 <span className="font-semibold break-words">
-                  MetaDefender Cloud
+                  Cloudmersive Virus Scan
                 </span>
                 <Badge variant={tone(readiness)} className="break-words">
-                  {readiness.ready
-                    ? "Ready"
-                    : readiness.configured
-                    ? "Attention"
-                    : "Not configured"}
+                  {readiness.ready ? "Configured" : "Not configured"}
                 </Badge>
                 <Badge variant="outline" className="break-words">
-                  Private Processing required
-                </Badge>
-                <Badge variant="outline" className="break-words">
-                  25 MB minimum
+                  Advanced scan policy
                 </Badge>
               </div>
               <div className="text-sm font-medium break-words">
@@ -120,23 +77,10 @@ export default function MetadefenderStatusCard() {
               <p className="text-sm text-muted-foreground break-words">
                 {copy.hint}
               </p>
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1">
-                <span className="break-words">
-                  License: {readiness.license_ready ? "paid" : "—"}
-                </span>
-                <span className="break-words">
-                  Max upload:{" "}
-                  {readiness.max_upload_mb != null
-                    ? `${readiness.max_upload_mb} MB`
-                    : "—"}
-                </span>
-                <span className="break-words">
-                  Private Scanning:{" "}
-                  {readiness.private_scan_enforced
-                    ? "enforced"
-                    : "not enforced"}
-                </span>
-              </div>
+              <p className="text-xs text-muted-foreground break-words">
+                Credential validity is verified on the first real scan; no
+                readiness call is made against the provider.
+              </p>
             </div>
           </div>
           <Button
@@ -162,4 +106,3 @@ export default function MetadefenderStatusCard() {
     </Card>
   );
 }
-

@@ -1,16 +1,17 @@
 // v2-admin-package-scan-control (verify_jwt=true)
-// Admin-only control plane for MetaDefender Cloud package scans.
-// - provider_status: returns safe readiness facts only.
+// Admin-only control plane for Cloudmersive Virus Scan (advanced) package
+// scans.
+// - provider_status: returns safe configuration facts only (no provider call).
 // - queue_scan: validates readiness + preconditions, creates a durable scan
 //   run via the internal RPC, then kicks the worker server-to-server with the
 //   worker secret. Never exposes the worker secret.
 // - refresh_scan: admin-only nudge that reinvokes the worker for a scan.
 //
 // Guardrails:
-//   * Fails closed when METADEFENDER_API_KEY or PACKAGE_SCAN_WORKER_SECRET
+//   * Fails closed when CLOUDMERSIVE_API_KEY or PACKAGE_SCAN_WORKER_SECRET
 //     is missing.
-//   * Never contacts the provider in `queue_scan`/`refresh_scan` beyond the
-//     shared readiness probe; the worker owns the /file lifecycle.
+//   * Readiness is credentials-only (no /apikey probe); credential validity is
+//     verified on the first real scan.
 //   * Returns stable safe error codes; no provider text is echoed back.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -20,10 +21,9 @@ import {
   decideRefreshAllowed,
   evaluateReadiness,
   type NormalizedStatus,
-  probeMetadefenderReadiness,
-  SCANNER_NAME,
   type ReadinessResult,
-} from "../_shared/metadefender.ts";
+  SCANNER_NAME,
+} from "../_shared/scanProvider.ts";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -36,11 +36,11 @@ function err(code: string, status = 400): Response {
   return json({ ok: false, error: code }, status);
 }
 
-async function probeProvider(apiKey: string): Promise<ReadinessResult> {
-  return await probeMetadefenderReadiness(
-    apiKey,
-    Deno.env.get("PACKAGE_SCAN_WORKER_SECRET"),
-  );
+function currentReadiness(): ReadinessResult {
+  return evaluateReadiness({
+    hasApiKey: !!Deno.env.get("CLOUDMERSIVE_API_KEY"),
+    hasWorkerSecret: !!Deno.env.get("PACKAGE_SCAN_WORKER_SECRET"),
+  });
 }
 
 async function requireAdmin(req: Request): Promise<
@@ -109,28 +109,20 @@ Deno.serve(async (req) => {
   }
 
   const action = String(payload.action ?? "");
-  const apiKey = Deno.env.get("METADEFENDER_API_KEY") ?? "";
-  const workerSecret = Deno.env.get("PACKAGE_SCAN_WORKER_SECRET") ?? "";
 
   if (action === "provider_status") {
-    if (!apiKey) {
-      return json({
-        ok: true,
-        provider: "metadefender_cloud",
-        readiness: evaluateReadiness({ hasApiKey: false, hasWorkerSecret: !!workerSecret }),
-      });
-    }
-    const readiness = await probeProvider(apiKey);
-    return json({ ok: true, provider: "metadefender_cloud", readiness });
+    return json({
+      ok: true,
+      provider: SCANNER_NAME,
+      readiness: currentReadiness(),
+    });
   }
 
   if (action === "queue_scan") {
     const versionId = String(payload.version_id ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(versionId)) return err("invalid_version_id", 400);
-    if (!apiKey) return err("no_api_key", 412);
-    if (!workerSecret) return err("no_worker_secret", 412);
 
-    const readiness = await probeProvider(apiKey);
+    const readiness = currentReadiness();
     if (!readiness.ready) {
       return json({ ok: false, error: "not_ready", readiness }, 412);
     }
@@ -153,13 +145,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (latestErr) return err("db_error", 500);
 
-    // Pending child items across ANY scan for this version. This complements
-    // the existing partial index without a DB change and prevents queueing
-    // when aggregate has been driven terminal but child work remains.
-    const scanIds =
-      latestScan && (latestScan as { id: string }).id ? [(latestScan as { id: string }).id] : [];
-    // Widen the scan id list to include every scan of this version, so
-    // stragglers (pending items under a terminal aggregate) are caught too.
+    // Pending child items across ANY scan for this version.
     const { data: allScans, error: allScansErr } = await auth.supabase
       .from("package_scans")
       .select("id")
@@ -168,24 +154,13 @@ Deno.serve(async (req) => {
     const allScanIds = (allScans ?? []).map((s: { id: string }) => s.id);
     let hasAnyPendingChild = false;
     if (allScanIds.length > 0) {
-      const { data: pendingItems, error: pendingErr } = await auth.supabase
+      const probe = await auth.supabase
         .from("package_scan_items")
-        .select("id", { count: "exact", head: true })
-        .in("scan_id", allScanIds.length > 0 ? allScanIds : scanIds)
+        .select("id")
+        .in("scan_id", allScanIds)
         .eq("status", "pending")
         .limit(1);
-      if (pendingErr) return err("db_error", 500);
-      hasAnyPendingChild = (pendingItems?.length ?? 0) > 0;
-      // count "head" returns count via response; fall back to explicit probe.
-      if (!hasAnyPendingChild) {
-        const probe = await auth.supabase
-          .from("package_scan_items")
-          .select("id")
-          .in("scan_id", allScanIds)
-          .eq("status", "pending")
-          .limit(1);
-        hasAnyPendingChild = (probe.data?.length ?? 0) > 0;
-      }
+      hasAnyPendingChild = (probe.data?.length ?? 0) > 0;
     }
 
     const decision = decideQueueAllowed({
@@ -233,9 +208,8 @@ Deno.serve(async (req) => {
   if (action === "refresh_scan") {
     const scanId = String(payload.scan_id ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(scanId)) return err("invalid_scan_id", 400);
-    if (!apiKey || !workerSecret) return err("not_configured", 412);
 
-    const readiness = await probeProvider(apiKey);
+    const readiness = currentReadiness();
     if (!readiness.ready) {
       return json({ ok: false, error: "not_ready", readiness }, 412);
     }
@@ -248,7 +222,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (scanErr) return err("db_error", 500);
 
-    // Recoverable pending items? (Independent of aggregate status.)
     let pendingCount = 0;
     if (scan) {
       const { data: pending, error: pendingErr } = await auth.supabase

@@ -6,20 +6,11 @@ import { adminResourceVersionsKeys } from "./useAdminResourceVersions";
 export type ScanReadinessReason =
   | "ok"
   | "no_api_key"
-  | "no_worker_secret"
-  | "provider_unreachable"
-  | "provider_unauthorized"
-  | "not_paid_account"
-  | "upload_size_too_small"
-  | "no_scan_engines"
-  | "private_scan_not_enforced";
+  | "no_worker_secret";
 
 export interface ScanReadiness {
   configured: boolean;
   ready: boolean;
-  max_upload_mb: number | null;
-  private_scan_enforced: boolean;
-  license_ready: boolean;
   reason: ScanReadinessReason;
 }
 
