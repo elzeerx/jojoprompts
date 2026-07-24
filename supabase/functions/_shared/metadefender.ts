@@ -26,15 +26,46 @@ export function mapResultCode(
   progressPercent: number | null | undefined,
 ): NormalizedStatus {
   const progress = typeof progressPercent === "number" ? progressPercent : 0;
+  // 254/255 or progress<100 => pending. Everything else is terminal.
   if (code === 254 || code === 255) return "pending";
   if (progress < 100) return "pending";
   if (code === 0) return "clean";
   if (code === 1) return "malicious";
   if (code === 2) return "suspicious";
-  if (code == null) return "pending";
-  if (KNOWN_FAILED_CODES.has(code)) return "failed";
-  // Unknown terminal codes fail closed.
+  if (KNOWN_FAILED_CODES.has(code as number)) return "failed";
+  // Unknown terminal codes (including null at progress=100) fail closed.
   return "failed";
+}
+
+// Deterministic aggregate precedence for a bag of item statuses.
+// malicious > suspicious > failed > (clean iff every item clean) > pending.
+// Mirrors the SQL in v2_internal_apply_scan_item_result so we can unit-test it.
+export function aggregateItemStatuses(
+  statuses: readonly NormalizedStatus[],
+): NormalizedStatus {
+  if (statuses.length === 0) return "pending";
+  if (statuses.some((s) => s === "malicious")) return "malicious";
+  if (statuses.some((s) => s === "suspicious")) return "suspicious";
+  if (statuses.some((s) => s === "failed")) return "failed";
+  if (statuses.every((s) => s === "clean")) return "clean";
+  return "pending";
+}
+
+// Per-item monotonic precedence (higher wins). A weaker or equal incoming
+// signal must never downgrade an existing stronger one. Mirrors SQL ranks.
+const ITEM_RANK: Record<NormalizedStatus, number> = {
+  malicious: 4,
+  suspicious: 3,
+  clean: 2,
+  failed: 1,
+  pending: 0,
+};
+
+export function resolveItemStatus(
+  current: NormalizedStatus,
+  incoming: NormalizedStatus,
+): NormalizedStatus {
+  return ITEM_RANK[incoming] > ITEM_RANK[current] ? incoming : current;
 }
 
 // Stable, safe readiness reason codes (never leak provider text).
