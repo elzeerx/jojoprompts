@@ -191,13 +191,13 @@ export default function LegacyMigrationPreview() {
               <div className="rounded-md border p-3 text-xs" dir="ltr">
                 <div className="font-semibold mb-1">Lifetime library includes</div>
                 <ul className="list-disc ps-4 space-y-0.5 text-muted-foreground">
-                  {policy.library_scope_includes.map((x) => <li key={x}>{x.replaceAll("_", " ")}</li>)}
+                  {policy.library_scope_includes.map((x) => <li key={x}>{x.split("_").join(" ")}</li>)}
                 </ul>
               </div>
               <div className="rounded-md border p-3 text-xs" dir="ltr">
                 <div className="font-semibold mb-1">Excluded from lifetime library</div>
                 <ul className="list-disc ps-4 space-y-0.5 text-muted-foreground">
-                  {policy.library_scope_excludes.map((x) => <li key={x}>{x.replaceAll("_", " ")}</li>)}
+                  {policy.library_scope_excludes.map((x) => <li key={x}>{x.split("_").join(" ")}</li>)}
                 </ul>
               </div>
             </div>
