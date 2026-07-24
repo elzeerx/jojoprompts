@@ -5,6 +5,7 @@ import {
   adminScanDetailsKeys,
   type AdminScanDetail,
 } from "@/hooks/admin/v2/useScanProvider";
+import { isProbeResultUnresolved } from "./probeResolution";
 
 interface ProbeScan {
   id: string;
