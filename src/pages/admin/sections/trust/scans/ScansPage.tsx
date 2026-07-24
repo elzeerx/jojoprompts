@@ -38,7 +38,7 @@ import {
   totalPagesFor,
 } from "./scanHelpers";
 import ScanDetailSheet from "./ScanDetailSheet";
-import MetadefenderStatusCard from "./MetadefenderStatusCard";
+import CloudmersiveStatusCard from "./CloudmersiveStatusCard";
 
 const PAGE_SIZE = 50;
 
@@ -140,7 +140,7 @@ export default function ScansPage() {
       </div>
 
 
-      <MetadefenderStatusCard />
+      <CloudmersiveStatusCard />
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {cards.map((m) => (

@@ -163,8 +163,8 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-xs text-muted-foreground">
                   {ready
-                    ? "MetaDefender Cloud is ready. Queueing sends the package files for private scanning."
-                    : "Scan actions are disabled until MetaDefender Cloud is configured and validated."}
+                    ? "Cloudmersive Virus Scan is configured. Queueing runs an advanced scan on every package file with strict content policies."
+                    : "Scan actions are disabled until Cloudmersive is configured. Add CLOUDMERSIVE_API_KEY and PACKAGE_SCAN_WORKER_SECRET in Supabase → Edge Functions → Secrets."}
                 </div>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -183,11 +183,13 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Queue private scan?</AlertDialogTitle>
+                      <AlertDialogTitle>Queue package scan?</AlertDialogTitle>
                       <AlertDialogDescription>
                         The worker will upload every file in this version to
-                        MetaDefender Cloud with Private Processing. Files stay
-                        isolated to your paid organization and are not shared.
+                        Cloudmersive Virus Scan (advanced) with strict content
+                        policies. Only sanitized findings are stored — file
+                        bytes, storage paths, and API keys are never persisted
+                        or logged.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
