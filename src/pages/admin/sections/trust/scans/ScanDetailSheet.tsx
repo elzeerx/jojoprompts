@@ -121,10 +121,6 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
               <h3 className="text-sm font-semibold">
                 Scan history ({detail?.scans.length ?? 0})
               </h3>
-              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                Scan execution unavailable — configure a provider in a later
-                slice.
-              </div>
               {(detail?.scans.length ?? 0) === 0 ? (
                 <div className="rounded-md border p-4 text-xs text-muted-foreground">
                   No scan history
