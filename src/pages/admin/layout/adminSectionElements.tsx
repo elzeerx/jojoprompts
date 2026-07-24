@@ -14,6 +14,7 @@ const RefundsPage = lazy(() => import("../sections/orders/RefundsPage"));
 const RecoveryPage = lazy(() => import("../sections/orders/RecoveryPage"));
 const DiscountsPage = lazy(() => import("../sections/orders/DiscountsPage"));
 const ReportsPage = lazy(() => import("../sections/trust/ReportsPage"));
+const VersionsRegistryPage = lazy(() => import("../sections/publishing/VersionsRegistryPage"));
 
 
 
@@ -104,10 +105,7 @@ export const adminSectionElements = {
     "Resources submitted for review will surface here with approve / request-changes actions. Until wired, use the Catalog table with status = In review.",
     [{ label: "Open Catalog (Review filter)", to: "/admin/catalog?status=review" }],
   ),
-  publishingVersions: Empty(
-    "Versions",
-    "Per-resource version history and package promotion is being wired against resource_versions and package_scans. Individual versions are visible from a resource's row action ‘New version’.",
-  ),
+  publishingVersions: wrap(<VersionsRegistryPage />),
   publishingImports: wrap(<LegacyMigrationPreview />),
   publishingImportsJson: wrap(<JsonPromptImporter />),
   publishingImportsAiStudio: wrap(<AiStudioPage />),
