@@ -252,7 +252,7 @@ Deno.test("send-email limiter: distinct user ids produce distinct hashes", async
 });
 
 // ---- Unsubscribe decision helper tests (pure) ----
-import { decideUnsubscribeAction } from "./index.ts";
+import { decideUnsubscribeAction } from "./unsubscribeDecision.ts";
 
 Deno.test("unsubscribe: essential transactional bypasses lookup even if error/row present", () => {
   for (const t of ["email_confirmation","password_reset","payment_confirmation","payment_failed","account_deleted","subscription_cancelled"]) {
