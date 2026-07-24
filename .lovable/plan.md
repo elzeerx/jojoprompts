@@ -1,77 +1,59 @@
+# Phase 6C — UPayments Sandbox Integration: Credential Prep
 
-# Audit: JojoPrompts state after Phase 6B.2 real migration + launch lock
+Read-only prep step. No code changes, no publish, no flag flips in this turn. Once secrets are in place, a follow-up plan will implement checkout/webhook/status/refund validation end-to-end against the sandbox.
 
-## 1. Completed phases (evidence from repo)
+## Current state (verified from code + secrets)
 
-- **Phase 1** — Signup trigger fix. `supabase/migrations/20251025_fix_signup_trigger.sql`, `docs/PHASE1_SIGNUP_FIX.md`.
-- **Phase 2** — Signup robustness (retry/error codes). `src/utils/signupErrorHandler.ts`, `docs/PHASE2_ROBUSTNESS.md`.
-- **Phase 3** — Signup docs. `docs/SIGNUP_FLOW.md`, `docs/TESTING_CHECKLIST.md`.
-- **Security phases 1–3** — Payment validation, rate limiting, compliance. `docs/SECURITY_PHASE2_PAYMENT_VALIDATION.md`, `docs/SECURITY_PHASE3_RATE_LIMITING_COMPLIANCE.md`, `PHASE_1_SECURITY_FIXES_COMPLETE.md`.
-- **Admin refactor Phases 1–2** — `ADMIN_REFACTOR_PHASE_1_COMPLETE.md`, `PHASE_2_ADMIN_REFACTOR_COMPLETE.md`, `src/pages/admin/sections/*` (ai-studio, analytics, catalog, communications, content, orders, overview, publishing, system).
-- **Code-quality Phases 2–6** (sessions 1–29) — logs in `PHASE_2_SESSION_*`, `PHASE_4_LOGGING_COMPLETE.md`, `PHASE_5_TYPES_COMPLETE.md`, `PHASE_6_CLEANUP_COMPLETE.md`.
-- **V2 foundation** — `src/config/v2Flags.ts` (`V2_COMMERCE_ENABLED = false`), resource types, `/skills` `/automations` `/prompts-catalog` `/image-styles` `/bundles` `/cart` `/library` `/v2-checkout*` pages, `src/hooks/v2/*`.
-- **V2 UPayments plumbing (execution-gated)** — `supabase/functions/_shared/v2Upayments.ts` gated on `V2_UPAYMENTS_ENABLED="true"` (currently unset); `v2-upayments-webhook`, `process-upayments-payment`; migration `20260723072257_…` establishes provider-disabled default.
-- **Phase 6B.1** — Grandfathering policy + legacy access RPCs; migrations `20260724062655`, `20260724063802`, `20260724064749`, `20260724071501`, `20260724072543`. RPCs `v2_admin_migration_preview`, `v2_my_legacy_access_summary`, `v2_admin_migration_rehearsal`. UI: `src/pages/admin/sections/publishing/LegacyMigrationPreview.tsx`, `src/hooks/v2/useMyLegacyAccessSummary.ts`, `LibraryPage.tsx` legacy section.
-- **Phase 6B.2** — Private executor + hashes. Migrations `20260724074013` (private schema, `execute_v2_legacy_migration`, plan hashes `6B.2-r1`), `20260724074210`, `20260724074300`, `20260724075202` (security cleanup: drop `_rehearsal_log`, revoke on `supabase_read_only_user`, restrict private fn EXECUTE to owner). Frontend: `useAdminCommerce.ts` `RehearsalResult`, `LegacyMigrationPreview` RehearsalCard with `planned_writes`.
-- **Real migration executed** — 116 entitlements / 96 users, 56 lifetime credit entries, audit event `1040e421-…`, replay = 0 (per prompt; matches deterministic plan sizes in `private.v2_legacy_entitlement_plan` / `v2_legacy_credit_plan`).
-- **Launch lock** — `src/config/siteMode.ts` `PUBLIC_LAUNCH_LOCK = true`; `src/pages/ComingSoonPage.tsx` gates public/customer routes in `src/App.tsx`; `LoginForm.tsx` hides signup; hosted Supabase signups disabled (external). Published commit `e14c78f3…`.
+Edge functions read UPayments config from `supabase/functions/_shared/v2Upayments.ts::loadUpaymentsConfig()`. The exact env vars referenced are:
 
-## 2. Single next unfinished bounded milestone
+- `V2_UPAYMENTS_ENABLED` — feature flag (`"true"` to enable). Must stay **unset / not `"true"`** until validation passes.
+- `V2_UPAYMENTS_ENVIRONMENT` — must be exactly `sandbox` (or `production`); anything else disables the integration.
+- `V2_UPAYMENTS_API_TOKEN` — UPayments API bearer token for the selected environment.
+- `V2_PUBLIC_SITE_URL` — return/callback base URL; must match an entry in the in-code `ALLOWED_SITE_URLS` allowlist.
 
-**Phase 6B.3 — Post-migration verification & admin observability (read-only)**.
+No webhook signing secret is referenced anywhere in the v2 UPayments code (`v2-upayments-webhook` validates by shape + key allowlist, not HMAC). So no signing-secret env var is required by the current implementation.
 
-Purpose: give admins a live, evidence-backed view that the executed 6B.2-r1 migration matches the deterministic plan, that customer-facing legacy access renders correctly, and that no drift has been introduced — all under the existing launch lock. No new writes, no provider calls, no publish.
+Secrets currently configured in this project:
 
-## 3. Files / functions / routes to change
+| Secret name                | Status                    |
+| -------------------------- | ------------------------- |
+| `V2_UPAYMENTS_ENABLED`     | **missing** (keep unset)  |
+| `V2_UPAYMENTS_ENVIRONMENT` | **missing**               |
+| `V2_UPAYMENTS_API_TOKEN`   | **missing**               |
+| `V2_PUBLIC_SITE_URL`       | **missing**               |
 
-**Database (forward-only, read-only)**
-- New migration `supabase/migrations/<ts>_v2_migration_verification.sql`:
-  - `public.v2_admin_migration_verification()` SECURITY DEFINER, admin-only, locked `search_path`. Returns JSON:
-    - `policy_version` `'6B.2-r1'`, current `plan_hashes` from `private.v2_legacy_plan_hashes()`.
-    - `expected` counts from `private.v2_legacy_entitlement_plan()` / `v2_legacy_credit_plan()` (116 / 56, 96 unique users).
-    - `actual` counts from `entitlements` filtered by `source in ('legacy_basic','legacy_standard','legacy_premium','legacy_ultimate')` and `lifetime_credit_entries` filtered by `source='legacy_upayments_reconstruction'` / `legacy_transaction_id IS NOT NULL`.
-    - `drift`: per-user set differences (missing / extra / mismatched `resource_scope`/`end_date`), capped to first N rows.
-    - `last_audit_event_id`, timestamp, executed_by.
-  - Reuses existing plan functions in `private`; no writes; no changes to executor or hashes.
+Note: `UPAYMENTS_API_TOKEN` and `UPAYMENTS_ENVIRONMENT` (no `V2_` prefix) exist from the legacy V1 integration and are **not** read by the V2 edge functions. Do not reuse them — V2 requires the `V2_`-prefixed names above.
 
-**Frontend (admin only)**
-- `src/hooks/admin/v2/useAdminCommerce.ts`: add typed `useMigrationVerification()` calling the new RPC.
-- `src/pages/admin/sections/publishing/LegacyMigrationPreview.tsx`: add a "Post-migration verification" card below the Rehearsal card — shows expected vs actual, hash match badge, drift list (empty state = "No drift"), and last audit event id. Fully defensive optional chaining.
-- No changes to `src/config/siteMode.ts`, `siteMode` gating, `V2_COMMERCE_ENABLED`, `V2_UPAYMENTS_ENABLED`, `ComingSoonPage`, or `LoginForm`.
+## What I need from you (project owner)
 
-**Routes**
-- Reuses existing `/admin/publishing/imports`. No new public routes.
+Please add the four secrets below in **Project Settings → Secrets** using Lovable's secure Secrets UI. Do **not** paste any of these values into chat, code, or a database row.
 
-**Acceptance tests**
-- `npx tsgo --noEmit` clean; `npm run build` succeeds.
-- `SELECT public.v2_admin_migration_verification()` as an admin returns `expected.entitlements=116`, `expected.credits=56`, `actual.entitlements=116`, `actual.credits=56`, `drift.entitlements=[]`, `drift.credits=[]`, `hashes_match=true`.
-- Same call as anon/non-admin → permission error.
-- `/admin/publishing/imports` renders the verification card with green "in sync" state; no console errors.
-- Non-admin visitors to any public route still land on Coming Soon (unchanged).
-- `entitlements` and `lifetime_credit_entries` row counts unchanged before/after (read-only proof).
+1. `V2_UPAYMENTS_ENVIRONMENT` = `sandbox` (literal string; non-secret but required in Secrets so edge functions can read it).
+2. `V2_UPAYMENTS_API_TOKEN` = the **sandbox** API bearer token from your UPayments sandbox dashboard.
+3. `V2_PUBLIC_SITE_URL` = the exact site origin used for return/callback URLs (must match the code allowlist, e.g. `https://jojoprompts.lovable.app` or `https://jojoprompts.com`). Confirm which one you want the sandbox flow to use before adding.
+4. Leave `V2_UPAYMENTS_ENABLED` **unset for now**. I will only ask you to set it to `true` after sandbox checkout, webhook, status, and refund flows have all passed validation.
 
-**Safety constraints**
-- No writes to `entitlements`, `lifetime_credit_entries`, `orders`, `transactions`, V1 subscriptions/transactions.
-- No changes to `private.execute_v2_legacy_migration`, hash constants, or `policy_version`.
-- No provider calls; `V2_UPAYMENTS_ENABLED` remains unset.
-- No changes to launch lock, hosted signup, or published commit.
-- New RPC gated by `has_role(auth.uid(),'admin')`; `search_path=public,pg_temp`; `SECURITY DEFINER`; `REVOKE ALL … FROM PUBLIC`; `GRANT EXECUTE … TO authenticated` with in-function admin check.
+Also keep in place:
 
-## 4. Blocked without live UPayments creds or a production-release decision
+- `PUBLIC_LAUNCH_LOCK = true` in `src/config/siteMode.ts` (unchanged).
+- `V2_COMMERCE_ENABLED` disabled (unchanged).
 
-- Setting `V2_UPAYMENTS_ENABLED=true`, real order creation, checkout, webhook verification against sandbox/production UPayments.
-- Any test that requires a real KWD charge or provider callback signature.
-- Flipping `V2_COMMERCE_ENABLED=true` or exposing V2 catalog/checkout routes publicly.
-- Flipping `PUBLIC_LAUNCH_LOCK=false` or re-enabling hosted Supabase signups.
-- Any creator-marketplace / subscription work (explicitly out of scope per user).
+## Non-secret sandbox field checklist to confirm back in chat
 
-Phase 6B.3 as scoped does **not** require any of the above.
+Please confirm (text only, no secret values):
 
-## 5. Recommendation
+- [ ] Which `V2_PUBLIC_SITE_URL` value you want used for sandbox (`https://jojoprompts.lovable.app` or `https://jojoprompts.com` or another already-allowlisted origin).
+- [ ] UPayments sandbox merchant / account country (should be Kuwait / KWD for the existing fils logic to apply).
+- [ ] Test card(s) UPayments sandbox expects you to use for KNET vs Visa/Mastercard success and failure paths.
+- [ ] Callback / return / webhook URLs configured (or to be configured) in the UPayments sandbox dashboard — I will confirm the exact function URLs once secrets are in and we move to implementation.
+- [ ] Confirmation that the sandbox account is fresh / disposable, so test orders and refunds are safe.
 
-**Yes — implement Phase 6B.3 now under the launch lock.** It is:
-- Read-only and provider-independent, so it cannot destabilize the completed 6B.2 migration or the published Coming Soon commit.
-- Directly valuable: it converts the one-shot rolled-back rehearsal + audit event into an ongoing admin-visible integrity check that will keep paying off through the eventual unlock.
-- The natural predecessor to the eventual (separately-approved) V2 commerce unlock, since unlock QA will want a green "migration in sync" indicator.
+## What happens next (not executed in this turn)
 
-Everything beyond 6B.3 (UPayments enablement, V2 commerce unlock, public unlock) should remain deferred behind an explicit production-release decision.
+Once the four secrets above are present and you have confirmed the checklist, I will return with a Phase 6C implementation plan covering: sandbox smoke test of `v2-upayments-checkout`, webhook signature/shape validation dry-run, status + refund round-trip against sandbox, and only then a controlled flip of `V2_UPAYMENTS_ENABLED=true` in a staging-like context — still without publishing and without enabling `V2_COMMERCE_ENABLED`.
+
+## Technical notes
+
+- Files that will drive validation: `supabase/functions/_shared/v2Upayments.ts`, `supabase/functions/v2-upayments-checkout/index.ts`, `.../v2-upayments-webhook/index.ts`, `.../v2-upayments-status/index.ts`, `.../v2-upayments-refund/index.ts`.
+- `ALLOWED_SITE_URLS` in `_shared/v2Upayments.ts` is the source of truth for accepted `V2_PUBLIC_SITE_URL` values; if you need a new origin (e.g. a staging domain), tell me and I will add it via a code change before we set the secret.
+- No database migration, no RLS change, no launch-lock change in Phase 6C prep.
