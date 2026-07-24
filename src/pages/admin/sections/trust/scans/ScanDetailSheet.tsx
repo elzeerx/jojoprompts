@@ -9,12 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { formatDateTime } from "@/lib/v2/admin/format";
 import { useAdminResourceVersionDetail } from "@/hooks/admin/v2/useAdminResourceVersions";
+import type { PackageScanState } from "@/hooks/admin/v2/useAdminPackageScans";
 import {
   formatBytes,
   formatFindings,
   statusLabel,
   statusTone,
-  type PackageScanState,
 } from "./scanHelpers";
 
 interface Props {
