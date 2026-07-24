@@ -16,6 +16,7 @@ import {
   extractStatusFields, normalizePaymentStatus, kwdDecimalToFils,
   sanitizeProviderPayload, eventIdForStatus, safeRpcError,
 } from "../_shared/v2Upayments.ts";
+import { scheduleReceiptDelivery } from "../_shared/v2ReceiptDelivery.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -167,6 +168,10 @@ Deno.serve(async (req) => {
       p_sanitized_verified_payload: sanitized,
     });
     if (sErr) return jsonResponse({ error: safeRpcError(sErr) }, 500, origin);
+    // Best-effort receipt scheduling (also self-heals a missed trigger on
+    // an already-paid order via v2_claim_order_receipt_delivery).
+    try { scheduleReceiptDelivery(svc, orderId); } catch (_) { /* swallow */ }
+
 
     let productIds: string[] = [];
     try {

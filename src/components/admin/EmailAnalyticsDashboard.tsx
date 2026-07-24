@@ -233,6 +233,7 @@ export function EmailAnalyticsDashboard() {
                 <SelectItem value="confirmation">Confirmation</SelectItem>
                 <SelectItem value="password-reset">Password Reset</SelectItem>
                 <SelectItem value="welcome">Welcome</SelectItem>
+                <SelectItem value="v2_order_receipt">V2 Order Receipt</SelectItem>
               </SelectContent>
             </Select>
 
@@ -428,7 +429,28 @@ export function EmailAnalyticsDashboard() {
                         ? `${log.email_address.substring(0, 25)}...` 
                         : log.email_address}
                     </TableCell>
-                    <TableCell>{log.email_type}</TableCell>
+                    <TableCell>
+                      {log.email_type === 'v2_order_receipt' ? (
+                        (() => {
+                          const meta = (log as unknown as { response_metadata?: { order_id?: string; order_number?: string } }).response_metadata;
+                          const orderId = meta?.order_id;
+                          const label = 'V2 Order Receipt';
+                          return orderId ? (
+                            <a
+                              href={`/admin/commerce/orders/${orderId}`}
+                              className="text-primary underline-offset-2 hover:underline"
+                              title={meta?.order_number ?? orderId}
+                            >
+                              {label}
+                            </a>
+                          ) : (
+                            <span>{label}</span>
+                          );
+                        })()
+                      ) : (
+                        log.email_type
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {log.domain_type === 'apple' && <Apple className="h-4 w-4" />}
