@@ -69,10 +69,8 @@ export function extOf(name: string): string | null {
 // Preserves Unicode (e.g. Arabic) characters. Returns null if unsafe.
 export function safeBasename(raw: string): string | null {
   if (!raw) return null;
-  // Reject if it contains path separators anywhere; we take only what's provided.
   if (raw.includes("/") || raw.includes("\\")) return null;
   if (raw === "." || raw === "..") return null;
-  // Reject control characters (C0 + DEL)
   for (let i = 0; i < raw.length; i++) {
     const c = raw.charCodeAt(i);
     if (c < 0x20 || c === 0x7f) return null;
@@ -87,7 +85,6 @@ export function isUuid(s: string): boolean {
 }
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  // Copy into a fresh ArrayBuffer to avoid SharedArrayBuffer type friction.
   const buf = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buf).set(bytes);
   const digest = await crypto.subtle.digest("SHA-256", buf);
@@ -141,7 +138,33 @@ function json(body: ErrorBody | Record<string, unknown>, status: number): Respon
   });
 }
 
-Deno.serve(async (req) => {
+// ---- Injectable dependencies for testability ----
+export interface StorageDeps {
+  upload(
+    path: string,
+    bytes: Uint8Array,
+    contentType: string,
+  ): Promise<{ error?: { message: string } | null }>;
+  remove(path: string): Promise<void>;
+}
+
+export interface HandlerDeps {
+  getUserId: (authHeader: string) => Promise<string | null>;
+  isAdmin: (userId: string) => Promise<boolean>;
+  storage: StorageDeps;
+  registerFile: (args: {
+    actorUserId: string;
+    versionId: string;
+    storagePath: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    checksumSha256: string;
+  }) => Promise<{ data?: unknown; error?: { message: string } | null }>;
+  newInnerUuid?: () => string;
+}
+
+export async function handleRequest(req: Request, deps: HandlerDeps): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -154,26 +177,11 @@ Deno.serve(async (req) => {
     return json({ error: "unauthorized" }, 401);
   }
 
-  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-  const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const userId = await deps.getUserId(authHeader);
+  if (!userId) return json({ error: "unauthorized" }, 401);
 
-  const userClient = createClient(SUPABASE_URL, ANON, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: userRes, error: userErr } = await userClient.auth.getUser();
-  if (userErr || !userRes?.user) return json({ error: "unauthorized" }, 401);
-  const userId = userRes.user.id;
-
-  const admin = createClient(SUPABASE_URL, SERVICE, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const { data: isAdmin, error: roleErr } = await admin.rpc("has_role", {
-    _user_id: userId,
-    _role: "admin",
-  });
-  if (roleErr || !isAdmin) return json({ error: "forbidden" }, 403);
+  const admin = await deps.isAdmin(userId);
+  if (!admin) return json({ error: "forbidden" }, 403);
 
   let form: FormData;
   try {
@@ -186,7 +194,6 @@ Deno.serve(async (req) => {
   const file = form.get("file");
   if (!(file instanceof File)) return json({ error: "missing_file" }, 400);
 
-  // Reject additional files.
   let fileCount = 0;
   for (const [, v] of form.entries()) if (v instanceof File) fileCount++;
   if (fileCount !== 1) return json({ error: "too_many_files" }, 400);
@@ -206,35 +213,28 @@ Deno.serve(async (req) => {
   const checksum = await sha256Hex(bytes);
   if (!HEX64_RE.test(checksum)) return json({ error: "invalid_checksum" }, 500);
 
-  const innerUuid = crypto.randomUUID();
+  const innerUuid = (deps.newInnerUuid ?? crypto.randomUUID.bind(crypto))();
   const path = buildStoragePath(versionId, innerUuid, validation.basename!);
 
-  const { error: upErr } = await admin.storage.from(BUCKET).upload(path, bytes, {
-    contentType: validation.canonicalCt!,
-    upsert: false,
-  });
-  if (upErr) {
-    console.error("upload_failed", upErr.message);
+  const upRes = await deps.storage.upload(path, bytes, validation.canonicalCt!);
+  if (upRes.error) {
+    console.error("upload_failed");
     return json({ error: "upload_failed" }, 502);
   }
 
-  const { data: reg, error: regErr } = await admin.rpc(
-    "v2_internal_register_resource_file",
-    {
-      p_actor_user_id: userId,
-      p_version_id: versionId,
-      p_storage_path: path,
-      p_file_name: validation.basename!,
-      p_content_type: validation.canonicalCt!,
-      p_size_bytes: file.size,
-      p_checksum_sha256: checksum,
-    },
-  );
-  if (regErr) {
-    // Compensating cleanup — never surface the path.
-    await admin.storage.from(BUCKET).remove([path]).catch(() => {});
-    const msg = regErr.message ?? "";
-    console.error("register_failed", msg);
+  const reg = await deps.registerFile({
+    actorUserId: userId,
+    versionId,
+    storagePath: path,
+    fileName: validation.basename!,
+    contentType: validation.canonicalCt!,
+    sizeBytes: file.size,
+    checksumSha256: checksum,
+  });
+  if (reg.error) {
+    await deps.storage.remove(path).catch(() => {});
+    const msg = reg.error.message ?? "";
+    console.error("register_failed");
     if (msg.includes("forbidden")) return json({ error: "forbidden" }, 403);
     if (msg.includes("version_not_found")) return json({ error: "version_not_found" }, 404);
     if (msg.includes("invalid_file_name")) return json({ error: "invalid_file_name" }, 400);
@@ -245,5 +245,70 @@ Deno.serve(async (req) => {
     return json({ error: "registration_failed" }, 502);
   }
 
-  return json({ ok: true, file: reg }, 200);
-});
+  // Return only safe metadata (already produced by RPC). Never leak storage path.
+  const safe = reg.data && typeof reg.data === "object" ? (reg.data as Record<string, unknown>) : {};
+  const safeOut = {
+    file_id: safe.file_id,
+    file_name: safe.file_name,
+    content_type: safe.content_type,
+    size_bytes: safe.size_bytes,
+    created_at: safe.created_at,
+  };
+  return json({ ok: true, file: safeOut }, 200);
+}
+
+function buildProdDeps(): HandlerDeps {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const admin = createClient(SUPABASE_URL, SERVICE, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return {
+    async getUserId(authHeader) {
+      const userClient = createClient(SUPABASE_URL, ANON, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data, error } = await userClient.auth.getUser();
+      if (error || !data?.user) return null;
+      return data.user.id;
+    },
+    async isAdmin(userId) {
+      const { data, error } = await admin.rpc("has_role", {
+        _user_id: userId,
+        _role: "admin",
+      });
+      return !error && !!data;
+    },
+    storage: {
+      async upload(path, bytes, contentType) {
+        const { error } = await admin.storage.from(BUCKET).upload(path, bytes, {
+          contentType,
+          upsert: false,
+        });
+        return { error: error ? { message: error.message } : null };
+      },
+      async remove(path) {
+        await admin.storage.from(BUCKET).remove([path]);
+      },
+    },
+    async registerFile(a) {
+      const { data, error } = await admin.rpc("v2_internal_register_resource_file", {
+        p_actor_user_id: a.actorUserId,
+        p_version_id: a.versionId,
+        p_storage_path: a.storagePath,
+        p_file_name: a.fileName,
+        p_content_type: a.contentType,
+        p_size_bytes: a.sizeBytes,
+        p_checksum_sha256: a.checksumSha256,
+      });
+      return { data, error: error ? { message: error.message } : null };
+    },
+  };
+}
+
+// Only bind Deno.serve when running as an edge function (SUPABASE_URL is present).
+// Tests import this module without those env vars set, so Deno.serve is skipped.
+if (Deno.env.get("SUPABASE_URL") && Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+  Deno.serve((req) => handleRequest(req, buildProdDeps()));
+}
