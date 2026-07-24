@@ -47,21 +47,8 @@ export function useVersionPendingChildProbe(scans: ProbeScan[] | undefined) {
     })),
   });
 
-  // Fail-closed: any target that is loading/fetching, errored, or has not
-  // returned a valid detail payload with a `counts` object is unresolved.
-  // Callers must gate Queue on this in addition to hasPendingChild.
   const isUnresolved =
-    targetIds.length > 0 &&
-    results.some((r) => {
-      if (r.isLoading || r.isFetching || r.isPending) return true;
-      if (r.isError || r.error) return true;
-      const detail = r.data as AdminScanDetail | null | undefined;
-      if (!detail || typeof detail !== "object") return true;
-      if (!detail.counts || typeof detail.counts.pending !== "number") {
-        return true;
-      }
-      return false;
-    });
+    targetIds.length > 0 && results.some((r) => isProbeResultUnresolved(r));
 
   const hasPendingChild = results.some(
     (r) => (r.data?.counts?.pending ?? 0) > 0,
@@ -70,4 +57,27 @@ export function useVersionPendingChildProbe(scans: ProbeScan[] | undefined) {
   // Preserve prior field name (`isLoading`) for compatibility while exposing
   // the stricter fail-closed signal as `isUnresolved`.
   return { isLoading: isUnresolved, isUnresolved, hasPendingChild } as const;
+}
+
+/**
+ * Pure fail-closed predicate: a probe result is "unresolved" whenever it is
+ * still loading/fetching/pending, has errored, or has not returned a valid
+ * detail payload with a numeric `counts.pending`. Exposed for unit testing.
+ */
+export interface ProbeResultShape {
+  isLoading?: boolean;
+  isFetching?: boolean;
+  isPending?: boolean;
+  isError?: boolean;
+  error?: unknown;
+  data?: AdminScanDetail | null | undefined;
+}
+
+export function isProbeResultUnresolved(r: ProbeResultShape): boolean {
+  if (r.isLoading || r.isFetching || r.isPending) return true;
+  if (r.isError || r.error) return true;
+  const detail = r.data;
+  if (!detail || typeof detail !== "object") return true;
+  if (!detail.counts || typeof detail.counts.pending !== "number") return true;
+  return false;
 }
