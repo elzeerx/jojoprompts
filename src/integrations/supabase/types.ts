@@ -4607,6 +4607,15 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_admin_list_package_scan_queue: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_states?: string[]
+        }
+        Returns: Json
+      }
       v2_admin_list_payment_attempts: {
         Args: {
           p_limit?: number
