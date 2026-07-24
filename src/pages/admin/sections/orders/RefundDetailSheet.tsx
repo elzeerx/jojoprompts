@@ -30,6 +30,8 @@ interface RefundView {
   provider_reference: string | null;
   provider_refund_order_id: string | null;
   provider_submission_state: string | null;
+  last_provider_http_status: number | null;
+  sanitized_provider_payload: Record<string, unknown> | null;
   requested_at: string;
   processed_at: string | null;
   next_check_after: string | null;
@@ -56,6 +58,35 @@ export function RefundDetailSheet({ refundId, onOpenChange }: Props) {
 
   const now = Date.now();
   const cooldownRemaining = nextAllowedAt && nextAllowedAt > now ? Math.ceil((nextAllowedAt - now) / 1000) : 0;
+
+  // Only permit a provider re-check when the refund is actually pollable:
+  // status=approved + submitted + both provider IDs present. Anything else
+  // (pending/submission_unknown, failed, missing provider IDs) will hit a
+  // known-failing endpoint, so we disable the button and explain why.
+  const isPollable =
+    !!refund &&
+    refund.status === "approved" &&
+    refund.provider_submission_state === "submitted" &&
+    !!refund.provider_reference &&
+    !!refund.provider_refund_order_id;
+
+  const recheckUnavailableReason = !refund ? null : (
+    !isPollable
+      ? (refund.status === "failed"
+          ? "Refund terminal (failed) — provider re-check is not applicable."
+          : refund.provider_submission_state === "submission_unknown"
+            ? "Submission state is unknown — use the recovery queue to finalize or retry."
+            : (!refund.provider_reference || !refund.provider_refund_order_id)
+              ? "Provider identifiers missing — cannot poll /check-refund."
+              : "Refund is not in a pollable state.")
+      : null
+  );
+
+  const provPayload = (refund?.sanitized_provider_payload ?? {}) as Record<string, unknown>;
+  const provHttpStatus = refund?.last_provider_http_status ?? (typeof provPayload["http_status"] === "number" ? provPayload["http_status"] as number : null);
+  const provErrorCode = typeof provPayload["error_code"] === "string" ? provPayload["error_code"] as string : null;
+  const provMessage = typeof provPayload["message"] === "string" ? provPayload["message"] as string : null;
+  const hasProviderDiagnostics = !!(provHttpStatus || provErrorCode || provMessage || refund?.provider_submission_state);
 
   const onCheck = async () => {
     if (!refund) return;
@@ -98,8 +129,9 @@ export function RefundDetailSheet({ refundId, onOpenChange }: Props) {
               <div className="ml-auto flex items-center gap-2">
                 <Button
                   size="sm" variant="outline" className="min-h-[44px]"
-                  disabled={checkStatus.isPending || cooldownRemaining > 0}
+                  disabled={checkStatus.isPending || cooldownRemaining > 0 || !isPollable}
                   onClick={onCheck}
+                  title={recheckUnavailableReason ?? undefined}
                 >
                   <RefreshCw className="mr-2 h-3.5 w-3.5" />
                   {cooldownRemaining > 0
@@ -109,11 +141,51 @@ export function RefundDetailSheet({ refundId, onOpenChange }: Props) {
               </div>
             </div>
 
+            {recheckUnavailableReason && (
+              <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+                {recheckUnavailableReason}
+              </div>
+            )}
+
             {cooldownError && (
               <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
                 {cooldownError}
               </div>
             )}
+
+            {/* Provider response diagnostics (safe, sanitized only) */}
+            {hasProviderDiagnostics && (
+              <section>
+                <h3 className="text-sm font-semibold mb-2">Provider response / استجابة المزود</h3>
+                <div className="rounded-md border p-3 text-sm grid grid-cols-2 gap-x-4 gap-y-1">
+                  {refund.provider_submission_state && (
+                    <>
+                      <div className="text-muted-foreground">Submission state</div>
+                      <div className="font-mono text-xs">{refund.provider_submission_state}</div>
+                    </>
+                  )}
+                  {provHttpStatus != null && (
+                    <>
+                      <div className="text-muted-foreground">HTTP status</div>
+                      <div className="font-mono text-xs">{provHttpStatus}</div>
+                    </>
+                  )}
+                  {provErrorCode && (
+                    <>
+                      <div className="text-muted-foreground">Error code</div>
+                      <div className="font-mono text-xs break-all">{provErrorCode}</div>
+                    </>
+                  )}
+                  {provMessage && (
+                    <>
+                      <div className="text-muted-foreground">Message</div>
+                      <div className="text-xs break-words">{provMessage}</div>
+                    </>
+                  )}
+                </div>
+              </section>
+            )}
+
 
             {/* Core */}
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">

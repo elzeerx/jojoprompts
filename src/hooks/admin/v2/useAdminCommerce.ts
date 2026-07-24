@@ -799,3 +799,99 @@ export function useMigrationVerification() {
     retry: 1,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Phase 5.4 — Reconciliation summary, finalize definite refund rejection,
+// and per-order reconciliation (all admin-only, all read-only except finalize).
+// ---------------------------------------------------------------------------
+
+export interface ReconciliationSummary {
+  mismatches: number;
+  pending_past_due: number;
+  paid_without_entitlement: number;
+  credit_inconsistent: number;
+  duplicate_event_risk: number;
+  refund_alloc_over_item: number;
+  refund_alloc_over_order: number;
+  processed_missing_credit: number;
+  processed_item_unrevoked_entitlement: number;
+  threshold_lifetime_below_credit: number;
+  as_of: string;
+}
+
+export function useReconciliationSummary() {
+  return useQuery<ReconciliationSummary>({
+    queryKey: ["admin", "v2", "reconciliation-summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("v2_admin_reconciliation_summary");
+      if (error) throw error;
+      return data as unknown as ReconciliationSummary;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export interface OrderReconciliation {
+  order: {
+    id: string;
+    order_number: string;
+    status: string;
+    currency: string;
+    provider: string | null;
+    total_fils: number;
+    paid_fils: number;
+    lifetime_credit_applied_fils: number;
+    placed_at: string | null;
+    settled_at: string | null;
+  };
+  counts: Record<string, number>;
+  issues: Array<{ code: string; severity: string; detail: Record<string, unknown> }>;
+  healthy: boolean;
+  as_of: string;
+}
+
+export function useReconcileOrder(orderId: string | null) {
+  return useQuery<OrderReconciliation>({
+    queryKey: ["admin", "v2", "reconcile-order", orderId],
+    enabled: !!orderId,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("v2_admin_reconcile_order", {
+        p_order_id: orderId!,
+      });
+      if (error) throw error;
+      return data as OrderReconciliation;
+    },
+  });
+}
+
+export interface FinalizeDefiniteRejectionArgs {
+  refund_id: string;
+  expected_http_status: number;
+  expected_error_code: string;
+}
+
+export function useFinalizeDefiniteRefundRejection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: FinalizeDefiniteRejectionArgs) => {
+      const { data, error } = await (supabase.rpc as any)(
+        "v2_admin_finalize_definite_refund_rejection",
+        {
+          p_refund_id: args.refund_id,
+          p_expected_http_status: args.expected_http_status,
+          p_expected_error_code: args.expected_error_code,
+        },
+      );
+      if (error) throw error;
+      return data as { ok: boolean; noop?: boolean; refund_id: string; status: string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "refunds"] });
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "recovery"] });
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "orders"] });
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "payment-events"] });
+      qc.invalidateQueries({ queryKey: ["admin", "v2", "reconciliation-summary"] });
+    },
+  });
+}
+

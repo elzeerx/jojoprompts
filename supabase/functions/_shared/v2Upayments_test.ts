@@ -19,6 +19,7 @@ import {
   webhookLookupPriority,
   webhookIdentifierColumn,
   eventIdForStatus,
+  extractSafeProviderError,
 } from "./v2Upayments.ts";
 
 // ---------------- validateWebhookEnvelope ----------------
@@ -435,3 +436,54 @@ Deno.test("filsToKwdNumber: rejects zero, negatives, non-integers, and out-of-ra
     assert(threw, `expected throw for ${v}`);
   }
 });
+
+// ---------------- extractSafeProviderError (Phase 5.4) ---------------------
+
+Deno.test("safeError: real sandbox 422 shape yields safe message + code, drops nothing else", () => {
+  const body = JSON.stringify({
+    status: false,
+    message: "Refund will work only in production",
+    data: { error_code: "work_in_production_only" },
+  });
+  const r = extractSafeProviderError(body);
+  assertEquals(r.safeMessage, "Refund will work only in production");
+  assertEquals(r.safeCode, "work_in_production_only");
+});
+
+Deno.test("safeError: oversize message is capped at 200 chars", () => {
+  const big = "x".repeat(500);
+  const body = JSON.stringify({ status: false, message: big });
+  const r = extractSafeProviderError(body);
+  assertEquals(r.safeMessage?.length, 200);
+});
+
+Deno.test("safeError: non-string message and non-token error_code are dropped", () => {
+  const body = JSON.stringify({
+    status: false,
+    message: 12345,
+    data: { error_code: "not a token with spaces!" },
+  });
+  const r = extractSafeProviderError(body);
+  assertEquals(r.safeMessage, undefined);
+  assertEquals(r.safeCode, undefined);
+});
+
+Deno.test("safeError: top-level error_code alias is accepted when valid token", () => {
+  const body = JSON.stringify({ status: false, error_code: "invalid_amount" });
+  const r = extractSafeProviderError(body);
+  assertEquals(r.safeCode, "invalid_amount");
+});
+
+Deno.test("safeError: malformed JSON body yields empty result", () => {
+  const r = extractSafeProviderError("<html>oops</html>");
+  assertEquals(r.safeCode, undefined);
+  assertEquals(r.safeMessage, undefined);
+});
+
+Deno.test("safeError: overlong 200-char error_code token is dropped", () => {
+  const big = "a".repeat(200);
+  const body = JSON.stringify({ status: false, data: { error_code: big } });
+  const r = extractSafeProviderError(body);
+  assertEquals(r.safeCode, undefined);
+});
+

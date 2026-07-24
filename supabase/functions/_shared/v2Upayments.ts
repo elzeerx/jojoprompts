@@ -309,10 +309,42 @@ const DEFAULT_TIMEOUT_MS = 12_000;
 
 export type ProviderCallResult =
   | { kind: "ok"; status: number; json: Record<string, unknown> }
-  | { kind: "http_error"; status: number; safeText: string }
+  | {
+      kind: "http_error"; status: number; safeText: string;
+      // Bounded diagnostics parsed from a JSON error body. Never contains
+      // arbitrary provider fields — only a safe message (<=200 chars) and a
+      // conservatively-validated error_code token (<=80 chars).
+      safeCode?: string; safeMessage?: string;
+    }
   | { kind: "network_error" }
   | { kind: "timeout" }
   | { kind: "invalid_response"; status?: number };
+
+// Conservative token regex for provider error_code (letters, digits, _-.:).
+const SAFE_ERROR_CODE_RE = /^[a-zA-Z0-9_\-.:]{1,80}$/;
+
+export function extractSafeProviderError(text: string): {
+  safeCode?: string; safeMessage?: string;
+} {
+  if (!text) return {};
+  let parsed: unknown;
+  try { parsed = JSON.parse(text); } catch { return {}; }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  const obj = parsed as Record<string, unknown>;
+  const out: { safeCode?: string; safeMessage?: string } = {};
+  const rawMsg = obj["message"];
+  if (typeof rawMsg === "string" && rawMsg.length > 0) {
+    out.safeMessage = rawMsg.slice(0, 200);
+  }
+  const dataObj = (obj["data"] && typeof obj["data"] === "object"
+      && !Array.isArray(obj["data"]))
+    ? obj["data"] as Record<string, unknown> : {};
+  const rawCode = dataObj["error_code"] ?? obj["error_code"];
+  if (typeof rawCode === "string" && SAFE_ERROR_CODE_RE.test(rawCode)) {
+    out.safeCode = rawCode;
+  }
+  return out;
+}
 
 export async function providerFetch(
   cfg: UpaymentsConfig, path: string,
@@ -338,7 +370,10 @@ export async function providerFetch(
     }
     const text = new TextDecoder().decode(buf);
     if (!res.ok) {
-      return { kind: "http_error", status: res.status, safeText: `status_${res.status}` };
+      const safe = extractSafeProviderError(text);
+      return { kind: "http_error", status: res.status,
+        safeText: `status_${res.status}`,
+        safeCode: safe.safeCode, safeMessage: safe.safeMessage };
     }
     let json: unknown = null;
     try { json = text ? JSON.parse(text) : {}; }
