@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime } from "@/lib/v2/admin/format";
 import { useAdminResourceVersionDetail } from "@/hooks/admin/v2/useAdminResourceVersions";
+import { UploadPackageFile } from "./UploadPackageFile";
+
 
 interface Props {
   versionId: string | null;
@@ -129,13 +131,17 @@ export default function VersionDetailSheet({ versionId, onOpenChange }: Props) {
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-sm font-semibold">
-                Package files ({detail?.files.length ?? 0})
-              </h3>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h3 className="text-sm font-semibold">
+                  Package files ({detail?.files.length ?? 0})
+                </h3>
+              </div>
+              {versionId && <UploadPackageFile versionId={versionId} />}
               {(detail?.files.length ?? 0) === 0 ? (
                 <div className="rounded-md border p-4 text-xs text-muted-foreground">
                   No package files uploaded
                 </div>
+
               ) : (
                 <div className="rounded-md border divide-y">
                   {detail!.files.map((f) => (
