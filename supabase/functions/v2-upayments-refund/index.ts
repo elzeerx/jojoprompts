@@ -144,13 +144,30 @@ Deno.serve(async (req) => {
       { method: "POST", body: providerBody });
 
     if (res.kind !== "ok") {
+      // Bounded, non-PII payload. For HTTP 4xx/5xx we surface only the
+      // sanitized message/code parsed by providerFetch; we NEVER persist
+      // raw provider body content beyond this allowlist.
+      const payload: Record<string, unknown> = { kind: `provider_${res.kind}` };
+      let httpStatus: number | null = null;
+      if (res.kind === "http_error") {
+        httpStatus = res.status;
+        payload.http_status = res.status;
+        if (res.safeCode) payload.error_code = res.safeCode;
+        if (res.safeMessage) payload.message = res.safeMessage;
+      } else if (res.kind === "invalid_response") {
+        httpStatus = res.status ?? null;
+      }
       await svc.rpc("v2_record_refund_submission_unknown", {
         p_admin_actor_id: auth.userId, p_refund_id: refundId,
-        p_http_status: res.kind === "http_error" ? res.status
-          : (res.kind === "invalid_response" ? res.status ?? null : null),
-        p_sanitized_payload: { kind: `provider_${res.kind}` },
+        p_http_status: httpStatus,
+        p_sanitized_payload: payload,
       });
-      return jsonResponse({ error: "recovery_required", reason: res.kind }, 502, origin);
+      const body: Record<string, unknown> = { error: "recovery_required", reason: res.kind };
+      if (res.kind === "http_error") {
+        body.http_status = res.status;
+        if (res.safeCode) body.provider_code = res.safeCode;
+      }
+      return jsonResponse(body, 502, origin);
     }
 
     if (!providerSuccessFlag(res.json)) {

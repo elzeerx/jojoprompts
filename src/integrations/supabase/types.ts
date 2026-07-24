@@ -4454,6 +4454,14 @@ export type Database = {
         Args: { p_dry_run?: boolean }
         Returns: Json
       }
+      v2_admin_finalize_definite_refund_rejection: {
+        Args: {
+          p_expected_error_code: string
+          p_expected_http_status: number
+          p_refund_id: string
+        }
+        Returns: Json
+      }
       v2_admin_get_discount: { Args: { p_id: string }; Returns: Json }
       v2_admin_get_order_detail: { Args: { p_order_id: string }; Returns: Json }
       v2_admin_get_payment_event: {
@@ -4568,6 +4576,7 @@ export type Database = {
         Args: { p_period_days?: number }
         Returns: Json
       }
+      v2_admin_reconcile_order: { Args: { p_order_id: string }; Returns: Json }
       v2_admin_reconciliation_summary: { Args: never; Returns: Json }
       v2_admin_recovery_counts: { Args: never; Returns: Json }
       v2_admin_search_products_for_discount: {
