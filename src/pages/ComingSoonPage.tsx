@@ -98,14 +98,13 @@ export default function ComingSoonPage() {
         <div dir="rtl" lang="ar" className="max-w-md text-center lg:max-w-sm lg:text-right">
           <h2
             className="text-[clamp(3rem,6vw,5rem)] leading-none text-[#F3EFE6]"
-            style={{ fontFamily: '"Amiri", "Scheherazade New", serif', fontWeight: 500 }}
+            style={{ fontWeight: 500 }}
           >
             قريباً
           </h2>
           <Divider />
           <p
             className="mt-5 text-[15px] leading-loose text-[#B8B2A6] sm:text-base"
-            style={{ fontFamily: '"Amiri", "Noto Naskh Arabic", serif' }}
           >
             نعيد بناء جوجو برومبتس لعصر جديد من مهارات وأتمتة وأدوات الذكاء
             الاصطناعي.
