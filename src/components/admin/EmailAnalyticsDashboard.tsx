@@ -233,6 +233,7 @@ export function EmailAnalyticsDashboard() {
                 <SelectItem value="confirmation">Confirmation</SelectItem>
                 <SelectItem value="password-reset">Password Reset</SelectItem>
                 <SelectItem value="welcome">Welcome</SelectItem>
+                <SelectItem value="v2_order_receipt">V2 Order Receipt</SelectItem>
               </SelectContent>
             </Select>
 
