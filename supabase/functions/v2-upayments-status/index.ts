@@ -28,7 +28,7 @@ function validBody(b: unknown): b is { order_id: string } {
 
 type RejectionReason =
   | "missing_merchant_reference" | "merchant_reference_mismatch"
-  | "track_id_mismatch" | "session_id_mismatch" | "provider_order_id_mismatch"
+  | "track_id_mismatch" | "track_id_missing" | "provider_order_id_mismatch"
   | "currency_missing" | "currency_mismatch"
   | "amount_missing" | "amount_unparseable" | "amount_mismatch";
 
@@ -61,7 +61,6 @@ Deno.serve(async (req) => {
   const rs = (resolve ?? {}) as Record<string, unknown>;
   if (rs.ok !== true) {
     const err = String(rs.error ?? "not_found");
-    // Do not reveal whether the order exists for another user.
     return jsonResponse({ error: err === "no_attempt" ? "no_attempt" : "not_found" },
       404, origin);
   }
@@ -82,16 +81,16 @@ Deno.serve(async (req) => {
   }
   if (cl.claimed !== true) return jsonResponse({ error: "claim_failed" }, 409, origin);
 
-  const trackId = cl.track_id ? String(cl.track_id) : null;
-  const sessionId = cl.session_id ? String(cl.session_id) : null;
-  const providerOrderId = cl.provider_order_id ? String(cl.provider_order_id) : null;
+  const storedTrackId = cl.track_id ? String(cl.track_id) : null;
+  const storedHostedSessionId = cl.session_id ? String(cl.session_id) : null;
+  const storedProviderOrderId = cl.provider_order_id ? String(cl.provider_order_id) : null;
   const merchantRef = String(cl.merchant_reference);
   const amountFils = Number(cl.amount_fils);
   const settledAttemptId = String(cl.attempt_id);
 
-  const path = trackId
-    ? `/get-payment-status/${encodeURIComponent(trackId)}`
-    : `/get-payment-status?session_id=${encodeURIComponent(sessionId ?? "")}`;
+  const path = storedTrackId
+    ? `/get-payment-status/${encodeURIComponent(storedTrackId)}`
+    : `/get-payment-status?session_id=${encodeURIComponent(storedHostedSessionId ?? "")}`;
 
   const res = await providerFetch(cfg, path, { method: "GET" });
   if (res.kind !== "ok") {
@@ -104,7 +103,7 @@ Deno.serve(async (req) => {
   const ex = extractStatusFields(res.json);
   const verdict = normalizePaymentStatus(ex.result);
   const sanitized = sanitizeProviderPayload("payment_status", res.json, res.status);
-  const providerIdForEvt = providerOrderId ?? ex.providerOrderId ?? ex.trackId ?? trackId;
+  const providerIdForEvt = storedProviderOrderId ?? ex.providerOrderId ?? ex.trackId ?? storedTrackId;
   const rejectEvt = (reason: RejectionReason) =>
     eventIdForStatus(orderId, providerIdForEvt, `reject:${reason}`);
 
@@ -125,27 +124,27 @@ Deno.serve(async (req) => {
     return jsonResponse({ status: "pending", reason }, 202, origin);
   };
 
-  // Terminal correlation. Merchant reference MUST match.
+  // Merchant reference is the server-originated anchor — MUST match.
   if (!ex.merchantReference) return await rejectResponse("missing_merchant_reference");
   if (ex.merchantReference !== merchantRef) {
     return await rejectResponse("merchant_reference_mismatch");
   }
-  if (trackId) {
-    if (!ex.trackId || ex.trackId !== trackId) {
+  if (storedTrackId) {
+    if (!ex.trackId || ex.trackId !== storedTrackId) {
       return await rejectResponse("track_id_mismatch");
     }
-  } else if (sessionId) {
-    if (!ex.sessionId || ex.sessionId !== sessionId) {
-      return await rejectResponse("session_id_mismatch");
-    }
   }
-  if (providerOrderId && ex.providerOrderId && ex.providerOrderId !== providerOrderId) {
+  // When queried by stored hosted session, DO NOT compare ex.sessionId to
+  // storedHostedSessionId: UPayments returns a per-transaction UUID at
+  // data.transaction.session_id which differs from the hosted-checkout id.
+  if (storedProviderOrderId && ex.providerOrderId && ex.providerOrderId !== storedProviderOrderId) {
     return await rejectResponse("provider_order_id_mismatch");
   }
-  const effectiveProviderOrderId = providerOrderId ?? ex.providerOrderId ?? null;
+  const effectiveTrackId = storedTrackId ?? ex.trackId ?? null;
+  const effectiveProviderOrderId = storedProviderOrderId ?? ex.providerOrderId ?? null;
 
   const evtId = eventIdForStatus(orderId,
-    effectiveProviderOrderId ?? ex.trackId ?? trackId, verdict.verdict);
+    effectiveProviderOrderId ?? effectiveTrackId, verdict.verdict);
 
   if (verdict.verdict === "captured") {
     if (!ex.currency) return await rejectResponse("currency_missing");
@@ -155,11 +154,13 @@ Deno.serve(async (req) => {
     try { providerAmount = kwdDecimalToFils(ex.amountRaw); }
     catch { return await rejectResponse("amount_unparseable"); }
     if (providerAmount !== amountFils) return await rejectResponse("amount_mismatch");
+    if (!effectiveTrackId) return await rejectResponse("track_id_missing");
 
     const { error: sErr } = await svc.rpc("v2_settle_verified_upayments_payment", {
       p_actor_user_id: auth.userId, p_order_id: orderId, p_attempt_id: settledAttemptId,
       p_merchant_reference: merchantRef,
-      p_track_id: trackId, p_session_id: sessionId,
+      p_track_id: effectiveTrackId,
+      p_session_id: storedHostedSessionId,
       p_provider_order_id: effectiveProviderOrderId,
       p_amount_fils: amountFils, p_currency: "KWD",
       p_result: verdict.normalized, p_external_event_id: evtId,
@@ -167,9 +168,6 @@ Deno.serve(async (req) => {
     });
     if (sErr) return jsonResponse({ error: safeRpcError(sErr) }, 500, origin);
 
-    // Safe product_ids lookup for the owned order so the client can clear
-    // only the exact purchased items. Failure to look up MUST NOT block
-    // the paid response; the client will fall back to "leave cart intact".
     let productIds: string[] = [];
     try {
       const { data: items } = await svc
@@ -188,6 +186,7 @@ Deno.serve(async (req) => {
       origin,
     );
   }
+
 
 
   if (verdict.verdict === "failed" || verdict.verdict === "cancelled") {
