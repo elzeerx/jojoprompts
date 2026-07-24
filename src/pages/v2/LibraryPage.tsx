@@ -53,6 +53,7 @@ export default function LibraryPage() {
   const { data: library, isLoading, isError, refetch } = useLibraryState();
   const { data: files, isLoading: filesLoading } = useDownloadableFiles();
   const { data: inactive } = useInactiveEntitlements();
+  const { data: legacySummary } = useMyLegacyAccessSummary();
   const download = useResourceDownload();
   const { language, isRTL } = useTranslation();
   const lang: Lang = language === "ar" ? "ar" : "en";
