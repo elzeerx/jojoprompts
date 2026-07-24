@@ -107,7 +107,7 @@ export function AdminTopBar({ onOpenCommandPalette }: AdminTopBarProps) {
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => navigate("/profile")}>
-            <UserIcon className="me-2 h-4 w-4" aria-hidden /> Account
+            <UserIcon className="mr-2 h-4 w-4" aria-hidden /> Account
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -120,7 +120,7 @@ export function AdminTopBar({ onOpenCommandPalette }: AdminTopBarProps) {
               }
             }}
           >
-            <LogOut className="me-2 h-4 w-4" aria-hidden /> Sign out
+            <LogOut className="mr-2 h-4 w-4" aria-hidden /> Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
