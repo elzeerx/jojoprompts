@@ -700,3 +700,53 @@ export function validateWebhookEnvelope(
   }
   return { ok: true };
 }
+
+// -------------------- Webhook attempt resolution helper -----------------
+
+// Documented lookup order for resolving a local payment_attempts row from
+// webhook hints. Fresh provider `track_id` may not exist locally yet on the
+// initial callback, so `merchant_reference` (server-originated) is the safe
+// tie-breaker. Never fall back to unbounded/wildcard queries.
+export type WebhookIdentifierKind =
+  | "track_id" | "session_id" | "provider_order_id" | "merchant_reference";
+
+export type WebhookIdentifier = { kind: WebhookIdentifierKind; value: string };
+
+// Pure helper — returns the bounded, deduplicated identifier lookup priority
+// given the hints extracted from a webhook body. Empty/duplicate values are
+// dropped. Order is: track_id → session_id → provider_order_id →
+// merchant_reference (server-originated tie-breaker).
+export function webhookLookupPriority(hints: {
+  trackId: string | null;
+  sessionId: string | null;
+  providerOrderId: string | null;
+  merchantReference: string | null;
+}): WebhookIdentifier[] {
+  const out: WebhookIdentifier[] = [];
+  const seen = new Set<string>();
+  const push = (kind: WebhookIdentifierKind, v: string | null) => {
+    if (typeof v !== "string") return;
+    const t = v.trim();
+    if (!t || t.length > 256) return;
+    const key = `${kind}:${t}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ kind, value: t });
+  };
+  push("track_id", hints.trackId);
+  push("session_id", hints.sessionId);
+  push("provider_order_id", hints.providerOrderId);
+  push("merchant_reference", hints.merchantReference);
+  return out;
+}
+
+// DB column name for each identifier kind on `payment_attempts`.
+export function webhookIdentifierColumn(kind: WebhookIdentifierKind): string {
+  switch (kind) {
+    case "track_id": return "track_id";
+    case "session_id": return "session_id";
+    case "provider_order_id": return "provider_order_id";
+    case "merchant_reference": return "merchant_reference";
+  }
+}
+
