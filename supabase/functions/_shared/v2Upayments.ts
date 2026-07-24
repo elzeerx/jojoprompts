@@ -205,7 +205,13 @@ export type CustomerFields = {
 };
 
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-zA-Z]{2,}$/;
-const MOBILE_RE = /^\+[1-9][0-9]{6,14}$/;
+// UPayments Make Charge docs: customer.mobile max length 15 (E.164 incl. '+').
+const MOBILE_RE = /^\+[1-9][0-9]{6,13}$/;
+
+// UPayments Make Charge documented field limits.
+const UPAY_CUSTOMER_NAME_MAX = 50;
+const UPAY_CUSTOMER_EMAIL_MAX = 50;
+const UPAY_CUSTOMER_MOBILE_MAX = 15;
 
 // Loads verified server-side identity; never returns caller-supplied fields
 // or dummy placeholders. Optional fields are dropped when invalid/missing.
