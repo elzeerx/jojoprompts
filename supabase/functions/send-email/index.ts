@@ -57,14 +57,8 @@ const USER_ALLOWED_EMAIL_TYPES = new Set<string>([
 // Types that must NEVER be blocked by an unsubscribe entry.
 // Marketing/lifecycle types outside this set (e.g. `welcome`) respect
 // unsubscribe.
-const TRANSACTIONAL_EMAIL_TYPES = new Set<string>([
-  'email_confirmation',
-  'password_reset',
-  'payment_confirmation',
-  'payment_failed',
-  'account_deleted',
-  'subscription_cancelled',
-]);
+export { TRANSACTIONAL_EMAIL_TYPES, decideUnsubscribeAction } from './unsubscribeDecision.ts';
+import { TRANSACTIONAL_EMAIL_TYPES } from './unsubscribeDecision.ts';
 
 // Legal top-level fields.
 const ALLOWED_TOP_LEVEL_KEYS = [
@@ -283,12 +277,22 @@ export default async function handler(req: Request): Promise<Response> {
   // service: no per-caller rate limit; unrestricted.
 
   // ---------- Unsubscribe gate (marketing/lifecycle types only)
+  // Essential transactional types bypass this lookup entirely.
+  // Non-transactional types fail closed: any DB error returns 503 before Resend.
   if (!TRANSACTIONAL_EMAIL_TYPES.has(email_type)) {
-    const { data: unsub } = await supabase
+    const { data: unsub, error: unsubErr } = await supabase
       .from('unsubscribed_emails')
       .select('email')
       .eq('email', to)
       .maybeSingle();
+    if (unsubErr) {
+      // Never expose DB error or recipient.
+      return jsonResponse(
+        { success: false, error: 'preference_check_unavailable' },
+        503,
+        origin,
+      );
+    }
     if (unsub) {
       // Do NOT call Resend; return truthful non-success payload.
       await logEmail(supabase, {

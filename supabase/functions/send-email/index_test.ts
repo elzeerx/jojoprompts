@@ -250,3 +250,26 @@ Deno.test("send-email limiter: distinct user ids produce distinct hashes", async
   const b = await hmacSha256Hex(secret, `send-email:user:${"b".repeat(36)}`);
   assert(a !== b);
 });
+
+// ---- Unsubscribe decision helper tests (pure) ----
+import { decideUnsubscribeAction } from "./unsubscribeDecision.ts";
+
+Deno.test("unsubscribe: essential transactional bypasses lookup even if error/row present", () => {
+  for (const t of ["email_confirmation","password_reset","payment_confirmation","payment_failed","account_deleted","subscription_cancelled"]) {
+    assertEquals(decideUnsubscribeAction(t, { hasError: true, hasRow: true }), "bypass");
+    assertEquals(decideUnsubscribeAction(t, { hasError: false, hasRow: false }), "bypass");
+  }
+});
+
+Deno.test("unsubscribe: non-transactional lookup error => error_503 (fail closed)", () => {
+  assertEquals(decideUnsubscribeAction("welcome", { hasError: true, hasRow: false }), "error_503");
+  assertEquals(decideUnsubscribeAction("marketing_blast", { hasError: true, hasRow: true }), "error_503");
+});
+
+Deno.test("unsubscribe: non-transactional with unsubscribed row => blocked", () => {
+  assertEquals(decideUnsubscribeAction("welcome", { hasError: false, hasRow: true }), "blocked");
+});
+
+Deno.test("unsubscribe: non-transactional clean lookup => proceed", () => {
+  assertEquals(decideUnsubscribeAction("welcome", { hasError: false, hasRow: false }), "proceed");
+});
