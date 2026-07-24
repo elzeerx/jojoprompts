@@ -247,25 +247,16 @@ export default async function handler(req: Request): Promise<Response> {
     if (!USER_ALLOWED_EMAIL_TYPES.has(email_type)) {
       return jsonResponse({ success: false, error: 'email_type_not_allowed' }, 400, origin);
     }
-    // Bounded per-user rate limit — fail closed if the limiter is unavailable.
-    let rlUserOk = false;
-    let rlUserAllowed: boolean | null = null;
-    try {
-      const { data: rl, error: rlErr } = await supabase.rpc('check_rate_limit', {
-        p_user_id: caller.userId,
-        p_endpoint: 'send-email-user',
-        p_max_requests: 10,
-        p_window_minutes: 60,
-      });
-      if (!rlErr && rl) {
-        rlUserOk = true;
-        rlUserAllowed = (rl as any).allowed !== false;
-      }
-    } catch { /* leave rlUserOk = false */ }
-    if (!rlUserOk) {
+    // Bounded per-user rate limit via atomic service-only limiter — fail closed.
+    const userHash = await hmacSha256Hex(serviceKey, `send-email:user:${caller.userId}`);
+    const { data: rl, error: rlErr } = await supabase.rpc(
+      'check_contact_submission_rate_limit',
+      { p_identifier_hash: userHash, p_scope: 'user', p_max_requests: 10, p_window_seconds: 3600 },
+    );
+    if (rlErr || !rl) {
       return jsonResponse({ success: false, error: 'rate_limit_unavailable' }, 503, origin);
     }
-    if (rlUserAllowed === false) {
+    if ((rl as any).allowed === false) {
       return jsonResponse({ success: false, error: 'rate_limited' }, 429, origin);
     }
   } else if (caller.kind === 'admin') {
@@ -276,24 +267,15 @@ export default async function handler(req: Request): Promise<Response> {
     if (!template_slug) {
       return jsonResponse({ success: false, error: 'template_slug_required' }, 400, origin);
     }
-    let rlAdminOk = false;
-    let rlAdminAllowed: boolean | null = null;
-    try {
-      const { data: rl, error: rlErr } = await supabase.rpc('check_rate_limit', {
-        p_user_id: caller.userId,
-        p_endpoint: 'send-email-admin',
-        p_max_requests: 60,
-        p_window_minutes: 60,
-      });
-      if (!rlErr && rl) {
-        rlAdminOk = true;
-        rlAdminAllowed = (rl as any).allowed !== false;
-      }
-    } catch { /* leave rlAdminOk = false */ }
-    if (!rlAdminOk) {
+    const adminHash = await hmacSha256Hex(serviceKey, `send-email:admin:${caller.userId}`);
+    const { data: rl, error: rlErr } = await supabase.rpc(
+      'check_contact_submission_rate_limit',
+      { p_identifier_hash: adminHash, p_scope: 'admin', p_max_requests: 60, p_window_seconds: 3600 },
+    );
+    if (rlErr || !rl) {
       return jsonResponse({ success: false, error: 'rate_limit_unavailable' }, 503, origin);
     }
-    if (rlAdminAllowed === false) {
+    if ((rl as any).allowed === false) {
       return jsonResponse({ success: false, error: 'rate_limited' }, 429, origin);
     }
   }
