@@ -111,7 +111,7 @@ export function ReportResourceButton({ resourceId, lang }: Props) {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" closeLabel={T.close[lang]}>
           <DialogHeader>
             <DialogTitle>{T.title[lang]}</DialogTitle>
             <DialogDescription>{T.description[lang]}</DialogDescription>
