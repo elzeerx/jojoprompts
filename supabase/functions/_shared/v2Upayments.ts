@@ -459,6 +459,11 @@ export function extractChargeFields(json: Record<string, unknown>): ChargeExtrac
 // v2_settle_verified_upayments_payment result allowlists.
 const PAY_CAPTURED = new Set(["CAPTURED","SUCCESS","PAID"]);
 const PAY_FAILED = new Set(["FAILED","DECLINED","ERROR","REJECTED"]);
+// Official UPayments terminal "unsuccessful" aliases returned via cancelUrl
+// (e.g. `result=NOT CAPTURED`). Both space and underscore variants documented.
+// Mapped to the canonical DB-allowlisted "FAILED" so downstream RPCs
+// (v2_mark_verified_payment_failure) accept the stored p_result.
+const PAY_FAILED_ALIASES = new Set(["NOT CAPTURED","NOT_CAPTURED"]);
 const PAY_CANCELLED = new Set(["CANCELLED","CANCELED","USER_CANCELLED","VOIDED"]);
 const PAY_PENDING = new Set(["PENDING","INITIATED","PROCESSING","AUTHORIZED","IN_PROGRESS"]);
 
@@ -470,6 +475,7 @@ export function normalizePaymentStatus(
   const n = raw.trim().toUpperCase().slice(0, 64);
   if (PAY_CAPTURED.has(n)) return { verdict: "captured", normalized: n };
   if (PAY_FAILED.has(n)) return { verdict: "failed", normalized: n };
+  if (PAY_FAILED_ALIASES.has(n)) return { verdict: "failed", normalized: "FAILED" };
   if (PAY_CANCELLED.has(n)) return { verdict: "cancelled", normalized: n };
   if (PAY_PENDING.has(n)) return { verdict: "pending", normalized: n };
   return { verdict: "unknown", normalized: n };
