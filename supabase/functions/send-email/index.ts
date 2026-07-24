@@ -177,10 +177,12 @@ export default async function handler(req: Request): Promise<Response> {
     const claims = claimsData?.claims as any;
     if (!claimsError && claims?.sub) {
       const userId = String(claims.sub);
-      const jwtEmail = normalizeEmail(claims.email);
-      // Look up canonical email from auth.users to avoid trusting mutable claims.
-      const { data: userRow } = await supabase.auth.admin.getUserById(userId);
-      const canonicalEmail = normalizeEmail(userRow?.user?.email) ?? jwtEmail ?? '';
+      // Fail closed on canonical identity: never trust JWT email alone.
+      const { data: userRow, error: userErr } = await supabase.auth.admin.getUserById(userId);
+      if (userErr) {
+        return jsonResponse({ success: false, error: 'identity_lookup_unavailable' }, 503, origin);
+      }
+      const canonicalEmail = normalizeEmail(userRow?.user?.email);
       if (!canonicalEmail) {
         return jsonResponse({ success: false, error: 'unauthorized' }, 401, origin);
       }
@@ -245,18 +247,27 @@ export default async function handler(req: Request): Promise<Response> {
     if (!USER_ALLOWED_EMAIL_TYPES.has(email_type)) {
       return jsonResponse({ success: false, error: 'email_type_not_allowed' }, 400, origin);
     }
-    // Bounded per-user rate limit.
+    // Bounded per-user rate limit — fail closed if the limiter is unavailable.
+    let rlUserOk = false;
+    let rlUserAllowed: boolean | null = null;
     try {
-      const { data: rl } = await supabase.rpc('check_rate_limit', {
+      const { data: rl, error: rlErr } = await supabase.rpc('check_rate_limit', {
         p_user_id: caller.userId,
         p_endpoint: 'send-email-user',
         p_max_requests: 10,
         p_window_minutes: 60,
       });
-      if (rl && (rl as any).allowed === false) {
-        return jsonResponse({ success: false, error: 'rate_limited' }, 429, origin);
+      if (!rlErr && rl) {
+        rlUserOk = true;
+        rlUserAllowed = (rl as any).allowed !== false;
       }
-    } catch { /* fail-open on RPC error is worse than silent; treat as allow */ }
+    } catch { /* leave rlUserOk = false */ }
+    if (!rlUserOk) {
+      return jsonResponse({ success: false, error: 'rate_limit_unavailable' }, 503, origin);
+    }
+    if (rlUserAllowed === false) {
+      return jsonResponse({ success: false, error: 'rate_limited' }, 429, origin);
+    }
   } else if (caller.kind === 'admin') {
     // Admins may not submit raw subject/html/text.
     if (subject !== undefined || html !== undefined || text !== undefined || template !== undefined) {
@@ -265,17 +276,26 @@ export default async function handler(req: Request): Promise<Response> {
     if (!template_slug) {
       return jsonResponse({ success: false, error: 'template_slug_required' }, 400, origin);
     }
+    let rlAdminOk = false;
+    let rlAdminAllowed: boolean | null = null;
     try {
-      const { data: rl } = await supabase.rpc('check_rate_limit', {
+      const { data: rl, error: rlErr } = await supabase.rpc('check_rate_limit', {
         p_user_id: caller.userId,
         p_endpoint: 'send-email-admin',
         p_max_requests: 60,
         p_window_minutes: 60,
       });
-      if (rl && (rl as any).allowed === false) {
-        return jsonResponse({ success: false, error: 'rate_limited' }, 429, origin);
+      if (!rlErr && rl) {
+        rlAdminOk = true;
+        rlAdminAllowed = (rl as any).allowed !== false;
       }
-    } catch { /* ignore */ }
+    } catch { /* leave rlAdminOk = false */ }
+    if (!rlAdminOk) {
+      return jsonResponse({ success: false, error: 'rate_limit_unavailable' }, 503, origin);
+    }
+    if (rlAdminAllowed === false) {
+      return jsonResponse({ success: false, error: 'rate_limited' }, 429, origin);
+    }
   }
   // service: no per-caller rate limit; unrestricted.
 
