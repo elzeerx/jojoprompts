@@ -37,6 +37,8 @@ import {
   statusLabel,
   statusTone,
 } from "./scanHelpers";
+import { evaluateQueueGuard } from "./queueGuard";
+import { useVersionPendingChildProbe } from "./useVersionPendingChildProbe";
 
 interface Props {
   versionId: string | null;
@@ -54,18 +56,27 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
   const queueMutation = useQueueScan();
   const refreshMutation = useRefreshScan();
 
-  // Latest scan drives queue admission. Ordering matches admin RPC (created_at
-  // desc). Queue is allowed only for unscanned or failed latest states, when
-  // provider is ready, files exist, and there is no pending aggregate/child.
+  // Server admission is authoritative. The frontend also mirrors the guard so
+  // that Queue stays visibly disabled while any scan for the version has a
+  // pending child item — even when the aggregate is terminal
+  // (failed/suspicious/malicious). The probe uses only the safe admin RPC.
   const scans = detail?.scans ?? [];
   const latestScan = scans[0] ?? null;
-  const latestStatus = latestScan?.status ?? null;
+  const latestStatus = (latestScan?.status ?? null) as PackageScanState | null;
   const hasPendingAggregate = scans.some((s) => s.status === "pending");
   const hasFiles = (detail?.files.length ?? 0) > 0;
-  const queueEligibleState =
-    !latestStatus || latestStatus === "failed";
-  const canQueue =
-    ready && hasFiles && queueEligibleState && !hasPendingAggregate;
+
+  const probe = useVersionPendingChildProbe(scans);
+  const guard = evaluateQueueGuard({
+    providerReady: ready,
+    hasFiles,
+    latestScanStatus: latestStatus,
+    hasPendingAggregate,
+    hasPendingChild: probe.hasPendingChild,
+    pendingChildProbeLoading: probe.isLoading,
+  });
+  const canQueue = guard.canQueue;
+
 
 
   const handleQueue = async () => {

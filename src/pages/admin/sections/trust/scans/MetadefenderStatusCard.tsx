@@ -85,40 +85,56 @@ export default function MetadefenderStatusCard() {
   const copy = reasonCopy(readiness.reason);
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <Icon ready={readiness.ready} configured={readiness.configured} />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold">MetaDefender Cloud</span>
-                <Badge variant={tone(readiness)}>
+        <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="shrink-0">
+              <Icon
+                ready={readiness.ready}
+                configured={readiness.configured}
+              />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <span className="font-semibold break-words">
+                  MetaDefender Cloud
+                </span>
+                <Badge variant={tone(readiness)} className="break-words">
                   {readiness.ready
                     ? "Ready"
                     : readiness.configured
                     ? "Attention"
                     : "Not configured"}
                 </Badge>
-                <Badge variant="outline">Private Processing required</Badge>
-                <Badge variant="outline">25 MB minimum</Badge>
+                <Badge variant="outline" className="break-words">
+                  Private Processing required
+                </Badge>
+                <Badge variant="outline" className="break-words">
+                  25 MB minimum
+                </Badge>
               </div>
-              <div className="mt-1 text-sm font-medium">{copy.title}</div>
-              <p className="mt-1 text-sm text-muted-foreground">{copy.hint}</p>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span>
-                  License:{" "}
-                  {readiness.license_ready ? "paid" : "—"}
+              <div className="text-sm font-medium break-words">
+                {copy.title}
+              </div>
+              <p className="text-sm text-muted-foreground break-words">
+                {copy.hint}
+              </p>
+              <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1">
+                <span className="break-words">
+                  License: {readiness.license_ready ? "paid" : "—"}
                 </span>
-                <span>
+                <span className="break-words">
                   Max upload:{" "}
                   {readiness.max_upload_mb != null
                     ? `${readiness.max_upload_mb} MB`
                     : "—"}
                 </span>
-                <span>
+                <span className="break-words">
                   Private Scanning:{" "}
-                  {readiness.private_scan_enforced ? "enforced" : "not enforced"}
+                  {readiness.private_scan_enforced
+                    ? "enforced"
+                    : "not enforced"}
                 </span>
               </div>
             </div>
@@ -137,7 +153,7 @@ export default function MetadefenderStatusCard() {
           </Button>
         </div>
         {!readiness.ready && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground break-words">
             Scanning actions are disabled until the checks above pass. No scan
             will run and no file will leave storage.
           </p>
@@ -146,3 +162,4 @@ export default function MetadefenderStatusCard() {
     </Card>
   );
 }
+
