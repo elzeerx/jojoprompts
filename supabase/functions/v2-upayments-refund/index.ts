@@ -127,12 +127,14 @@ Deno.serve(async (req) => {
     }
     const amountFils = Number(cl.amount_fils);
     const amountDecimal = filsToKwdDecimal(amountFils);
+    const amountNumber = filsToKwdNumber(amountFils);
     const reference = localRefundReference(refundId);
 
-    // Documented body — no order_id/amount/currency/reason, no dummy customer.
+    // Documented body — totalPrice MUST be a JSON number (float), not a string.
+    // UPayments returns HTTP 422 for stringified amounts.
     const providerBody: Record<string, unknown> = {
       orderId: originalProviderOrderId,
-      totalPrice: amountDecimal,
+      totalPrice: amountNumber,
       reference,
     };
     if (create.reason && create.reason.trim().length > 0) {
