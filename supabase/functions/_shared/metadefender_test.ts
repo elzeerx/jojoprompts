@@ -7,7 +7,11 @@ import {
   aggregateItemStatuses,
   bytesEqualConstantTime,
   constantTimeEqual,
+  decideQueueAllowed,
+  decideReadinessPersistence,
+  decideRefreshAllowed,
   evaluateReadiness,
+  MAX_ITEM_ATTEMPTS,
   mapResultCode,
   nextPollDelayMs,
   normalizeHexChecksum,
@@ -16,7 +20,10 @@ import {
   sanitizeErrorMessage,
   sanitizeFileName,
   sha256Hex,
+  shouldStopForAttempts,
+  validateIntegrityMetadata,
 } from "./metadefender.ts";
+
 
 // -------------------------- mapResultCode --------------------------
 
@@ -389,4 +396,218 @@ Deno.test("sanitizeFileName: strips path and unsafe chars", () => {
   assertEquals(sanitizeFileName("../../etc/passwd"), "passwd");
   assertEquals(sanitizeFileName("weird name!@#.zip"), "weird_name___.zip");
   assertEquals(sanitizeFileName(""), "file");
+});
+
+// ------------------------- readiness persistence decision -------------------------
+
+Deno.test("decideReadinessPersistence: ok -> proceed", () => {
+  assertEquals(decideReadinessPersistence("ok"), "proceed");
+});
+
+Deno.test("decideReadinessPersistence: provider_unreachable -> retry", () => {
+  assertEquals(decideReadinessPersistence("provider_unreachable"), "retry");
+});
+
+Deno.test("decideReadinessPersistence: license/privacy/auth reasons -> fail_now", () => {
+  const reasons = [
+    "no_api_key",
+    "no_worker_secret",
+    "provider_unauthorized",
+    "not_paid_account",
+    "upload_size_too_small",
+    "no_scan_engines",
+    "private_scan_not_enforced",
+  ] as const;
+  for (const r of reasons) {
+    assertEquals(decideReadinessPersistence(r), "fail_now", `reason ${r}`);
+  }
+});
+
+// ------------------------- mandatory integrity metadata -------------------------
+
+Deno.test("validateIntegrityMetadata: happy path 64-hex checksum + integer size", () => {
+  const hex = "a".repeat(64);
+  const r = validateIntegrityMetadata({ size_bytes: 100, checksum_sha256: hex });
+  assert(r.ok);
+  if (r.ok) {
+    assertEquals(r.size, 100);
+    assertEquals(r.checksumHex, hex);
+  }
+});
+
+Deno.test("validateIntegrityMetadata: both missing", () => {
+  const r = validateIntegrityMetadata({ size_bytes: null, checksum_sha256: null });
+  assertStrictEquals(r.ok, false);
+  if (!r.ok) assertEquals(r.reason, "integrity_metadata_missing");
+});
+
+Deno.test("validateIntegrityMetadata: size missing", () => {
+  const r = validateIntegrityMetadata({
+    size_bytes: null,
+    checksum_sha256: "a".repeat(64),
+  });
+  assertStrictEquals(r.ok, false);
+  if (!r.ok) assertEquals(r.reason, "integrity_metadata_missing");
+});
+
+Deno.test("validateIntegrityMetadata: checksum missing", () => {
+  const r = validateIntegrityMetadata({ size_bytes: 10, checksum_sha256: null });
+  assertStrictEquals(r.ok, false);
+  if (!r.ok) assertEquals(r.reason, "integrity_metadata_missing");
+});
+
+Deno.test("validateIntegrityMetadata: negative or non-integer size invalid", () => {
+  const hex = "a".repeat(64);
+  const neg = validateIntegrityMetadata({ size_bytes: -1, checksum_sha256: hex });
+  assertStrictEquals(neg.ok, false);
+  if (!neg.ok) assertEquals(neg.reason, "integrity_size_invalid");
+  const frac = validateIntegrityMetadata({ size_bytes: 1.5, checksum_sha256: hex });
+  assertStrictEquals(frac.ok, false);
+  if (!frac.ok) assertEquals(frac.reason, "integrity_size_invalid");
+});
+
+Deno.test("validateIntegrityMetadata: NaN/Infinity size invalid", () => {
+  const hex = "a".repeat(64);
+  const nan = validateIntegrityMetadata({ size_bytes: Number.NaN, checksum_sha256: hex });
+  assertStrictEquals(nan.ok, false);
+  if (!nan.ok) assertEquals(nan.reason, "integrity_size_invalid");
+});
+
+Deno.test("validateIntegrityMetadata: checksum wrong length rejected", () => {
+  const short = validateIntegrityMetadata({ size_bytes: 1, checksum_sha256: "abcd" });
+  assertStrictEquals(short.ok, false);
+  if (!short.ok) assertEquals(short.reason, "integrity_checksum_invalid");
+  const long = validateIntegrityMetadata({ size_bytes: 1, checksum_sha256: "a".repeat(65) });
+  assertStrictEquals(long.ok, false);
+  if (!long.ok) assertEquals(long.reason, "integrity_checksum_invalid");
+});
+
+Deno.test("validateIntegrityMetadata: checksum non-hex rejected", () => {
+  const r = validateIntegrityMetadata({
+    size_bytes: 1,
+    checksum_sha256: "z".repeat(64),
+  });
+  assertStrictEquals(r.ok, false);
+  if (!r.ok) assertEquals(r.reason, "integrity_checksum_invalid");
+});
+
+Deno.test("validateIntegrityMetadata: SHA256: prefix accepted", () => {
+  const hex = "b".repeat(64);
+  const r = validateIntegrityMetadata({
+    size_bytes: 5,
+    checksum_sha256: `SHA256:${hex.toUpperCase()}`,
+  });
+  assert(r.ok);
+  if (r.ok) assertEquals(r.checksumHex, hex);
+});
+
+// ------------------------- attempt cutoff (>=) -------------------------
+
+Deno.test("shouldStopForAttempts: strict >= MAX_ITEM_ATTEMPTS", () => {
+  assertStrictEquals(shouldStopForAttempts(MAX_ITEM_ATTEMPTS - 1), false);
+  assertStrictEquals(shouldStopForAttempts(MAX_ITEM_ATTEMPTS), true);
+  assertStrictEquals(shouldStopForAttempts(MAX_ITEM_ATTEMPTS + 1), true);
+});
+
+Deno.test("shouldStopForAttempts: 0 and 1 do not stop", () => {
+  assertStrictEquals(shouldStopForAttempts(0), false);
+  assertStrictEquals(shouldStopForAttempts(1), false);
+});
+
+// ------------------------- queue admission -------------------------
+
+Deno.test("decideQueueAllowed: unscanned + ready + files -> allow", () => {
+  const d = decideQueueAllowed({
+    latestScanStatus: null,
+    hasAnyPendingChild: false,
+    hasFiles: true,
+    providerReady: true,
+  });
+  assertStrictEquals(d.allow, true);
+});
+
+Deno.test("decideQueueAllowed: failed latest -> allow", () => {
+  const d = decideQueueAllowed({
+    latestScanStatus: "failed",
+    hasAnyPendingChild: false,
+    hasFiles: true,
+    providerReady: true,
+  });
+  assertStrictEquals(d.allow, true);
+});
+
+Deno.test("decideQueueAllowed: clean/suspicious/malicious latest -> already_clean", () => {
+  for (const s of ["clean", "suspicious", "malicious"] as const) {
+    const d = decideQueueAllowed({
+      latestScanStatus: s,
+      hasAnyPendingChild: false,
+      hasFiles: true,
+      providerReady: true,
+    });
+    assertStrictEquals(d.allow, false);
+    if (!d.allow) assertEquals(d.reason, "already_clean", `state ${s}`);
+  }
+});
+
+Deno.test("decideQueueAllowed: pending latest -> pending_exists", () => {
+  const d = decideQueueAllowed({
+    latestScanStatus: "pending",
+    hasAnyPendingChild: false,
+    hasFiles: true,
+    providerReady: true,
+  });
+  assertStrictEquals(d.allow, false);
+  if (!d.allow) assertEquals(d.reason, "pending_exists");
+});
+
+Deno.test("decideQueueAllowed: pending child under terminal aggregate blocks queue", () => {
+  const d = decideQueueAllowed({
+    latestScanStatus: "malicious",
+    hasAnyPendingChild: true,
+    hasFiles: true,
+    providerReady: true,
+  });
+  assertStrictEquals(d.allow, false);
+  if (!d.allow) assertEquals(d.reason, "pending_exists");
+});
+
+Deno.test("decideQueueAllowed: not ready blocks first (no_files still hidden)", () => {
+  const d = decideQueueAllowed({
+    latestScanStatus: null,
+    hasAnyPendingChild: false,
+    hasFiles: false,
+    providerReady: false,
+  });
+  assertStrictEquals(d.allow, false);
+  if (!d.allow) assertEquals(d.reason, "not_ready");
+});
+
+Deno.test("decideQueueAllowed: no files when ready -> no_files", () => {
+  const d = decideQueueAllowed({
+    latestScanStatus: null,
+    hasAnyPendingChild: false,
+    hasFiles: false,
+    providerReady: true,
+  });
+  assertStrictEquals(d.allow, false);
+  if (!d.allow) assertEquals(d.reason, "no_files");
+});
+
+// ------------------------- refresh admission -------------------------
+
+Deno.test("decideRefreshAllowed: scan missing -> scan_not_found", () => {
+  const d = decideRefreshAllowed({ scanExists: false, pendingItemCount: 5 });
+  assertStrictEquals(d.allow, false);
+  if (!d.allow) assertEquals(d.reason, "scan_not_found");
+});
+
+Deno.test("decideRefreshAllowed: pending child under terminal aggregate is refreshable", () => {
+  const d = decideRefreshAllowed({ scanExists: true, pendingItemCount: 1 });
+  assertStrictEquals(d.allow, true);
+});
+
+Deno.test("decideRefreshAllowed: zero pending children -> scan_not_pending", () => {
+  const d = decideRefreshAllowed({ scanExists: true, pendingItemCount: 0 });
+  assertStrictEquals(d.allow, false);
+  if (!d.allow) assertEquals(d.reason, "scan_not_pending");
 });

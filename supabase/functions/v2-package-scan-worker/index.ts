@@ -14,15 +14,17 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   bytesEqualConstantTime,
   constantTimeEqual,
+  decideReadinessPersistence,
   MAX_ITEM_ATTEMPTS,
   METADEFENDER_BASE,
   nextPollDelayMs,
-  normalizeHexChecksum,
   normalizeProviderResponse,
   probeMetadefenderReadiness,
   RESOURCE_PACKAGES_BUCKET,
   sanitizeFileName,
   sha256Hex,
+  shouldStopForAttempts,
+  validateIntegrityMetadata,
 } from "../_shared/metadefender.ts";
 
 const UPLOAD_TIMEOUT_MS = 60_000;
@@ -87,6 +89,31 @@ async function retryItem(supabase: any, itemId: string, attempt: number, reason:
   });
 }
 
+// Persist readiness state across all pending items for a scan WITHOUT any
+// storage/provider I/O. Called before any file work when the shared readiness
+// probe fails. Uses the same apply RPC so per-item precedence & aggregate
+// recompute remain the single source of truth.
+// deno-lint-ignore no-explicit-any
+async function persistReadinessOutcome(
+  supabase: any,
+  scanId: string,
+  decision: "fail_now" | "retry",
+  reasonSuffix: string,
+): Promise<void> {
+  const { data: pending } = await supabase
+    .from("package_scan_items")
+    .select("id, attempt_count")
+    .eq("scan_id", scanId)
+    .eq("status", "pending");
+  for (const item of (pending ?? []) as Array<{ id: string; attempt_count: number | null }>) {
+    if (decision === "fail_now") {
+      await failItem(supabase, item.id, `provider_not_ready_${reasonSuffix}`);
+    } else {
+      await retryItem(supabase, item.id, item.attempt_count ?? 0, "provider_unreachable");
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return fail("method_not_allowed", 405);
 
@@ -95,9 +122,6 @@ Deno.serve(async (req) => {
   if (!expected || !constantTimeEqual(provided, expected)) {
     return fail("unauthorized", 401);
   }
-
-  const apiKey = Deno.env.get("METADEFENDER_API_KEY") ?? "";
-  if (!apiKey) return fail("no_api_key", 412);
 
   let payload: Record<string, unknown> = {};
   try {
@@ -108,17 +132,32 @@ Deno.serve(async (req) => {
   const scanId = String(payload.scan_id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(scanId)) return fail("invalid_scan_id", 400);
 
-  // Fail closed before ANY storage/provider I/O if provider isn't fully ready.
-  const readiness = await probeMetadefenderReadiness(apiKey, expected);
-  if (!readiness.ready) {
-    // Do not attempt any upload/poll. Return safe reason for observability.
-    return fail(`not_ready:${readiness.reason}`, 412);
-  }
-
+  // Initialize the service client BEFORE readiness handling so we can persist
+  // a safe state for pending items even when API key/readiness is bad.
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  const apiKey = Deno.env.get("METADEFENDER_API_KEY") ?? "";
+
+  // Missing API key: persist fail_now on all pending items and return 412.
+  if (!apiKey) {
+    await persistReadinessOutcome(supabase, scanId, "fail_now", "no_api_key");
+    return fail("not_ready:no_api_key", 412);
+  }
+
+  // Probe readiness. Never leak provider text: readiness.reason is enum-safe.
+  const readiness = await probeMetadefenderReadiness(apiKey, expected);
+  if (!readiness.ready) {
+    const decision = decideReadinessPersistence(readiness.reason);
+    if (decision === "fail_now") {
+      await persistReadinessOutcome(supabase, scanId, "fail_now", readiness.reason);
+    } else if (decision === "retry") {
+      await persistReadinessOutcome(supabase, scanId, "retry", readiness.reason);
+    }
+    return fail(`not_ready:${readiness.reason}`, 412);
+  }
 
   let workDone = 0;
 
@@ -133,7 +172,8 @@ Deno.serve(async (req) => {
     if (workDone >= MAX_WORK_PER_INVOCATION) break;
     workDone++;
 
-    if (claim.attempt_count > MAX_ITEM_ATTEMPTS) {
+    // >= after the claim increment: stop provider I/O at the configured max.
+    if (shouldStopForAttempts(claim.attempt_count)) {
       await failItem(supabase, claim.item_id, "max_attempts");
       continue;
     }
@@ -156,10 +196,15 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    const expectedSize = (file as { size_bytes: number | null }).size_bytes;
-    const expectedChecksum = normalizeHexChecksum(
-      (file as { checksum_sha256: string | null }).checksum_sha256,
-    );
+    // Mandatory integrity metadata BEFORE any storage download.
+    const integrity = validateIntegrityMetadata({
+      size_bytes: (file as { size_bytes: number | null }).size_bytes,
+      checksum_sha256: (file as { checksum_sha256: string | null }).checksum_sha256,
+    });
+    if (!integrity.ok) {
+      await failItem(supabase, claim.item_id, integrity.reason);
+      continue;
+    }
 
     const path = (file as { storage_path: string }).storage_path;
     const { data: blob, error: dlErr } = await supabase.storage
@@ -172,19 +217,20 @@ Deno.serve(async (req) => {
 
     const bytes = new Uint8Array(await blob.arrayBuffer());
 
-    // Size check.
-    if (typeof expectedSize === "number" && bytes.length !== expectedSize) {
+    // Exact size verification against required metadata.
+    if (bytes.length !== integrity.size) {
       await failItem(supabase, claim.item_id, "size_mismatch");
       continue;
     }
 
-    // Checksum check (constant-time compare of raw digest bytes).
-    if (expectedChecksum) {
+    // Constant-time SHA-256 comparison against required metadata.
+    {
       const actualHex = await sha256Hex(bytes);
+      const expectedHex = integrity.checksumHex;
       const a = new Uint8Array(actualHex.length / 2);
-      const b = new Uint8Array(expectedChecksum.length / 2);
+      const b = new Uint8Array(expectedHex.length / 2);
       for (let i = 0; i < a.length; i++) a[i] = parseInt(actualHex.substr(i * 2, 2), 16);
-      for (let i = 0; i < b.length; i++) b[i] = parseInt(expectedChecksum.substr(i * 2, 2), 16);
+      for (let i = 0; i < b.length; i++) b[i] = parseInt(expectedHex.substr(i * 2, 2), 16);
       if (!bytesEqualConstantTime(a, b)) {
         await failItem(supabase, claim.item_id, "checksum_mismatch");
         continue;
@@ -251,7 +297,7 @@ Deno.serve(async (req) => {
     if (workDone >= MAX_WORK_PER_INVOCATION * 2) break;
     workDone++;
 
-    if (it.attempt_count > MAX_ITEM_ATTEMPTS) {
+    if (shouldStopForAttempts(it.attempt_count)) {
       await failItem(supabase, it.item_id, "max_attempts");
       continue;
     }

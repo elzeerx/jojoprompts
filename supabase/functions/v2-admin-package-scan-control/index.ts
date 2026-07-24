@@ -16,7 +16,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
+  decideQueueAllowed,
+  decideRefreshAllowed,
   evaluateReadiness,
+  type NormalizedStatus,
   probeMetadefenderReadiness,
   SCANNER_NAME,
   type ReadinessResult,
@@ -132,22 +135,71 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "not_ready", readiness }, 412);
     }
 
-    // Preflight: at least one file, no pending run, not all-clean already.
+    // Preflight: files present.
     const { data: files, error: filesErr } = await auth.supabase
       .from("resource_files")
       .select("id")
       .eq("resource_version_id", versionId);
     if (filesErr) return err("db_error", 500);
-    if (!files || files.length === 0) return err("no_files", 412);
+    const hasFiles = !!(files && files.length > 0);
 
-    const { data: existingPending } = await auth.supabase
+    // Latest scan for admission gates.
+    const { data: latestScan, error: latestErr } = await auth.supabase
+      .from("package_scans")
+      .select("id, status")
+      .eq("resource_version_id", versionId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestErr) return err("db_error", 500);
+
+    // Pending child items across ANY scan for this version. This complements
+    // the existing partial index without a DB change and prevents queueing
+    // when aggregate has been driven terminal but child work remains.
+    const scanIds =
+      latestScan && (latestScan as { id: string }).id ? [(latestScan as { id: string }).id] : [];
+    // Widen the scan id list to include every scan of this version, so
+    // stragglers (pending items under a terminal aggregate) are caught too.
+    const { data: allScans, error: allScansErr } = await auth.supabase
       .from("package_scans")
       .select("id")
-      .eq("resource_version_id", versionId)
-      .eq("status", "pending")
-      .limit(1);
-    if (existingPending && existingPending.length > 0) {
-      return err("pending_exists", 409);
+      .eq("resource_version_id", versionId);
+    if (allScansErr) return err("db_error", 500);
+    const allScanIds = (allScans ?? []).map((s: { id: string }) => s.id);
+    let hasAnyPendingChild = false;
+    if (allScanIds.length > 0) {
+      const { data: pendingItems, error: pendingErr } = await auth.supabase
+        .from("package_scan_items")
+        .select("id", { count: "exact", head: true })
+        .in("scan_id", allScanIds.length > 0 ? allScanIds : scanIds)
+        .eq("status", "pending")
+        .limit(1);
+      if (pendingErr) return err("db_error", 500);
+      hasAnyPendingChild = (pendingItems?.length ?? 0) > 0;
+      // count "head" returns count via response; fall back to explicit probe.
+      if (!hasAnyPendingChild) {
+        const probe = await auth.supabase
+          .from("package_scan_items")
+          .select("id")
+          .in("scan_id", allScanIds)
+          .eq("status", "pending")
+          .limit(1);
+        hasAnyPendingChild = (probe.data?.length ?? 0) > 0;
+      }
+    }
+
+    const decision = decideQueueAllowed({
+      latestScanStatus: (latestScan?.status as NormalizedStatus | undefined) ?? null,
+      hasAnyPendingChild,
+      hasFiles,
+      providerReady: readiness.ready,
+    });
+    if (!decision.allow) {
+      const status =
+        decision.reason === "no_files" ? 412
+        : decision.reason === "not_ready" ? 412
+        : 409;
+      return err(decision.reason, status);
     }
 
     const { data: scanId, error: rpcErr } = await auth.supabase.rpc(
@@ -183,22 +235,37 @@ Deno.serve(async (req) => {
     if (!/^[0-9a-f-]{36}$/i.test(scanId)) return err("invalid_scan_id", 400);
     if (!apiKey || !workerSecret) return err("not_configured", 412);
 
-    // Full readiness re-validation before any worker work.
     const readiness = await probeProvider(apiKey);
     if (!readiness.ready) {
       return json({ ok: false, error: "not_ready", readiness }, 412);
     }
 
-    // Verify the scan exists and is pending.
+    // Verify existence.
     const { data: scan, error: scanErr } = await auth.supabase
       .from("package_scans")
-      .select("id, status")
+      .select("id")
       .eq("id", scanId)
       .maybeSingle();
     if (scanErr) return err("db_error", 500);
-    if (!scan) return err("scan_not_found", 404);
-    if ((scan as { status: string }).status !== "pending") {
-      return err("scan_not_pending", 409);
+
+    // Recoverable pending items? (Independent of aggregate status.)
+    let pendingCount = 0;
+    if (scan) {
+      const { data: pending, error: pendingErr } = await auth.supabase
+        .from("package_scan_items")
+        .select("id")
+        .eq("scan_id", scanId)
+        .eq("status", "pending");
+      if (pendingErr) return err("db_error", 500);
+      pendingCount = pending?.length ?? 0;
+    }
+
+    const decision = decideRefreshAllowed({
+      scanExists: !!scan,
+      pendingItemCount: pendingCount,
+    });
+    if (!decision.allow) {
+      return err(decision.reason, decision.reason === "scan_not_found" ? 404 : 409);
     }
 
     // deno-lint-ignore no-explicit-any

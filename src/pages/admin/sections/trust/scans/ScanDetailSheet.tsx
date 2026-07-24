@@ -54,9 +54,19 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
   const queueMutation = useQueueScan();
   const refreshMutation = useRefreshScan();
 
-  const pendingScan = (detail?.scans ?? []).find((s) => s.status === "pending") ?? null;
+  // Latest scan drives queue admission. Ordering matches admin RPC (created_at
+  // desc). Queue is allowed only for unscanned or failed latest states, when
+  // provider is ready, files exist, and there is no pending aggregate/child.
+  const scans = detail?.scans ?? [];
+  const latestScan = scans[0] ?? null;
+  const latestStatus = latestScan?.status ?? null;
+  const hasPendingAggregate = scans.some((s) => s.status === "pending");
   const hasFiles = (detail?.files.length ?? 0) > 0;
-  const canQueue = ready && hasFiles && !pendingScan;
+  const queueEligibleState =
+    !latestStatus || latestStatus === "failed";
+  const canQueue =
+    ready && hasFiles && queueEligibleState && !hasPendingAggregate;
+
 
   const handleQueue = async () => {
     if (!versionId) return;
@@ -284,6 +294,12 @@ function ScanCard({
   const counts = details.data?.counts;
   const items = details.data?.items ?? [];
 
+  // Refresh visible when aggregate itself is pending OR the expanded details
+  // report recoverable pending child items (aggregate may be terminal via
+  // precedence even while child items remain pending).
+  const showRefresh =
+    state === "pending" || (open && (counts?.pending ?? 0) > 0);
+
   return (
     <div className="rounded-md border p-3 text-xs space-y-2">
       <div className="flex items-center justify-between gap-2">
@@ -292,7 +308,7 @@ function ScanCard({
           <span className="text-muted-foreground">{scanner || "—"}</span>
         </div>
         <div className="flex items-center gap-2">
-          {state === "pending" && (
+          {showRefresh && (
             <Button
               size="sm"
               variant="outline"
@@ -319,6 +335,7 @@ function ScanCard({
       <div className="text-muted-foreground">
         {formatDateTime(scannedAt)}
       </div>
+
 
       {open && (
         <div className="rounded bg-muted/40 p-2 space-y-2">
