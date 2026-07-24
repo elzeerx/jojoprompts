@@ -676,6 +676,7 @@ export interface MigrationPreview {
   transactions_upayments: MigrationPreviewUPayments;
   proposed_entitlements: MigrationPreviewEntitlements;
   proposed_lifetime_credit: MigrationPreviewCredits;
+  combined_legacy_credit: MigrationPreviewCombinedCredit;
   anomalies: MigrationPreviewAnomalies;
   grant_contract: MigrationPreviewGrantContract;
   grandfathering_policy: GrandfatheringPolicy;
@@ -685,12 +686,25 @@ export function useMigrationPreview() {
   return useQuery<MigrationPreview>({
     queryKey: ["admin", "v2", "migration-preview"],
     queryFn: async () => {
-      // rpc name not yet in generated types; safe cast.
       const { data, error } = await (supabase as unknown as {
         rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
       }).rpc("v2_admin_migration_preview", {});
       if (error) throw error as Error;
       return data as MigrationPreview;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useMigrationRehearsal() {
+  return useQuery<RehearsalResult>({
+    queryKey: ["admin", "v2", "migration-rehearsal"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as unknown as {
+        rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+      }).rpc("v2_admin_migration_rehearsal", {});
+      if (error) throw error as Error;
+      return data as RehearsalResult;
     },
     staleTime: 60_000,
   });
