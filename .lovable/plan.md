@@ -9,7 +9,7 @@ Remaining placeholders in `src/pages/admin/layout/adminSectionElements.tsx`:
 |---|---|---|
 | `/admin/publishing/drafts` | `EmptyRouteState` redirect to Catalog filter | Low — Catalog + ResourcePublisher already cover the workflow |
 | `/admin/publishing/review` | `EmptyRouteState` redirect to Catalog filter | Low — same |
-| `/admin/system/audit` | `AuditLogPage.tsx` is a static preview shell (header comment: "placeholder"), renders zero data even though `public.activity_events` is populated by ~15+ V2 migrations + `resource-download` edge function | **High** — trust/compliance surface, sole aggregator for report transitions, refunds, scans, discounts, downloads, order events |
+| `/admin/trust/admin-activity` | `AuditLogPage.tsx` is a static preview shell (header comment: "placeholder"), renders zero data even though `public.activity_events` is populated by ~15+ V2 migrations + `resource-download` edge function | **High** — trust/compliance surface, sole aggregator for report transitions, refunds, scans, discounts, downloads, order events |
 | `/admin/settings/{payments,email,storage,integrations,roles}` | `EmptyRouteState` | Low — configuration surfaces, not launch-blocking |
 
 ### Highest-priority unfinished slice
@@ -50,7 +50,7 @@ Remaining placeholders in `src/pages/admin/layout/adminSectionElements.tsx`:
    - `_search` matches case-insensitively against `action` and `entity_type` only (never against `metadata`, to avoid full-jsonb scans).
    - `_limit` is capped by `_v2_bounded_limit`; `total_count` is stable across pages.
 4. **UI smoke** (Playwright, admin session, behind existing launch lock, viewport 390×844 and 1280×800):
-   - `/admin/system/audit` renders a non-empty table (seed one `activity_events` row via existing writer, e.g. transition a test report through `v2_admin_update_report_status`).
+   - `/admin/trust/admin-activity` renders a non-empty table (seed one `activity_events` row via existing writer, e.g. transition a test report through `v2_admin_update_report_status`).
    - Filter by `action = report.status_changed` narrows to that row; clearing filters restores the full list.
    - Opening the detail sheet shows the raw metadata and a working deep link to the source report.
    - No horizontal scroll at 390px; all interactive targets ≥44px.

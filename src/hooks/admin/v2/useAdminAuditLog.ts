@@ -44,6 +44,46 @@ export const adminAuditKeys = {
   detail: (id: string | null) => ["admin", "v2", "audit", "detail", id] as const,
 };
 
+/**
+ * Normalize an audit datetime filter input to a UTC ISO string.
+ *
+ * The `<input type="datetime-local">` element yields values like
+ * `2026-07-24T14:30` with NO timezone suffix. Sending that raw to a
+ * `timestamptz` RPC parameter causes Postgres to interpret it in the
+ * server timezone rather than the admin's local wall-clock time.
+ *
+ * Rules:
+ * - null / empty / whitespace -> null (preserve unset filters).
+ * - Value already carrying an explicit offset ("Z" or "+HH:MM") is
+ *   parsed as-is and re-emitted as UTC ISO.
+ * - Naive `YYYY-MM-DDTHH:MM[:SS[.fff]]` is treated as LOCAL time and
+ *   converted to UTC ISO using the browser's timezone offset.
+ * - Unparseable values become null (fail closed — no filter applied).
+ */
+export function normalizeAuditDatetimeToUtcIso(
+  value?: string | null,
+): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const hasExplicitOffset = /(Z|[+-]\d{2}:?\d{2})$/.test(trimmed);
+  const naiveLocalRe = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?$/;
+
+  let d: Date;
+  if (hasExplicitOffset) {
+    d = new Date(trimmed);
+  } else if (naiveLocalRe.test(trimmed)) {
+    // `new Date("YYYY-MM-DDTHH:MM")` is spec'd as local time — exactly
+    // what we want, then convert to UTC ISO.
+    d = new Date(trimmed);
+  } else {
+    return null;
+  }
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 /** Serialize hook params into RPC parameters. Exported for tests. */
 export function serializeAuditParams(p: AuditListParams) {
   const emptyToNull = (arr?: string[] | null) =>
@@ -55,8 +95,8 @@ export function serializeAuditParams(p: AuditListParams) {
     p_actor_user_id: p.actorUserId ?? null,
     p_entity_id: p.entityId ?? null,
     p_search: p.search && p.search.trim() ? p.search.trim() : null,
-    p_from: p.from ?? null,
-    p_to: p.to ?? null,
+    p_from: normalizeAuditDatetimeToUtcIso(p.from),
+    p_to: normalizeAuditDatetimeToUtcIso(p.to),
     p_limit: p.limit ?? 50,
     p_offset: p.offset ?? 0,
   };

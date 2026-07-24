@@ -158,23 +158,29 @@ export default function AuditLogPage() {
           </SelectContent>
         </Select>
 
-        <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-6">
-          <label className="text-xs text-muted-foreground shrink-0">From</label>
-          <Input
-            type="datetime-local"
-            value={from}
-            onChange={(e) => updateParam("from", e.target.value || null)}
-            className="min-h-[44px]"
-            aria-label="From"
-          />
-          <label className="text-xs text-muted-foreground shrink-0">To</label>
-          <Input
-            type="datetime-local"
-            value={to}
-            onChange={(e) => updateParam("to", e.target.value || null)}
-            className="min-h-[44px]"
-            aria-label="To"
-          />
+        <div className="sm:col-span-2 lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-0">
+          <div className="flex flex-col gap-1 min-w-0">
+            <label htmlFor="audit-from" className="text-xs text-muted-foreground">From</label>
+            <Input
+              id="audit-from"
+              type="datetime-local"
+              value={from}
+              onChange={(e) => updateParam("from", e.target.value || null)}
+              className="min-h-[44px] min-w-0 w-full"
+              aria-label="From"
+            />
+          </div>
+          <div className="flex flex-col gap-1 min-w-0">
+            <label htmlFor="audit-to" className="text-xs text-muted-foreground">To</label>
+            <Input
+              id="audit-to"
+              type="datetime-local"
+              value={to}
+              onChange={(e) => updateParam("to", e.target.value || null)}
+              className="min-h-[44px] min-w-0 w-full"
+              aria-label="To"
+            />
+          </div>
         </div>
       </div>
 
