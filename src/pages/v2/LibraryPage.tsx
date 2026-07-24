@@ -5,6 +5,7 @@ import { useLibraryState } from "@/hooks/v2/useLibraryState";
 import { useDownloadableFiles, type DownloadableFile } from "@/hooks/v2/useDownloadableFiles";
 import { useResourceDownload } from "@/hooks/v2/useResourceDownload";
 import { useInactiveEntitlements } from "@/hooks/v2/useInactiveEntitlements";
+import { useMyLegacyAccessSummary } from "@/hooks/v2/useMyLegacyAccessSummary";
 import { LifetimeProgress } from "@/components/v2/LifetimeProgress";
 import { LegacyAccessSummary } from "@/components/v2/LegacyAccessSummary";
 import { SeoHead } from "@/components/v2/SeoHead";
@@ -34,7 +35,7 @@ const TABS: Array<{ id: "all" | V2ResourceType; labelKey: keyof typeof V2_COPY.n
   { id: "skill", labelKey: "skills" },
   { id: "automation", labelKey: "automations" },
   { id: "prompt", labelKey: "prompts" },
-  { id: "prompt_pack", labelKey: "prompts" },
+  { id: "prompt_pack", labelKey: "promptPacks" },
   { id: "image_style", labelKey: "imageStyles" },
   { id: "bundle", labelKey: "bundles" },
 ];
@@ -52,6 +53,7 @@ export default function LibraryPage() {
   const { data: library, isLoading, isError, refetch } = useLibraryState();
   const { data: files, isLoading: filesLoading } = useDownloadableFiles();
   const { data: inactive } = useInactiveEntitlements();
+  const { data: legacySummary } = useMyLegacyAccessSummary();
   const download = useResourceDownload();
   const { language, isRTL } = useTranslation();
   const lang: Lang = language === "ar" ? "ar" : "en";
@@ -61,7 +63,8 @@ export default function LibraryPage() {
     document.title = "My Library · JojoPrompts";
   }, []);
 
-  const hasLibrary = !!library?.has_library_access;
+  const hasLegacyLifetime = !!legacySummary?.lifetime;
+  const hasLibrary = !!library?.has_library_access || hasLegacyLifetime;
   const entitledIds = useMemo(() => {
     const ids: string[] = [];
     (library?.entitlements ?? []).forEach((e) => {

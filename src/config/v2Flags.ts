@@ -97,6 +97,7 @@ export const V2_COPY = {
     skills: { en: "Skills", ar: "مهارات" },
     automations: { en: "Automations", ar: "أتمتة" },
     prompts: { en: "Prompts", ar: "برومبتات" },
+    promptPacks: { en: "Prompt Packs", ar: "حزم البرومبتات" },
     imageStyles: { en: "Image Styles", ar: "أنماط الصور" },
     bundles: { en: "Bundles", ar: "حزم" },
     library: { en: "My Library", ar: "مكتبتي" },
