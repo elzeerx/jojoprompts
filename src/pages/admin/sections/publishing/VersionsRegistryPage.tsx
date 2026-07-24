@@ -151,9 +151,11 @@ export default function VersionsRegistryPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Versions</h1>
           <p className="text-sm text-muted-foreground">
-            Read-only registry of resource_versions. Package files and scans are
-            surfaced when present; uploads and re-scans land in a later slice.
+            Read-only registry of resource_versions. Package files can be
+            uploaded from a version's detail sheet; automated scans arrive in
+            the next slice.
           </p>
+
         </div>
         <Button
           variant="outline"
