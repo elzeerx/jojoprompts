@@ -30,6 +30,8 @@ interface Item {
   active_entitlements: Array<{ id: string; scope: string }>;
 }
 
+import { formatRefundableLoadError } from "./refundErrors";
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function makeIdempotencyKey() {
@@ -92,19 +94,29 @@ export function CreateRefundDialog({ open, onOpenChange, presetOrderId }: Props)
   const lookup = async () => {
     setError(null);
     const trimmed = orderInput.trim();
+    if (!trimmed) { setError("Enter an order # or UUID"); return; }
     if (UUID_RE.test(trimmed)) {
-      setOrderId(trimmed);
+      // If the same id is entered again after a failure, force a refetch.
+      if (orderId === trimmed) {
+        void refundable.refetch();
+      } else {
+        setOrderId(trimmed);
+      }
       return;
     }
-    // Try order_number lookup via a tiny narrow select (RLS: admin has read via has_role).
-    // Fallback: use admin orders list search.
+    // Try order_number lookup via admin orders list search (RLS-scoped).
     const { data, error: rpcErr } = await supabase.rpc("v2_admin_list_orders", {
       p_search: trimmed, p_limit: 1, p_offset: 0,
     });
-    if (rpcErr) { setError(rpcErr.message); return; }
+    if (rpcErr) { setError(formatRefundableLoadError(rpcErr)); return; }
     const rows = (data as { rows?: { id: string }[] } | null)?.rows ?? [];
     if (!rows.length) { setError("Order not found"); return; }
-    setOrderId(rows[0].id);
+    const resolvedId = rows[0].id;
+    if (orderId === resolvedId) {
+      void refundable.refetch();
+    } else {
+      setOrderId(resolvedId);
+    }
   };
 
   const validate = (): string | null => {
@@ -175,10 +187,17 @@ export function CreateRefundDialog({ open, onOpenChange, presetOrderId }: Props)
             </div>
           </div>
 
-          {refundable.isLoading && (
-            <div className="space-y-2">
+          {(refundable.isLoading || (refundable.isFetching && !orderData)) && (
+            <div className="space-y-2" aria-live="polite">
               {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
+          )}
+
+          {refundable.isError && !refundable.isFetching && (
+            <Alert variant="destructive">
+              <AlertTitle>Could not load order</AlertTitle>
+              <AlertDescription>{formatRefundableLoadError(refundable.error)}</AlertDescription>
+            </Alert>
           )}
 
           {orderData && (
