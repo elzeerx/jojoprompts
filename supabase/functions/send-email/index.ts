@@ -57,28 +57,8 @@ const USER_ALLOWED_EMAIL_TYPES = new Set<string>([
 // Types that must NEVER be blocked by an unsubscribe entry.
 // Marketing/lifecycle types outside this set (e.g. `welcome`) respect
 // unsubscribe.
-export const TRANSACTIONAL_EMAIL_TYPES = new Set<string>([
-  'email_confirmation',
-  'password_reset',
-  'payment_confirmation',
-  'payment_failed',
-  'account_deleted',
-  'subscription_cancelled',
-]);
-
-// Pure decision helper for the unsubscribe gate. No I/O, safe to unit test.
-// Inputs mirror the destructured `{ data, error }` from the `unsubscribed_emails`
-// lookup plus the email_type. Returns one of four terminal decisions.
-export type UnsubscribeDecision = 'bypass' | 'error_503' | 'blocked' | 'proceed';
-export function decideUnsubscribeAction(
-  emailType: string,
-  lookup: { hasError: boolean; hasRow: boolean },
-): UnsubscribeDecision {
-  if (TRANSACTIONAL_EMAIL_TYPES.has(emailType)) return 'bypass';
-  if (lookup.hasError) return 'error_503';
-  if (lookup.hasRow) return 'blocked';
-  return 'proceed';
-}
+export { TRANSACTIONAL_EMAIL_TYPES, decideUnsubscribeAction } from './unsubscribeDecision.ts';
+import { TRANSACTIONAL_EMAIL_TYPES } from './unsubscribeDecision.ts';
 
 // Legal top-level fields.
 const ALLOWED_TOP_LEVEL_KEYS = [
