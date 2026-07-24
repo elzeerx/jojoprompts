@@ -159,11 +159,14 @@ Deno.serve(async (req) => {
       },
     );
     if (rpcErr || !scanId) {
+      const msg = rpcErr?.message ?? "";
       const code =
-        rpcErr?.message?.includes("pending_exists") ? "pending_exists"
-        : rpcErr?.message?.includes("no_files") ? "no_files"
+        msg.includes("already_clean") ? "already_clean"
+        : msg.includes("pending_exists") ? "pending_exists"
+        : msg.includes("no_files") ? "no_files"
         : "db_error";
-      return err(code, code === "db_error" ? 500 : 409);
+      const status = code === "db_error" ? 500 : (code === "no_files" ? 412 : 409);
+      return err(code, status);
     }
 
     // Fire-and-forget worker kick.
@@ -179,6 +182,24 @@ Deno.serve(async (req) => {
     const scanId = String(payload.scan_id ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(scanId)) return err("invalid_scan_id", 400);
     if (!apiKey || !workerSecret) return err("not_configured", 412);
+
+    // Full readiness re-validation before any worker work.
+    const readiness = await probeProvider(apiKey);
+    if (!readiness.ready) {
+      return json({ ok: false, error: "not_ready", readiness }, 412);
+    }
+
+    // Verify the scan exists and is pending.
+    const { data: scan, error: scanErr } = await auth.supabase
+      .from("package_scans")
+      .select("id, status")
+      .eq("id", scanId)
+      .maybeSingle();
+    if (scanErr) return err("db_error", 500);
+    if (!scan) return err("scan_not_found", 404);
+    if ((scan as { status: string }).status !== "pending") {
+      return err("scan_not_pending", 409);
+    }
 
     // deno-lint-ignore no-explicit-any
     const rt = (globalThis as any).EdgeRuntime;
