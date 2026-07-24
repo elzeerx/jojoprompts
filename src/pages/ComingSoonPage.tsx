@@ -43,11 +43,7 @@ export default function ComingSoonPage() {
   return (
     <main
       dir="ltr"
-      className="relative flex h-[100dvh] w-full flex-col overflow-x-hidden overflow-y-auto bg-[#0B0B0C] text-[#F3EFE6] antialiased lg:overflow-hidden"
-      style={{
-        fontFamily:
-          '"Playfair Display", "Cormorant Garamond", ui-serif, Georgia, "Times New Roman", serif',
-      }}
+      className="font-sans relative flex h-[100dvh] w-full flex-col overflow-x-hidden overflow-y-auto bg-[#0B0B0C] text-[#F3EFE6] antialiased lg:overflow-hidden"
     >
       {/* Subtle grain / vignette overlay — decorative */}
       <div
@@ -87,10 +83,6 @@ export default function ComingSoonPage() {
           <Divider />
           <p
             className="mt-5 text-[15px] leading-relaxed text-[#B8B2A6] sm:text-base"
-            style={{
-              fontFamily:
-                'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            }}
           >
             JojoPrompts is being rebuilt for the next generation of AI — skills,
             automations, prompts, image styles, and more.
@@ -106,14 +98,13 @@ export default function ComingSoonPage() {
         <div dir="rtl" lang="ar" className="max-w-md text-center lg:max-w-sm lg:text-right">
           <h2
             className="text-[clamp(3rem,6vw,5rem)] leading-none text-[#F3EFE6]"
-            style={{ fontFamily: '"Amiri", "Scheherazade New", serif', fontWeight: 500 }}
+            style={{ fontWeight: 500 }}
           >
             قريباً
           </h2>
           <Divider />
           <p
             className="mt-5 text-[15px] leading-loose text-[#B8B2A6] sm:text-base"
-            style={{ fontFamily: '"Amiri", "Noto Naskh Arabic", serif' }}
           >
             نعيد بناء جوجو برومبتس لعصر جديد من مهارات وأتمتة وأدوات الذكاء
             الاصطناعي.
@@ -134,13 +125,7 @@ export default function ComingSoonPage() {
       {/* Footer */}
       <footer className="relative z-10 flex-none pb-5 pt-2 text-center sm:pb-6">
         <DiamondRule />
-        <p
-          className="mt-3 text-xs tracking-wide text-[#8A8578]"
-          style={{
-            fontFamily:
-              'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-          }}
-        >
+        <p className="mt-3 text-xs tracking-wide text-[#8A8578]">
           © 2026 JojoPrompts
         </p>
       </footer>
