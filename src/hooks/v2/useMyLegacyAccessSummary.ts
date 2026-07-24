@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export interface MyLegacyAccessSummary {
   membership_type:
-    | "ultimate" | "premium" | "standard" | "basic" | "mixed"
+    | "ultimate" | "premium" | "standard" | "basic"
     | "standard_expired" | "basic_expired" | "cancelled_lifetime_review" | "none";
   lifetime: boolean;
   included_collection_keys: string[];
@@ -29,13 +29,9 @@ export function useMyLegacyAccessSummary() {
     queryKey: ["v2", "my-legacy-access-summary", user?.id ?? "anon"],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as unknown as (
-        name: string,
-      ) => Promise<{ data: unknown; error: unknown }>)(
-        "v2_my_legacy_access_summary",
-      );
-      if (error) throw error as Error;
-      return (data as MyLegacyAccessSummary) ?? null;
+      const { data, error } = await supabase.rpc("v2_my_legacy_access_summary");
+      if (error) throw error;
+      return (data as unknown as MyLegacyAccessSummary) ?? null;
     },
     staleTime: 60_000,
   });

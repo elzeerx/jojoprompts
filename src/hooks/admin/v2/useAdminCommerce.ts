@@ -489,6 +489,14 @@ export interface MigrationPreviewPayPal {
   zero_amount_count: number;
   missing_subscription_link: number;
   duplicate_provider_reference_groups: number;
+  // Corrective pass — strict verified vs review buckets.
+  positive_completed_rows?: number;
+  verified_rows?: number;
+  unlinked_positive_review_rows?: number;
+  negative_linked_review_rows?: number;
+  verified_users?: number;
+  verified_total_capped_fils?: number;
+  verified_users_capped_at_threshold?: number;
 }
 export interface MigrationPreviewUPayInterp {
   conversion: string;
@@ -547,6 +555,8 @@ export interface MigrationPreviewAnomalies {
   cancelled_lifetime_users: number;
   ambiguous_upayments_amount_rows: number;
   unmatched_legacy_prompts: number;
+  paypal_unlinked_positive_completed_review_rows?: number;
+  paypal_negative_linked_review_rows?: number;
 }
 export interface MigrationPreviewContractRule { rule: string; detail: string }
 export interface MigrationPreviewGrantContract {
@@ -564,6 +574,15 @@ export interface MigrationPreviewPlanCohorts {
   standard_expired_historical_users: number;
   basic_cancelled_review_users: number;
   standard_cancelled_review_users: number;
+  // Corrective pass: raw source-row vs deduplicated unresolved-user visibility.
+  ultimate_cancelled_source_rows?: number;
+  premium_cancelled_source_rows?: number;
+  basic_cancelled_source_rows?: number;
+  standard_cancelled_source_rows?: number;
+  ultimate_cancelled_unresolved_users?: number;
+  premium_cancelled_unresolved_users?: number;
+  basic_cancelled_unresolved_users?: number;
+  standard_cancelled_unresolved_users?: number;
   raw_row_counts_by_tier_status: Array<{
     tier: string; is_lifetime: boolean; status: string; rows: number;
   }>;
