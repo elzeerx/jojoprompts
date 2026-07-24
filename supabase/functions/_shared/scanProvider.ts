@@ -212,15 +212,19 @@ export function mapAdvancedScanBody(body: unknown): MappedScanResult {
   summary.contains_html = bool(b, "ContainsHtml");
 
   const virusesRaw = Array.isArray(b["FoundViruses"]) ? (b["FoundViruses"] as unknown[]) : [];
+  // Bound the number of provider entries we examine at all. `virus_count`
+  // reflects examined entries (even malformed/blank ones) so a non-empty
+  // provider array can never be silently dropped. `virus_names` only holds
+  // sanitized non-empty labels, and raw entries are never persisted.
+  const examined = virusesRaw.slice(0, MAX_VIRUS_NAMES);
   const virusNames: string[] = [];
-  for (const v of virusesRaw) {
-    if (virusNames.length >= MAX_VIRUS_NAMES) break;
+  for (const v of examined) {
     const rec = v && typeof v === "object" ? (v as Record<string, unknown>) : null;
     const name = sanitizeAscii(rec?.["VirusName"], MAX_VIRUS_NAME_LEN);
     if (name) virusNames.push(name);
   }
   summary.virus_names = virusNames;
-  summary.virus_count = virusNames.length;
+  summary.virus_count = examined.length;
 
   const flags: string[] = [];
   for (const f of BLOCKED_RISK_FLAGS) {
@@ -228,14 +232,18 @@ export function mapAdvancedScanBody(body: unknown): MappedScanResult {
   }
   summary.blocked_flags = flags;
 
+  // Fail-closed contradiction: any non-empty FoundViruses array is treated as
+  // malicious regardless of CleanResult. Provider must not be trusted to
+  // reconcile its own contradictory signals.
+  if (examined.length > 0) {
+    return { status: "malicious", summary, transient: false, reason: "virus_found" };
+  }
+
   // Decisions.
   if (clean === true) {
     return { status: "clean", summary, transient: false, reason: "clean" };
   }
   if (clean === false) {
-    if (virusNames.length > 0) {
-      return { status: "malicious", summary, transient: false, reason: "virus_found" };
-    }
     if (flags.length > 0) {
       return { status: "suspicious", summary, transient: false, reason: `blocked:${flags[0]}` };
     }
