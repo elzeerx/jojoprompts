@@ -549,7 +549,9 @@ const SAFE_KEYS = new Set([
   "kind","status","result","reference","merchant_reference","order_id",
   "orderId","track_id","trackId","session_id","sessionId","refund_order_id",
   "refundOrderId","requested_order_id","requestedOrderId",
+  "merchant_requested_order_id","merchantRequestedOrderId",
   "refund_arn","refundArn","amount","currency","http_status",
+  "total_price","totalPrice","currency_type","currencyType",
 ]);
 
 function coerceScalar(v: unknown): unknown {
@@ -564,9 +566,15 @@ export function sanitizeProviderPayload(
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { kind };
   if (typeof httpStatus === "number") out.http_status = httpStatus;
-  const nested = source["data"] && typeof source["data"] === "object" && !Array.isArray(source["data"])
+  const dataObj = source["data"] && typeof source["data"] === "object" && !Array.isArray(source["data"])
     ? source["data"] as Record<string, unknown> : {};
-  const flat = { ...source, ...nested };
+  const txObj = dataObj["transaction"] && typeof dataObj["transaction"] === "object"
+      && !Array.isArray(dataObj["transaction"])
+    ? dataObj["transaction"] as Record<string, unknown> : {};
+  // Merge order: nested transaction wins over data, which wins over top-level.
+  // Only SAFE_KEYS are ever copied out; customer/card/URL/product fields are
+  // dropped even if the provider adds them to any of these layers.
+  const flat = { ...source, ...dataObj, ...txObj };
   for (const k of Object.keys(flat)) {
     if (!SAFE_KEYS.has(k)) continue;
     out[k] = coerceScalar(flat[k]);
