@@ -13,19 +13,17 @@ export function validateTemplateSlug(s: unknown): s is string {
     && s.length <= MAX_TEMPLATE_SLUG;
 }
 
-// Depth is counted from the root object: `{}` = depth 1, `{a:{}}` = 2, etc.
-// Cyclic graphs are rejected by tracking a visited set of composite refs.
+// Depth counts nested object/array levels only; scalars are free.
+// `{}` = 1, `{a:{}}` = 2, `{a:{b:{c:{d:1}}}}` = 4.
 function withinDepthAndAcyclic(root: unknown, maxDepth: number): boolean {
   const seen = new WeakSet<object>();
   const walk = (node: unknown, depth: number): boolean => {
-    if (depth > maxDepth) return false;
     if (node === null) return true;
     if (typeof node !== 'object') {
-      // Scalars must be JSON-safe: reject functions/symbols/bigints implicitly
-      // (typeof filters them out) and NaN/Infinity numbers.
       if (typeof node === 'number' && !Number.isFinite(node)) return false;
       return true;
     }
+    if (depth > maxDepth) return false;
     if (seen.has(node as object)) return false; // cycle
     seen.add(node as object);
     if (Array.isArray(node)) {
