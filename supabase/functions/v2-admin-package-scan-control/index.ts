@@ -22,6 +22,17 @@ import {
   type ReadinessResult,
 } from "../_shared/metadefender.ts";
 
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function err(code: string, status = 400): Response {
+  return json({ ok: false, error: code }, status);
+}
+
 async function probeProvider(apiKey: string): Promise<ReadinessResult> {
   return await probeMetadefenderReadiness(
     apiKey,
