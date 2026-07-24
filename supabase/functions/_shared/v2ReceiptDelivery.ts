@@ -348,7 +348,13 @@ async function loadReceiptOrder(svc: SupabaseClient, orderId: string): Promise<R
   };
 }
 
-/** Write a compact email_logs row scoped to this receipt attempt. */
+/**
+ * Write a compact email_logs row for this receipt attempt.
+ * response_metadata is intentionally minimal: order_id, order_number,
+ * delivery_id, provider_message_id. No HTML, no raw provider payload.
+ * A partial unique index on (response_metadata->>'order_id') guarantees
+ * at most one success row per order; a duplicate insert is swallowed.
+ */
 async function logAttempt(
   svc: SupabaseClient,
   args: {
@@ -357,18 +363,17 @@ async function logAttempt(
     deliveryId: string | null;
     success: boolean;
     providerMessageId?: string | null;
+    errorCode?: string | null;
     errorMessage?: string | null;
   },
 ): Promise<void> {
   try {
-    const meta: Record<string, unknown> = {
-      order_id: args.orderId,
-      delivery_id: args.deliveryId,
-    };
+    const meta: Record<string, unknown> = { order_id: args.orderId };
+    if (args.deliveryId) meta.delivery_id = args.deliveryId;
     if (args.order?.order_number) meta.order_number = args.order.order_number;
     if (args.providerMessageId) meta.provider_message_id = args.providerMessageId;
 
-    await svc.from("email_logs").insert({
+    const { error } = await svc.from("email_logs").insert({
       email_address: args.order?.user_email ?? "unknown@invalid",
       email_type: "v2_order_receipt",
       success: args.success,
@@ -377,9 +382,60 @@ async function logAttempt(
       delivery_status: args.success ? "sent" : "failed",
       response_metadata: meta,
     });
+    // 23505 = unique violation on the success-per-order partial index.
+    if (error && (error as { code?: string }).code !== "23505") {
+      logger.error("email_logs insert failed", { error: error.message });
+    }
   } catch (e) {
-    logger.error("email_logs insert failed", { error: (e as Error)?.message });
+    logger.error("email_logs insert threw", { error: (e as Error)?.message });
   }
+}
+
+/**
+ * Send the rendered receipt via Resend directly, using a stable idempotency
+ * key. Returns the provider message id (may be null) on success, throws on
+ * failure. Transactional receipts must NOT be blocked by marketing
+ * unsubscribe state — no such check is performed here.
+ */
+async function sendReceiptViaResend(
+  order: ReceiptOrder,
+  rendered: { subject: string; html: string; text: string },
+): Promise<string | null> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) throw new Error("resend_api_key_missing");
+  const resend = new Resend(apiKey);
+
+  const payload = {
+    from: RECEIPT_FROM,
+    to: order.user_email,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    reply_to: RECEIPT_REPLY_TO,
+    headers: {
+      "Precedence": "transactional",
+      "Auto-Submitted": "auto-generated",
+      "List-Unsubscribe": "<mailto:unsubscribe@jojoprompts.com>",
+    },
+  };
+  const options = { idempotencyKey: receiptIdempotencyKey(order.order_id) };
+
+  // Resend SDK v2: send(payload, options?) — options carries idempotencyKey.
+  // Cast because older type defs may omit the second arg.
+  const result = await (resend.emails.send as unknown as (
+    p: typeof payload,
+    o: typeof options,
+  ) => Promise<{ data?: { id?: string } | null; error?: { name?: string; message?: string } | null; id?: string }>)(
+    payload,
+    options,
+  );
+
+  if (result?.error) {
+    const name = result.error.name ?? "resend_error";
+    const msg = result.error.message ?? "resend send failed";
+    throw new Error(`${name}: ${msg}`);
+  }
+  return safeProviderMessageId(result?.data?.id ?? result?.id ?? null);
 }
 
 /**
@@ -416,49 +472,50 @@ export function scheduleReceiptDelivery(
         p_error_code: "order_unreadable",
         p_error_message: "order not readable or missing email",
       });
-      await logAttempt(svc, { order: null, orderId, deliveryId, success: false, errorMessage: "order_unreadable" });
+      await logAttempt(svc, {
+        order: null, orderId, deliveryId,
+        success: false, errorCode: "order_unreadable", errorMessage: "order_unreadable",
+      });
       return;
     }
 
-    // 3) Render + send
+    // 3) Render + send via Resend directly (stable idempotency key)
     let providerMsgId: string | null = null;
     try {
       const rendered = renderReceiptHtml(order, siteUrl);
-      const { data: sendData, error: sendErr } = await svc.functions.invoke("send-email", {
-        body: {
-          to: order.user_email,
-          subject: rendered.subject,
-          html: rendered.html,
-          text: rendered.text,
-          email_type: "v2_order_receipt",
-          user_id: order.user_id,
-        },
-      });
-      if (sendErr) throw new Error(sendErr.message || "send_email_invoke_error");
-      const anyData = sendData as { success?: boolean; id?: string; provider_message_id?: string } | null;
-      if (anyData && anyData.success === false) throw new Error("send_email_returned_failure");
-      providerMsgId = safeProviderMessageId(anyData?.provider_message_id ?? anyData?.id);
+      providerMsgId = await sendReceiptViaResend(order, rendered);
     } catch (e) {
-      const msg = (e as Error)?.message || "send_failed";
+      const rawMsg = (e as Error)?.message || "send_failed";
+      const safeMsg = sanitizeErrorMessage(rawMsg);
+      const code = rawMsg === "resend_api_key_missing" ? "resend_api_key_missing" : "send_failed";
       await svc.rpc("v2_fail_order_receipt_delivery", {
         p_delivery_id: deliveryId,
-        p_error_code: "send_failed",
-        p_error_message: msg,
+        p_error_code: sanitizeErrorCode(code),
+        p_error_message: safeMsg,
       });
-      await logAttempt(svc, { order, orderId, deliveryId, success: false, errorMessage: msg });
+      await logAttempt(svc, { order, orderId, deliveryId, success: false, errorCode: code, errorMessage: safeMsg });
       return;
     }
 
-    // 4) Mark complete
-    const { error: cmpErr } = await svc.rpc("v2_complete_order_receipt_delivery", {
+    // 4) Mark complete — only log success if the RPC actually transitioned the row.
+    const { data: cmpData, error: cmpErr } = await svc.rpc("v2_complete_order_receipt_delivery", {
       p_delivery_id: deliveryId,
       p_provider_message_id: providerMsgId,
     });
     if (cmpErr) {
-      logger.error("complete rpc error (email likely sent)", { orderId, error: cmpErr.message });
+      logger.error("complete rpc error (email likely sent; idempotency-key prevents duplicate on retry)", {
+        orderId, error: cmpErr.message,
+      });
+      return; // no success log until DB confirms the transition
+    }
+    const confirmed = cmpData === true;
+    if (!confirmed) {
+      logger.info("complete rpc reported no-op (already sent or not processing)", { orderId, deliveryId });
+      return;
     }
     await logAttempt(svc, {
       order, orderId, deliveryId, success: true, providerMessageId: providerMsgId,
     });
   });
 }
+
