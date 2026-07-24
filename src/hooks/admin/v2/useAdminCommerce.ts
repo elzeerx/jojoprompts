@@ -489,6 +489,14 @@ export interface MigrationPreviewPayPal {
   zero_amount_count: number;
   missing_subscription_link: number;
   duplicate_provider_reference_groups: number;
+  // Corrective pass — strict verified vs review buckets.
+  positive_completed_rows?: number;
+  verified_rows?: number;
+  unlinked_positive_review_rows?: number;
+  negative_linked_review_rows?: number;
+  verified_users?: number;
+  verified_total_capped_fils?: number;
+  verified_users_capped_at_threshold?: number;
 }
 export interface MigrationPreviewUPayInterp {
   conversion: string;
