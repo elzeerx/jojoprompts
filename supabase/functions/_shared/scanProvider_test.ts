@@ -163,6 +163,40 @@ Deno.test("mapAdvancedScanBody: virus names bounded and ASCII-sanitized", () => 
   }
 });
 
+Deno.test("mapAdvancedScanBody: malformed entry -> malicious, count=1, no names", () => {
+  const r = mapAdvancedScanBody({ CleanResult: false, FoundViruses: [{}] });
+  assertEquals(r.status, "malicious");
+  assertEquals(r.summary.virus_count, 1);
+  assertEquals(r.summary.virus_names, []);
+  assertEquals(r.reason, "virus_found");
+});
+
+Deno.test("mapAdvancedScanBody: empty VirusName still malicious", () => {
+  const r = mapAdvancedScanBody({ CleanResult: false, FoundViruses: [{ VirusName: "" }] });
+  assertEquals(r.status, "malicious");
+  assertEquals(r.summary.virus_count, 1);
+  assertEquals(r.summary.virus_names, []);
+});
+
+Deno.test("mapAdvancedScanBody: over-cap array bounds count and names", () => {
+  const many = Array.from({ length: 500 }, () => ({}));
+  const r = mapAdvancedScanBody({ CleanResult: false, FoundViruses: many });
+  assertEquals(r.status, "malicious");
+  assertEquals(r.summary.virus_count, 20); // MAX_VIRUS_NAMES cap
+  assertEquals(r.summary.virus_names.length, 0);
+});
+
+Deno.test("mapAdvancedScanBody: CleanResult=true with non-empty viruses fails closed -> malicious", () => {
+  const r = mapAdvancedScanBody({
+    CleanResult: true,
+    FoundViruses: [{ VirusName: "Eicar" }],
+  });
+  assertEquals(r.status, "malicious");
+  assertEquals(r.reason, "virus_found");
+  assertEquals(r.summary.virus_count, 1);
+  assertEquals(r.summary.virus_names, ["Eicar"]);
+});
+
 Deno.test("mapAdvancedScanBody: does not surface unknown provider fields", () => {
   const r = mapAdvancedScanBody({
     CleanResult: true,
