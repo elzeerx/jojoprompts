@@ -446,29 +446,60 @@ export type StatusExtract = {
 };
 
 export function extractStatusFields(json: Record<string, unknown>): StatusExtract {
+  // Official GET /get-payment-status response shape:
+  //   { status: true, data: { transaction: { ...payment fields... } } }
+  // Prefer data.transaction.* over data.* / top-level, since transaction is
+  // the authoritative per-payment record. Never inspect other nested objects.
   return {
     trackId: firstString(json, [
+      ["data","transaction","track_id"],["data","transaction","trackId"],
       ["data","track_id"],["data","trackId"],["track_id"],["trackId"],
     ]),
+    // NOTE: `data.transaction.session_id` returned by UPayments is a per-
+    // transaction UUID, NOT the long hosted-checkout session_id we stored
+    // locally. Callers MUST NOT compare this to the stored hosted session.
     sessionId: firstString(json, [
+      ["data","transaction","session_id"],["data","transaction","sessionId"],
       ["data","session_id"],["data","sessionId"],["session_id"],["sessionId"],
     ]),
     providerOrderId: firstString(json, [
+      ["data","transaction","order_id"],["data","transaction","orderId"],
       ["data","order_id"],["data","orderId"],["order_id"],["orderId"],
     ]),
     merchantReference: firstString(json, [
-      // Official aliases include requested_order_id / requestedOrderId.
+      // Official documented aliases in priority order. The paid QA response
+      // uses `merchant_requested_order_id` on data.transaction.
+      ["data","transaction","merchant_requested_order_id"],
+      ["data","transaction","merchantRequestedOrderId"],
+      ["data","transaction","requested_order_id"],
+      ["data","transaction","requestedOrderId"],
+      ["data","transaction","reference"],
+      ["data","merchant_requested_order_id"],["data","merchantRequestedOrderId"],
       ["data","requested_order_id"],["data","requestedOrderId"],
+      ["merchant_requested_order_id"],["merchantRequestedOrderId"],
       ["requested_order_id"],["requestedOrderId"],
       ["data","reference"],["data","merchant_reference"],["data","merchantReference"],
       ["reference"],["merchant_reference"],["merchantReference"],
     ]),
     amountRaw: firstString(json, [
+      ["data","transaction","total_price"],["data","transaction","totalPrice"],
+      ["data","transaction","amount"],["data","transaction","total_paid"],
+      ["data","transaction","totalPaid"],
+      ["data","total_price"],["data","totalPrice"],
       ["data","amount"],["data","total_paid"],["data","totalPaid"],
+      ["total_price"],["totalPrice"],
       ["amount"],["total_paid"],["totalPaid"],
     ]),
-    currency: firstString(json, [["data","currency"],["currency"]]),
+    currency: firstString(json, [
+      ["data","transaction","currency_type"],["data","transaction","currencyType"],
+      ["data","transaction","currency"],
+      ["data","currency_type"],["data","currencyType"],
+      ["data","currency"],
+      ["currency_type"],["currencyType"],["currency"],
+    ]),
     result: firstString(json, [
+      ["data","transaction","result"],["data","transaction","status"],
+      ["data","transaction","payment_status"],["data","transaction","paymentStatus"],
       ["data","result"],["data","payment_status"],["data","paymentStatus"],
       ["data","status"],["result"],["payment_status"],["paymentStatus"],["status"],
     ]),
