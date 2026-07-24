@@ -54,9 +54,9 @@ function readProviderDownReason(data: unknown): boolean {
 }
 
 export default function V2CheckoutReturnPage() {
+  const params = useParams<{ orderId?: string }>();
   const [sp] = useSearchParams();
-  const orderIdRaw = sp.get("order_id") ?? "";
-  const orderId = UUID_RE.test(orderIdRaw) ? orderIdRaw : null;
+  const orderId = resolveCallbackOrderId(params.orderId, sp.get("order_id"));
   const { user, loading: authLoading } = useAuth();
   const qc = useQueryClient();
   const { language, isRTL } = useTranslation();
@@ -278,7 +278,7 @@ export default function V2CheckoutReturnPage() {
           <>
             <p className="text-muted-foreground">{t.needAuth}</p>
             <Button asChild className="min-h-[44px]">
-              <Link to={`/login?next=${encodeURIComponent(`/checkout/return?order_id=${orderId}`)}`}>
+              <Link to={`/login?next=${encodeURIComponent(`/checkout/return/${orderId}`)}`}>
                 {t.needAuth}
               </Link>
             </Button>
