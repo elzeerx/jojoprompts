@@ -44,6 +44,7 @@ const T = {
   },
   submit:  { en: "Submit report", ar: "إرسال البلاغ" },
   cancel:  { en: "Cancel",        ar: "إلغاء" },
+  close:   { en: "Close",         ar: "إغلاق" },
   ok:      { en: "Report submitted. Thanks for helping keep JojoPrompts safe.", ar: "تم إرسال البلاغ. شكرًا لمساعدتك في الحفاظ على سلامة JojoPrompts." },
   loginNeeded: { en: "Please sign in to submit a report.", ar: "يرجى تسجيل الدخول لإرسال بلاغ." },
   errRateLimited: { en: "You've reached the report limit. Please try again later.", ar: "لقد وصلت إلى الحد المسموح به من البلاغات. حاول لاحقًا." },
