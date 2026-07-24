@@ -18,10 +18,11 @@ if (typeof (globalThis as { localStorage?: unknown }).localStorage === "undefine
 (globalThis as { process?: { env: Record<string, string | undefined> } }).process!.env.TZ =
   "Asia/Kuwait"; // UTC+03:00, no DST
 
-import {
-  normalizeAuditDatetimeToUtcIso,
-  serializeAuditParams,
-} from "./useAdminAuditLog";
+// Use dynamic import so the polyfill above runs first — static imports would
+// hoist and evaluate the Supabase client before localStorage exists.
+const { normalizeAuditDatetimeToUtcIso, serializeAuditParams } = await import(
+  "./useAdminAuditLog"
+);
 
 describe("normalizeAuditDatetimeToUtcIso", () => {
   it("returns null for null/empty/whitespace", () => {
