@@ -83,10 +83,6 @@ export default function ComingSoonPage() {
           <Divider />
           <p
             className="mt-5 text-[15px] leading-relaxed text-[#B8B2A6] sm:text-base"
-            style={{
-              fontFamily:
-                'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            }}
           >
             JojoPrompts is being rebuilt for the next generation of AI — skills,
             automations, prompts, image styles, and more.
