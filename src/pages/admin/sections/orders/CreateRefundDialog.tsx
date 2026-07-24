@@ -199,10 +199,17 @@ export function CreateRefundDialog({ open, onOpenChange, presetOrderId }: Props)
             </div>
           </div>
 
-          {refundable.isLoading && (
-            <div className="space-y-2">
+          {(refundable.isLoading || (refundable.isFetching && !orderData)) && (
+            <div className="space-y-2" aria-live="polite">
               {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
+          )}
+
+          {refundable.isError && !refundable.isFetching && (
+            <Alert variant="destructive">
+              <AlertTitle>Could not load order</AlertTitle>
+              <AlertDescription>{formatRefundableLoadError(refundable.error)}</AlertDescription>
+            </Alert>
           )}
 
           {orderData && (
