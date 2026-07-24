@@ -4758,6 +4758,14 @@ export type Database = {
           received_at: string
         }[]
       }
+      v2_rearm_rejected_refund_submission: {
+        Args: {
+          p_admin_actor_id: string
+          p_expected_http_status: number
+          p_refund_id: string
+        }
+        Returns: Json
+      }
       v2_record_charge_submission_unknown: {
         Args: {
           p_actor_user_id: string
