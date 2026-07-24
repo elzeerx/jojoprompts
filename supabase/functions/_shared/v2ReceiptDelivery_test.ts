@@ -134,3 +134,29 @@ Deno.test("renderReceiptHtml omits discount row when zero", () => {
   const { html } = renderReceiptHtml(order, "https://x");
   assert(!html.includes(">Discount<"));
 });
+
+Deno.test("receiptIdempotencyKey is stable and bounded", () => {
+  const id = "17745276-bdcb-492f-8527-63e60051f9b8";
+  const k1 = receiptIdempotencyKey(id);
+  const k2 = receiptIdempotencyKey(id);
+  assertEquals(k1, k2);
+  assertEquals(k1, `v2-order-receipt/${id}`);
+  assert(k1.length <= 256);
+});
+
+Deno.test("receiptIdempotencyKey trims and rejects empty", () => {
+  assertEquals(receiptIdempotencyKey("  abc  "), "v2-order-receipt/abc");
+  assertThrows(() => receiptIdempotencyKey(""));
+  assertThrows(() => receiptIdempotencyKey("   "));
+});
+
+Deno.test("receiptIdempotencyKey caps at 256 chars for pathological input", () => {
+  const huge = "x".repeat(400);
+  const k = receiptIdempotencyKey(huge);
+  assertEquals(k.length, 256);
+  assert(k.startsWith("v2-order-receipt/"));
+});
+
+Deno.test("receiptIdempotencyKey differs per order", () => {
+  assert(receiptIdempotencyKey("a") !== receiptIdempotencyKey("b"));
+});
