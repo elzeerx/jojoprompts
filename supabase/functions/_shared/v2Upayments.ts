@@ -232,15 +232,25 @@ export async function loadCustomerFields(
       email = (data?.user?.email ?? "").trim();
     } catch { /* ignore */ }
   }
-  if (email && EMAIL_RE.test(email) && email.length <= 254) out.email = email;
+  // Never truncate an email; drop it if it would violate the documented limit
+  // or fails RFC-ish validation.
+  if (email && EMAIL_RE.test(email) && email.length <= UPAY_CUSTOMER_EMAIL_MAX) {
+    out.email = email;
+  }
 
   const first = typeof prof?.first_name === "string" ? prof.first_name.trim() : "";
   const last = typeof prof?.last_name === "string" ? prof.last_name.trim() : "";
-  const name = `${first} ${last}`.trim();
-  if (name && name.length >= 1 && name.length <= 128) out.name = name;
+  const nameRaw = `${first} ${last}`.trim();
+  if (nameRaw.length >= 1) {
+    // Safe to cap: a truncated display name remains valid data.
+    const name = nameRaw.slice(0, UPAY_CUSTOMER_NAME_MAX).trim();
+    if (name.length >= 1) out.name = name;
+  }
 
   const phone = typeof prof?.phone_number === "string" ? prof.phone_number.trim() : "";
-  if (phone && MOBILE_RE.test(phone)) out.mobile = phone;
+  if (phone && phone.length <= UPAY_CUSTOMER_MOBILE_MAX && MOBILE_RE.test(phone)) {
+    out.mobile = phone;
+  }
 
   return out;
 }
