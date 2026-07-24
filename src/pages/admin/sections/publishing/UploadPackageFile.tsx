@@ -87,7 +87,7 @@ export function UploadPackageFile({ versionId }: Props) {
       toast.success(`Uploaded ${uploaded?.file_name ?? file.name}`);
       await Promise.all([
         qc.invalidateQueries({ queryKey: adminResourceVersionsKeys.detail(versionId) }),
-        qc.invalidateQueries({ queryKey: adminResourceVersionsKeys.all }),
+        qc.invalidateQueries({ queryKey: ["admin", "v2", "resource-versions", "list"] }),
       ]);
     } catch (err) {
       console.error("upload error", err);
