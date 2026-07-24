@@ -12,6 +12,7 @@ import {
   filsToKwdDecimal,
   normalizePaymentStatus,
   loadUpaymentsConfig,
+  extractChargeFields,
 } from "./v2Upayments.ts";
 
 // ---------------- validateWebhookEnvelope ----------------
@@ -162,4 +163,55 @@ Deno.test("status: allowlists unchanged", () => {
   assertEquals(normalizePaymentStatus("PENDING").verdict, "pending");
   assertEquals(normalizePaymentStatus("CANCELLED").verdict, "cancelled");
   assertEquals(normalizePaymentStatus("SOMETHING_ELSE").verdict, "unknown");
+});
+
+// ---------------- extractChargeFields (non-whitelabel hosted) ----------------
+
+Deno.test("charge: official non-whitelabel response { status, data.link } derives session_id from URL", () => {
+  const json = {
+    status: true,
+    data: {
+      link: "https://sandbox.upayments.com/checkout?session_id=sess_abc123&x=1",
+    },
+  };
+  const ex = extractChargeFields(json as Record<string, unknown>);
+  assertEquals(ex.paymentUrl, "https://sandbox.upayments.com/checkout?session_id=sess_abc123&x=1");
+  assertEquals(ex.sessionId, "sess_abc123");
+  assertEquals(ex.trackId, null);
+});
+
+Deno.test("charge: explicit data.session_id wins over URL-derived value", () => {
+  const json = {
+    data: {
+      session_id: "explicit_sess",
+      link: "https://pay.upayments.com/?session_id=url_sess",
+    },
+  };
+  const ex = extractChargeFields(json as Record<string, unknown>);
+  assertEquals(ex.sessionId, "explicit_sess");
+});
+
+Deno.test("charge: spoofed non-upayments URL does NOT yield a derived session_id", () => {
+  const json = {
+    data: { link: "https://evil.example.com/checkout?session_id=leak_me" },
+  };
+  const ex = extractChargeFields(json as Record<string, unknown>);
+  assertEquals(ex.sessionId, null);
+});
+
+Deno.test("charge: http (non-https) upayments URL does NOT yield a derived session_id", () => {
+  const json = {
+    data: { link: "http://sandbox.upayments.com/?session_id=insecure" },
+  };
+  const ex = extractChargeFields(json as Record<string, unknown>);
+  assertEquals(ex.sessionId, null);
+});
+
+Deno.test("charge: upayments URL without session_id query returns null sessionId", () => {
+  const json = {
+    data: { link: "https://sandbox.upayments.com/checkout?foo=bar" },
+  };
+  const ex = extractChargeFields(json as Record<string, unknown>);
+  assertEquals(ex.paymentUrl, "https://sandbox.upayments.com/checkout?foo=bar");
+  assertEquals(ex.sessionId, null);
 });

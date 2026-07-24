@@ -367,21 +367,34 @@ export type ChargeExtract = {
 };
 
 export function extractChargeFields(json: Record<string, unknown>): ChargeExtract {
+  const paymentUrl = firstString(json, [
+    ["data","payment_url"],["data","paymentUrl"],
+    ["data","link"],["payment_url"],["paymentUrl"],["link"],
+  ]);
+  let sessionId = firstString(json, [
+    ["data","session_id"],["data","sessionId"],["session_id"],["sessionId"],
+  ]);
+  // Official non-whitelabel hosted flow: response may only include
+  // data.link containing a `session_id` query param. Derive it safely
+  // ONLY when the URL passes the strict UPayments-host validation.
+  if (!sessionId && paymentUrl && isValidUpaymentsRedirectUrl(paymentUrl)) {
+    try {
+      const raw = new URL(paymentUrl).searchParams.get("session_id");
+      if (typeof raw === "string" && raw.length > 0 && raw.length <= 256) {
+        sessionId = raw;
+      }
+    } catch { /* ignore */ }
+  }
   return {
     trackId: firstString(json, [
       ["data","track_id"],["data","trackId"],["track_id"],["trackId"],
     ]),
-    sessionId: firstString(json, [
-      ["data","session_id"],["data","sessionId"],["session_id"],["sessionId"],
-    ]),
+    sessionId,
     providerOrderId: firstString(json, [
       ["data","order_id"],["data","orderId"],["data","reference"],
       ["order_id"],["orderId"],["reference"],
     ]),
-    paymentUrl: firstString(json, [
-      ["data","payment_url"],["data","paymentUrl"],
-      ["data","link"],["payment_url"],["paymentUrl"],["link"],
-    ]),
+    paymentUrl,
   };
 }
 
