@@ -186,6 +186,8 @@ Deno.serve(async (req) => {
     // Replay of a fully-settled attempt is safe: the RPC is idempotent via
     // external_event_id, and same-shape rejection reasons produce stable ids.
     if (sErr) return jsonResponse({ error: safeRpcError(sErr) }, 500, origin);
+    // Best-effort receipt scheduling — never blocks or rolls back settlement.
+    try { scheduleReceiptDelivery(svc, orderId); } catch (_) { /* swallow */ }
     return jsonResponse({ status: "paid" }, 200, origin);
   }
 
