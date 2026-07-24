@@ -32,7 +32,14 @@ export default function AdminLayout() {
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-      <div className="min-h-screen flex w-full bg-soft-bg/30">
+      {/*
+        Admin V2 is English-first and has no in-shell language toggle.
+        Explicitly pin the admin shell to LTR so it is not affected by the
+        document-global `dir` that LanguageContext sets from the customer
+        language preference. Individual Arabic text blocks inside pages
+        remain free to opt back in with their own `dir="rtl"`.
+      */}
+      <div dir="ltr" className="min-h-screen flex w-full bg-soft-bg/30">
         <AdminSidebar />
         <SidebarInset className="flex-1 flex flex-col min-w-0">
           <AdminTopBar onOpenCommandPalette={() => setPaletteOpen(true)} />
