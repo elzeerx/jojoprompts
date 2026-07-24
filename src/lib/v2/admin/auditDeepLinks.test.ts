@@ -1,6 +1,21 @@
 import { describe, it, expect } from "bun:test";
-import { resolveEntityLink, shortId } from "@/lib/v2/admin/auditDeepLinks";
-import { serializeAuditParams } from "@/hooks/admin/v2/useAdminAuditLog";
+
+// Polyfill localStorage before importing anything that transitively pulls in
+// the Supabase browser client.
+if (typeof (globalThis as { localStorage?: unknown }).localStorage === "undefined") {
+  const store = new Map<string, string>();
+  (globalThis as unknown as { localStorage: Storage }).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => { store.set(k, String(v)); },
+    removeItem: (k: string) => { store.delete(k); },
+    clear: () => { store.clear(); },
+    key: (i: number) => Array.from(store.keys())[i] ?? null,
+    get length() { return store.size; },
+  } as Storage;
+}
+
+const { resolveEntityLink, shortId } = await import("@/lib/v2/admin/auditDeepLinks");
+const { serializeAuditParams } = await import("@/hooks/admin/v2/useAdminAuditLog");
 
 describe("resolveEntityLink", () => {
   it("returns null for missing type or id", () => {
