@@ -95,6 +95,41 @@ export interface ReceiptLine {
   line_total_fils: number;
 }
 
+export interface ReceiptLineSource {
+  title_en: string | null;
+  title_ar: string | null;
+  type: string | null;
+}
+
+/**
+ * Merge resource + product sources into a single receipt line.
+ * Resource fields are preferred when present (non-null, non-empty). Product
+ * fields (title_en/title_ar/product_type) act as fallback so bundles and the
+ * Full Library Lifetime product — which set order_items.resource_id to NULL —
+ * still render a real title/type instead of an em dash.
+ */
+export function buildReceiptLine(
+  row: { quantity: number; unit_price_fils: number; line_total_fils: number },
+  resource: ReceiptLineSource | null | undefined,
+  product: ReceiptLineSource | null | undefined,
+): ReceiptLine {
+  const pick = (a: string | null | undefined, b: string | null | undefined): string | null => {
+    const av = typeof a === "string" ? a.trim() : "";
+    if (av) return av;
+    const bv = typeof b === "string" ? b.trim() : "";
+    return bv ? bv : null;
+  };
+  return {
+    title_en: pick(resource?.title_en, product?.title_en),
+    title_ar: pick(resource?.title_ar, product?.title_ar),
+    resource_type: pick(resource?.type, product?.type),
+    quantity: Number.isInteger(row.quantity) && row.quantity > 0 ? row.quantity : 1,
+    unit_price_fils: row.unit_price_fils ?? 0,
+    line_total_fils: row.line_total_fils ?? 0,
+  };
+}
+
+
 export interface ReceiptOrder {
   order_id: string;
   order_number: string;
