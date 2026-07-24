@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime } from "@/lib/v2/admin/format";
 import { useAdminResourceVersionDetail } from "@/hooks/admin/v2/useAdminResourceVersions";
+import { UploadPackageFile } from "./UploadPackageFile";
+
 
 interface Props {
   versionId: string | null;
