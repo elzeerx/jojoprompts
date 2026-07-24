@@ -205,7 +205,13 @@ export type CustomerFields = {
 };
 
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-zA-Z]{2,}$/;
-const MOBILE_RE = /^\+[1-9][0-9]{6,14}$/;
+// UPayments Make Charge docs: customer.mobile max length 15 (E.164 incl. '+').
+const MOBILE_RE = /^\+[1-9][0-9]{6,13}$/;
+
+// UPayments Make Charge documented field limits.
+const UPAY_CUSTOMER_NAME_MAX = 50;
+const UPAY_CUSTOMER_EMAIL_MAX = 50;
+const UPAY_CUSTOMER_MOBILE_MAX = 15;
 
 // Loads verified server-side identity; never returns caller-supplied fields
 // or dummy placeholders. Optional fields are dropped when invalid/missing.
@@ -226,15 +232,25 @@ export async function loadCustomerFields(
       email = (data?.user?.email ?? "").trim();
     } catch { /* ignore */ }
   }
-  if (email && EMAIL_RE.test(email) && email.length <= 254) out.email = email;
+  // Never truncate an email; drop it if it would violate the documented limit
+  // or fails RFC-ish validation.
+  if (email && EMAIL_RE.test(email) && email.length <= UPAY_CUSTOMER_EMAIL_MAX) {
+    out.email = email;
+  }
 
   const first = typeof prof?.first_name === "string" ? prof.first_name.trim() : "";
   const last = typeof prof?.last_name === "string" ? prof.last_name.trim() : "";
-  const name = `${first} ${last}`.trim();
-  if (name && name.length >= 1 && name.length <= 128) out.name = name;
+  const nameRaw = `${first} ${last}`.trim();
+  if (nameRaw.length >= 1) {
+    // Safe to cap: a truncated display name remains valid data.
+    const name = nameRaw.slice(0, UPAY_CUSTOMER_NAME_MAX).trim();
+    if (name.length >= 1) out.name = name;
+  }
 
   const phone = typeof prof?.phone_number === "string" ? prof.phone_number.trim() : "";
-  if (phone && MOBILE_RE.test(phone)) out.mobile = phone;
+  if (phone && phone.length <= UPAY_CUSTOMER_MOBILE_MAX && MOBILE_RE.test(phone)) {
+    out.mobile = phone;
+  }
 
   return out;
 }
@@ -578,12 +594,23 @@ export function localRefundReference(refundId: string): string {
 
 // ---------------------- Strict webhook envelope validator --------------
 
+// Documented UPayments webhook payload fields (snake_case). These are
+// accepted as hints only — do not trust for settlement, do not persist
+// unless already in SAFE_KEYS. Provider GET re-verification remains the
+// only source of payment truth.
+const WEBHOOK_DOC_FIELDS = [
+  "payment_id","result","post_date","tran_id","ref","track_id","auth",
+  "order_id","requested_order_id","refund_order_id","payment_type",
+  "invoice_id","transaction_date","receipt_id","trn_udf",
+] as const;
+
 const WEBHOOK_TOP_KEYS: ReadonlySet<string> = new Set([
   "status","message","statusMessage","errorMessage","data","result",
   "track_id","trackId","session_id","sessionId",
   "order_id","orderId","reference","requested_order_id","requestedOrderId",
   "merchant_reference","merchantReference",
   "payment_status","paymentStatus","amount","currency","total_paid","totalPaid",
+  ...WEBHOOK_DOC_FIELDS,
 ]);
 const WEBHOOK_DATA_KEYS: ReadonlySet<string> = new Set([
   "track_id","trackId","session_id","sessionId",
@@ -591,9 +618,8 @@ const WEBHOOK_DATA_KEYS: ReadonlySet<string> = new Set([
   "merchant_reference","merchantReference",
   "payment_status","paymentStatus","status","result",
   "amount","currency","total_paid","totalPaid",
+  ...WEBHOOK_DOC_FIELDS,
 ]);
-
-// Returns { ok: true } or { ok: false, error }. Rejects unknown keys,
 // non-plain data, and payloads with zero identifier hints.
 export function validateWebhookEnvelope(
   body: unknown,
