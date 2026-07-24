@@ -17,7 +17,7 @@ import {
   requireAdmin, serviceClient, loadUpaymentsConfig,
   providerFetch, providerSuccessFlag,
   extractRefundResponseFields, normalizeRefundStatus, kwdDecimalToFils,
-  filsToKwdDecimal, sanitizeProviderPayload, eventIdForRefund,
+  filsToKwdDecimal, filsToKwdNumber, sanitizeProviderPayload, eventIdForRefund,
   localRefundReference, safeRpcError,
 } from "../_shared/v2Upayments.ts";
 
