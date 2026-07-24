@@ -15,6 +15,7 @@ const RecoveryPage = lazy(() => import("../sections/orders/RecoveryPage"));
 const DiscountsPage = lazy(() => import("../sections/orders/DiscountsPage"));
 const ReportsPage = lazy(() => import("../sections/trust/ReportsPage"));
 const VersionsRegistryPage = lazy(() => import("../sections/publishing/VersionsRegistryPage"));
+const ScansPage = lazy(() => import("../sections/trust/scans/ScansPage"));
 
 
 
@@ -131,11 +132,7 @@ export const adminSectionElements = {
 
   // Trust & Activity
   trustReports: wrap(<ReportsPage />),
-  trustScans: Empty(
-    "Package Scans",
-    "Latest package_scans by resource version with re-scan controls. Currently viewable via the Catalog table's Scan column.",
-    [{ label: "Open Catalog", to: "/admin/catalog" }],
-  ),
+  trustScans: wrap(<ScansPage />),
   audit: wrap(<AuditLogPage />),
   security: wrap(<SecurityMonitoringDashboard />),
 
