@@ -20,7 +20,7 @@ describe("formatRefundableLoadError", () => {
     const long = "x".repeat(500);
     const out = formatRefundableLoadError({ message: long });
     expect(out.endsWith("…")).toBe(true);
-    expect(out.length).toBeLessThan(230);
+    expect(out.length < 230).toBe(true);
   });
 
   test("rejects absurdly long code fields", () => {
