@@ -7,7 +7,10 @@ import {
   hasOnlyAllowedKeys,
   hmacSha256Hex,
   escapeHtml,
+} from "../_shared/emailCommon.ts";
 import { validateTemplateSlug, validateVariables } from "./validation.ts";
+
+
 
 
 Deno.test("constantTimeEqual: same string true", () => {
