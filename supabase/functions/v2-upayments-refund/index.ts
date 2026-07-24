@@ -126,7 +126,6 @@ Deno.serve(async (req) => {
         reason: "missing_original_provider_id" }, 502, origin);
     }
     const amountFils = Number(cl.amount_fils);
-    const amountDecimal = filsToKwdDecimal(amountFils);
     const amountNumber = filsToKwdNumber(amountFils);
     const reference = localRefundReference(refundId);
 
