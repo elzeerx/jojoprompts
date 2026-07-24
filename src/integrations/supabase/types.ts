@@ -4646,6 +4646,10 @@ export type Database = {
       }
       v2_admin_get_discount: { Args: { p_id: string }; Returns: Json }
       v2_admin_get_order_detail: { Args: { p_order_id: string }; Returns: Json }
+      v2_admin_get_package_scan_details: {
+        Args: { p_scan_id: string }
+        Returns: Json
+      }
       v2_admin_get_payment_event: {
         Args: { p_event_id: string }
         Returns: Json
@@ -4964,6 +4968,14 @@ export type Database = {
           attempt_count: number
           item_id: string
           resource_file_id: string
+        }[]
+      }
+      v2_internal_claim_scan_poll_items: {
+        Args: { p_max?: number; p_scan_id: string }
+        Returns: {
+          attempt_count: number
+          item_id: string
+          provider_data_id: string
         }[]
       }
       v2_internal_create_package_scan: {
