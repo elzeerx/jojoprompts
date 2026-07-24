@@ -431,5 +431,6 @@ async function logEmail(supabase: any, r: {
 // the handler directly and must not spin up an HTTP listener.
 if (import.meta.main) serve(handler);
 
+
 // Re-exports for tests.
 export { ALLOWED_EMAIL_ORIGINS, corsHeadersFor };
