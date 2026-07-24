@@ -387,7 +387,16 @@ export default function ResourceDetailPage() {
                 <div className="mt-1 text-muted-foreground">{lifetimeText}</div>
               </div>
             </div>
+
+            <div className="flex justify-center">
+              <ReportResourceButton resourceId={r.id} lang={lang} />
+            </div>
           </aside>
+        </div>
+      </main>
+    </div>
+  );
+}
         </div>
       </main>
     </div>
