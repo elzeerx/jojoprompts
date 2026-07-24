@@ -159,19 +159,19 @@ export default function LegacyMigrationPreview() {
                     <TableHead>Original promise</TableHead>
                     <TableHead>Proposed V2 scope</TableHead>
                     <TableHead>Expiry treatment</TableHead>
-                    <TableHead>Users (dedup)</TableHead>
+                    <TableHead>Cohort (raw source rows · unresolved users after dedupe)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {policy.plans.map((p) => {
                     const users =
                       p.plan === "ultimate"
-                        ? `${fmtInt(cohorts.ultimate_active_lifetime_users)} active · ${fmtInt(cohorts.ultimate_cancelled_review_users)} review`
+                        ? `${fmtInt(cohorts.ultimate_active_lifetime_users)} active · ${fmtInt(cohorts.ultimate_cancelled_source_rows ?? cohorts.ultimate_cancelled_review_users)} cancelled source rows · ${fmtInt(cohorts.ultimate_cancelled_unresolved_users ?? cohorts.ultimate_cancelled_review_users)} unresolved after valid-active dedupe`
                         : p.plan === "premium"
-                          ? `${fmtInt(cohorts.premium_active_lifetime_users)} active · ${fmtInt(cohorts.premium_cancelled_review_users)} review`
+                          ? `${fmtInt(cohorts.premium_active_lifetime_users)} active · ${fmtInt(cohorts.premium_cancelled_source_rows ?? cohorts.premium_cancelled_review_users)} cancelled source rows · ${fmtInt(cohorts.premium_cancelled_unresolved_users ?? cohorts.premium_cancelled_review_users)} unresolved after valid-active dedupe`
                           : p.plan === "standard"
-                            ? `${fmtInt(cohorts.standard_active_users)} active · ${fmtInt(cohorts.standard_expired_historical_users)} expired · ${fmtInt(cohorts.standard_cancelled_review_users)} review`
-                            : `${fmtInt(cohorts.basic_active_users)} active · ${fmtInt(cohorts.basic_expired_historical_users)} expired · ${fmtInt(cohorts.basic_cancelled_review_users)} review`;
+                            ? `${fmtInt(cohorts.standard_active_users)} active · ${fmtInt(cohorts.standard_expired_historical_users)} expired · ${fmtInt(cohorts.standard_cancelled_source_rows ?? cohorts.standard_cancelled_review_users)} cancelled source rows · ${fmtInt(cohorts.standard_cancelled_unresolved_users ?? cohorts.standard_cancelled_review_users)} unresolved after dedupe`
+                            : `${fmtInt(cohorts.basic_active_users)} active · ${fmtInt(cohorts.basic_expired_historical_users)} expired · ${fmtInt(cohorts.basic_cancelled_source_rows ?? cohorts.basic_cancelled_review_users)} cancelled source rows · ${fmtInt(cohorts.basic_cancelled_unresolved_users ?? cohorts.basic_cancelled_review_users)} unresolved after dedupe`;
                     return (
                       <TableRow key={p.plan}>
                         <TableCell><Badge variant="outline" className="capitalize">{p.plan}</Badge></TableCell>
@@ -185,6 +185,11 @@ export default function LegacyMigrationPreview() {
                   })}
                 </TableBody>
               </Table>
+              <div className="mt-2 text-[11px] text-muted-foreground">
+                "Cancelled source rows" is the raw count of cancelled/refunded subscription rows. "Unresolved after
+                dedupe" excludes users who already hold a valid active superseding record (lifetime supersedes all;
+                Standard supersedes Basic). The active row itself remains grantable; only the cancelled row is held for review.
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
