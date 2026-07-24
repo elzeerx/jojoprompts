@@ -271,16 +271,25 @@ export function renderReceiptHtml(order: ReceiptOrder, siteUrl: string): {
 </table>
 </body></html>`;
 
+  const textLines = order.lines.map(renderReceiptLineText);
+  const showDiscountText = Number.isInteger(order.discount_fils) && order.discount_fils > 0;
   const text = [
     `JojoPrompts — Payment receipt`,
     `Order: ${order.order_number}`,
     `Settled: ${order.settled_at ?? ""}`,
     `Provider: ${order.provider || "UPayments"}`,
-    `Total: ${total}`,
+    ``,
+    `Items:`,
+    ...(textLines.length ? textLines : [`  (no line items)`]),
+    ``,
+    `Subtotal: ${subtotal}`,
+    ...(showDiscountText ? [`Discount: -${discount}`] : []),
+    `Total:    ${total}`,
     ``,
     `Library: ${libraryUrl}`,
     `Orders:  ${ordersUrl}`,
   ].join("\n");
+
 
   return { subject, html, text };
 }
