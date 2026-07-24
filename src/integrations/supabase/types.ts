@@ -4644,6 +4644,7 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_admin_get_activity_event: { Args: { p_id: string }; Returns: Json }
       v2_admin_get_discount: { Args: { p_id: string }; Returns: Json }
       v2_admin_get_order_detail: { Args: { p_order_id: string }; Returns: Json }
       v2_admin_get_package_scan_details: {
@@ -4664,6 +4665,21 @@ export type Database = {
       }
       v2_admin_get_resource_version_detail: {
         Args: { p_version_id: string }
+        Returns: Json
+      }
+      v2_admin_list_activity_events: {
+        Args: {
+          p_actions?: string[]
+          p_actor_types?: string[]
+          p_actor_user_id?: string
+          p_entity_id?: string
+          p_entity_types?: string[]
+          p_from?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_to?: string
+        }
         Returns: Json
       }
       v2_admin_list_discounts: {
