@@ -446,29 +446,60 @@ export type StatusExtract = {
 };
 
 export function extractStatusFields(json: Record<string, unknown>): StatusExtract {
+  // Official GET /get-payment-status response shape:
+  //   { status: true, data: { transaction: { ...payment fields... } } }
+  // Prefer data.transaction.* over data.* / top-level, since transaction is
+  // the authoritative per-payment record. Never inspect other nested objects.
   return {
     trackId: firstString(json, [
+      ["data","transaction","track_id"],["data","transaction","trackId"],
       ["data","track_id"],["data","trackId"],["track_id"],["trackId"],
     ]),
+    // NOTE: `data.transaction.session_id` returned by UPayments is a per-
+    // transaction UUID, NOT the long hosted-checkout session_id we stored
+    // locally. Callers MUST NOT compare this to the stored hosted session.
     sessionId: firstString(json, [
+      ["data","transaction","session_id"],["data","transaction","sessionId"],
       ["data","session_id"],["data","sessionId"],["session_id"],["sessionId"],
     ]),
     providerOrderId: firstString(json, [
+      ["data","transaction","order_id"],["data","transaction","orderId"],
       ["data","order_id"],["data","orderId"],["order_id"],["orderId"],
     ]),
     merchantReference: firstString(json, [
-      // Official aliases include requested_order_id / requestedOrderId.
+      // Official documented aliases in priority order. The paid QA response
+      // uses `merchant_requested_order_id` on data.transaction.
+      ["data","transaction","merchant_requested_order_id"],
+      ["data","transaction","merchantRequestedOrderId"],
+      ["data","transaction","requested_order_id"],
+      ["data","transaction","requestedOrderId"],
+      ["data","transaction","reference"],
+      ["data","merchant_requested_order_id"],["data","merchantRequestedOrderId"],
       ["data","requested_order_id"],["data","requestedOrderId"],
+      ["merchant_requested_order_id"],["merchantRequestedOrderId"],
       ["requested_order_id"],["requestedOrderId"],
       ["data","reference"],["data","merchant_reference"],["data","merchantReference"],
       ["reference"],["merchant_reference"],["merchantReference"],
     ]),
     amountRaw: firstString(json, [
+      ["data","transaction","total_price"],["data","transaction","totalPrice"],
+      ["data","transaction","amount"],["data","transaction","total_paid"],
+      ["data","transaction","totalPaid"],
+      ["data","total_price"],["data","totalPrice"],
       ["data","amount"],["data","total_paid"],["data","totalPaid"],
+      ["total_price"],["totalPrice"],
       ["amount"],["total_paid"],["totalPaid"],
     ]),
-    currency: firstString(json, [["data","currency"],["currency"]]),
+    currency: firstString(json, [
+      ["data","transaction","currency_type"],["data","transaction","currencyType"],
+      ["data","transaction","currency"],
+      ["data","currency_type"],["data","currencyType"],
+      ["data","currency"],
+      ["currency_type"],["currencyType"],["currency"],
+    ]),
     result: firstString(json, [
+      ["data","transaction","result"],["data","transaction","status"],
+      ["data","transaction","payment_status"],["data","transaction","paymentStatus"],
       ["data","result"],["data","payment_status"],["data","paymentStatus"],
       ["data","status"],["result"],["payment_status"],["paymentStatus"],["status"],
     ]),
@@ -518,7 +549,9 @@ const SAFE_KEYS = new Set([
   "kind","status","result","reference","merchant_reference","order_id",
   "orderId","track_id","trackId","session_id","sessionId","refund_order_id",
   "refundOrderId","requested_order_id","requestedOrderId",
+  "merchant_requested_order_id","merchantRequestedOrderId",
   "refund_arn","refundArn","amount","currency","http_status",
+  "total_price","totalPrice","currency_type","currencyType",
 ]);
 
 function coerceScalar(v: unknown): unknown {
@@ -533,9 +566,15 @@ export function sanitizeProviderPayload(
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { kind };
   if (typeof httpStatus === "number") out.http_status = httpStatus;
-  const nested = source["data"] && typeof source["data"] === "object" && !Array.isArray(source["data"])
+  const dataObj = source["data"] && typeof source["data"] === "object" && !Array.isArray(source["data"])
     ? source["data"] as Record<string, unknown> : {};
-  const flat = { ...source, ...nested };
+  const txObj = dataObj["transaction"] && typeof dataObj["transaction"] === "object"
+      && !Array.isArray(dataObj["transaction"])
+    ? dataObj["transaction"] as Record<string, unknown> : {};
+  // Merge order: nested transaction wins over data, which wins over top-level.
+  // Only SAFE_KEYS are ever copied out; customer/card/URL/product fields are
+  // dropped even if the provider adds them to any of these layers.
+  const flat = { ...source, ...dataObj, ...txObj };
   for (const k of Object.keys(flat)) {
     if (!SAFE_KEYS.has(k)) continue;
     out[k] = coerceScalar(flat[k]);
@@ -661,3 +700,53 @@ export function validateWebhookEnvelope(
   }
   return { ok: true };
 }
+
+// -------------------- Webhook attempt resolution helper -----------------
+
+// Documented lookup order for resolving a local payment_attempts row from
+// webhook hints. Fresh provider `track_id` may not exist locally yet on the
+// initial callback, so `merchant_reference` (server-originated) is the safe
+// tie-breaker. Never fall back to unbounded/wildcard queries.
+export type WebhookIdentifierKind =
+  | "track_id" | "session_id" | "provider_order_id" | "merchant_reference";
+
+export type WebhookIdentifier = { kind: WebhookIdentifierKind; value: string };
+
+// Pure helper — returns the bounded, deduplicated identifier lookup priority
+// given the hints extracted from a webhook body. Empty/duplicate values are
+// dropped. Order is: track_id → session_id → provider_order_id →
+// merchant_reference (server-originated tie-breaker).
+export function webhookLookupPriority(hints: {
+  trackId: string | null;
+  sessionId: string | null;
+  providerOrderId: string | null;
+  merchantReference: string | null;
+}): WebhookIdentifier[] {
+  const out: WebhookIdentifier[] = [];
+  const seen = new Set<string>();
+  const push = (kind: WebhookIdentifierKind, v: string | null) => {
+    if (typeof v !== "string") return;
+    const t = v.trim();
+    if (!t || t.length > 256) return;
+    const key = `${kind}:${t}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ kind, value: t });
+  };
+  push("track_id", hints.trackId);
+  push("session_id", hints.sessionId);
+  push("provider_order_id", hints.providerOrderId);
+  push("merchant_reference", hints.merchantReference);
+  return out;
+}
+
+// DB column name for each identifier kind on `payment_attempts`.
+export function webhookIdentifierColumn(kind: WebhookIdentifierKind): string {
+  switch (kind) {
+    case "track_id": return "track_id";
+    case "session_id": return "session_id";
+    case "provider_order_id": return "provider_order_id";
+    case "merchant_reference": return "merchant_reference";
+  }
+}
+
