@@ -43,11 +43,7 @@ export default function ComingSoonPage() {
   return (
     <main
       dir="ltr"
-      className="relative flex h-[100dvh] w-full flex-col overflow-x-hidden overflow-y-auto bg-[#0B0B0C] text-[#F3EFE6] antialiased lg:overflow-hidden"
-      style={{
-        fontFamily:
-          '"Playfair Display", "Cormorant Garamond", ui-serif, Georgia, "Times New Roman", serif',
-      }}
+      className="font-sans relative flex h-[100dvh] w-full flex-col overflow-x-hidden overflow-y-auto bg-[#0B0B0C] text-[#F3EFE6] antialiased lg:overflow-hidden"
     >
       {/* Subtle grain / vignette overlay — decorative */}
       <div
