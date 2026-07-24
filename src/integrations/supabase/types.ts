@@ -4571,6 +4571,10 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      v2_admin_get_resource_version_detail: {
+        Args: { p_version_id: string }
+        Returns: Json
+      }
       v2_admin_list_discounts: {
         Args: {
           p_kind?: string
@@ -4670,6 +4674,17 @@ export type Database = {
           p_offset?: number
           p_search?: string
           p_status?: string[]
+        }
+        Returns: Json
+      }
+      v2_admin_list_resource_versions: {
+        Args: {
+          p_current?: string
+          p_limit?: number
+          p_offset?: number
+          p_scan_states?: string[]
+          p_search?: string
+          p_types?: string[]
         }
         Returns: Json
       }
