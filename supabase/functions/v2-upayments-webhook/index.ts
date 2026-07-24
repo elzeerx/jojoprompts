@@ -17,6 +17,7 @@ import {
   sanitizeProviderPayload, eventIdForStatus, safeRpcError,
   validateWebhookEnvelope, webhookLookupPriority, webhookIdentifierColumn,
 } from "../_shared/v2Upayments.ts";
+import { scheduleReceiptDelivery } from "../_shared/v2ReceiptDelivery.ts";
 
 type RejectionReason =
   | "missing_merchant_reference" | "merchant_reference_mismatch"
