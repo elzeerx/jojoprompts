@@ -60,24 +60,10 @@ export function useVersionPendingChildProbe(scans: ProbeScan[] | undefined) {
 }
 
 /**
- * Pure fail-closed predicate: a probe result is "unresolved" whenever it is
- * still loading/fetching/pending, has errored, or has not returned a valid
- * detail payload with a numeric `counts.pending`. Exposed for unit testing.
+ * Re-export the pure predicate so existing importers keep working. The
+ * implementation lives in `./probeResolution` to remain importable from
+ * unit tests without pulling in the Supabase client (which requires
+ * `localStorage`).
  */
-export interface ProbeResultShape {
-  isLoading?: boolean;
-  isFetching?: boolean;
-  isPending?: boolean;
-  isError?: boolean;
-  error?: unknown;
-  data?: AdminScanDetail | null | undefined;
-}
-
-export function isProbeResultUnresolved(r: ProbeResultShape): boolean {
-  if (r.isLoading || r.isFetching || r.isPending) return true;
-  if (r.isError || r.error) return true;
-  const detail = r.data;
-  if (!detail || typeof detail !== "object") return true;
-  if (!detail.counts || typeof detail.counts.pending !== "number") return true;
-  return false;
-}
+export { isProbeResultUnresolved } from "./probeResolution";
+export type { ProbeResultShape } from "./probeResolution";
