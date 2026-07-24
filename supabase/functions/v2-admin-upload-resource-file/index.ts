@@ -307,7 +307,8 @@ function buildProdDeps(): HandlerDeps {
   };
 }
 
-// Only bind Deno.serve when running as an edge function, not during tests.
-if (!Deno.env.get("V2_UPLOAD_TEST_MODE")) {
+// Only bind Deno.serve when running as an edge function (SUPABASE_URL is present).
+// Tests import this module without those env vars set, so Deno.serve is skipped.
+if (Deno.env.get("SUPABASE_URL") && Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
   Deno.serve((req) => handleRequest(req, buildProdDeps()));
 }
