@@ -432,7 +432,7 @@ export function LoginForm() {
         </Form>
       )}
       
-      {selectedPlan && (
+      {!LAUNCH_LOCKED && selectedPlan && (
         <div className={cn("pt-2 text-center", isRTL && "rtl-text")}>
           <p className="text-sm text-muted-foreground">
             {t('auth.dontHaveAccount')}{" "}
