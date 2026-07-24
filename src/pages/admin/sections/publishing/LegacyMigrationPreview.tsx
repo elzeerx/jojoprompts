@@ -115,8 +115,8 @@ export default function LegacyMigrationPreview() {
                     : d.execution_blockers.join(", ")}.
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  No <code>v2_admin_execute_migration</code> function is exposed. Preview stays read-only until the UPayments
-                  currency policy is resolved and an execution RPC is separately designed and reviewed.
+                  No <code>v2_admin_execute_migration</code> function exists. Rehearsal below is read-only and computes
+                  planning aggregates only. Production execution still requires explicit approval after rehearsal signoff.
                 </div>
               </div>
             </div>
