@@ -9,10 +9,21 @@ import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { Resend } from 'npm:resend@2.0.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.0';
 import { validateContact, validateSubmissionId, type ParsedContact } from './validation.ts';
+import {
+  jsonResponse,
+  methodGuardPost,
+  readBoundedJson,
+  escapeHtml,
+  nl2brSafe,
+  hmacSha256Hex,
+  ipFromReq,
+  corsHeadersFor,
+} from '../_shared/emailCommon.ts';
 
 const ADMIN_RECIPIENT = 'info@jojoprompts.com';
 
-export { validateContact, validateSubmissionId };
+export { validateContact, validateSubmissionId, corsHeadersFor };
+
 
 
 function renderConfirmation(p: ParsedContact) {
