@@ -1,191 +1,77 @@
 
-# Admin AI Studio — Plan
+# Audit: JojoPrompts state after Phase 6B.2 real migration + launch lock
 
-A new admin section at `/admin/ai-studio` where admins chat with an AI assistant to **generate, preview, refine, and publish** any kind of prompt asset (text prompts, JSON specs, skill packages, image prompts, video/audio prompts, n8n workflows, etc.). Each generation lives as a **draft** that can be edited, regenerated, given a thumbnail, then **published** into the existing prompts catalog visible to end users.
+## 1. Completed phases (evidence from repo)
 
----
+- **Phase 1** — Signup trigger fix. `supabase/migrations/20251025_fix_signup_trigger.sql`, `docs/PHASE1_SIGNUP_FIX.md`.
+- **Phase 2** — Signup robustness (retry/error codes). `src/utils/signupErrorHandler.ts`, `docs/PHASE2_ROBUSTNESS.md`.
+- **Phase 3** — Signup docs. `docs/SIGNUP_FLOW.md`, `docs/TESTING_CHECKLIST.md`.
+- **Security phases 1–3** — Payment validation, rate limiting, compliance. `docs/SECURITY_PHASE2_PAYMENT_VALIDATION.md`, `docs/SECURITY_PHASE3_RATE_LIMITING_COMPLIANCE.md`, `PHASE_1_SECURITY_FIXES_COMPLETE.md`.
+- **Admin refactor Phases 1–2** — `ADMIN_REFACTOR_PHASE_1_COMPLETE.md`, `PHASE_2_ADMIN_REFACTOR_COMPLETE.md`, `src/pages/admin/sections/*` (ai-studio, analytics, catalog, communications, content, orders, overview, publishing, system).
+- **Code-quality Phases 2–6** (sessions 1–29) — logs in `PHASE_2_SESSION_*`, `PHASE_4_LOGGING_COMPLETE.md`, `PHASE_5_TYPES_COMPLETE.md`, `PHASE_6_CLEANUP_COMPLETE.md`.
+- **V2 foundation** — `src/config/v2Flags.ts` (`V2_COMMERCE_ENABLED = false`), resource types, `/skills` `/automations` `/prompts-catalog` `/image-styles` `/bundles` `/cart` `/library` `/v2-checkout*` pages, `src/hooks/v2/*`.
+- **V2 UPayments plumbing (execution-gated)** — `supabase/functions/_shared/v2Upayments.ts` gated on `V2_UPAYMENTS_ENABLED="true"` (currently unset); `v2-upayments-webhook`, `process-upayments-payment`; migration `20260723072257_…` establishes provider-disabled default.
+- **Phase 6B.1** — Grandfathering policy + legacy access RPCs; migrations `20260724062655`, `20260724063802`, `20260724064749`, `20260724071501`, `20260724072543`. RPCs `v2_admin_migration_preview`, `v2_my_legacy_access_summary`, `v2_admin_migration_rehearsal`. UI: `src/pages/admin/sections/publishing/LegacyMigrationPreview.tsx`, `src/hooks/v2/useMyLegacyAccessSummary.ts`, `LibraryPage.tsx` legacy section.
+- **Phase 6B.2** — Private executor + hashes. Migrations `20260724074013` (private schema, `execute_v2_legacy_migration`, plan hashes `6B.2-r1`), `20260724074210`, `20260724074300`, `20260724075202` (security cleanup: drop `_rehearsal_log`, revoke on `supabase_read_only_user`, restrict private fn EXECUTE to owner). Frontend: `useAdminCommerce.ts` `RehearsalResult`, `LegacyMigrationPreview` RehearsalCard with `planned_writes`.
+- **Real migration executed** — 116 entitlements / 96 users, 56 lifetime credit entries, audit event `1040e421-…`, replay = 0 (per prompt; matches deterministic plan sizes in `private.v2_legacy_entitlement_plan` / `v2_legacy_credit_plan`).
+- **Launch lock** — `src/config/siteMode.ts` `PUBLIC_LAUNCH_LOCK = true`; `src/pages/ComingSoonPage.tsx` gates public/customer routes in `src/App.tsx`; `LoginForm.tsx` hides signup; hosted Supabase signups disabled (external). Published commit `e14c78f3…`.
 
-## 1. Scope (v1)
+## 2. Single next unfinished bounded milestone
 
-Asset types the studio can produce (selectable per message, also auto-detected):
+**Phase 6B.3 — Post-migration verification & admin observability (read-only)**.
 
-| Type | Output | Preview |
-|---|---|---|
-| Text prompt (ChatGPT / Claude / Manus) | Markdown body w/ role + instructions + examples | Rendered markdown |
-| JSON prompt / structured spec | Validated JSON object | Pretty JSON + "Formatted" tab (reuses existing `jsonPromptFormatter`) |
-| Skill package (Claude/Manus) | name + description + instructions + optional script blocks | Markdown + collapsible file tree |
-| Image prompt | Prompt text + parameters (e.g. `--ar`, style) | Live AI-generated thumbnail (streamed) |
-| Workflow / n8n JSON | JSON workflow | JSON + summary |
-| Other / freeform | Any text | Markdown |
+Purpose: give admins a live, evidence-backed view that the executed 6B.2-r1 migration matches the deterministic plan, that customer-facing legacy access renders correctly, and that no drift has been introduced — all under the existing launch lock. No new writes, no provider calls, no publish.
 
-"Other" stays a first-class option so admins can generate things outside the taxonomy (e.g. video prompts, audio prompts, agent system messages) without us blocking on a schema.
+## 3. Files / functions / routes to change
 
----
+**Database (forward-only, read-only)**
+- New migration `supabase/migrations/<ts>_v2_migration_verification.sql`:
+  - `public.v2_admin_migration_verification()` SECURITY DEFINER, admin-only, locked `search_path`. Returns JSON:
+    - `policy_version` `'6B.2-r1'`, current `plan_hashes` from `private.v2_legacy_plan_hashes()`.
+    - `expected` counts from `private.v2_legacy_entitlement_plan()` / `v2_legacy_credit_plan()` (116 / 56, 96 unique users).
+    - `actual` counts from `entitlements` filtered by `source in ('legacy_basic','legacy_standard','legacy_premium','legacy_ultimate')` and `lifetime_credit_entries` filtered by `source='legacy_upayments_reconstruction'` / `legacy_transaction_id IS NOT NULL`.
+    - `drift`: per-user set differences (missing / extra / mismatched `resource_scope`/`end_date`), capped to first N rows.
+    - `last_audit_event_id`, timestamp, executed_by.
+  - Reuses existing plan functions in `private`; no writes; no changes to executor or hashes.
 
-## 2. UX
+**Frontend (admin only)**
+- `src/hooks/admin/v2/useAdminCommerce.ts`: add typed `useMigrationVerification()` calling the new RPC.
+- `src/pages/admin/sections/publishing/LegacyMigrationPreview.tsx`: add a "Post-migration verification" card below the Rehearsal card — shows expected vs actual, hash match badge, drift list (empty state = "No drift"), and last audit event id. Fully defensive optional chaining.
+- No changes to `src/config/siteMode.ts`, `siteMode` gating, `V2_COMMERCE_ENABLED`, `V2_UPAYMENTS_ENABLED`, `ComingSoonPage`, or `LoginForm`.
 
-Two-pane layout under `/admin/ai-studio`:
+**Routes**
+- Reuses existing `/admin/publishing/imports`. No new public routes.
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  Top bar: [Asset type ▾] [Target LLM ▾] [Image model ▾]      │
-├──────────────────────────┬───────────────────────────────────┤
-│                          │  Preview pane (tabs)              │
-│  Chat with AI            │  ─ Rendered                       │
-│  - streamed messages     │  ─ Raw / JSON                     │
-│  - tool-call cards       │  ─ Thumbnail (image prompts)      │
-│  - "Regenerate" /        │                                   │
-│    "Improve" quick chips │  Footer:                          │
-│                          │  [Copy] [Download] [Save draft]   │
-│  Composer (textarea +    │  [Publish → Prompts]              │
-│  attach JSON / image)    │                                   │
-└──────────────────────────┴───────────────────────────────────┘
-```
+**Acceptance tests**
+- `npx tsgo --noEmit` clean; `npm run build` succeeds.
+- `SELECT public.v2_admin_migration_verification()` as an admin returns `expected.entitlements=116`, `expected.credits=56`, `actual.entitlements=116`, `actual.credits=56`, `drift.entitlements=[]`, `drift.credits=[]`, `hashes_match=true`.
+- Same call as anon/non-admin → permission error.
+- `/admin/publishing/imports` renders the verification card with green "in sync" state; no console errors.
+- Non-admin visitors to any public route still land on Coming Soon (unchanged).
+- `entitlements` and `lifetime_credit_entries` row counts unchanged before/after (read-only proof).
 
-Key interactions:
-- Admin types a brief ("Generate a Claude skill for resume tailoring").
-- AI streams a response and calls a tool (`emit_asset`) that pushes a structured payload into the right-hand preview pane.
-- Admin clicks **Generate thumbnail** → streams a Gemini Flash Image / GPT-Image-2 preview into the preview card (model picker per generation).
-- Admin can keep chatting ("make it shorter", "add an Arabic version") — each accepted change updates the draft.
-- **Save draft** persists it; **Publish** promotes it into `prompts` so it appears in the public catalog.
+**Safety constraints**
+- No writes to `entitlements`, `lifetime_credit_entries`, `orders`, `transactions`, V1 subscriptions/transactions.
+- No changes to `private.execute_v2_legacy_migration`, hash constants, or `policy_version`.
+- No provider calls; `V2_UPAYMENTS_ENABLED` remains unset.
+- No changes to launch lock, hosted signup, or published commit.
+- New RPC gated by `has_role(auth.uid(),'admin')`; `search_path=public,pg_temp`; `SECURITY DEFINER`; `REVOKE ALL … FROM PUBLIC`; `GRANT EXECUTE … TO authenticated` with in-function admin check.
 
-Sidebar drawer lists previous drafts ("My generations") with status badges (`draft`, `published`).
+## 4. Blocked without live UPayments creds or a production-release decision
 
----
+- Setting `V2_UPAYMENTS_ENABLED=true`, real order creation, checkout, webhook verification against sandbox/production UPayments.
+- Any test that requires a real KWD charge or provider callback signature.
+- Flipping `V2_COMMERCE_ENABLED=true` or exposing V2 catalog/checkout routes publicly.
+- Flipping `PUBLIC_LAUNCH_LOCK=false` or re-enabling hosted Supabase signups.
+- Any creator-marketplace / subscription work (explicitly out of scope per user).
 
-## 3. Architecture
+Phase 6B.3 as scoped does **not** require any of the above.
 
-### 3a. Frontend
+## 5. Recommendation
 
-New files:
+**Yes — implement Phase 6B.3 now under the launch lock.** It is:
+- Read-only and provider-independent, so it cannot destabilize the completed 6B.2 migration or the published Coming Soon commit.
+- Directly valuable: it converts the one-shot rolled-back rehearsal + audit event into an ongoing admin-visible integrity check that will keep paying off through the eventual unlock.
+- The natural predecessor to the eventual (separately-approved) V2 commerce unlock, since unlock QA will want a green "migration in sync" indicator.
 
-```
-src/pages/admin/sections/ai-studio/
-  AiStudioPage.tsx                 // layout + thread routing
-  AiStudioChat.tsx                 // useChat + DefaultChatTransport
-  AssetPreviewPane.tsx             // tabs: Rendered / Raw / Thumbnail
-  ImagePreviewStream.tsx           // SSE consumer for image gen
-  DraftsSidebar.tsx
-  PublishDialog.tsx                // title, category, tags, thumbnail, status
-  hooks/useAiStudioDraft.ts
-  hooks/useImageGeneration.ts      // shared streamImage helper
-```
-
-Reuses existing pieces:
-- `CopyButton` (just added)
-- `jsonPromptFormatter` for JSON preview
-- `PromptService.createPrompt` for publish
-- `AdminLayout`, `AdminSectionSkeleton`, command palette entry
-
-Nav: add a **Studio** group in `adminNavConfig.ts` → `AI Studio` (icon: `Sparkles`), route `/admin/ai-studio` and `/admin/ai-studio/:draftId`.
-
-### 3b. Backend (Supabase Edge Functions)
-
-Three new functions in `supabase/functions/`:
-
-1. **`ai-studio-chat`** — streaming chat endpoint.
-   - Uses AI SDK + Lovable AI Gateway provider helper (`_shared/ai-gateway.ts`).
-   - Default model: `google/gemini-3-flash-preview`.
-   - System prompt instructs the model to call the `emit_asset` tool with a typed payload `{ kind, title, body, json?, params?, tags?, language? }`.
-   - Other tools: `suggest_thumbnail_prompt`, `translate_to_arabic`.
-   - `stopWhen: stepCountIs(50)`.
-   - Validates the admin JWT in-code, checks `has_role(uid,'admin')`.
-
-2. **`ai-studio-image`** — streaming image generation passthrough.
-   - Accepts `{ prompt, model, size }`, forwards to `https://ai.gateway.lovable.dev/v1/images/generations` with `stream: true, partial_images: 1` for OpenAI models; rebuilds the body for Gemini models.
-   - Returns the SSE stream untouched; the client renders partial frames with the blur pattern.
-
-3. **`ai-studio-publish`** — promotes a draft to `prompts`.
-   - Uploads the chosen thumbnail (data URL → `prompt-images` bucket) and inserts into `prompts` with `metadata.ai_generated = true`, `metadata.source_draft_id`, `metadata.target_llm`, etc.
-
-Shared helper `_shared/ai-gateway.ts` already required by the connection pattern; reused across the three functions.
-
-### 3c. Database
-
-One new table for drafts (the published prompts go into the existing `prompts` table per your choice — only a `metadata.status` flag is added; no destructive change to public schema):
-
-```sql
-CREATE TABLE public.ai_studio_drafts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,                      -- admin who created it
-  kind text NOT NULL,                         -- 'text' | 'json' | 'skill' | 'image' | 'workflow' | 'other'
-  title text,
-  body text,                                  -- markdown / instructions
-  payload jsonb DEFAULT '{}'::jsonb,          -- structured data (JSON spec, skill files, params)
-  target_llm text,                            -- 'chatgpt' | 'claude' | 'manus' | 'gemini' | 'midjourney' | 'generic'
-  thumbnail_path text,                        -- storage key in prompt-images
-  messages jsonb DEFAULT '[]'::jsonb,         -- UIMessage[] for conversation resume
-  status text NOT NULL DEFAULT 'draft',       -- 'draft' | 'published' | 'archived'
-  published_prompt_id uuid,                   -- FK-by-convention to prompts.id once published
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_studio_drafts TO authenticated;
-GRANT ALL ON public.ai_studio_drafts TO service_role;
-
-ALTER TABLE public.ai_studio_drafts ENABLE ROW LEVEL SECURITY;
-
--- Admin-only access via existing has_role()
-CREATE POLICY "Admins read drafts" ON public.ai_studio_drafts
-  FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-
-CREATE POLICY "Admins manage own drafts" ON public.ai_studio_drafts
-  FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'admin') AND auth.uid() = user_id)
-  WITH CHECK (public.has_role(auth.uid(), 'admin') AND auth.uid() = user_id);
-```
-
-No change to `prompts` schema — we use `metadata.status`, `metadata.ai_generated`, `metadata.source_draft_id`.
-
-### 3d. Storage
-
-Reuse the existing **`prompt-images`** bucket for thumbnails. Add a folder convention `ai-studio/{draftId}/{frame}.png`.
-
----
-
-## 4. Phasing
-
-Shipping in three small phases so each one is reviewable.
-
-### Phase 1 — Chat shell + text/JSON generation (no images, no publish)
-- Migration: `ai_studio_drafts` table + RLS + grants.
-- Edge function `ai-studio-chat` with `emit_asset` tool.
-- `AiStudioPage` + `AiStudioChat` + `AssetPreviewPane` (Rendered + Raw tabs).
-- Save draft / load draft / drafts sidebar.
-- Nav entry + route + command-palette entry.
-
-### Phase 2 — Image previews + thumbnails
-- Edge function `ai-studio-image` (SSE passthrough).
-- `ImagePreviewStream` with partial-frame blur.
-- Per-generation model picker (Gemini Flash Image default, GPT-Image-2 / Gemini Pro Image as alternatives).
-- "Generate thumbnail" action on any draft → stores latest PNG in `prompt-images/ai-studio/{draftId}/`.
-
-### Phase 3 — Publish workflow
-- `PublishDialog`: title, description, category, tags, language (EN/AR), thumbnail picker (uploaded or AI-generated), target LLM badge.
-- Edge function `ai-studio-publish` → inserts into `prompts`, updates draft `status='published'` + `published_prompt_id`.
-- Draft list shows status badges, "Unpublish" reverts metadata.status to `draft`.
-
-(Phase 4 stretch, not in scope yet: skill-package zip export, Manus task export, batch generation, evaluation/scoring.)
-
----
-
-## 5. Technical details
-
-- Streaming chat uses `useChat` + `DefaultChatTransport` pointed at `${VITE_SUPABASE_URL}/functions/v1/ai-studio-chat` with the publishable key in `Authorization`.
-- Conversation history is **per draft**: route is `/admin/ai-studio/:draftId`, messages persisted in `ai_studio_drafts.messages` so admins can resume a generation later. A `/admin/ai-studio` index route creates a new draft and navigates to its id.
-- The `emit_asset` tool result is rendered as a structured card in the chat AND piped into the right-hand preview pane via a Zustand store keyed by `draftId`.
-- Image generation defaults to `google/gemini-3.1-flash-image-preview` (no `partial_images` field). When the admin switches to an OpenAI image model, the request body is rebuilt server-side to add `prompt`, `quality: "low"`, `partial_images: 1`.
-- Publish path uploads the final PNG via the Supabase JS client (admin session) — no service-role key in the browser.
-- `LOVABLE_API_KEY` must exist; if missing we'll provision it before deploying functions.
-
----
-
-## 6. Open questions before build
-
-1. **"Other" asset type** — you selected it alongside the named ones. Anything specific you have in mind (video prompts? audio? agent system prompts?) so I tune the `emit_asset` schema and the preview tabs accordingly? If not, I'll treat it as "freeform markdown" and let the model pick the shape.
-2. **Skill packages** — Claude Skills and Manus Skills have different file layouts. Want me to support both with a "flavor" selector, or pick one for v1?
-3. **Auto-publish to Arabic** — should the AI always produce bilingual output (EN + AR fields) for text/JSON prompts, or only when admin asks?
-
-I can start Phase 1 as soon as you confirm (or just say "go" and I'll use the defaults above: freeform "Other" = markdown, Claude+Manus skill flavor selector, bilingual only on request).
+Everything beyond 6B.3 (UPayments enablement, V2 commerce unlock, public unlock) should remain deferred behind an explicit production-release decision.
