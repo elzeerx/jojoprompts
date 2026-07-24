@@ -17,12 +17,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
   evaluateReadiness,
-  METADEFENDER_BASE,
+  probeMetadefenderReadiness,
   SCANNER_NAME,
   type ReadinessResult,
 } from "../_shared/metadefender.ts";
-
-const PROBE_TIMEOUT_MS = 5000;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -36,35 +34,10 @@ function err(code: string, status = 400): Response {
 }
 
 async function probeProvider(apiKey: string): Promise<ReadinessResult> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${METADEFENDER_BASE}/apikey/`, {
-      method: "GET",
-      headers: { apikey: apiKey, accept: "application/json" },
-      signal: controller.signal,
-    });
-    let account: unknown = null;
-    try {
-      account = await res.json();
-    } catch {
-      account = null;
-    }
-    return evaluateReadiness({
-      hasApiKey: true,
-      hasWorkerSecret: !!Deno.env.get("PACKAGE_SCAN_WORKER_SECRET"),
-      probeStatus: res.status,
-      account,
-    });
-  } catch {
-    return evaluateReadiness({
-      hasApiKey: true,
-      hasWorkerSecret: !!Deno.env.get("PACKAGE_SCAN_WORKER_SECRET"),
-      probeStatus: undefined,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  return await probeMetadefenderReadiness(
+    apiKey,
+    Deno.env.get("PACKAGE_SCAN_WORKER_SECRET"),
+  );
 }
 
 async function requireAdmin(req: Request): Promise<
@@ -186,11 +159,14 @@ Deno.serve(async (req) => {
       },
     );
     if (rpcErr || !scanId) {
+      const msg = rpcErr?.message ?? "";
       const code =
-        rpcErr?.message?.includes("pending_exists") ? "pending_exists"
-        : rpcErr?.message?.includes("no_files") ? "no_files"
+        msg.includes("already_clean") ? "already_clean"
+        : msg.includes("pending_exists") ? "pending_exists"
+        : msg.includes("no_files") ? "no_files"
         : "db_error";
-      return err(code, code === "db_error" ? 500 : 409);
+      const status = code === "db_error" ? 500 : (code === "no_files" ? 412 : 409);
+      return err(code, status);
     }
 
     // Fire-and-forget worker kick.
@@ -206,6 +182,24 @@ Deno.serve(async (req) => {
     const scanId = String(payload.scan_id ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(scanId)) return err("invalid_scan_id", 400);
     if (!apiKey || !workerSecret) return err("not_configured", 412);
+
+    // Full readiness re-validation before any worker work.
+    const readiness = await probeProvider(apiKey);
+    if (!readiness.ready) {
+      return json({ ok: false, error: "not_ready", readiness }, 412);
+    }
+
+    // Verify the scan exists and is pending.
+    const { data: scan, error: scanErr } = await auth.supabase
+      .from("package_scans")
+      .select("id, status")
+      .eq("id", scanId)
+      .maybeSingle();
+    if (scanErr) return err("db_error", 500);
+    if (!scan) return err("scan_not_found", 404);
+    if ((scan as { status: string }).status !== "pending") {
+      return err("scan_not_pending", 409);
+    }
 
     // deno-lint-ignore no-explicit-any
     const rt = (globalThis as any).EdgeRuntime;

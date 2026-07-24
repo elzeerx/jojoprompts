@@ -4,14 +4,21 @@ import {
   assertStrictEquals,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
+  aggregateItemStatuses,
+  bytesEqualConstantTime,
   constantTimeEqual,
   evaluateReadiness,
   mapResultCode,
   nextPollDelayMs,
+  normalizeHexChecksum,
   normalizeProviderResponse,
+  resolveItemStatus,
   sanitizeErrorMessage,
   sanitizeFileName,
+  sha256Hex,
 } from "./metadefender.ts";
+
+// -------------------------- mapResultCode --------------------------
 
 Deno.test("mapResultCode: 254/255 pending regardless of progress", () => {
   assertEquals(mapResultCode(254, 100), "pending");
@@ -39,9 +46,74 @@ Deno.test("mapResultCode: unknown terminal code fails closed", () => {
   assertEquals(mapResultCode(-1, 100), "failed");
 });
 
-Deno.test("mapResultCode: null code with progress=100 pending", () => {
-  assertEquals(mapResultCode(null, 100), "pending");
+Deno.test("mapResultCode: null code AT progress=100 fails closed (unknown terminal)", () => {
+  // Correction: previously returned pending; only 254/255 or progress<100 is pending.
+  assertEquals(mapResultCode(null, 100), "failed");
+  assertEquals(mapResultCode(undefined, 100), "failed");
 });
+
+Deno.test("mapResultCode: null code with progress<100 stays pending", () => {
+  assertEquals(mapResultCode(null, 50), "pending");
+});
+
+// -------------------------- item precedence / aggregate --------------------------
+
+Deno.test("resolveItemStatus: never downgrades", () => {
+  assertEquals(resolveItemStatus("clean", "pending"), "clean");
+  assertEquals(resolveItemStatus("clean", "failed"), "clean");
+  assertEquals(resolveItemStatus("failed", "pending"), "failed");
+  assertEquals(resolveItemStatus("suspicious", "clean"), "suspicious");
+  assertEquals(resolveItemStatus("malicious", "suspicious"), "malicious");
+  assertEquals(resolveItemStatus("malicious", "clean"), "malicious");
+});
+
+Deno.test("resolveItemStatus: stronger signal upgrades", () => {
+  // failed -> clean upgrades (clean rank > failed rank).
+  assertEquals(resolveItemStatus("failed", "clean"), "clean");
+  // clean -> suspicious upgrades.
+  assertEquals(resolveItemStatus("clean", "suspicious"), "suspicious");
+  // clean -> malicious upgrades.
+  assertEquals(resolveItemStatus("clean", "malicious"), "malicious");
+  // pending -> anything upgrades.
+  assertEquals(resolveItemStatus("pending", "failed"), "failed");
+  assertEquals(resolveItemStatus("pending", "clean"), "clean");
+});
+
+Deno.test("resolveItemStatus: equal is preserved", () => {
+  assertEquals(resolveItemStatus("clean", "clean"), "clean");
+});
+
+Deno.test("aggregateItemStatuses: malicious wins even with clean+failed", () => {
+  assertEquals(
+    aggregateItemStatuses(["clean", "failed", "malicious"]),
+    "malicious",
+  );
+});
+
+Deno.test("aggregateItemStatuses: suspicious beats failed and clean", () => {
+  assertEquals(
+    aggregateItemStatuses(["clean", "failed", "suspicious"]),
+    "suspicious",
+  );
+});
+
+Deno.test("aggregateItemStatuses: failed beats clean when any failed", () => {
+  assertEquals(aggregateItemStatuses(["clean", "failed"]), "failed");
+});
+
+Deno.test("aggregateItemStatuses: clean only if every item clean", () => {
+  assertEquals(aggregateItemStatuses(["clean", "clean"]), "clean");
+});
+
+Deno.test("aggregateItemStatuses: pending when unresolved and no strong signal", () => {
+  assertEquals(aggregateItemStatuses(["clean", "pending"]), "pending");
+});
+
+Deno.test("aggregateItemStatuses: empty is pending", () => {
+  assertEquals(aggregateItemStatuses([]), "pending");
+});
+
+// -------------------------- readiness --------------------------
 
 Deno.test("evaluateReadiness: no api key", () => {
   const r = evaluateReadiness({ hasApiKey: false, hasWorkerSecret: true });
@@ -173,6 +245,8 @@ Deno.test("evaluateReadiness: never returns raw provider content", () => {
   );
 });
 
+// -------------------------- provider response normalization --------------------------
+
 Deno.test("normalizeProviderResponse: pending progress", () => {
   const raw = { scan_results: { scan_all_result_i: 255, progress_percentage: 42 } };
   const n = normalizeProviderResponse(raw);
@@ -244,6 +318,8 @@ Deno.test("sanitizeErrorMessage: strips control chars and caps length", () => {
   assertEquals(s.length, 200);
 });
 
+// -------------------------- constant-time / checksum helpers --------------------------
+
 Deno.test("constantTimeEqual: equal", () => {
   assert(constantTimeEqual("abc123", "abc123"));
 });
@@ -255,6 +331,50 @@ Deno.test("constantTimeEqual: different lengths", () => {
 Deno.test("constantTimeEqual: different content", () => {
   assertStrictEquals(constantTimeEqual("aaaaaa", "aaaaab"), false);
 });
+
+Deno.test("bytesEqualConstantTime: length mismatch", () => {
+  assertStrictEquals(
+    bytesEqualConstantTime(new Uint8Array([1, 2, 3]), new Uint8Array([1, 2])),
+    false,
+  );
+});
+
+Deno.test("bytesEqualConstantTime: exact match", () => {
+  assert(
+    bytesEqualConstantTime(new Uint8Array([1, 2, 3]), new Uint8Array([1, 2, 3])),
+  );
+});
+
+Deno.test("bytesEqualConstantTime: single-byte diff", () => {
+  assertStrictEquals(
+    bytesEqualConstantTime(new Uint8Array([1, 2, 3]), new Uint8Array([1, 2, 4])),
+    false,
+  );
+});
+
+Deno.test("normalizeHexChecksum: strips prefix and lowercases", () => {
+  assertEquals(normalizeHexChecksum("SHA256:ABC123def"), "abc123def");
+  assertEquals(normalizeHexChecksum("  ABCDEF01  "), "abcdef01");
+});
+
+Deno.test("normalizeHexChecksum: rejects non-hex", () => {
+  assertEquals(normalizeHexChecksum("not-hex-zzz"), null);
+  assertEquals(normalizeHexChecksum(""), null);
+  assertEquals(normalizeHexChecksum(null), null);
+});
+
+Deno.test("sha256Hex: matches known vector for empty and 'abc'", async () => {
+  assertEquals(
+    await sha256Hex(new Uint8Array()),
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  );
+  assertEquals(
+    await sha256Hex(new TextEncoder().encode("abc")),
+    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  );
+});
+
+// -------------------------- misc --------------------------
 
 Deno.test("nextPollDelayMs: monotonic then capped", () => {
   const d0 = nextPollDelayMs(0);

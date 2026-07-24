@@ -26,15 +26,46 @@ export function mapResultCode(
   progressPercent: number | null | undefined,
 ): NormalizedStatus {
   const progress = typeof progressPercent === "number" ? progressPercent : 0;
+  // 254/255 or progress<100 => pending. Everything else is terminal.
   if (code === 254 || code === 255) return "pending";
   if (progress < 100) return "pending";
   if (code === 0) return "clean";
   if (code === 1) return "malicious";
   if (code === 2) return "suspicious";
-  if (code == null) return "pending";
-  if (KNOWN_FAILED_CODES.has(code)) return "failed";
-  // Unknown terminal codes fail closed.
+  if (KNOWN_FAILED_CODES.has(code as number)) return "failed";
+  // Unknown terminal codes (including null at progress=100) fail closed.
   return "failed";
+}
+
+// Deterministic aggregate precedence for a bag of item statuses.
+// malicious > suspicious > failed > (clean iff every item clean) > pending.
+// Mirrors the SQL in v2_internal_apply_scan_item_result so we can unit-test it.
+export function aggregateItemStatuses(
+  statuses: readonly NormalizedStatus[],
+): NormalizedStatus {
+  if (statuses.length === 0) return "pending";
+  if (statuses.some((s) => s === "malicious")) return "malicious";
+  if (statuses.some((s) => s === "suspicious")) return "suspicious";
+  if (statuses.some((s) => s === "failed")) return "failed";
+  if (statuses.every((s) => s === "clean")) return "clean";
+  return "pending";
+}
+
+// Per-item monotonic precedence (higher wins). A weaker or equal incoming
+// signal must never downgrade an existing stronger one. Mirrors SQL ranks.
+const ITEM_RANK: Record<NormalizedStatus, number> = {
+  malicious: 4,
+  suspicious: 3,
+  clean: 2,
+  failed: 1,
+  pending: 0,
+};
+
+export function resolveItemStatus(
+  current: NormalizedStatus,
+  incoming: NormalizedStatus,
+): NormalizedStatus {
+  return ITEM_RANK[incoming] > ITEM_RANK[current] ? incoming : current;
 }
 
 // Stable, safe readiness reason codes (never leak provider text).
@@ -228,4 +259,76 @@ export function sanitizeFileName(name: string): string {
   const base = name.split(/[\\/]/).pop() ?? "file";
   const cleaned = base.replace(/[^A-Za-z0-9._-]/g, "_");
   return cleaned.slice(0, 120) || "file";
+}
+
+// Byte-array constant-time equality for hex checksums.
+export function bytesEqualConstantTime(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+// Normalize a hex checksum ("SHA256:abc..." | "abc..." | " ABC ") to lowercase hex.
+export function normalizeHexChecksum(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  const stripped = s.includes(":") ? s.split(":").pop()! : s;
+  const lower = stripped.toLowerCase();
+  if (!/^[0-9a-f]+$/.test(lower)) return null;
+  return lower;
+}
+
+// Compute lowercase-hex SHA-256 of bytes using Web Crypto.
+export async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const buf = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buf).set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  const view = new Uint8Array(digest);
+  let out = "";
+  for (let i = 0; i < view.length; i++) {
+    out += view[i].toString(16).padStart(2, "0");
+  }
+  return out;
+}
+
+export const RESOURCE_PACKAGES_BUCKET = "resource-packages";
+
+// Shared readiness probe. Fails closed on any error. Returns a ReadinessResult.
+export async function probeMetadefenderReadiness(
+  apiKey: string | undefined | null,
+  workerSecret: string | undefined | null,
+  timeoutMs = 5000,
+): Promise<ReadinessResult> {
+  if (!apiKey) {
+    return evaluateReadiness({ hasApiKey: false, hasWorkerSecret: !!workerSecret });
+  }
+  if (!workerSecret) {
+    return evaluateReadiness({ hasApiKey: true, hasWorkerSecret: false });
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${METADEFENDER_BASE}/apikey/`, {
+      method: "GET",
+      headers: { apikey: apiKey, accept: "application/json" },
+      signal: controller.signal,
+    });
+    let account: unknown = null;
+    try { account = await res.json(); } catch { account = null; }
+    return evaluateReadiness({
+      hasApiKey: true,
+      hasWorkerSecret: true,
+      probeStatus: res.status,
+      account,
+    });
+  } catch {
+    return evaluateReadiness({
+      hasApiKey: true,
+      hasWorkerSecret: true,
+      probeStatus: undefined,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
