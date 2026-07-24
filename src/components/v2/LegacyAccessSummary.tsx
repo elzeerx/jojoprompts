@@ -82,7 +82,7 @@ export function LegacyAccessSummary() {
           <div className="rounded-md border p-3 text-xs" dir="ltr">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
-                {lang === "ar" ? "الرصيد المؤهل تجاه العضوية الدائمة" : "Verified credit toward lifetime"}
+                {lang === "ar" ? "الرصيد الموثّق من PayPal تجاه العضوية الدائمة" : "Verified historical PayPal credit toward lifetime"}
               </span>
               <strong className="tabular-nums">{fmtKwd(data.paypal_verified_credit_fils)}</strong>
             </div>
@@ -92,11 +92,16 @@ export function LegacyAccessSummary() {
               </span>
               <strong className="tabular-nums">{fmtKwd(data.remaining_lifetime_fils)}</strong>
             </div>
+            <div className="mt-2 text-[11px] text-muted-foreground">
+              {lang === "ar"
+                ? "المشتريات المؤهلة على منصة V2 من موارد جوجو ستُضاف تلقائياً إلى إجمالي الحد الدائم عبر النظام الرئيسي لتتبع الحد. لا تشمل منتجات المبدعين أو المشتريات الخارجية."
+                : "Eligible V2 purchases of Jojo-owned resources will be added to your combined lifetime total through the main lifetime progress system. Creator products and external purchases are not counted."}
+            </div>
             {data.payment_history_under_review && (
               <div className="mt-2 rounded-md bg-muted/50 p-2 text-[11px] text-muted-foreground">
                 {lang === "ar"
-                  ? "سجل المدفوعات قيد المراجعة — لا يتم احتساب مدفوعات UPayments حتى تُحسم عملة التحويل."
-                  : "Payment history under review — UPayments payments are not counted until currency policy is resolved."}
+                  ? "سجل المدفوعات قيد المراجعة — بعض المدفوعات (UPayments أو PayPal غير المرتبطة/المسترجعة) لم تُحتسب حتى تكتمل المراجعة."
+                  : "Payment history under review — some payments (UPayments, or PayPal payments that are unlinked or refunded) are not counted until review is complete."}
               </div>
             )}
           </div>
