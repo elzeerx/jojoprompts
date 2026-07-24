@@ -356,8 +356,14 @@ export default function LegacyMigrationPreview() {
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Total" value={fmtInt(paypal.total_count)} />
+              <Stat label="Positive completed" value={fmtInt(paypal.positive_completed_rows ?? 0)} />
+              <Stat label="Strict verified rows" value={fmtInt(paypal.verified_rows ?? 0)} hint="linked positive-status sub, no negative link" />
+              <Stat label="Verified users" value={fmtInt(paypal.verified_users ?? 0)} />
+              <Stat label="Verified capped total" value={fmtInt(paypal.verified_total_capped_fils ?? 0)} hint={`≈ ${fmtFilsAsKwd(paypal.verified_total_capped_fils ?? 0)}`} />
+              <Stat label="Users capped @ threshold" value={fmtInt(paypal.verified_users_capped_at_threshold ?? 0)} />
+              <Stat label="Unlinked review rows" value={fmtInt(paypal.unlinked_positive_review_rows ?? 0)} hint="excluded from credit" />
+              <Stat label="Negative-linked review rows" value={fmtInt(paypal.negative_linked_review_rows ?? 0)} hint="excluded from credit" />
               <Stat label="Zero amount" value={fmtInt(paypal.zero_amount_count)} />
-              <Stat label="Missing subscription link" value={fmtInt(paypal.missing_subscription_link)} />
               <Stat label="Duplicate provider refs" value={fmtInt(paypal.duplicate_provider_reference_groups)} />
             </div>
             <div className="overflow-x-auto" dir="ltr">
@@ -385,9 +391,10 @@ export default function LegacyMigrationPreview() {
               </Table>
             </div>
             <div className="rounded-md border bg-muted/40 p-3 text-xs" dir="ltr">
-              Proposed credit for completed payments (pre-cap):{" "}
+              Strict verified pre-cap total:{" "}
               <strong>{fmtInt(paypal.proposed_credit_fils_completed_precap)}</strong> fils
-              {" · "}{fmtFilsAsKwd(paypal.proposed_credit_fils_completed_precap)}
+              {" · "}{fmtFilsAsKwd(paypal.proposed_credit_fils_completed_precap)}. Unlinked and negative-linked
+              positive-completed rows are held for manual review and excluded from the lifetime-credit totals.
             </div>
           </CardContent>
         </Card>
