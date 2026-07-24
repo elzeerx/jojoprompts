@@ -125,13 +125,7 @@ export default function ComingSoonPage() {
       {/* Footer */}
       <footer className="relative z-10 flex-none pb-5 pt-2 text-center sm:pb-6">
         <DiamondRule />
-        <p
-          className="mt-3 text-xs tracking-wide text-[#8A8578]"
-          style={{
-            fontFamily:
-              'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-          }}
-        >
+        <p className="mt-3 text-xs tracking-wide text-[#8A8578]">
           © 2026 JojoPrompts
         </p>
       </footer>
