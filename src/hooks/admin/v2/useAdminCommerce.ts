@@ -564,6 +564,15 @@ export interface MigrationPreviewPlanCohorts {
   standard_expired_historical_users: number;
   basic_cancelled_review_users: number;
   standard_cancelled_review_users: number;
+  // Corrective pass: raw source-row vs deduplicated unresolved-user visibility.
+  ultimate_cancelled_source_rows?: number;
+  premium_cancelled_source_rows?: number;
+  basic_cancelled_source_rows?: number;
+  standard_cancelled_source_rows?: number;
+  ultimate_cancelled_unresolved_users?: number;
+  premium_cancelled_unresolved_users?: number;
+  basic_cancelled_unresolved_users?: number;
+  standard_cancelled_unresolved_users?: number;
   raw_row_counts_by_tier_status: Array<{
     tier: string; is_lifetime: boolean; status: string; rows: number;
   }>;
