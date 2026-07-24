@@ -301,7 +301,7 @@ function VerificationCard() {
           <Button
             variant="ghost"
             size="sm"
-            className="ms-auto min-h-[32px]"
+            className="ms-auto min-h-[44px] sm:min-h-[32px]"
             onClick={() => q.refetch()}
             aria-label="Recheck verification"
           >
