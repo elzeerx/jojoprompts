@@ -173,12 +173,12 @@ function VerificationRow({
   const a = Number.isFinite(Number(actual)) ? Number(actual) : null;
   const inSync = e !== null && a !== null && e === a;
   return (
-    <div className="flex items-center justify-between rounded-md border p-3 text-xs" dir="ltr">
-      <div>
-        <div className="font-semibold">{label}</div>
-        {hint ? <div className="text-[11px] text-muted-foreground">{hint}</div> : null}
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border p-3 text-xs" dir="ltr">
+      <div className="min-w-0">
+        <div className="font-semibold break-words">{label}</div>
+        {hint ? <div className="text-[11px] text-muted-foreground break-words">{hint}</div> : null}
       </div>
-      <div className="flex items-center gap-3 tabular-nums">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 tabular-nums">
         <span>expected <strong>{e === null ? "—" : fmtInt(e)}</strong></span>
         <span>actual <strong>{a === null ? "—" : fmtInt(a)}</strong></span>
         <Badge variant={inSync ? "secondary" : "destructive"}>{inSync ? "in sync" : "drift"}</Badge>
@@ -248,7 +248,7 @@ function VerificationCard() {
           <Button
             variant="outline"
             size="sm"
-            className="mt-3 min-h-[36px]"
+            className="mt-3 min-h-[44px] sm:min-h-[36px]"
             onClick={() => q.refetch()}
           >
             <RefreshCw className="me-1.5 h-3.5 w-3.5" /> Retry
@@ -301,7 +301,7 @@ function VerificationCard() {
           <Button
             variant="ghost"
             size="sm"
-            className="ms-auto min-h-[32px]"
+            className="ms-auto min-h-[44px] sm:min-h-[32px]"
             onClick={() => q.refetch()}
             aria-label="Recheck verification"
           >
