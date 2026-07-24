@@ -22,6 +22,9 @@ import { createLogger } from "@/utils/logging";
 import { securityLogger } from "@/utils/logging/security";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
+import { isLaunchLocked } from "@/config/siteMode";
+
+const LAUNCH_LOCKED = isLaunchLocked();
 
 type AuthMode = 'password' | 'magic-link';
 
