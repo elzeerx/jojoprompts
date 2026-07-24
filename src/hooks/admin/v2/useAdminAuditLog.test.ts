@@ -1,8 +1,20 @@
 import { describe, it, expect } from "bun:test";
 
+// Polyfill localStorage before importing anything that transitively pulls in
+// the Supabase browser client.
+if (typeof (globalThis as { localStorage?: unknown }).localStorage === "undefined") {
+  const store = new Map<string, string>();
+  (globalThis as unknown as { localStorage: Storage }).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => { store.set(k, String(v)); },
+    removeItem: (k: string) => { store.delete(k); },
+    clear: () => { store.clear(); },
+    key: (i: number) => Array.from(store.keys())[i] ?? null,
+    get length() { return store.size; },
+  } as Storage;
+}
+
 // Force a deterministic non-UTC local timezone for these tests.
-// Bun/Node honor the TZ env var for Date computations. Set at module scope
-// so it applies before Date usage below.
 (globalThis as { process?: { env: Record<string, string | undefined> } }).process!.env.TZ =
   "Asia/Kuwait"; // UTC+03:00, no DST
 
