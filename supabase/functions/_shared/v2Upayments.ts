@@ -594,12 +594,23 @@ export function localRefundReference(refundId: string): string {
 
 // ---------------------- Strict webhook envelope validator --------------
 
+// Documented UPayments webhook payload fields (snake_case). These are
+// accepted as hints only — do not trust for settlement, do not persist
+// unless already in SAFE_KEYS. Provider GET re-verification remains the
+// only source of payment truth.
+const WEBHOOK_DOC_FIELDS = [
+  "payment_id","result","post_date","tran_id","ref","track_id","auth",
+  "order_id","requested_order_id","refund_order_id","payment_type",
+  "invoice_id","transaction_date","receipt_id","trn_udf",
+] as const;
+
 const WEBHOOK_TOP_KEYS: ReadonlySet<string> = new Set([
   "status","message","statusMessage","errorMessage","data","result",
   "track_id","trackId","session_id","sessionId",
   "order_id","orderId","reference","requested_order_id","requestedOrderId",
   "merchant_reference","merchantReference",
   "payment_status","paymentStatus","amount","currency","total_paid","totalPaid",
+  ...WEBHOOK_DOC_FIELDS,
 ]);
 const WEBHOOK_DATA_KEYS: ReadonlySet<string> = new Set([
   "track_id","trackId","session_id","sessionId",
@@ -607,9 +618,8 @@ const WEBHOOK_DATA_KEYS: ReadonlySet<string> = new Set([
   "merchant_reference","merchantReference",
   "payment_status","paymentStatus","status","result",
   "amount","currency","total_paid","totalPaid",
+  ...WEBHOOK_DOC_FIELDS,
 ]);
-
-// Returns { ok: true } or { ok: false, error }. Rejects unknown keys,
 // non-plain data, and payloads with zero identifier hints.
 export function validateWebhookEnvelope(
   body: unknown,
