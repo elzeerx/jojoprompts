@@ -31,6 +31,7 @@ import {
   hasOnlyAllowedKeys,
   constantTimeEqual,
   normalizeEmail,
+  hmacSha256Hex,
 } from '../_shared/emailCommon.ts';
 
 // ---------------- Constants & limits
