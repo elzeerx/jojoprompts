@@ -75,7 +75,7 @@ export function RefundDetailSheet({ refundId, onOpenChange }: Props) {
       ? (refund.status === "failed"
           ? "Refund terminal (failed) — provider re-check is not applicable."
           : refund.provider_submission_state === "submission_unknown"
-            ? "Submission state is unknown — use the recovery queue to finalize or retry."
+            ? "Submission state is unknown — use Recovery to review or finalize this refund."
             : (!refund.provider_reference || !refund.provider_refund_order_id)
               ? "Provider identifiers missing — cannot poll /check-refund."
               : "Refund is not in a pollable state.")
