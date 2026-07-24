@@ -4718,6 +4718,7 @@ export type Database = {
         }
         Returns: Json
       }
+      v2_my_legacy_access_summary: { Args: never; Returns: Json }
       v2_my_payment_attempts: {
         Args: { p_order_id: string }
         Returns: {
