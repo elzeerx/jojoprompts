@@ -399,51 +399,51 @@ export default function LegacyMigrationPreview() {
           </CardContent>
         </Card>
 
-        {/* UPayments — ambiguous */}
-        <Card className="border-warning">
-          <CardHeader><CardTitle className="text-base">UPayments transactions — currency ambiguous</CardTitle></CardHeader>
+        {/* UPayments — code-reconstructed KWD */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">UPayments transactions — code-reconstructed KWD</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="rounded-md border border-warning bg-warning/5 p-3 text-xs">
-              {upay.ambiguity_note ?? "Ambiguous currency; do not choose an interpretation here."}
+            <div className="rounded-md border bg-muted/40 p-3 text-xs" dir="ltr">
+              {upay.note} Base fils per plan: basic {fmtInt(upay.base_fils_by_tier.basic)}, standard{" "}
+              {fmtInt(upay.base_fils_by_tier.standard)}, premium {fmtInt(upay.base_fils_by_tier.premium)}, ultimate{" "}
+              {fmtInt(upay.base_fils_by_tier.ultimate)}.
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Total" value={fmtInt(upay.total_count)} />
               <Stat label="Completed" value={fmtInt(upay.completed_count)} />
+              <Stat label="Pending excluded" value={fmtInt(upay.pending_excluded_count)} />
+              <Stat label="KWD completed" value={fmtInt(upay.kwd_completed_count)} />
+              <Stat label="Strict verified rows" value={fmtInt(upay.strict_verified_rows)} hint="reconstructable + strict linkage" />
+              <Stat label="Strict verified users" value={fmtInt(upay.strict_verified_users)} />
+              <Stat
+                label="Strict verified capped total"
+                value={fmtInt(upay.strict_verified_total_capped_fils)}
+                hint={`≈ ${fmtFilsAsKwd(upay.strict_verified_total_capped_fils)} · code-reconstructed KWD`}
+              />
+              <Stat label="Negative-linked review rows" value={fmtInt(upay.negative_linked_review_rows)} />
+              <Stat label="Unlinked review rows" value={fmtInt(upay.unlinked_review_rows)} />
               <Stat label="Duplicate provider refs" value={fmtInt(upay.duplicate_provider_reference_groups)} />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-md border p-3" dir="ltr">
-                <div className="text-xs font-semibold">Interpretation A — values as KWD</div>
-                <div className="text-[11px] text-muted-foreground mb-2">{upay.interpretation_A_values_as_KWD.conversion}</div>
-                <div>Completed capped credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_A_values_as_KWD.completed_capped_credit_fils)}</strong> fils</div>
-                <div>Users with credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_A_values_as_KWD.users_with_credit)}</strong></div>
-                <div className="text-xs text-muted-foreground">≈ {fmtFilsAsKwd(upay.interpretation_A_values_as_KWD.completed_capped_credit_fils)} total capped</div>
-              </div>
-              <div className="rounded-md border p-3" dir="ltr">
-                <div className="text-xs font-semibold">Interpretation B — values as legacy USD</div>
-                <div className="text-[11px] text-muted-foreground mb-2">{upay.interpretation_B_values_as_legacy_USD.conversion}</div>
-                <div>Completed capped credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_B_values_as_legacy_USD.completed_capped_credit_fils)}</strong> fils</div>
-                <div>Users with credit: <strong className="tabular-nums">{fmtInt(upay.interpretation_B_values_as_legacy_USD.users_with_credit)}</strong></div>
-                <div className="text-xs text-muted-foreground">≈ {fmtFilsAsKwd(upay.interpretation_B_values_as_legacy_USD.completed_capped_credit_fils)} total capped</div>
-              </div>
-            </div>
-
-            {/* Threshold outcome comparison */}
-            <Card className="border-dashed">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Threshold outcome by interpretation</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Stat label="Reach on PayPal only" value={fmtInt(upay.threshold_users.reach_on_paypal_only)} />
-                <Stat label="Reach only if UPayments = KWD" value={fmtInt(upay.threshold_users.reach_only_if_upayments_kwd)} />
-                <Stat label="Reach only if UPayments = legacy USD" value={fmtInt(upay.threshold_users.reach_only_if_upayments_legacy_usd)} />
-                <Stat
-                  label="Ambiguous outcome users"
-                  value={fmtInt(upay.threshold_users.ambiguous_outcome_users)}
-                  hint="lifetime outcome differs between interpretations"
-                />
-              </CardContent>
-            </Card>
           </CardContent>
         </Card>
+
+        {/* Combined verified legacy credit */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Combined verified legacy credit (PayPal + UPayments)</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat label="Users with credit" value={fmtInt(d.combined_legacy_credit.users_with_credit)} />
+            <Stat
+              label="Total capped credit"
+              value={fmtInt(d.combined_legacy_credit.total_credit_fils)}
+              hint={`≈ ${fmtFilsAsKwd(d.combined_legacy_credit.total_credit_fils)}`}
+            />
+            <Stat label="Users capped @ threshold" value={fmtInt(d.combined_legacy_credit.users_capped_at_threshold)} />
+            <Stat label="Threshold" value={fmtInt(d.combined_legacy_credit.threshold_fils)} hint="fils" />
+          </CardContent>
+        </Card>
+
+        <RehearsalCard />
+
 
         {/* Proposed entitlements + credit */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
