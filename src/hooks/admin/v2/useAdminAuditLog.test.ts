@@ -1,17 +1,20 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   normalizeAuditDatetimeToUtcIso,
   serializeAuditParams,
 } from "./useAdminAuditLog";
 
 // Force a deterministic non-UTC local timezone for tests below.
-// Node honors the TZ env var for Date computations.
-const ORIGINAL_TZ = process.env.TZ;
+// Bun/Node honor the TZ env var for Date computations.
+const ORIGINAL_TZ = (globalThis as { process?: { env: Record<string, string | undefined> } })
+  .process?.env.TZ;
 beforeAll(() => {
-  process.env.TZ = "Asia/Kuwait"; // UTC+03:00, no DST
+  (globalThis as { process?: { env: Record<string, string | undefined> } }).process!.env.TZ =
+    "Asia/Kuwait"; // UTC+03:00, no DST
 });
 afterAll(() => {
-  process.env.TZ = ORIGINAL_TZ;
+  (globalThis as { process?: { env: Record<string, string | undefined> } }).process!.env.TZ =
+    ORIGINAL_TZ;
 });
 
 describe("normalizeAuditDatetimeToUtcIso", () => {
@@ -27,7 +30,6 @@ describe("normalizeAuditDatetimeToUtcIso", () => {
     expect(normalizeAuditDatetimeToUtcIso("2026-07-24T14:30")).toBe(
       "2026-07-24T11:30:00.000Z",
     );
-    // With seconds
     expect(normalizeAuditDatetimeToUtcIso("2026-07-24T14:30:15")).toBe(
       "2026-07-24T11:30:15.000Z",
     );
