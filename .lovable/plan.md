@@ -1,57 +1,64 @@
 
-# V2.0 continuation audit — evidence-backed gaps and next slice
+## Audit result — what's still unfinished (excluding creators, subscriptions, publishing the site)
 
-Read-only comparison of the current repo/routes against the locked V2.0 plan. Areas explicitly excluded per instructions (UPayments checkout/status/refund/retry URLs, legacy migration execute/rehearsal, Coming Soon launch lock, V2 receipt outbox, send-email/submit-contact hardening) are treated as done — no regressions observed.
+Verified against the current codebase, not the stale `.lovable/plan.md`. Recently shipped slices (Trust Reports, Package Scans incl. Cloudmersive, Versions Registry, secure resource-file ingestion, receipt outbox, hardened email, launch lock) are all wired to real components and RPCs.
 
-## Inventory of remaining V2.0 gaps
+Remaining placeholders in `src/pages/admin/layout/adminSectionElements.tsx`:
 
-### Launch blockers
-None found in the "must-have to open commerce" set. All commerce flow is behind the launch lock and the completed slices cover checkout, status, refund, retry, receipt, and hardened email. Publishing, catalog, explore, detail, cart, library, orders, entitlements, refunds, recovery, discounts, users, audit, security are wired to real components.
+| Route | State | Launch relevance |
+|---|---|---|
+| `/admin/publishing/drafts` | `EmptyRouteState` redirect to Catalog filter | Low — Catalog + ResourcePublisher already cover the workflow |
+| `/admin/publishing/review` | `EmptyRouteState` redirect to Catalog filter | Low — same |
+| `/admin/system/audit` | `AuditLogPage.tsx` is a static preview shell (header comment: "placeholder"), renders zero data even though `public.activity_events` is populated by ~15+ V2 migrations + `resource-download` edge function | **High** — trust/compliance surface, sole aggregator for report transitions, refunds, scans, discounts, downloads, order events |
+| `/admin/settings/{payments,email,storage,integrations,roles}` | `EmptyRouteState` | Low — configuration surfaces, not launch-blocking |
 
-### High — user-facing gaps still on placeholders
-1. **Admin → Trust → Reports** — `src/pages/admin/layout/adminSectionElements.tsx:134-137` shows an `EmptyRouteState` even though:
-   - `public.reports` table + RLS exist (`supabase/migrations/20260722200346_...sql:640-666`).
-   - Overview dashboard already surfaces an `open_reports` KPI and links to `/admin/trust/reports` (`src/pages/admin/sections/overview/OverviewV2.tsx:56,84`).
-   - Sidebar entry exists (`src/pages/admin/config/adminNavConfig.ts:108`).
-   - No admin RPC, no triage UI, no user-facing "Report this resource" affordance in `ResourceDetailPage.tsx`. This is a launch-relevant trust/safety hole.
-2. **Admin → Trust → Package Scans** — placeholder at `adminSectionElements.tsx:138-142`. `package_scans` table exists and is surfaced only as a column in the Catalog table; no re-scan control or version drill-down.
-3. **Admin → Publishing → Drafts / Review / Versions** — three `EmptyRouteState` cards (`adminSectionElements.tsx:96-109`) redirecting to the Catalog with filters. Editorial workflow (assign reviewer, approve/request-changes, version history board) is not wired.
+### Highest-priority unfinished slice
 
-### Later — non-blocking
-4. **Admin → Settings → Payments / Email / Storage / Integrations / Roles** — five placeholders (`adminSectionElements.tsx:147-167`). Roles has a working substitute via People → Users; the others are configuration surfaces not required for launch.
-5. **Admin → System → Audit Log** — `src/pages/admin/sections/system/AuditLogPage.tsx:6` header comment marks it "placeholder"; needs a full read after this audit before scoping.
-6. **V2 catalog wrapper pages** (`AutomationsPage.tsx`, `BundlesPage.tsx`, `ImageStylesPage.tsx`, `PromptsCatalogPage.tsx`, `SkillsPage.tsx`) are thin re-exports of `ExplorePage` with a locked type — intentional, not a gap.
+**Admin → System → Audit Log**, wired to `public.activity_events`. Every V2 slice we just shipped writes to this table (Reports triage in `20260724163004…`, Refunds/Recovery/Discounts/Orders in `20260722213033…`/`20260722214306…`/`20260722215158…`, Downloads in `resource-download/index.ts:161`, Scans in the Cloudmersive worker). All of that traffic is currently invisible to admins. This is the natural completion of the trust/moderation cluster and unblocks incident review.
 
-### Not found
-No `TODO/FIXME` in V2 code paths, no mock-data usage, no unsafe direct table access on the customer side, no disabled-but-implemented feature paths, no stale route wiring. Download authorization goes through the `resource-download` Edge Function via `useResourceDownload`.
+## Slice scope
 
-## Recommended next slice — Admin Trust Reports triage (read-only + status updates) + customer report submission
+### Database — one forward-only migration
+- `public.v2_admin_list_activity_events(_actor_types text[] default null, _entity_types text[] default null, _actions text[] default null, _actor_user_id uuid default null, _entity_id uuid default null, _search text default null, _from timestamptz default null, _to timestamptz default null, _limit int default 50, _offset int default 0) returns table(...)`
+  - `SECURITY DEFINER`, `SET search_path = ''`, admin-gated via `public.has_role(auth.uid(),'admin')`.
+  - Enriches rows with actor email (masked via existing `public._v2_mask_email`) and actor display name from `public.profiles`.
+  - Applies `_v2_bounded_limit` (reuse existing helper) capped at ~200; returns a stable ordering `(created_at DESC, id DESC)` with a `total_count` window value for pagination.
+- `public.v2_admin_get_activity_event(_id uuid) returns jsonb`
+  - Admin-gated, returns full row including raw `metadata` and `ip_address` (already anonymized at write time by existing `anonymize_audit_ip` where applicable).
+- Explicit `GRANT EXECUTE … TO authenticated`. No table grants change; existing `activity_events_admin_read` RLS is untouched. No new indexes required — `activity_events_actor_idx`, `activity_events_entity_idx`, and `idx_activity_events_action_created` already cover the filter surface.
 
-**Why this one.** It is the highest-ranked gap that (a) is launch-relevant (user-safety and moderation), (b) has all schema already in place, (c) requires no commerce enablement, no launch-lock changes, no provider calls, no email sending, and (d) is independently testable end-to-end because both the writer (authenticated reporter) and the reader (admin) can exercise the flow behind the current launch lock.
+### Admin UI — replace `AuditLogPage.tsx`
+- Filter bar (mobile-first, 44px targets, wraps at 320–430px): actor type multi-select, entity type multi-select, action multi-select (populated from a small hard-coded allowlist derived from existing writer sites, no schema query), free-text search on `action`/`entity_type`, date range, page size.
+- Table columns: timestamp (relative + tooltip), actor (masked email + role badge), actor_type, action, entity (type + short id + link when the entity is a resource/order/report/refund/discount), IP.
+- Row → `AuditEventDetailSheet` with pretty-printed `metadata`, copy-to-clipboard for id/entity id, and deep links to `/admin/trust/reports/:id`, `/admin/orders/:id`, `/admin/orders/refunds/:id`, `/admin/publishing/versions?resource=…` where applicable.
+- New typed hook `src/hooks/admin/v2/useAdminAuditLog.ts` calling `supabase.rpc(...)` — mirrors `useAdminReports` structure.
+- Reuse the same responsive shell as `ReportsPage.tsx` / `VersionsRegistryPage.tsx` (stacked filters on mobile, sticky header desktop). No new UI primitives.
 
-**Scope**
-- **DB (one forward-only migration)**
-  - `v2_admin_list_reports(_status text[] default null, _search text default null, _limit int default 50, _offset int default 0)` — SECURITY DEFINER, admin-gated via `has_role`, returns report rows enriched with resource slug/title and masked reporter email.
-  - `v2_admin_update_report_status(_report_id uuid, _next_status v2_report_status, _notes text)` — SECURITY DEFINER, admin-gated, writes `resolver_notes`, `resolved_at`, updates `updated_at`, and logs an `activity_events` row.
-  - `v2_submit_resource_report(_resource_id uuid, _category text, _details text)` — SECURITY DEFINER, authenticated-only, validates category against an allowlist, caps `details` length, inserts into `public.reports` with `reporter_user_id = auth.uid()`, and calls the existing atomic rate-limit function under scope `report-submit:user` (e.g. 5/hr) to prevent spam.
-  - Locked `search_path = ''` on all three; explicit grants; no changes to existing RLS.
-- **Admin UI** — replace the `trustReports` `EmptyRouteState` with a `ReportsPage` component:
-  - Status filter (open/in_review/resolved/dismissed), search by resource slug, mobile-responsive table with 44px touch targets.
-  - Row detail sheet: resource link, category, details, reporter (masked), status transition buttons with notes textarea, timestamps.
-  - Typed `supabase.rpc` calls via a new `useAdminReports` hook.
-- **Customer UI** — add a compact "Report this resource" button to `ResourceDetailPage.tsx` that opens a dialog with category select + short details textarea, calls `v2_submit_resource_report`, and shows bilingual success/error toasts. No route change.
-- **Verification**
-  - Deno unit tests for the three RPCs' input validation and admin-gate.
-  - Frontend `tsgo` + `bun run build`.
-  - Playwright smoke behind the launch lock (admin session): submit a report as a normal user, see it appear in the admin queue, transition it to resolved, confirm `activity_events` row.
+### Explicitly out of scope
+- No writes to `activity_events`, no new emitters, no schema changes to the table.
+- No CSV export in this slice (add later once filter set is confirmed).
+- No changes to `admin_audit_log` — that legacy table stays as-is; V2 uses `activity_events` and this slice does not attempt to merge them.
+- No changes to launch lock, secrets, feature flags, commerce, publishing workflow, settings pages, subscriptions, or creator flows.
 
-**Explicitly out of scope for this slice**
-- No changes to launch lock, secrets, feature flags, or commerce.
-- No email notifications on report status changes (would go through the already-hardened `send-email` in a later slice).
-- No auto-hide/quarantine of reported resources.
-- No changes to Package Scans, Drafts, Review, Versions, Settings, or Audit Log — those become their own slices next.
+## Bounded acceptance test
+
+1. **Migration applies cleanly** on a fresh DB; `bunx tsgo --noEmit` and `bun run build` succeed after regenerated `types.ts` is picked up.
+2. **RPC gate**: calling `v2_admin_list_activity_events` and `v2_admin_get_activity_event` as a non-admin authenticated user returns a `42501`/permission error; as `service_role` and as an `admin` role returns rows. Covered by Deno unit tests in `supabase/functions/_shared/` style (RPC-only, no HTTP function needed).
+3. **Filter semantics** (Deno tests using a seeded temp schema OR SQL-only assertions in the migration's own test script):
+   - `_actor_types => ['admin']` returns only rows where `actor_type='admin'`.
+   - `_from`/`_to` bounds are inclusive/exclusive as documented and prune correctly.
+   - `_search` matches case-insensitively against `action` and `entity_type` only (never against `metadata`, to avoid full-jsonb scans).
+   - `_limit` is capped by `_v2_bounded_limit`; `total_count` is stable across pages.
+4. **UI smoke** (Playwright, admin session, behind existing launch lock, viewport 390×844 and 1280×800):
+   - `/admin/system/audit` renders a non-empty table (seed one `activity_events` row via existing writer, e.g. transition a test report through `v2_admin_update_report_status`).
+   - Filter by `action = report.status_changed` narrows to that row; clearing filters restores the full list.
+   - Opening the detail sheet shows the raw metadata and a working deep link to the source report.
+   - No horizontal scroll at 390px; all interactive targets ≥44px.
+5. **Zero-drift invariants**: `entitlements`, `lifetime_credit_entries`, `resource_files`, `package_scans`, `package_scan_items`, `orders`, `refunds` row counts unchanged before/after applying the migration and running the UI smoke (the slice is read-only).
+6. **Frontend tests**: `bun test src/` passes, including a new test for `useAdminAuditLog` filter serialization and for the deep-link resolver (`resolveEntityLink(entityType, entityId)`).
 
 ## Technical notes
-- Uses only existing tables (`public.reports`, `public.activity_events`, `public.resources`, `public.profiles`) and the existing atomic limiter added during send-email hardening.
-- All RPCs follow the project's SECURITY DEFINER + locked `search_path` + explicit GRANT pattern (see `<user-roles>` and `<public-schema-grants>` conventions).
-- No new storage buckets, no new Edge Functions.
+- No new tables, buckets, edge functions, or secrets.
+- Reuses `_v2_bounded_limit`, `_v2_mask_email`, `has_role`, and existing indexes.
+- Deep-link resolver stays a pure frontend function so the RPC contract remains simple `jsonb`/tabular.
+- Follows the same SECURITY DEFINER + locked `search_path` + explicit `GRANT EXECUTE` pattern used by every V2 admin RPC shipped in this project.
