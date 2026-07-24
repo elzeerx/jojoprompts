@@ -215,7 +215,7 @@ Deno.test("contract: admin payload without template_slug is rejected shape", () 
 });
 
 // ---- send-email limiter hash namespace/scope tests ----
-import { hmacSha256Hex } from "../_shared/emailCommon.ts";
+// hmacSha256Hex already imported above
 
 Deno.test("send-email limiter: user hash namespace is distinct from admin for same user id", async () => {
   const secret = "test-secret-key";
