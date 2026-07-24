@@ -173,12 +173,12 @@ function VerificationRow({
   const a = Number.isFinite(Number(actual)) ? Number(actual) : null;
   const inSync = e !== null && a !== null && e === a;
   return (
-    <div className="flex items-center justify-between rounded-md border p-3 text-xs" dir="ltr">
-      <div>
-        <div className="font-semibold">{label}</div>
-        {hint ? <div className="text-[11px] text-muted-foreground">{hint}</div> : null}
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border p-3 text-xs" dir="ltr">
+      <div className="min-w-0">
+        <div className="font-semibold break-words">{label}</div>
+        {hint ? <div className="text-[11px] text-muted-foreground break-words">{hint}</div> : null}
       </div>
-      <div className="flex items-center gap-3 tabular-nums">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 tabular-nums">
         <span>expected <strong>{e === null ? "—" : fmtInt(e)}</strong></span>
         <span>actual <strong>{a === null ? "—" : fmtInt(a)}</strong></span>
         <Badge variant={inSync ? "secondary" : "destructive"}>{inSync ? "in sync" : "drift"}</Badge>
