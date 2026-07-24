@@ -4848,6 +4848,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      v2_internal_register_resource_file: {
+        Args: {
+          p_actor_user_id: string
+          p_checksum_sha256: string
+          p_content_type: string
+          p_file_name: string
+          p_size_bytes: number
+          p_storage_path: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
       v2_lifetime_progress: { Args: never; Returns: Json }
       v2_mark_verified_payment_failure: {
         Args: {
