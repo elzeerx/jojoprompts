@@ -1524,6 +1524,7 @@ export type Database = {
           amount_fils: number
           created_at: string
           id: string
+          legacy_transaction_id: string | null
           occurred_at: string
           order_id: string | null
           reason: string
@@ -1534,6 +1535,7 @@ export type Database = {
           amount_fils: number
           created_at?: string
           id?: string
+          legacy_transaction_id?: string | null
           occurred_at?: string
           order_id?: string | null
           reason: string
@@ -1544,6 +1546,7 @@ export type Database = {
           amount_fils?: number
           created_at?: string
           id?: string
+          legacy_transaction_id?: string | null
           occurred_at?: string
           order_id?: string | null
           reason?: string
@@ -1551,6 +1554,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lifetime_credit_entries_legacy_transaction_id_fkey"
+            columns: ["legacy_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lifetime_credit_entries_order_id_fkey"
             columns: ["order_id"]
@@ -4552,6 +4562,7 @@ export type Database = {
         Returns: Json
       }
       v2_admin_migration_preview: { Args: never; Returns: Json }
+      v2_admin_migration_rehearsal: { Args: never; Returns: Json }
       v2_admin_order_metrics: {
         Args: { p_period_days?: number }
         Returns: Json
