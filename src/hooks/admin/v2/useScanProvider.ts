@@ -31,6 +31,12 @@ export interface ProviderStatusResponse {
 
 const CONTROL_FN = "v2-admin-package-scan-control";
 
+// Invalidate every query that reads scan state after a successful control action.
+function invalidateScanQueries(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["admin", "v2", "package-scans"] });
+  qc.invalidateQueries({ queryKey: ["admin", "v2", "resource-versions"] });
+}
+
 export function useScanProviderStatus() {
   return useQuery<ProviderStatusResponse>({
     queryKey: ["admin", "v2", "package-scans", "provider-status"],
@@ -54,13 +60,11 @@ export function useQueueScan() {
         body: { action: "queue_scan", version_id: versionId },
       });
       if (error) throw error;
-      return data as { ok: boolean; scan_id?: string; error?: string };
+      const body = data as { ok: boolean; scan_id?: string; error?: string };
+      if (!body.ok) throw new Error(body.error ?? "queue_failed");
+      return body;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin", "v2", "package-scans"] });
-      qc.invalidateQueries({ queryKey: adminPackageScansKeys.list({}) });
-      qc.invalidateQueries({ queryKey: adminResourceVersionsKeys.detail(null).slice(0, 4) });
-    },
+    onSuccess: () => invalidateScanQueries(qc),
   });
 }
 
@@ -72,10 +76,91 @@ export function useRefreshScan() {
         body: { action: "refresh_scan", scan_id: scanId },
       });
       if (error) throw error;
-      return data as { ok: boolean };
+      const body = data as { ok: boolean; error?: string };
+      if (!body.ok) throw new Error(body.error ?? "refresh_failed");
+      return body;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin", "v2", "package-scans"] });
-    },
+    onSuccess: () => invalidateScanQueries(qc),
   });
 }
+
+// ------------------------- Safe admin scan-details RPC -------------------------
+
+export interface AdminScanDetailFile {
+  file_name: string | null;
+  content_type: string | null;
+  size_bytes: number | null;
+}
+
+export interface AdminScanDetailItem {
+  id: string;
+  status: "pending" | "clean" | "suspicious" | "malicious" | "failed";
+  result_code: number | null;
+  progress: number;
+  total_engines: number | null;
+  detected_engines: number | null;
+  findings: unknown;
+  attempt_count: number;
+  submitted_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  file: AdminScanDetailFile;
+}
+
+export interface AdminScanDetailScan {
+  id: string;
+  resource_version_id: string;
+  scanner: string;
+  status: "pending" | "clean" | "suspicious" | "malicious" | "failed";
+  findings: unknown;
+  scanned_at: string | null;
+  created_at: string;
+  updated_at: string;
+  requested_at: string | null;
+  completed_at: string | null;
+  attempt_count: number;
+  last_error_code: string | null;
+}
+
+export interface AdminScanDetailCounts {
+  items: number;
+  clean: number;
+  pending: number;
+  suspicious: number;
+  malicious: number;
+  failed: number;
+  progress_pct: number;
+  total_engines: number;
+  detected_engines: number;
+}
+
+export interface AdminScanDetail {
+  scan: AdminScanDetailScan;
+  counts: AdminScanDetailCounts;
+  items: AdminScanDetailItem[];
+}
+
+export const adminScanDetailsKeys = {
+  detail: (id: string | null) =>
+    ["admin", "v2", "package-scans", "detail", id] as const,
+};
+
+export function useAdminPackageScanDetails(scanId: string | null) {
+  return useQuery<AdminScanDetail | null>({
+    queryKey: adminScanDetailsKeys.detail(scanId),
+    queryFn: async () => {
+      if (!scanId) return null;
+      const { data, error } = await supabase.rpc(
+        "v2_admin_get_package_scan_details",
+        { p_scan_id: scanId },
+      );
+      if (error) throw error;
+      return (data as unknown as AdminScanDetail | null) ?? null;
+    },
+    enabled: !!scanId,
+    staleTime: 10_000,
+  });
+}
+
+// Re-export for consumers that used to import the key groups here.
+export { adminPackageScansKeys, adminResourceVersionsKeys };
