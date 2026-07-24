@@ -4,9 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   adminScanDetailsKeys,
   type AdminScanDetail,
-  type AdminScanDetailScan,
 } from "@/hooks/admin/v2/useScanProvider";
 
+interface ProbeScan {
+  id: string;
+  status: string | null;
+}
 
 /**
  * For each scan in the version whose aggregate status is *not* clean, probe
@@ -19,9 +22,7 @@ import {
  * recoverable pending items — and we do not query `package_scan_items`
  * directly from the browser.
  */
-export function useVersionPendingChildProbe(
-  scans: Pick<AdminScanDetailScan, "id" | "status">[] | undefined,
-) {
+export function useVersionPendingChildProbe(scans: ProbeScan[] | undefined) {
   const targetIds = useMemo(
     () =>
       (scans ?? [])
