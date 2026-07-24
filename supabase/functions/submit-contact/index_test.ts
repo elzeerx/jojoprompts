@@ -1,6 +1,6 @@
 // Pure/unit tests for submit-contact validation and rendering.
 import { assertEquals, assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { validateContact, validateSubmissionId } from "./index.ts";
+import { validateContact, validateSubmissionId } from "./validation.ts";
 
 Deno.test("validateSubmissionId accepts uuid v4-ish", () => {
   assert(validateSubmissionId("00000000-0000-4000-8000-000000000000"));
