@@ -38,6 +38,7 @@ import {
   totalPagesFor,
 } from "./scanHelpers";
 import ScanDetailSheet from "./ScanDetailSheet";
+import MetadefenderStatusCard from "./MetadefenderStatusCard";
 
 const PAGE_SIZE = 50;
 
@@ -138,12 +139,7 @@ export default function ScansPage() {
         </Button>
       </div>
 
-      <div
-        role="note"
-        className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground"
-      >
-        Scan execution unavailable — configure a provider in a later slice.
-      </div>
+      <MetadefenderStatusCard />
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {cards.map((m) => (

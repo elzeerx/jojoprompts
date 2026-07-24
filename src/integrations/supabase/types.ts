@@ -1794,11 +1794,88 @@ export type Database = {
           },
         ]
       }
+      package_scan_items: {
+        Row: {
+          attempt_count: number
+          completed_at: string | null
+          created_at: string
+          detected_engines: number | null
+          findings: Json
+          id: string
+          next_poll_at: string | null
+          package_scan_id: string
+          progress: number
+          provider_data_id: string | null
+          resource_file_id: string
+          result_code: number | null
+          status: Database["public"]["Enums"]["v2_scan_status"]
+          submitted_at: string | null
+          total_engines: number | null
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          detected_engines?: number | null
+          findings?: Json
+          id?: string
+          next_poll_at?: string | null
+          package_scan_id: string
+          progress?: number
+          provider_data_id?: string | null
+          resource_file_id: string
+          result_code?: number | null
+          status?: Database["public"]["Enums"]["v2_scan_status"]
+          submitted_at?: string | null
+          total_engines?: number | null
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          detected_engines?: number | null
+          findings?: Json
+          id?: string
+          next_poll_at?: string | null
+          package_scan_id?: string
+          progress?: number
+          provider_data_id?: string | null
+          resource_file_id?: string
+          result_code?: number | null
+          status?: Database["public"]["Enums"]["v2_scan_status"]
+          submitted_at?: string | null
+          total_engines?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_scan_items_package_scan_id_fkey"
+            columns: ["package_scan_id"]
+            isOneToOne: false
+            referencedRelation: "package_scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_scan_items_resource_file_id_fkey"
+            columns: ["resource_file_id"]
+            isOneToOne: false
+            referencedRelation: "resource_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       package_scans: {
         Row: {
+          attempt_count: number
+          completed_at: string | null
           created_at: string
           findings: Json
           id: string
+          last_error_code: string | null
+          requested_at: string | null
+          requested_by: string | null
           resource_version_id: string
           scanned_at: string | null
           scanner: string
@@ -1806,9 +1883,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attempt_count?: number
+          completed_at?: string | null
           created_at?: string
           findings?: Json
           id?: string
+          last_error_code?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
           resource_version_id: string
           scanned_at?: string | null
           scanner: string
@@ -1816,9 +1898,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attempt_count?: number
+          completed_at?: string | null
           created_at?: string
           findings?: Json
           id?: string
+          last_error_code?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
           resource_version_id?: string
           scanned_at?: string | null
           scanner?: string
@@ -4856,6 +4943,40 @@ export type Database = {
           p_raw: Json
         }
         Returns: boolean
+      }
+      v2_internal_apply_scan_item_result: {
+        Args: {
+          p_detected_engines: number
+          p_findings: Json
+          p_item_id: string
+          p_last_error_code: string
+          p_next_poll_at: string
+          p_progress: number
+          p_result_code: number
+          p_status: Database["public"]["Enums"]["v2_scan_status"]
+          p_total_engines: number
+        }
+        Returns: undefined
+      }
+      v2_internal_claim_scan_items: {
+        Args: { p_max?: number; p_scan_id: string }
+        Returns: {
+          attempt_count: number
+          item_id: string
+          resource_file_id: string
+        }[]
+      }
+      v2_internal_create_package_scan: {
+        Args: {
+          p_requested_by: string
+          p_scanner: string
+          p_version_id: string
+        }
+        Returns: string
+      }
+      v2_internal_record_scan_submission: {
+        Args: { p_data_id: string; p_item_id: string; p_next_poll_at: string }
+        Returns: undefined
       }
       v2_internal_register_resource_file: {
         Args: {
