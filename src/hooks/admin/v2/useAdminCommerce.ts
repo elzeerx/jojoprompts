@@ -561,7 +561,7 @@ export interface RehearsalResult {
     users_needing_lifetime_grant_after_excluding_existing_lifetime: number;
   };
   replay_conflicts: {
-    existing_active_legacy_source_grants: number;
+    existing_legacy_source_grants: number;
     existing_legacy_transaction_credit_entries: number;
   };
 }
@@ -700,11 +700,9 @@ export function useMigrationRehearsal() {
   return useQuery<RehearsalResult>({
     queryKey: ["admin", "v2", "migration-rehearsal"],
     queryFn: async () => {
-      const { data, error } = await (supabase as unknown as {
-        rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
-      }).rpc("v2_admin_migration_rehearsal", {});
-      if (error) throw error as Error;
-      return data as RehearsalResult;
+      const { data, error } = await supabase.rpc("v2_admin_migration_rehearsal");
+      if (error) throw error;
+      return data as unknown as RehearsalResult;
     },
     staleTime: 60_000,
   });
