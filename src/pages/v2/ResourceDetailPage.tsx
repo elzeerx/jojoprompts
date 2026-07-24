@@ -397,8 +397,3 @@ export default function ResourceDetailPage() {
     </div>
   );
 }
-        </div>
-      </main>
-    </div>
-  );
-}
