@@ -7,7 +7,11 @@ import {
   aggregateItemStatuses,
   bytesEqualConstantTime,
   constantTimeEqual,
+  decideQueueAllowed,
+  decideReadinessPersistence,
+  decideRefreshAllowed,
   evaluateReadiness,
+  MAX_ITEM_ATTEMPTS,
   mapResultCode,
   nextPollDelayMs,
   normalizeHexChecksum,
@@ -16,7 +20,10 @@ import {
   sanitizeErrorMessage,
   sanitizeFileName,
   sha256Hex,
+  shouldStopForAttempts,
+  validateIntegrityMetadata,
 } from "./metadefender.ts";
+
 
 // -------------------------- mapResultCode --------------------------
 
