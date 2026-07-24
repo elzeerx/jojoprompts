@@ -177,10 +177,12 @@ export default async function handler(req: Request): Promise<Response> {
     const claims = claimsData?.claims as any;
     if (!claimsError && claims?.sub) {
       const userId = String(claims.sub);
-      const jwtEmail = normalizeEmail(claims.email);
-      // Look up canonical email from auth.users to avoid trusting mutable claims.
-      const { data: userRow } = await supabase.auth.admin.getUserById(userId);
-      const canonicalEmail = normalizeEmail(userRow?.user?.email) ?? jwtEmail ?? '';
+      // Fail closed on canonical identity: never trust JWT email alone.
+      const { data: userRow, error: userErr } = await supabase.auth.admin.getUserById(userId);
+      if (userErr) {
+        return jsonResponse({ success: false, error: 'identity_lookup_unavailable' }, 503, origin);
+      }
+      const canonicalEmail = normalizeEmail(userRow?.user?.email);
       if (!canonicalEmail) {
         return jsonResponse({ success: false, error: 'unauthorized' }, 401, origin);
       }
