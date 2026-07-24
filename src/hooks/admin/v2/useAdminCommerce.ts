@@ -555,6 +555,8 @@ export interface MigrationPreviewAnomalies {
   cancelled_lifetime_users: number;
   ambiguous_upayments_amount_rows: number;
   unmatched_legacy_prompts: number;
+  paypal_unlinked_positive_completed_review_rows?: number;
+  paypal_negative_linked_review_rows?: number;
 }
 export interface MigrationPreviewContractRule { rule: string; detail: string }
 export interface MigrationPreviewGrantContract {
