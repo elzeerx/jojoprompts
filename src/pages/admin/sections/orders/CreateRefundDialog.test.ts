@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatRefundableLoadError } from "./CreateRefundDialog";
+import { formatRefundableLoadError } from "./refundErrors";
 
 describe("formatRefundableLoadError", () => {
   test("null/undefined returns generic message", () => {

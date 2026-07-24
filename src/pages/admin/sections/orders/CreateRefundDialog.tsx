@@ -30,24 +30,12 @@ interface Item {
   active_entitlements: Array<{ id: string; scope: string }>;
 }
 
+import { formatRefundableLoadError } from "./refundErrors";
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function makeIdempotencyKey() {
   return `admin-refund-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-/**
- * Concise, safe error message for surfacing refundable-order lookup failures
- * in the destructive Alert. Never leak stack traces or PII; prefer known
- * Postgres/PostgREST error codes when present.
- */
-export function formatRefundableLoadError(err: unknown): string {
-  if (!err) return "Failed to load order";
-  const e = err as { code?: string; message?: string };
-  const code = typeof e.code === "string" && e.code.length <= 12 ? e.code : null;
-  const raw = typeof e.message === "string" ? e.message : String(err);
-  const msg = raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
-  return code ? `Failed to load order (${code}): ${msg}` : `Failed to load order: ${msg}`;
 }
 
 export function CreateRefundDialog({ open, onOpenChange, presetOrderId }: Props) {
