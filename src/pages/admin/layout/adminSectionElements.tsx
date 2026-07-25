@@ -134,9 +134,5 @@ export const adminSectionElements = {
     "Integrations",
     "Third-party integrations (MCP, analytics, webhooks). Unavailable in Phase 1.",
   ),
-  settingsRoles: Empty(
-    "Roles",
-    "Admin role assignments backed by user_roles + has_role(). Currently managed via People → Users.",
-    [{ label: "Open Users", to: "/admin/users" }],
-  ),
+  settingsRoles: wrap(<RolesPage />),
 };
