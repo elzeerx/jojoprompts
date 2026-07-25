@@ -87,7 +87,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: "Payment Events", to: "/admin/orders/payment-events", icon: CreditCard },
       { label: "Entitlements", to: "/admin/orders/entitlements", icon: KeyRound },
       { label: "Refunds", to: "/admin/orders/refunds", icon: RotateCcw },
-      { label: "Recovery", to: "/admin/orders/recovery", icon: MailWarning },
+      { label: "Recovery queue", to: "/admin/orders/recovery", icon: MailWarning },
       { label: "Discounts", to: "/admin/orders/discounts", icon: Percent },
     ],
   },

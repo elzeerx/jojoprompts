@@ -155,7 +155,7 @@ export default function RecoveryPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <ShieldAlert className="h-6 w-6 text-destructive" />
-            Recovery / الإصلاح
+            Recovery queue / الإصلاح
           </h1>
           <p className="text-sm text-muted-foreground">
             Attention required — read-only. Actions are limited to verified provider re-checks,

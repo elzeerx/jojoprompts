@@ -35,7 +35,7 @@ const PaymentRecoveryPage = lazy(() => import("@/pages/PaymentRecoveryPage"));
 const UserDashboardPage = lazy(() => import("@/pages/UserDashboardPage"));
 const SubscriptionDashboard = lazy(() => import("@/pages/dashboard/SubscriptionDashboard"));
 const PrompterDashboard = lazy(() => import("@/pages/prompter/PrompterDashboard"));
-const PromptsManagement = lazy(() => import("@/pages/admin/PromptsManagement"));
+
 const PlatformTest = lazy(() => import("@/pages/PlatformTest"));
 const AboutPage = lazy(() => import("@/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));

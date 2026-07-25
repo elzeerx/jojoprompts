@@ -18,6 +18,7 @@ const VersionsRegistryPage = lazy(() => import("../sections/publishing/VersionsR
 const ScansPage = lazy(() => import("../sections/trust/scans/ScansPage"));
 const DraftsQueuePage = lazy(() => import("../sections/publishing/DraftsQueuePage"));
 const ReviewQueuePage = lazy(() => import("../sections/publishing/ReviewQueuePage"));
+const RolesPage = lazy(() => import("../sections/settings/RolesPage"));
 
 
 
@@ -32,17 +33,6 @@ const CategoriesManagement = lazy(() =>
   }))
 );
 const UsersManagement = lazy(() => import("../components/users/UsersManagement"));
-const PurchaseHistoryManagement = lazy(
-  () => import("../components/purchases/PurchaseHistoryManagement")
-);
-const DiscountCodesManagement = lazy(
-  () => import("../components/discount-codes/DiscountCodesManagement")
-);
-const AbandonedCartDashboard = lazy(() =>
-  import("../components/abandoned-cart/AbandonedCartDashboard").then((m) => ({
-    default: m.AbandonedCartDashboard,
-  }))
-);
 const EmailTemplatesManagement = lazy(() =>
   import("@/components/admin/EmailTemplatesManagement").then((m) => ({
     default: m.EmailTemplatesManagement,
@@ -111,11 +101,8 @@ export const adminSectionElements = {
   paymentEvents: wrap(<PaymentEventsPage />),
   entitlements: wrap(<EntitlementsPage />),
   refunds: wrap(<RefundsPage />),
-  // Legacy admin tools retained as contextual links until fully replaced.
-  ordersLegacyPurchases: wrap(<PurchaseHistoryManagement />),
   ordersRecovery: wrap(<RecoveryPage />),
   discounts: wrap(<DiscountsPage />),
-  discountsLegacy: wrap(<DiscountCodesManagement />),
 
   // People
   users: wrap(<UsersManagement />),
@@ -147,9 +134,5 @@ export const adminSectionElements = {
     "Integrations",
     "Third-party integrations (MCP, analytics, webhooks). Unavailable in Phase 1.",
   ),
-  settingsRoles: Empty(
-    "Roles",
-    "Admin role assignments backed by user_roles + has_role(). Currently managed via People → Users.",
-    [{ label: "Open Users", to: "/admin/users" }],
-  ),
+  settingsRoles: wrap(<RolesPage />),
 };
