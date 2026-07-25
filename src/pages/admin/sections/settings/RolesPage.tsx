@@ -389,10 +389,13 @@ export default function RolesPage() {
                         ? formatDateTime(latest.assigned_at)
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-xs font-mono">
-                      {latest?.assigned_by
-                        ? latest.assigned_by.slice(0, 8)
-                        : "—"}
+                    <TableCell className="text-xs">
+                      <span className="truncate max-w-[180px] inline-block align-bottom">
+                        {resolveAssignerLabel(
+                          latest?.assigned_by ?? null,
+                          list.data?.assignerProfilesById ?? new Map(),
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <RowActions
