@@ -52,6 +52,7 @@ import {
   isLastAdminRemovalBlocked,
   isRemovableRole,
   resolveAssignerLabel,
+  selectLatestRoleRow,
   formatUserCountFooter,
 } from "@/lib/v2/admin/roles";
 import {
@@ -318,6 +319,9 @@ export default function RolesPage() {
               row={row}
               adminCount={adminCount}
               busy={assign.isPending || remove.isPending}
+              assignerProfilesById={
+                list.data?.assignerProfilesById ?? new Map()
+              }
               onAssign={(role) =>
                 setPending({
                   kind: "assign",
@@ -357,12 +361,7 @@ export default function RolesPage() {
             <TableBody>
               {(list.data?.rows ?? []).map((row) => {
                 const roles = row.roles.map((r) => r.role);
-                const latest = row.roles
-                  .slice()
-                  .sort(
-                    (a, b) =>
-                      (b.assigned_at ?? "").localeCompare(a.assigned_at ?? ""),
-                  )[0];
+                const latest = selectLatestRoleRow(row.roles);
                 return (
                   <TableRow key={row.user_id}>
                     <TableCell className="text-xs">
@@ -557,9 +556,21 @@ function RowActions({ row, adminCount, busy, onAssign, onRemove }: ActionsProps)
   );
 }
 
-function RoleUserCard(props: ActionsProps) {
+interface RoleUserCardProps extends ActionsProps {
+  assignerProfilesById: Map<string, ProfileLite>;
+}
+
+function RoleUserCard({ assignerProfilesById, ...props }: RoleUserCardProps) {
   const { row } = props;
   const roles = row.roles.map((r) => r.role);
+  const latest = selectLatestRoleRow(row.roles);
+  const assignedLabel = latest?.assigned_at
+    ? formatDateTime(latest.assigned_at)
+    : "—";
+  const byLabel = resolveAssignerLabel(
+    latest?.assigned_by ?? null,
+    assignerProfilesById,
+  );
   return (
     <Card>
       <CardContent className="p-3 space-y-2 min-w-0">
@@ -578,8 +589,15 @@ function RoleUserCard(props: ActionsProps) {
             </Badge>
           ))}
         </div>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground min-w-0">
+          <dt className="font-medium text-foreground/80">Assigned</dt>
+          <dd className="break-words">{assignedLabel}</dd>
+          <dt className="font-medium text-foreground/80">By</dt>
+          <dd className="break-words">{byLabel}</dd>
+        </dl>
         <RowActions {...props} />
       </CardContent>
     </Card>
   );
 }
+

@@ -55,6 +55,19 @@ export function groupRoleRowsByUser(
 }
 
 /**
+ * Pick the most recently assigned role row for a user. Rows with a null
+ * assigned_at sort last. Returns null when there are no role rows.
+ * Shared by the desktop table and the mobile card so both surfaces show
+ * the same "latest" assignment metadata.
+ */
+export function selectLatestRoleRow(roles: RoleRow[]): RoleRow | null {
+  if (!roles.length) return null;
+  return roles
+    .slice()
+    .sort((a, b) => (b.assigned_at ?? "").localeCompare(a.assigned_at ?? ""))[0];
+}
+
+/**
  * Resolve the human label for an `assigned_by` UUID. Falls back to
  * `System / unavailable` when we can't resolve a real profile.
  * Never renders a raw UUID fragment as the primary label.
