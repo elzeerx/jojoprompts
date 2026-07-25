@@ -19,6 +19,7 @@ const ScansPage = lazy(() => import("../sections/trust/scans/ScansPage"));
 const DraftsQueuePage = lazy(() => import("../sections/publishing/DraftsQueuePage"));
 const ReviewQueuePage = lazy(() => import("../sections/publishing/ReviewQueuePage"));
 const RolesPage = lazy(() => import("../sections/settings/RolesPage"));
+const PaymentsPage = lazy(() => import("../sections/settings/PaymentsPage"));
 
 
 
