@@ -48,13 +48,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-const NAV_LINKS: { to: string; label: string; description: string }[] = [
-  { to: "/admin/orders", label: "Orders", description: "Order-level detail & receipts" },
-  { to: "/admin/payment-events", label: "Payment events", description: "Provider event stream" },
-  { to: "/admin/refunds", label: "Refunds", description: "Refund requests & processing" },
-  { to: "/admin/orders/recovery", label: "Recovery queue", description: "Stalled/unsettled orders" },
-  { to: "/admin/discounts", label: "Discounts", description: "One-time payment discount codes" },
-];
+import { PAYMENTS_NAV_LINKS, PAYMENTS_RECON_LINKS } from "@/lib/v2/admin/paymentsRoutes";
 
 export default function PaymentsPage() {
   const statusQ = useAdminPaymentSettingsStatus();
@@ -236,7 +230,7 @@ export default function PaymentsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <Metric label="Total" value={summaryQ.data.payment_attempts.total} />
                   <Metric label="Verified paid" value={summaryQ.data.payment_attempts.verified_paid} />
-                  <Metric label="Verified failed" value={summaryQ.data.payment_attempts.verified_failed} />
+                  <Metric label="Failed attempts" value={summaryQ.data.payment_attempts.failed} />
                   <Metric label="Mismatch" value={summaryQ.data.payment_attempts.mismatch} />
                 </div>
               </div>
@@ -304,17 +298,18 @@ export default function PaymentsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {[
-                { key: "mismatches", label: "Mismatches", to: "/admin/payment-events" },
-                { key: "pending_past_due", label: "Stale pending", to: "/admin/orders/recovery" },
-                { key: "paid_without_entitlement", label: "Paid without entitlement", to: "/admin/orders" },
-                { key: "credit_inconsistent", label: "Credit inconsistency", to: "/admin/entitlements" },
-                { key: "duplicate_event_risk", label: "Duplicate-event risk", to: "/admin/payment-events" },
-                { key: "refund_alloc_over_item", label: "Refund over item", to: "/admin/refunds" },
-                { key: "refund_alloc_over_order", label: "Refund over order", to: "/admin/refunds" },
-                { key: "processed_missing_credit", label: "Processed w/o credit", to: "/admin/refunds" },
-                { key: "processed_item_unrevoked_entitlement", label: "Unrevoked entitlement", to: "/admin/refunds" },
-                { key: "threshold_lifetime_below_credit", label: "Lifetime below credit", to: "/admin/entitlements" },
+                { key: "mismatches", label: "Mismatches" },
+                { key: "pending_past_due", label: "Stale pending" },
+                { key: "paid_without_entitlement", label: "Paid without entitlement" },
+                { key: "credit_inconsistent", label: "Credit inconsistency" },
+                { key: "duplicate_event_risk", label: "Duplicate-event risk" },
+                { key: "refund_alloc_over_item", label: "Refund over item" },
+                { key: "refund_alloc_over_order", label: "Refund over order" },
+                { key: "processed_missing_credit", label: "Processed w/o credit" },
+                { key: "processed_item_unrevoked_entitlement", label: "Unrevoked entitlement" },
+                { key: "threshold_lifetime_below_credit", label: "Lifetime below credit" },
               ].map((r) => {
+                const to = PAYMENTS_RECON_LINKS[r.key] ?? "/admin/orders";
                 const v = (reconQ.data as unknown as Record<string, number>)[r.key] ?? 0;
                 const ok = v === 0;
                 return (
@@ -334,7 +329,7 @@ export default function PaymentsPage() {
                           size="sm"
                           className="min-h-[44px]"
                         >
-                          <Link to={r.to} aria-label={`Open ${r.label}`}>
+                          <Link to={to} aria-label={`Open ${r.label}`}>
                             <ArrowRight className="h-4 w-4" />
                           </Link>
                         </Button>
@@ -354,7 +349,7 @@ export default function PaymentsPage() {
           <CardTitle className="text-base">Operations</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {NAV_LINKS.map((n) => (
+          {PAYMENTS_NAV_LINKS.map((n) => (
             <Button
               key={n.to}
               asChild

@@ -23,7 +23,7 @@ export type PaymentSettingsSummary = {
     refunded: number; partially_refunded: number; cancelled: number;
   };
   payment_attempts: {
-    total: number; verified_paid: number; verified_failed: number; mismatch: number;
+    total: number; verified_paid: number; failed: number; mismatch: number;
   };
   payment_events: { total: number; last_event_at: string | null };
   refunds: { total: number; processed: number };

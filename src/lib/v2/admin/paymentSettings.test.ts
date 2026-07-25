@@ -7,7 +7,12 @@ import {
   readinessRows,
   stripStatusFields,
   type PaymentSettingsStatus,
+  type PaymentSettingsSummary,
 } from "./paymentSettings";
+import {
+  PAYMENTS_NAV_LINKS,
+  PAYMENTS_RECON_LINKS,
+} from "./paymentsRoutes";
 
 const baseStatus: PaymentSettingsStatus = {
   provider: "upayments",
@@ -97,5 +102,49 @@ describe("stripStatusFields", () => {
   it("drops unknown keys silently", () => {
     const out = stripStatusFields({ ...baseStatus, extraneous: 123 });
     expect((out as Record<string, unknown>).extraneous).toBeUndefined();
+  });
+});
+
+describe("PAYMENTS_NAV_LINKS canonical routes", () => {
+  it("uses canonical Admin V2 order routes only", () => {
+    const map = Object.fromEntries(PAYMENTS_NAV_LINKS.map((n) => [n.label, n.to]));
+    expect(map["Orders"]).toBe("/admin/orders");
+    expect(map["Payment events"]).toBe("/admin/orders/payment-events");
+    expect(map["Entitlements"]).toBe("/admin/orders/entitlements");
+    expect(map["Refunds"]).toBe("/admin/orders/refunds");
+    expect(map["Recovery queue"]).toBe("/admin/orders/recovery");
+    expect(map["Discounts"]).toBe("/admin/orders/discounts");
+  });
+  it("contains no legacy non-canonical routes", () => {
+    const forbidden = new Set(["/admin/payment-events", "/admin/refunds", "/admin/entitlements", "/admin/discounts"]);
+    for (const n of PAYMENTS_NAV_LINKS) {
+      expect(forbidden.has(n.to)).toBe(false);
+    }
+    for (const to of Object.values(PAYMENTS_RECON_LINKS)) {
+      expect(forbidden.has(to)).toBe(false);
+    }
+  });
+  it("reconciliation link map targets canonical routes", () => {
+    expect(PAYMENTS_RECON_LINKS.mismatches).toBe("/admin/orders/payment-events");
+    expect(PAYMENTS_RECON_LINKS.duplicate_event_risk).toBe("/admin/orders/payment-events");
+    expect(PAYMENTS_RECON_LINKS.credit_inconsistent).toBe("/admin/orders/entitlements");
+    expect(PAYMENTS_RECON_LINKS.threshold_lifetime_below_credit).toBe("/admin/orders/entitlements");
+    expect(PAYMENTS_RECON_LINKS.refund_alloc_over_item).toBe("/admin/orders/refunds");
+    expect(PAYMENTS_RECON_LINKS.refund_alloc_over_order).toBe("/admin/orders/refunds");
+    expect(PAYMENTS_RECON_LINKS.processed_missing_credit).toBe("/admin/orders/refunds");
+    expect(PAYMENTS_RECON_LINKS.processed_item_unrevoked_entitlement).toBe("/admin/orders/refunds");
+    expect(PAYMENTS_RECON_LINKS.pending_past_due).toBe("/admin/orders/recovery");
+    expect(PAYMENTS_RECON_LINKS.paid_without_entitlement).toBe("/admin/orders");
+  });
+});
+
+describe("payment_attempts.failed contract", () => {
+  it("type surface exposes `failed` (not `verified_failed`)", () => {
+    const sample: PaymentSettingsSummary["payment_attempts"] = {
+      total: 10, verified_paid: 6, failed: 3, mismatch: 1,
+    };
+    expect(sample.failed).toBe(3);
+    // @ts-expect-error verified_failed removed from contract
+    expect(sample.verified_failed).toBeUndefined();
   });
 });
