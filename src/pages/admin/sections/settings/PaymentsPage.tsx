@@ -250,7 +250,7 @@ export default function PaymentsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <Metric label="Total" value={summaryQ.data.payment_attempts.total} />
                   <Metric label="Verified paid" value={summaryQ.data.payment_attempts.verified_paid} />
-                  <Metric label="Verified failed" value={summaryQ.data.payment_attempts.verified_failed} />
+                  <Metric label="Failed attempts" value={summaryQ.data.payment_attempts.failed} />
                   <Metric label="Mismatch" value={summaryQ.data.payment_attempts.mismatch} />
                 </div>
               </div>
