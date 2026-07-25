@@ -14,6 +14,7 @@ import {
   Send,
 } from "lucide-react";
 import { PublishingQueueDetailSheet } from "./PublishingQueueDetailSheet";
+import { formatVersionLabel } from "@/lib/v2/admin/versionLabel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
