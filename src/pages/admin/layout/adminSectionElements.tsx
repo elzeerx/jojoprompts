@@ -18,6 +18,7 @@ const VersionsRegistryPage = lazy(() => import("../sections/publishing/VersionsR
 const ScansPage = lazy(() => import("../sections/trust/scans/ScansPage"));
 const DraftsQueuePage = lazy(() => import("../sections/publishing/DraftsQueuePage"));
 const ReviewQueuePage = lazy(() => import("../sections/publishing/ReviewQueuePage"));
+const RolesPage = lazy(() => import("../sections/settings/RolesPage"));
 
 
 
@@ -32,17 +33,6 @@ const CategoriesManagement = lazy(() =>
   }))
 );
 const UsersManagement = lazy(() => import("../components/users/UsersManagement"));
-const PurchaseHistoryManagement = lazy(
-  () => import("../components/purchases/PurchaseHistoryManagement")
-);
-const DiscountCodesManagement = lazy(
-  () => import("../components/discount-codes/DiscountCodesManagement")
-);
-const AbandonedCartDashboard = lazy(() =>
-  import("../components/abandoned-cart/AbandonedCartDashboard").then((m) => ({
-    default: m.AbandonedCartDashboard,
-  }))
-);
 const EmailTemplatesManagement = lazy(() =>
   import("@/components/admin/EmailTemplatesManagement").then((m) => ({
     default: m.EmailTemplatesManagement,
