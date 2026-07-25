@@ -36,7 +36,7 @@ const pr = (over: Partial<ProfileLite>): ProfileLite => ({
 describe("roles: legacy jadmin", () => {
   it("jadmin is present in ALL_ROLES but not ASSIGNABLE_ROLES", () => {
     expect(ALL_ROLES).toContain("jadmin");
-    expect(ASSIGNABLE_ROLES).not.toContain("jadmin");
+    expect(ASSIGNABLE_ROLES.includes("jadmin")).toBe(false);
     expect(LEGACY_ROLES).toEqual(["jadmin"]);
   });
 
@@ -144,7 +144,7 @@ describe("roles: resolveAssignerLabel", () => {
   });
   it("never returns a raw UUID fragment as label", () => {
     const label = resolveAssignerLabel("assigner-1", profiles);
-    expect(label).not.toContain("assigner-1".slice(0, 8));
+    expect(label.includes("assigner")).toBe(false);
   });
 });
 
@@ -152,7 +152,7 @@ describe("roles: formatUserCountFooter", () => {
   it("uses `users` terminology (never `role rows`)", () => {
     const s = formatUserCountFooter(1234, 2, 10);
     expect(s).toContain("users");
-    expect(s).not.toContain("role rows");
+    expect(s.includes("role rows")).toBe(false);
     expect(s).toContain("Page 2 / 10");
     expect(s).toContain("1,234");
   });
