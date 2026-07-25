@@ -14,6 +14,7 @@ import {
   Send,
 } from "lucide-react";
 import { PublishingQueueDetailSheet } from "./PublishingQueueDetailSheet";
+import { formatVersionLabel } from "@/lib/v2/admin/versionLabel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -157,7 +158,7 @@ async function fetchQueue(args: QueryArgs): Promise<{ rows: Fetched[]; total: nu
       updated_at: r.updated_at,
       submitted_at: null,
       current_version_label: r.current_version
-        ? `v${r.current_version.major_version}.${r.current_version.version}`
+        ? formatVersionLabel(r.current_version.version, r.current_version.major_version)
         : null,
       file_count: vid ? files.get(vid) ?? 0 : 0,
       scan_status,

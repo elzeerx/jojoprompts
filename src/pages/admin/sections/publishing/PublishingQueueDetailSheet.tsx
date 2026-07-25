@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatVersionLabel } from "@/lib/v2/admin/versionLabel";
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
@@ -435,7 +436,7 @@ export function PublishingQueueDetailSheet({ open, onOpenChange, row }: Props) {
                       <KV k="Type" v={<span className="capitalize">{data.resource.type.replace("_", " ")}</span>} />
                       <KV k="Current version" v={
                         data.version
-                          ? `v${data.version.major_version}.${data.version.version}${data.version.is_current ? " (current)" : ""}`
+                          ? `${formatVersionLabel(data.version.version, data.version.major_version) ?? "—"}${data.version.is_current ? " (current)" : ""}`
                           : "None"
                       } />
                       <KV k="Updated" v={formatDateTime(data.resource.updated_at)} />
