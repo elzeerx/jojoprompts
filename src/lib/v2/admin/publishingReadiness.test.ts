@@ -69,8 +69,8 @@ describe("deriveReadiness", () => {
       has_platform_compatibility: false,
       has_installation_guide: false,
     });
-    expect(r.blockers).not.toContain("missing_platform_compatibility");
-    expect(r.blockers).not.toContain("missing_installation_guide");
+    expect(r.blockers.includes("missing_platform_compatibility")).toBe(false);
+    expect(r.blockers.includes("missing_installation_guide")).toBe(false);
   });
 
   it("requires an active product regardless of type", () => {
