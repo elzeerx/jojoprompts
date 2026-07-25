@@ -12,7 +12,7 @@ import {
 import {
   PAYMENTS_NAV_LINKS,
   PAYMENTS_RECON_LINKS,
-} from "@/pages/admin/sections/settings/PaymentsPage";
+} from "./paymentsRoutes";
 
 const baseStatus: PaymentSettingsStatus = {
   provider: "upayments",
