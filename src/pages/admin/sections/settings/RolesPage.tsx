@@ -535,9 +535,9 @@ function RowActions({ row, adminCount, busy, onAssign, onRemove }: ActionsProps)
         </Select>
       )}
       {row.roles
-        .filter((r) => !LEGACY_ROLES.includes(r.role))
+        .filter((r) => isRemovableRole(r.role))
         .map((r) => {
-          const isLastAdminRemoval = r.role === "admin" && onlyOneAdmin;
+          const isLastAdminRemoval = isLastAdminRemovalBlocked(r.role, adminCount);
           return (
             <Button
               key={r.id}
