@@ -16,6 +16,8 @@ const DiscountsPage = lazy(() => import("../sections/orders/DiscountsPage"));
 const ReportsPage = lazy(() => import("../sections/trust/ReportsPage"));
 const VersionsRegistryPage = lazy(() => import("../sections/publishing/VersionsRegistryPage"));
 const ScansPage = lazy(() => import("../sections/trust/scans/ScansPage"));
+const DraftsQueuePage = lazy(() => import("../sections/publishing/DraftsQueuePage"));
+const ReviewQueuePage = lazy(() => import("../sections/publishing/ReviewQueuePage"));
 
 
 
@@ -96,16 +98,8 @@ export const adminSectionElements = {
 
 
   // Publishing
-  publishingDrafts: Empty(
-    "Drafts",
-    "Draft resources live in the unified Catalog table for now. Filter by status = Draft to see them; a dedicated Drafts board with reviewer assignment lands in Phase 2.",
-    [{ label: "Open Catalog (Draft filter)", to: "/admin/catalog?status=draft" }],
-  ),
-  publishingReview: Empty(
-    "Review Queue",
-    "Resources submitted for review will surface here with approve / request-changes actions. Until wired, use the Catalog table with status = In review.",
-    [{ label: "Open Catalog (Review filter)", to: "/admin/catalog?status=review" }],
-  ),
+  publishingDrafts: wrap(<DraftsQueuePage />),
+  publishingReview: wrap(<ReviewQueuePage />),
   publishingVersions: wrap(<VersionsRegistryPage />),
   publishingImports: wrap(<LegacyMigrationPreview />),
   publishingImportsJson: wrap(<JsonPromptImporter />),
