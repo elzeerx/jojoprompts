@@ -1,64 +1,79 @@
 
-## Audit result — what's still unfinished (excluding creators, subscriptions, publishing the site)
+# Admin V2 audit (commit 7fa6e33d) and next-slice proposal
 
-Verified against the current codebase, not the stale `.lovable/plan.md`. Recently shipped slices (Trust Reports, Package Scans incl. Cloudmersive, Versions Registry, secure resource-file ingestion, receipt outbox, hardened email, launch lock) are all wired to real components and RPCs.
+Scope reviewed: every route in `src/pages/admin/config/adminNavConfig.ts` + `src/App.tsx` `/admin/**` routes, backed by `src/pages/admin/layout/adminSectionElements.tsx`. Read-only; no schema, code, or data changed.
 
-Remaining placeholders in `src/pages/admin/layout/adminSectionElements.tsx`:
+## 1. Fully operational pages (real Supabase data, working primary actions)
 
-| Route | State | Launch relevance |
+| Route | Component | Backing data / RPC |
 |---|---|---|
-| `/admin/publishing/drafts` | `EmptyRouteState` redirect to Catalog filter | Low — Catalog + ResourcePublisher already cover the workflow |
-| `/admin/publishing/review` | `EmptyRouteState` redirect to Catalog filter | Low — same |
-| `/admin/trust/admin-activity` | `AuditLogPage.tsx` is a static preview shell (header comment: "placeholder"), renders zero data even though `public.activity_events` is populated by ~15+ V2 migrations + `resource-download` edge function | **High** — trust/compliance surface, sole aggregator for report transitions, refunds, scans, discounts, downloads, order events |
-| `/admin/settings/{payments,email,storage,integrations,roles}` | `EmptyRouteState` | Low — configuration surfaces, not launch-blocking |
+| `/admin` | `sections/overview/OverviewV2.tsx` | `get_admin_v2_overview()` + `useAdminRecoveryCounts` |
+| `/admin/catalog[/*]` (7 variants) | `sections/catalog/CatalogPage` → `CatalogTable` | resources table + admin RPCs |
+| `/admin/publishing/new`, `/edit`, `/versions/new` | `sections/publishing/ResourcePublisher` | `save_admin_resource_draft`, `admin_finalize_resource_package`, `admin_transition_resource_lifecycle`, `admin_publish_resource` |
+| `/admin/publishing/drafts`, `/review` | `PublishingQueue` | `v2_admin_list_resource_versions` + lifecycle RPCs (fail-closed readiness) |
+| `/admin/publishing/versions` | `VersionsRegistryPage` + `VersionDetailSheet` | `v2_admin_list_resource_versions`, `v2_admin_get_resource_version_detail`, upload edge fn |
+| `/admin/publishing/imports` | `LegacyMigrationPreview` | `v2_admin_migration_preview`, `_rehearsal`, `_verification` |
+| `/admin/publishing/imports/json` | `JsonPromptImporter` | prompts insert |
+| `/admin/publishing/imports/ai-studio[/:id]` | `AiStudioPage` | `ai_studio_drafts` + edge fns |
+| `/admin/publishing/taxonomy` | `CategoriesManagement` | `categories` |
+| `/admin/orders` | `OrdersV2Page` + `OrderDetailSheet` | `useAdminOrders/Metrics`, `v2_admin_get_order_detail` |
+| `/admin/orders/payment-events` | `PaymentEventsPage` | `v2_admin_list_payment_events` |
+| `/admin/orders/entitlements` | `EntitlementsPage` | `v2_admin_list_entitlements` |
+| `/admin/orders/refunds` | `RefundsPage` + `CreateRefundDialog` | `v2_admin_list_refunds`, refund RPCs |
+| `/admin/orders/recovery` | `RecoveryPage` | `v2_admin_list_recovery` |
+| `/admin/orders/discounts` | `DiscountsPage` + editor | `v2_admin_list_discounts`, discount RPCs |
+| `/admin/users` | `UsersManagement` | admin user RPCs; includes bulk role change |
+| `/admin/communications/templates` | `EmailTemplatesManagement` | `email_templates` CRUD + test-send |
+| `/admin/communications/delivery` | `EmailAnalyticsDashboard` | `email_logs`/`email_engagement` |
+| `/admin/trust/reports` | `ReportsPage` + `ReportDetailSheet` | `v2_admin_list_reports` |
+| `/admin/trust/scans` | `trust/scans/ScansPage` | `v2_admin_list_package_scan_queue`, `v2_admin_get_package_scan_details` |
+| `/admin/trust/admin-activity` | `system/AuditLogPage` + detail sheet | `v2_admin_list_activity_events`, `v2_admin_get_activity_event` |
+| `/admin/trust/security-events` | `SecurityMonitoringDashboard` | `security_monitoring_events`, `threat_indicators` |
 
-### Highest-priority unfinished slice
+## 2. Shells / placeholders / dead controls
 
-**Admin → System → Audit Log**, wired to `public.activity_events`. Every V2 slice we just shipped writes to this table (Reports triage in `20260724163004…`, Refunds/Recovery/Discounts/Orders in `20260722213033…`/`20260722214306…`/`20260722215158…`, Downloads in `resource-download/index.ts:161`, Scans in the Cloudmersive worker). All of that traffic is currently invisible to admins. This is the natural completion of the trust/moderation cluster and unblocks incident review.
+- **`/admin/settings/payments`** — `Empty(...)` in `adminSectionElements.tsx:134`. No UI at all.
+- **`/admin/settings/email`** — `Empty(...)` at :138.
+- **`/admin/settings/storage`** — `Empty(...)` at :142.
+- **`/admin/settings/integrations`** — `Empty(...)` at :146.
+- **`/admin/settings/roles`** — `Empty(...)` at :150, redirects users to `/admin/users`. `src/pages/admin/components/roles/RoleManagementDashboard.tsx` exists but is not wired to any route.
+- **Overview KPIs** `Downloads` and `Delivery failures` — hard-coded "Unavailable" (OverviewV2.tsx:130–138). Not wired in `get_admin_v2_overview`.
+- **`ordersLegacyPurchases`** (`PurchaseHistoryManagement`) is imported in `adminSectionElements.tsx:115` but not routed — dead export. Same for `discountsLegacy`, `abandoned-cart` component, `PromptsManagement` legacy page in `src/pages/admin/PromptsManagement.tsx`.
+- **`OverviewV2` legacy header link** `Import` points to `/admin/publishing/imports` (fine), but the "New Resource" and "Reconcile Payments" buttons are the only truly primary actions; no dead primaries here.
 
-## Slice scope
+## 3. Duplicated controls / V2-model terminology conflicts
 
-### Database — one forward-only migration
-- `public.v2_admin_list_activity_events(_actor_types text[] default null, _entity_types text[] default null, _actions text[] default null, _actor_user_id uuid default null, _entity_id uuid default null, _search text default null, _from timestamptz default null, _to timestamptz default null, _limit int default 50, _offset int default 0) returns table(...)`
-  - `SECURITY DEFINER`, `SET search_path = ''`, admin-gated via `public.has_role(auth.uid(),'admin')`.
-  - Enriches rows with actor email (masked via existing `public._v2_mask_email`) and actor display name from `public.profiles`.
-  - Applies `_v2_bounded_limit` (reuse existing helper) capped at ~200; returns a stable ordering `(created_at DESC, id DESC)` with a `total_count` window value for pagination.
-- `public.v2_admin_get_activity_event(_id uuid) returns jsonb`
-  - Admin-gated, returns full row including raw `metadata` and `ip_address` (already anonymized at write time by existing `anonymize_audit_ip` where applicable).
-- Explicit `GRANT EXECUTE … TO authenticated`. No table grants change; existing `activity_events_admin_read` RLS is untouched. No new indexes required — `activity_events_actor_idx`, `activity_events_entity_idx`, and `idx_activity_events_action_created` already cover the filter surface.
+- `PurchaseHistoryManagement` (legacy) still uses subscription language ("Plan", monthly gateway split, `payment_gateway === 'paypal'`, `formatKWD(amount_usd)` mixing USD/KWD), which contradicts V2 one-time-payment fils/KWD orders. It is not routed but is still lazy-imported — safe to remove.
+- `discountsLegacy` (`DiscountCodesManagement`) coexists with the new `DiscountsPage`. Both target discount codes; the legacy one uses the pre-V2 `discount_codes` table, the new one `v2_discount_codes`. Only the new one is routed, but the import is still live.
+- `RecoveryPage` and V1 `abandoned_cart_sequences` overlap: recovery lives under both the new V2 `v2_admin_list_recovery` (routed) and legacy `AbandonedCartDashboard` (imported, not routed).
+- Nav label `Recovery` vs Overview attention tile `Recovery queue` — same target, minor label drift.
+- `OverviewV2` `Import` button links to `/admin/publishing/imports` which is now dominated by the legacy migration preview UI, not a general "import" surface — mildly misleading label but not a defect.
+- No subscription/plan terminology found inside routed V2 sections themselves; the conflict is confined to unrouted legacy modules still bundled via `adminSectionElements`.
 
-### Admin UI — replace `AuditLogPage.tsx`
-- Filter bar (mobile-first, 44px targets, wraps at 320–430px): actor type multi-select, entity type multi-select, action multi-select (populated from a small hard-coded allowlist derived from existing writer sites, no schema query), free-text search on `action`/`entity_type`, date range, page size.
-- Table columns: timestamp (relative + tooltip), actor (masked email + role badge), actor_type, action, entity (type + short id + link when the entity is a resource/order/report/refund/discount), IP.
-- Row → `AuditEventDetailSheet` with pretty-printed `metadata`, copy-to-clipboard for id/entity id, and deep links to `/admin/trust/reports/:id`, `/admin/orders/:id`, `/admin/orders/refunds/:id`, `/admin/publishing/versions?resource=…` where applicable.
-- New typed hook `src/hooks/admin/v2/useAdminAuditLog.ts` calling `supabase.rpc(...)` — mirrors `useAdminReports` structure.
-- Reuse the same responsive shell as `ReportsPage.tsx` / `VersionsRegistryPage.tsx` (stacked filters on mobile, sticky header desktop). No new UI primitives.
+## 4. Next bounded slice (recommended)
 
-### Explicitly out of scope
-- No writes to `activity_events`, no new emitters, no schema changes to the table.
-- No CSV export in this slice (add later once filter set is confirmed).
-- No changes to `admin_audit_log` — that legacy table stays as-is; V2 uses `activity_events` and this slice does not attempt to merge them.
-- No changes to launch lock, secrets, feature flags, commerce, publishing workflow, settings pages, subscriptions, or creator flows.
+**Slice: replace all five `/admin/settings/*` placeholder screens with real, read-only-first surfaces, then wire Roles as the one interactive settings page.**
 
-## Bounded acceptance test
+Rationale:
+- Settings is the only entire nav group where every route is a static shell — the highest visible operational-completeness gap after publishing/orders/trust were completed.
+- Roles is the most impactful single interaction (currently only reachable via a hidden bulk-select action inside Users), removes the "redirect to Users" friction, and does not require schema changes: `user_roles`, `app_role`, `has_role()`, and existing admin user RPCs already support it.
+- Payments / Email / Storage / Integrations can be genuine read-only "status" panes surfacing information that already exists (env-configured providers, active email templates count, storage bucket policies from `supabase/STORAGE_BUCKETS.md`, MCP manifest) — no new backend needed, closes the "empty page" friction without inventing capabilities.
+- Excludes creator marketplace, subscriptions, and public-site work.
 
-1. **Migration applies cleanly** on a fresh DB; `bunx tsgo --noEmit` and `bun run build` succeed after regenerated `types.ts` is picked up.
-2. **RPC gate**: calling `v2_admin_list_activity_events` and `v2_admin_get_activity_event` as a non-admin authenticated user returns a `42501`/permission error; as `service_role` and as an `admin` role returns rows. Covered by Deno unit tests in `supabase/functions/_shared/` style (RPC-only, no HTTP function needed).
-3. **Filter semantics** (Deno tests using a seeded temp schema OR SQL-only assertions in the migration's own test script):
-   - `_actor_types => ['admin']` returns only rows where `actor_type='admin'`.
-   - `_from`/`_to` bounds are inclusive/exclusive as documented and prune correctly.
-   - `_search` matches case-insensitively against `action` and `entity_type` only (never against `metadata`, to avoid full-jsonb scans).
-   - `_limit` is capped by `_v2_bounded_limit`; `total_count` is stable across pages.
-4. **UI smoke** (Playwright, admin session, behind existing launch lock, viewport 390×844 and 1280×800):
-   - `/admin/trust/admin-activity` renders a non-empty table (seed one `activity_events` row via existing writer, e.g. transition a test report through `v2_admin_update_report_status`).
-   - Filter by `action = report.status_changed` narrows to that row; clearing filters restores the full list.
-   - Opening the detail sheet shows the raw metadata and a working deep link to the source report.
-   - No horizontal scroll at 390px; all interactive targets ≥44px.
-5. **Zero-drift invariants**: `entitlements`, `lifetime_credit_entries`, `resource_files`, `package_scans`, `package_scan_items`, `orders`, `refunds` row counts unchanged before/after applying the migration and running the UI smoke (the slice is read-only).
-6. **Frontend tests**: `bun test src/` passes, including a new test for `useAdminAuditLog` filter serialization and for the deep-link resolver (`resolveEntityLink(entityType, entityId)`).
+Deliverables (proposed, not yet implemented):
+1. `sections/settings/RolesPage.tsx` — list users with any role in `user_roles`, per-user role add/remove using existing `useAdminUsers` mutations (`bulkChangeRole` factored into single-user path). Search + filter by role. 44px targets, mobile-first.
+2. `sections/settings/PaymentsStatusPage.tsx` — read-only status of UPayments configuration: flag values from `v2Flags.ts`, presence of required edge-fn secrets (via admin-only edge fn that returns booleans, no values), most recent `v2_provider_status_rate_limit` timestamp.
+3. `sections/settings/EmailStatusPage.tsx` — counts from `email_templates` (active/inactive), sender identity constant, recent 24 h delivery totals from `email_logs` (already indexed).
+4. `sections/settings/StoragePage.tsx` — render `supabase/STORAGE_BUCKETS.md`-derived static bucket table (public/private, size limits, MIME allowlists) as fact, plus admin-only bucket existence probe.
+5. `sections/settings/IntegrationsPage.tsx` — MCP manifest summary from `.lovable/mcp/manifest.json` plus a static "not configured" list.
+6. Cleanup pass in `adminSectionElements.tsx`: drop unused lazy imports (`PurchaseHistoryManagement`, `DiscountCodesManagement`, `AbandonedCartDashboard`, legacy `PromptsManagement`) to remove terminology conflicts noted in section 3.
 
-## Technical notes
-- No new tables, buckets, edge functions, or secrets.
-- Reuses `_v2_bounded_limit`, `_v2_mask_email`, `has_role`, and existing indexes.
-- Deep-link resolver stays a pure frontend function so the RPC contract remains simple `jsonb`/tabular.
-- Follows the same SECURITY DEFINER + locked `search_path` + explicit `GRANT EXECUTE` pattern used by every V2 admin RPC shipped in this project.
+Files touched (if approved):
+- New: `src/pages/admin/sections/settings/{RolesPage,PaymentsStatusPage,EmailStatusPage,StoragePage,IntegrationsPage}.tsx`
+- Modified: `src/pages/admin/layout/adminSectionElements.tsx`, `src/App.tsx` (already routes `settings/*`), `src/pages/admin/components/roles/RoleManagementDashboard.tsx` (repurpose or delete), possibly `src/hooks/useAdminUsers.ts` for single-user role mutation.
+- Data tables / RPCs consumed (all existing): `user_roles`, `profiles`, `has_role`, `email_templates`, `email_logs`, `v2_provider_status_rate_limit`.
+- Edge fns (existing or trivially additive read-only): may add one `v2-admin-integration-status` fn for secret-presence booleans, but not required for slice v1 — can render "configured via env" statically.
+
+## 5. Schema impact
+
+**None required.** All five pages can be delivered with existing tables and RPCs. The optional secret-presence edge function would only need `SUPABASE_SERVICE_ROLE_KEY` (already available) and does not add tables/columns/policies.
