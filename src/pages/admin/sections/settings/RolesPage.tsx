@@ -316,7 +316,7 @@ export default function RolesPage() {
             <RoleUserCard
               key={row.user_id}
               row={row}
-              onlyOneAdmin={onlyOneAdmin}
+              adminCount={adminCount}
               busy={assign.isPending || remove.isPending}
               onAssign={(role) =>
                 setPending({
@@ -400,7 +400,7 @@ export default function RolesPage() {
                     <TableCell>
                       <RowActions
                         row={row}
-                        onlyOneAdmin={onlyOneAdmin}
+                        adminCount={adminCount}
                         busy={assign.isPending || remove.isPending}
                         onAssign={(role) =>
                           setPending({
@@ -501,7 +501,7 @@ export default function RolesPage() {
 
 interface ActionsProps {
   row: RoleUserRow;
-  onlyOneAdmin: boolean;
+  adminCount: number;
   busy: boolean;
   onAssign: (role: AppRole) => void;
   onRemove: (role: AppRole) => void;
