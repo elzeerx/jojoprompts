@@ -580,6 +580,12 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
           </div>
         </div>
       ) : null}
+
+      <PublishingQueueDetailSheet
+        open={!!detailRow}
+        onOpenChange={(o) => { if (!o) setDetailRow(null); }}
+        row={detailRow}
+      />
     </div>
   );
 }
