@@ -318,9 +318,20 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
   const actionsFor = (r: Fetched) => {
     const rd = deriveReadiness(r);
     const busy = busyId === r.id;
+    const viewBtn = (
+      <Button
+        size="sm"
+        variant="outline"
+        className="min-h-[44px]"
+        onClick={() => setDetailRow(r)}
+      >
+        <Eye className="mr-1 h-4 w-4" /> View details
+      </Button>
+    );
     if (mode === "draft") {
       return (
         <div className="flex flex-wrap items-center gap-2">
+          {viewBtn}
           <Button asChild size="sm" variant="outline" className="min-h-[44px]">
             <Link to={`/admin/publishing/resources/${r.id}/edit`}>
               <Pencil className="mr-1 h-4 w-4" /> Continue editing
@@ -349,7 +360,7 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
     }
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <Button
+        {viewBtn}
           size="sm"
           className="min-h-[44px] bg-warm-gold text-dark-base hover:bg-warm-gold/90"
           disabled={!rd.isPublishable || busy}
