@@ -49,13 +49,22 @@ import {
   ALL_ROLES,
   ASSIGNABLE_ROLES,
   LEGACY_ROLES,
+  isLastAdminRemovalBlocked,
+  isRemovableRole,
+  resolveAssignerLabel,
+  formatUserCountFooter,
+} from "@/lib/v2/admin/roles";
+import {
   useAdminRoleCounts,
   useAdminRoleList,
   useAssignRole,
   useRemoveRole,
-  type AppRole,
-  type RoleUserRow,
 } from "@/hooks/admin/v2/useAdminRoles";
+import type {
+  AppRole,
+  ProfileLite,
+  RoleUserRow,
+} from "@/hooks/admin/v2/useAdminRolesTypes";
 
 const PAGE_SIZE = 25;
 
@@ -307,7 +316,7 @@ export default function RolesPage() {
             <RoleUserCard
               key={row.user_id}
               row={row}
-              onlyOneAdmin={onlyOneAdmin}
+              adminCount={adminCount}
               busy={assign.isPending || remove.isPending}
               onAssign={(role) =>
                 setPending({
@@ -380,15 +389,18 @@ export default function RolesPage() {
                         ? formatDateTime(latest.assigned_at)
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-xs font-mono">
-                      {latest?.assigned_by
-                        ? latest.assigned_by.slice(0, 8)
-                        : "—"}
+                    <TableCell className="text-xs">
+                      <span className="truncate max-w-[180px] inline-block align-bottom">
+                        {resolveAssignerLabel(
+                          latest?.assigned_by ?? null,
+                          list.data?.assignerProfilesById ?? new Map(),
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <RowActions
                         row={row}
-                        onlyOneAdmin={onlyOneAdmin}
+                        adminCount={adminCount}
                         busy={assign.isPending || remove.isPending}
                         onAssign={(role) =>
                           setPending({
@@ -428,7 +440,7 @@ export default function RolesPage() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <div>
-          {total.toLocaleString()} role rows · Page {page} / {totalPages}
+          {formatUserCountFooter(total, page, totalPages)}
         </div>
         <div className="flex gap-2">
           <Button
@@ -489,13 +501,13 @@ export default function RolesPage() {
 
 interface ActionsProps {
   row: RoleUserRow;
-  onlyOneAdmin: boolean;
+  adminCount: number;
   busy: boolean;
   onAssign: (role: AppRole) => void;
   onRemove: (role: AppRole) => void;
 }
 
-function RowActions({ row, onlyOneAdmin, busy, onAssign, onRemove }: ActionsProps) {
+function RowActions({ row, adminCount, busy, onAssign, onRemove }: ActionsProps) {
   const existing = new Set(row.roles.map((r) => r.role));
   const assignable = ASSIGNABLE_ROLES.filter((r) => !existing.has(r));
 
@@ -523,9 +535,9 @@ function RowActions({ row, onlyOneAdmin, busy, onAssign, onRemove }: ActionsProp
         </Select>
       )}
       {row.roles
-        .filter((r) => !LEGACY_ROLES.includes(r.role))
+        .filter((r) => isRemovableRole(r.role))
         .map((r) => {
-          const isLastAdminRemoval = r.role === "admin" && onlyOneAdmin;
+          const isLastAdminRemoval = isLastAdminRemovalBlocked(r.role, adminCount);
           return (
             <Button
               key={r.id}
