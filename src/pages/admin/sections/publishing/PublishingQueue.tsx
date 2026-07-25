@@ -464,29 +464,19 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
         <div className="space-y-3">
           {rows.map((r) => (
             <Card key={r.id} className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-dark-base break-words">
-                    {r.title_en || r.slug}
-                  </div>
-                  {r.title_ar ? (
-                    <div className="text-xs text-muted-foreground break-words" dir="rtl">{r.title_ar}</div>
-                  ) : null}
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                    <Badge variant="outline" className="capitalize">{r.type.replace("_", " ")}</Badge>
-                    {r.current_version_label ? <span>{r.current_version_label}</span> : <span>no version</span>}
-                    <span>·</span>
-                    <span>Updated {formatDateTime(r.updated_at)}</span>
-                  </div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-dark-base break-words">
+                  {r.title_en || r.slug}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="min-h-[44px] min-w-[44px] shrink-0"
-                  onClick={() => setDetailRow(r)}
-                >
-                  <Eye className="mr-1 h-4 w-4" /> View details
-                </Button>
+                {r.title_ar ? (
+                  <div className="text-xs text-muted-foreground break-words" dir="rtl">{r.title_ar}</div>
+                ) : null}
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <Badge variant="outline" className="capitalize">{r.type.replace("_", " ")}</Badge>
+                  {r.current_version_label ? <span>{r.current_version_label}</span> : <span>no version</span>}
+                  <span>·</span>
+                  <span>Updated {formatDateTime(r.updated_at)}</span>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {renderReadiness(r)}
