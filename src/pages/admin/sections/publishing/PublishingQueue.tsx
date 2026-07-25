@@ -6,13 +6,14 @@ import {
   Archive,
   ArrowLeftCircle,
   CheckCircle2,
-  ExternalLink,
+  Eye,
   Loader2,
   Pencil,
   RefreshCw,
   Search,
   Send,
 } from "lucide-react";
+import { PublishingQueueDetailSheet } from "./PublishingQueueDetailSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
