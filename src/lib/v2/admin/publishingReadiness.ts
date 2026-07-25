@@ -104,9 +104,13 @@ export function deriveReadiness(row: QueueRowInput): Readiness {
       } else if (row.scan_status === "none") {
         blockers.push("scan_missing");
       } else if (row.scan_status === "pending") {
+        // Fail-closed: a pending scan blocks BOTH submit-for-review and publish.
+        // The server (admin_publish_resource + admin_transition_resource_lifecycle)
+        // rejects any scan status other than 'clean'.
         blockers.push("scan_pending");
         scanPending = true;
       } else if (row.scan_status !== "clean") {
+        // suspicious | malicious | failed
         blockers.push("scan_not_clean");
       }
     }
@@ -114,11 +118,11 @@ export function deriveReadiness(row: QueueRowInput): Readiness {
 
   if (!row.has_active_product) blockers.push("no_active_product");
 
-  const fatal = blockers.filter((b) => b !== "scan_pending");
+  const hasAnyBlocker = blockers.length > 0;
   return {
     blockers,
-    isPublishable: fatal.length === 0,
-    isSubmittable: fatal.length === 0,
+    isPublishable: !hasAnyBlocker,
+    isSubmittable: !hasAnyBlocker,
     isScanPending: scanPending,
   };
 }
