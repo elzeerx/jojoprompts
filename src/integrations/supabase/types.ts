@@ -4811,6 +4811,7 @@ export type Database = {
         Args: { p_period_days?: number }
         Returns: Json
       }
+      v2_admin_payment_settings_summary: { Args: never; Returns: Json }
       v2_admin_reconcile_order: { Args: { p_order_id: string }; Returns: Json }
       v2_admin_reconciliation_summary: { Args: never; Returns: Json }
       v2_admin_recovery_counts: { Args: never; Returns: Json }

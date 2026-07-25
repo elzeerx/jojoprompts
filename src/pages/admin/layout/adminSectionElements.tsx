@@ -19,6 +19,7 @@ const ScansPage = lazy(() => import("../sections/trust/scans/ScansPage"));
 const DraftsQueuePage = lazy(() => import("../sections/publishing/DraftsQueuePage"));
 const ReviewQueuePage = lazy(() => import("../sections/publishing/ReviewQueuePage"));
 const RolesPage = lazy(() => import("../sections/settings/RolesPage"));
+const PaymentsPage = lazy(() => import("../sections/settings/PaymentsPage"));
 
 
 
@@ -118,10 +119,7 @@ export const adminSectionElements = {
   security: wrap(<SecurityMonitoringDashboard />),
 
   // Settings
-  settingsPayments: Empty(
-    "Payments",
-    "Provider configuration (Tap / MyFatoorah / Stripe), fee mapping, and test-mode toggles. Unavailable in Phase 1.",
-  ),
+  settingsPayments: wrap(<PaymentsPage />),
   settingsEmail: Empty(
     "Email",
     "Sender identity, DKIM/SPF status, and template defaults. Unavailable in Phase 1.",
