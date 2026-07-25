@@ -52,6 +52,7 @@ import {
   isLastAdminRemovalBlocked,
   isRemovableRole,
   resolveAssignerLabel,
+  selectLatestRoleRow,
   formatUserCountFooter,
 } from "@/lib/v2/admin/roles";
 import {
