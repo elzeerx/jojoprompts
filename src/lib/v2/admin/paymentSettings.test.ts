@@ -7,7 +7,12 @@ import {
   readinessRows,
   stripStatusFields,
   type PaymentSettingsStatus,
+  type PaymentSettingsSummary,
 } from "./paymentSettings";
+import {
+  PAYMENTS_NAV_LINKS,
+  PAYMENTS_RECON_LINKS,
+} from "@/pages/admin/sections/settings/PaymentsPage";
 
 const baseStatus: PaymentSettingsStatus = {
   provider: "upayments",
