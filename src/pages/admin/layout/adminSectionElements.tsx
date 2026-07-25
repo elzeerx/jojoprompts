@@ -101,11 +101,8 @@ export const adminSectionElements = {
   paymentEvents: wrap(<PaymentEventsPage />),
   entitlements: wrap(<EntitlementsPage />),
   refunds: wrap(<RefundsPage />),
-  // Legacy admin tools retained as contextual links until fully replaced.
-  ordersLegacyPurchases: wrap(<PurchaseHistoryManagement />),
   ordersRecovery: wrap(<RecoveryPage />),
   discounts: wrap(<DiscountsPage />),
-  discountsLegacy: wrap(<DiscountCodesManagement />),
 
   // People
   users: wrap(<UsersManagement />),
