@@ -507,7 +507,7 @@ interface ActionsProps {
   onRemove: (role: AppRole) => void;
 }
 
-function RowActions({ row, onlyOneAdmin, busy, onAssign, onRemove }: ActionsProps) {
+function RowActions({ row, adminCount, busy, onAssign, onRemove }: ActionsProps) {
   const existing = new Set(row.roles.map((r) => r.role));
   const assignable = ASSIGNABLE_ROLES.filter((r) => !existing.has(r));
 
