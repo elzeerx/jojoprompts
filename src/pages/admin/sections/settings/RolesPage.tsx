@@ -49,13 +49,22 @@ import {
   ALL_ROLES,
   ASSIGNABLE_ROLES,
   LEGACY_ROLES,
+  isLastAdminRemovalBlocked,
+  isRemovableRole,
+  resolveAssignerLabel,
+  formatUserCountFooter,
+} from "@/lib/v2/admin/roles";
+import {
   useAdminRoleCounts,
   useAdminRoleList,
   useAssignRole,
   useRemoveRole,
-  type AppRole,
-  type RoleUserRow,
 } from "@/hooks/admin/v2/useAdminRoles";
+import type {
+  AppRole,
+  ProfileLite,
+  RoleUserRow,
+} from "@/hooks/admin/v2/useAdminRolesTypes";
 
 const PAGE_SIZE = 25;
 
