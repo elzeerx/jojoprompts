@@ -440,7 +440,7 @@ export default function RolesPage() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <div>
-          {total.toLocaleString()} role rows · Page {page} / {totalPages}
+          {formatUserCountFooter(total, page, totalPages)}
         </div>
         <div className="flex gap-2">
           <Button
