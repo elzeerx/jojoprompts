@@ -369,7 +369,7 @@ export default function PaymentsPage() {
           <CardTitle className="text-base">Operations</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {NAV_LINKS.map((n) => (
+          {PAYMENTS_NAV_LINKS.map((n) => (
             <Button
               key={n.to}
               asChild
