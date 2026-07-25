@@ -9,6 +9,7 @@ import {
   isLastAdminRemovalBlocked,
   isRemovableRole,
   resolveAssignerLabel,
+  selectLatestRoleRow,
 } from "./roles";
 import type {
   ProfileLite,
