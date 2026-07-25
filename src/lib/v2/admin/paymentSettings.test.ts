@@ -116,12 +116,12 @@ describe("PAYMENTS_NAV_LINKS canonical routes", () => {
     expect(map["Discounts"]).toBe("/admin/orders/discounts");
   });
   it("contains no legacy non-canonical routes", () => {
-    const forbidden = ["/admin/payment-events", "/admin/refunds", "/admin/entitlements", "/admin/discounts"];
+    const forbidden = new Set(["/admin/payment-events", "/admin/refunds", "/admin/entitlements", "/admin/discounts"]);
     for (const n of PAYMENTS_NAV_LINKS) {
-      expect(forbidden).not.toContain(n.to);
+      expect(forbidden.has(n.to)).toBe(false);
     }
     for (const to of Object.values(PAYMENTS_RECON_LINKS)) {
-      expect(forbidden).not.toContain(to);
+      expect(forbidden.has(to)).toBe(false);
     }
   });
   it("reconciliation link map targets canonical routes", () => {
