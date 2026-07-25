@@ -39,7 +39,7 @@ describe("deriveReadiness", () => {
     expect(r.isPublishable).toBe(false);
   });
 
-  it("treats a pending scan as a soft blocker only", () => {
+  it("treats a pending scan as fail-closed for both submit and publish", () => {
     const r = deriveReadiness({
       ...base,
       type: "automation",
@@ -48,19 +48,48 @@ describe("deriveReadiness", () => {
     });
     expect(r.blockers).toContain("scan_pending");
     expect(r.isScanPending).toBe(true);
-    expect(r.isPublishable).toBe(true);
-    expect(r.isSubmittable).toBe(true);
+    expect(r.isPublishable).toBe(false);
+    expect(r.isSubmittable).toBe(false);
   });
 
-  it("flags a malicious scan as a fatal blocker", () => {
+  it.each(["suspicious", "malicious", "failed"] as const)(
+    "flags a %s scan as a fatal blocker",
+    (status) => {
+      const r = deriveReadiness({
+        ...base,
+        type: "skill",
+        file_count: 1,
+        scan_status: status,
+      });
+      expect(r.blockers).toContain("scan_not_clean");
+      expect(r.isPublishable).toBe(false);
+      expect(r.isSubmittable).toBe(false);
+    },
+  );
+
+  it("treats scan_status='none' as scan_missing (fail-closed) for skill/automation", () => {
     const r = deriveReadiness({
       ...base,
       type: "skill",
       file_count: 1,
-      scan_status: "malicious",
+      scan_status: "none",
     });
-    expect(r.blockers).toContain("scan_not_clean");
+    expect(r.blockers).toContain("scan_missing");
     expect(r.isPublishable).toBe(false);
+    expect(r.isSubmittable).toBe(false);
+  });
+
+  it("only 'clean' satisfies the scan gate for skill/automation", () => {
+    const r = deriveReadiness({
+      ...base,
+      type: "skill",
+      file_count: 1,
+      scan_status: "clean",
+    });
+    expect(r.blockers).toEqual([]);
+    expect(r.isPublishable).toBe(true);
+    expect(r.isSubmittable).toBe(true);
+    expect(r.isScanPending).toBe(false);
   });
 
   it("does not require platform/installation for a prompt", () => {
