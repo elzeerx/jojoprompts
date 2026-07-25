@@ -361,12 +361,7 @@ export default function RolesPage() {
             <TableBody>
               {(list.data?.rows ?? []).map((row) => {
                 const roles = row.roles.map((r) => r.role);
-                const latest = row.roles
-                  .slice()
-                  .sort(
-                    (a, b) =>
-                      (b.assigned_at ?? "").localeCompare(a.assigned_at ?? ""),
-                  )[0];
+                const latest = selectLatestRoleRow(row.roles);
                 return (
                   <TableRow key={row.user_id}>
                     <TableCell className="text-xs">
