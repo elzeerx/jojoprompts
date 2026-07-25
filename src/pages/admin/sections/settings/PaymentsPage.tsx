@@ -349,7 +349,7 @@ export default function PaymentsPage() {
                           size="sm"
                           className="min-h-[44px]"
                         >
-                          <Link to={r.to} aria-label={`Open ${r.label}`}>
+                          <Link to={to} aria-label={`Open ${r.label}`}>
                             <ArrowRight className="h-4 w-4" />
                           </Link>
                         </Button>
