@@ -158,3 +158,26 @@ describe("roles: formatUserCountFooter", () => {
     expect(s).toContain("1,234");
   });
 });
+
+describe("roles: selectLatestRoleRow", () => {
+  it("returns null for empty input", () => {
+    expect(selectLatestRoleRow([])).toBeNull();
+  });
+  it("returns the row with the greatest assigned_at", () => {
+    const rows = [
+      rr({ id: "a", role: "user", assigned_at: "2026-01-01T00:00:00Z" }),
+      rr({ id: "b", role: "admin", assigned_at: "2026-06-01T00:00:00Z" }),
+      rr({ id: "c", role: "prompter", assigned_at: "2026-03-01T00:00:00Z" }),
+    ];
+    expect(selectLatestRoleRow(rows)?.id).toBe("b");
+  });
+  it("sorts null assigned_at last and does not mutate input", () => {
+    const rows = [
+      rr({ id: "n", role: "user", assigned_at: null }),
+      rr({ id: "x", role: "admin", assigned_at: "2026-01-01T00:00:00Z" }),
+    ];
+    const snapshot = rows.map((r) => r.id).join(",");
+    expect(selectLatestRoleRow(rows)?.id).toBe("x");
+    expect(rows.map((r) => r.id).join(",")).toBe(snapshot);
+  });
+});
