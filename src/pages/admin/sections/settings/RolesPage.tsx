@@ -319,6 +319,9 @@ export default function RolesPage() {
               row={row}
               adminCount={adminCount}
               busy={assign.isPending || remove.isPending}
+              assignerProfilesById={
+                list.data?.assignerProfilesById ?? new Map()
+              }
               onAssign={(role) =>
                 setPending({
                   kind: "assign",
