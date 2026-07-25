@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatVersionLabel } from "@/lib/v2/admin/versionLabel";
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
