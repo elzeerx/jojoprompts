@@ -201,6 +201,7 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
   const type = (params.get("type") as ResourceType | "all") ?? "all";
   const [searchInput, setSearchInput] = useState(search);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [detailRow, setDetailRow] = useState<Fetched | null>(null);
 
   const updateParam = useCallback(
     (key: string, value: string | null) => {
@@ -235,12 +236,13 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
 
   const publishMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await (supabase as any).rpc("admin_publish_resource", {
+      const { data, error } = await supabase.rpc("admin_publish_resource", {
         p_resource_id: id,
       });
       if (error) throw new Error(error.message);
-      if (!(data as any)?.ok) {
-        const errs = ((data as any)?.errors ?? ["unknown"]) as string[];
+      const payload = data as { ok?: boolean; errors?: string[] } | null;
+      if (!payload?.ok) {
+        const errs = payload?.errors ?? ["unknown"];
         throw new Error(errs.join(", "));
       }
     },
@@ -257,12 +259,17 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
 
   const transitionMutation = useMutation({
     mutationFn: async (args: { id: string; action: "review" | "archive" | "restore" }) => {
-      const { data, error } = await (supabase as any).rpc("admin_transition_resource_lifecycle", {
+      const { data, error } = await supabase.rpc("admin_transition_resource_lifecycle", {
         p_resource_id: args.id,
         p_action: args.action,
       });
       if (error) throw new Error(error.message);
-      if (!(data as any)?.ok) throw new Error("failed");
+      const payload = data as { ok?: boolean; error?: string; errors?: string[] } | null;
+      if (!payload?.ok) {
+        const errs = payload?.errors;
+        if (Array.isArray(errs) && errs.length > 0) throw new Error(errs.join(", "));
+        throw new Error(payload?.error ?? "failed");
+      }
       return args.action;
     },
     onMutate: (v) => setBusyId(v.id),
@@ -460,13 +467,14 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
                     <span>Updated {formatDateTime(r.updated_at)}</span>
                   </div>
                 </div>
-                <Link
-                  to={`/admin/publishing/resources/${r.id}/edit`}
-                  className="text-warm-gold"
-                  aria-label="Open"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-[44px] min-w-[44px] shrink-0"
+                  onClick={() => setDetailRow(r)}
                 >
-                  <ExternalLink className="h-4 w-4" />
-                </Link>
+                  <Eye className="mr-1 h-4 w-4" /> View details
+                </Button>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {renderReadiness(r)}
