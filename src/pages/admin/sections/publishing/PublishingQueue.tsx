@@ -361,6 +361,7 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
     return (
       <div className="flex flex-wrap items-center gap-2">
         {viewBtn}
+        <Button
           size="sm"
           className="min-h-[44px] bg-warm-gold text-dark-base hover:bg-warm-gold/90"
           disabled={!rd.isPublishable || busy}
