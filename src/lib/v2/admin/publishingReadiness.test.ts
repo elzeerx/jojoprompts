@@ -52,9 +52,8 @@ describe("deriveReadiness", () => {
     expect(r.isSubmittable).toBe(false);
   });
 
-  it.each(["suspicious", "malicious", "failed"] as const)(
-    "flags a %s scan as a fatal blocker",
-    (status) => {
+  for (const status of ["suspicious", "malicious", "failed"] as const) {
+    it(`flags a ${status} scan as a fatal blocker`, () => {
       const r = deriveReadiness({
         ...base,
         type: "skill",
@@ -64,8 +63,8 @@ describe("deriveReadiness", () => {
       expect(r.blockers).toContain("scan_not_clean");
       expect(r.isPublishable).toBe(false);
       expect(r.isSubmittable).toBe(false);
-    },
-  );
+    });
+  }
 
   it("treats scan_status='none' as scan_missing (fail-closed) for skill/automation", () => {
     const r = deriveReadiness({
