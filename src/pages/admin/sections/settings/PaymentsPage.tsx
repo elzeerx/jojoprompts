@@ -318,17 +318,18 @@ export default function PaymentsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {[
-                { key: "mismatches", label: "Mismatches", to: "/admin/payment-events" },
-                { key: "pending_past_due", label: "Stale pending", to: "/admin/orders/recovery" },
-                { key: "paid_without_entitlement", label: "Paid without entitlement", to: "/admin/orders" },
-                { key: "credit_inconsistent", label: "Credit inconsistency", to: "/admin/entitlements" },
-                { key: "duplicate_event_risk", label: "Duplicate-event risk", to: "/admin/payment-events" },
-                { key: "refund_alloc_over_item", label: "Refund over item", to: "/admin/refunds" },
-                { key: "refund_alloc_over_order", label: "Refund over order", to: "/admin/refunds" },
-                { key: "processed_missing_credit", label: "Processed w/o credit", to: "/admin/refunds" },
-                { key: "processed_item_unrevoked_entitlement", label: "Unrevoked entitlement", to: "/admin/refunds" },
-                { key: "threshold_lifetime_below_credit", label: "Lifetime below credit", to: "/admin/entitlements" },
+                { key: "mismatches", label: "Mismatches" },
+                { key: "pending_past_due", label: "Stale pending" },
+                { key: "paid_without_entitlement", label: "Paid without entitlement" },
+                { key: "credit_inconsistent", label: "Credit inconsistency" },
+                { key: "duplicate_event_risk", label: "Duplicate-event risk" },
+                { key: "refund_alloc_over_item", label: "Refund over item" },
+                { key: "refund_alloc_over_order", label: "Refund over order" },
+                { key: "processed_missing_credit", label: "Processed w/o credit" },
+                { key: "processed_item_unrevoked_entitlement", label: "Unrevoked entitlement" },
+                { key: "threshold_lifetime_below_credit", label: "Lifetime below credit" },
               ].map((r) => {
+                const to = PAYMENTS_RECON_LINKS[r.key] ?? "/admin/orders";
                 const v = (reconQ.data as unknown as Record<string, number>)[r.key] ?? 0;
                 const ok = v === 0;
                 return (
