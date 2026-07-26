@@ -19,6 +19,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminRecoveryCounts } from "@/hooks/admin/v2/useAdminCommerce";
+import {
+  formatDownloadsTile,
+  formatDeliveryFailuresTile,
+} from "@/lib/v2/admin/overviewKpiFormat";
 
 function formatKWD(fils: number | null | undefined): string {
   if (fils == null) return "—";
@@ -34,7 +38,7 @@ interface OverviewData {
   revenue_fils: number;
   paid_orders: number;
   failed_orders_period: number;
-  downloads: { available: boolean; reason?: string };
+  downloads: { available: boolean; count?: number; unique_users?: number; reason?: string };
   active_entitlements: number;
   lifetime_purchase_count: number;
   lifetime_threshold_count: number;
@@ -44,7 +48,7 @@ interface OverviewData {
   refund_count: number;
   refund_denominator: number;
   refund_rate: number | null;
-  delivery_failures: { available: boolean; reason?: string };
+  delivery_failures: { available: boolean; count?: number; attempts?: number; reason?: string };
   total_resources: number;
   published_resources: number;
   attention: {
@@ -126,16 +130,8 @@ export default function OverviewV2() {
           value: data.total_resources.toLocaleString(),
           hint: `${data.published_resources.toLocaleString()} published`,
         },
-        {
-          label: "Downloads",
-          value: "Unavailable",
-          unavailable: data.downloads.reason ?? "not wired",
-        },
-        {
-          label: "Delivery failures",
-          value: "Unavailable",
-          unavailable: data.delivery_failures.reason ?? "not wired",
-        },
+        formatDownloadsTile(data.downloads, periodDays),
+        formatDeliveryFailuresTile(data.delivery_failures, periodDays),
       ]
     : Array.from({ length: 9 }).map(() => ({ label: "", value: "" }));
 
