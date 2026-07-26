@@ -35,7 +35,7 @@ describe("formatDownloadsTile", () => {
   });
 
   it("fails closed on malformed / missing fields", () => {
-    expect(formatDownloadsTile(null, 30).unavailable).not.toBeUndefined();
+    expect(formatDownloadsTile(null, 30).unavailable).toBe("not wired");
     expect(formatDownloadsTile({ available: true }, 30).unavailable).toBe(
       "invalid response",
     );
@@ -81,7 +81,7 @@ describe("formatDeliveryFailuresTile", () => {
   });
 
   it("fails closed on malformed shapes", () => {
-    expect(formatDeliveryFailuresTile(undefined, 30).unavailable).not.toBeUndefined();
+    expect(formatDeliveryFailuresTile(undefined, 30).unavailable).toBe("not wired");
     expect(
       formatDeliveryFailuresTile({ available: true }, 30).unavailable,
     ).toBe("invalid response");
