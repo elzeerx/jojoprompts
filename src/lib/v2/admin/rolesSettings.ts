@@ -224,7 +224,6 @@ export function normalizeRolesSettingsStatus(
   raw: unknown,
 ): RolesSettingsStatus | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  if (!noForbiddenKeysDeep(raw)) return null;
 
   const o = raw as Record<string, unknown>;
   const keys = Object.keys(o);
