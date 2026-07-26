@@ -199,8 +199,8 @@ export function normalizeStorageSettingsStatus(
       customer_download_auth: STORAGE_CUSTOMER_DOWNLOAD_AUTH,
       package_scan_control_service: STORAGE_SCAN_CONTROL_SERVICE,
       package_scan_worker_service: STORAGE_SCAN_WORKER_SERVICE,
-      max_upload_bytes: STORAGE_MAX_UPLOAD_BYTES,
-      signed_url_ttl_seconds: STORAGE_SIGNED_URL_TTL_SECONDS,
+      max_upload_bytes: 26214400,
+      signed_url_ttl_seconds: 60,
       approved_mime_types: acMime,
     },
     registry: {

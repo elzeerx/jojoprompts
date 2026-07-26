@@ -53,7 +53,7 @@ function live(): unknown {
 describe("normalizeStorageSettingsStatus - accept", () => {
   test("accepts live-shaped payload", () => {
     const n = normalizeStorageSettingsStatus(live());
-    expect(n).not.toBeNull();
+    expect(n === null).toBe(false);
     expect(n!.bucket.id).toBe("resource-packages");
     expect(n!.scan_counts.clean).toBe(2);
     expect(n!.application_contract.max_upload_bytes).toBe(STORAGE_MAX_UPLOAD_BYTES);
@@ -62,7 +62,7 @@ describe("normalizeStorageSettingsStatus - accept", () => {
     const p = live() as any;
     p.bucket.public = null;
     const n = normalizeStorageSettingsStatus(p);
-    expect(n).not.toBeNull();
+    expect(n === null).toBe(false);
     expect(bucketReadiness(n!).ready).toBe(true);
   });
 });
@@ -140,14 +140,14 @@ describe("bucketReadiness", () => {
   test("public bucket is not ready", () => {
     const p = live() as any; p.bucket.public = true;
     const n = normalizeStorageSettingsStatus(p);
-    expect(n).not.toBeNull();
+    expect(n === null).toBe(false);
     const r = bucketReadiness(n!);
     expect(r.ready).toBe(false);
   });
   test("missing bucket is not ready", () => {
     const p = live() as any; p.bucket.present = false;
     const n = normalizeStorageSettingsStatus(p);
-    expect(n).not.toBeNull();
+    expect(n === null).toBe(false);
     expect(bucketReadiness(n!).ready).toBe(false);
   });
 });
