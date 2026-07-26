@@ -125,9 +125,6 @@ export const adminSectionElements = {
   settingsPayments: wrap(<PaymentsPage />),
   settingsEmail: wrap(<EmailSettingsPage />),
   settingsStorage: wrap(<StorageSettingsPage />),
-  settingsIntegrations: Empty(
-    "Integrations",
-    "Third-party integrations (MCP, analytics, webhooks). Unavailable in Phase 1.",
-  ),
+  settingsIntegrations: wrap(<IntegrationsPage />),
   settingsRoles: wrap(<RolesPage />),
 };
