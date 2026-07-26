@@ -166,6 +166,17 @@ describe("normalizeEmailSettingsStatus", () => {
     })).toBeNull();
     expect(normalizeEmailSettingsStatus({ ...good, services: [] })).toBeNull();
   });
+  it("rejects arrays with malformed extra entries without silently dropping them", () => {
+    // Strict: raw array must be exactly ["send-email"]. Any extra, non-string,
+    // empty, whitespace-padded, or nullish entry rejects the whole payload.
+    expect(normalizeEmailSettingsStatus({ ...good, services: ["send-email", 123] })).toBeNull();
+    expect(normalizeEmailSettingsStatus({ ...good, services: [null, "send-email"] })).toBeNull();
+    expect(normalizeEmailSettingsStatus({ ...good, services: [" send-email ", ""] })).toBeNull();
+    expect(normalizeEmailSettingsStatus({ ...good, services: [" send-email "] })).toBeNull();
+    expect(normalizeEmailSettingsStatus({ ...good, services: ["send-email", ""] })).toBeNull();
+    // Accepts exactly the canonical single-entry array.
+    expect(normalizeEmailSettingsStatus({ ...good, services: ["send-email"] })?.services).toEqual(["send-email"]);
+  });
   it("rejects spoofed sender identity", () => {
     expect(normalizeEmailSettingsStatus({
       ...good, sender_address: "attacker@example.com",
