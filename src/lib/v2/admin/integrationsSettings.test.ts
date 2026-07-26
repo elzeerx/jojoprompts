@@ -180,6 +180,9 @@ describe("normalizeIntegrationsSettingsStatus", () => {
   it("rejects unknown top-level key", () => {
     const p: any = { ...makePayload(), extra: 1 };
     expect(normalizeIntegrationsSettingsStatus(p)).toBeNull();
+  });
+
+
 
   it("rejects non-canonical but parseable as_of like 'July 26, 2026'", () => {
     const p: any = makePayload();
