@@ -113,3 +113,6 @@ verify_jwt = false
 
 [functions.v2-admin-payment-settings-status]
 verify_jwt = true
+
+[functions.v2-admin-email-settings-status]
+verify_jwt = true
