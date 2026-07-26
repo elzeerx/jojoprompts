@@ -104,7 +104,7 @@ export default function EmailSettingsPage() {
             )}
             Configuration
           </CardTitle>
-          <Badge variant="outline" className="text-xs shrink-0">Server-verified</Badge>
+          <Badge variant="outline" className="text-xs shrink-0">Server-reported</Badge>
         </CardHeader>
         <CardContent>
           {statusQ.isLoading ? (
