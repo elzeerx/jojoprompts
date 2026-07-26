@@ -61,14 +61,14 @@ function emptyShape() {
 describe("normalizeRolesSettingsStatus — accepts", () => {
   it("live shape", () => {
     const r = normalizeRolesSettingsStatus(liveShape());
-    expect(r).not.toBeNull();
+    expect(r === null).toBe(false);
     expect(r!.total_assignments).toBe(245);
     expect(r!.role_counts.user).toBe(242);
     expect(r!.role_definitions.length).toBe(4);
   });
   it("empty shape (null last_assigned_at, zero counts)", () => {
     const r = normalizeRolesSettingsStatus(emptyShape());
-    expect(r).not.toBeNull();
+    expect(r === null).toBe(false);
     expect(r!.last_assigned_at).toBeNull();
   });
 });
