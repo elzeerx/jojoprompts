@@ -21,6 +21,7 @@ const ReviewQueuePage = lazy(() => import("../sections/publishing/ReviewQueuePag
 const RolesPage = lazy(() => import("../sections/settings/RolesPage"));
 const PaymentsPage = lazy(() => import("../sections/settings/PaymentsPage"));
 const EmailSettingsPage = lazy(() => import("../sections/settings/EmailSettingsPage"));
+const StorageSettingsPage = lazy(() => import("../sections/settings/StorageSettingsPage"));
 
 
 
@@ -122,10 +123,7 @@ export const adminSectionElements = {
   // Settings
   settingsPayments: wrap(<PaymentsPage />),
   settingsEmail: wrap(<EmailSettingsPage />),
-  settingsStorage: Empty(
-    "Storage",
-    "Bucket policies for resource-packages and public assets. Unavailable in Phase 1.",
-  ),
+  settingsStorage: wrap(<StorageSettingsPage />),
   settingsIntegrations: Empty(
     "Integrations",
     "Third-party integrations (MCP, analytics, webhooks). Unavailable in Phase 1.",

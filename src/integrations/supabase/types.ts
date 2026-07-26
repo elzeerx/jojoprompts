@@ -4966,6 +4966,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      v2_internal_admin_storage_settings_summary: { Args: never; Returns: Json }
       v2_internal_apply_scan_item_result: {
         Args: {
           p_detected_engines: number

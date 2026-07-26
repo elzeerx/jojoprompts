@@ -116,3 +116,6 @@ verify_jwt = true
 
 [functions.v2-admin-email-settings-status]
 verify_jwt = true
+
+[functions.v2-admin-storage-settings-status]
+verify_jwt = true
