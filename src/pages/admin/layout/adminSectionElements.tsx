@@ -22,6 +22,7 @@ const RolesPage = lazy(() => import("../sections/settings/RolesPage"));
 const PaymentsPage = lazy(() => import("../sections/settings/PaymentsPage"));
 const EmailSettingsPage = lazy(() => import("../sections/settings/EmailSettingsPage"));
 const StorageSettingsPage = lazy(() => import("../sections/settings/StorageSettingsPage"));
+const IntegrationsPage = lazy(() => import("../sections/settings/IntegrationsPage"));
 
 
 
