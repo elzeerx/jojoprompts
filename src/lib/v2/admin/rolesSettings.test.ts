@@ -165,7 +165,17 @@ describe("normalizeRolesSettingsStatus — fails closed", () => {
     const b: any = liveShape(); b.rls_enabled = "true";
     expect(normalizeRolesSettingsStatus(b)).toBeNull();
   });
+  it("rejects numeric-string top-level count", () => {
+    const b: any = liveShape(); b.total_assignments = "245";
+    expect(normalizeRolesSettingsStatus(b)).toBeNull();
+  });
+  it("rejects numeric-string nested role count", () => {
+    const b: any = liveShape();
+    b.role_counts = { ...b.role_counts, user: "242" };
+    expect(normalizeRolesSettingsStatus(b)).toBeNull();
+  });
 });
+
 
 describe("presentation helpers", () => {
   it("tone/label per status", () => {
