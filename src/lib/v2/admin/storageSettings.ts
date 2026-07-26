@@ -12,6 +12,43 @@ export const STORAGE_CUSTOMER_DOWNLOAD_AUTH = "custom_bearer_and_entitlement_rpc
 export const STORAGE_SCAN_CONTROL_SERVICE = "v2-admin-package-scan-control";
 export const STORAGE_SCAN_WORKER_SERVICE = "v2-package-scan-worker";
 
+// Canonical approved MIME set. Must match the secure uploader's accepted MIMEs
+// exactly (application/octet-stream is included because browsers commonly
+// label ZIP that way). Order-insensitive; set-equality is enforced.
+export const STORAGE_CANONICAL_MIME_TYPES: readonly string[] = [
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/octet-stream",
+  "application/json",
+  "application/yaml",
+  "application/x-yaml",
+  "text/yaml",
+  "text/x-yaml",
+  "text/markdown",
+  "text/plain",
+] as const;
+
+const CANONICAL_MIME_SET: ReadonlySet<string> = new Set(STORAGE_CANONICAL_MIME_TYPES);
+
+/**
+ * Strict set-equality check. Rejects any input array that is not exactly the
+ * canonical set: missing entries, extra entries, duplicates, non-string
+ * entries, empty strings, or whitespace-padded strings all fail.
+ */
+export function isCanonicalMimeSet(v: unknown): boolean {
+  if (!Array.isArray(v)) return false;
+  if (v.length !== STORAGE_CANONICAL_MIME_TYPES.length) return false;
+  const seen = new Set<string>();
+  for (const e of v) {
+    if (typeof e !== "string") return false;
+    if (e.length === 0 || e !== e.trim()) return false;
+    if (!CANONICAL_MIME_SET.has(e)) return false;
+    if (seen.has(e)) return false;
+    seen.add(e);
+  }
+  return seen.size === STORAGE_CANONICAL_MIME_TYPES.length;
+}
+
 export type StorageScanCounts = {
   clean: number;
   pending: number;
@@ -61,8 +98,6 @@ export type StorageSettingsStatus = {
   };
 };
 
-// Keys we accept from the server. Anything else (including possible future
-// secret-like fields) is dropped.
 const ALLOWED_TOP = new Set([
   "provider", "as_of", "bucket", "application_contract",
   "registry", "scan_counts", "downloads", "boundaries",
@@ -85,10 +120,16 @@ function isIsoOrNull(v: unknown): v is string | null {
   return v === null || isIsoString(v);
 }
 
-function normalizeMimeArray(v: unknown): string[] | null | false {
+/**
+ * Strict bucket MIME validation. Returns:
+ *   - null: allowed_mime_types was null (bucket has no explicit MIME allowlist)
+ *   - string[]: well-formed array of non-empty trimmed strings
+ *   - false: malformed (must reject the whole payload)
+ * Never silently drops malformed entries.
+ */
+function normalizeBucketMimeArray(v: unknown): string[] | null | false {
   if (v === null) return null;
   if (!Array.isArray(v)) return false;
-  // Reject any non-string / empty / whitespace-padded entries; do not silently drop.
   const out: string[] = [];
   for (const e of v) {
     if (typeof e !== "string") return false;
@@ -105,12 +146,10 @@ export function normalizeStorageSettingsStatus(
   if (!input || typeof input !== "object") return null;
   const raw = input as Record<string, unknown>;
 
-  // Reject if forbidden keys are present at the top level.
   for (const k of Object.keys(raw)) {
     if (FORBIDDEN_TOP.has(k)) return null;
   }
 
-  // Strip: only keep allowed top-level keys.
   const top: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) {
     if (ALLOWED_TOP.has(k)) top[k] = v;
@@ -127,7 +166,7 @@ export function normalizeStorageSettingsStatus(
   if (bPublic !== null && !isBool(bPublic)) return null;
   const bLimit = bucket.file_size_limit_bytes;
   if (bLimit !== null && !isNonNegInt(bLimit)) return null;
-  const bMime = normalizeMimeArray(bucket.allowed_mime_types);
+  const bMime = normalizeBucketMimeArray(bucket.allowed_mime_types);
   if (bMime === false) return null;
 
   const ac = top.application_contract as Record<string, unknown> | undefined;
@@ -140,8 +179,8 @@ export function normalizeStorageSettingsStatus(
   if (ac.package_scan_worker_service !== STORAGE_SCAN_WORKER_SERVICE) return null;
   if (ac.max_upload_bytes !== STORAGE_MAX_UPLOAD_BYTES) return null;
   if (ac.signed_url_ttl_seconds !== STORAGE_SIGNED_URL_TTL_SECONDS) return null;
-  const acMime = normalizeMimeArray(ac.approved_mime_types);
-  if (acMime === false || acMime === null || acMime.length === 0) return null;
+  // Application contract MIME set MUST be exactly the canonical set.
+  if (!isCanonicalMimeSet(ac.approved_mime_types)) return null;
 
   const registry = top.registry as Record<string, unknown> | undefined;
   if (!registry || typeof registry !== "object") return null;
@@ -201,7 +240,7 @@ export function normalizeStorageSettingsStatus(
       package_scan_worker_service: STORAGE_SCAN_WORKER_SERVICE,
       max_upload_bytes: 26214400,
       signed_url_ttl_seconds: 60,
-      approved_mime_types: acMime,
+      approved_mime_types: STORAGE_CANONICAL_MIME_TYPES,
     },
     registry: {
       registered_files,
@@ -227,13 +266,39 @@ export function normalizeStorageSettingsStatus(
 
 export type StatusTone = "ok" | "warn" | "info" | "danger";
 
+/**
+ * Fail-closed readiness. Requires:
+ *   - bucket present === true
+ *   - bucket public === false (null / unknown is NOT ready)
+ *   - file_size_limit_bytes === 26214400 (exact 25 MiB)
+ *   - allowed_mime_types is set-equal to the canonical approved MIME set
+ */
 export function bucketReadiness(
   status: StorageSettingsStatus,
 ): { ready: boolean; reason: string } {
   const b = status.bucket;
   if (!b.present) return { ready: false, reason: "Bucket missing" };
-  if (b.public === true) return { ready: false, reason: "Bucket is public — must be private" };
-  return { ready: true, reason: "Present and private" };
+  if (b.public !== false) {
+    return {
+      ready: false,
+      reason: b.public === true
+        ? "Bucket is public — must be private"
+        : "Bucket privacy unknown — must be explicitly private",
+    };
+  }
+  if (b.file_size_limit_bytes !== STORAGE_MAX_UPLOAD_BYTES) {
+    return {
+      ready: false,
+      reason: `Bucket size limit must be exactly ${STORAGE_MAX_UPLOAD_BYTES} bytes`,
+    };
+  }
+  if (!isCanonicalMimeSet(b.allowed_mime_types)) {
+    return {
+      ready: false,
+      reason: "Bucket MIME allowlist does not match the canonical approved set",
+    };
+  }
+  return { ready: true, reason: "Present, private, and canonically configured" };
 }
 
 export function formatBytes(bytes: number): string {
