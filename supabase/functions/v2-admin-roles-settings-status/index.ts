@@ -44,19 +44,19 @@ Deno.serve(async (req) => {
 
   const validAggregate =
     typeof d.as_of === "string" && Number.isFinite(Date.parse(d.as_of))
-    && isNonNegInt(Number(d.total_assignments))
-    && isNonNegInt(Number(d.users_with_roles))
-    && rc && typeof rc === "object"
-    && isNonNegInt(Number(rc.admin))
-    && isNonNegInt(Number(rc.jadmin))
-    && isNonNegInt(Number(rc.prompter))
-    && isNonNegInt(Number(rc.user))
-    && isNonNegInt(Number(d.super_admin_count))
-    && isNonNegInt(Number(d.users_with_multiple_roles))
-    && isNonNegInt(Number(d.auth_users_total))
-    && isNonNegInt(Number(d.auth_users_without_roles))
-    && isNonNegInt(Number(d.profiles_total))
-    && isNonNegInt(Number(d.profiles_without_roles))
+    && isNonNegInt(d.total_assignments)
+    && isNonNegInt(d.users_with_roles)
+    && rc && typeof rc === "object" && !Array.isArray(rc)
+    && isNonNegInt(rc.admin)
+    && isNonNegInt(rc.jadmin)
+    && isNonNegInt(rc.prompter)
+    && isNonNegInt(rc.user)
+    && isNonNegInt(d.super_admin_count)
+    && isNonNegInt(d.users_with_multiple_roles)
+    && isNonNegInt(d.auth_users_total)
+    && isNonNegInt(d.auth_users_without_roles)
+    && isNonNegInt(d.profiles_total)
+    && isNonNegInt(d.profiles_without_roles)
     && isIsoOrNull(d.last_assigned_at)
     && isBool(d.rls_enabled)
     && isBool(d.unique_user_role_constraint);
@@ -65,15 +65,17 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "roles_status_unavailable" }, 500, origin);
   }
 
-  const totalAssignments = Number(d.total_assignments);
-  const roleSum =
-    Number(rc!.admin) + Number(rc!.jadmin)
-    + Number(rc!.prompter) + Number(rc!.user);
-  const authTotal = Number(d.auth_users_total);
-  const withRoles = Number(d.users_with_roles);
-  const withoutRoles = Number(d.auth_users_without_roles);
-  const superAdmins = Number(d.super_admin_count);
-  const multi = Number(d.users_with_multiple_roles);
+  const totalAssignments = d.total_assignments as number;
+  const adminCount = (rc as Record<string, unknown>).admin as number;
+  const jadminCount = (rc as Record<string, unknown>).jadmin as number;
+  const prompterCount = (rc as Record<string, unknown>).prompter as number;
+  const userCount = (rc as Record<string, unknown>).user as number;
+  const roleSum = adminCount + jadminCount + prompterCount + userCount;
+  const authTotal = d.auth_users_total as number;
+  const withRoles = d.users_with_roles as number;
+  const withoutRoles = d.auth_users_without_roles as number;
+  const superAdmins = d.super_admin_count as number;
+  const multi = d.users_with_multiple_roles as number;
 
   if (
     roleSum !== totalAssignments
@@ -81,7 +83,7 @@ Deno.serve(async (req) => {
     || withRoles > authTotal
     || withoutRoles !== authTotal - withRoles
     || multi > withRoles
-    || superAdmins > Number(rc!.admin)
+    || superAdmins > adminCount
   ) {
     return jsonResponse({ error: "roles_status_unavailable" }, 500, origin);
   }
@@ -91,22 +93,23 @@ Deno.serve(async (req) => {
     total_assignments: totalAssignments,
     users_with_roles: withRoles,
     role_counts: {
-      admin: Number(rc!.admin),
-      jadmin: Number(rc!.jadmin),
-      prompter: Number(rc!.prompter),
-      user: Number(rc!.user),
+      admin: adminCount,
+      jadmin: jadminCount,
+      prompter: prompterCount,
+      user: userCount,
     },
     super_admin_count: superAdmins,
     users_with_multiple_roles: multi,
     auth_users_total: authTotal,
     auth_users_without_roles: withoutRoles,
-    profiles_total: Number(d.profiles_total),
-    profiles_without_roles: Number(d.profiles_without_roles),
+    profiles_total: d.profiles_total as number,
+    profiles_without_roles: d.profiles_without_roles as number,
     last_assigned_at: d.last_assigned_at === null
       ? null
       : new Date(d.last_assigned_at as string).toISOString(),
     rls_enabled: d.rls_enabled as boolean,
     unique_user_role_constraint: d.unique_user_role_constraint as boolean,
+
     role_definitions: [
       {
         id: "user",
