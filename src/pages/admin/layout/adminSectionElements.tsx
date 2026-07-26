@@ -20,6 +20,7 @@ const DraftsQueuePage = lazy(() => import("../sections/publishing/DraftsQueuePag
 const ReviewQueuePage = lazy(() => import("../sections/publishing/ReviewQueuePage"));
 const RolesPage = lazy(() => import("../sections/settings/RolesPage"));
 const PaymentsPage = lazy(() => import("../sections/settings/PaymentsPage"));
+const EmailSettingsPage = lazy(() => import("../sections/settings/EmailSettingsPage"));
 
 
 
@@ -120,10 +121,7 @@ export const adminSectionElements = {
 
   // Settings
   settingsPayments: wrap(<PaymentsPage />),
-  settingsEmail: Empty(
-    "Email",
-    "Sender identity, DKIM/SPF status, and template defaults. Unavailable in Phase 1.",
-  ),
+  settingsEmail: wrap(<EmailSettingsPage />),
   settingsStorage: Empty(
     "Storage",
     "Bucket policies for resource-packages and public assets. Unavailable in Phase 1.",
