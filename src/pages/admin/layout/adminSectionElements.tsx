@@ -22,6 +22,7 @@ const RolesPage = lazy(() => import("../sections/settings/RolesPage"));
 const PaymentsPage = lazy(() => import("../sections/settings/PaymentsPage"));
 const EmailSettingsPage = lazy(() => import("../sections/settings/EmailSettingsPage"));
 const StorageSettingsPage = lazy(() => import("../sections/settings/StorageSettingsPage"));
+const IntegrationsPage = lazy(() => import("../sections/settings/IntegrationsPage"));
 
 
 
@@ -124,9 +125,6 @@ export const adminSectionElements = {
   settingsPayments: wrap(<PaymentsPage />),
   settingsEmail: wrap(<EmailSettingsPage />),
   settingsStorage: wrap(<StorageSettingsPage />),
-  settingsIntegrations: Empty(
-    "Integrations",
-    "Third-party integrations (MCP, analytics, webhooks). Unavailable in Phase 1.",
-  ),
+  settingsIntegrations: wrap(<IntegrationsPage />),
   settingsRoles: wrap(<RolesPage />),
 };
