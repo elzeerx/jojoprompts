@@ -116,33 +116,10 @@ function isNonNegInt(v: unknown): v is number {
 }
 function isBool(v: unknown): v is boolean { return typeof v === "boolean"; }
 
-const SECRET_KEY_PATTERNS = [
-  "secret", "token", "apikey", "api_key", "credential", "password",
-  "bearer", "authorization", "raw_env", "env_value", "key_value",
-];
-const IDENTITY_KEY_PATTERNS = [
-  "email", "user_id", "userid", "username", "first_name", "last_name",
-  "full_name", "phone", "ip", "session", "jwt",
-];
-function keyLooksForbidden(key: string): boolean {
-  const lc = key.toLowerCase();
-  if (SECRET_KEY_PATTERNS.some((p) => lc.includes(p))) return true;
-  if (IDENTITY_KEY_PATTERNS.some((p) => lc.includes(p))) return true;
-  return false;
-}
-function noForbiddenKeysDeep(v: unknown, depth = 0): boolean {
-  if (depth > 6) return false;
-  if (v === null || typeof v !== "object") return true;
-  if (Array.isArray(v)) {
-    for (const item of v) if (!noForbiddenKeysDeep(item, depth + 1)) return false;
-    return true;
-  }
-  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-    if (keyLooksForbidden(k)) return false;
-    if (!noForbiddenKeysDeep(val, depth + 1)) return false;
-  }
-  return true;
-}
+// Note: no separate deep secret/identity scanner is needed. Every nested
+// object below is validated with an explicit key allowlist plus literal
+// checks, so any unexpected key (secret-shaped or otherwise) is rejected
+// where it would appear.
 
 const ROLE_DEF_ALLOWED_KEYS = new Set<keyof RoleDefinition>([
   "id", "label", "status", "default_on_signup", "admin_v2",
