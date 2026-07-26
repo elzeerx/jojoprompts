@@ -151,6 +151,18 @@ function normalizeUpayments(v: unknown): UPaymentsIntegration | null {
   if (o.environment !== "sandbox" && o.environment !== "production" &&
       o.environment !== "not_configured") return null;
   if (o.specialist_route !== "/admin/settings/payments") return null;
+  // Readiness consistency:
+  // - configured=true requires enabled=true AND env in {sandbox, production}.
+  // - enabled=false forbids configured=true.
+  // - environment=not_configured forbids configured=true.
+  // - enabled=true + sandbox/production + configured=false stays valid (other
+  //   required config such as token/site URL may still be missing).
+  if (o.configured === true) {
+    if (o.enabled !== true) return null;
+    if (o.environment !== "sandbox" && o.environment !== "production") return null;
+  }
+  if (o.enabled === false && o.configured !== false) return null;
+  if (o.environment === "not_configured" && o.configured !== false) return null;
   return {
     id: "upayments", purpose: "payments",
     enabled: o.enabled, configured: o.configured,
