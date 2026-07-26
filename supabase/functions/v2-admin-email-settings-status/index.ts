@@ -41,13 +41,7 @@ Deno.serve(async (req) => {
     domain_verification: "not_checked" as const,
     auth_email_transport: "separate_not_checked" as const,
     primary_service: "send-email" as const,
-    services: [
-      "send-email",
-      "send-signup-confirmation",
-      "send-welcome-email",
-      "send-purchase-confirmation",
-      "send-password-reset",
-    ] as const,
+    services: ["send-email"] as const,
   };
 
   const res = jsonResponse(body, 200, origin);

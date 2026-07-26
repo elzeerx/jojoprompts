@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  stripStatusFields,
+  normalizeEmailSettingsStatus,
+  normalizeEmailSettingsSummary,
   type EmailSettingsStatus,
   type EmailSettingsSummary,
 } from "@/lib/v2/admin/emailSettings";
@@ -15,7 +16,9 @@ export function useAdminEmailSettingsStatus() {
         { body: {} },
       );
       if (error) throw new Error("email_status_unavailable");
-      return stripStatusFields(data) as unknown as EmailSettingsStatus;
+      const normalized = normalizeEmailSettingsStatus(data);
+      if (!normalized) throw new Error("email_status_unavailable");
+      return normalized;
     },
     staleTime: 30_000,
     retry: 1,
@@ -30,7 +33,9 @@ export function useAdminEmailSettingsSummary() {
         "v2_admin_email_settings_summary" as never,
       );
       if (error) throw new Error("email_summary_unavailable");
-      return data as unknown as EmailSettingsSummary;
+      const normalized = normalizeEmailSettingsSummary(data);
+      if (!normalized) throw new Error("email_summary_unavailable");
+      return normalized;
     },
     staleTime: 30_000,
     retry: 1,

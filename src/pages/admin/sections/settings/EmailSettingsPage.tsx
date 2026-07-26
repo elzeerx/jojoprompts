@@ -104,7 +104,7 @@ export default function EmailSettingsPage() {
             )}
             Configuration
           </CardTitle>
-          <Badge variant="outline" className="text-xs shrink-0">Server-verified</Badge>
+          <Badge variant="outline" className="text-xs shrink-0">Server-reported</Badge>
         </CardHeader>
         <CardContent>
           {statusQ.isLoading ? (
@@ -145,11 +145,10 @@ export default function EmailSettingsPage() {
               </div>
               <Alert className="mt-4">
                 <Info className="h-4 w-4" />
-                <AlertTitle>Secret changes</AlertTitle>
+                <AlertTitle>Secret handling</AlertTitle>
                 <AlertDescription>
-                  The Resend API key is managed in Supabase Edge Function
-                  secrets. Updates require redeploying the affected functions.
-                  Secret values are never displayed here.
+                  The Resend API key is managed in Supabase Function Secrets
+                  and is never displayed here.
                 </AlertDescription>
               </Alert>
             </>
@@ -165,13 +164,15 @@ export default function EmailSettingsPage() {
         <CardContent>
           <Alert className="mb-4">
             <Info className="h-4 w-4" />
-            <AlertTitle>What this page verifies</AlertTitle>
+            <AlertTitle>What this page reports</AlertTitle>
             <AlertDescription>
-              This page confirms that Resend credentials and the sending
-              function are wired up. It does not actively probe Resend uptime,
-              DNS/DKIM/SPF, or Supabase Auth SMTP. Transactional email uses
-              Resend via Edge Functions; authentication emails are managed
-              separately by Supabase Auth.
+              This page reports whether the Resend API key secret is present
+              and shows the fixed application email configuration. It does not
+              validate the key, verify sending, or probe function/provider
+              health. Resend uptime, DNS/DKIM/SPF, and Supabase Auth SMTP are
+              not checked here. Transactional email uses Resend via Edge
+              Functions; authentication emails are managed separately by
+              Supabase Auth.
             </AlertDescription>
           </Alert>
           {statusQ.isLoading ? (
