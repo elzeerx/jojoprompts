@@ -1,106 +1,80 @@
 
-# Phase 6E11 — Overview Downloads & Delivery Failures KPIs
+# Read-only compatibility inspection
 
-## 1. Current unfinished / duplicated surfaces (audit)
+No code edits, migrations, deploys, or commits proposed. This plan is a findings report only.
 
-Base: commit `25f83485…`, Admin V2 & public V2.
+## 1. `log_sensitive_data_access`
 
-Genuinely unfinished operational surfaces:
-- **`/admin` Overview** (`src/pages/admin/sections/overview/OverviewV2.tsx:130-138`) — two KPI tiles hard-coded to `"Unavailable"`:
-  - `Downloads` → `data.downloads = { available:false, reason:"download event stream not wired" }`
-  - `Delivery failures` → `data.delivery_failures = { available:false, reason:"email delivery events not wired" }`
-  - Both reasons are **stale**: the streams already exist.
-    - Downloads: `activity_events` rows with `action = 'download_authorized'` are inserted by `supabase/functions/resource-download/index.ts` on every successful signed-URL issue.
-    - Delivery failures: `public.email_logs.success = false` (indexed on `attempted_at`, `success`) is written by the transactional email path.
-  - `get_admin_v2_overview(int)` (last redefinition in `20260722215158_…sql:531-682`) still returns the two "not wired" placeholders even though the RPC already reads other event tables in the same period window.
+| Path | Kind | Notes |
+|---|---|---|
+| `src/integrations/supabase/types.ts:4598` | Generated types only | Function signature entry in `Database["public"]["Functions"]`. |
+| `supabase/migrations/20251023080023_…sql:6` | Migration/SQL definition | `CREATE OR REPLACE FUNCTION public.log_sensitive_data_access(...)` — sets `search_path`, inserts into `admin_audit_log`. |
+| `supabase/migrations/20251023075852_…sql:32,39` | Migration comment | Notes function already has `search_path` set. |
+| `PHASE_1_SECURITY_FIXES_COMPLETE.md` (lines 51, 59, 74, 170) | Docs | Historical notes. |
 
-Placeholder-only or deferred (intentionally out of V2.0 scope — do NOT touch this slice):
-- `V2ResourceDetailPage` behavior for out-of-scope resource types (locked V2.0 catalog).
-- Homepage / marketing polish, PromptsCatalog SEO copy — optional polish, not blockers.
+**No frontend, Edge Function, RPC, or backend caller invokes `log_sensitive_data_access`.** It exists only as a SQL function definition and a generated TS type. Effectively unused by any runtime code path.
 
-Duplicated / legacy (already flagged in `.lovable/plan.md §3`, unrouted, no user impact) — deferred cleanup, not part of this slice.
+## 2. `admin_audit_log`
 
-No other Admin V2 route currently renders `EmptyRouteState` or an "Unavailable" primary metric. Every settings/trust/publishing/orders/roles surface is now operational after Phase 6E5–6E10.
+### Frontend (authenticated Supabase client, `.from('admin_audit_log')`)
+| Path | Op | Notes |
+|---|---|---|
+| `src/utils/security/adminAuthenticator.ts:144` | `insert` | `AdminAuthenticator.auditAdminAction` — client-side audit write. |
+| `src/pages/admin/components/users/hooks/useUserActions.ts:272` | `insert` | Client-side write on admin user actions. |
+| `src/components/admin/UserActivityTimeline.tsx:75` | `select` | Reads user activity for admin UI. |
+| `src/pages/admin/components/users/components/UserActivityLog.tsx:78` | `select` | Reads audit rows for admin user detail. |
+| `src/components/admin/DeleteUserDialog.tsx:324` | String literal only | Rendered SQL snippet inside a JSX code block (informational — not an actual query). |
+| `src/utils/database/securityEnhancement.ts:35` | String literal | Listed in `SENSITIVE_TABLES` constant. |
+| `src/utils/privacy/gdprCompliance.ts:400` | String literal | Listed in a GDPR table array. |
+| `src/integrations/supabase/types.ts:235` | Generated types only | Table row typings. |
 
-## 2. Chosen next phase and rationale
+### Edge Functions (service-role backend)
+| Path | Op |
+|---|---|
+| `supabase/functions/admin-bulk-confirm-users/index.ts:120,149` | `insert` |
+| `supabase/functions/get-all-users/index.ts:32` | `insert` |
+| `supabase/functions/get-all-users/handlers/deleteUserHandler.ts:98` | `insert` |
+| `supabase/functions/resend-payment-email/index.ts:112` | `insert` |
+| `supabase/functions/resend-confirmation-alternative/index.ts:166,199` | `insert` |
+| `supabase/functions/shared/securityLogger.ts:41` | `insert` |
 
-**Phase 6E11 — wire the last two Overview KPIs (Downloads & Delivery failures) to existing event streams.**
+### Migrations / SQL
+Multiple migrations define, alter policies, or delete from `admin_audit_log`:
+`20250618041741`, `20250806172758`, `20250806174028`, `20250806181553`, `20250822185549`, `20250910112925`, `20250911093102`, `20251012055346`, `20251012065303`, `20251023075756`, `20251023080023`.
 
-Why this is the highest-value bounded next slice:
-- It closes the *only* remaining "Unavailable" primary metric on the Admin V2 landing page — the surface every admin sees first.
-- Both data sources already exist and are already RLS/admin-safe (`activity_events`, `email_logs`); no schema changes, no new tables, no new grants.
-- Purely additive to a single SECURITY DEFINER RPC + presentation logic in one KPI array. Zero risk to publishing, commerce, payments, email, secrets, or public V2 routes.
-- Respects locked V2.0 scope: Jojo-owned catalog, UPayments, one-time purchases, 30 KWD lifetime, preview-only.
+### Docs
+`AUDIT_IMPLEMENTATION_COMPLETE.md`, `PHASE_1_SECURITY_FIXES_COMPLETE.md`, `docs/SECURITY_IMPLEMENTATION.md`, `docs/SECURITY_PHASE3_RATE_LIMITING_COMPLIANCE.md` — reference only.
 
-## 3. Implementation contract & safety boundaries
+## 3. `is_verified_admin`
 
-Scope (in):
-1. Extend `public.get_admin_v2_overview(p_period_days int)` to return real values for `downloads` and `delivery_failures` **for the same rolling `v_since` window** already used by the RPC.
-2. Update `OverviewV2.tsx` to render the two tiles when `available === true`, keep the honest "Unavailable" fallback when `available === false` (e.g. table empty or admin ever removes the source).
-3. Add narrow unit tests around a new pure formatter helper for the two tiles.
+### Frontend (authenticated Supabase `supabase.rpc('is_verified_admin', …)`)
+| Path | Notes |
+|---|---|
+| `src/utils/security/secureProfileAccess.ts:74` | `isVerifiedAdmin(actionContext)` helper — used to gate UI decisions. |
+| `src/utils/security/secureProfileAccess.ts:119` | `handleSecurityError` — fire-and-forget call inside error-handler side effect. |
+| `src/services/supabase/UserService.ts:288` | Pre-check before privileged user operation. |
+| `src/services/supabase/UserService.ts:419` | Pre-check before privileged user operation. |
+| `src/integrations/supabase/types.ts:4593` | Generated types only. |
 
-Scope (out — must not change):
-- No new tables, columns, enums, policies, triggers, or grants.
-- No new Edge Functions.
-- No writes anywhere — RPC stays `SECURITY DEFINER STABLE` (currently `plpgsql`; keep language, add `STABLE` only if already so — do not weaken).
-- No behavioural change to any other overview metric (revenue, entitlements, refunds, attention tiles).
-- No changes to `resource-download` or email pipelines. Do **not** add new event-logging code paths.
-- No publish, no data mutation, no launch/commerce/email/secret flag change.
+### Edge Functions / backend
+No Edge Function calls `is_verified_admin` directly (they use `has_role` via `_shared/adminAuth.ts`).
 
-Safety boundaries:
-- **Fail-closed rendering**: if RPC returns malformed shape or `available !== true`, tile falls back to existing "Unavailable" copy with reason string — never invent zeros. This preserves the "no invented zeros" contract explicitly stated in OverviewV2 (`:149`).
-- **Admin gate preserved**: RPC continues to `RAISE EXCEPTION 'not_admin'` for non-admin callers before touching any table.
-- **Bounded reads**: both new subqueries filter on the existing `v_since` (defaults to 30 days) using existing indexed columns (`activity_events.created_at`, `email_logs.attempted_at`).
-- **Distinct semantics**:
-  - `downloads.count` = number of `activity_events` rows with `action='download_authorized'` in the window. Also expose `unique_users` (distinct `actor_user_id`) as `hint`.
-  - `delivery_failures.count` = `email_logs` rows with `success = false` and `attempted_at >= v_since`. Also expose `attempts` (total in window) as denominator for a `failure_rate` hint.
-- **No PII leaked**: RPC returns aggregate counts only, never rows/emails/user IDs.
-- **Empty period is still "available"**: `available:true` with `count:0` (once wired) — the "Unavailable" state is reserved for the "not wired" transitional case, and after this migration only appears if the underlying table read fails.
+### Migrations / SQL
+Function defined in `supabase/migrations/20250910112925_…sql:9`; used inside RLS policies and other SECURITY DEFINER functions in:
+`20250910112925`, `20250911093102` (policies on `admin_audit_log`, `security_logs`), `20250923092514`, `20250923092548` (profile RLS policies).
 
-## 4. Expected files/tables/functions touched
+## UI / customer / admin flow dependency on authenticated clients calling `log_sensitive_data_access`
 
-Migration (1 new file, additive REPLACE of an existing function):
-- New: `supabase/migrations/<timestamp>_v2_overview_wire_downloads_and_delivery.sql`
-  - `CREATE OR REPLACE FUNCTION public.get_admin_v2_overview(int)` — same signature, same admin gate, same return keys; only the two placeholder JSON objects are replaced with real aggregates.
-  - Re-issue existing `REVOKE ... FROM PUBLIC, anon` and `GRANT EXECUTE ... TO authenticated, service_role` for the recreated function.
+**None.** No frontend component, hook, service, or Edge Function calls `log_sensitive_data_access` from an authenticated Supabase client (or any client). The function is only referenced by:
+- its own SQL definition migration, and
+- the generated `types.ts` (type surface only).
 
-Tables read (existing, no writes):
-- `public.activity_events` (filter `action = 'download_authorized'`, `created_at >= v_since`)
-- `public.email_logs` (filter `success = false`, `attempted_at >= v_since`; plus total for hint)
+Any current audit-write behavior from authenticated admin UI goes through direct `.from('admin_audit_log').insert(...)` (see §2 frontend list) — not through `log_sensitive_data_access`. Server-side callers of the function, if any, live inside other SECURITY DEFINER SQL functions in the database (not visible from repo source code beyond the definition itself).
 
-Frontend:
-- `src/pages/admin/sections/overview/OverviewV2.tsx` — replace the two hard-coded "Unavailable" tiles with values sourced from `data.downloads` / `data.delivery_failures`, retaining the existing `unavailable` fallback when `available !== true`.
-- New: `src/lib/v2/admin/overviewKpiFormat.ts` — pure formatter (`formatDownloadsTile`, `formatDeliveryFailuresTile`) so unit-testable in isolation.
-- New: `src/lib/v2/admin/overviewKpiFormat.test.ts` — Bun tests covering:
-  - `available:true` with counts → returns numeric value + hint
-  - `available:true` with zeros → returns `"0"` (not "Unavailable")
-  - `available:false` → returns unavailable state with reason
-  - Missing/malformed field → fails closed to unavailable
+## Summary
 
-No changes to:
-- `adminSectionElements.tsx`, `adminNavConfig.ts`, `App.tsx`, routes.
-- Any other admin section.
-- Edge Functions, secrets, storage buckets.
-- Public V2 pages.
+- `log_sensitive_data_access`: **unused by runtime code**; SQL-defined + typed only.
+- `admin_audit_log`: heavily used by both authenticated admin UI (2 inserts, 2 selects) and Edge Functions (6+ service-role inserts), plus RLS-governed by migrations.
+- `is_verified_admin`: used by 4 frontend call sites in profile/user services and by RLS policies; not called from Edge Functions.
 
-## 5. Verification & exit gate
-
-Pre-merge checks (all must pass):
-1. `bun test src/` → all suites pass; +4 new tests in `overviewKpiFormat.test.ts`.
-2. `bunx tsgo --noEmit` → clean.
-3. `bun run build` → succeeds.
-4. Migration applied to preview DB; `supabase--linter` returns no new warnings attributable to this migration.
-5. Live sanity via `supabase--read_query`:
-   - `SELECT public.get_admin_v2_overview(30) -> 'downloads';` shows `available:true` and numeric `count`.
-   - Same for `-> 'delivery_failures'`.
-   - Non-admin session receives `42501 not_admin` (grants unchanged).
-6. Preview `/admin` renders both tiles with real numbers; when a KPI has 0 events in window, tile shows `0` (not "Unavailable"). If either underlying table read is disabled in future, tile gracefully falls back to "Unavailable".
-
-Exit gate:
-- No publish. No mutation of any row in `orders`, `entitlements`, `refunds`, `resources`, `resource_versions`, `package_scans`, `payment_events`, `activity_events`, `email_logs`, `user_roles`, `profiles`, or auth tables.
-- Report: commit SHA, migration filename, test totals, live RPC values for both new metrics, and confirmation that `available` flipped from `false` → `true` for both.
-
-Deferred (explicitly not in this slice):
-- Removing legacy unrouted imports in `adminSectionElements.tsx` (cosmetic-only cleanup).
-- Any Overview `attention` tile change.
-- Public V2 UX polish.
+No changes performed.
