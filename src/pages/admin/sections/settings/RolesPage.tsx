@@ -1,603 +1,329 @@
-import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Shield,
-  Crown,
-  Award,
-  Users as UsersIcon,
-  Search,
-  RefreshCw,
-  Trash2,
-  Plus,
-  ExternalLink,
-  AlertTriangle,
+  Shield, RefreshCw, AlertTriangle, Info, Lock, Database,
+  Users as UsersIcon, KeyRound, CheckCircle2, XCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { toast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { formatDateTime } from "@/lib/v2/admin/format";
+import { useAdminRolesSettingsStatus } from "@/hooks/admin/v2/useAdminRolesSettingsStatus";
 import {
-  ALL_ROLES,
-  ASSIGNABLE_ROLES,
-  LEGACY_ROLES,
-  isLastAdminRemovalBlocked,
-  isRemovableRole,
-  resolveAssignerLabel,
-  selectLatestRoleRow,
-  formatUserCountFooter,
-} from "@/lib/v2/admin/roles";
-import {
-  useAdminRoleCounts,
-  useAdminRoleList,
-  useAssignRole,
-  useRemoveRole,
-} from "@/hooks/admin/v2/useAdminRoles";
-import type {
-  AppRole,
-  ProfileLite,
-  RoleUserRow,
-} from "@/hooks/admin/v2/useAdminRolesTypes";
+  ROLES_NAV_LINKS,
+  roleStatusLabel,
+  roleStatusTone,
+  jadminMismatchNotice,
+  type StatusTone,
+  type RoleDefinition,
+} from "@/lib/v2/admin/rolesSettings";
 
-const PAGE_SIZE = 25;
-
-const ROLE_ICON: Record<AppRole, JSX.Element> = {
-  admin: <Crown className="h-4 w-4" />,
-  jadmin: <Shield className="h-4 w-4" />,
-  prompter: <Award className="h-4 w-4" />,
-  user: <UsersIcon className="h-4 w-4" />,
-};
-
-function roleTone(
-  role: AppRole,
-): "default" | "secondary" | "destructive" | "outline" {
-  if (role === "admin") return "destructive";
-  if (role === "jadmin") return "secondary";
-  if (role === "prompter") return "default";
-  return "outline";
+function tone(t: StatusTone): string {
+  switch (t) {
+    case "ok": return "border-emerald-500/40 bg-emerald-500/5 text-emerald-800 dark:text-emerald-200";
+    case "warn": return "border-amber-500/40 bg-amber-500/5 text-amber-800 dark:text-amber-200";
+    case "danger": return "border-red-500/40 bg-red-500/5 text-red-800 dark:text-red-200";
+    default: return "border-border bg-muted/40 text-foreground";
+  }
 }
 
-function displayName(row: RoleUserRow): string {
-  const p = row.profile;
-  if (!p) return row.user_id.slice(0, 8);
-  const full = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
-  return full || p.username || p.email || row.user_id.slice(0, 8);
+function Metric({
+  label, value, hint,
+}: { label: string; value: string | number; hint?: string }) {
+  return (
+    <div className="rounded-md border p-3 min-w-0">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground truncate">
+        {label}
+      </div>
+      <div className="text-xl sm:text-2xl font-semibold mt-1 break-words">
+        {value}
+      </div>
+      {hint ? (
+        <div className="text-[11px] text-muted-foreground mt-1 break-words">
+          {hint}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
-interface PendingAssign {
-  kind: "assign";
-  userId: string;
-  userLabel: string;
-  role: AppRole;
+function BoolPill({ ok, label }: { ok: boolean; label: string }) {
+  const Icon = ok ? CheckCircle2 : XCircle;
+  const cls = ok
+    ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-800 dark:text-emerald-200"
+    : "border-red-500/40 bg-red-500/5 text-red-800 dark:text-red-200";
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] ${cls}`}>
+      <Icon className="h-3.5 w-3.5" aria-hidden />
+      <span className="break-words">{label}</span>
+    </span>
+  );
 }
-interface PendingRemove {
-  kind: "remove";
-  userId: string;
-  userLabel: string;
-  role: AppRole;
+
+function RoleCard({ def, count, superCount }: {
+  def: RoleDefinition; count: number; superCount: number;
+}) {
+  const t = tone(roleStatusTone(def.status));
+  return (
+    <Card className="min-w-0">
+      <CardHeader className="pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-sm sm:text-base break-words">
+            {def.label}
+          </CardTitle>
+          <Badge variant="outline" className="text-[10px] uppercase">
+            {def.id}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className={`rounded-md border px-2 py-1 text-[11px] inline-block ${t}`}>
+          {roleStatusLabel(def.status)}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Metric label="Users" value={count} />
+          {def.super_admin_supported ? (
+            <Metric label="Super-admins" value={superCount} />
+          ) : (
+            <Metric label="Super-admin" value="Not supported" />
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <BoolPill ok={def.admin_v2} label="Admin V2 access" />
+          <BoolPill ok={def.legacy_prompt_management} label="Legacy prompt mgmt" />
+          <BoolPill ok={def.default_on_signup} label="Signup default" />
+        </div>
+        {def.status === "legacy_partial" ? (
+          <div className="rounded-md border border-red-500/40 bg-red-500/5 p-2 text-[11px] text-red-800 dark:text-red-200 break-words">
+            {jadminMismatchNotice()}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
 }
-type Pending = PendingAssign | PendingRemove;
 
 export default function RolesPage() {
-  const isMobile = useIsMobile();
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [roleFilter, setRoleFilter] = useState<AppRole | "all">("all");
-  const [page, setPage] = useState(1);
-  const [pending, setPending] = useState<Pending | null>(null);
-
-  const counts = useAdminRoleCounts();
-  const list = useAdminRoleList({
-    search,
-    roleFilter,
-    page,
-    pageSize: PAGE_SIZE,
-  });
-
-  const assign = useAssignRole();
-  const remove = useRemoveRole();
-
-  const total = list.data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const adminCount = counts.data?.admin ?? 0;
-  const onlyOneAdmin = adminCount === 1;
-
-  const roleSummary = useMemo(
-    () => [
-      { role: "admin" as AppRole, label: "Admins" },
-      { role: "prompter" as AppRole, label: "Prompters" },
-      { role: "user" as AppRole, label: "Users" },
-      { role: "jadmin" as AppRole, label: "Legacy jadmin" },
-    ],
-    [],
-  );
-
-  const submit = () => {
-    setPage(1);
-    setSearch(searchInput.trim());
-  };
-
-  const confirmPending = async () => {
-    if (!pending) return;
-    try {
-      if (pending.kind === "assign") {
-        await assign.mutateAsync({ userId: pending.userId, role: pending.role });
-        toast({
-          title: "Role assigned",
-          description: `${pending.role} → ${pending.userLabel}`,
-        });
-      } else {
-        await remove.mutateAsync({ userId: pending.userId, role: pending.role });
-        toast({
-          title: "Role removed",
-          description: `${pending.role} ← ${pending.userLabel}`,
-        });
-      }
-      counts.refetch();
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Role change failed";
-      toast({
-        variant: "destructive",
-        title: "Role change blocked",
-        description: message,
-      });
-    } finally {
-      setPending(null);
-    }
-  };
+  const q = useAdminRolesSettingsStatus();
 
   return (
     <div className="space-y-4 sm:space-y-6 min-w-0" dir="ltr">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-warm-gold" />
+            <Shield className="h-5 w-5 text-warm-gold" aria-hidden />
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight break-words">
-              Roles
+              Roles & permissions
             </h1>
           </div>
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Manage admin, prompter, and standard user role assignments backed by
-            <code className="mx-1">user_roles</code>. Legacy jadmin rows are
-            read-only. For account or profile edits, use People → Users.
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl break-words">
+            Read-only overview of the role system: how many accounts hold each
+            role, which authorization contracts apply, and which safety boundaries
+            this page intentionally does not touch. Role changes are performed
+            individually from People → Users.
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Last checked:{" "}
+            {q.data ? formatDateTime(q.data.as_of) : q.isLoading ? "Loading…" : "—"}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="min-h-[44px]"
-          >
-            <Link
-              to="/admin/users"
-              className="inline-flex items-center gap-1.5"
-            >
-              <ExternalLink className="h-4 w-4" aria-hidden />
-              Open Users
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="min-h-[44px] min-w-[44px]"
-            onClick={() => {
-              list.refetch();
-              counts.refetch();
-            }}
-            aria-label="Refresh"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          className="min-h-[44px]"
+          onClick={() => q.refetch()}
+          disabled={q.isFetching}
+          aria-label="Refresh roles status"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${q.isFetching ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {roleSummary.map(({ role, label }) => (
-          <Card key={role} className="min-w-0">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium truncate">
-                {label}
+      {q.isError ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive break-words">
+          Roles status is temporarily unavailable. Try refreshing.
+        </div>
+      ) : null}
+
+      {q.isLoading ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      ) : q.data ? (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Metric label="Users with roles" value={q.data.users_with_roles} />
+            <Metric label="Role assignments" value={q.data.total_assignments} />
+            <Metric label="Super-admins" value={q.data.super_admin_count} />
+            <Metric
+              label="Need a role"
+              value={q.data.auth_users_without_roles}
+              hint="Auth accounts without any role row"
+            />
+          </div>
+
+          {q.data.auth_users_without_roles > 0 ? (
+            <div className="flex flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-amber-900 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-2 min-w-0">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden />
+                <span className="break-words">
+                  {q.data.auth_users_without_roles} auth account
+                  {q.data.auth_users_without_roles === 1 ? "" : "s"} do not have
+                  any role row. Assign at least the <code>user</code> role from
+                  the Users page.
+                </span>
+              </div>
+              <Button asChild variant="outline" size="sm" className="min-h-[44px] shrink-0">
+                <Link to="/admin/users">Open Users</Link>
+              </Button>
+            </div>
+          ) : null}
+
+          <Card className="min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <UsersIcon className="h-4 w-4" aria-hidden /> Coverage
               </CardTitle>
-              {ROLE_ICON[role]}
             </CardHeader>
             <CardContent>
-              {counts.isLoading ? (
-                <Skeleton className="h-6 w-12" />
-              ) : (
-                <div className="text-2xl font-bold">
-                  {counts.data?.[role] ?? 0}
-                </div>
-              )}
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Period: not applicable
-              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <Metric label="Auth accounts" value={q.data.auth_users_total} />
+                <Metric label="Profiles" value={q.data.profiles_total} />
+                <Metric label="Users with roles" value={q.data.users_with_roles} />
+                <Metric label="Accounts without a role" value={q.data.auth_users_without_roles} />
+                <Metric label="Profiles without a role" value={q.data.profiles_without_roles} />
+                <Metric label="Multiple-role users" value={q.data.users_with_multiple_roles} />
+                <Metric
+                  label="Last role assigned"
+                  value={q.data.last_assigned_at ? formatDateTime(q.data.last_assigned_at) : "—"}
+                />
+              </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {onlyOneAdmin && (
-        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-200">
-          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>
-            Only one admin exists. Removal of the last admin is blocked by the
-            server; assign another admin before removing this one.
-          </span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <form
-          className="sm:col-span-2 flex items-center gap-2 min-w-0"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-        >
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search name, email, or username"
-              className="pl-9 min-h-[44px] w-full"
-              aria-label="Search users"
-            />
-          </div>
-          <Button type="submit" className="min-h-[44px]">
-            Search
-          </Button>
-        </form>
-        <Select
-          value={roleFilter}
-          onValueChange={(v) => {
-            setRoleFilter(v as AppRole | "all");
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="min-h-[44px]" aria-label="Filter by role">
-            <SelectValue placeholder="Any role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any role</SelectItem>
-            {ALL_ROLES.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {q.data.role_definitions.map((def) => (
+              <RoleCard
+                key={def.id}
+                def={def}
+                count={q.data!.role_counts[def.id]}
+                superCount={q.data!.super_admin_count}
+              />
             ))}
-          </SelectContent>
-        </Select>
-      </div>
+          </div>
 
-      {list.isError && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive break-words">
-          Error: {(list.error as Error).message}
-        </div>
-      )}
+          <Card className="min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <KeyRound className="h-4 w-4" aria-hidden /> Authorization contract
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
+                <div className="rounded-md border p-2">
+                  <dt className="text-[11px] uppercase text-muted-foreground">Role store</dt>
+                  <dd className="mt-0.5 font-mono break-all">{q.data.authorization_contract.role_store}</dd>
+                </div>
+                <div className="rounded-md border p-2">
+                  <dt className="text-[11px] uppercase text-muted-foreground">Admin V2 gate</dt>
+                  <dd className="mt-0.5 break-words">{q.data.authorization_contract.admin_v2_gate}</dd>
+                </div>
+                <div className="rounded-md border p-2">
+                  <dt className="text-[11px] uppercase text-muted-foreground">Admin V2 required role</dt>
+                  <dd className="mt-0.5"><code>{q.data.authorization_contract.admin_v2_required_role}</code></dd>
+                </div>
+                <div className="rounded-md border p-2">
+                  <dt className="text-[11px] uppercase text-muted-foreground">Signup default role</dt>
+                  <dd className="mt-0.5"><code>{q.data.authorization_contract.signup_default_role}</code></dd>
+                </div>
+                <div className="rounded-md border p-2 sm:col-span-2">
+                  <dt className="text-[11px] uppercase text-muted-foreground">Role source</dt>
+                  <dd className="mt-0.5 break-words">{q.data.authorization_contract.role_source}</dd>
+                </div>
+                <div className="rounded-md border p-2">
+                  <dt className="text-[11px] uppercase text-muted-foreground">Legacy is_admin helper accepts</dt>
+                  <dd className="mt-0.5 flex flex-wrap gap-1">
+                    {q.data.authorization_contract.legacy_admin_helper_roles.map((r) => (
+                      <Badge key={r} variant="outline">{r}</Badge>
+                    ))}
+                  </dd>
+                </div>
+                <div className="rounded-md border p-2">
+                  <dt className="text-[11px] uppercase text-muted-foreground">Legacy prompt mgmt accepts</dt>
+                  <dd className="mt-0.5 flex flex-wrap gap-1">
+                    {q.data.authorization_contract.legacy_prompt_management_roles.map((r) => (
+                      <Badge key={r} variant="outline">{r}</Badge>
+                    ))}
+                  </dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
 
-      {list.isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
-      ) : isMobile ? (
-        <div className="space-y-2">
-          {(list.data?.rows ?? []).map((row) => (
-            <RoleUserCard
-              key={row.user_id}
-              row={row}
-              adminCount={adminCount}
-              busy={assign.isPending || remove.isPending}
-              assignerProfilesById={
-                list.data?.assignerProfilesById ?? new Map()
-              }
-              onAssign={(role) =>
-                setPending({
-                  kind: "assign",
-                  userId: row.user_id,
-                  userLabel: displayName(row),
-                  role,
-                })
-              }
-              onRemove={(role) =>
-                setPending({
-                  kind: "remove",
-                  userId: row.user_id,
-                  userLabel: displayName(row),
-                  role,
-                })
-              }
-            />
-          ))}
-          {(list.data?.rows.length ?? 0) === 0 && (
-            <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
-              No matching users
+          <Card className="min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <Database className="h-4 w-4" aria-hidden /> Database controls
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <BoolPill ok={q.data.rls_enabled} label="RLS enabled on user_roles" />
+              <BoolPill ok={q.data.unique_user_role_constraint} label="Unique (user_id, role)" />
+              <BoolPill ok label="Database role lookup" />
+              <BoolPill ok label="Not from user_metadata" />
+            </CardContent>
+          </Card>
+
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-100">
+            <Lock className="h-4 w-4 mt-0.5 shrink-0" aria-hidden />
+            <div className="min-w-0 break-words">
+              <div className="font-medium">Role changes are intentionally unavailable here.</div>
+              <div className="mt-1">
+                Assignments and revocations are performed one account at a time
+                from <Link to="/admin/users" className="underline">People → Users</Link>.
+                Bulk mutation from this page is disabled until a lockout-safe,
+                fully audited workflow lands and the legacy <code>jadmin</code>
+                {" "}and prompter admin helpers are harmonized with the Admin V2
+                gate.
+              </div>
+              <ul className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                <li>Role mutation: <code>{q.data.boundaries.role_mutation}</code></li>
+                <li>Session revocation: <code>{q.data.boundaries.session_revocation}</code></li>
+                <li>JWT custom claims: <code>{q.data.boundaries.jwt_custom_claims}</code></li>
+                <li>Policy effectiveness: <code>{q.data.boundaries.policy_effectiveness}</code></li>
+                <li>User identity: <code>{q.data.boundaries.user_identity}</code></li>
+              </ul>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="rounded-md border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Roles</TableHead>
-                <TableHead>Assigned</TableHead>
-                <TableHead>By</TableHead>
-                <TableHead className="w-[220px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(list.data?.rows ?? []).map((row) => {
-                const roles = row.roles.map((r) => r.role);
-                const latest = selectLatestRoleRow(row.roles);
-                return (
-                  <TableRow key={row.user_id}>
-                    <TableCell className="text-xs">
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-medium truncate max-w-[240px]">
-                          {displayName(row)}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground truncate max-w-[240px]">
-                          {row.profile?.email ?? row.user_id}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      <div className="flex flex-wrap gap-1">
-                        {roles.map((r) => (
-                          <Badge key={r} variant={roleTone(r)}>
-                            {r}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs whitespace-nowrap">
-                      {latest?.assigned_at
-                        ? formatDateTime(latest.assigned_at)
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      <span className="truncate max-w-[180px] inline-block align-bottom">
-                        {resolveAssignerLabel(
-                          latest?.assigned_by ?? null,
-                          list.data?.assignerProfilesById ?? new Map(),
-                        )}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <RowActions
-                        row={row}
-                        adminCount={adminCount}
-                        busy={assign.isPending || remove.isPending}
-                        onAssign={(role) =>
-                          setPending({
-                            kind: "assign",
-                            userId: row.user_id,
-                            userLabel: displayName(row),
-                            role,
-                          })
-                        }
-                        onRemove={(role) =>
-                          setPending({
-                            kind: "remove",
-                            userId: row.user_id,
-                            userLabel: displayName(row),
-                            role,
-                          })
-                        }
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {(list.data?.rows.length ?? 0) === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="h-24 text-center text-sm text-muted-foreground"
-                  >
-                    No matching users
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+          </div>
 
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <div>
-          {formatUserCountFooter(total, page, totalPages)}
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="min-h-[44px]"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Prev
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="min-h-[44px]"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
-
-      <AlertDialog
-        open={pending !== null}
-        onOpenChange={(open) => {
-          if (!open) setPending(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pending?.kind === "assign" ? "Assign role" : "Remove role"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pending
-                ? `${pending.kind === "assign" ? "Grant" : "Revoke"} the "${pending.role}" role ${pending.kind === "assign" ? "to" : "from"} ${pending.userLabel}. This change is logged to the audit feed.`
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="min-h-[44px]"
-              onClick={(e) => {
-                e.preventDefault();
-                void confirmPending();
-              }}
-            >
-              Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <Card className="min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <Info className="h-4 w-4" aria-hidden /> Related admin surfaces
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {ROLES_NAV_LINKS.map((l) => (
+                <Button
+                  key={l.to}
+                  asChild
+                  variant="outline"
+                  className="h-auto min-h-[64px] justify-start text-left whitespace-normal"
+                >
+                  <Link to={l.to} className="block p-3">
+                    <div className="text-sm font-medium break-words">{l.label}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5 break-words">
+                      {l.description}
+                    </div>
+                  </Link>
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
     </div>
   );
 }
-
-interface ActionsProps {
-  row: RoleUserRow;
-  adminCount: number;
-  busy: boolean;
-  onAssign: (role: AppRole) => void;
-  onRemove: (role: AppRole) => void;
-}
-
-function RowActions({ row, adminCount, busy, onAssign, onRemove }: ActionsProps) {
-  const existing = new Set(row.roles.map((r) => r.role));
-  const assignable = ASSIGNABLE_ROLES.filter((r) => !existing.has(r));
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {assignable.length > 0 && (
-        <Select onValueChange={(v) => onAssign(v as AppRole)}>
-          <SelectTrigger
-            className="min-h-[44px] w-[130px]"
-            aria-label="Assign role"
-            disabled={busy}
-          >
-            <SelectValue placeholder="Assign…" />
-          </SelectTrigger>
-          <SelectContent>
-            {assignable.map((r) => (
-              <SelectItem key={r} value={r}>
-                <span className="inline-flex items-center gap-1.5">
-                  <Plus className="h-3.5 w-3.5" />
-                  {r}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      {row.roles
-        .filter((r) => isRemovableRole(r.role))
-        .map((r) => {
-          const isLastAdminRemoval = isLastAdminRemovalBlocked(r.role, adminCount);
-          return (
-            <Button
-              key={r.id}
-              variant="outline"
-              size="sm"
-              className="min-h-[44px]"
-              disabled={busy || isLastAdminRemoval}
-              onClick={() => onRemove(r.role)}
-              aria-label={`Remove role ${r.role}`}
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              {r.role}
-            </Button>
-          );
-        })}
-    </div>
-  );
-}
-
-interface RoleUserCardProps extends ActionsProps {
-  assignerProfilesById: Map<string, ProfileLite>;
-}
-
-function RoleUserCard({ assignerProfilesById, ...props }: RoleUserCardProps) {
-  const { row } = props;
-  const roles = row.roles.map((r) => r.role);
-  const latest = selectLatestRoleRow(row.roles);
-  const assignedLabel = latest?.assigned_at
-    ? formatDateTime(latest.assigned_at)
-    : "—";
-  const byLabel = resolveAssignerLabel(
-    latest?.assigned_by ?? null,
-    assignerProfilesById,
-  );
-  return (
-    <Card>
-      <CardContent className="p-3 space-y-2 min-w-0">
-        <div className="min-w-0">
-          <div className="font-medium text-sm break-words">
-            {displayName(row)}
-          </div>
-          <div className="text-[11px] text-muted-foreground break-words">
-            {row.profile?.email ?? row.user_id}
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {roles.map((r) => (
-            <Badge key={r} variant={roleTone(r)}>
-              {r}
-            </Badge>
-          ))}
-        </div>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground min-w-0">
-          <dt className="font-medium text-foreground/80">Assigned</dt>
-          <dd className="break-words">{assignedLabel}</dd>
-          <dt className="font-medium text-foreground/80">By</dt>
-          <dd className="break-words">{byLabel}</dd>
-        </dl>
-        <RowActions {...props} />
-      </CardContent>
-    </Card>
-  );
-}
-
