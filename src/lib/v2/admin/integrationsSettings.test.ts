@@ -70,7 +70,7 @@ function makePayload(overrides?: {
 describe("normalizeIntegrationsSettingsStatus", () => {
   it("accepts a fully configured payload", () => {
     const r = normalizeIntegrationsSettingsStatus(makePayload());
-    expect(r).not.toBeNull();
+    expect(r === null).toBe(false);
     expect(r!.integrations.map((i) => i.id)).toEqual([...INTEGRATION_ORDER]);
   });
 
@@ -78,7 +78,7 @@ describe("normalizeIntegrationsSettingsStatus", () => {
     const r = normalizeIntegrationsSettingsStatus(
       makePayload({ cmsApi: true, cmsWorker: false }),
     );
-    expect(r).not.toBeNull();
+    expect(r === null).toBe(false);
     const cms = r!.integrations[2];
     expect(cms.configured).toBe(false);
     expect(cms.api_key_configured).toBe(true);
@@ -92,7 +92,7 @@ describe("normalizeIntegrationsSettingsStatus", () => {
         resendConfigured: false, cmsApi: false, cmsWorker: false, lovable: false,
       }),
     );
-    expect(r).not.toBeNull();
+    expect(r === null).toBe(false);
     const s = summarize(r!);
     expect(s).toEqual({
       total: 5, configured: 0, needs_configuration: 4, contract_only: 1,
