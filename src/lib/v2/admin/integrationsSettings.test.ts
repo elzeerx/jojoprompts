@@ -199,7 +199,7 @@ describe("normalizeIntegrationsSettingsStatus", () => {
   it("accepts canonical Date.toISOString() as_of", () => {
     const p: any = makePayload();
     p.as_of = new Date("2026-07-26T12:34:56.789Z").toISOString();
-    expect(normalizeIntegrationsSettingsStatus(p)).not.toBeNull();
+    expect(normalizeIntegrationsSettingsStatus(p) === null).toBe(false);
   });
 
   it("rejects upayments configured=true when enabled=false", () => {
@@ -228,7 +228,7 @@ describe("normalizeIntegrationsSettingsStatus", () => {
   it("accepts valid partial upayments: enabled=true sandbox configured=false", () => {
     const p = makePayload({ upEnabled: true, upEnv: "sandbox", upConfigured: false });
     const r = normalizeIntegrationsSettingsStatus(p);
-    expect(r).not.toBeNull();
+    expect(r === null).toBe(false);
     expect(r!.integrations[0].configured).toBe(false);
     expect((r!.integrations[0] as any).enabled).toBe(true);
   });
