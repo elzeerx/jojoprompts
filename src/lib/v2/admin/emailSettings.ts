@@ -196,13 +196,13 @@ export function normalizeEmailSettingsStatus(
   if (!isStr(stripped.auth_email_transport, "separate_not_checked")) return null;
   if (!isStr(stripped.primary_service, "send-email")) return null;
   if (!Array.isArray(stripped.services)) return null;
-  // Must be exactly ["send-email"] once every entry is a trimmed non-empty
-  // string. Reject anything else so we don't render fabricated service names.
-  const services = stripped.services
-    .filter((s): s is string => typeof s === "string")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-  if (services.length !== 1 || services[0] !== "send-email") return null;
+  // Strict: raw array must be exactly one entry that is a string equal to
+  // "send-email" (whitespace-padded values are rejected). Do not silently
+  // drop invalid entries — reject the whole payload so we never render a
+  // fabricated or partially-valid services list.
+  if (stripped.services.length !== 1) return null;
+  const only = stripped.services[0];
+  if (typeof only !== "string" || only !== "send-email") return null;
   return {
     provider: "resend",
     transport: "edge_functions",
