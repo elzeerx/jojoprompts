@@ -4636,6 +4636,7 @@ export type Database = {
         Args: { p_dry_run?: boolean }
         Returns: Json
       }
+      v2_admin_email_settings_summary: { Args: never; Returns: Json }
       v2_admin_finalize_definite_refund_rejection: {
         Args: {
           p_expected_error_code: string
