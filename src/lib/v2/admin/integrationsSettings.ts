@@ -54,10 +54,16 @@ function noSecretKeysDeep(value: unknown, depth = 0): boolean {
 }
 
 function isBool(v: unknown): v is boolean { return typeof v === "boolean"; }
+// Strict: only canonical ISO-8601 UTC produced by Date.prototype.toISOString().
+// Rejects merely parseable strings like "July 26, 2026" or timezone offsets.
+const ISO_UTC_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 function isIsoString(v: unknown): v is string {
   if (typeof v !== "string") return false;
+  if (!ISO_UTC_RE.test(v)) return false;
   const t = Date.parse(v);
-  return Number.isFinite(t);
+  if (!Number.isFinite(t)) return false;
+  return new Date(t).toISOString() === v;
 }
 
 export type UPaymentsIntegration = {
@@ -145,6 +151,18 @@ function normalizeUpayments(v: unknown): UPaymentsIntegration | null {
   if (o.environment !== "sandbox" && o.environment !== "production" &&
       o.environment !== "not_configured") return null;
   if (o.specialist_route !== "/admin/settings/payments") return null;
+  // Readiness consistency:
+  // - configured=true requires enabled=true AND env in {sandbox, production}.
+  // - enabled=false forbids configured=true.
+  // - environment=not_configured forbids configured=true.
+  // - enabled=true + sandbox/production + configured=false stays valid (other
+  //   required config such as token/site URL may still be missing).
+  if (o.configured === true) {
+    if (o.enabled !== true) return null;
+    if (o.environment !== "sandbox" && o.environment !== "production") return null;
+  }
+  if (o.enabled === false && o.configured !== false) return null;
+  if (o.environment === "not_configured" && o.configured !== false) return null;
   return {
     id: "upayments", purpose: "payments",
     enabled: o.enabled, configured: o.configured,

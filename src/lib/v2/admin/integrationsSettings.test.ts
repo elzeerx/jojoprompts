@@ -181,6 +181,57 @@ describe("normalizeIntegrationsSettingsStatus", () => {
     const p: any = { ...makePayload(), extra: 1 };
     expect(normalizeIntegrationsSettingsStatus(p)).toBeNull();
   });
+
+
+
+  it("rejects non-canonical but parseable as_of like 'July 26, 2026'", () => {
+    const p: any = makePayload();
+    p.as_of = "July 26, 2026";
+    expect(normalizeIntegrationsSettingsStatus(p)).toBeNull();
+  });
+
+  it("rejects ISO with timezone offset (non-canonical)", () => {
+    const p: any = makePayload();
+    p.as_of = "2026-07-26T00:00:00+00:00";
+    expect(normalizeIntegrationsSettingsStatus(p)).toBeNull();
+  });
+
+  it("accepts canonical Date.toISOString() as_of", () => {
+    const p: any = makePayload();
+    p.as_of = new Date("2026-07-26T12:34:56.789Z").toISOString();
+    expect(normalizeIntegrationsSettingsStatus(p) === null).toBe(false);
+  });
+
+  it("rejects upayments configured=true when enabled=false", () => {
+    const p = makePayload();
+    (p.integrations[0] as any).enabled = false;
+    (p.integrations[0] as any).configured = true;
+    expect(normalizeIntegrationsSettingsStatus(p)).toBeNull();
+  });
+
+  it("rejects upayments configured=true when environment=not_configured", () => {
+    const p = makePayload({ upEnv: "not_configured" });
+    (p.integrations[0] as any).configured = true;
+    expect(normalizeIntegrationsSettingsStatus(p)).toBeNull();
+  });
+
+  it("rejects upayments enabled=false with configured=true", () => {
+    const p = makePayload({ upEnabled: false, upConfigured: true, upEnv: "sandbox" });
+    expect(normalizeIntegrationsSettingsStatus(p)).toBeNull();
+  });
+
+  it("rejects upayments environment=not_configured with configured=true", () => {
+    const p = makePayload({ upEnv: "not_configured", upConfigured: true, upEnabled: true });
+    expect(normalizeIntegrationsSettingsStatus(p)).toBeNull();
+  });
+
+  it("accepts valid partial upayments: enabled=true sandbox configured=false", () => {
+    const p = makePayload({ upEnabled: true, upEnv: "sandbox", upConfigured: false });
+    const r = normalizeIntegrationsSettingsStatus(p);
+    expect(r === null).toBe(false);
+    expect(r!.integrations[0].configured).toBe(false);
+    expect((r!.integrations[0] as any).enabled).toBe(true);
+  });
 });
 
 describe("integrationStatus", () => {
