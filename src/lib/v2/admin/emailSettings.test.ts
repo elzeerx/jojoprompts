@@ -2,6 +2,8 @@ import { describe, expect, it } from "bun:test";
 import {
   boundaryRows,
   formatPercent,
+  normalizeEmailSettingsStatus,
+  normalizeEmailSettingsSummary,
   readinessRows,
   stripStatusFields,
   successRate,
