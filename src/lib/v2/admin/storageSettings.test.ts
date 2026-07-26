@@ -2,9 +2,13 @@ import { describe, expect, test } from "bun:test";
 import {
   bucketReadiness,
   formatBytes,
+  isCanonicalMimeSet,
   normalizeStorageSettingsStatus,
+  STORAGE_CANONICAL_MIME_TYPES,
   STORAGE_MAX_UPLOAD_BYTES,
 } from "./storageSettings";
+
+const CANONICAL = [...STORAGE_CANONICAL_MIME_TYPES];
 
 function live(): unknown {
   return {
@@ -15,7 +19,7 @@ function live(): unknown {
       present: true,
       public: false,
       file_size_limit_bytes: STORAGE_MAX_UPLOAD_BYTES,
-      allowed_mime_types: ["application/zip", "text/markdown"],
+      allowed_mime_types: [...CANONICAL],
     },
     application_contract: {
       admin_upload_service: "v2-admin-upload-resource-file",
@@ -26,7 +30,7 @@ function live(): unknown {
       package_scan_worker_service: "v2-package-scan-worker",
       max_upload_bytes: STORAGE_MAX_UPLOAD_BYTES,
       signed_url_ttl_seconds: 60,
-      approved_mime_types: ["application/zip", "text/markdown", "application/json"],
+      approved_mime_types: [...CANONICAL],
     },
     registry: {
       registered_files: 3,
@@ -50,6 +54,46 @@ function live(): unknown {
   };
 }
 
+describe("isCanonicalMimeSet", () => {
+  test("accepts exact canonical set", () => {
+    expect(isCanonicalMimeSet([...CANONICAL])).toBe(true);
+  });
+  test("accepts reordered canonical set", () => {
+    expect(isCanonicalMimeSet([...CANONICAL].reverse())).toBe(true);
+  });
+  test("rejects missing entry", () => {
+    const arr = CANONICAL.filter((m) => m !== "application/octet-stream");
+    expect(isCanonicalMimeSet(arr)).toBe(false);
+  });
+  test("rejects extra entry", () => {
+    expect(isCanonicalMimeSet([...CANONICAL, "image/png"])).toBe(false);
+  });
+  test("rejects duplicate entry", () => {
+    const arr = [...CANONICAL];
+    arr[0] = arr[1];
+    expect(isCanonicalMimeSet(arr)).toBe(false);
+  });
+  test("requires application/octet-stream", () => {
+    expect(CANONICAL).toContain("application/octet-stream");
+    const withoutOctet = CANONICAL.filter((m) => m !== "application/octet-stream");
+    expect(isCanonicalMimeSet(withoutOctet)).toBe(false);
+  });
+  test("rejects non-string entry", () => {
+    const arr: unknown[] = [...CANONICAL];
+    arr[0] = 123;
+    expect(isCanonicalMimeSet(arr)).toBe(false);
+  });
+  test("rejects whitespace-padded entry", () => {
+    const arr = [...CANONICAL];
+    arr[0] = ` ${arr[0]}`;
+    expect(isCanonicalMimeSet(arr)).toBe(false);
+  });
+  test("rejects non-array", () => {
+    expect(isCanonicalMimeSet("application/zip")).toBe(false);
+    expect(isCanonicalMimeSet(null)).toBe(false);
+  });
+});
+
 describe("normalizeStorageSettingsStatus - accept", () => {
   test("accepts live-shaped payload", () => {
     const n = normalizeStorageSettingsStatus(live());
@@ -57,13 +101,7 @@ describe("normalizeStorageSettingsStatus - accept", () => {
     expect(n!.bucket.id).toBe("resource-packages");
     expect(n!.scan_counts.clean).toBe(2);
     expect(n!.application_contract.max_upload_bytes).toBe(STORAGE_MAX_UPLOAD_BYTES);
-  });
-  test("public=null bucket allowed (info missing) but not ready", () => {
-    const p = live() as any;
-    p.bucket.public = null;
-    const n = normalizeStorageSettingsStatus(p);
-    expect(n === null).toBe(false);
-    expect(bucketReadiness(n!).ready).toBe(true);
+    expect(n!.application_contract.approved_mime_types.length).toBe(CANONICAL.length);
   });
 });
 
@@ -87,6 +125,24 @@ describe("normalizeStorageSettingsStatus - reject", () => {
   });
   test("rejects wrong ttl", () => {
     const p = live() as any; p.application_contract.signed_url_ttl_seconds = 120;
+    expect(normalizeStorageSettingsStatus(p)).toBeNull();
+  });
+  test("rejects application_contract MIME missing octet-stream", () => {
+    const p = live() as any;
+    p.application_contract.approved_mime_types =
+      CANONICAL.filter((m) => m !== "application/octet-stream");
+    expect(normalizeStorageSettingsStatus(p)).toBeNull();
+  });
+  test("rejects application_contract MIME with extra entry", () => {
+    const p = live() as any;
+    p.application_contract.approved_mime_types = [...CANONICAL, "image/png"];
+    expect(normalizeStorageSettingsStatus(p)).toBeNull();
+  });
+  test("rejects application_contract MIME with duplicate entry", () => {
+    const p = live() as any;
+    const arr = [...CANONICAL];
+    arr[0] = arr[1];
+    p.application_contract.approved_mime_types = arr;
     expect(normalizeStorageSettingsStatus(p)).toBeNull();
   });
   test("rejects impossible scan sum vs registered_files", () => {
@@ -114,11 +170,11 @@ describe("normalizeStorageSettingsStatus - reject", () => {
     const p = live() as any; p.boundaries.signed_url_generation = "checked";
     expect(normalizeStorageSettingsStatus(p)).toBeNull();
   });
-  test("rejects malformed allowed_mime_types entry (non-string)", () => {
+  test("rejects malformed bucket allowed_mime_types entry (non-string)", () => {
     const p = live() as any; p.bucket.allowed_mime_types = ["application/zip", 123];
     expect(normalizeStorageSettingsStatus(p)).toBeNull();
   });
-  test("rejects malformed allowed_mime_types entry (whitespace)", () => {
+  test("rejects malformed bucket allowed_mime_types entry (whitespace)", () => {
     const p = live() as any; p.bucket.allowed_mime_types = [" application/zip"];
     expect(normalizeStorageSettingsStatus(p)).toBeNull();
   });
@@ -136,19 +192,72 @@ describe("normalizeStorageSettingsStatus - reject", () => {
   });
 });
 
-describe("bucketReadiness", () => {
-  test("public bucket is not ready", () => {
-    const p = live() as any; p.bucket.public = true;
+describe("bucketReadiness — fail closed", () => {
+  test("public=null is NOT ready", () => {
+    const p = live() as any; p.bucket.public = null;
     const n = normalizeStorageSettingsStatus(p);
     expect(n === null).toBe(false);
     const r = bucketReadiness(n!);
     expect(r.ready).toBe(false);
   });
-  test("missing bucket is not ready", () => {
+  test("public=true is NOT ready", () => {
+    const p = live() as any; p.bucket.public = true;
+    const n = normalizeStorageSettingsStatus(p);
+    expect(n === null).toBe(false);
+    expect(bucketReadiness(n!).ready).toBe(false);
+  });
+  test("missing bucket is NOT ready", () => {
     const p = live() as any; p.bucket.present = false;
     const n = normalizeStorageSettingsStatus(p);
     expect(n === null).toBe(false);
     expect(bucketReadiness(n!).ready).toBe(false);
+  });
+  test("wrong size limit is NOT ready", () => {
+    const p = live() as any; p.bucket.file_size_limit_bytes = 10485760;
+    const n = normalizeStorageSettingsStatus(p);
+    expect(n === null).toBe(false);
+    expect(bucketReadiness(n!).ready).toBe(false);
+  });
+  test("missing size limit (null) is NOT ready", () => {
+    const p = live() as any; p.bucket.file_size_limit_bytes = null;
+    const n = normalizeStorageSettingsStatus(p);
+    expect(n === null).toBe(false);
+    expect(bucketReadiness(n!).ready).toBe(false);
+  });
+  test("bucket MIME missing canonical entry is NOT ready", () => {
+    const p = live() as any;
+    p.bucket.allowed_mime_types =
+      CANONICAL.filter((m) => m !== "application/octet-stream");
+    const n = normalizeStorageSettingsStatus(p);
+    expect(n === null).toBe(false);
+    expect(bucketReadiness(n!).ready).toBe(false);
+  });
+  test("bucket MIME with extra entry is NOT ready", () => {
+    const p = live() as any;
+    p.bucket.allowed_mime_types = [...CANONICAL, "image/png"];
+    const n = normalizeStorageSettingsStatus(p);
+    expect(n === null).toBe(false);
+    expect(bucketReadiness(n!).ready).toBe(false);
+  });
+  test("bucket MIME with duplicate entry is NOT ready", () => {
+    const p = live() as any;
+    const arr = [...CANONICAL];
+    arr[0] = arr[1];
+    p.bucket.allowed_mime_types = arr;
+    const n = normalizeStorageSettingsStatus(p);
+    expect(n === null).toBe(false);
+    expect(bucketReadiness(n!).ready).toBe(false);
+  });
+  test("bucket MIME=null (no allowlist) is NOT ready", () => {
+    const p = live() as any; p.bucket.allowed_mime_types = null;
+    const n = normalizeStorageSettingsStatus(p);
+    expect(n === null).toBe(false);
+    expect(bucketReadiness(n!).ready).toBe(false);
+  });
+  test("all requirements exact => ready", () => {
+    const n = normalizeStorageSettingsStatus(live());
+    expect(n === null).toBe(false);
+    expect(bucketReadiness(n!).ready).toBe(true);
   });
 });
 
