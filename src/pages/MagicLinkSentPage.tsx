@@ -7,7 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { AppleEmailNotice } from "@/components/auth/AppleEmailNotice";
 import { resolveSafeNext } from "@/lib/v2/safeNext";
+import { createLogger } from '@/utils/logging';
 
+const logger = createLogger('MAGIC_LINK_SENT_PAGE');
 
 export default function MagicLinkSentPage() {
   const [searchParams] = useSearchParams();
@@ -16,7 +18,6 @@ export default function MagicLinkSentPage() {
   const [isResending, setIsResending] = useState(false);
 
   const email = searchParams.get('email');
-  const firstName = searchParams.get('firstName');
   // V2: safe same-origin destination only — legacy plan/fromCheckout ignored.
   const safeNextPath = resolveSafeNext(searchParams.get('next'));
 
@@ -27,47 +28,36 @@ export default function MagicLinkSentPage() {
 
   const handleResendMagicLink = async () => {
     setIsResending(true);
-
     try {
-      const redirectUrl = `${window.location.origin}${safeNextPath}`;
+      const emailRedirectTo = `${window.location.origin}${safeNextPath}`;
 
-      const { data, error } = await supabase.functions.invoke('send-signup-confirmation', {
-        body: {
-          email: email,
-          firstName: firstName || 'User',
-          lastName: '',
-          userId: crypto.randomUUID(),
-          redirectUrl: redirectUrl
-        }
+      // Uses Supabase Auth's built-in OTP magic link. No custom
+      // service-role helper, no account enumeration.
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo, shouldCreateUser: true },
       });
 
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error.message || "Failed to resend magic link. Please try again.",
-        });
-      } else if (!data?.success) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: data?.error || "Failed to resend magic link. Please try again.",
-        });
-      } else {
-        toast({
-          title: "Magic link sent! ✨",
-          description: "Check your email for a new secure login link.",
+        logger.warn('Auth signInWithOtp returned an error (surfaced generically)', {
+          code: (error as { status?: number }).status,
         });
       }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to resend magic link. Please try again.",
-      });
-    }
 
-    setIsResending(false);
+      toast({
+        title: "Magic link sent ✨",
+        description: "If your email is valid, a new secure login link is on its way. Check spam if you don't see it.",
+      });
+    } catch (error) {
+      logger.error('Magic link resend error', { error: (error as Error).message });
+      // Generic success copy — no infra leak.
+      toast({
+        title: "Magic link sent ✨",
+        description: "If your email is valid, a new secure login link is on its way. Check spam if you don't see it.",
+      });
+    } finally {
+      setIsResending(false);
+    }
   };
 
   const handleBackToSignup = () => {
@@ -85,7 +75,7 @@ export default function MagicLinkSentPage() {
           </div>
           <CardTitle className="text-xl text-center mb-2">Magic Link Sent! ✨</CardTitle>
         </CardHeader>
-        
+
         <CardContent className="space-y-6 px-4 sm:px-6">
           <div className="text-center space-y-3">
             <p className="text-sm text-muted-foreground">
@@ -104,15 +94,15 @@ export default function MagicLinkSentPage() {
               onClick={handleResendMagicLink}
               disabled={isResending}
               variant="outline"
-              className="w-full"
+              className="w-full min-h-[44px]"
             >
               {isResending ? "Sending..." : "Resend Magic Link"}
             </Button>
-            
+
             <Button
               onClick={handleBackToSignup}
               variant="ghost"
-              className="w-full"
+              className="w-full min-h-[44px]"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Signup

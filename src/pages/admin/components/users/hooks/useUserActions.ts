@@ -247,60 +247,49 @@ export function useUserActions() {
     try {
       setProcessingUserId(userId);
 
-      logger.debug('Using custom confirmation email template');
-      
-      // Use our custom send-email function directly for confirmation emails
-      const { data: response, error } = await supabase.functions.invoke('resend-confirmation-email', {
-        body: { userId, email }
-      });
-
-      if (error) {
-        throw new Error(`Failed to resend confirmation email: ${error.message}`);
-      }
-
-      if (!response?.success) {
-        throw new Error(response?.error || 'Failed to resend confirmation email');
-      }
-
-      logger.info('Custom confirmation email sent successfully');
+      // RETIRED: the previous custom Edge Function used service_role to
+      // list every auth user, generate invite links, and send mail from
+      // any admin session. That surface has been removed. Ask the user
+      // to use the sign-in page's built-in "Resend confirmation" flow
+      // (Supabase Auth's own generic response) or trigger a password
+      // reset — neither requires a custom service-role helper.
+      logger.info('Admin resend-confirmation surface retired', { userId });
       toast({
-        title: "Success",
-        description: "Confirmation email has been resent successfully with custom template.",
+        title: "Action retired",
+        description:
+          "Ask the user to visit the sign-in page and use “Resend confirmation”, or send them a password reset instead.",
       });
 
-      // Log the action
-      await supabase.from('admin_audit_log').insert({
-        admin_user_id: user?.id || '',
-        action: 'resend_confirmation_email',
-        target_resource: `user:${userId}`,
-        metadata: { 
-          target_email: email,
-          method: 'custom_template',
-          timestamp: new Date().toISOString()
-        }
-      });
-
-    } catch (error: any) {
-      const appError = handleError(error, { component: 'useUserActions', action: 'resendConfirmation' });
-      logger.error('Error resending confirmation email', { error: appError, userId });
-      
-      // Enhanced error messaging
-      let errorMessage = "Failed to resend confirmation email.";
-      
-      if (error.message?.includes('All resend methods failed')) {
-        errorMessage = "All resend methods failed. Please check the system logs and try again later.";
-      } else if (error.message?.includes('Admin access required')) {
-        errorMessage = "You do not have permission to perform this action.";
-      } else if (error.message?.includes('already confirmed')) {
-        errorMessage = "This email is already confirmed.";
-      } else if (error.message?.includes('User not found')) {
-        errorMessage = "User not found in the system.";
+      // Audit the retired attempt so admin activity remains observable.
+      try {
+        await supabase.from('admin_audit_log').insert({
+          admin_user_id: user?.id || '',
+          action: 'resend_confirmation_email_retired',
+          target_resource: `user:${userId}`,
+          metadata: {
+            target_email: email,
+            reason: 'custom_service_role_function_removed',
+            timestamp: new Date().toISOString(),
+          },
+        });
+      } catch (auditErr: any) {
+        logger.warn('Failed to write retired-action audit entry', {
+          error: auditErr?.message,
+        });
       }
-      
+    } catch (error: any) {
+      const appError = handleError(error, {
+        component: 'useUserActions',
+        action: 'resendConfirmation',
+      });
+      logger.error('Unexpected error in retired resend action', {
+        error: appError,
+        userId,
+      });
       toast({
         variant: "destructive",
         title: "Error",
-        description: errorMessage,
+        description: "Unable to complete the request.",
       });
     } finally {
       setProcessingUserId(null);

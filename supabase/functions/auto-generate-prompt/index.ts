@@ -22,30 +22,41 @@ interface AutoGenerateRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // POST/OPTIONS only.
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders, status: 204 });
+  }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
     logger.info('Auto-generate prompt request received');
 
-    // Get request body
-    const { category, use_case, style, description }: AutoGenerateRequest = await req.json();
-    
-    if (!category) {
-      return new Response(JSON.stringify({ 
-        error: 'Category is required'
-      }), {
+    // Strict type + length limits on every input BEFORE any OpenAI work.
+    const parsed = await req.json().catch(() => ({})) as Partial<AutoGenerateRequest>;
+    const category = typeof parsed.category === 'string' ? parsed.category.trim() : '';
+    const use_case = typeof parsed.use_case === 'string' ? parsed.use_case.trim() : '';
+    const style = typeof parsed.style === 'string' ? parsed.style.trim() : '';
+    const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
+
+    if (!category || category.length > 40) {
+      return new Response(JSON.stringify({ error: 'Invalid category' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    if (!description || description.trim().length < 8) {
-      return new Response(JSON.stringify({ 
-        error: 'Description is required and must be at least 8 characters long'
-      }), {
+    if (use_case.length > 200 || style.length > 200) {
+      return new Response(JSON.stringify({ error: 'Invalid input length' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (description.length < 8 || description.length > 2000) {
+      return new Response(JSON.stringify({ error: 'Description must be 8–2000 characters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -259,10 +270,9 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    logger.error('Auto-generate prompt failed', { error: error.message || error });
-    return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to generate prompt'
-    }), {
+    logger.error('Auto-generate prompt failed', { error: error?.message });
+    // Generic error surface — do not leak internal details.
+    return new Response(JSON.stringify({ error: 'Failed to generate prompt' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

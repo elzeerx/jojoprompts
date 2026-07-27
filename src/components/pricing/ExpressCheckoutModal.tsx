@@ -51,7 +51,9 @@ export function ExpressCheckoutModal({ open, onOpenChange, plan }: ExpressChecko
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  // Kept for compatibility with the existing Button `disabled` binding.
+  // Enumeration-safe: we no longer probe the server for account existence.
+  const isCheckingEmail = false;
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
 
   // If user is already logged in, skip to payment
@@ -92,30 +94,9 @@ export function ExpressCheckoutModal({ open, onOpenChange, plan }: ExpressChecko
     return Math.max(0, finalAmount);
   }, [plan, appliedDiscount]);
 
-  const checkEmailExists = useCallback(async (emailToCheck: string) => {
-    setIsCheckingEmail(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('check-email-exists', {
-        body: { email: emailToCheck.trim().toLowerCase() }
-      });
-
-      if (error) {
-        logError('Email check error', 'express-checkout', { error: error.message });
-        return false;
-      }
-
-      return data?.exists ?? false;
-    } catch (err) {
-      logError('Email check exception', 'express-checkout', { error: err });
-      return false;
-    } finally {
-      setIsCheckingEmail(false);
-    }
-  }, []);
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !email.includes('@')) {
       toast({
         variant: "destructive",
@@ -124,16 +105,11 @@ export function ExpressCheckoutModal({ open, onOpenChange, plan }: ExpressChecko
       return;
     }
 
-    logDebug('Checking if email exists', 'express-checkout', { email });
-    const exists = await checkEmailExists(email);
-    
-    if (exists) {
-      logInfo('Existing user detected, showing login', 'express-checkout');
-      setStep('login');
-    } else {
-      logInfo('New user detected, showing signup', 'express-checkout');
-      setStep('signup');
-    }
+    // Enumeration-safe: no server-side "does this email exist" probe.
+    // Default to signup; returning users can switch to Sign in from the
+    // signup step. Supabase Auth authoritatively rejects duplicates.
+    logDebug('Email entered — advancing to signup', 'express-checkout');
+    setStep('signup');
   };
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -1,70 +1,36 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Archival stub — RETIRED.
+//
+// The previous implementation was an unauthenticated account
+// enumeration oracle: any caller could POST an email and learn
+// whether a matching profile row existed. Client auth surfaces
+// (SmartAuthForm, ExpressCheckoutModal) no longer probe existence
+// before showing sign-in vs sign-up; Supabase Auth authoritatively
+// rejects duplicate signups with a generic response.
+//
+// Source-only. Intentionally NOT deployed in this pass. If a future
+// intentional deploy happens, it responds with HTTP 410 Gone.
+
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "OPTIONS",
+  "Access-Control-Allow-Headers": "content-type",
+  "X-Content-Type-Options": "nosniff",
 };
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+serve((req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders, status: 204 });
   }
-
-  try {
-    const { email } = await req.json();
-    
-    if (!email || typeof email !== 'string') {
-      console.log('[check-email-exists] Invalid email provided');
-      return new Response(
-        JSON.stringify({ error: 'Email is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const trimmedEmail = email.trim().toLowerCase();
-    console.log('[check-email-exists] Checking email existence');
-
-    // Create admin client to check auth.users
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
-    // Check if user exists in profiles table (safer than auth.users)
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('id, email')
-      .eq('email', trimmedEmail)
-      .maybeSingle();
-
-    if (profileError) {
-      console.error('[check-email-exists] Profile query error:', profileError);
-      // Don't expose the error, just return exists: false
-      return new Response(
-        JSON.stringify({ exists: false }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const exists = !!profile;
-    console.log('[check-email-exists] Email check result:', { exists });
-
-    return new Response(
-      JSON.stringify({ exists }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('[check-email-exists] Unexpected error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  return new Response(
+    JSON.stringify({
+      error: "endpoint_retired",
+      message: "Account-existence probing is retired. Rely on Supabase Auth's own responses.",
+    }),
+    {
+      status: 410,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
+  );
 });

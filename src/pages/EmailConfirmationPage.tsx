@@ -6,6 +6,7 @@ import { Mail, CheckCircle, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { createLogger } from '@/utils/logging';
+import { resolveSafeNext } from "@/lib/v2/safeNext";
 
 const logger = createLogger('EMAIL_CONFIRMATION_PAGE');
 
@@ -14,58 +15,44 @@ export default function EmailConfirmationPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isResending, setIsResending] = useState(false);
-  
+
   const email = searchParams.get('email');
-  const firstName = searchParams.get('firstName');
-  // V2: plan/fromCheckout query params are no longer read — one-time ownership model.
+  // V2: safe same-origin destination only.
+  const safeNextPath = resolveSafeNext(searchParams.get('next'));
 
   useEffect(() => {
-    // If no email provided, redirect to signup
-    if (!email) {
-      navigate('/signup');
-    }
+    if (!email) navigate('/signup');
   }, [email, navigate]);
 
   const handleResendConfirmation = async () => {
-    if (!email || !firstName) return;
-    
+    if (!email) return;
     setIsResending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('resend-confirmation-email', {
-        body: { 
-          email,
-          firstName 
-        }
+      // Uses Supabase Auth's built-in resend. No custom service-role helper,
+      // no account enumeration, generic success copy regardless of outcome.
+      const emailRedirectTo = `${window.location.origin}${safeNextPath}`;
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo },
       });
-
-      if (error || !data?.success) {
-        const errorMessage = data?.error || error?.message || "Failed to resend confirmation email. Please try again.";
-        
-        // Handle specific error cases
-        if (errorMessage.includes("already confirmed")) {
-          toast({
-            title: "Email Already Confirmed",
-            description: "Your email has already been confirmed. You can now sign in to your account.",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: errorMessage,
-          });
-        }
-      } else {
-        toast({
-          title: "Email sent! 📧",
-          description: "We've sent another confirmation email to your inbox. Please check your spam folder if you don't see it.",
+      if (error) {
+        // Log server-side reason for diagnostics but do NOT reveal existence
+        // or confirmation status to the user.
+        logger.warn('Auth resend returned an error (surfaced generically)', {
+          code: (error as { status?: number }).status,
         });
       }
-    } catch (error: any) {
-      logger.error('Resend confirmation error', { error: error.message || error });
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Something went wrong. Please try again or contact support if the issue persists.",
+        title: "Check your inbox",
+        description: "If an account with that email exists and needs confirmation, a new link is on its way. Check spam if you don't see it.",
+      });
+    } catch (error: unknown) {
+      logger.error('Resend confirmation error', { error: (error as Error).message });
+      // Still show generic success-shaped copy — do not leak infra failures.
+      toast({
+        title: "Check your inbox",
+        description: "If an account with that email exists and needs confirmation, a new link is on its way. Check spam if you don't see it.",
       });
     } finally {
       setIsResending(false);
@@ -73,13 +60,10 @@ export default function EmailConfirmationPage() {
   };
 
   const handleBackToSignup = () => {
-    // V2: no plan/checkout gating on the signup return path.
     navigate('/signup');
   };
 
-  if (!email) {
-    return null;
-  }
+  if (!email) return null;
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-9rem)] mobile-container-padding mobile-section-padding">
@@ -97,7 +81,7 @@ export default function EmailConfirmationPage() {
             Check Your Email
           </CardTitle>
         </CardHeader>
-        
+
         <CardContent className="space-y-6 px-4 sm:px-6 pb-6">
           <div className="text-center space-y-4">
             <div className="bg-warm-gold/10 rounded-lg p-4 border border-warm-gold/20">
@@ -130,7 +114,7 @@ export default function EmailConfirmationPage() {
               onClick={handleResendConfirmation}
               disabled={isResending}
               variant="outline"
-              className="w-full border-warm-gold text-warm-gold hover:bg-warm-gold hover:text-white"
+              className="w-full min-h-[44px] border-warm-gold text-warm-gold hover:bg-warm-gold hover:text-white"
             >
               {isResending ? (
                 <>
@@ -148,7 +132,7 @@ export default function EmailConfirmationPage() {
             <Button
               onClick={handleBackToSignup}
               variant="ghost"
-              className="w-full text-muted-foreground hover:text-dark-base"
+              className="w-full min-h-[44px] text-muted-foreground hover:text-dark-base"
             >
               Back to Sign Up
             </Button>
