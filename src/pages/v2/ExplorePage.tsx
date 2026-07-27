@@ -17,12 +17,14 @@ import { useTranslation } from "@/hooks/useTranslation";
 interface Props {
   fixedType?: V2ResourceType;
   title?: string;
+  emptyTitle?: { en: string; ar: string };
+  emptyDesc?: { en: string; ar: string };
 }
 
 // Simple in-memory scroll cache keyed by (path+search minus the preview slug)
 const scrollCache = new Map<string, number>();
 
-export default function ExplorePage({ fixedType, title }: Props) {
+export default function ExplorePage({ fixedType, title, emptyTitle, emptyDesc }: Props) {
   const { user } = useAuth();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
@@ -159,7 +161,9 @@ export default function ExplorePage({ fixedType, title }: Props) {
         {isError ? <CatalogState variant="error" onRetry={() => refetch()} /> : null}
 
         {noResults ? <CatalogState variant="no-results" /> : null}
-        {emptyCatalog ? <CatalogState variant="empty" /> : null}
+        {emptyCatalog ? (
+          <CatalogState variant="empty" emptyTitle={emptyTitle} emptyDesc={emptyDesc} />
+        ) : null}
 
         {!isLoading && !isError && (rows?.length ?? 0) > 0 ? (
           <div className="space-y-8">

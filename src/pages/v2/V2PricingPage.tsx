@@ -5,27 +5,24 @@ import { Badge } from "@/components/ui/badge";
 import { SeoHead } from "@/components/v2/SeoHead";
 import { LifetimeUpgradeCard } from "@/components/v2/LifetimeUpgradeCard";
 import { useTranslation } from "@/hooks/useTranslation";
-import { formatKwd, LIFETIME_THRESHOLD_FILS } from "@/config/v2Flags";
+
+import { V2_PRICING_TIERS, V2_LIFETIME_PRICE_KD } from "@/config/v2Pricing";
+export { V2_PRICING_TIERS, V2_LIFETIME_PRICE_KD };
 
 export default function V2PricingPage() {
   const { language, isRTL } = useTranslation();
-  const lang = language === "ar" ? "ar" : "en";
+  const lang: "en" | "ar" = language === "ar" ? "ar" : "en";
+
   const t = {
     title: lang === "ar" ? "الأسعار" : "Pricing",
     subtitle:
       lang === "ar"
-        ? "ادفع مرة واحدة لكل مورد. اجمع ٣٠ د.ك وستُفتح كل موارد جوجو مدى الحياة."
-        : "One-time purchases per resource. Reach 30 KD and every Jojo resource unlocks for life.",
-    individualTitle: lang === "ar" ? "الموارد الفردية" : "Individual resources",
-    individualDesc:
-      lang === "ar"
-        ? "امتلك المهارات، الأتمتة، البرومبتات، وأنماط الصور بشكل فردي أو ضمن حزم."
-        : "Own skills, automations, prompts, and image styles individually or in bundles.",
-    from: lang === "ar" ? "تبدأ من" : "From",
-    to: lang === "ar" ? "حتى" : "up to",
+        ? "ادفع مرة واحدة لكل مورد. كل عملية شراء مؤهّلة تُحسب ضمن حدّ 30.000 د.ك لفتح المكتبة الكاملة مدى الحياة."
+        : "One-time payments per resource. Every eligible purchase counts toward the 30.000 KD Full Library Lifetime unlock.",
+    oneTime: lang === "ar" ? "دفع لمرة واحدة" : "One-time payment",
     browse: lang === "ar" ? "تصفح المتجر" : "Browse the catalog",
-    lifetimeTitle: lang === "ar" ? "مدى الحياة — المكتبة الكاملة" : "Full-library Lifetime",
-    lifetimePrice: `${formatKwd(LIFETIME_THRESHOLD_FILS)} KD`,
+    lifetimeTitle:
+      lang === "ar" ? "المكتبة الكاملة — مدى الحياة" : "Full Library Lifetime",
     lifetimeIncludes: lang === "ar" ? "يشمل" : "Includes",
     l1:
       lang === "ar"
@@ -37,12 +34,13 @@ export default function V2PricingPage() {
         : "Automatic access to new versions",
     l3:
       lang === "ar"
-        ? "تحسب مشترياتك السابقة المؤهلة"
+        ? "تُحتسب مشترياتك السابقة المؤهلة"
         : "Eligible past purchases count toward the total",
-    l4:
+    bestValue: lang === "ar" ? "الأفضل قيمة" : "Best value",
+    contract:
       lang === "ar"
-        ? "لا تشمل تلقائياً موارد المبدعين المستقلين المستقبلية"
-        : "Does not automatically include future independent-creator resources",
+        ? "دفعات فردية لمرة واحدة. لا اشتراكات ولا رسوم متكررة."
+        : "One-time payments only. No subscriptions, no recurring fees.",
   };
 
   return (
@@ -56,45 +54,61 @@ export default function V2PricingPage() {
         <header className="text-center space-y-2">
           <h1 className="text-3xl font-bold">{t.title}</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">{t.subtitle}</p>
+          <p className="text-sm text-warm-gold">{t.contract}</p>
         </header>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <section className="rounded-2xl border p-6 space-y-3">
-            <Badge variant="outline" className="w-fit">
-              {lang === "ar" ? "دفع لمرة واحدة" : "One-time"}
-            </Badge>
-            <h2 className="text-xl font-semibold">{t.individualTitle}</h2>
-            <p className="text-sm text-muted-foreground">{t.individualDesc}</p>
-            <div className="text-sm">
-              <span className="text-muted-foreground">{t.from}</span>{" "}
-              <span className="font-semibold">0.500 KD</span>{" "}
-              <span className="text-muted-foreground">{t.to}</span>{" "}
-              <span className="font-semibold">10.000 KD</span>
-            </div>
-            <Button asChild className="min-h-[44px] w-full sm:w-auto">
-              <Link to="/explore">{t.browse}</Link>
-            </Button>
-          </section>
+        <section
+          className="grid gap-4 md:grid-cols-2"
+          aria-label={lang === "ar" ? "أسعار الموارد" : "Resource pricing"}
+        >
+          {V2_PRICING_TIERS.map((tier) => (
+            <article
+              key={tier.key}
+              className="rounded-2xl border p-6 space-y-3 flex flex-col"
+              data-testid={`pricing-tier-${tier.key}`}
+            >
+              <Badge variant="outline" className="w-fit">
+                {t.oneTime}
+              </Badge>
+              <h2 className="text-lg font-semibold break-words">
+                {tier[lang].name}
+              </h2>
+              <p className="text-sm text-muted-foreground">{tier[lang].desc}</p>
+              <div className="text-2xl font-bold text-warm-gold break-words">
+                {tier.price}
+              </div>
+            </article>
+          ))}
+        </section>
 
-          <section className="rounded-2xl border border-warm-gold/50 bg-warm-gold/10 p-6 space-y-3">
-            <Badge className="w-fit gap-1">
+        <section
+          className="rounded-2xl border border-warm-gold/50 bg-warm-gold/10 p-6 space-y-4"
+          data-testid="pricing-tier-lifetime"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="gap-1">
               <Sparkles className="h-3 w-3" aria-hidden />
-              {lang === "ar" ? "الأفضل قيمة" : "Best value"}
+              {t.bestValue}
             </Badge>
             <h2 className="text-xl font-semibold">{t.lifetimeTitle}</h2>
-            <div className="text-3xl font-bold text-warm-gold">{t.lifetimePrice}</div>
-            <div className="text-sm font-medium">{t.lifetimeIncludes}:</div>
-            <ul className="space-y-1.5 text-sm">
-              {[t.l1, t.l2, t.l3].map((line) => (
-                <li key={line} className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-warm-gold" aria-hidden />
-                  <span>{line}</span>
-                </li>
-              ))}
-              <li className="ms-6 text-xs text-muted-foreground">{t.l4}</li>
-            </ul>
-            <LifetimeUpgradeCard />
-          </section>
+          </div>
+          <div className="text-3xl font-bold text-warm-gold">{V2_LIFETIME_PRICE_KD}</div>
+          <div className="text-sm font-medium">{t.lifetimeIncludes}:</div>
+          <ul className="space-y-1.5 text-sm">
+            {[t.l1, t.l2, t.l3].map((line) => (
+              <li key={line} className="flex items-start gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-warm-gold" aria-hidden />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+          <LifetimeUpgradeCard />
+        </section>
+
+        <div className="text-center">
+          <Button asChild className="min-h-[44px]">
+            <Link to="/explore">{t.browse}</Link>
+          </Button>
         </div>
       </main>
     </div>

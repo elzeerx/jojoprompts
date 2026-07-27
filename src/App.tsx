@@ -22,7 +22,14 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 import { isLaunchLocked } from "./config/siteMode";
 
+/**
+ * Paths that live in the canonical V2 public shell (V2Layout: V2Header +
+ * V2Footer + CartSanitizer). Root ("/") is included so the homepage renders
+ * the same shell for every visitor. Everything not in this set falls back to
+ * the legacy RootLayout below (Header/Footer/FloatingAddPromptButton).
+ */
 const V2_PATHS = new Set([
+  "/",
   "explore",
   "skills",
   "automations",
@@ -193,28 +200,41 @@ function App() {
                             <Route path="*" element={<ComingSoonPage />} />
                           </>
                         ) : (
-                          /* Public routes under RootLayout (Header/Footer/etc.) */
-                          <Route path="/" element={<RootLayout />}>
+                          <>
+                            {/* Canonical V2 public shell: single V2 header,
+                                sanitized cart, V2 footer. Wraps root ("/")
+                                and every V2 route. No legacy Header/Footer,
+                                no admin FloatingAddPromptButton here. */}
                             <Route element={<V2Layout />}>
-                              {routes.filter((r) => V2_PATHS.has(r.path)).map((route) => (
-                                <Route
-                                  key={route.path}
-                                  path={route.path}
-                                  element={createGuardedRoute(route)}
-                                  index={route.index}
-                                />
-                              ))}
+                              {routes
+                                .filter((r) => V2_PATHS.has(r.path))
+                                .map((route) => (
+                                  <Route
+                                    key={route.path}
+                                    path={route.path}
+                                    element={createGuardedRoute(route)}
+                                    index={route.index}
+                                  />
+                                ))}
                             </Route>
 
-                            {routes.filter((r) => !V2_PATHS.has(r.path)).map((route) => (
-                              <Route
-                                key={route.path}
-                                path={route.path}
-                                element={createGuardedRoute(route)}
-                                index={route.index}
-                              />
-                            ))}
-                          </Route>
+                            {/* Legacy shell for non-V2 pages (auth, prompts,
+                                about, faq, etc.) — keeps original chrome. */}
+                            <Route element={<RootLayout />}>
+                              {routes
+                                .filter(
+                                  (r) => !V2_PATHS.has(r.path) && r.path !== "/",
+                                )
+                                .map((route) => (
+                                  <Route
+                                    key={route.path}
+                                    path={route.path}
+                                    element={createGuardedRoute(route)}
+                                    index={route.index}
+                                  />
+                                ))}
+                            </Route>
+                          </>
                         )}
                       </Routes>
                     </Suspense>
