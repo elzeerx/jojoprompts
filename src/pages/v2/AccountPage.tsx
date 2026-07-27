@@ -46,15 +46,9 @@ export default function AccountPage() {
   const { language, isRTL } = useTranslation();
   const lang: Lang = language === "ar" ? "ar" : "en";
 
-  // Redirect to login while preserving return path — same helper the rest of
-  // V2 uses. Kept inline (small) to avoid an extra hook wrapper import cycle.
-  if (!loading && !user) {
-    const next = encodeURIComponent(
-      `${location.pathname}${location.search || ""}` || "/account",
-    );
-    return <Navigate to={`/login?next=${next}`} replace />;
-  }
-
+  // NOTE: Every Hook (including useMemo below) MUST be called unconditionally
+  // before ANY early return. The auth loading → signed-out transition would
+  // otherwise change hook order and violate the Rules of Hooks.
   const displayName = useMemo(() => {
     const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
     const first = typeof meta.first_name === "string" ? meta.first_name.trim() : "";
@@ -64,6 +58,15 @@ export default function AccountPage() {
     if (username) return username;
     return user?.email ?? "";
   }, [user]);
+
+  // Redirect to login while preserving return path — same helper the rest of
+  // V2 uses. Kept inline (small) to avoid an extra hook wrapper import cycle.
+  if (!loading && !user) {
+    const next = encodeURIComponent(
+      `${location.pathname}${location.search || ""}` || "/account",
+    );
+    return <Navigate to={`/login?next=${next}`} replace />;
+  }
 
   const ownedCount = library?.entitlements?.length ?? 0;
   const hasLibrary = !!library?.has_library_access;

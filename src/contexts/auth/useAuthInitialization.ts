@@ -8,7 +8,8 @@ import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
 import { SessionSecurity } from '@/utils/sessionSecurity';
 import { logger } from '@/utils/productionLogger';
 import { supabase } from '@/integrations/supabase/client';
-import { checkPasswordReset, checkSignupConfirmation, checkPaymentCallback, getSignupConfirmationParams } from './authHelpers';
+import { checkPasswordReset, checkSignupConfirmation, checkPaymentCallback } from './authHelpers';
+import { resolveSafeNext, DEFAULT_SAFE_NEXT } from '@/lib/v2/safeNext';
 
 interface UseAuthInitializationProps {
   setSession: (session: any) => void;
@@ -84,38 +85,32 @@ export const useAuthInitialization = ({
           
           // Handle signup confirmation redirect
           if (checkSignupConfirmation(location.search)) {
-            const { planId } = getSignupConfirmationParams(location.search);
-            debug("Signup confirmation detected", { planId, currentPath: location.pathname, search: location.search });
-            
+            const params = new URLSearchParams(location.search);
+            const safeNext = resolveSafeNext(params.get('next'));
+            debug("Signup confirmation detected", { currentPath: location.pathname, search: location.search, safeNext });
+
             // Send welcome email for newly confirmed users
             const { data: profile } = await supabase
               .from('profiles')
               .select('first_name')
               .eq('id', initialUser.id)
               .single();
-            
+
             if (profile?.first_name && initialUser.email) {
-              // Import and send welcome email
               const { emailService } = await import('@/utils/emailService');
               setTimeout(async () => {
                 await emailService.sendWelcomeEmail(profile.first_name, initialUser.email!);
               }, 1000);
             }
-            
+
+            // V2: one-time ownership model — no subscription language, no plan
+            // gating. Confirmed users go to their safe `next` or /explore.
             toast({
               title: "Welcome! 🎉",
-              description: planId 
-                ? "Your email is confirmed! Complete your subscription below."
-                : "Your email is confirmed! Choose a plan to unlock all prompts.",
+              description: "Your email is confirmed. You permanently own what you buy — no subscriptions.",
             });
 
-            // ALWAYS redirect to pricing or checkout - users MUST subscribe
-            if (planId) {
-              navigate(`/checkout?plan_id=${planId}`);
-            } else {
-              // New user without a plan MUST go to pricing to select one
-              navigate('/pricing?from_signup=true');
-            }
+            navigate(safeNext || DEFAULT_SAFE_NEXT);
           }
 
           // Run orphan recovery

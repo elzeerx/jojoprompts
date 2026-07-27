@@ -17,7 +17,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock } from "lucide-react";
 import { createLocalizedSchemas, LoginFormValues, MagicLinkFormValues } from "./validation/schemas";
-import { CheckoutContextManager } from "@/utils/checkoutContext";
+// V2: CheckoutContextManager is intentionally NOT imported here — active V2
+// auth flows must not read or clear legacy plan/checkout state.
 import { createLogger } from "@/utils/logging";
 import { securityLogger } from "@/utils/logging/security";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -96,7 +97,6 @@ export function LoginForm() {
         });
         
         // V2: single safe destination — never a plan-based checkout redirect.
-        CheckoutContextManager.clearContext();
         if (hasExplicitNext) {
           window.location.href = safeNextPath;
         } else {

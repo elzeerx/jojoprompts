@@ -71,6 +71,29 @@ describe("resolveSafeNext", () => {
     expect(resolveSafeNext(undefined, "/library")).toBe("/library");
     expect(resolveSafeNext("//evil", "/library")).toBe("/library");
   });
+
+  it("rejects embedded control chars / CRLF / whitespace (smuggling)", () => {
+    for (const p of [
+      "/explore\n",
+      "/explore\r\nSet-Cookie:x=1",
+      "/exp lore",
+      "/explore\t",
+      "/explore\u0000",
+      "/explore\u007F",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(DEFAULT_SAFE_NEXT);
+    }
+  });
+
+  it("URLSearchParams-decoded backslash/scheme still rejected", () => {
+    // %5C -> "\", %2F -> "/", %3A -> ":" once URLSearchParams.get decodes.
+    const sp = new URLSearchParams(
+      "a=/%5Cevil.com&b=%2F%2Fevil.com&c=javascript%3Aalert(1)",
+    );
+    expect(resolveSafeNext(sp.get("a"))).toBe(DEFAULT_SAFE_NEXT);
+    expect(resolveSafeNext(sp.get("b"))).toBe(DEFAULT_SAFE_NEXT);
+    expect(resolveSafeNext(sp.get("c"))).toBe(DEFAULT_SAFE_NEXT);
+  });
 });
 
 describe("readSafeNextParam", () => {

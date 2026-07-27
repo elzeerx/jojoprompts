@@ -1,50 +1,33 @@
-
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CheckoutContextManager } from "@/utils/checkoutContext";
 import { createLogger } from '@/utils/logging';
 import { handleError } from '@/utils/errorHandler';
+import { resolveSafeNext } from "@/lib/v2/safeNext";
 
 const logger = createLogger('GOOGLE_AUTH');
 
+/**
+ * V2 Google OAuth entry used by SignupPage.
+ *
+ * Post-auth destination is derived solely from `resolveSafeNext(next)` — the
+ * legacy plan/fromCheckout query flags are NOT honored, and
+ * CheckoutContextManager is intentionally not imported here. Confirmed users
+ * land on their safe same-origin `next` or the /explore fallback.
+ */
 export function useGoogleAuth() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
-  const selectedPlan = searchParams.get('plan');
-  const fromCheckout = searchParams.get('fromCheckout') === 'true';
+  const safeNextPath = resolveSafeNext(searchParams.get('next'));
 
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
 
     try {
-      // Save checkout context before OAuth redirect
-      if (selectedPlan || fromCheckout) {
-        CheckoutContextManager.saveContext({
-          planId: selectedPlan || undefined,
-          fromCheckout: fromCheckout
-        });
-      }
-
-      // Build redirect URL for Google OAuth
-      // If user has a plan selected, go to checkout; otherwise go to pricing
-      let redirectUrl: string;
-      if (selectedPlan) {
-        redirectUrl = CheckoutContextManager.buildRedirectUrl(
-          window.location.origin,
-          selectedPlan,
-          true
-        );
-      } else {
-        // No plan selected, redirect to pricing after signup
-        redirectUrl = CheckoutContextManager.buildPricingRedirectUrl(
-          window.location.origin,
-          true
-        );
-      }
+      const redirectUrl = `${window.location.origin}${safeNextPath}`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
