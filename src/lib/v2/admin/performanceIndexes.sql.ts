@@ -39,7 +39,7 @@ export const V2_FK_INDEXES_MIGRATION_FILENAME =
   "20260727140438_add_v2_foreign_key_indexes.sql";
 
 export const V2_FK_INDEXES_REMAINING_MIGRATION_FILENAME =
-  "2026072714xx_add_remaining_v2_foreign_key_indexes.sql";
+  "20260727140552_add_remaining_v2_foreign_key_indexes.sql";
 
 export const V2_FK_INDEXES_APPLIED_LIVE = [
   {
@@ -48,10 +48,11 @@ export const V2_FK_INDEXES_APPLIED_LIVE = [
     applied: true,
   },
   {
-    version: "2026072714xx",
+    version: "20260727140552",
     name: "add_remaining_v2_foreign_key_indexes",
     applied: true,
-    exactTimestampPending: true,
+  },
+] as const;
   },
 ] as const;
 
