@@ -121,18 +121,8 @@ export function LoginForm() {
   const onMagicLinkSubmit = async (values: MagicLinkFormValues) => {
     setIsLoading(true);
 
-    try {
-      // Build redirect URL based on current context
-      let redirectUrl = `${window.location.origin}/prompts`;
-
-      // If we're on checkout page or have plan parameters, preserve that context
-      if (nextPath) {
-        redirectUrl = `${window.location.origin}${nextPath}`;
-      } else if (selectedPlan) {
-        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}`;
-      } else if (redirectTo) {
-        redirectUrl = `${window.location.origin}/${redirectTo}`;
-      }
+      // V2: single safe destination — never plan-gated.
+      const redirectUrl = `${window.location.origin}${safeNextPath}`;
 
       const { error } = await supabase.auth.signInWithOtp({
         email: values.email,
