@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { createLogger } from '@/utils/logging';
+import { resolveSafeNext } from '@/lib/v2/safeNext';
 
 const logger = createLogger('MAGIC_LOGIN_PAGE');
 
@@ -15,7 +16,11 @@ export function MagicLoginPage() {
   useEffect(() => {
     const handleMagicLogin = async () => {
       const token = searchParams.get('token');
-      const redirectTo = searchParams.get('redirect') || '/pricing';
+      // V2: default to /explore; legacy `?redirect=/pricing` is rejected by
+      // resolveSafeNext unless it points to a same-origin V2 destination.
+      const redirectTo = resolveSafeNext(
+        searchParams.get('next') ?? searchParams.get('redirect'),
+      );
 
       if (!token) {
         setError('Invalid magic link - no token provided');
