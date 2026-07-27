@@ -80,9 +80,12 @@ describe("/how-it-works route + shell", () => {
     expect(ROUTES.includes('path: "how-it-works"')).toBe(true);
     expect(ROUTES.includes("V2HowItWorksPage")).toBe(true);
   });
-  it("is included in the V2 shell path set", () => {
-    expect(APP.includes('"how-it-works"')).toBe(true);
+  it("renders inside the canonical V2Layout shell (no allowlist)", () => {
+    // V2_PATHS is retired — every non-admin route now renders under V2Layout.
+    expect(APP.includes("<Route element={<V2Layout />}>")).toBe(true);
+    expect(APP.includes("V2_PATHS")).toBe(false);
   });
+
   it("renders bilingual copy and 44px CTAs", () => {
     expect(HOW.includes("min-h-[44px]")).toBe(true);
     expect(/كيف يعمل/.test(HOW)).toBe(true);
