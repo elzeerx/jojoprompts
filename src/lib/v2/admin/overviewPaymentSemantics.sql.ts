@@ -4,40 +4,69 @@
  * intended migration content is version-controlled and testable
  * without applying it to the live database.
  *
- * When approved for application, this SQL should be moved verbatim into
- *   supabase/migrations/20260727100000_admin_overview_payment_semantics.sql
- * via the migration tool. No schema, grant, admin-authorization, or
- * output-key change beyond the payment success/failure semantics
- * documented in the header comment below.
+ * LIVE APPLICATION HISTORY (verified in production, no local file
+ * duplicate is intentional):
+ *   • 20260727134427 admin_overview_payment_semantics
+ *       — first pass: per-order capture-ever/failed-without-capture
+ *         BUT captured_ever was aggregated only within the reporting
+ *         window. This caused a captured-before-window order that
+ *         emitted a later `failed` recovery/retry event inside the
+ *         window to be double-counted as a failure.
+ *   • 20260727135118 admin_overview_payment_semantics_cross_window_fix
+ *       — final pass: success = captured_in_window; failure =
+ *         failed_in_window AND NOT captured_ever(all history) across
+ *         any order touched in the window. This is the definition the
+ *         source fixture below models byte-for-semantics.
+ *
+ * The intended future duplicate-migration filename is therefore the
+ * cross-window fix (already live). Do NOT create a new executable
+ * migration file for this source fixture — it exists only so the
+ * repository has a testable, version-controlled record of the applied
+ * definition and its metric dictionary.
  */
 
+/**
+ * @deprecated Kept for historical reference. The final applied
+ * definition is the cross-window fix — see APPLIED_LIVE_MIGRATIONS.
+ */
 export const ADMIN_OVERVIEW_PAYMENT_SEMANTICS_MIGRATION_FILENAME =
-  "20260727100000_admin_overview_payment_semantics.sql";
+  "20260727135118_admin_overview_payment_semantics_cross_window_fix.sql";
+
+export const APPLIED_LIVE_MIGRATIONS = [
+  {
+    version: "20260727134427",
+    name: "admin_overview_payment_semantics",
+    note: "first pass; captured_ever bound to the reporting window (superseded).",
+  },
+  {
+    version: "20260727135118",
+    name: "admin_overview_payment_semantics_cross_window_fix",
+    note: "final: success=captured_in_window; failure=failed_in_window AND NOT captured_ever(all history).",
+  },
+] as const;
 
 export const ADMIN_OVERVIEW_PAYMENT_SEMANTICS_SQL = `-- V2 pre-launch hardening: correct payment success/failure semantics on
--- the Admin V2 overview.
+-- the Admin V2 overview — cross-window final definition.
 --
 -- METRIC DICTIONARY (payment window = last p_period_days, actor must be
 -- an admin, SECURITY DEFINER, SET search_path = ''):
 --
 --   payment_success_count
---     Distinct orders whose payment_events include AT LEAST ONE
---     \`captured\` event within the window. Order-level, capture-ever
---     semantics — a later refund/recovery \`failed\` event never demotes
---     a captured order.
+--     Distinct orders that received AT LEAST ONE \`captured\` event
+--     WITHIN the reporting window. Order-level, capture-in-window.
 --
 --   payment_failure_count
---     Distinct orders whose payment_events include AT LEAST ONE
---     \`failed\` event within the window AND NO \`captured\` event within
---     the window. A capture in-window supersedes any accompanying
---     failure signal.
+--     Distinct orders that received AT LEAST ONE \`failed\` event
+--     WITHIN the reporting window AND have NO \`captured\` event across
+--     the full payment_events history (any time, in or out of window).
+--     A capture that landed BEFORE the window still supersedes any
+--     later in-window failure signal (retry/recovery), so an order
+--     captured outside the window is never counted as a failure.
 --
 --   payment_success_rate
 --     round(100 * success / (success + failure), 1) when the denominator
 --     is > 0; otherwise NULL so the UI can render "Unavailable" instead
---     of implying a 0% rate. Refund outcomes remain represented by the
---     refund_* metrics; they never influence the payment success/failure
---     split above.
+--     of implying a 0% rate.
 --
 -- Everything else — signature, admin gate, SECURITY DEFINER hardening,
 -- output keys, revenue, entitlements, refunds, downloads, delivery
@@ -110,23 +139,31 @@ BEGIN
     AND revoked_at IS NULL
     AND (expires_at IS NULL OR expires_at > now());
 
-  -- Order-level capture-ever / failed-without-capture semantics.
-  -- A refund/recovery \`failed\` event on an already-captured order MUST
-  -- NOT be counted as a payment failure.
-  WITH per_order AS (
-    SELECT
-      order_id,
-      bool_or(event_type::text = 'captured') AS captured_ever,
-      bool_or(event_type::text = 'failed')   AS failed_ever
+  -- Cross-window capture-ever semantics.
+  -- Only orders that emitted a captured/failed event WITHIN the window
+  -- are considered; captured_ever is computed across ALL history for
+  -- those orders. A captured event before the window still supersedes
+  -- any in-window failure.
+  WITH orders_in_window AS (
+    SELECT DISTINCT order_id
     FROM public.payment_events
     WHERE order_id IS NOT NULL
       AND received_at >= v_since
       AND event_type::text IN ('captured','failed')
-    GROUP BY order_id
+  ),
+  per_order AS (
+    SELECT
+      o.order_id,
+      bool_or(pe.event_type::text = 'captured' AND pe.received_at >= v_since) AS captured_in_window,
+      bool_or(pe.event_type::text = 'captured')                               AS captured_ever,
+      bool_or(pe.event_type::text = 'failed'   AND pe.received_at >= v_since) AS failed_in_window
+    FROM orders_in_window o
+    JOIN public.payment_events pe ON pe.order_id = o.order_id
+    GROUP BY o.order_id
   )
   SELECT
-    count(*) FILTER (WHERE captured_ever),
-    count(*) FILTER (WHERE failed_ever AND NOT captured_ever)
+    count(*) FILTER (WHERE captured_in_window),
+    count(*) FILTER (WHERE failed_in_window AND NOT captured_ever)
   INTO v_success_count, v_failure_count
   FROM per_order;
 

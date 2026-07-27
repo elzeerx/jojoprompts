@@ -1,8 +1,15 @@
-// Frontend security event logging
-// Routes security events through unified logger for future remote sink integration
+// Frontend security event logging.
+//
+// PRE-LAUNCH HARDENING (2026-07-27): the browser-side INSERT into
+// public.security_logs has been removed. Live migration
+// 20260727135637 (system_log_rls_hardening) tightened writes on
+// system/log tables; only service_role and admin-scoped server code
+// should write to security_logs. This module keeps the same public
+// API so existing callers (LoginForm, admin audit hooks) continue to
+// route events through the unified logger and (in the future) a
+// remote sink, but nothing here touches Supabase directly.
 
 import { logSecurity } from './index';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface SecurityEvent {
   action: string;
@@ -26,164 +33,73 @@ export const SECURITY_EVENTS = {
   AUTH_SIGNUP_FAILURE: 'auth.signup.failure',
   AUTH_PASSWORD_RESET: 'auth.password.reset',
   AUTH_SESSION_EXPIRED: 'auth.session.expired',
-  
+
   // Authorization events
   AUTHZ_ACCESS_DENIED: 'authz.access.denied',
   AUTHZ_PERMISSION_ESCALATION: 'authz.permission.escalation',
   AUTHZ_ROLE_CHANGE: 'authz.role.change',
-  
+
   // Data access events
   DATA_EXPORT: 'data.export',
   DATA_SENSITIVE_ACCESS: 'data.sensitive.access',
   DATA_MODIFICATION: 'data.modification',
-  
+
   // Security violations
-  SECURITY_CSP_VIOLATION: 'security.csp.violation',
-  SECURITY_SUSPICIOUS_ACTIVITY: 'security.suspicious.activity',
-  SECURITY_RATE_LIMIT_EXCEEDED: 'security.rate_limit.exceeded',
-  
-  // Admin actions
-  ADMIN_USER_DELETE: 'admin.user.delete',
-  ADMIN_SUBSCRIPTION_CANCEL: 'admin.subscription.cancel',
-  ADMIN_ROLE_CHANGE: 'admin.role.change',
-  ADMIN_ACCESS: 'admin.access'
+  VIOLATION_SUSPICIOUS_ACTIVITY: 'violation.suspicious.activity',
+  VIOLATION_RATE_LIMIT: 'violation.rate.limit',
+  VIOLATION_INVALID_INPUT: 'violation.invalid.input',
+  VIOLATION_XSS_ATTEMPT: 'violation.xss.attempt',
+  VIOLATION_CSRF_ATTEMPT: 'violation.csrf.attempt',
 } as const;
 
-// Get client IP (best effort in browser)
-function getClientIP(): string {
-  // In browser, we can't get real IP, but we can get some network info
-  return 'client-side';
-}
-
-// Get user agent
+function getIP(): string { return 'client'; }
 function getUserAgent(): string {
-  return navigator.userAgent.substring(0, 200);
+  return typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
 }
 
-// Main security logging function
 export function logSecurityEvent(event: SecurityEvent): void {
   const enhancedEvent = {
     ...event,
-    level: event.success === false ? 'error' as const : 'info' as const,
-    message: `Security event: ${event.action}`,
-    ipAddress: event.ipAddress || getClientIP(),
-    userAgent: event.userAgent || getUserAgent()
+    ipAddress: event.ipAddress || getIP(),
+    userAgent: event.userAgent || getUserAgent(),
   };
 
-  // Log through unified logger
-  logSecurity(enhancedEvent);
-
-  // Also send to Supabase security_logs table (if authenticated)
-  // This maintains existing behavior for audit trails
-  sendToSupabaseSecurityLogs(enhancedEvent).catch(error => {
-    // Don't block on security log failures, but record them
-    console.warn('Failed to send security event to Supabase:', error);
+  // Route through unified logger only. No client-role DB writes.
+  logSecurity({
+    level: event.success === false ? 'warn' : 'info',
+    message: event.action,
+    action: enhancedEvent.action,
+    resource: enhancedEvent.resource,
+    success: enhancedEvent.success,
+    userId: enhancedEvent.userId,
+    data: enhancedEvent.data,
+    ipAddress: enhancedEvent.ipAddress,
+    userAgent: enhancedEvent.userAgent,
   });
 }
 
-// Send to Supabase security logs (existing behavior)
-async function sendToSupabaseSecurityLogs(event: SecurityEvent & { 
-  ipAddress: string; 
-  userAgent: string; 
-}): Promise<void> {
-  try {
-    // Only send if user is authenticated to avoid spam
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    await supabase
-      .from('security_logs')
-      .insert({
-        user_id: event.userId || session.user?.id,
-        action: event.action,
-        details: {
-          resource: event.resource,
-          success: event.success,
-          data: event.data,
-          timestamp: new Date().toISOString()
-        },
-        ip_address: event.ipAddress,
-        user_agent: event.userAgent
-      });
-  } catch (error) {
-    // Silently fail for security logs to avoid disrupting user experience
-    console.debug('Security log to Supabase failed:', error);
-  }
-}
-
-// Convenience functions for common security events
+// Convenience API — preserved for existing callers.
 export const securityLogger = {
-  // Authentication
-  loginAttempt: (userId?: string, data?: any) => 
-    logSecurityEvent({ 
-      action: SECURITY_EVENTS.AUTH_LOGIN_ATTEMPT, 
-      userId, 
-      data, 
-      resource: 'auth' 
-    }),
-  
-  loginSuccess: (userId: string, data?: any) => 
-    logSecurityEvent({ 
-      action: SECURITY_EVENTS.AUTH_LOGIN_SUCCESS, 
-      userId, 
-      data, 
-      success: true, 
-      resource: 'auth' 
-    }),
-  
-  loginFailure: (reason: string, data?: any) => 
-    logSecurityEvent({ 
-      action: SECURITY_EVENTS.AUTH_LOGIN_FAILURE, 
-      data: { reason, ...data }, 
-      success: false, 
-      resource: 'auth' 
-    }),
-
-  logout: (userId: string) => 
-    logSecurityEvent({ 
-      action: SECURITY_EVENTS.AUTH_LOGOUT, 
-      userId, 
-      success: true, 
-      resource: 'auth' 
-    }),
-
-  // Authorization
-  accessDenied: (userId: string, resource: string, requiredRole?: string) => 
-    logSecurityEvent({ 
-      action: SECURITY_EVENTS.AUTHZ_ACCESS_DENIED, 
-      userId, 
-      resource, 
-      data: { requiredRole }, 
-      success: false 
-    }),
-
-  // Admin actions  
-  adminAccess: (userId: string, resource: string) => 
-    logSecurityEvent({ 
-      action: SECURITY_EVENTS.ADMIN_ACCESS, 
-      userId, 
-      resource, 
-      success: true 
-    }),
-
-  adminUserDelete: (adminId: string, targetUserId: string) => 
-    logSecurityEvent({ 
-      action: SECURITY_EVENTS.ADMIN_USER_DELETE, 
-      userId: adminId, 
-      resource: 'user', 
-      data: { targetUserId }, 
-      success: true 
-    }),
-
-  // Security violations
-  suspiciousActivity: (activity: string, userId?: string, data?: any) => 
-    logSecurityEvent({ 
-      action: SECURITY_EVENTS.SECURITY_SUSPICIOUS_ACTIVITY, 
-      userId, 
-      data: { activity, ...data }, 
-      success: false, 
-      resource: 'security' 
-    })
+  loginAttempt: (userId?: string, data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.AUTH_LOGIN_ATTEMPT, userId, data, resource: 'auth' }),
+  loginSuccess: (userId: string, data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.AUTH_LOGIN_SUCCESS, userId, data, success: true, resource: 'auth' }),
+  loginFailure: (reason: string, data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.AUTH_LOGIN_FAILURE, success: false, data: { reason, ...data }, resource: 'auth' }),
+  logout: (userId: string) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.AUTH_LOGOUT, userId, resource: 'auth' }),
+  signupAttempt: (data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.AUTH_SIGNUP_ATTEMPT, data, resource: 'auth' }),
+  signupSuccess: (userId: string, data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.AUTH_SIGNUP_SUCCESS, userId, data, success: true, resource: 'auth' }),
+  signupFailure: (reason: string, data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.AUTH_SIGNUP_FAILURE, success: false, data: { reason, ...data }, resource: 'auth' }),
+  passwordReset: (userId?: string, data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.AUTH_PASSWORD_RESET, userId, data, resource: 'auth' }),
+  accessDenied: (userId?: string, resource?: string, data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.AUTHZ_ACCESS_DENIED, userId, resource, data, success: false }),
+  suspiciousActivity: (userId?: string, data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.VIOLATION_SUSPICIOUS_ACTIVITY, userId, data }),
+  rateLimit: (userId?: string, data?: any) =>
+    logSecurityEvent({ action: SECURITY_EVENTS.VIOLATION_RATE_LIMIT, userId, data }),
 };
-
-export default securityLogger;

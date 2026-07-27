@@ -9,7 +9,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { RoleGuard, AdminGuard } from "./components/auth/Guard";
-import { SecurityMonitoringWrapper } from "./components/SecurityMonitoringWrapper";
+// SecurityMonitoringWrapper removed pre-launch: no active browser client
+// should INSERT into public.security_logs. Server-side/admin activity
+// logging still happens via Edge Functions and DB triggers.
 import { routes } from "./config/routes";
 import { adminSectionElements } from "./pages/admin/layout/adminSectionElements";
 import { V2Layout } from "./components/v2/V2Layout";
@@ -95,10 +97,9 @@ function App() {
             <ErrorBoundary>
               <LanguageProvider>
                 <AuthProvider>
-                  <SecurityMonitoringWrapper>
-                    <Suspense fallback={<SuspenseLoader />}>
-                      <Routes>
-                        {/* MCP OAuth consent — standalone, outside any chrome */}
+                  <Suspense fallback={<SuspenseLoader />}>
+                    <Routes>
+                      {/* MCP OAuth consent — standalone, outside any chrome */}
                         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
 
                         {/* Admin — dedicated shell, no customer chrome */}
@@ -216,11 +217,10 @@ function App() {
                             ))}
                           </Route>
                         )}
-                      </Routes>
-                    </Suspense>
-                    <Toaster />
-                    <Sonner />
-                  </SecurityMonitoringWrapper>
+                    </Routes>
+                  </Suspense>
+                  <Toaster />
+                  <Sonner />
                 </AuthProvider>
               </LanguageProvider>
             </ErrorBoundary>
