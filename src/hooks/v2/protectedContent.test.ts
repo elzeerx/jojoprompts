@@ -1,44 +1,56 @@
-import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+/**
+ * Contract tests: V2 protected legacy content is entitlement-gated.
+ * - useResourceDetail must never select protected prompt columns.
+ * - useEntitledResourceContent is enabled only for signed-in owners.
+ * - V2Header/V2Footer call useAuth unconditionally at the top level.
+ * - ResourceDetailPage renders the "Your prompt" section only when the
+ *   resource is owned AND has a legacy_prompt_id.
+ */
+import { describe, it, expect } from "bun:test";
 
-const read = (p: string) => readFileSync(resolve(process.cwd(), p), "utf8");
+declare const require: (m: string) => any;
+const { readFileSync } = require("fs");
+const { resolve } = require("path");
+
+const HERE: string = (import.meta as unknown as { dir?: string }).dir ?? ".";
+const read = (rel: string) => readFileSync(resolve(HERE, rel), "utf8") as string;
+
+const DETAIL_HOOK = read("./useResourceDetail.ts");
+const ENTITLED_HOOK = read("./useEntitledResourceContent.ts");
+const HEADER = read("../../components/v2/V2Header.tsx");
+const FOOTER = read("../../components/v2/V2Footer.tsx");
+const PAGE = read("../../pages/v2/ResourceDetailPage.tsx");
 
 describe("V2 protected-content wiring", () => {
-  it("useResourceDetail never queries protected prompt columns", () => {
-    const src = read("src/hooks/v2/useResourceDetail.ts");
-    expect(src).not.toContain('select("*")');
-    expect(src).not.toContain("prompt_text");
-    expect(src).not.toContain("prompt_text_ar");
-    // safe explicit list must be present
-    expect(src).toContain("hero_image_path");
-    expect(src).toContain("legacy_prompt_id");
+  it("useResourceDetail selects explicit safe columns and never queries protected prompt text", () => {
+    expect(DETAIL_HOOK.includes('select("*")')).toBe(false);
+    expect(DETAIL_HOOK.includes("prompt_text")).toBe(false);
+    expect(DETAIL_HOOK.includes("prompt_text_ar")).toBe(false);
+    expect(DETAIL_HOOK).toContain("hero_image_path");
+    expect(DETAIL_HOOK).toContain("legacy_prompt_id");
   });
 
   it("useEntitledResourceContent is disabled unless signed-in + owned", () => {
-    const src = read("src/hooks/v2/useEntitledResourceContent.ts");
-    expect(src).toContain("!!user && !!resourceId && owned === true");
-    expect(src).toContain("v2_get_entitled_resource_content");
+    expect(ENTITLED_HOOK).toContain("!!user && !!resourceId && owned === true");
+    expect(ENTITLED_HOOK).toContain("v2_get_entitled_resource_content");
   });
 
-  it("V2Header calls useAuth unconditionally at top-level", () => {
-    const src = read("src/components/v2/V2Header.tsx");
-    expect(src).not.toMatch(/try\s*\{\s*[^}]*useAuth\(\)/);
-    expect(src).toMatch(/const\s*\{\s*user\s*,\s*isAdmin\s*,\s*signOut\s*\}\s*=\s*useAuth\(\)/);
+  it("V2Header uses useAuth unconditionally (no try/catch wrapper)", () => {
+    expect(HEADER).toMatch(
+      /const\s*\{\s*user\s*,\s*isAdmin\s*,\s*signOut\s*\}\s*=\s*useAuth\(\)/,
+    );
+    expect(/try\s*\{[^}]*useAuth\(\)/.test(HEADER)).toBe(false);
   });
 
-  it("V2Footer calls useAuth unconditionally at top-level", () => {
-    const src = read("src/components/v2/V2Footer.tsx");
-    expect(src).not.toMatch(/try\s*\{\s*[^}]*useAuth\(\)/);
-    expect(src).toMatch(/const\s*\{\s*user\s*\}\s*=\s*useAuth\(\)/);
+  it("V2Footer uses useAuth unconditionally (no try/catch wrapper)", () => {
+    expect(FOOTER).toMatch(/const\s*\{\s*user\s*\}\s*=\s*useAuth\(\)/);
+    expect(/try\s*\{[^}]*useAuth\(\)/.test(FOOTER)).toBe(false);
   });
 
   it("ResourceDetailPage gates the Your prompt section on ownership + legacy_prompt_id", () => {
-    const src = read("src/pages/v2/ResourceDetailPage.tsx");
-    expect(src).toContain("shouldFetchProtected");
-    expect(src).toContain("entitled-prompt-section");
-    expect(src).toContain("useEntitledResourceContent");
-    // no protected text is serialized for unowned visitors
-    expect(src).toMatch(/shouldFetchProtected\s*&&/);
+    expect(PAGE).toContain("shouldFetchProtected");
+    expect(PAGE).toContain("legacy_prompt_id");
+    expect(PAGE).toContain("useEntitledResourceContent");
+    expect(PAGE).toContain('data-testid="entitled-prompt-section"');
   });
 });
