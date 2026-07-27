@@ -756,22 +756,51 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
       {/* Bulk confirmation */}
       <AlertDialog open={!!confirmBulk} onOpenChange={(v) => (v ? null : setConfirmBulk(null))}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm bulk {confirmBulk} on {selected.size} resource(s)?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmBulk === "archive"
-                ? "Archived resources are hidden from the public catalog. Recoverable."
+          {(() => {
+            const visible = rows.map((r) => ({ id: r.id, lifecycle: r.lifecycle as any }));
+            const e = confirmBulk
+              ? computeBulkEligibility(selected, visible, confirmBulk)
+              : { eligibleIds: [], eligibleCount: 0, skippedCount: 0, totalSelected: selected.size };
+            const actionLabel =
+              confirmBulk === "restore" ? "Restore to draft"
+              : confirmBulk === "review" ? "Submit for review"
+              : confirmBulk === "publish" ? "Publish"
+              : confirmBulk === "archive" ? "Archive"
+              : "";
+            const body =
+              confirmBulk === "archive"
+                ? "Archived resources are hidden from the public catalog. Recoverable via Restore."
                 : confirmBulk === "publish"
                 ? "Each resource runs server-side publish validation. Partial-success is reported per row."
-                : "Submits selected resources to the review queue."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirmBulk && mutate.mutate({ ids: Array.from(selected), action: confirmBulk })} disabled={mutate.isPending}>
-              {mutate.isPending ? <Loader2 className="me-2 h-3.5 w-3.5 animate-spin" /> : null} Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
+                : confirmBulk === "restore"
+                ? "Restore returns archived resources to draft. It does not republish."
+                : "Submits selected resources to the review queue.";
+            return (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{actionLabel}: {e.eligibleCount} eligible</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {body}
+                    <br />
+                    <span className="text-xs">
+                      {e.eligibleCount} of {e.totalSelected} selected will be affected.
+                      {e.skippedCount > 0 ? ` ${e.skippedCount} skipped (invalid state for this action).` : ""}
+                    </span>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => confirmBulk && e.eligibleCount > 0 && mutate.mutate({ ids: e.eligibleIds, action: confirmBulk })}
+                    disabled={mutate.isPending || e.eligibleCount === 0}
+                    className="min-h-[44px]"
+                  >
+                    {mutate.isPending ? <Loader2 className="me-2 h-3.5 w-3.5 animate-spin" /> : null} Confirm
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            );
+          })()}
         </AlertDialogContent>
       </AlertDialog>
 
