@@ -56,9 +56,36 @@ detail route consumes it via `src/hooks/v2/useResourceDetail.ts` to render
 permission/licence badges before authentication. Its anon read grant is
 intentional and must be preserved. Do not change live grants on this table.
 
-## 4. Follow-ups (not executed here)
+## 4. Applied-live status (verified)
 
-* Deploy 410 stubs for the thirteen legacy Edge Functions above.
-* Apply `securityLogsHardening` and `performanceIndexes` fixtures.
-* Re-run `supabase--linter` and `security--run_security_scan` after
-  application, then reconcile advisor warnings.
+The following hardening passes are **applied live** on the connected
+Supabase project and recorded as source fixtures under
+`src/lib/v2/admin/`:
+
+* `20260727135637 system_log_rls_hardening` — RLS write hardening on
+  the 10 system-log tables. Fixture: `systemLogRlsHardening.sql.ts`.
+* `20260727141455 restrict_security_logs_client_writes` — anon and
+  authenticated INSERT revoked on `security_logs`. Fixture:
+  `securityLogsClientWriteRestriction.sql.ts`.
+* `20260727140438 add_v2_foreign_key_indexes` and
+  `20260727140552 add_remaining_v2_foreign_key_indexes` — 15 V2 FK
+  indexes. Fixture: `performanceIndexes.sql.ts`.
+* `20260727140943 optimize_v2_rls_auth_initplans` — `auth.uid()` →
+  `(select auth.uid())` rewrite for InitPlan optimisation. Fixture:
+  `rlsAuthInitplanOptimization.sql.ts`.
+* `20260727141911 restrict_anonymous_security_definer_execution` and
+  `20260727142004 enforce_security_definer_execution_allowlist` —
+  authoritative SECURITY DEFINER EXECUTE allowlist (6 anon /
+  20 authenticated / 8 trigger, 34 total). Fixture:
+  `securityDefinerExecutionAllowlist.sql.ts`.
+* `20260727142841 restrict_legacy_anon_table_surface` — REVOKE ALL
+  PRIVILEGES FROM anon on `collection_prompts`, `collections`,
+  `prompt_generator_templates`, `prompt_templates`, and
+  `subscription_plans`. Fixture: `legacyAnonTableRestriction.sql.ts`.
+
+## 5. Follow-ups (still pending exact approval)
+
+* Retire the thirteen legacy Edge Functions in §1 by deploying the
+  same HTTP 410 stub pattern used in Pre-launch Security Pass A.
+  **Not executed in this pass** — awaits explicit approval.
+
