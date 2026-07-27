@@ -53,9 +53,7 @@ describe("V2 public shell — customer chrome is exclusively V2Layout", () => {
     expect(/path:\s*"\*"/.test(ROUTES_SRC)).toBe(true);
   });
 
-    expect(v2Block![0].includes("routes.map(")).toBe(true);
-    expect(/path:\s*"\*"/.test(ROUTES_SRC)).toBe(true);
-  });
+
 
   it("RootLayout source is not imported by any active router entry point", () => {
     // The file may remain on disk as archival, but App.tsx must not import it.
