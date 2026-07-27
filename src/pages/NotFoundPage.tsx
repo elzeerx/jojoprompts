@@ -1,76 +1,149 @@
-
-import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Compass, Home, LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { FileText, Home, Sparkles } from "lucide-react";
-import { createLogger } from '@/utils/logging';
+import { useLanguage } from "@/contexts/LanguageContext";
+import { createLogger } from "@/utils/logging";
 
-const logger = createLogger('NOT_FOUND_PAGE');
+const logger = createLogger("NOT_FOUND_PAGE");
 
+interface Copy {
+  eyebrow: string;
+  title: string;
+  lead: string;
+  detail: string;
+  explore: string;
+  home: string;
+  contact: string;
+  code: string;
+}
+
+const COPY: Record<"en" | "ar", Copy> = {
+  en: {
+    eyebrow: "404",
+    title: "This page has moved or no longer exists",
+    lead:
+      "The link you followed didn't match anything in the JojoPrompts marketplace.",
+    detail:
+      "Head back to discovery to browse skills, automations, prompts, image styles and bundles — or reach out and we'll help you find what you were looking for.",
+    explore: "Browse the marketplace",
+    home: "Go to home",
+    contact: "Contact support",
+    code: "Error code",
+  },
+  ar: {
+    eyebrow: "٤٠٤",
+    title: "هذه الصفحة انتقلت أو لم تعد موجودة",
+    lead: "الرابط الذي فتحته لا يطابق أي محتوى في متجر JojoPrompts.",
+    detail:
+      "عد إلى الاستكشاف لتصفح المهارات والأتمتة والموجهات وأنماط الصور والحزم — أو تواصل معنا وسنساعدك في العثور على ما تبحث عنه.",
+    explore: "تصفح المتجر",
+    home: "الصفحة الرئيسية",
+    contact: "تواصل مع الدعم",
+    code: "رمز الخطأ",
+  },
+};
+
+/**
+ * V2 marketplace 404 — bilingual EN/AR, RTL-aware, reduced-motion safe,
+ * 44px touch targets, no legacy prompt copy and no floating Add Prompt
+ * shortcut. Rendered inside V2Layout via the top-level wildcard route.
+ */
 export default function NotFoundPage() {
+  const { language, isRTL, t } = useLanguage();
   const location = useLocation();
+  const lang: "en" | "ar" = language === "ar" ? "ar" : "en";
+  const copy = COPY[lang];
 
   useEffect(() => {
-    logger.error('404 Error: Non-existent route accessed', { path: location.pathname });
+    logger.error("404 Error: Non-existent route accessed", {
+      path: location.pathname,
+    });
   }, [location.pathname]);
 
+  // `t()` may resolve project translation keys when present; fall back to
+  // the inline dictionary otherwise so this page renders correctly even
+  // without dedicated translation entries.
+  const resolve = (key: string, fallback: string): string => {
+    try {
+      const value = t(key);
+      return value && value !== key ? value : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-9rem)] mobile-container-padding relative">
-      {/* Enhanced mobile background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-10 right-10 text-warm-gold/20 animate-pulse">
-          <Sparkles className="h-6 w-6 sm:h-8 sm:w-8" />
-        </div>
-        <div className="absolute bottom-10 left-10 text-muted-teal/20 animate-pulse delay-1000">
-          <Sparkles className="h-4 w-4 sm:h-6 sm:w-6" />
-        </div>
-        <div className="absolute top-1/4 left-1/4 text-warm-gold/10 animate-bounce delay-500">
-          <Sparkles className="h-5 w-5 sm:h-7 sm:w-7" />
-        </div>
+    <section
+      dir={isRTL ? "rtl" : "ltr"}
+      className="mx-auto flex min-h-[calc(100vh-16rem)] w-full max-w-3xl flex-col items-center justify-center gap-8 px-4 py-16 text-center sm:py-24"
+      aria-labelledby="notfound-title"
+    >
+      <div
+        className="pointer-events-none absolute inset-x-0 top-24 -z-10 flex justify-center motion-safe:animate-pulse motion-reduce:animate-none"
+        aria-hidden="true"
+      >
+        <div className="h-40 w-40 rounded-full bg-warm-gold/10 blur-3xl sm:h-64 sm:w-64" />
       </div>
 
-      <div className="text-center relative z-10 max-w-md mx-auto">
-        <div className="rounded-full bg-warm-gold/10 p-4 sm:p-6 mb-6 mx-auto w-fit border-2 border-warm-gold/20">
-          <FileText className="h-8 w-8 sm:h-12 sm:w-12 text-warm-gold" />
-        </div>
-        
-        <h1 className="text-6xl sm:text-8xl font-bold tracking-tight mb-4 text-dark-base bg-gradient-to-r from-warm-gold to-muted-teal bg-clip-text text-transparent">
-          404
-        </h1>
-        
-        <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-dark-base">
-          Page Not Found
-        </h2>
-        
-        <p className="text-base sm:text-lg text-muted-foreground mb-6 leading-relaxed">
-          Oops! The page you're looking for seems to have vanished into the digital void.
-        </p>
-        
-        <p className="text-sm sm:text-base text-muted-foreground mb-8 px-4">
-          It seems the prompt you were searching for has disappeared. 
-          Let's get you back to exploring our collection of AI prompts.
-        </p>
-        
-        <div className="space-y-3 sm:space-y-4">
-          <Button asChild className="w-full sm:w-auto mobile-button-primary">
-            <Link to="/" className="flex items-center justify-center gap-2">
-              <Home className="h-4 w-4" />
-              Return Home
-            </Link>
-          </Button>
-          
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-            <Button asChild variant="outline" className="mobile-button-secondary">
-              <Link to="/prompts">Browse Prompts</Link>
-            </Button>
-            
-            <Button asChild variant="outline" className="mobile-button-secondary">
-              <Link to="/contact">Contact Support</Link>
-            </Button>
-          </div>
-        </div>
+      <p className="text-sm font-medium uppercase tracking-[0.35em] text-muted-foreground">
+        {resolve("notFound.eyebrow", copy.eyebrow)}
+        <span className="mx-2 text-warm-gold" aria-hidden="true">
+          ·
+        </span>
+        {resolve("notFound.codeLabel", copy.code)} 404
+      </p>
+
+      <h1
+        id="notfound-title"
+        className="text-balance text-3xl font-semibold leading-tight text-dark-base sm:text-5xl"
+      >
+        {resolve("notFound.title", copy.title)}
+      </h1>
+
+      <p className="max-w-xl text-base text-muted-foreground sm:text-lg">
+        {resolve("notFound.lead", copy.lead)}
+      </p>
+      <p className="max-w-xl text-sm text-muted-foreground/90 sm:text-base">
+        {resolve("notFound.detail", copy.detail)}
+      </p>
+
+      <div className="flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
+        <Button
+          asChild
+          size="lg"
+          className="min-h-[44px] min-w-[44px] focus-visible:ring-2 focus-visible:ring-offset-2"
+        >
+          <Link to="/explore" aria-label={resolve("notFound.explore", copy.explore)}>
+            <Compass className="h-4 w-4" aria-hidden="true" />
+            <span>{resolve("notFound.explore", copy.explore)}</span>
+          </Link>
+        </Button>
+
+        <Button
+          asChild
+          size="lg"
+          variant="outline"
+          className="min-h-[44px] min-w-[44px] focus-visible:ring-2 focus-visible:ring-offset-2"
+        >
+          <Link to="/" aria-label={resolve("notFound.home", copy.home)}>
+            <Home className="h-4 w-4" aria-hidden="true" />
+            <span>{resolve("notFound.home", copy.home)}</span>
+          </Link>
+        </Button>
+
+        <Button
+          asChild
+          size="lg"
+          variant="ghost"
+          className="min-h-[44px] min-w-[44px] focus-visible:ring-2 focus-visible:ring-offset-2"
+        >
+          <Link to="/contact" aria-label={resolve("notFound.contact", copy.contact)}>
+            <LifeBuoy className="h-4 w-4" aria-hidden="true" />
+            <span>{resolve("notFound.contact", copy.contact)}</span>
+          </Link>
+        </Button>
       </div>
-    </div>
+    </section>
   );
 }
