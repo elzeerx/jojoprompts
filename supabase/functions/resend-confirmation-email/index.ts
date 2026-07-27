@@ -1,15 +1,15 @@
 // Archival stub — RETIRED.
 //
-// The previous implementation used SUPABASE_SERVICE_ROLE_KEY to list
-// every auth user, generate invite links, and send email without
-// caller authentication. That is an account-enumeration and abuse
-// surface. It has been replaced in the client with Supabase Auth's
-// built-in `auth.resend` / `auth.signInWithOtp` flows.
+// The previous implementation used the service-role key to list every
+// auth user, generate invite links, and send email without caller
+// authentication. That is an account-enumeration and abuse surface.
+// It has been replaced in the client with Supabase Auth's built-in
+// resend / OTP flows.
 //
 // This stub is source-only. It is intentionally NOT deployed in the
 // current pass. If a future intentional deploy happens, it will
-// respond with HTTP 410 Gone and no service-role, admin-API, or email
-// sending behavior remains.
+// respond with HTTP 410 Gone and no elevated-privilege, admin API,
+// or email sending behavior remains.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 

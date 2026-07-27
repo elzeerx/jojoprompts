@@ -1,11 +1,11 @@
 // Archival stub — RETIRED.
 //
-// The previous implementation used SUPABASE_SERVICE_ROLE_KEY to
-// generate invite links for arbitrary caller-supplied emails and to
-// send confirmation mail without any caller authentication. That is a
+// The previous implementation used the service-role key to generate
+// invite links for arbitrary caller-supplied emails and to send
+// confirmation mail without any caller authentication. That is a
 // spam / account-abuse surface. Client signup now relies exclusively
-// on Supabase Auth's built-in `auth.signUp` / `auth.signInWithOtp`
-// flows and their generic responses.
+// on Supabase Auth's built-in signUp / OTP flows and their generic
+// responses.
 //
 // Source-only. Intentionally NOT deployed in this pass. If a future
 // intentional deploy happens, it responds with HTTP 410 Gone.
