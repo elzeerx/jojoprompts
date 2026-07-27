@@ -157,3 +157,65 @@ describe("retired auth Edge Function stubs are archival 410s", () => {
     });
   }
 });
+
+describe("password reset uses only official Supabase Auth methods", () => {
+  const forgot = readFileSync(
+    resolve(SRC, "components/auth/ForgotPasswordForm.tsx"),
+    "utf8",
+  ) as string;
+  const reset = readFileSync(
+    resolve(SRC, "components/auth/ResetPasswordForm.tsx"),
+    "utf8",
+  ) as string;
+  const page = readFileSync(
+    resolve(SRC, "pages/ResetPasswordPage.tsx"),
+    "utf8",
+  ) as string;
+
+  it("ForgotPasswordForm calls supabase.auth.resetPasswordForEmail and no retired slug", () => {
+    expect(/supabase\.auth\.resetPasswordForEmail\s*\(/.test(forgot)).toBe(true);
+    expect(/functions\.invoke\(\s*['"]send-password-reset['"]/.test(forgot)).toBe(false);
+    expect(/redirectTo:\s*`.*\/reset-password/.test(forgot)).toBe(true);
+  });
+
+  it("ResetPasswordForm calls supabase.auth.updateUser and no retired slug", () => {
+    expect(/supabase\.auth\.updateUser\s*\(/.test(reset)).toBe(true);
+    expect(/functions\.invoke\(\s*['"]verify-password-reset['"]/.test(reset)).toBe(false);
+    // Recovery-session detection, no raw custom token consumption.
+    expect(
+      /PASSWORD_RECOVERY/.test(reset) || /onAuthStateChange/.test(reset),
+    ).toBe(true);
+  });
+
+  it("ResetPasswordPage does not gate on raw query token", () => {
+    expect(/searchParams\.get\(\s*['"]token['"]/.test(page)).toBe(false);
+    expect(/searchParams\.get\(\s*['"]access_token['"]/.test(page)).toBe(false);
+  });
+});
+
+describe("smart-unsubscribe is token-only", () => {
+  const p = join(FUNCTIONS_ROOT, "smart-unsubscribe", "index.ts");
+  const src = readFileSync(p, "utf8") as string;
+
+  it("does not call auth.admin.listUsers", () => {
+    expect(/listUsers\s*\(/.test(src)).toBe(false);
+    expect(/auth\.admin\./.test(src)).toBe(false);
+  });
+
+  it("does not accept a raw email query parameter or body", () => {
+    expect(/searchParams\.get\(\s*['"]email['"]/.test(src)).toBe(false);
+    // No JSON body parsing branch that would carry a raw email.
+    expect(/UnsubscribeRequest/.test(src)).toBe(false);
+  });
+
+  it("enforces a strict token contract and GET-only method", () => {
+    expect(/TOKEN_RE|\[A-Za-z0-9\]\{32/.test(src)).toBe(true);
+    expect(/req\.method\s*!==\s*['"]GET['"]/.test(src)).toBe(true);
+  });
+
+  it("does not mint / return a new unsubscribe link to any caller", () => {
+    expect(/unsubscribeLink:\s*/.test(src)).toBe(false);
+    expect(/generateUnsubscribeToken/.test(src)).toBe(false);
+  });
+});
+
