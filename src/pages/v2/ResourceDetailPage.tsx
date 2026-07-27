@@ -19,10 +19,12 @@ import {
   V2_COPY,
 } from "@/config/v2Flags";
 
-import { ShieldCheck, Download, Loader2, ArrowLeft, Timer } from "lucide-react";
+import { ShieldCheck, Download, Loader2, ArrowLeft, Timer, Copy, Check } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
 import { ReportResourceButton } from "@/components/v2/ReportResourceButton";
+import { useEntitledResourceContent } from "@/hooks/v2/useEntitledResourceContent";
+import { useCopyToClipboard } from "@/hooks/ui/useCopyToClipboard";
 
 
 type Lang = "en" | "ar";
@@ -48,6 +50,23 @@ export default function ResourceDetailPage() {
       (e) => e.scope === "resource" && e.resource_id === data.resource.id,
     );
   }, [data, library]);
+
+  const legacyPromptId = (data?.resource as { legacy_prompt_id?: string | null } | undefined)
+    ?.legacy_prompt_id ?? null;
+  const shouldFetchProtected = owned && !!legacyPromptId;
+  const {
+    data: protectedContent,
+    isLoading: protectedLoading,
+    isError: protectedError,
+  } = useEntitledResourceContent(
+    shouldFetchProtected ? data?.resource?.id ?? null : null,
+    shouldFetchProtected,
+  );
+  const { copyToClipboard, hasCopied } = useCopyToClipboard({
+    successTitle: language === "ar" ? "تم النسخ" : "Copied",
+    successDescription:
+      language === "ar" ? "تم نسخ البرومبت." : "Prompt copied to clipboard.",
+  });
 
   if (isLoading) {
     return (
