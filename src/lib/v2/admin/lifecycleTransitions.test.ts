@@ -32,12 +32,12 @@ describe("lifecycleTransitions matrix", () => {
   it("restore always yields draft (documented safe state)", () => {
     expect(nextLifecycle("archived", "restore")).toBe("draft");
   });
-  it("nextLifecycle returns null for invalid transitions", () => {
+  it("nextLifecycle returns null for invalid transitions and non-null for allowed ones", () => {
     for (const s of ALL_STATES) {
       for (const a of ALL_ACTIONS) {
         const allowed = isTransitionAllowed(s, a);
         const next = nextLifecycle(s, a);
-        if (allowed) expect(next).not.toBeNull();
+        if (allowed) expect(next === null).toBe(false);
         else expect(next).toBeNull();
       }
     }
