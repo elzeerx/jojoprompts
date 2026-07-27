@@ -1,4 +1,12 @@
-import { supabase } from "@/integrations/supabase/client";
+// Legacy client-side security logger — DB writes REMOVED (2026-07-27
+// pre-launch hardening). Live migration 20260727135637 revoked
+// authenticated INSERT on public.security_logs. Any remaining callers
+// (e.g. RouteGuard) still receive their console warn/error signal
+// through the console fallback below, but no browser code inserts
+// into security_logs anymore. Server-side logging paths are unchanged.
+//
+// Kept as a compatibility shim so existing imports continue to compile.
+// New code should use `securityLogger` from '@/utils/logging/security'.
 
 interface RouteAccessLog {
   path: string;
@@ -26,124 +34,38 @@ interface SecurityEvent {
 }
 
 class SecurityLogger {
-  private async getClientInfo() {
-    return {
-      userAgent: navigator.userAgent,
-      timestamp: new Date().toISOString(),
-      referrer: document.referrer || undefined
-    };
+  async logRouteAccess(_data: RouteAccessLog): Promise<void> {
+    // No-op: browser must not INSERT into public.security_logs.
   }
 
-  async logRouteAccess(data: RouteAccessLog) {
-    try {
-      const clientInfo = await this.getClientInfo();
-      
-      await supabase.from('security_logs').insert({
-        action: 'route_access',
-        user_id: data.userId || null,
-        user_agent: clientInfo.userAgent,
-        details: {
-          path: data.path,
-          user_role: data.userRole,
-          required_role: data.requiredRole,
-          required_permissions: data.requiredPermissions,
-          timestamp: clientInfo.timestamp,
-          referrer: clientInfo.referrer
-        }
-      });
-    } catch (error) {
-      console.warn('Failed to log route access:', error);
-    }
+  async logUnauthorizedAccess(data: UnauthorizedAccessLog): Promise<void> {
+    // Preserve console visibility for immediate debugging; no DB write.
+    console.warn('Unauthorized access attempt:', {
+      path: data.path,
+      userRole: data.userRole,
+      requiredRole: data.requiredRole,
+      reason: data.reason,
+    });
   }
 
-  async logUnauthorizedAccess(data: UnauthorizedAccessLog) {
-    try {
-      const clientInfo = await this.getClientInfo();
-      
-      await supabase.from('security_logs').insert({
-        action: 'unauthorized_access_attempt',
-        user_id: data.userId,
-        user_agent: clientInfo.userAgent,
-        details: {
-          path: data.path,
-          user_role: data.userRole,
-          required_role: data.requiredRole,
-          required_permissions: data.requiredPermissions,
-          reason: data.reason,
-          timestamp: clientInfo.timestamp,
-          severity: 'medium'
-        }
-      });
-
-      // Also log to console for immediate debugging
-      console.warn('Unauthorized access attempt:', {
-        path: data.path,
-        userRole: data.userRole,
-        requiredRole: data.requiredRole,
-        reason: data.reason
-      });
-    } catch (error) {
-      console.error('Failed to log unauthorized access:', error);
-    }
+  async logSecurityEvent(_data: SecurityEvent): Promise<void> {
+    // No-op: browser must not INSERT into public.security_logs.
   }
 
-  async logSecurityEvent(data: SecurityEvent) {
-    try {
-      const clientInfo = await this.getClientInfo();
-      
-      await supabase.from('security_logs').insert({
-        action: data.action,
-        user_id: data.userId || null,
-        user_agent: data.userAgent || clientInfo.userAgent,
-        ip_address: data.ipAddress,
-        details: {
-          ...data.details,
-          timestamp: clientInfo.timestamp
-        }
-      });
-    } catch (error) {
-      console.warn('Failed to log security event:', error);
-    }
+  async logSuspiciousActivity(
+    userId: string,
+    activity: string,
+    metadata?: Record<string, any>,
+  ): Promise<void> {
+    console.error('SUSPICIOUS ACTIVITY DETECTED:', { userId, activity, metadata });
   }
 
-  async logSuspiciousActivity(userId: string, activity: string, metadata?: Record<string, any>) {
-    try {
-      await this.logSecurityEvent({
-        action: 'suspicious_activity',
-        userId,
-        details: {
-          activity,
-          severity: 'high',
-          ...metadata
-        }
-      });
-
-      // Log to console for immediate attention
-      console.error('SUSPICIOUS ACTIVITY DETECTED:', {
-        userId,
-        activity,
-        metadata
-      });
-    } catch (error) {
-      console.error('Failed to log suspicious activity:', error);
-    }
-  }
-
-  async logRateLimitExceeded(userId: string, resource: string, attempts: number) {
-    try {
-      await this.logSecurityEvent({
-        action: 'rate_limit_exceeded',
-        userId,
-        details: {
-          resource,
-          attempts,
-          severity: 'medium',
-          timestamp: new Date().toISOString()
-        }
-      });
-    } catch (error) {
-      console.warn('Failed to log rate limit violation:', error);
-    }
+  async logRateLimitExceeded(
+    _userId: string,
+    _resource: string,
+    _attempts: number,
+  ): Promise<void> {
+    // No-op.
   }
 }
 
