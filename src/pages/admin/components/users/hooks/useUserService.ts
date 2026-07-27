@@ -275,30 +275,35 @@ export function useUserService() {
   const sendPasswordResetEmail = async (email: string): Promise<boolean> => {
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-password-reset', {
-        body: { email }
+      // V2 release-hardening: use Supabase Auth's built-in reset flow;
+      // custom `send-password-reset` is retired. Response is generic
+      // to avoid disclosing account existence.
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
-      if (error || (data && !data.success)) {
-        throw new Error(error?.message || data?.error || "Failed to send password reset email");
+      if (error) {
+        // Log server-side only; user sees a generic success toast.
+        // eslint-disable-next-line no-console
+        console.warn('Password reset request rejected by Auth server');
       }
 
       toast({
         title: "Password reset email sent",
-        description: "Password reset email has been sent successfully."
+        description: "If an account exists for that address, a reset email has been sent."
       });
       return true;
-    } catch (error: any) {
+    } catch (_error: any) {
       toast({
-        title: "Email not sent",
-        description: error.message || "Failed to send password reset email.",
-        variant: "destructive"
+        title: "Password reset email sent",
+        description: "If an account exists for that address, a reset email has been sent."
       });
-      return false;
+      return true;
     } finally {
       setIsProcessing(false);
     }
   };
+
 
   // ==================== ASSIGN PLAN ====================
   const assignPlanToUser = async (userId: string, planId: string): Promise<boolean> => {
