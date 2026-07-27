@@ -29,7 +29,14 @@ const RETIRED_AUTH_SLUGS = [
   "resend-confirmation-email",
   "send-signup-confirmation",
   "check-email-exists",
+  "send-password-reset",
+  "verify-password-reset",
+  "validate-signup",
+  "paypal-webhook",
+  "track-email-engagement",
+  "send-email-confirmation-reminder",
 ] as const;
+
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir) as string[]) {
