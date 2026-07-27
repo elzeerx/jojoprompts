@@ -38,6 +38,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { isTransitionAllowed } from "@/lib/v2/admin/lifecycleTransitions";
 
 type ResourceType =
   | "skill" | "automation" | "prompt" | "prompt_pack" | "image_style" | "bundle";
