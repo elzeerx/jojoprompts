@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-// Explicit safe column lists. Never select prompt_text or any protected
-// legacy payload here — those are gated behind the SECURITY DEFINER RPC
+// Explicit safe column lists. Never select protected legacy payload
+// fields here — those are gated behind the SECURITY DEFINER RPC
 // `v2_get_entitled_resource_content` and only fetched when an owner is
 // signed in.
 const RESOURCE_PUBLIC_COLUMNS = [
