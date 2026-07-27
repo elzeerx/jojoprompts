@@ -171,9 +171,9 @@ export function V2Header() {
                   <Receipt className="me-2 h-4 w-4 text-warm-gold" />
                   {lang === "ar" ? "طلباتي" : "Orders"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/dashboard")} className="min-h-[44px]">
+                <DropdownMenuItem onClick={() => navigate("/account")} className="min-h-[44px]">
                   <User className="me-2 h-4 w-4 text-warm-gold" />
-                  {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
+                  {lang === "ar" ? "حسابي" : "My account"}
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/admin")} className="min-h-[44px]">
