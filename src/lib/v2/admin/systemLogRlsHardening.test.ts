@@ -23,9 +23,11 @@ const TIGHTENED_TABLES = [
 ];
 
 describe("system-log RLS hardening migration fixture", () => {
-  it("targets the intended migration filename", () => {
+  it("records the applied live migration filename", () => {
+    // 20260727135637 system_log_rls_hardening is applied live; the
+    // fixture is retained as the version-controlled record.
     expect(SYSTEM_LOG_RLS_HARDENING_MIGRATION_FILENAME).toBe(
-      "20260728000000_system_log_rls_hardening.sql",
+      "20260727135637_system_log_rls_hardening.sql",
     );
     expect(SYSTEM_LOG_RLS_HARDENING.filename).toBe(
       SYSTEM_LOG_RLS_HARDENING_MIGRATION_FILENAME,
