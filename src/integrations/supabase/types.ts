@@ -2996,6 +2996,36 @@ export type Database = {
           },
         ]
       }
+      resource_legacy_content_archive: {
+        Row: {
+          archived_at: string
+          description_ar: string | null
+          description_en: string | null
+          legacy_prompt_id: string | null
+          resource_id: string
+          summary_ar: string | null
+          summary_en: string | null
+        }
+        Insert: {
+          archived_at?: string
+          description_ar?: string | null
+          description_en?: string | null
+          legacy_prompt_id?: string | null
+          resource_id: string
+          summary_ar?: string | null
+          summary_en?: string | null
+        }
+        Update: {
+          archived_at?: string
+          description_ar?: string | null
+          description_en?: string | null
+          legacy_prompt_id?: string | null
+          resource_id?: string
+          summary_ar?: string | null
+          summary_en?: string | null
+        }
+        Relationships: []
+      }
       resource_permissions: {
         Row: {
           created_at: string
@@ -4948,6 +4978,10 @@ export type Database = {
           p_error_message: string
         }
         Returns: boolean
+      }
+      v2_get_entitled_resource_content: {
+        Args: { p_resource_id: string }
+        Returns: Json
       }
       v2_get_my_order_receipt: { Args: { p_order_id: string }; Returns: Json }
       v2_get_my_orders: {

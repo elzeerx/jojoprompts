@@ -19,10 +19,12 @@ import {
   V2_COPY,
 } from "@/config/v2Flags";
 
-import { ShieldCheck, Download, Loader2, ArrowLeft, Timer } from "lucide-react";
+import { ShieldCheck, Download, Loader2, ArrowLeft, Timer, Copy, Check } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
 import { ReportResourceButton } from "@/components/v2/ReportResourceButton";
+import { useEntitledResourceContent } from "@/hooks/v2/useEntitledResourceContent";
+import { useCopyToClipboard } from "@/hooks/ui/useCopyToClipboard";
 
 
 type Lang = "en" | "ar";
@@ -48,6 +50,23 @@ export default function ResourceDetailPage() {
       (e) => e.scope === "resource" && e.resource_id === data.resource.id,
     );
   }, [data, library]);
+
+  const legacyPromptId = (data?.resource as { legacy_prompt_id?: string | null } | undefined)
+    ?.legacy_prompt_id ?? null;
+  const shouldFetchProtected = owned && !!legacyPromptId;
+  const {
+    data: protectedContent,
+    isLoading: protectedLoading,
+    isError: protectedError,
+  } = useEntitledResourceContent(
+    shouldFetchProtected ? data?.resource?.id ?? null : null,
+    shouldFetchProtected,
+  );
+  const { copyToClipboard, hasCopied } = useCopyToClipboard({
+    successTitle: language === "ar" ? "تم النسخ" : "Copied",
+    successDescription:
+      language === "ar" ? "تم نسخ البرومبت." : "Prompt copied to clipboard.",
+  });
 
   if (isLoading) {
     return (
@@ -276,6 +295,82 @@ export default function ResourceDetailPage() {
                   <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">
                     {lang === "ar" ? data.license.terms_ar : data.license.terms_en}
                   </p>
+                ) : null}
+              </section>
+            )}
+
+            {shouldFetchProtected && (
+              <section
+                data-testid="entitled-prompt-section"
+                className="rounded-2xl border border-warm-gold/30 bg-warm-gold/5 p-4"
+              >
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold">
+                    {lang === "ar" ? "برومبتك" : "Your prompt"}
+                  </h2>
+                  {protectedContent?.ok && (
+                    (lang === "ar" ? protectedContent.prompt_text_ar : protectedContent.prompt_text) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-[44px]"
+                        aria-label={lang === "ar" ? "نسخ البرومبت" : "Copy prompt"}
+                        onClick={() =>
+                          copyToClipboard(
+                            (lang === "ar"
+                              ? protectedContent.prompt_text_ar
+                              : protectedContent.prompt_text) ?? "",
+                          )
+                        }
+                      >
+                        {hasCopied ? (
+                          <Check className="me-1 h-4 w-4" aria-hidden />
+                        ) : (
+                          <Copy className="me-1 h-4 w-4" aria-hidden />
+                        )}
+                        {hasCopied
+                          ? lang === "ar" ? "تم النسخ" : "Copied"
+                          : lang === "ar" ? "نسخ" : "Copy"}
+                      </Button>
+                    ) : null
+                  )}
+                </div>
+                {protectedLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    {lang === "ar" ? "جارٍ التحميل…" : "Loading…"}
+                  </div>
+                ) : protectedError ? (
+                  <p className="text-sm text-destructive">
+                    {lang === "ar"
+                      ? "تعذّر تحميل البرومبت. حاول مرة أخرى."
+                      : "Couldn't load the prompt. Please try again."}
+                  </p>
+                ) : protectedContent && !protectedContent.ok ? (
+                  <p className="text-sm text-muted-foreground">
+                    {lang === "ar"
+                      ? "المحتوى غير متاح."
+                      : "Content unavailable."}
+                  </p>
+                ) : protectedContent?.ok ? (
+                  (() => {
+                    const text =
+                      (lang === "ar"
+                        ? protectedContent.prompt_text_ar
+                        : protectedContent.prompt_text) ??
+                      protectedContent.prompt_text ??
+                      protectedContent.prompt_text_ar ??
+                      null;
+                    return text ? (
+                      <pre className="whitespace-pre-wrap break-words rounded-lg bg-background p-3 text-sm leading-relaxed">
+                        {text}
+                      </pre>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {lang === "ar" ? "لا يوجد محتوى نصي." : "No text content."}
+                      </p>
+                    );
+                  })()
                 ) : null}
               </section>
             )}

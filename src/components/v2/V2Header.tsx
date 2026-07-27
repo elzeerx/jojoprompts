@@ -45,17 +45,8 @@ export function V2Header() {
   const lang: "en" | "ar" = language === "ar" ? "ar" : "en";
   const navigate = useNavigate();
 
-  let user: any = null;
-  let isAdmin = false;
-  let signOut = async () => {};
-  try {
-    const a = useAuth();
-    user = a.user;
-    isAdmin = a.isAdmin;
-    signOut = a.signOut;
-  } catch {
-    /* no auth context */
-  }
+  const { user, isAdmin, signOut } = useAuth();
+
 
   const desktopItems: NavItem[] = [
     ...PRIMARY_NAV,
