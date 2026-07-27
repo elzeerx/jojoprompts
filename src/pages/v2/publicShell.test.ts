@@ -248,39 +248,61 @@ describe("V2 NotFoundPage is bilingual, RTL-aware, marketplace-branded", () => {
 });
 
 describe("Additive admin overview migration — capture-ever semantics", () => {
-  const MIG = resolve(
-    REPO_ROOT,
-    "supabase/migrations/20260727100000_admin_overview_payment_semantics.sql",
-  );
+  // The migration is held as an in-repo source fixture (not applied). The
+  // fixture is what we would submit through the migration tool once the
+  // deployment window opens.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const {
+    ADMIN_OVERVIEW_PAYMENT_SEMANTICS_SQL: sql,
+    ADMIN_OVERVIEW_PAYMENT_SEMANTICS_MIGRATION_FILENAME: filename,
+  } = require(resolve(SRC, "lib/v2/admin/overviewPaymentSemantics.sql.ts"));
 
-  it("migration file exists and replaces get_admin_v2_overview", () => {
-    expect(existsSync(MIG)).toBe(true);
-    const sql = read(MIG);
+  it("targets the intended migration filename", () => {
+    expect(filename).toBe(
+      "20260727100000_admin_overview_payment_semantics.sql",
+    );
+  });
+
+  it("replaces get_admin_v2_overview with hardened SECURITY DEFINER", () => {
     expect(
       /CREATE OR REPLACE FUNCTION public\.get_admin_v2_overview/.test(sql),
     ).toBe(true);
     expect(/SECURITY DEFINER/.test(sql)).toBe(true);
     expect(/SET search_path = ''/.test(sql)).toBe(true);
+    // Same admin gate.
+    expect(/has_role\(v_actor, 'admin'::public\.app_role\)/.test(sql)).toBe(
+      true,
+    );
   });
 
   it("uses captured-ever / failed-without-capture per-order aggregation", () => {
-    const sql = read(MIG);
     expect(/bool_or\(event_type::text = 'captured'\)/.test(sql)).toBe(true);
     expect(/bool_or\(event_type::text = 'failed'\)/.test(sql)).toBe(true);
     expect(/failed_ever AND NOT captured_ever/.test(sql)).toBe(true);
-    // The success branch must count captured orders regardless of any
-    // accompanying failed event.
     expect(/count\(\*\) FILTER \(WHERE captured_ever\)/.test(sql)).toBe(true);
-    // No DISTINCT ON "latest event" logic — that was the incorrect model.
+    // The old, incorrect "latest event per order" model must be gone.
     expect(/DISTINCT ON \(order_id\)/.test(sql)).toBe(false);
   });
 
   it("preserves the payment_success_rate null-when-empty contract", () => {
-    const sql = read(MIG);
     expect(
       /IF \(v_success_count \+ v_failure_count\) > 0 THEN[\s\S]*v_success_rate := round/.test(
         sql,
       ),
     ).toBe(true);
   });
+
+  it("preserves the existing grant / revoke boundary", () => {
+    expect(
+      /REVOKE ALL ON FUNCTION public\.get_admin_v2_overview\(int\) FROM PUBLIC, anon/.test(
+        sql,
+      ),
+    ).toBe(true);
+    expect(
+      /GRANT EXECUTE ON FUNCTION public\.get_admin_v2_overview\(int\) TO authenticated, service_role/.test(
+        sql,
+      ),
+    ).toBe(true);
+  });
 });
+
