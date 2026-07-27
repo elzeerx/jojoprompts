@@ -9,7 +9,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { RoleGuard, AdminGuard } from "./components/auth/Guard";
-import { SecurityMonitoringWrapper } from "./components/SecurityMonitoringWrapper";
+// SecurityMonitoringWrapper removed pre-launch: no active browser client
+// should INSERT into public.security_logs. Server-side/admin activity
+// logging still happens via Edge Functions and DB triggers.
 import { routes } from "./config/routes";
 import { adminSectionElements } from "./pages/admin/layout/adminSectionElements";
 import { V2Layout } from "./components/v2/V2Layout";
