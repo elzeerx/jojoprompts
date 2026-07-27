@@ -40,4 +40,31 @@ describe("Client-side security-log write path is neutralized (pre-launch)", () =
     );
     expect(insertBlock).toBeNull();
   });
+
+  it("EmailMonitoringAlerts no longer INSERTs test alerts into security_logs", () => {
+    const src = read("components/admin/EmailMonitoringAlerts.tsx");
+    // SELECT + realtime subscribe stay allowed (admin read path).
+    // The test-alert code path must no longer perform an INSERT.
+    const insertBlock = src.match(
+      /\.from\(['"]security_logs['"]\)[\s\S]{0,80}?\.insert\(/,
+    );
+    expect(insertBlock).toBeNull();
+  });
+
+  it("no active user-facing page imports SecurityMonitoringWrapper or useSecurityMonitoring", () => {
+    // Guard the active V2 shell and top-level app tree specifically.
+    for (const rel of [
+      "App.tsx",
+      "pages/v2/ExplorePage.tsx",
+      "pages/v2/AccountPage.tsx",
+      "pages/v2/CartPage.tsx",
+    ]) {
+      const src = read(rel);
+      expect(src.includes("SecurityMonitoringWrapper")).toBe(
+        rel === "App.tsx" ? src.includes("removed pre-launch") : false,
+      );
+      expect(src.includes("useSecurityMonitoring")).toBe(false);
+    }
+  });
 });
+
