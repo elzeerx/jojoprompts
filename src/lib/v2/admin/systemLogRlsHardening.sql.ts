@@ -48,7 +48,14 @@
  */
 
 export const SYSTEM_LOG_RLS_HARDENING_MIGRATION_FILENAME =
-  "20260728000000_system_log_rls_hardening.sql";
+  "20260727135637_system_log_rls_hardening.sql";
+
+/** Applied live — recorded for parity with the production catalog. */
+export const SYSTEM_LOG_RLS_HARDENING_APPLIED_LIVE = {
+  version: "20260727135637",
+  name: "system_log_rls_hardening",
+  applied: true,
+} as const;
 
 const OPEN_INSERT_TABLES: Array<{ table: string; policy: string }> = [
   { table: "access_evaluations", policy: "System can insert access evaluations" },
