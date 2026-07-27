@@ -39,6 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { isTransitionAllowed } from "@/lib/v2/admin/lifecycleTransitions";
+import { computeBulkEligibility } from "@/lib/v2/admin/bulkLifecycleEligibility";
 
 type ResourceType =
   | "skill" | "automation" | "prompt" | "prompt_pack" | "image_style" | "bundle";
@@ -253,7 +254,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
   const [sortDir, setSortDir] = useState<FetchArgs["sortDir"]>("desc");
   const [view, setView] = useState<ViewMode>("table");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [confirmBulk, setConfirmBulk] = useState<null | "publish" | "review" | "archive">(null);
+  const [confirmBulk, setConfirmBulk] = useState<null | "publish" | "review" | "archive" | "restore">(null);
   const [rowConfirm, setRowConfirm] = useState<{ id: string; action: "publish" | "archive" } | null>(null);
   const [publishResult, setPublishResult] = useState<{ resourceId: string; errors: string[] } | null>(null);
   const [savedViewsOpen, setSavedViewsOpen] = useState(false);
@@ -523,22 +524,55 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
         </div>
       </div>
 
-      {selected.size > 0 ? (
-        <div role="region" aria-label="Bulk actions" className="flex flex-wrap items-center gap-2 rounded-md border border-warm-gold/40 bg-warm-gold/10 px-3 py-2">
-          <span className="text-sm font-medium">{selected.size} selected</span>
-          <div className="ms-auto flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => setConfirmBulk("review")}>
-              <ClipboardCheck className="me-1 h-3.5 w-3.5" aria-hidden /> Submit for review
-            </Button>
-            <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => setConfirmBulk("publish")}>
-              <Send className="me-1 h-3.5 w-3.5" aria-hidden /> Publish
-            </Button>
-            <Button size="sm" variant="outline" className="min-h-[44px] text-red-700 hover:text-red-800" onClick={() => setConfirmBulk("archive")}>
-              <Archive className="me-1 h-3.5 w-3.5" aria-hidden /> Archive
-            </Button>
+      {selected.size > 0 ? (() => {
+        const visible = rows.map((r) => ({ id: r.id, lifecycle: r.lifecycle as any }));
+        const elig = {
+          review:  computeBulkEligibility(selected, visible, "review"),
+          publish: computeBulkEligibility(selected, visible, "publish"),
+          archive: computeBulkEligibility(selected, visible, "archive"),
+          restore: computeBulkEligibility(selected, visible, "restore"),
+        };
+        return (
+          <div role="region" aria-label="Bulk actions" className="flex flex-wrap items-center gap-2 rounded-md border border-warm-gold/40 bg-warm-gold/10 px-3 py-2">
+            <span className="text-sm font-medium">{selected.size} selected</span>
+            <div className="ms-auto flex flex-wrap gap-2">
+              <Button
+                size="sm" variant="outline" className="min-h-[44px]"
+                disabled={elig.review.eligibleCount === 0}
+                onClick={() => setConfirmBulk("review")}
+                aria-label={`Submit for review (${elig.review.eligibleCount} eligible, ${elig.review.skippedCount} skipped)`}
+              >
+                <ClipboardCheck className="me-1 h-3.5 w-3.5" aria-hidden /> Submit for review ({elig.review.eligibleCount})
+              </Button>
+              <Button
+                size="sm" variant="outline" className="min-h-[44px]"
+                disabled={elig.publish.eligibleCount === 0}
+                onClick={() => setConfirmBulk("publish")}
+                aria-label={`Publish (${elig.publish.eligibleCount} eligible, ${elig.publish.skippedCount} skipped)`}
+              >
+                <Send className="me-1 h-3.5 w-3.5" aria-hidden /> Publish ({elig.publish.eligibleCount})
+              </Button>
+              <Button
+                size="sm" variant="outline" className="min-h-[44px] text-red-700 hover:text-red-800"
+                disabled={elig.archive.eligibleCount === 0}
+                onClick={() => setConfirmBulk("archive")}
+                aria-label={`Archive (${elig.archive.eligibleCount} eligible, ${elig.archive.skippedCount} skipped)`}
+              >
+                <Archive className="me-1 h-3.5 w-3.5" aria-hidden /> Archive ({elig.archive.eligibleCount})
+              </Button>
+              {elig.restore.eligibleCount > 0 ? (
+                <Button
+                  size="sm" variant="outline" className="min-h-[44px]"
+                  onClick={() => setConfirmBulk("restore")}
+                  aria-label={`Restore to draft (${elig.restore.eligibleCount} eligible, ${elig.restore.skippedCount} skipped)`}
+                >
+                  <ClipboardCheck className="me-1 h-3.5 w-3.5" aria-hidden /> Restore to draft ({elig.restore.eligibleCount})
+                </Button>
+              ) : null}
+            </div>
           </div>
-        </div>
-      ) : null}
+        );
+      })() : null}
 
       {view === "table" ? (
         <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
@@ -722,22 +756,51 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
       {/* Bulk confirmation */}
       <AlertDialog open={!!confirmBulk} onOpenChange={(v) => (v ? null : setConfirmBulk(null))}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm bulk {confirmBulk} on {selected.size} resource(s)?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmBulk === "archive"
-                ? "Archived resources are hidden from the public catalog. Recoverable."
+          {(() => {
+            const visible = rows.map((r) => ({ id: r.id, lifecycle: r.lifecycle as any }));
+            const e = confirmBulk
+              ? computeBulkEligibility(selected, visible, confirmBulk)
+              : { eligibleIds: [], eligibleCount: 0, skippedCount: 0, totalSelected: selected.size };
+            const actionLabel =
+              confirmBulk === "restore" ? "Restore to draft"
+              : confirmBulk === "review" ? "Submit for review"
+              : confirmBulk === "publish" ? "Publish"
+              : confirmBulk === "archive" ? "Archive"
+              : "";
+            const body =
+              confirmBulk === "archive"
+                ? "Archived resources are hidden from the public catalog. Recoverable via Restore."
                 : confirmBulk === "publish"
                 ? "Each resource runs server-side publish validation. Partial-success is reported per row."
-                : "Submits selected resources to the review queue."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirmBulk && mutate.mutate({ ids: Array.from(selected), action: confirmBulk })} disabled={mutate.isPending}>
-              {mutate.isPending ? <Loader2 className="me-2 h-3.5 w-3.5 animate-spin" /> : null} Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
+                : confirmBulk === "restore"
+                ? "Restore returns archived resources to draft. It does not republish."
+                : "Submits selected resources to the review queue.";
+            return (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{actionLabel}: {e.eligibleCount} eligible</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {body}
+                    <br />
+                    <span className="text-xs">
+                      {e.eligibleCount} of {e.totalSelected} selected will be affected.
+                      {e.skippedCount > 0 ? ` ${e.skippedCount} skipped (invalid state for this action).` : ""}
+                    </span>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => confirmBulk && e.eligibleCount > 0 && mutate.mutate({ ids: e.eligibleIds, action: confirmBulk })}
+                    disabled={mutate.isPending || e.eligibleCount === 0}
+                    className="min-h-[44px]"
+                  >
+                    {mutate.isPending ? <Loader2 className="me-2 h-3.5 w-3.5 animate-spin" /> : null} Confirm
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            );
+          })()}
         </AlertDialogContent>
       </AlertDialog>
 
