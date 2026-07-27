@@ -5,13 +5,23 @@ import { useTranslation } from "@/hooks/useTranslation";
 interface Props {
   variant?: "empty" | "no-results" | "error";
   onRetry?: () => void;
+  /** Optional bilingual override for the empty-catalog state title. */
+  emptyTitle?: { en: string; ar: string };
+  /** Optional bilingual override for the empty-catalog state description. */
+  emptyDesc?: { en: string; ar: string };
 }
 
-export function CatalogState({ variant = "empty", onRetry }: Props) {
+export function CatalogState({ variant = "empty", onRetry, emptyTitle, emptyDesc }: Props) {
   const { language } = useTranslation();
   const lang = (language as "en" | "ar") ?? "en";
-  let title: string = V2_COPY.states.emptyCatalogTitle[lang];
-  let desc: string = V2_COPY.states.emptyCatalogDesc[lang];
+  let title: string =
+    emptyTitle?.[lang] ??
+    (lang === "ar" ? "لا توجد موارد منشورة بعد" : "No published resources yet");
+  let desc: string =
+    emptyDesc?.[lang] ??
+    (lang === "ar"
+      ? "بمجرد نشر موارد جوجو ستظهر هنا مباشرةً. تصفّح باقي المتجر في الأثناء."
+      : "As soon as Jojo resources are published they'll appear here. In the meantime, browse the rest of the catalog.");
   if (variant === "no-results") {
     title = V2_COPY.states.noResultsTitle[lang];
     desc = V2_COPY.states.noResultsDesc[lang];

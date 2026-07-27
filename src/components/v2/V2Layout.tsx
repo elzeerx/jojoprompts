@@ -1,18 +1,27 @@
 import { Outlet } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { V2SubNav } from "./V2SubNav";
+import { V2Header } from "./V2Header";
+import { V2Footer } from "./V2Footer";
+import { CartSanitizer } from "./CartSanitizer";
 
 /**
- * Shared layout for V2 public routes (explore, categories, resource detail, library).
- * Reserves space for the fixed global Header (h-16 mobile, h-18 lg) so the sticky
- * V2SubNav's in-flow and sticky positions agree and content never hides behind chrome.
+ * Canonical V2 public shell.
+ *
+ * Renders exactly one site header/navigation, its sticky primary nav,
+ * a page area, and one bilingual V2 footer. It does NOT wrap the legacy
+ * global Header/Footer, and it does NOT show the admin floating
+ * "Add Prompt" shortcut. Admin creation belongs strictly inside /admin.
  */
 export function V2Layout() {
-  const { user } = useAuth();
   return (
-    <div className="pt-16 lg:pt-18">
-      <V2SubNav authed={!!user} />
-      <Outlet />
+    <div className="flex min-h-screen flex-col bg-background">
+      <V2Header />
+      <CartSanitizer />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      <V2Footer />
     </div>
   );
 }
+
+export default V2Layout;
