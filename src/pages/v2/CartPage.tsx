@@ -27,7 +27,7 @@ export default function CartPage() {
   const { user } = useAuth();
   const nav = useNavigate();
   const cart = useCart();
-  const { data, isLoading, isError } = useAuthoritativeCart();
+  const { data, isLoading, isError, refetch } = useAuthoritativeCart();
   const { language, isRTL } = useTranslation();
   const lang = language === "ar" ? "ar" : "en";
 
@@ -210,29 +210,66 @@ export default function CartPage() {
                     </div>
                   </>
                 )}
-                <Button
-                  className="w-full min-h-[44px]"
-                  disabled={
-                    isLoading ||
-                    !data ||
-                    data.chargeableIds.length === 0
-                  }
-                  onClick={() => {
-                    if (!user) {
-                      nav(`/login?next=${encodeURIComponent("/checkout")}`);
-                      return;
-                    }
-                    nav("/checkout");
-                  }}
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : user ? (
-                    t.checkout
-                  ) : (
-                    t.signInFirst
-                  )}
-                </Button>
+                {!isLoading && data && data.chargeableIds.length === 0 ? (
+                  <div
+                    className="rounded-lg border border-warm-gold/40 bg-warm-gold/5 p-3 text-sm"
+                    data-testid="cart-nothing-to-buy"
+                  >
+                    <p className="font-medium">
+                      {lang === "ar"
+                        ? "لا يوجد ما يمكن شراؤه في سلتك."
+                        : "There is nothing to purchase in your cart."}
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      {lang === "ar"
+                        ? "كل العناصر مملوكة بالفعل أو مضمّنة مع مكتبتك."
+                        : "Every item is already owned or included with your library."}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button asChild size="sm" variant="outline" className="min-h-[44px]">
+                        <Link to="/library">
+                          {lang === "ar" ? "افتح مكتبتي" : "Open my library"}
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm" className="min-h-[44px]">
+                        <Link to="/explore">
+                          {lang === "ar" ? "تصفح المزيد" : "Browse more"}
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full min-h-[44px]"
+                    data-testid="cart-checkout-button"
+                    disabled={isLoading || !data || data.chargeableIds.length === 0}
+                    onClick={() => {
+                      if (!user) {
+                        nav(`/login?next=${encodeURIComponent("/checkout")}`);
+                        return;
+                      }
+                      nav("/checkout");
+                    }}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : user ? (
+                      t.checkout
+                    ) : (
+                      t.signInFirst
+                    )}
+                  </Button>
+                )}
+                {isError ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full min-h-[44px]"
+                    onClick={() => refetch()}
+                  >
+                    {lang === "ar" ? "إعادة المحاولة" : "Retry"}
+                  </Button>
+                ) : null}
               </div>
               <LifetimeUpgradeCard />
             </aside>

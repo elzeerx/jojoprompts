@@ -27,7 +27,7 @@ function statusVariant(status: string): "default" | "secondary" | "outline" | "d
 
 export default function V2OrdersPage() {
   const { user, loading } = useAuth();
-  const { data: orders, isLoading, isError } = useMyOrders();
+  const { data: orders, isLoading, isError, refetch } = useMyOrders();
   const { language, isRTL } = useTranslation();
   const lang = language === "ar" ? "ar" : "en";
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -64,12 +64,31 @@ export default function V2OrdersPage() {
             <Skeleton className="h-16 w-full" />
           </div>
         ) : isError ? (
-          <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-            {t.error}
-          </p>
+          <div
+            className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive space-y-3"
+            data-testid="orders-error"
+          >
+            <p>{t.error}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-[44px]"
+              onClick={() => refetch()}
+            >
+              {lang === "ar" ? "إعادة المحاولة" : "Retry"}
+            </Button>
+          </div>
         ) : (orders ?? []).length === 0 ? (
-          <div className="rounded-2xl border p-12 text-center space-y-4">
+          <div
+            className="rounded-2xl border p-12 text-center space-y-4"
+            data-testid="orders-empty"
+          >
             <p className="text-muted-foreground">{t.empty}</p>
+            <p className="text-sm text-muted-foreground">
+              {lang === "ar"
+                ? "بمجرد إتمام أول عملية شراء ستظهر إيصالاتها هنا."
+                : "As soon as you complete your first purchase, its receipt will appear here."}
+            </p>
             <Button asChild className="min-h-[44px]">
               <Link to="/explore">{t.browse}</Link>
             </Button>
