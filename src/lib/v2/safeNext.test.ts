@@ -128,6 +128,71 @@ describe("resolveSafeNext", () => {
       expect(resolveSafeNext(p)).toBe(p);
     }
   });
+
+  it("rejects raw leading/trailing whitespace (does NOT auto-trim)", () => {
+    // Rationale: the URL layer is authoritative; if callers pass a padded
+    // value we treat it as tampered rather than silently normalizing.
+    for (const p of [
+      " /explore",
+      "/explore ",
+      "\t/explore",
+      "/explore\t",
+      "\n/explore",
+      "/explore\n",
+      "\r\n/explore",
+      "  /library  ",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(DEFAULT_SAFE_NEXT);
+    }
+  });
+
+  it("recursively rejects percent-encoded nested auth-loops in next=", () => {
+    // Once-encoded: %2F=/, %3D==, %3F=? — URLSearchParams decodes this
+    // exactly once, so the inner value becomes `/login?next=%2Flogin`.
+    // Our recursive resolver then inspects that decoded inner value.
+    for (const p of [
+      "/account?next=%2Flogin",
+      "/account?next=%2Flogin%3Fnext%3D%252Flogin",
+      "/account?next=%2Fsignup",
+      "/x?next=%2Fauth%2Fcallback",
+      "/y#next=%2Freset-password",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(DEFAULT_SAFE_NEXT);
+    }
+  });
+
+  it("recursively rejects percent-encoded nested external/protocol-relative next=", () => {
+    for (const p of [
+      "/account?next=%2F%2Fevil.com",
+      "/account?next=https%3A%2F%2Fevil.com",
+      "/account?next=javascript%3Aalert(1)",
+      "/account?next=%5C%5Cevil.com",
+      "/account?next=%2Ffoo%00bar",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(DEFAULT_SAFE_NEXT);
+    }
+  });
+
+  it("permits legitimate nested internal next values", () => {
+    for (const p of [
+      "/account?next=%2Flibrary",
+      "/account?next=%2Fcheckout%3Fintent%3Dlifetime",
+      "/orders?next=%2Fresources%2Fabc",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(p);
+    }
+  });
+
+  it("bounded recursion / cycle protection falls back on adversarial nesting", () => {
+    // 6 levels of encoded /account?next= — exceeds MAX_NESTED_DEPTH (4).
+    // Even though each level is internally shaped like /account, we refuse
+    // to keep unwrapping and fall back rather than accept.
+    let inner = "/login"; // final payload is an auth-loop
+    for (let i = 0; i < 6; i++) {
+      inner = `/account?next=${encodeURIComponent(inner)}`;
+    }
+    expect(resolveSafeNext(inner)).toBe(DEFAULT_SAFE_NEXT);
+  });
 });
 
 describe("readSafeNextParam", () => {

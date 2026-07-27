@@ -24,8 +24,9 @@ const FavoritesPage = lazy(() => import("@/pages/FavoritesPage"));
 const SearchPage = lazy(() => import("@/pages/SearchPage"));
 const PricingPage = lazy(() => import("@/pages/PricingPage"));
 const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
-const PaymentCallbackPage = lazy(() => import("@/pages/PaymentCallbackPage"));
-const UpaymentCallbackPage = lazy(() => import("@/pages/UpaymentCallbackPage"));
+// V2 release-hardening: retired legacy PayPal/UPayments acquisition callbacks.
+// The page sources remain in src/pages/ as archival, but they must not be
+// lazy-imported or routed. Do not re-add these imports.
 const MagicLoginPage = lazy(() => import("@/pages/MagicLoginPage").then(m => ({ default: m.MagicLoginPage })));
 const UnsubscribePage = lazy(() => import("@/pages/UnsubscribePage"));
 const PaymentSuccessPage = lazy(() => import("@/pages/PaymentSuccessPage"));
@@ -192,16 +193,9 @@ export const routes: RouteConfig[] = [
     component: V2CheckoutPage,
     protection: "public"
   },
-  {
-    path: "payment/callback",
-    component: PaymentCallbackPage,
-    protection: "public"
-  },
-  {
-    path: "payment/upayments-callback",
-    component: UpaymentCallbackPage,
-    protection: "public"
-  },
+  // V2 release-hardening: legacy `payment/callback` and
+  // `payment/upayments-callback` routes intentionally removed. The V2
+  // return surface is `/checkout/return` and `/checkout/return/:orderId`.
   {
     path: "payment-success",
     component: PaymentSuccessPage,
