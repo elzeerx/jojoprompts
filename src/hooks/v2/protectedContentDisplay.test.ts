@@ -9,7 +9,7 @@ describe("pickProtectedText", () => {
     expect(pickProtectedText(null, "en")).toBeNull();
     expect(pickProtectedText(undefined, "en")).toBeNull();
     expect(pickProtectedText({ ok: false, prompt_text: "x" }, "en")).toBeNull();
-    expect(pickProtectedText({ ok: false, error: "not_entitled" }, "ar")).toBeNull();
+    expect(pickProtectedText({ ok: false }, "ar")).toBeNull();
   });
 
   it("prefers the requested language when present", () => {
