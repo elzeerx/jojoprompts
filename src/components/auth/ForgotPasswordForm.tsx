@@ -42,38 +42,35 @@ export function ForgotPasswordForm() {
     setIsLoading(true);
 
     try {
-      // Use custom password reset edge function (uses Resend)
-      const { data, error } = await supabase.functions.invoke('send-password-reset', {
-        body: { email: values.email }
+      // Use Supabase Auth's built-in reset flow. The Auth server owns the
+      // token lifecycle and returns a generic response either way, so the
+      // client must not reveal whether an account exists.
+      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) {
-        logger.error('Password reset request failed', { error });
-        toast({
-          variant: "destructive",
-          title: t('common.error'),
-          description: error.message || 'Failed to send password reset email',
-        });
-      } else if (data && !data.success) {
-        toast({
-          variant: "destructive",
-          title: t('common.error'),
-          description: data.error || 'Failed to send password reset email',
-        });
-      } else {
-        setResetRequested(true);
-        toast({
-          title: t('auth.passwordResetSent'),
-          description: t('auth.checkInbox'),
+        // Log the failure server-side only. Do NOT expose to the user —
+        // showing this would leak account existence / rate-limit signals.
+        logger.warn('Password reset request rejected by Auth server', {
+          domain: values.email.split('@')[1],
         });
       }
+
+      // Always show the same non-enumerating success message.
+      setResetRequested(true);
+      toast({
+        title: t('auth.passwordResetSent'),
+        description: t('auth.checkInbox'),
+      });
     } catch (error) {
       const appError = handleError(error, { component: 'ForgotPasswordForm', action: 'requestReset' });
       logger.error('Password reset request error', appError);
+      // Even on unexpected local errors, keep the response generic.
+      setResetRequested(true);
       toast({
-        variant: "destructive",
-        title: t('common.error'),
-        description: "An unexpected error occurred. Please try again.",
+        title: t('auth.passwordResetSent'),
+        description: t('auth.checkInbox'),
       });
     }
 
@@ -125,12 +122,12 @@ export function ForgotPasswordForm() {
           )}
         />
 
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className={cn(
             "w-full min-h-[44px]",
             isRTL && "flex-row-reverse"
-          )} 
+          )}
           disabled={isLoading}
         >
           {isLoading ? (

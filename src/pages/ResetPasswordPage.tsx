@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FileText, Sparkles } from "lucide-react";
 import {
   Card,
@@ -11,20 +10,12 @@ import {
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 
 export default function ResetPasswordPage() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check if this is a valid password reset request
-    // Support both custom token format and Supabase's format
-    const token = searchParams.get('token') || searchParams.get('access_token');
-    const type = searchParams.get('type');
-
-    // If no valid reset token, redirect to login
-    if (!token || type !== 'recovery') {
-      navigate('/login?tab=forgot');
-    }
-  }, [searchParams, navigate]);
+  // No manual query-token gating. supabase-js parses the reset URL
+  // fragment automatically (detectSessionInUrl) and ResetPasswordForm
+  // waits for the resulting PASSWORD_RECOVERY / SIGNED_IN event; if
+  // none arrives it shows the "request a new link" fallback itself.
 
   const handleSuccess = () => {
     navigate('/login');

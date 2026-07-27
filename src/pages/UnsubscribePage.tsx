@@ -1,25 +1,30 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+const SUPABASE_PROJECT_REF = 'fxkqgjakbyrxkmevkglv';
+
+// Strict token contract enforced client-side. Matches the server-side
+// contract in supabase/functions/smart-unsubscribe/index.ts.
+const isValidUnsubscribeToken = (t: string) => /^[A-Za-z0-9]{32,128}$/.test(t);
+
 function UnsubscribePage() {
   const [searchParams] = useSearchParams();
-  const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [isSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const token = searchParams.get('token');
-    
-    if (token) {
-      // If there's a token, the smart-unsubscribe function will handle it
-      // and return an HTML page directly, so we don't need to do anything here
-      // This component is just a fallback
-      window.location.href = `https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/smart-unsubscribe?token=${token}`;
-    } else {
-      setIsLoading(false);
-      setMessage('Invalid unsubscribe link');
-      setIsSuccess(false);
+
+    if (token && isValidUnsubscribeToken(token)) {
+      // Token-only handoff to the edge function, which renders its own
+      // confirmation HTML. Never accept or forward a raw email.
+      window.location.href = `https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/smart-unsubscribe?token=${encodeURIComponent(token)}`;
+      return;
     }
+
+    setIsLoading(false);
+    setMessage('Invalid unsubscribe link. Please use the link from your most recent email.');
   }, [searchParams]);
 
   if (isLoading) {
@@ -44,9 +49,9 @@ function UnsubscribePage() {
           {isSuccess ? 'Successfully Unsubscribed' : 'Unsubscribe Failed'}
         </h2>
         <p className="text-gray-600 mb-4">{message}</p>
-        <a 
+        <a
           href="/"
-          className="inline-block px-6 py-3 bg-warm-gold text-white rounded-lg hover:bg-warm-gold/90 transition-colors"
+          className="inline-block px-6 py-3 min-h-[44px] bg-warm-gold text-white rounded-lg hover:bg-warm-gold/90 transition-colors"
         >
           Return to JojoPrompts
         </a>

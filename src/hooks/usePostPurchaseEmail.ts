@@ -30,24 +30,16 @@ export function usePostPurchaseEmail() {
     });
   };
 
-  const sendEmailConfirmationReminder = async (userEmail: string, firstName: string) => {
-    try {
-      await supabase.functions.invoke('send-email-confirmation-reminder', {
-        body: { email: userEmail, firstName },
-      });
-      toast({
-        title: 'Confirmation email sent',
-        description: 'Check your email to verify your account for enhanced security.',
-      });
-    } catch (error) {
-      logger.warn('Email confirmation reminder failed', { error, email: userEmail });
-      toast({
-        variant: 'destructive',
-        title: 'Failed to send confirmation',
-        description: 'You can verify your email later in account settings.',
-      });
-    }
+  const sendEmailConfirmationReminder = async (userEmail: string, _firstName: string) => {
+    // V2 release-hardening: the `send-email-confirmation-reminder` Edge
+    // Function is retired. Email confirmation is delivered by Supabase
+    // Auth's built-in signup flow; there is no client trigger for
+    // arbitrary reminder mail. Kept as a no-op so callers stay valid.
+    logger.debug('sendEmailConfirmationReminder is a no-op (retired endpoint)', {
+      email: userEmail,
+    });
   };
+
 
   return { sendPostPurchaseEmails, sendEmailConfirmationReminder, sending };
 }

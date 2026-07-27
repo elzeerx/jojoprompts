@@ -117,28 +117,10 @@ export function SmartAuthForm({ onSuccess, planName, planPrice }: SmartAuthFormP
 
       logInfo('Attempting signup from smart checkout', 'auth');
 
-      // Validate signup
-      const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-signup', {
-        body: {
-          email: email.trim(),
-          username,
-          firstName,
-          lastName: lastName || firstName,
-          ipAddress: window.location.hostname
-        }
-      });
+      // V2 release-hardening: no pre-signup existence probe. Supabase
+      // Auth authoritatively rejects duplicates with a generic response.
 
-      if (validationError || !validationData?.valid) {
-        const errorMsg = validationData?.errors?.[0] || validationError?.message || 'Validation failed';
-        logError('Signup validation failed', 'auth', { error: errorMsg });
-        toast({
-          variant: "destructive",
-          title: "Validation Error",
-          description: errorMsg,
-        });
-        setIsLoading(false);
-        return;
-      }
+
 
       // Create account
       const { data, error } = await supabase.auth.signUp({

@@ -43,39 +43,14 @@ export function useSignupForm() {
       // Auto-generate username from email
       const username = generateUsernameFromEmail(values.email);
 
-      // PHASE 2: Validation with retry logic for transient failures
-      logger.info('Validating signup data with retry support');
-      
-      const validationResult = await retrySignupOperation(
-        async () => {
-          const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-signup', {
-            body: {
-              email: values.email,
-              username: username,
-              firstName: firstName,
-              lastName: lastName || firstName, // Use firstName as lastName if not provided
-              ipAddress: window.location.hostname
-            }
-          });
+      // V2 release-hardening: no pre-signup existence probe. Supabase
+      // Auth authoritatively rejects duplicates with a generic response,
+      // so client code no longer calls `validate-signup`. Retry / logging
+      // scaffolding below remains for the actual signup + welcome-email
+      // network hops.
+      logger.info('Proceeding with signup (no pre-signup existence probe)');
 
-          if (validationError) throw validationError;
-          if (!validationData?.valid) {
-            const errors = validationData?.errors || ["Validation failed"];
-            throw new Error(errors[0]);
-          }
 
-          return validationData;
-        },
-        { email: values.email, username: username, operation: "validation" },
-        2 // Max 2 retries for validation
-      );
-
-      if (!validationResult.success) {
-        setIsLoading(false);
-        return;
-      }
-
-      logger.info('Validation passed, proceeding with signup');
 
       // PHASE 2: Signup with retry logic
       const signupResult = await retrySignupOperation(

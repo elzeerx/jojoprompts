@@ -108,9 +108,12 @@ function interpolate(input: string, vars: Record<string, any>) {
   });
 }
 function stripTags(html: string) { return html.replace(/<[^>]*>/g, ''); }
-function buildTrackingPixel(email: string) {
-  return `<img src="https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/track-email-engagement?email=${encodeURIComponent(email || '')}" width="1" height="1" style="display:none;" alt="" />`;
+function buildTrackingPixel(_email: string) {
+  // V2 release-hardening: `track-email-engagement` is retired. No
+  // tracking pixel is embedded in outbound mail.
+  return '';
 }
+
 
 // ---------------- Types
 

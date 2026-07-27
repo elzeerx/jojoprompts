@@ -176,27 +176,10 @@ export function ExpressCheckoutModal({ open, onOpenChange, plan }: ExpressChecko
 
       logInfo('Attempting signup from express checkout', 'express-checkout');
 
-      const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-signup', {
-        body: {
-          email: email.trim(),
-          username,
-          firstName,
-          lastName: lastName || firstName,
-          ipAddress: window.location.hostname
-        }
-      });
+      // V2 release-hardening: no pre-signup existence probe. Supabase
+      // Auth authoritatively rejects duplicates with a generic response.
 
-      if (validationError || !validationData?.valid) {
-        const errorMsg = validationData?.errors?.[0] || validationError?.message || 'Validation failed';
-        logError('Signup validation failed', 'express-checkout', { error: errorMsg });
-        toast({
-          variant: "destructive",
-          title: "Validation Error",
-          description: errorMsg,
-        });
-        setIsLoading(false);
-        return;
-      }
+
 
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
