@@ -7,12 +7,13 @@ import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
-import { RootLayout } from "./components/layout/root-layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { AuthPremiumGuard, RoleGuard, AdminGuard } from "./components/auth/Guard";
+import { RoleGuard, AdminGuard } from "./components/auth/Guard";
 import { SecurityMonitoringWrapper } from "./components/SecurityMonitoringWrapper";
 import { routes } from "./config/routes";
 import { adminSectionElements } from "./pages/admin/layout/adminSectionElements";
+import { V2Layout } from "./components/v2/V2Layout";
+import { isLaunchLocked } from "./config/siteMode";
 
 const AdminLayout = lazy(() => import("./pages/admin/layout/AdminLayout"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
@@ -20,42 +21,8 @@ const ComingSoonPage = lazy(() => import("./pages/ComingSoonPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
-import { isLaunchLocked } from "./config/siteMode";
-
-/**
- * Paths that live in the canonical V2 public shell (V2Layout: V2Header +
- * V2Footer + CartSanitizer). Root ("/") is included so the homepage renders
- * the same shell for every visitor. Everything not in this set falls back to
- * the legacy RootLayout below (Header/Footer/FloatingAddPromptButton).
- */
-const V2_PATHS = new Set([
-  "/",
-  "explore",
-  "skills",
-  "automations",
-  "prompts-catalog",
-  "image-styles",
-  "bundles",
-  "resources/:slug",
-  "library",
-  "cart",
-  "checkout",
-  "checkout/return",
-  "checkout/return/:orderId",
-  "checkout/cancel",
-  "checkout/cancel/:orderId",
-  "orders",
-  "account",
-  "dashboard",
-  "pricing",
-  "how-it-works",
-]);
-import { V2Layout } from "./components/v2/V2Layout";
-
-
 const queryClient = new QueryClient();
 
-// Loading component for suspense fallback
 const SuspenseLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="text-center">
@@ -65,18 +32,16 @@ const SuspenseLoader = () => (
   </div>
 );
 
-// Helper function to wrap component with appropriate guard
+/**
+ * Wrap a route component with the appropriate guard. `premium` protection
+ * has been removed from V2 — acquisition is entitlement-based. Any legacy
+ * `premium` protection value degrades to unguarded public rendering.
+ */
 const createGuardedRoute = (route: typeof routes[0]) => {
   const Component = route.component;
-  
+
   switch (route.protection) {
-    case 'premium':
-      return (
-        <AuthPremiumGuard>
-          <Component />
-        </AuthPremiumGuard>
-      );
-    case 'role':
+    case "role":
       if (route.requiredRole) {
         return (
           <RoleGuard role={route.requiredRole}>
@@ -85,7 +50,7 @@ const createGuardedRoute = (route: typeof routes[0]) => {
         );
       }
       return <Component />;
-    case 'admin':
+    case "admin":
       return (
         <AdminGuard fallbackRoute={route.fallbackRoute}>
           <Component />
@@ -95,6 +60,31 @@ const createGuardedRoute = (route: typeof routes[0]) => {
       return <Component />;
   }
 };
+
+/**
+ * Explicit V1 → V2 client-side compatibility redirects. Fixed destinations
+ * only; we intentionally do NOT forward arbitrary query parameters from
+ * legacy URLs to avoid open-redirect / parameter-smuggling risks.
+ */
+const LEGACY_REDIRECTS: ReadonlyArray<readonly [string, string]> = [
+  ["prompts", "/prompts-catalog"],
+  ["prompts/chatgpt", "/prompts-catalog?platform=chatgpt"],
+  ["prompts/midjourney", "/image-styles"],
+  ["prompts/workflow", "/automations"],
+  ["prompts/gpts-builder", "/skills"],
+  ["favorites", "/library"],
+  ["payment-dashboard", "/orders"],
+  ["dashboard", "/account"],
+  ["dashboard/subscription", "/account"],
+  ["payment-success", "/orders"],
+  ["payment-failed", "/orders"],
+  ["payment-recovery", "/orders"],
+  ["dashboard/prompter", "/explore"],
+  ["prompter", "/explore"],
+  ["examples", "/explore"],
+  ["search", "/explore"],
+  ["demo/enhanced-prompt", "/explore"],
+];
 
 function App() {
   return (
@@ -108,14 +98,14 @@ function App() {
                   <SecurityMonitoringWrapper>
                     <Suspense fallback={<SuspenseLoader />}>
                       <Routes>
-                        {/* MCP OAuth consent — standalone, outside RootLayout chrome */}
+                        {/* MCP OAuth consent — standalone, outside any chrome */}
                         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
 
-                        {/* Admin — dedicated shell, no public Header/Footer/FloatingButton */}
+                        {/* Admin — dedicated shell, no customer chrome */}
                         <Route
                           path="/admin"
                           element={
-                            <AdminGuard fallbackRoute="/prompts">
+                            <AdminGuard fallbackRoute="/">
                               <AdminLayout />
                             </AdminGuard>
                           }
@@ -143,7 +133,6 @@ function App() {
                           <Route path="publishing/imports/ai-studio" element={adminSectionElements.publishingImportsAiStudio} />
                           <Route path="publishing/imports/ai-studio/:draftId" element={adminSectionElements.publishingImportsAiStudio} />
                           <Route path="publishing/taxonomy" element={adminSectionElements.publishingTaxonomy} />
-
 
                           {/* Orders */}
                           <Route path="orders" element={adminSectionElements.orders} />
@@ -173,7 +162,7 @@ function App() {
                           <Route path="settings/integrations" element={adminSectionElements.settingsIntegrations} />
                           <Route path="settings/roles" element={adminSectionElements.settingsRoles} />
 
-                          {/* Legacy path redirects */}
+                          {/* Legacy admin path redirects */}
                           <Route path="analytics" element={<Navigate to="/admin" replace />} />
                           <Route path="prompts" element={<Navigate to="/admin/catalog/prompts" replace />} />
                           <Route path="prompts/import" element={<Navigate to="/admin/publishing/imports" replace />} />
@@ -199,45 +188,33 @@ function App() {
                             <Route path="/reset-password" element={<ResetPasswordPage />} />
                             {/* Everything else — including /signup, /library,
                                 /checkout, /pricing, resource deep links, and
-                                legacy prompt routes — is Coming Soon. Fail-closed. */}
+                                legacy prompt routes — is Coming Soon. */}
                             <Route path="*" element={<ComingSoonPage />} />
                           </>
                         ) : (
-                          <>
-                            {/* Canonical V2 public shell: single V2 header,
-                                sanitized cart, V2 footer. Wraps root ("/")
-                                and every V2 route. No legacy Header/Footer,
-                                no admin FloatingAddPromptButton here. */}
-                            <Route element={<V2Layout />}>
-                              {routes
-                                .filter((r) => V2_PATHS.has(r.path))
-                                .map((route) => (
-                                  <Route
-                                    key={route.path}
-                                    path={route.path}
-                                    element={createGuardedRoute(route)}
-                                    index={route.index}
-                                  />
-                                ))}
-                            </Route>
+                          /* Canonical V2 public shell wraps every customer/
+                             public/auth/legal/info route AND the 404 wildcard.
+                             No legacy RootLayout, no legacy Header/Footer,
+                             no admin FloatingAddPromptButton on any customer
+                             surface. */
+                          <Route element={<V2Layout />}>
+                            {routes.map((route) => (
+                              <Route
+                                key={route.path}
+                                path={route.path}
+                                element={createGuardedRoute(route)}
+                                index={route.index}
+                              />
+                            ))}
 
-                            {/* Legacy shell for non-V2 pages (auth, prompts,
-                                about, faq, etc.) — keeps original chrome. */}
-                            <Route element={<RootLayout />}>
-                              {routes
-                                .filter(
-                                  (r) => !V2_PATHS.has(r.path) && r.path !== "/",
-                                )
-                                .map((route) => (
-                                  <Route
-                                    key={route.path}
-                                    path={route.path}
-                                    element={createGuardedRoute(route)}
-                                    index={route.index}
-                                  />
-                                ))}
-                            </Route>
-                          </>
+                            {LEGACY_REDIRECTS.map(([from, to]) => (
+                              <Route
+                                key={`redirect:${from}`}
+                                path={from}
+                                element={<Navigate to={to} replace />}
+                              />
+                            ))}
+                          </Route>
                         )}
                       </Routes>
                     </Suspense>
