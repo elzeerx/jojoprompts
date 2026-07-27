@@ -9,7 +9,6 @@ export interface ProtectedContentShape {
   ok?: boolean;
   prompt_text?: string | null;
   prompt_text_ar?: string | null;
-  [key: string]: unknown;
 }
 
 /**
