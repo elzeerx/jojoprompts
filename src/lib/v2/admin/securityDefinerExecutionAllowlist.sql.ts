@@ -22,21 +22,22 @@
  *      Then explicit allowlist GRANTs re-establish exactly the intended
  *      access matrix — nothing broader.
  *
- * FINAL ACCESS MATRIX (encoded below; tests assert exactly this):
+ * FINAL ACCESS MATRIX (verified from pg_proc; encoded below; tests
+ * assert exactly this):
  *
- *   ANON-EXECUTABLE (6, unchanged public surfaces):
+ *   ANON-EXECUTABLE (6, exact signatures):
  *     - can_manage_prompts(uuid)
- *     - has_role(uuid, app_role)
- *     - is_admin(uuid)
  *     - get_public_profile_safe(uuid)
- *     - get_public_prompt_previews(int, int)
- *     - get_public_resource_trust_badges(uuid)
+ *     - get_public_prompt_previews(integer)
+ *     - get_public_resource_trust_badges(uuid[])
+ *     - has_role(uuid, app_role)
+ *     - is_admin()
  *
- *   AUTHENTICATED + SERVICE_ROLE ONLY (20 internal helpers):
+ *   AUTHENTICATED + SERVICE_ROLE ONLY (20 internal helpers, by name):
  *     Callable by signed-in users through client/RPC paths that are
  *     already gated by app-level auth checks. Never anon-callable.
  *
- *   SERVICE_ROLE ONLY (8 trigger functions):
+ *   SERVICE_ROLE ONLY (8 trigger functions, by name):
  *     Fire from DB triggers as owner; must not be directly executable
  *     by any browser role.
  *
@@ -49,10 +50,6 @@
  * and was therefore not sufficient; (2) added the `REVOKE ... FROM
  * PUBLIC` on every audited function and the explicit allowlist grants,
  * which together produce the invariant tested here.
- *
- * Rollback: reverse the REVOKE PUBLIC / role-scoped GRANTs in (2). The
- * database catalog default (EXECUTE to PUBLIC) will be re-established
- * for anything not explicitly re-granted.
  */
 
 export const SECDEF_INITIAL_MIGRATION = {
@@ -75,53 +72,66 @@ export const SECDEF_FINAL_MIGRATION = {
   authoritative: true,
 } as const;
 
-/** Exact six-function anonymous allowlist. Order-insensitive; content-exact. */
+/**
+ * Exact six-function anonymous allowlist, with exact argument signatures
+ * as verified in live pg_proc. Content-exact; order-insensitive.
+ */
+export const SECDEF_ANON_ALLOWLIST_SIGNATURES: readonly string[] = [
+  "can_manage_prompts(uuid)",
+  "get_public_profile_safe(uuid)",
+  "get_public_prompt_previews(integer)",
+  "get_public_resource_trust_badges(uuid[])",
+  "has_role(uuid, app_role)",
+  "is_admin()",
+] as const;
+
+/** Bare function names for the six-entry anon allowlist. */
 export const SECDEF_ANON_ALLOWLIST: readonly string[] = [
   "can_manage_prompts",
-  "has_role",
-  "is_admin",
   "get_public_profile_safe",
   "get_public_prompt_previews",
   "get_public_resource_trust_badges",
+  "has_role",
+  "is_admin",
 ] as const;
 
 /** 20 internal helpers: authenticated + service_role only. */
 export const SECDEF_AUTHENTICATED_ONLY: readonly string[] = [
-  "authorize_resource_download",
+  "calculate_anomaly_score",
   "can_access_prompt",
   "can_access_sensitive_profile_data",
   "can_access_tier",
   "cancel_user_subscription",
+  "cleanup_orphaned_security_logs",
   "confirm_user_email",
-  "delete_user_account",
-  "evaluate_access_request",
+  "evaluate_compliance_status",
+  "evaluate_response_conditions",
   "export_user_data",
-  "get_my_downloadable_files",
-  "get_my_inactive_entitlements",
-  "get_my_library_state",
   "get_user_profile_safe",
   "get_user_subscription_tier",
   "has_active_subscription",
   "is_admin_user",
   "is_super_admin",
   "is_verified_admin",
+  "log_profile_access_attempt",
   "user_has_active_subscription",
   "user_has_any_role",
+  "validate_discount_code",
 ] as const;
 
 /** 8 trigger functions: service_role only (no browser-role execute). */
 export const SECDEF_TRIGGER_FUNCTIONS: readonly string[] = [
-  "handle_new_user",
-  "ensure_single_active_subscription",
   "anonymize_audit_ip",
-  "anonymize_ip_address",
-  "log_profile_access_attempt",
-  "log_sensitive_data_access",
-  "update_abandoned_cart_updated_at",
-  "set_package_scan_items_updated_at",
+  "create_abandoned_cart_sequence",
+  "ensure_single_active_subscription",
+  "handle_new_user",
+  "secure_admin_audit_insert",
+  "secure_security_log_insert",
+  "update_email_templates_updated_at",
+  "update_platform_updated_at",
 ] as const;
 
-/** Full audited set — 34 functions. */
+/** Full audited set — 34 functions across three disjoint tiers. */
 export const SECDEF_AUDITED_FUNCTIONS: readonly string[] = [
   ...SECDEF_ANON_ALLOWLIST,
   ...SECDEF_AUTHENTICATED_ONLY,
@@ -132,6 +142,7 @@ export const SECDEF_EXECUTION_ALLOWLIST = {
   initial: SECDEF_INITIAL_MIGRATION,
   final: SECDEF_FINAL_MIGRATION,
   anon: SECDEF_ANON_ALLOWLIST,
+  anonSignatures: SECDEF_ANON_ALLOWLIST_SIGNATURES,
   authenticated: SECDEF_AUTHENTICATED_ONLY,
   triggers: SECDEF_TRIGGER_FUNCTIONS,
   audited: SECDEF_AUDITED_FUNCTIONS,
