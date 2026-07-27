@@ -108,7 +108,7 @@ describe("legacy anon-table restriction — source fixture", () => {
     ];
     for (const stmt of LEGACY_ANON_RESTRICTION_SQL) {
       for (const term of forbidden) {
-        expect(stmt.toLowerCase()).not.toContain(term.toLowerCase());
+        expect(stmt.toLowerCase().includes(term.toLowerCase())).toBe(false);
       }
     }
   });
