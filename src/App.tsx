@@ -194,7 +194,7 @@ function App() {
                         ) : (
                           /* Canonical V2 public shell wraps every customer/
                              public/auth/legal/info route AND the 404 wildcard.
-                             No legacy RootLayout, no legacy Header/Footer,
+                             No legacy layout, no legacy Header/Footer,
                              no admin FloatingAddPromptButton on any customer
                              surface. */
                           <Route element={<V2Layout />}>
