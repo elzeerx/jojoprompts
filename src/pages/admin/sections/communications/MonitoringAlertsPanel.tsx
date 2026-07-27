@@ -70,7 +70,18 @@ export function MonitoringAlertsPanel() {
       setRows(mapped);
     } catch (err) {
       logger.error("Failed to load monitoring alerts", err);
-      setError(err instanceof Error ? err.message : "Failed to load alerts");
+      let msg = "Failed to load alerts";
+      if (err instanceof Error && err.message) {
+        msg = err.message;
+      } else if (err && typeof err === "object") {
+        const anyErr = err as { message?: unknown; error?: unknown };
+        if (typeof anyErr.message === "string" && anyErr.message.length > 0) {
+          msg = anyErr.message;
+        } else if (typeof anyErr.error === "string" && anyErr.error.length > 0) {
+          msg = anyErr.error;
+        }
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
