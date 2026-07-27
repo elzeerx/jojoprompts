@@ -121,6 +121,7 @@ export function LoginForm() {
   const onMagicLinkSubmit = async (values: MagicLinkFormValues) => {
     setIsLoading(true);
 
+    try {
       // V2: single safe destination — never plan-gated.
       const redirectUrl = `${window.location.origin}${safeNextPath}`;
 
