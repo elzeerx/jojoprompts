@@ -1,0 +1,86 @@
+import { describe, it, expect } from "bun:test";
+import { resolveSafeNext, readSafeNextParam, DEFAULT_SAFE_NEXT } from "./safeNext";
+
+describe("resolveSafeNext", () => {
+  it("returns the fallback for empty / non-string input", () => {
+    expect(resolveSafeNext(undefined)).toBe(DEFAULT_SAFE_NEXT);
+    expect(resolveSafeNext(null)).toBe(DEFAULT_SAFE_NEXT);
+    expect(resolveSafeNext("")).toBe(DEFAULT_SAFE_NEXT);
+    expect(resolveSafeNext("   ")).toBe(DEFAULT_SAFE_NEXT);
+    expect(resolveSafeNext(42 as unknown)).toBe(DEFAULT_SAFE_NEXT);
+  });
+
+  it("accepts representative internal V2 destinations with query strings", () => {
+    for (const p of [
+      "/explore",
+      "/checkout",
+      "/cart",
+      "/library",
+      "/orders",
+      "/account",
+      "/resources/some-slug",
+      "/resources/some-slug?ref=email",
+      "/checkout?intent=lifetime",
+      "/how-it-works",
+      "/pricing",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(p);
+    }
+  });
+
+  it("rejects external, protocol-relative, backslash and scheme-bearing values", () => {
+    for (const p of [
+      "https://evil.com/x",
+      "http://evil.com",
+      "//evil.com/x",
+      "/\\evil.com",
+      "\\\\evil.com",
+      "javascript:alert(1)",
+      "JAVASCRIPT:alert(1)",
+      "data:text/html,<script>alert(1)</script>",
+      "vbscript:msgbox(1)",
+      "mailto:x@y.z",
+      "ftp://x/y",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(DEFAULT_SAFE_NEXT);
+    }
+  });
+
+  it("rejects login/reset/signup loop destinations", () => {
+    for (const p of [
+      "/login",
+      "/login?next=/x",
+      "/signup",
+      "/signup?plan=pro",
+      "/reset-password",
+      "/reset-password?token=abc",
+      "/email-confirmation",
+      "/magic-link-sent",
+      "/auth/verify-email",
+      "/auth/callback",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(DEFAULT_SAFE_NEXT);
+    }
+  });
+
+  it("rejects bare '/'", () => {
+    expect(resolveSafeNext("/")).toBe(DEFAULT_SAFE_NEXT);
+  });
+
+  it("honors an explicit fallback override", () => {
+    expect(resolveSafeNext(undefined, "/library")).toBe("/library");
+    expect(resolveSafeNext("//evil", "/library")).toBe("/library");
+  });
+});
+
+describe("readSafeNextParam", () => {
+  it("reads `next` from URLSearchParams-like objects", () => {
+    const sp = new URLSearchParams("next=/checkout%3Fintent%3Dlifetime");
+    expect(readSafeNextParam(sp)).toBe("/checkout?intent=lifetime");
+  });
+
+  it("falls back when params is missing or has no next", () => {
+    expect(readSafeNextParam(null)).toBe(DEFAULT_SAFE_NEXT);
+    expect(readSafeNextParam(new URLSearchParams(""))).toBe(DEFAULT_SAFE_NEXT);
+  });
+});
