@@ -248,42 +248,28 @@ export class PaymentService {
     }
   }
 
-  // PayPal integration methods
-  async createPayPalPayment(data: PaymentData): Promise<ApiResponse<any>> {
-    try {
-      const { data: result, error } = await supabase.functions.invoke('create-paypal-payment', {
-        body: {
-          planId: data.planId,
-          userId: data.userId,
-          discountCode: data.discountCode
-        }
-      });
-
-      if (error) throw error;
-
-      return { success: true, data: result };
-    } catch (error: any) {
-      return { success: false, error: { message: error.message } };
-    }
+  // PayPal integration methods — RETIRED.
+  //
+  // V2 release-hardening: `create-paypal-payment` and `capture-paypal-payment`
+  // Edge Functions have been retired. These methods are preserved as stubs
+  // that always return a failure result and never perform network I/O.
+  async createPayPalPayment(_data: PaymentData): Promise<ApiResponse<any>> {
+    return {
+      success: false,
+      error: { message: 'create-paypal-payment is retired.' },
+    };
   }
 
-  async capturePayPalPayment(data: {
+  async capturePayPalPayment(_data: {
     orderId: string;
     planId: string;
     userId: string;
     discountCode?: string;
   }): Promise<ApiResponse<any>> {
-    try {
-      const { data: result, error } = await supabase.functions.invoke('capture-paypal-payment', {
-        body: data
-      });
-
-      if (error) throw error;
-
-      return { success: true, data: result };
-    } catch (error: any) {
-      return { success: false, error: { message: error.message } };
-    }
+    return {
+      success: false,
+      error: { message: 'capture-paypal-payment is retired.' },
+    };
   }
 
   async verifyPayment(params: PaymentVerificationParams): Promise<ApiResponse<any>> {

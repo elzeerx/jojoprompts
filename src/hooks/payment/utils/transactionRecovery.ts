@@ -1,17 +1,16 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Finds a transaction by order ID
+ * Finds a transaction by order ID.
+ *
+ * V2 release-hardening: the unauthenticated fallback path previously called
+ * the retired `get-transaction-by-order` Edge Function. That call is removed;
+ * unauthenticated lookups now return `null` (read-only clients cannot query
+ * `transactions` directly under RLS, which is the correct outcome).
  */
 export async function findTransactionByOrder(orderIdToFind: string, currentUser?: any) {
   if (!currentUser) {
-    const { data, error } = await supabase.functions.invoke('get-transaction-by-order', {
-      body: { orderId: orderIdToFind }
-    });
-    if (!error && data && (data as any).transaction) {
-      return (data as any).transaction;
-    }
+    // Retired endpoint path — do not invoke `get-transaction-by-order`.
     return null;
   }
 

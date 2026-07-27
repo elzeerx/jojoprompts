@@ -24,7 +24,7 @@ import { securityLogger } from "@/utils/logging/security";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
 import { isLaunchLocked } from "@/config/siteMode";
-import { resolveSafeNext, DEFAULT_SAFE_NEXT } from "@/lib/v2/safeNext";
+import { resolveSafeNext } from "@/lib/v2/safeNext";
 
 const LAUNCH_LOCKED = isLaunchLocked();
 

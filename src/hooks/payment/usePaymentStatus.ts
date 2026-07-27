@@ -138,24 +138,12 @@ export function usePaymentStatus() {
         throw new Error('Could not find plan details for retry');
       }
 
-      // Create new PayPal order for retry
-      const { data, error } = await supabase.functions.invoke('process-paypal-payment', {
-        body: {
-          action: 'create',
-          amount: planData.price_usd,
-          planId,
-          userId: user?.id,
-          retryTransactionId: transactionId
-        }
-      });
-
-      if (error || !data?.success) {
-        throw new Error(data?.error || 'Failed to create retry payment');
-      }
-
+      // V2 release-hardening: `process-paypal-payment` is retired. Retry is
+      // no longer available from the client; direct the user to /checkout.
       return {
-        success: true,
-        redirectUrl: data.approvalUrl
+        success: false,
+        error:
+          'PayPal retry is no longer supported. Please start a new checkout.',
       };
 
     } catch (err: any) {

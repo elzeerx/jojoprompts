@@ -1,19 +1,20 @@
-
-import { supabase } from "@/integrations/supabase/client";
-
-export async function verifyPayPalPayment(token: string, payerId: string, accessToken?: string) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+/**
+ * V2 release-hardening: the retired `verify-paypal-payment` Edge Function is
+ * no longer invoked. This helper is retained as a stub so historical imports
+ * continue to type-check; it always returns a `retired` error without any
+ * network I/O.
+ */
+export async function verifyPayPalPayment(
+  _token: string,
+  _payerId: string,
+  _accessToken?: string,
+) {
+  return {
+    data: null,
+    error: {
+      message:
+        'verify-paypal-payment is retired. Use the V2 payment surface (v2-upayments-*).',
+      retired: true,
+    },
   };
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
-  const { data, error } = await supabase.functions.invoke("verify-paypal-payment", {
-    headers,
-    body: {
-      order_id: token,
-      payer_id: payerId,
-    }
-  });
-  return { data, error };
 }

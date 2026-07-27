@@ -15,28 +15,9 @@ export async function checkDatabaseFirst({
   orderId?: string | null;
 }): Promise<SubscriptionResult> {
   if (!userId || !planId) {
-    if (orderId) {
-      const { data, error } = await supabase.functions.invoke('get-transaction-by-order', {
-        body: { orderId }
-      });
-      if (!error && data) {
-        const { transaction, subscription } = data as any;
-        if (subscription) {
-          return { hasSubscription: true, transaction, subscription };
-        }
-        if (transaction && transaction.status === 'completed') {
-          return {
-            hasSubscription: true,
-            transaction,
-            subscription: {
-              transaction_id: transaction.id,
-              payment_id: transaction.paypal_payment_id,
-              user_id: transaction.user_id
-            }
-          };
-        }
-      }
-    }
+    // V2 release-hardening: the retired `get-transaction-by-order` Edge
+    // Function is no longer invoked. Without an authenticated user + planId
+    // we cannot verify entitlement, so we fail closed.
     return { hasSubscription: false, transaction: null, subscription: null };
   }
 

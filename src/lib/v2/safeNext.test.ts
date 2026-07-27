@@ -94,6 +94,40 @@ describe("resolveSafeNext", () => {
     expect(resolveSafeNext(sp.get("b"))).toBe(DEFAULT_SAFE_NEXT);
     expect(resolveSafeNext(sp.get("c"))).toBe(DEFAULT_SAFE_NEXT);
   });
+
+  it("rejects backslash smuggling anywhere in the value", () => {
+    for (const p of [
+      "/foo\\bar",
+      "/\\evil.com",
+      "\\/evil.com",
+      "\\\\evil.com",
+      "/legit?next=/ok\\bad",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(DEFAULT_SAFE_NEXT);
+    }
+  });
+
+  it("rejects nested auth-loop next= smuggled through the query", () => {
+    for (const p of [
+      "/checkout?next=/login",
+      "/library?foo=1&next=/signup",
+      "/orders?next=/reset-password",
+      "/x#next=/auth/callback",
+      "/y?next=/magic-link-sent",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(DEFAULT_SAFE_NEXT);
+    }
+  });
+
+  it("preserves legitimate V2 relative query strings", () => {
+    for (const p of [
+      "/checkout?intent=lifetime",
+      "/resources/foo?ref=email",
+      "/orders?page=2&sort=recent",
+    ]) {
+      expect(resolveSafeNext(p)).toBe(p);
+    }
+  });
 });
 
 describe("readSafeNextParam", () => {
