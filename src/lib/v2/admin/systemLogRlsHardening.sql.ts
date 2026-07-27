@@ -1,13 +1,13 @@
 /**
- * Additive Supabase migration SOURCE for pre-launch RLS/storage hardening
- * of system/log tables and public storage buckets.
+ * Supabase migration SOURCE for pre-launch RLS/storage hardening of
+ * system/log tables and public storage buckets.
  *
- * Held as an in-repo source fixture so the intended migration content is
- * version-controlled and testable without applying it to the live
- * database. When approved for application, this SQL should be moved
- * verbatim into
- *   supabase/migrations/20260728000000_system_log_rls_hardening.sql
- * via the migration tool.
+ * STATUS: APPLIED LIVE as migration
+ *   20260727135637 system_log_rls_hardening
+ * This in-repo fixture is retained as the version-controlled record of
+ * the applied definition (no local executable migration file is created
+ * to avoid duplication). The SQL below is congruent with the applied
+ * definition — do not diverge without a follow-up live migration.
  *
  * SCOPE (defensive, non-destructive):
  *   • Removes 10 open `WITH CHECK true` INSERT policies on system/log
