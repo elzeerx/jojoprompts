@@ -37,7 +37,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { createLogger } from "@/utils/logging";
-import { EmailMonitoringAlerts } from "@/components/admin/EmailMonitoringAlerts";
+import { MonitoringAlertsPanel } from "./MonitoringAlertsPanel";
 import {
   computeDeliveryMetrics,
   computeDomainStats,
@@ -394,18 +394,21 @@ export default function DeliveryHealthPage() {
         </>
       )}
 
-      {/* Subordinate monitoring alerts — same page, not a competing shell */}
-      <section aria-label="Monitoring alerts" className="space-y-2">
+      {/* Subordinate monitoring alerts — same page, single H2 for the section */}
+      <section aria-labelledby="monitoring-alerts-heading" className="space-y-2">
         <div className="flex items-center gap-2">
           <AlertTriangle
             className="h-4 w-4 text-warm-gold"
             aria-hidden
           />
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          <h2
+            id="monitoring-alerts-heading"
+            className="text-xs font-semibold uppercase tracking-widest text-muted-foreground"
+          >
             Monitoring alerts
           </h2>
         </div>
-        <EmailMonitoringAlerts />
+        <MonitoringAlertsPanel />
       </section>
     </div>
   );

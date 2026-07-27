@@ -9,6 +9,11 @@ interface PaginationSectionProps {
   onPageChange: (page: number) => void;
 }
 
+// Shared button sizing keeps every control at the 44x44 mobile touch target
+// and prevents page-level horizontal overflow at 390px via flex-wrap.
+const CONTROL_CLASSES =
+  "min-h-[44px] min-w-[44px] px-3 touch-manipulation";
+
 export function PaginationSection({
   currentPage,
   totalPages,
@@ -22,86 +27,80 @@ export function PaginationSection({
 
   // Create an array of page numbers to show
   const getPageNumbers = () => {
-    let pages = [];
+    let pages: (number | string)[] = [];
     const maxPagesToShow = 5;
-    
+
     if (totalPages <= maxPagesToShow) {
-      // Show all pages if there are few
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Always include first page
       pages.push(1);
-      
-      // Calculate range around current page
+
       let start = Math.max(2, currentPage - 1);
       let end = Math.min(totalPages - 1, currentPage + 1);
-      
-      // If we're at the start
+
       if (currentPage <= 2) {
         end = Math.min(totalPages - 1, 4);
       }
-      
-      // If we're at the end
       if (currentPage >= totalPages - 1) {
         start = Math.max(2, totalPages - 3);
       }
-      
-      // Add ellipsis if needed
-      if (start > 2) {
-        pages.push("...");
-      }
-      
-      // Add pages in range
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
-      
-      // Add ellipsis if needed
-      if (end < totalPages - 1) {
-        pages.push("...");
-      }
-      
-      // Always include last page
+
+      if (start > 2) pages.push("...");
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (end < totalPages - 1) pages.push("...");
+
       pages.push(totalPages);
     }
-    
+
     return pages;
   };
 
   return (
-    <div className="flex items-center space-x-2 justify-center">
+    <div className="flex w-full flex-wrap items-center justify-center gap-2">
       <Button
         variant="outline"
         size="sm"
         onClick={() => goToPage(currentPage - 1)}
         disabled={currentPage === 1}
+        aria-label="Previous page"
+        className={CONTROL_CLASSES}
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      
+
       {getPageNumbers().map((page, index) => (
         <React.Fragment key={index}>
           {page === "..." ? (
-            <span className="px-2">...</span>
+            <span
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-1 text-muted-foreground"
+              aria-hidden="true"
+            >
+              …
+            </span>
           ) : (
             <Button
               variant={currentPage === page ? "default" : "outline"}
               size="sm"
-              onClick={() => typeof page === 'number' && goToPage(page)}
+              onClick={() => typeof page === "number" && goToPage(page)}
+              aria-label={`Go to page ${page}`}
+              aria-current={currentPage === page ? "page" : undefined}
+              className={CONTROL_CLASSES}
             >
               {page}
             </Button>
           )}
         </React.Fragment>
       ))}
-      
+
       <Button
         variant="outline"
         size="sm"
         onClick={() => goToPage(currentPage + 1)}
         disabled={currentPage === totalPages}
+        aria-label="Next page"
+        className={CONTROL_CLASSES}
       >
         <ChevronRight className="h-4 w-4" />
       </Button>
