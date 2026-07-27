@@ -247,19 +247,28 @@ describe("V2 NotFoundPage is bilingual, RTL-aware, marketplace-branded", () => {
   });
 });
 
-describe("Additive admin overview migration — capture-ever semantics", () => {
-  // The migration is held as an in-repo source fixture (not applied). The
-  // fixture is what we would submit through the migration tool once the
-  // deployment window opens.
+describe("Admin overview payment semantics — cross-window final definition", () => {
+  // Source fixture that mirrors the two applied live migrations:
+  //   20260727134427 admin_overview_payment_semantics
+  //   20260727135118 admin_overview_payment_semantics_cross_window_fix
+  // No local migration file exists; the fixture is a version-controlled
+  // record of the final applied definition.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const {
     ADMIN_OVERVIEW_PAYMENT_SEMANTICS_SQL: sql,
     ADMIN_OVERVIEW_PAYMENT_SEMANTICS_MIGRATION_FILENAME: filename,
+    APPLIED_LIVE_MIGRATIONS: applied,
   } = require(resolve(SRC, "lib/v2/admin/overviewPaymentSemantics.sql.ts"));
 
-  it("targets the intended migration filename", () => {
+  it("documents the applied live migration mapping", () => {
     expect(filename).toBe(
-      "20260727100000_admin_overview_payment_semantics.sql",
+      "20260727135118_admin_overview_payment_semantics_cross_window_fix.sql",
+    );
+    const versions = applied.map((m: { version: string }) => m.version);
+    expect(versions).toEqual(["20260727134427", "20260727135118"]);
+    expect(applied[0].name).toBe("admin_overview_payment_semantics");
+    expect(applied[1].name).toBe(
+      "admin_overview_payment_semantics_cross_window_fix",
     );
   });
 
@@ -269,19 +278,47 @@ describe("Additive admin overview migration — capture-ever semantics", () => {
     ).toBe(true);
     expect(/SECURITY DEFINER/.test(sql)).toBe(true);
     expect(/SET search_path = ''/.test(sql)).toBe(true);
-    // Same admin gate.
     expect(/has_role\(v_actor, 'admin'::public\.app_role\)/.test(sql)).toBe(
       true,
     );
   });
 
-  it("uses captured-ever / failed-without-capture per-order aggregation", () => {
-    expect(/bool_or\(event_type::text = 'captured'\)/.test(sql)).toBe(true);
-    expect(/bool_or\(event_type::text = 'failed'\)/.test(sql)).toBe(true);
-    expect(/failed_ever AND NOT captured_ever/.test(sql)).toBe(true);
-    expect(/count\(\*\) FILTER \(WHERE captured_ever\)/.test(sql)).toBe(true);
-    // The old, incorrect "latest event per order" model must be gone.
+  it("uses cross-window captured-ever aggregation (success=in-window, failure excludes any captured_ever)", () => {
+    expect(/orders_in_window/.test(sql)).toBe(true);
+    expect(
+      /bool_or\(pe\.event_type::text = 'captured' AND pe\.received_at >= v_since\) AS captured_in_window/.test(
+        sql,
+      ),
+    ).toBe(true);
+    expect(
+      /bool_or\(pe\.event_type::text = 'captured'\)\s+AS captured_ever/.test(sql),
+    ).toBe(true);
+    expect(
+      /bool_or\(pe\.event_type::text = 'failed'\s+AND pe\.received_at >= v_since\) AS failed_in_window/.test(
+        sql,
+      ),
+    ).toBe(true);
+    expect(/failed_in_window AND NOT captured_ever/.test(sql)).toBe(true);
+    expect(/count\(\*\) FILTER \(WHERE captured_in_window\)/.test(sql)).toBe(
+      true,
+    );
+    // The old buggy per-window captured_ever model must be gone.
+    expect(
+      /bool_or\(event_type::text = 'captured'\) AS captured_ever/.test(sql),
+    ).toBe(false);
     expect(/DISTINCT ON \(order_id\)/.test(sql)).toBe(false);
+  });
+
+  it("cross-window guard: a capture before the window shields a later in-window failed event", () => {
+    // Textual contract: the failure filter must reference captured_ever
+    // (all history) rather than a window-bounded captured flag. This
+    // proves the fix from 20260727135118 is encoded.
+    const failureLine = sql
+      .split("\n")
+      .find((l: string) => /failed.*NOT captured/i.test(l));
+    expect(failureLine).toBeTruthy();
+    expect(/captured_ever/.test(failureLine!)).toBe(true);
+    expect(/captured_in_window/.test(failureLine!)).toBe(false);
   });
 
   it("preserves the payment_success_rate null-when-empty contract", () => {
