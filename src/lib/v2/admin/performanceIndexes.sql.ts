@@ -120,5 +120,4 @@ export const V2_FK_INDEXES_REMAINING = {
     (i) => i.migration === "add_remaining_v2_foreign_key_indexes",
   ),
   applied: true,
-  exactTimestampPending: true,
 } as const;
