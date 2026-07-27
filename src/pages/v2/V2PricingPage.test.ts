@@ -10,7 +10,7 @@ describe("V2 pricing contract", () => {
   const byKey = Object.fromEntries(V2_PRICING_TIERS.map((t) => [t.key, t.price]));
 
   it("advertises the locked KWD tiers", () => {
-    expect(byKey.free).toBe("0.000 KD");
+    expect(byKey.free).toBe("0 KD");
     expect(byKey.prompt_image_style).toBe("0.900 KD");
     expect(byKey.prompt_pack).toBe("1.500 KD");
     expect(byKey.skill).toBe("1.500 – 3.000 KD");

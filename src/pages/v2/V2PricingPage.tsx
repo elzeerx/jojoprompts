@@ -41,6 +41,10 @@ export default function V2PricingPage() {
       lang === "ar"
         ? "دفعات فردية لمرة واحدة. لا اشتراكات ولا رسوم متكررة."
         : "One-time payments only. No subscriptions, no recurring fees.",
+    creatorExclusion:
+      lang === "ar"
+        ? "ملاحظة: منتجات المبدعين المستقلين المستقبلية غير مشمولة تلقائياً في مكتبة جوجو الكاملة مدى الحياة."
+        : "Note: future independent-creator products are not automatically included in Jojo Full Library Lifetime.",
   };
 
   return (
@@ -103,6 +107,9 @@ export default function V2PricingPage() {
             ))}
           </ul>
           <LifetimeUpgradeCard />
+          <p className="text-xs text-muted-foreground" data-testid="creator-exclusion-note">
+            {t.creatorExclusion}
+          </p>
         </section>
 
         <div className="text-center">

@@ -46,6 +46,7 @@ const V2_PATHS = new Set([
   "checkout/cancel/:orderId",
   "orders",
   "pricing",
+  "how-it-works",
 ]);
 import { V2Layout } from "./components/v2/V2Layout";
 

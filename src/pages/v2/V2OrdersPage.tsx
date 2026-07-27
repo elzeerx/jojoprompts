@@ -26,13 +26,28 @@ function statusVariant(status: string): "default" | "secondary" | "outline" | "d
 }
 
 export default function V2OrdersPage() {
-  const { user, loading } = useAuth();
-  const { data: orders, isLoading, isError, refetch } = useMyOrders();
+  const { user, loading: authLoading } = useAuth();
+  const {
+    data: orders,
+    isPending,
+    isError,
+    refetch,
+    fetchStatus,
+  } = useMyOrders();
   const { language, isRTL } = useTranslation();
   const lang = language === "ar" ? "ar" : "en";
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  if (!loading && !user) {
+  // Finite loading semantics:
+  //  - authLoading      → auth is still resolving; skeleton is honest.
+  //  - !user            → redirect to sign in (below).
+  //  - fetching now     → skeleton until settled.
+  // A disabled query (fetchStatus === 'idle') OR a settled empty query
+  // must NOT render a permanent skeleton.
+  const showSkeleton =
+    authLoading || (!!user && isPending && fetchStatus === "fetching");
+
+  if (!authLoading && !user) {
     return <Navigate to={`/login?next=${encodeURIComponent("/orders")}`} replace />;
   }
 
@@ -58,7 +73,7 @@ export default function V2OrdersPage() {
           <h1 className="text-2xl font-bold">{t.title}</h1>
         </header>
 
-        {isLoading ? (
+        {showSkeleton ? (
           <div className="space-y-3">
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-16 w-full" />
