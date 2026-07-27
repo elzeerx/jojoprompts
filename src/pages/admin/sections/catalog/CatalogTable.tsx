@@ -627,26 +627,27 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
                         <DropdownMenuItem asChild><Link to={`/resources/${r.slug}`}><ExternalLink className="me-2 h-3.5 w-3.5" /> View public</Link></DropdownMenuItem>
                         <DropdownMenuItem asChild><Link to={`/admin/publishing/resources/${r.id}/edit`}><Pencil className="me-2 h-3.5 w-3.5" /> Edit</Link></DropdownMenuItem>
                         <DropdownMenuItem asChild><Link to={`/admin/publishing/resources/${r.id}/versions/new`}><GitBranch className="me-2 h-3.5 w-3.5" /> New version</Link></DropdownMenuItem>
-                        {r.lifecycle !== "review" ? (
+                        {isTransitionAllowed(r.lifecycle, "review") ? (
                           <DropdownMenuItem onSelect={() => mutate.mutate({ ids: [r.id], action: "review" })}>
                             <ClipboardCheck className="me-2 h-3.5 w-3.5" /> Submit for review
                           </DropdownMenuItem>
                         ) : null}
-                        {r.lifecycle !== "published" ? (
+                        {isTransitionAllowed(r.lifecycle, "publish") ? (
                           <DropdownMenuItem onSelect={() => setRowConfirm({ id: r.id, action: "publish" })}>
                             <Send className="me-2 h-3.5 w-3.5" /> Publish…
                           </DropdownMenuItem>
                         ) : null}
                         <DropdownMenuSeparator />
-                        {r.lifecycle !== "archived" ? (
+                        {isTransitionAllowed(r.lifecycle, "archive") ? (
                           <DropdownMenuItem className="text-red-700 focus:text-red-800" onSelect={() => setRowConfirm({ id: r.id, action: "archive" })}>
                             <Archive className="me-2 h-3.5 w-3.5" /> Archive…
                           </DropdownMenuItem>
-                        ) : (
+                        ) : null}
+                        {isTransitionAllowed(r.lifecycle, "restore") ? (
                           <DropdownMenuItem onSelect={() => mutate.mutate({ ids: [r.id], action: "restore" })}>
-                            <ArchiveRestore className="me-2 h-3.5 w-3.5" /> Restore
+                            <ArchiveRestore className="me-2 h-3.5 w-3.5" /> Restore to draft
                           </DropdownMenuItem>
-                        )}
+                        ) : null}
                         <DropdownMenuItem asChild><Link to={`/admin/trust/admin-activity?target=${r.id}`}><ClipboardCheck className="me-2 h-3.5 w-3.5" /> Activity</Link></DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
