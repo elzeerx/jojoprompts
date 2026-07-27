@@ -53,9 +53,9 @@ export function useResourceDetail(slug: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       if (!resource) return null;
-      const rid = (resource as { id: string }).id;
-      const currentVersionId = (resource as { current_version_id: string | null })
-        .current_version_id;
+      const rec = resource as unknown as { id: string; current_version_id: string | null };
+      const rid = rec.id;
+      const currentVersionId = rec.current_version_id;
 
       const [
         { data: version },
