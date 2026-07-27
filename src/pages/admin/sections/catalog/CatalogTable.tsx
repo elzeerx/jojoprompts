@@ -253,7 +253,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
   const [sortDir, setSortDir] = useState<FetchArgs["sortDir"]>("desc");
   const [view, setView] = useState<ViewMode>("table");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [confirmBulk, setConfirmBulk] = useState<null | "publish" | "review" | "archive">(null);
+  const [confirmBulk, setConfirmBulk] = useState<null | "publish" | "review" | "archive" | "restore">(null);
   const [rowConfirm, setRowConfirm] = useState<{ id: string; action: "publish" | "archive" } | null>(null);
   const [publishResult, setPublishResult] = useState<{ resourceId: string; errors: string[] } | null>(null);
   const [savedViewsOpen, setSavedViewsOpen] = useState(false);
