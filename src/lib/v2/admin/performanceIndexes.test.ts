@@ -19,17 +19,15 @@ describe("V2 FK index fixture — applied-source record", () => {
     expect(V2_FK_INDEXES.applied).toBe(true);
   });
 
-  it("preserves the exactTimestampPending marker for the second migration", () => {
+  it("names the second applied migration with its exact timestamp", () => {
     expect(V2_FK_INDEXES_REMAINING_MIGRATION_FILENAME).toBe(
-      "2026072714xx_add_remaining_v2_foreign_key_indexes.sql",
+      "20260727140552_add_remaining_v2_foreign_key_indexes.sql",
     );
     expect(V2_FK_INDEXES_REMAINING.filename).toBe(
       V2_FK_INDEXES_REMAINING_MIGRATION_FILENAME,
     );
     expect(V2_FK_INDEXES_REMAINING.applied).toBe(true);
-    expect(V2_FK_INDEXES_REMAINING.exactTimestampPending).toBe(true);
-    // The placeholder minute/second segment must be preserved verbatim.
-    expect(/2026072714xx/.test(V2_FK_INDEXES_REMAINING_MIGRATION_FILENAME)).toBe(true);
+    expect(/20260727140552/.test(V2_FK_INDEXES_REMAINING_MIGRATION_FILENAME)).toBe(true);
   });
 
   it("records both migrations in APPLIED_LIVE with the expected names", () => {
