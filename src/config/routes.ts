@@ -1,58 +1,40 @@
 /**
- * Centralized Route Configuration
- * 
- * This file contains all application routes with their protection levels,
- * making it easier to manage routing logic and access control.
+ * Centralized Route Configuration — V2.
+ *
+ * Only surviving V2 customer/public/auth/legal/info surfaces are declared
+ * here. Legacy V1 premium/subscription/payment-success/prompter/demo pages
+ * have been removed from the active router; their sources may remain on
+ * disk as archival, but they are not imported here and are therefore not
+ * lazy-loaded, code-split, or reachable via the app router. Legacy paths
+ * are handled by explicit client-side `<Navigate replace />` redirects in
+ * `src/App.tsx` (see `LEGACY_REDIRECTS`).
  */
 
 import { ComponentType, lazy } from "react";
 import type { UserRole } from "@/contexts/roles";
 
-// Lazy load components for better performance
-const Index = lazy(() => import("@/pages/Index"));
+// Public auth / legal / info
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 const SignupPage = lazy(() => import("@/pages/SignupPage"));
 const EmailConfirmationPage = lazy(() => import("@/pages/EmailConfirmationPage"));
 const VerifyEmailPage = lazy(() => import("@/pages/auth/VerifyEmail"));
-const PromptsPage = lazy(() => import("@/pages/PromptsPage"));
-const ChatGPTPromptsPage = lazy(() => import("@/pages/prompts/ChatGPTPromptsPage"));
-const MidjourneyPromptsPage = lazy(() => import("@/pages/prompts/MidjourneyPromptsPage"));
-const WorkflowPromptsPage = lazy(() => import("@/pages/prompts/WorkflowPromptsPage"));
-const GPTsBuilderPage = lazy(() => import("@/pages/prompts/GPTsBuilderPage"));
-const FavoritesPage = lazy(() => import("@/pages/FavoritesPage"));
-const SearchPage = lazy(() => import("@/pages/SearchPage"));
-const PricingPage = lazy(() => import("@/pages/PricingPage"));
-const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
-// V2 release-hardening: retired legacy PayPal/UPayments acquisition callbacks.
-// The page sources remain in src/pages/ as archival, but they must not be
-// lazy-imported or routed. Do not re-add these imports.
-const MagicLoginPage = lazy(() => import("@/pages/MagicLoginPage").then(m => ({ default: m.MagicLoginPage })));
+const MagicLoginPage = lazy(() =>
+  import("@/pages/MagicLoginPage").then((m) => ({ default: m.MagicLoginPage })),
+);
+const MagicLinkSentPage = lazy(() => import("@/pages/MagicLinkSentPage"));
 const UnsubscribePage = lazy(() => import("@/pages/UnsubscribePage"));
-const PaymentSuccessPage = lazy(() => import("@/pages/PaymentSuccessPage"));
-const PaymentFailedPage = lazy(() => import("@/pages/PaymentFailedPage"));
-const PaymentDashboardPage = lazy(() => import("@/pages/PaymentDashboardPage"));
-const PaymentRecoveryPage = lazy(() => import("@/pages/PaymentRecoveryPage"));
-const UserDashboardPage = lazy(() => import("@/pages/UserDashboardPage"));
-const SubscriptionDashboard = lazy(() => import("@/pages/dashboard/SubscriptionDashboard"));
-const PrompterDashboard = lazy(() => import("@/pages/prompter/PrompterDashboard"));
-// V2 account surface + legacy /dashboard compatibility redirect.
-const V2AccountPage = lazy(() => import("@/pages/v2/AccountPage"));
-const V2DashboardRedirect = lazy(() => import("@/pages/v2/DashboardRedirect"));
 
-const PlatformTest = lazy(() => import("@/pages/PlatformTest"));
 const AboutPage = lazy(() => import("@/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));
 const FAQPage = lazy(() => import("@/pages/FAQPage"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
 const TermsOfServicePage = lazy(() => import("@/pages/TermsOfServicePage"));
-const ExamplesPage = lazy(() => import("@/pages/ExamplesPage"));
-const EnhancedPromptDemo = lazy(() => import("@/pages/EnhancedPromptDemo"));
-const MagicLinkSentPage = lazy(() => import("@/pages/MagicLinkSentPage"));
-const DemoHub = lazy(() => import("@/pages/demos"));
+
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
-// V2 pages (Phase C) — anonymous discovery + auth-only library
+// V2 root + discovery + resource detail + library
+const Index = lazy(() => import("@/pages/Index"));
 const V2ExplorePage = lazy(() => import("@/pages/v2/ExplorePage"));
 const V2SkillsPage = lazy(() => import("@/pages/v2/SkillsPage"));
 const V2AutomationsPage = lazy(() => import("@/pages/v2/AutomationsPage"));
@@ -62,27 +44,26 @@ const V2BundlesPage = lazy(() => import("@/pages/v2/BundlesPage"));
 const V2ResourceDetailPage = lazy(() => import("@/pages/v2/ResourceDetailPage"));
 const V2LibraryPage = lazy(() => import("@/pages/v2/LibraryPage"));
 const V2HowItWorksPage = lazy(() => import("@/pages/v2/HowItWorksPage"));
+
+// V2 commerce
 const V2CartPage = lazy(() => import("@/pages/v2/CartPage"));
 const V2CheckoutPage = lazy(() => import("@/pages/v2/V2CheckoutPage"));
 const V2CheckoutReturnPage = lazy(() => import("@/pages/v2/V2CheckoutReturnPage"));
 const V2CheckoutCancelPage = lazy(() => import("@/pages/v2/V2CheckoutCancelPage"));
 const V2OrdersPage = lazy(() => import("@/pages/v2/V2OrdersPage"));
 const V2PricingPage = lazy(() => import("@/pages/v2/V2PricingPage"));
-
-
-/**
- * Route protection types
- */
-export type RouteProtection = 
-  | 'public'           // No authentication required
-  | 'auth'            // Authentication required
-  | 'premium'         // Authentication + subscription required
-  | 'role'            // Authentication + specific role required
-  | 'admin';          // Admin role required
+const V2AccountPage = lazy(() => import("@/pages/v2/AccountPage"));
 
 /**
- * Route configuration interface
+ * Route protection types.
+ *
+ * `premium` has been retired from V2. Acquisition is entitlement-based,
+ * enforced server-side per resource — not by a subscription-plan gate on
+ * the client router. The enum entry remains so existing callers of
+ * `isPremiumRoute` compile, but no V2 route may use it.
  */
+export type RouteProtection = "public" | "auth" | "premium" | "role" | "admin";
+
 export interface RouteConfig {
   path: string;
   component: ComponentType<any>;
@@ -92,207 +73,25 @@ export interface RouteConfig {
   index?: boolean;
 }
 
-/**
- * Application routes configuration
- */
 export const routes: RouteConfig[] = [
-  // Public routes - no authentication required
-  {
-    path: "/",
-    component: Index,
-    protection: "public",
-    index: true
-  },
-  {
-    path: "login",
-    component: LoginPage,
-    protection: "public"
-  },
-  {
-    path: "reset-password",
-    component: ResetPasswordPage,
-    protection: "public"
-  },
-  {
-    path: "auth/magic-login",
-    component: MagicLoginPage,
-    protection: "public"
-  },
-  {
-    path: "unsubscribe",
-    component: UnsubscribePage,
-    protection: "public"
-  },
-  {
-    path: "signup",
-    component: SignupPage,
-    protection: "public"
-  },
-  {
-    path: "magic-link-sent",
-    component: MagicLinkSentPage,
-    protection: "public"
-  },
-  {
-    path: "email-confirmation",
-    component: EmailConfirmationPage,
-    protection: "public"
-  },
-  {
-    path: "auth/verify-email",
-    component: VerifyEmailPage,
-    protection: "public"
-  },
-  {
-    path: "examples",
-    component: ExamplesPage,
-    protection: "public"
-  },
-  {
-    path: "demo/enhanced-prompt",
-    component: EnhancedPromptDemo,
-    protection: "public"
-  },
-  {
-    path: "prompts",
-    component: PromptsPage,
-    protection: "premium"  // Require subscription to access prompts catalog
-  },
-  {
-    path: "prompts/chatgpt",
-    component: ChatGPTPromptsPage,
-    protection: "premium"
-  },
-  {
-    path: "prompts/midjourney",
-    component: MidjourneyPromptsPage,
-    protection: "premium"
-  },
-  {
-    path: "prompts/workflow",
-    component: WorkflowPromptsPage,
-    protection: "premium"
-  },
-  {
-    path: "prompts/gpts-builder",
-    component: GPTsBuilderPage,
-    protection: "premium"
-  },
-  {
-    path: "search",
-    component: SearchPage,
-    protection: "public"
-  },
-  {
-    path: "pricing",
-    component: V2PricingPage,
-    protection: "public"
-  },
-  {
-    path: "checkout",
-    component: V2CheckoutPage,
-    protection: "public"
-  },
-  // V2 release-hardening: legacy `payment/callback` and
-  // `payment/upayments-callback` routes intentionally removed. The V2
-  // return surface is `/checkout/return` and `/checkout/return/:orderId`.
-  {
-    path: "payment-success",
-    component: PaymentSuccessPage,
-    protection: "public"
-  },
-  {
-    path: "payment-failed",
-    component: PaymentFailedPage,
-    protection: "public"
-  },
-  {
-    path: "payment-recovery",
-    component: PaymentRecoveryPage,
-    protection: "public"
-  },
-  {
-    path: "about",
-    component: AboutPage,
-    protection: "public"
-  },
-  {
-    path: "contact",
-    component: ContactPage,
-    protection: "public"
-  },
-  {
-    path: "faq",
-    component: FAQPage,
-    protection: "public"
-  },
-  {
-    path: "privacy",
-    component: PrivacyPolicyPage,
-    protection: "public"
-  },
-  {
-    path: "terms",
-    component: TermsOfServicePage,
-    protection: "public"
-  },
+  { path: "/", component: Index, protection: "public", index: true },
 
-  // Premium routes - authentication + subscription required
-  {
-    path: "favorites",
-    component: FavoritesPage,
-    protection: "premium"
-  },
-  {
-    path: "payment-dashboard",
-    component: PaymentDashboardPage,
-    protection: "premium"
-  },
-  {
-    // V2: legacy dashboard now redirects to /account (auth-gated at the page).
-    // Kept "public" so no subscription guard runs — the redirect target itself
-    // handles the auth bounce with a preserved `next`.
-    path: "dashboard",
-    component: V2DashboardRedirect,
-    protection: "public"
-  },
-  {
-    path: "dashboard/subscription",
-    component: SubscriptionDashboard,
-    protection: "premium"
-  },
+  // Auth / legal / info
+  { path: "login", component: LoginPage, protection: "public" },
+  { path: "reset-password", component: ResetPasswordPage, protection: "public" },
+  { path: "signup", component: SignupPage, protection: "public" },
+  { path: "auth/magic-login", component: MagicLoginPage, protection: "public" },
+  { path: "magic-link-sent", component: MagicLinkSentPage, protection: "public" },
+  { path: "email-confirmation", component: EmailConfirmationPage, protection: "public" },
+  { path: "auth/verify-email", component: VerifyEmailPage, protection: "public" },
+  { path: "unsubscribe", component: UnsubscribePage, protection: "public" },
+  { path: "about", component: AboutPage, protection: "public" },
+  { path: "contact", component: ContactPage, protection: "public" },
+  { path: "faq", component: FAQPage, protection: "public" },
+  { path: "privacy", component: PrivacyPolicyPage, protection: "public" },
+  { path: "terms", component: TermsOfServicePage, protection: "public" },
 
-  // Role-based routes
-  {
-    path: "dashboard/prompter",
-    component: PrompterDashboard,
-    protection: "role",
-    requiredRole: "prompter"
-  },
-  {
-    path: "prompter",
-    component: PrompterDashboard,
-    protection: "role",
-    requiredRole: "prompter"
-  },
-
-  // Admin routes are mounted as nested routes directly in App.tsx
-  // (see <Route path="admin/*"> with AdminLayout). Standalone admin
-  // utility routes still live here:
-  {
-    path: "admin/platform-test",
-    component: PlatformTest,
-    protection: "admin",
-    fallbackRoute: "/prompts"
-  },
-  {
-    path: "demos",
-    component: DemoHub,
-    protection: "admin",
-    fallbackRoute: "/prompts"
-  },
-
-  // V2 discovery + resource detail + library (Phase C)
+  // V2 discovery + resource detail + library
   { path: "explore", component: V2ExplorePage, protection: "public" },
   { path: "skills", component: V2SkillsPage, protection: "public" },
   { path: "automations", component: V2AutomationsPage, protection: "public" },
@@ -302,10 +101,11 @@ export const routes: RouteConfig[] = [
   { path: "resources/:slug", component: V2ResourceDetailPage, protection: "public" },
   { path: "library", component: V2LibraryPage, protection: "public" },
   { path: "how-it-works", component: V2HowItWorksPage, protection: "public" },
+  { path: "pricing", component: V2PricingPage, protection: "public" },
 
-  // V2 Commerce (Phase 4A) — customer experience.
-  // Overrides prior V1 checkout/pricing UI. V1 page components remain in source.
+  // V2 commerce
   { path: "cart", component: V2CartPage, protection: "public" },
+  { path: "checkout", component: V2CheckoutPage, protection: "public" },
   { path: "checkout/return", component: V2CheckoutReturnPage, protection: "public" },
   { path: "checkout/return/:orderId", component: V2CheckoutReturnPage, protection: "public" },
   { path: "checkout/cancel", component: V2CheckoutCancelPage, protection: "public" },
@@ -313,49 +113,33 @@ export const routes: RouteConfig[] = [
   { path: "orders", component: V2OrdersPage, protection: "auth" },
   { path: "account", component: V2AccountPage, protection: "auth" },
 
-  // 404 catch-all route
-  {
-    path: "*",
-    component: NotFoundPage,
-    protection: "public"
-  }
+  // 404 catch-all — rendered inside V2Layout when unlocked (see App.tsx).
+  { path: "*", component: NotFoundPage, protection: "public" },
 ];
 
-
-/**
- * Helper function to get routes by protection level
- */
 export function getRoutesByProtection(protection: RouteProtection): RouteConfig[] {
-  return routes.filter(route => route.protection === protection);
+  return routes.filter((route) => route.protection === protection);
 }
 
-/**
- * Helper function to get route configuration by path
- */
 export function getRouteByPath(path: string): RouteConfig | undefined {
-  return routes.find(route => route.path === path);
+  return routes.find((route) => route.path === path);
 }
 
-/**
- * Helper function to check if a route requires authentication
- */
 export function isProtectedRoute(path: string): boolean {
   const route = getRouteByPath(path);
-  return route ? route.protection !== 'public' : false;
+  return route ? route.protection !== "public" : false;
 }
 
 /**
- * Helper function to check if a route requires subscription
+ * Legacy helper kept only so external callers compile. V2 has no premium
+ * routes; this will always return `false` against the current `routes`.
  */
 export function isPremiumRoute(path: string): boolean {
   const route = getRouteByPath(path);
-  return route ? route.protection === 'premium' : false;
+  return route ? route.protection === "premium" : false;
 }
 
-/**
- * Helper function to check if a route requires admin role
- */
 export function isAdminRoute(path: string): boolean {
   const route = getRouteByPath(path);
-  return route ? route.protection === 'admin' : false;
+  return route ? route.protection === "admin" : false;
 }
