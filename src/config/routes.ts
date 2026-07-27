@@ -317,6 +317,7 @@ export const routes: RouteConfig[] = [
   { path: "checkout/cancel", component: V2CheckoutCancelPage, protection: "public" },
   { path: "checkout/cancel/:orderId", component: V2CheckoutCancelPage, protection: "public" },
   { path: "orders", component: V2OrdersPage, protection: "auth" },
+  { path: "account", component: V2AccountPage, protection: "auth" },
 
   // 404 catch-all route
   {
