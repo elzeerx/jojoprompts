@@ -217,11 +217,10 @@ function App() {
                             ))}
                           </Route>
                         )}
-                      </Routes>
-                    </Suspense>
-                    <Toaster />
-                    <Sonner />
-                  </SecurityMonitoringWrapper>
+                    </Routes>
+                  </Suspense>
+                  <Toaster />
+                  <Sonner />
                 </AuthProvider>
               </LanguageProvider>
             </ErrorBoundary>
