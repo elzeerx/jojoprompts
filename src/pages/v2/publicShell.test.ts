@@ -9,8 +9,7 @@ const { readFileSync } = require("fs");
 const { resolve } = require("path");
 
 const HERE: string =
-  (import.meta as unknown as { dir: string }).dir ??
-  (typeof __dirname !== "undefined" ? __dirname : ".");
+  (import.meta as unknown as { dir?: string }).dir ?? ".";
 
 const APP: string = readFileSync(resolve(HERE, "../../App.tsx"), "utf8");
 const V2LAYOUT: string = readFileSync(
