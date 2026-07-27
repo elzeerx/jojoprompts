@@ -72,13 +72,16 @@ const FORBIDDEN_PATTERNS: Array<{ label: string; re: RegExp }> = [
   })),
   // Retired route paths, with OR without a leading slash. Matches
   // `path: "payment/upayments-callback"` and `"/payment/upayments-callback"`.
+  // Retired route paths, with OR without a leading slash. Matches
+  // `path: "payment/upayments-callback"` and `"/payment/upayments-callback"`.
+  // Single/double quotes only — prose backticks in comments are OK.
   {
     label: "route path: payment/upayments-callback",
-    re: /["'`]\/?payment\/upayments-callback["'`]/,
+    re: /["']\/?payment\/upayments-callback["']/,
   },
   {
     label: "route path: payment/callback",
-    re: /["'`]\/?payment\/callback["'`]/,
+    re: /["']\/?payment\/callback["']/,
   },
 ];
 
