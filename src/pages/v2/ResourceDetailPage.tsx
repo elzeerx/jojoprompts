@@ -299,6 +299,82 @@ export default function ResourceDetailPage() {
               </section>
             )}
 
+            {shouldFetchProtected && (
+              <section
+                data-testid="entitled-prompt-section"
+                className="rounded-2xl border border-warm-gold/30 bg-warm-gold/5 p-4"
+              >
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold">
+                    {lang === "ar" ? "برومبتك" : "Your prompt"}
+                  </h2>
+                  {protectedContent?.ok && (
+                    (lang === "ar" ? protectedContent.prompt_text_ar : protectedContent.prompt_text) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-[44px]"
+                        aria-label={lang === "ar" ? "نسخ البرومبت" : "Copy prompt"}
+                        onClick={() =>
+                          copyToClipboard(
+                            (lang === "ar"
+                              ? protectedContent.prompt_text_ar
+                              : protectedContent.prompt_text) ?? "",
+                          )
+                        }
+                      >
+                        {hasCopied ? (
+                          <Check className="me-1 h-4 w-4" aria-hidden />
+                        ) : (
+                          <Copy className="me-1 h-4 w-4" aria-hidden />
+                        )}
+                        {hasCopied
+                          ? lang === "ar" ? "تم النسخ" : "Copied"
+                          : lang === "ar" ? "نسخ" : "Copy"}
+                      </Button>
+                    ) : null
+                  )}
+                </div>
+                {protectedLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    {lang === "ar" ? "جارٍ التحميل…" : "Loading…"}
+                  </div>
+                ) : protectedError ? (
+                  <p className="text-sm text-destructive">
+                    {lang === "ar"
+                      ? "تعذّر تحميل البرومبت. حاول مرة أخرى."
+                      : "Couldn't load the prompt. Please try again."}
+                  </p>
+                ) : protectedContent && !protectedContent.ok ? (
+                  <p className="text-sm text-muted-foreground">
+                    {lang === "ar"
+                      ? "المحتوى غير متاح."
+                      : "Content unavailable."}
+                  </p>
+                ) : protectedContent?.ok ? (
+                  (() => {
+                    const text =
+                      (lang === "ar"
+                        ? protectedContent.prompt_text_ar
+                        : protectedContent.prompt_text) ??
+                      protectedContent.prompt_text ??
+                      protectedContent.prompt_text_ar ??
+                      null;
+                    return text ? (
+                      <pre className="whitespace-pre-wrap break-words rounded-lg bg-background p-3 text-sm leading-relaxed">
+                        {text}
+                      </pre>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {lang === "ar" ? "لا يوجد محتوى نصي." : "No text content."}
+                      </p>
+                    );
+                  })()
+                ) : null}
+              </section>
+            )}
+
             {owned && files && files.length > 0 && (
               <section>
                 <h2 className="mb-2 text-lg font-semibold">
