@@ -14,13 +14,9 @@ export function V2Footer() {
   const { language, isRTL } = useTranslation();
   const lang: "en" | "ar" = language === "ar" ? "ar" : "en";
 
-  let user: unknown = null;
-  try {
-    user = useAuth().user;
-  } catch {
-    /* no auth context */
-  }
+  const { user } = useAuth();
   const isAuthed = !!user;
+
 
   const t = {
     tagline:
