@@ -9,6 +9,7 @@ import { useWelcomeEmail } from "@/hooks/useWelcomeEmail";
 import { createLogger } from '@/utils/logging';
 import { handleError } from '@/utils/errorHandler';
 import { retrySignupOperation } from '@/utils/signupErrorHandler';
+import { resolveSafeNext } from "@/lib/v2/safeNext";
 
 const logger = createLogger('SIGNUP_FORM');
 
@@ -19,8 +20,9 @@ export function useSignupForm() {
   const [searchParams] = useSearchParams();
   const { sendWelcomeEmail } = useWelcomeEmail();
 
-  const selectedPlan = searchParams.get('plan');
-  const fromCheckout = searchParams.get('fromCheckout') === 'true';
+  // V2: plan / fromCheckout query flags are no longer honored for post-signup
+  // routing. A confirmed user is asked to browse and acquire items directly.
+  const safeNextPath = resolveSafeNext(searchParams.get("next"));
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
