@@ -24,10 +24,15 @@ const EmailSettingsPage = lazy(() => import("../sections/settings/EmailSettingsP
 const StorageSettingsPage = lazy(() => import("../sections/settings/StorageSettingsPage"));
 const IntegrationsPage = lazy(() => import("../sections/settings/IntegrationsPage"));
 
+// V2 People operations surface (lean; no subscription/delete UI).
+const UsersV2 = lazy(() => import("../components/users/UsersV2"));
 
+// V2 Delivery Health — canonical outbound-email operations page.
+const DeliveryHealthPage = lazy(
+  () => import("../sections/communications/DeliveryHealthPage"),
+);
 
-
-// Existing legacy sections retained where they map cleanly onto V2 routes.
+// Cross-cutting utilities and V2 pages that reuse existing surfaces.
 const JsonPromptImporter = lazy(() => import("../sections/content/JsonPromptImporter"));
 const AuditLogPage = lazy(() => import("../sections/system/AuditLogPage"));
 const AiStudioPage = lazy(() => import("../sections/ai-studio/AiStudioPage"));
@@ -36,15 +41,9 @@ const CategoriesManagement = lazy(() =>
     default: m.CategoriesManagement,
   }))
 );
-const UsersManagement = lazy(() => import("../components/users/UsersManagement"));
 const EmailTemplatesManagement = lazy(() =>
   import("@/components/admin/EmailTemplatesManagement").then((m) => ({
     default: m.EmailTemplatesManagement,
-  }))
-);
-const EmailAnalyticsDashboard = lazy(() =>
-  import("@/components/admin/EmailAnalyticsDashboard").then((m) => ({
-    default: m.EmailAnalyticsDashboard,
   }))
 );
 const SecurityMonitoringDashboard = lazy(() =>
@@ -109,11 +108,11 @@ export const adminSectionElements = {
   discounts: wrap(<DiscountsPage />),
 
   // People
-  users: wrap(<UsersManagement />),
+  users: wrap(<UsersV2 />),
 
   // Communications
   emailTemplates: wrap(<EmailTemplatesManagement />),
-  emailAnalytics: wrap(<EmailAnalyticsDashboard />),
+  emailAnalytics: wrap(<DeliveryHealthPage />),
 
   // Trust & Activity
   trustReports: wrap(<ReportsPage />),

@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   FileEdit,
   Flag,
+  Mail,
   RotateCcw,
   ShieldAlert,
   ShieldCheck,
@@ -86,6 +87,13 @@ export default function OverviewV2() {
     { key: "pending_refunds", label: "Pending refunds", to: "/admin/orders/refunds?status=pending", icon: RotateCcw, value: data?.attention.pending_refunds },
     { key: "recovery", label: "Recovery queue", to: "/admin/orders/recovery", icon: ShieldAlert, value: recoveryCounts.data?.total },
     { key: "open_reports", label: "Open reports", to: "/admin/trust/reports", icon: Flag, value: data?.attention.open_reports },
+    {
+      key: "delivery_failures",
+      label: "Delivery failures",
+      to: "/admin/communications/delivery",
+      icon: Mail,
+      value: data?.delivery_failures?.available ? (data?.delivery_failures?.count ?? 0) : undefined,
+    },
   ];
 
   interface Kpi { label: string; value: string; hint?: string; unavailable?: string }
