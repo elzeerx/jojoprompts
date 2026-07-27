@@ -31,6 +31,9 @@ const AUTH_LOOP_PREFIXES = [
 ] as const;
 
 const DANGEROUS_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
+// Any control character (C0 + DEL) OR whitespace embedded in the path is a
+// smuggling vector (CRLF injection, header/URL splitting) — reject outright.
+const CONTROL_OR_WHITESPACE_RE = /[\u0000-\u001F\u007F\s]/;
 
 export function resolveSafeNext(
   raw: unknown,
@@ -39,6 +42,9 @@ export function resolveSafeNext(
   if (typeof raw !== "string") return fallback;
   const value = raw.trim();
   if (!value) return fallback;
+
+  // No embedded control chars / whitespace after trimming.
+  if (CONTROL_OR_WHITESPACE_RE.test(value)) return fallback;
 
   // Reject protocol-relative ("//x"), backslash-tricks ("/\\x"), and absolute URLs.
   if (value.startsWith("//") || value.startsWith("/\\")) return fallback;

@@ -17,8 +17,7 @@ export default function EmailConfirmationPage() {
   
   const email = searchParams.get('email');
   const firstName = searchParams.get('firstName');
-  const plan = searchParams.get('plan');
-  const fromCheckout = searchParams.get('fromCheckout');
+  // V2: plan/fromCheckout query params are no longer read — one-time ownership model.
 
   useEffect(() => {
     // If no email provided, redirect to signup
@@ -74,12 +73,8 @@ export default function EmailConfirmationPage() {
   };
 
   const handleBackToSignup = () => {
-    const params = new URLSearchParams();
-    if (plan) params.append('plan', plan);
-    if (fromCheckout) params.append('fromCheckout', fromCheckout);
-    
-    const queryString = params.toString();
-    navigate(`/signup${queryString ? `?${queryString}` : ''}`);
+    // V2: no plan/checkout gating on the signup return path.
+    navigate('/signup');
   };
 
   if (!email) {
@@ -125,7 +120,7 @@ export default function EmailConfirmationPage() {
               </div>
               <div className="flex items-start space-x-3">
                 <CheckCircle className="h-4 w-4 text-warm-gold mt-0.5 flex-shrink-0" />
-                <span>The link will redirect you back to complete your registration</span>
+                <span>The link redirects you back — you permanently own what you buy, no subscriptions.</span>
               </div>
             </div>
           </div>

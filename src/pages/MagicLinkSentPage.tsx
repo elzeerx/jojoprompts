@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { AppleEmailNotice } from "@/components/auth/AppleEmailNotice";
+import { resolveSafeNext } from "@/lib/v2/safeNext";
+
 
 export default function MagicLinkSentPage() {
   const [searchParams] = useSearchParams();
@@ -15,8 +17,8 @@ export default function MagicLinkSentPage() {
 
   const email = searchParams.get('email');
   const firstName = searchParams.get('firstName');
-  const selectedPlan = searchParams.get('plan');
-  const fromCheckout = searchParams.get('fromCheckout') === 'true';
+  // V2: safe same-origin destination only — legacy plan/fromCheckout ignored.
+  const safeNextPath = resolveSafeNext(searchParams.get('next'));
 
   if (!email) {
     navigate('/signup');
@@ -27,20 +29,14 @@ export default function MagicLinkSentPage() {
     setIsResending(true);
 
     try {
-      let redirectUrl = `${window.location.origin}/prompts`;
-      
-      if (selectedPlan) {
-        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}`;
-      } else if (fromCheckout) {
-        redirectUrl = `${window.location.origin}/checkout`;
-      }
+      const redirectUrl = `${window.location.origin}${safeNextPath}`;
 
       const { data, error } = await supabase.functions.invoke('send-signup-confirmation', {
         body: {
           email: email,
           firstName: firstName || 'User',
           lastName: '',
-          userId: crypto.randomUUID(), // Generate temporary ID
+          userId: crypto.randomUUID(),
           redirectUrl: redirectUrl
         }
       });
@@ -75,8 +71,7 @@ export default function MagicLinkSentPage() {
   };
 
   const handleBackToSignup = () => {
-    const params = selectedPlan ? `?plan=${selectedPlan}` : "";
-    navigate(`/signup${params}`);
+    navigate('/signup');
   };
 
   return (
