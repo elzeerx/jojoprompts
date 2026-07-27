@@ -59,12 +59,15 @@ const FORBIDDEN_PATTERNS: Array<{ label: string; re: RegExp }> = [
       `functions\\.invoke\\(\\s*['\"\`]${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}['\"\`]`,
     ),
   })),
-  // Any occurrence of the retired slug as a bare string literal (catches
-  // dynamic invocation via `const SLUG = "…"; functions.invoke(SLUG)`).
+  // Any occurrence of the retired slug as a bare string literal (single or
+  // double-quoted only — backticks are intentionally excluded so JSDoc and
+  // prose blocks that name the retired slug for documentation don't trip
+  // the check). Catches dynamic invocation via
+  // `const SLUG = "…"; functions.invoke(SLUG)`.
   ...FORBIDDEN_INVOKES.map((slug) => ({
     label: `slug literal "${slug}"`,
     re: new RegExp(
-      `['\"\`]${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}['\"\`]`,
+      `['\"]${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}['\"]`,
     ),
   })),
   // Retired route paths, with OR without a leading slash. Matches
