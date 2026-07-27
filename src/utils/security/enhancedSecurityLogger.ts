@@ -1,5 +1,5 @@
 // Enhanced security logging with severity levels and categories
-import { supabase } from '@/integrations/supabase/client';
+// Pre-launch: supabase client import removed with the security_logs INSERT path.
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('SECURITY_LOGGER');
