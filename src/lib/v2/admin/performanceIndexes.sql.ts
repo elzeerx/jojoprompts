@@ -22,17 +22,13 @@
  *         product_bundle_items.resource_id
  *         resources.current_version_id
  *
- *   • 2026072714xx add_remaining_v2_foreign_key_indexes
+ *   • 20260727140552 add_remaining_v2_foreign_key_indexes
  *       Five remaining unindexed V2 foreign keys covered:
  *         v2_discount_codes.archived_by
  *         v2_discount_codes.created_by
  *         v2_discount_codes.updated_by
  *         v2_discount_redemptions.user_id
  *         user_roles.assigned_by
- *       (The final "xx" minute/second segment is intentionally
- *       preserved verbatim — pending exact confirmation. Do not
- *       invent a timestamp; the fixture records identity by name and
- *       column set, not by exact second.)
  *
  * Guarantees:
  *   • CREATE INDEX IF NOT EXISTS everywhere — safe to re-run.
