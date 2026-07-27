@@ -7,16 +7,16 @@ import {
 } from "./securityLogsClientWriteRestriction.sql";
 
 describe("security_logs client-write restriction — source fixture", () => {
-  it("uses the intended future migration filename", () => {
+  it("uses the exact applied migration filename", () => {
     expect(FILENAME).toBe(
-      "20260727150000_restrict_security_logs_client_writes.sql",
+      "20260727141455_restrict_security_logs_client_writes.sql",
     );
     expect(F.filename).toBe(FILENAME);
   });
 
-  it("is marked as source-only (not applied to production)", () => {
-    expect(SECURITY_LOGS_CLIENT_WRITE_RESTRICTION_APPLIED).toBe(false);
-    expect(F.applied).toBe(false);
+  it("is marked as applied live", () => {
+    expect(SECURITY_LOGS_CLIENT_WRITE_RESTRICTION_APPLIED).toBe(true);
+    expect(F.applied).toBe(true);
   });
 
   it("drops the two known legacy INSERT policies by exact name", () => {
