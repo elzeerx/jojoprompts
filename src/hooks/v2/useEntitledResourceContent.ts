@@ -35,7 +35,7 @@ export function useEntitledResourceContent(
         { p_resource_id: resourceId! },
       );
       if (error) throw error;
-      return (data ?? null) as EntitledResourceContent | null;
+      return (data ?? null) as unknown as EntitledResourceContent | null;
     },
   });
 }
