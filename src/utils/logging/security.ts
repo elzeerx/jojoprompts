@@ -65,7 +65,17 @@ export function logSecurityEvent(event: SecurityEvent): void {
   };
 
   // Route through unified logger only. No client-role DB writes.
-  logSecurity(enhancedEvent);
+  logSecurity({
+    level: event.success === false ? 'warn' : 'info',
+    message: event.action,
+    action: enhancedEvent.action,
+    resource: enhancedEvent.resource,
+    success: enhancedEvent.success,
+    userId: enhancedEvent.userId,
+    data: enhancedEvent.data,
+    ipAddress: enhancedEvent.ipAddress,
+    userAgent: enhancedEvent.userAgent,
+  });
 }
 
 // Convenience API — preserved for existing callers.
