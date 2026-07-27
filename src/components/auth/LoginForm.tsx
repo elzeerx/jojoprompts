@@ -406,20 +406,10 @@ export function LoginForm() {
         </Form>
       )}
       
-      {!LAUNCH_LOCKED && selectedPlan && (
-        <div className={cn("pt-2 text-center", isRTL && "rtl-text")}>
-          <p className="text-sm text-muted-foreground">
-            {t('auth.dontHaveAccount')}{" "}
-            <Button 
-              variant="link" 
-              className="p-0" 
-              onClick={() => navigate(`/signup?plan=${selectedPlan}`)}
-            >
-              {t('auth.signUp')}
-            </Button>
-          </p>
-        </div>
-      )}
+
+      {/* Legacy plan-based signup CTA removed: V2 uses one-time ownership,
+          not plans. A generic signup link is shown instead. */}
     </div>
   );
 }
+
