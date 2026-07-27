@@ -48,7 +48,11 @@ describe("V2 public shell — customer chrome is exclusively V2Layout", () => {
     // config supplies the wildcard route through it.
     const v2Block =
       /<Route element=\{<V2Layout \/>\}>[\s\S]*?<\/Route>/m.exec(APP);
-    expect(v2Block).not.toBeNull();
+    expect(v2Block === null).toBe(false);
+    expect((v2Block?.[0] ?? "").includes("routes.map(")).toBe(true);
+    expect(/path:\s*"\*"/.test(ROUTES_SRC)).toBe(true);
+  });
+
     expect(v2Block![0].includes("routes.map(")).toBe(true);
     expect(/path:\s*"\*"/.test(ROUTES_SRC)).toBe(true);
   });
