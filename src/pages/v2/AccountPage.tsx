@@ -144,6 +144,7 @@ export default function AccountPage() {
       <SeoHead
         title={lang === "ar" ? "حسابي · JojoPrompts" : "My account · JojoPrompts"}
         description={t.subtitle}
+        canonicalPath="/account"
         noindex
       />
 
