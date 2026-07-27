@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { V2_PRICING_TIERS, V2_LIFETIME_PRICE_KD } from "./V2PricingPage";
+import { V2_PRICING_TIERS, V2_LIFETIME_PRICE_KD } from "@/config/v2Pricing";
 
 /**
  * Guardrails around the locked KWD/fils pricing contract advertised on

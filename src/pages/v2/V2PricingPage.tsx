@@ -6,50 +6,8 @@ import { SeoHead } from "@/components/v2/SeoHead";
 import { LifetimeUpgradeCard } from "@/components/v2/LifetimeUpgradeCard";
 import { useTranslation } from "@/hooks/useTranslation";
 
-/**
- * Locked KWD pricing contract (see task spec). One-time purchases only;
- * every eligible purchase counts toward the 30.000 KD Lifetime threshold.
- */
-export const V2_PRICING_TIERS = [
-  {
-    key: "free",
-    en: { name: "Free resources", desc: "Selected starter resources at no cost." },
-    ar: { name: "موارد مجانية", desc: "موارد مختارة للبدء بدون تكلفة." },
-    price: "0.000 KD",
-  },
-  {
-    key: "prompt_image_style",
-    en: { name: "Prompt or image style", desc: "Single prompt or single image style." },
-    ar: { name: "برومبت أو نمط صورة", desc: "برومبت واحد أو نمط صورة واحد." },
-    price: "0.900 KD",
-  },
-  {
-    key: "prompt_pack",
-    en: { name: "Structured prompt pack", desc: "Curated multi-prompt pack." },
-    ar: { name: "حزمة برومبتات مُنظمة", desc: "حزمة برومبتات متعددة منسّقة." },
-    price: "1.500 KD",
-  },
-  {
-    key: "skill",
-    en: { name: "Skill", desc: "AI skill / assistant configuration." },
-    ar: { name: "مهارة", desc: "إعداد مهارة/مساعد ذكاء اصطناعي." },
-    price: "1.500 – 3.000 KD",
-  },
-  {
-    key: "automation",
-    en: { name: "Automation / workflow", desc: "End-to-end automation or workflow." },
-    ar: { name: "أتمتة / سير عمل", desc: "أتمتة أو سير عمل متكامل." },
-    price: "2.500 – 5.000 KD",
-  },
-  {
-    key: "bundle",
-    en: { name: "Bundle", desc: "Curated bundle of related resources." },
-    ar: { name: "حزمة", desc: "حزمة منسّقة من موارد مترابطة." },
-    price: "4.500 – 12.000 KD",
-  },
-] as const;
-
-export const V2_LIFETIME_PRICE_KD = "30.000 KD";
+import { V2_PRICING_TIERS, V2_LIFETIME_PRICE_KD } from "@/config/v2Pricing";
+export { V2_PRICING_TIERS, V2_LIFETIME_PRICE_KD };
 
 export default function V2PricingPage() {
   const { language, isRTL } = useTranslation();

@@ -1,19 +1,24 @@
-import { describe, it, expect } from "bun:test";
-import { readFileSync } from "fs";
-import { resolve } from "path";
-
 /**
  * Contract tests for the canonical V2 public shell. Cheap static assertions
  * that catch obvious regressions in App.tsx routing.
  */
-const dir = (import.meta as { dir: string }).dir;
-const APP = readFileSync(resolve(dir, "../../App.tsx"), "utf8");
-const V2LAYOUT = readFileSync(
-  resolve(dir, "../../components/v2/V2Layout.tsx"),
+import { describe, it, expect } from "bun:test";
+
+declare const require: (m: string) => any;
+const { readFileSync } = require("fs");
+const { resolve } = require("path");
+
+const HERE: string =
+  (import.meta as unknown as { dir: string }).dir ??
+  (typeof __dirname !== "undefined" ? __dirname : ".");
+
+const APP: string = readFileSync(resolve(HERE, "../../App.tsx"), "utf8");
+const V2LAYOUT: string = readFileSync(
+  resolve(HERE, "../../components/v2/V2Layout.tsx"),
   "utf8",
 );
-const ROOT_LAYOUT = readFileSync(
-  resolve(dir, "../../components/layout/root-layout.tsx"),
+const ROOT_LAYOUT: string = readFileSync(
+  resolve(HERE, "../../components/layout/root-layout.tsx"),
   "utf8",
 );
 
