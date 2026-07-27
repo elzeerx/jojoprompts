@@ -57,7 +57,11 @@ export default function ResourceDetailPage() {
 
   const legacyPromptId = (data?.resource as { legacy_prompt_id?: string | null } | undefined)
     ?.legacy_prompt_id ?? null;
-  const shouldFetchProtected = owned && !!legacyPromptId;
+  const shouldFetchProtected = shouldRevealProtectedContent({
+    hasUser: !!user,
+    owned,
+    legacyPromptId,
+  });
   const {
     data: protectedContent,
     isLoading: protectedLoading,
@@ -65,6 +69,13 @@ export default function ResourceDetailPage() {
   } = useEntitledResourceContent(
     shouldFetchProtected ? data?.resource?.id ?? null : null,
     shouldFetchProtected,
+  );
+  const displayProtectedText = useMemo(
+    () =>
+      shouldFetchProtected
+        ? pickProtectedText(protectedContent ?? null, lang)
+        : null,
+    [shouldFetchProtected, protectedContent, lang],
   );
   const { copyToClipboard, hasCopied } = useCopyToClipboard({
     successTitle: language === "ar" ? "تم النسخ" : "Copied",
