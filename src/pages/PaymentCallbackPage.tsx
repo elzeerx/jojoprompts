@@ -116,62 +116,18 @@ export default function PaymentCallbackPage() {
         planId: capturePlanId
       });
 
-      try {
-        setStatus('capturing');
-        
-        const { data, error: captureError } = await supabase.functions.invoke('process-paypal-payment', {
-          body: {
-            action: 'capture',
-            orderId,
-            planId: capturePlanId,
-            userId: captureUserId
-          }
-        });
-
-        if (data?.success) {
-          safeLog.debug('PaymentCallbackPage: Auto-capture successful', data);
-          setStatus('completed');
-          
-          // Navigate to success page with proper parameters
-          const successParams = new URLSearchParams({
-            planId: capturePlanId,
-            userId: captureUserId,
-            paymentId: data.paymentId || orderId,
-            status: 'completed',
-            method: 'paypal'
-          });
-          
-          setTimeout(() => {
-            navigate(`/payment-success?${successParams.toString()}`);
-          }, 1500);
-        } else {
-          safeLog.error('PaymentCallbackPage: Auto-capture failed', { error: captureError, data });
-          
-          // Enhanced error handling - still show success if we have payment completion data
-          if (data?.paymentId || data?.transactionId) {
-            safeLog.debug('PaymentCallbackPage: Capture failed but payment data exists, showing success');
-            const successParams = new URLSearchParams({
-              planId: capturePlanId,
-              userId: captureUserId,
-              paymentId: data.paymentId || data.transactionId || orderId,
-              status: 'completed',
-              method: 'paypal',
-              auth_required: 'true' // Indicate auth may be required
-            });
-            
-            setTimeout(() => {
-              navigate(`/payment-success?${successParams.toString()}`);
-            }, 1500);
-          } else {
-            setError('Payment capture failed. Please contact support.');
-            setStatus('failed');
-          }
-        }
-      } catch (err: any) {
-        safeLog.error('PaymentCallbackPage: Auto-capture error', err);
-        setError(`Payment processing error: ${err.message || 'Unknown error'}`);
-        setStatus('failed');
-      }
+      // V2 release-hardening: the retired `process-paypal-payment` Edge
+      // Function is no longer invoked. PayPal returns that reach this page
+      // are surfaced as a manual-support error state; V2 payment returns
+      // flow through the UPayments callback which uses `v2-upayments-status`.
+      safeLog.debug(
+        'PaymentCallbackPage: PayPal auto-capture disabled (endpoint retired)',
+        { orderId },
+      );
+      setError(
+        'The legacy PayPal capture path has been retired. If you were charged, please contact support.',
+      );
+      setStatus('failed');
     };
 
     // Only attempt auto-capture if we haven't started processing yet

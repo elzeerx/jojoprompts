@@ -34,6 +34,13 @@ const DANGEROUS_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 // Any control character (C0 + DEL) OR whitespace embedded in the path is a
 // smuggling vector (CRLF injection, header/URL splitting) — reject outright.
 const CONTROL_OR_WHITESPACE_RE = /[\u0000-\u001F\u007F\s]/;
+// Backslashes anywhere in the value are a Windows-path / URL-normalization
+// smuggling vector (some parsers treat "\" as "/"). Reject.
+const BACKSLASH_RE = /\\/;
+// Nested auth-loop guard: reject if the query/fragment contains an
+// embedded `next=` param that points at an auth surface.
+const NESTED_AUTH_LOOP_RE =
+  /[?&#]next=\/?(login|signup|reset-password|email-confirmation|magic-link-sent|auth)(?:$|[/?&#])/i;
 
 export function resolveSafeNext(
   raw: unknown,
@@ -46,9 +53,11 @@ export function resolveSafeNext(
   // No embedded control chars / whitespace after trimming.
   if (CONTROL_OR_WHITESPACE_RE.test(value)) return fallback;
 
-  // Reject protocol-relative ("//x"), backslash-tricks ("/\\x"), and absolute URLs.
-  if (value.startsWith("//") || value.startsWith("/\\")) return fallback;
-  if (value.startsWith("\\")) return fallback;
+  // Reject backslash smuggling anywhere in the value.
+  if (BACKSLASH_RE.test(value)) return fallback;
+
+  // Reject protocol-relative ("//x") and absolute URLs.
+  if (value.startsWith("//")) return fallback;
 
   // Reject any scheme-bearing input (http:, https:, javascript:, data:, etc.).
   if (DANGEROUS_SCHEME_RE.test(value)) return fallback;
@@ -60,22 +69,13 @@ export function resolveSafeNext(
   const lower = value.toLowerCase();
   // Exact match on an auth page (with or without trailing slash) or any
   // path under /auth/… would cause a redirect loop back into the flow.
-  if (
-    lower === "/login" ||
-    lower === "/signup" ||
-    lower === "/reset-password" ||
-    lower === "/email-confirmation" ||
-    lower === "/magic-link-sent" ||
-    lower === "/auth" ||
-    lower === "/"
-  ) {
-    // "/" alone is safe-but-useless as a post-auth destination; prefer fallback.
-    if (lower === "/") return fallback;
-    return fallback;
-  }
+  if (lower === "/") return fallback;
   for (const prefix of AUTH_LOOP_PREFIXES) {
     if (lower.startsWith(prefix)) return fallback;
   }
+
+  // Reject nested `next=/login…` recursion smuggled through the query.
+  if (NESTED_AUTH_LOOP_RE.test(lower)) return fallback;
 
   return value;
 }

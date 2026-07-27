@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { fetchUserProfile } from '../profileService';
-import { runOrphanedPaymentRecovery } from '../orphanedPaymentRecovery';
+// V2 release-hardening: `runOrphanedPaymentRecovery` is retired
+// (see src/contexts/orphanedPaymentRecovery.ts). No import needed.
 import { debug } from '../authDebugger';
 import { SessionManager } from '@/hooks/payment/helpers/sessionManager';
 import { SessionSecurity } from '@/utils/sessionSecurity';
@@ -56,8 +57,8 @@ export const useAuthInitialization = ({
           await fetchUserProfile(restorationResult.user, setUserRole);
           setLoading(false);
           
-          // Run orphan recovery for restored session
-          runOrphanedPaymentRecovery(restorationResult.user, recoveredOrphaned, setRecoveredOrphaned);
+          // V2: orphaned payment recovery via legacy endpoint is retired.
+          setRecoveredOrphaned(true);
           return;
         } else {
           debug("Session restoration failed, falling back to normal auth check");
@@ -113,8 +114,8 @@ export const useAuthInitialization = ({
             navigate(safeNext || DEFAULT_SAFE_NEXT);
           }
 
-          // Run orphan recovery
-          runOrphanedPaymentRecovery(initialUser, recoveredOrphaned, setRecoveredOrphaned);
+          // V2: orphaned payment recovery via legacy endpoint is retired.
+          setRecoveredOrphaned(true);
         }
         
         setLoading(false);

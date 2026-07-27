@@ -145,27 +145,15 @@ export function PlanUpgradeOptions({ userSubscription }: PlanUpgradeOptionsProps
     window.location.reload();
   };
 
-  const handlePaidUpgrade = async (planId: string, amount: number) => {
-    const { data, error } = await supabase.functions.invoke('process-paypal-payment', {
-      body: {
-        action: 'create',
-        planId: planId,
-        userId: user?.id,
-        amount: amount,
-        isUpgrade: true,
-        upgradingFromPlanId: userSubscription.plan_id,
-        currentSubscriptionId: userSubscription.id
-      }
+  const handlePaidUpgrade = async (_planId: string, _amount: number) => {
+    // V2 release-hardening: `process-paypal-payment` is retired. Paid
+    // upgrades from the legacy plan path are no longer available client-side.
+    toast({
+      variant: 'destructive',
+      title: 'Upgrade unavailable',
+      description:
+        'The legacy PayPal upgrade path has been retired. Please use the current checkout.',
     });
-
-    if (error) throw error;
-
-    if (data.success && data.approvalUrl) {
-      // Redirect to PayPal for payment
-      window.open(data.approvalUrl, '_blank');
-    } else {
-      throw new Error('Failed to create upgrade payment session');
-    }
   };
 
   if (loading) {
