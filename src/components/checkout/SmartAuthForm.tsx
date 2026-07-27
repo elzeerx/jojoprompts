@@ -29,33 +29,13 @@ export function SmartAuthForm({ onSuccess, planName, planPrice }: SmartAuthFormP
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  // Kept for compatibility with the existing Button `disabled` binding.
+  // Enumeration-safe: we no longer probe the server for account existence.
+  const isCheckingEmail = false;
 
-  const checkEmailExists = useCallback(async (emailToCheck: string) => {
-    setIsCheckingEmail(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('check-email-exists', {
-        body: { email: emailToCheck.trim().toLowerCase() }
-      });
-
-      if (error) {
-        logError('Email check error', 'auth', { error: error.message });
-        // On error, default to signup flow
-        return false;
-      }
-
-      return data?.exists ?? false;
-    } catch (err) {
-      logError('Email check exception', 'auth', { error: err });
-      return false;
-    } finally {
-      setIsCheckingEmail(false);
-    }
-  }, []);
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !email.includes('@')) {
       toast({
         variant: "destructive",
@@ -65,16 +45,11 @@ export function SmartAuthForm({ onSuccess, planName, planPrice }: SmartAuthFormP
       return;
     }
 
-    logDebug('Checking if email exists', 'auth', { email });
-    const exists = await checkEmailExists(email);
-    
-    if (exists) {
-      logInfo('Existing user detected, showing login', 'auth');
-      setStep('login');
-    } else {
-      logInfo('New user detected, showing signup', 'auth');
-      setStep('signup');
-    }
+    // Enumeration-safe: no server-side "does this email exist" probe.
+    // Default to signup; returning users can switch to Sign in from the
+    // signup step. Supabase Auth authoritatively rejects duplicates.
+    logDebug('Email entered — advancing to signup', 'auth');
+    setStep('signup');
   };
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -8,57 +8,53 @@ const logger = createEdgeLogger('suggest-prompt');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'X-Content-Type-Options': 'nosniff',
 };
 
+function json(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders, status: 204 });
   }
+  if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
 
   try {
-    // Validate optional input parameters
-    let requestBody = {};
-    try {
-      requestBody = await req.json();
-    } catch {
-      // No body is acceptable for this endpoint
-      requestBody = {};
-    }
-    
+    let requestBody: unknown = {};
+    try { requestBody = await req.json(); } catch { requestBody = {}; }
+
     const validation = validateAIInput(SuggestPromptSchema, requestBody);
-    if (!validation.success) {
-      logger.warn("Input validation failed", { error: validation.error });
-      return new Response(
-        JSON.stringify({ error: validation.error }),
-        { status: 400, headers: corsHeaders }
-      );
-    }
-    
-    // Create client that forwards the caller's JWT
+    if (!validation.success) return json(400, { error: validation.error });
+
+    // Auth + can_manage_prompts BEFORE reading prompts / calling OpenAI / insert.
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return json(401, { error: 'Unauthorized' });
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) return json(401, { error: 'Unauthorized' });
 
-    // Auth check
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized: Admin access required" }), 
-        { status: 401, headers: corsHeaders }
-      );
-    }
+    const { data: canManage, error: permErr } = await supabase.rpc('can_manage_prompts', {
+      _user_id: user.id,
+    });
+    if (permErr || !canManage) return json(403, { error: 'Forbidden' });
 
-    // Get existing prompts for context
     const { data: prompts } = await supabase
       .from('prompts')
       .select('prompt_text, metadata')
       .limit(5);
 
-    // Call OpenAI API
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -70,59 +66,65 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an AI that creates unique and creative image generation prompts. Based on example prompts, create a new prompt with similar style and metadata.'
+            content: 'You are an AI that creates unique and creative image generation prompts. Respond with strict JSON containing "title", "prompt_text", and "metadata" fields only.',
           },
           {
             role: 'user',
-            content: `Here are some example prompts: ${JSON.stringify(prompts)}. Create a new unique prompt with metadata.`
-          }
+            content: `Here are some example prompts: ${JSON.stringify(prompts)}. Create a new unique prompt as JSON.`,
+          },
         ],
+        response_format: { type: 'json_object' },
       }),
     });
 
-    const openAiData = await openAiResponse.json();
-    const newPrompt = JSON.parse(openAiData.choices[0].message.content);
-    
-    // Normalize keys the model might return
-    const title = newPrompt.title ?? newPrompt.heading ?? "Untitled";
-    const promptText = newPrompt.prompt_text ?? newPrompt.text ?? newPrompt.prompt;
-    
-    if (!promptText) {
-      return new Response(
-        JSON.stringify({ error: "OpenAI response missing prompt_text" }),
-        { status: 400, headers: corsHeaders }
-      );
+    if (!openAiResponse.ok) {
+      logger.error('OpenAI error', { status: openAiResponse.status });
+      return json(502, { error: 'AI service unavailable' });
     }
 
-    // Insert the normalized prompt
+    const openAiData = await openAiResponse.json();
+    const raw = openAiData?.choices?.[0]?.message?.content;
+    let newPrompt: Record<string, unknown> | null = null;
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      newPrompt = parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null;
+    } catch {
+      newPrompt = null;
+    }
+    if (!newPrompt) return json(502, { error: 'AI response malformed' });
+
+    const title = typeof newPrompt.title === 'string' ? newPrompt.title : 'Untitled';
+    const promptText = typeof newPrompt.prompt_text === 'string'
+      ? newPrompt.prompt_text
+      : typeof newPrompt.prompt === 'string'
+        ? newPrompt.prompt
+        : null;
+    if (!promptText) return json(502, { error: 'AI response missing prompt_text' });
+
+    const metadata =
+      newPrompt.metadata && typeof newPrompt.metadata === 'object'
+        ? newPrompt.metadata
+        : {};
+
     const { data: inserted, error: insErr } = await supabase
       .from("prompts")
       .insert({
         user_id: user.id,
-        title: title,
+        title,
         prompt_text: promptText,
-        metadata: newPrompt.metadata ?? {},
+        metadata,
       })
       .select("id, title")
       .single();
 
     if (insErr) {
-      logger.error('Error inserting prompt', { error: insErr.message, userId: user.id });
-      return new Response(
-        JSON.stringify({ error: insErr.message }), 
-        { status: 500, headers: corsHeaders }
-      );
+      logger.error('Insert error');
+      return json(500, { error: 'Insert failed' });
     }
 
-    return new Response(
-      JSON.stringify(inserted),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    logger.error('Error in suggest-prompt', { error });
-    return new Response(
-      JSON.stringify({ error: error.message }), 
-      { status: 500, headers: corsHeaders }
-    );
+    return json(200, inserted);
+  } catch (_error) {
+    logger.error('suggest-prompt error');
+    return json(500, { error: 'Internal error' });
   }
 });
