@@ -110,11 +110,57 @@ describe("DeliveryHealthPage source contract", () => {
     expect(!/Email Analytics<\//.test(source)).toBe(true);
   });
 
-  it("keeps EmailMonitoringAlerts as a subordinate section", () => {
-    expect(source.includes("<EmailMonitoringAlerts />")).toBe(true);
+  it("uses the V2 read-only MonitoringAlertsPanel, not the legacy shell", () => {
+    expect(source.includes("<MonitoringAlertsPanel />")).toBe(true);
+    expect(source.includes("<EmailMonitoringAlerts")).toBe(false);
+    expect(source.includes("EmailMonitoringAlerts")).toBe(false);
     const h1Idx = source.indexOf("Delivery Health");
-    const alertsIdx = source.indexOf("<EmailMonitoringAlerts />");
-    expect(alertsIdx > h1Idx).toBe(true);
+    const panelIdx = source.indexOf("<MonitoringAlertsPanel />");
+    expect(panelIdx > h1Idx).toBe(true);
+    // Section renders exactly one Monitoring alerts H2.
+    const h2Matches = source.match(/<h2[^>]*>[\s\S]*?<\/h2>/g) ?? [];
+    const monitoringH2s = h2Matches.filter((h) =>
+      /Monitoring alerts/i.test(h),
+    );
+    expect(monitoringH2s.length).toBe(1);
+  });
+
+  it("MonitoringAlertsPanel is read-only and free of legacy friction", () => {
+    const panelRaw = read(
+      "src/pages/admin/sections/communications/MonitoringAlertsPanel.tsx",
+    );
+    const panel = panelRaw
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    // No synthetic test-alert flow.
+    expect(/Test Alert/i.test(panel)).toBe(false);
+    // No local fake rule config.
+    expect(/DEFAULT_ALERT_RULES/.test(panel)).toBe(false);
+    // No <Switch/> UI or toggleAlertRule state-changing controls.
+    expect(/<Switch[\s>]/.test(panel)).toBe(false);
+    expect(/toggleAlertRule|setAlertRules/.test(panel)).toBe(false);
+    // No writes into security_logs from the panel.
+    expect(/\.from\(\s*['"]security_logs['"]\s*\)[\s\S]*\.insert\(/.test(panel)).toBe(
+      false,
+    );
+    expect(/\.insert\(\s*\{[\s\S]*action:\s*['"]email_delivery/.test(panel)).toBe(
+      false,
+    );
+    // Reads the right event sources.
+    expect(panel.includes("email_delivery_warning")).toBe(true);
+    expect(panel.includes("email_delivery_critical_failure")).toBe(true);
+    // Honest states + 44px targets.
+    expect(/Loading/i.test(panel)).toBe(true);
+    expect(/No monitoring alerts/i.test(panel)).toBe(true);
+    expect(/Retry/.test(panel)).toBe(true);
+    expect(/min-h-\[44px\]/.test(panel)).toBe(true);
+    // All hooks before any conditional return.
+    const returnIdx = panel.search(/^\s*return\s*\(/m);
+    for (const hook of ["useState", "useEffect", "useCallback"]) {
+      const firstHookIdx = panel.indexOf(`${hook}(`);
+      expect(firstHookIdx > 0).toBe(true);
+      expect(firstHookIdx < returnIdx).toBe(true);
+    }
   });
 
   it("has loading/empty/error/retry and mobile-safe controls", () => {
