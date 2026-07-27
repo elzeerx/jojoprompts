@@ -52,15 +52,30 @@ const FORBIDDEN_INVOKES = [
 ];
 
 const FORBIDDEN_PATTERNS: Array<{ label: string; re: RegExp }> = [
+  // Direct `functions.invoke("<slug>")` invocation.
   ...FORBIDDEN_INVOKES.map((slug) => ({
     label: `functions.invoke('${slug}')`,
     re: new RegExp(
       `functions\\.invoke\\(\\s*['\"\`]${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}['\"\`]`,
     ),
   })),
+  // Any occurrence of the retired slug as a bare string literal (catches
+  // dynamic invocation via `const SLUG = "…"; functions.invoke(SLUG)`).
+  ...FORBIDDEN_INVOKES.map((slug) => ({
+    label: `slug literal "${slug}"`,
+    re: new RegExp(
+      `['\"\`]${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}['\"\`]`,
+    ),
+  })),
+  // Retired route paths, with OR without a leading slash. Matches
+  // `path: "payment/upayments-callback"` and `"/payment/upayments-callback"`.
   {
-    label: "route: /payment/upayments-callback (string literal)",
-    re: /["'`]\/payment\/upayments-callback["'`]/,
+    label: "route path: payment/upayments-callback",
+    re: /["'`]\/?payment\/upayments-callback["'`]/,
+  },
+  {
+    label: "route path: payment/callback",
+    re: /["'`]\/?payment\/callback["'`]/,
   },
 ];
 
@@ -83,6 +98,14 @@ const V2_AUTH_ENTRIES = [
   "contexts/auth/useAuthInitialization.ts",
 ];
 
+// Legacy client pages whose ONLY legitimate residence is un-routed archival
+// source. If routes.ts (the active route config) imports or routes any of
+// these, the pass has regressed.
+const RETIRED_PAGES = [
+  "PaymentCallbackPage",
+  "UpaymentCallbackPage",
+];
+
 describe("legacy endpoint contract — active src/** has no retired references", () => {
   const files = walk(SRC)
     .map((f) => ({
@@ -92,9 +115,10 @@ describe("legacy endpoint contract — active src/** has no retired references",
     // Exclude test files themselves — they legitimately contain the
     // forbidden pattern strings as regex/label literals.
     .filter(({ rel }) => !/\.test\.tsx?$/.test(rel))
-    // Exclude the neutralized legacy callback stub, whose comments
-    // reference the retired route path only for documentation.
+    // The retired page sources may reference their own name and legacy
+    // route path in comments; they are un-routed archival.
     .filter(({ rel }) => rel !== "pages/UpaymentCallbackPage.tsx")
+    .filter(({ rel }) => rel !== "pages/PaymentCallbackPage.tsx")
     .filter(({ rel }) => !IGNORE_FILES.has(rel));
 
   for (const { label, re } of FORBIDDEN_PATTERNS) {
@@ -134,6 +158,29 @@ describe("legacy endpoint contract — active src/** has no retired references",
       // Naive: no bare navigate('/prompts') / navigate('/pricing') calls.
       const bad = /navigate\(\s*['\"`]\/(prompts|pricing)['\"`]/.test(src);
       expect({ rel, bad }).toEqual({ rel, bad: false });
+    }
+  });
+
+  it("active route config does not import or route retired legacy callback pages", () => {
+    const routesSrc = readFileSync(
+      resolve(SRC, "config/routes.ts"),
+      "utf8",
+    ) as string;
+    for (const page of RETIRED_PAGES) {
+      // Neither a `lazy(() => import(...PageName...))` nor a bare
+      // named import of the retired page should exist.
+      const importRe = new RegExp(
+        `import\\(\\s*["'\`][^"'\`]*${page}["'\`]\\s*\\)`,
+      );
+      const namedRe = new RegExp(`\\b${page}\\b`);
+      expect({ page, importer: importRe.test(routesSrc) }).toEqual({
+        page,
+        importer: false,
+      });
+      expect({ page, referenced: namedRe.test(routesSrc) }).toEqual({
+        page,
+        referenced: false,
+      });
     }
   });
 });
