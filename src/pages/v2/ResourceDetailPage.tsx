@@ -24,6 +24,10 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
 import { ReportResourceButton } from "@/components/v2/ReportResourceButton";
 import { useEntitledResourceContent } from "@/hooks/v2/useEntitledResourceContent";
+import {
+  pickProtectedText,
+  shouldRevealProtectedContent,
+} from "@/hooks/v2/protectedContentDisplay";
 import { useCopyToClipboard } from "@/hooks/ui/useCopyToClipboard";
 
 
