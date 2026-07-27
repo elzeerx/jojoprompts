@@ -341,5 +341,57 @@ describe("Admin overview payment semantics — cross-window final definition", (
       ),
     ).toBe(true);
   });
+
+  it("simulator: capture BEFORE window + failed retry INSIDE window => not counted as failure", () => {
+    // Model the SQL's per-order semantics in JS to prove the encoded
+    // rule: an order captured at any point (even before the window)
+    // must not be counted as a failure when a later in-window failed
+    // event lands. Only success in-window and failure with no
+    // captured_ever should tally.
+    type Ev = { order_id: string; event_type: "captured" | "failed"; received_at: number };
+    const WINDOW_SINCE = 100;
+    const events: Ev[] = [
+      // Order A: captured at t=50 (before window), then failed retry at t=150 (in window)
+      { order_id: "A", event_type: "captured", received_at: 50 },
+      { order_id: "A", event_type: "failed", received_at: 150 },
+      // Order B: only failed at t=200 (in window), never captured
+      { order_id: "B", event_type: "failed", received_at: 200 },
+      // Order C: captured at t=180 (in window)
+      { order_id: "C", event_type: "captured", received_at: 180 },
+      // Order D: captured at t=60 (before window) — no in-window activity
+      { order_id: "D", event_type: "captured", received_at: 60 },
+    ];
+
+    const inWindow = new Set(
+      events.filter((e) => e.received_at >= WINDOW_SINCE).map((e) => e.order_id),
+    );
+    const perOrder = new Map<string, { capturedInWindow: boolean; capturedEver: boolean; failedInWindow: boolean }>();
+    for (const oid of inWindow) {
+      const evs = events.filter((e) => e.order_id === oid);
+      perOrder.set(oid, {
+        capturedInWindow: evs.some((e) => e.event_type === "captured" && e.received_at >= WINDOW_SINCE),
+        capturedEver:     evs.some((e) => e.event_type === "captured"),
+        failedInWindow:   evs.some((e) => e.event_type === "failed"   && e.received_at >= WINDOW_SINCE),
+      });
+    }
+
+    let success = 0, failure = 0;
+    for (const [, p] of perOrder) {
+      if (p.capturedInWindow) success++;
+      if (p.failedInWindow && !p.capturedEver) failure++;
+    }
+
+    // A is shielded (captured before window), B is a real failure,
+    // C is a success in window, D is not in the window set at all.
+    expect(success).toBe(1); // C
+    expect(failure).toBe(1); // B (A NOT counted)
+    expect(perOrder.has("A")).toBe(true);
+    expect(perOrder.get("A")!.capturedEver).toBe(true);
+    expect(perOrder.get("A")!.failedInWindow).toBe(true);
+    // Encoded rule shields A from the failure count.
+    expect(perOrder.get("A")!.failedInWindow && !perOrder.get("A")!.capturedEver).toBe(false);
+    expect(perOrder.has("D")).toBe(false);
+  });
 });
+
 

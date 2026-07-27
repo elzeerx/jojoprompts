@@ -175,31 +175,16 @@ export function EmailMonitoringAlerts() {
 
   const testAlert = async (domainType: string) => {
     setTestingAlert(domainType);
-    
     try {
-      // Trigger a test alert by logging to security_logs
-      const { error } = await supabase
-        .from('security_logs')
-        .insert([{
-          action: 'email_delivery_warning',
-          details: {
-            domain_type: domainType,
-            success_rate: 75,
-            total_emails: 10,
-            successful_emails: 7,
-            time_window: '1_hour',
-            alert_level: 'warning',
-            test_alert: true
-          }
-        }]);
-
-      if (error) {
-        logger.error('Error creating test alert', error);
-      } else {
-        logger.info('Test alert created', { domainType });
-        // Refresh alerts after a short delay
-        setTimeout(loadRecentAlerts, 1000);
-      }
+      // Pre-launch hardening (2026-07-27): browser must NOT INSERT into
+      // public.security_logs. Test alerts are now emitted through the
+      // frontend logger only; production alerting is authored by
+      // service_role / Edge Functions.
+      logger.info('Test alert (client-only, no DB write)', {
+        domainType,
+        alert_level: 'warning',
+        test_alert: true,
+      });
     } catch (error) {
       logger.error('Error testing alert', error);
     } finally {
