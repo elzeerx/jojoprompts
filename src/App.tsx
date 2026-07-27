@@ -22,7 +22,14 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 import { isLaunchLocked } from "./config/siteMode";
 
+/**
+ * Paths that live in the canonical V2 public shell (V2Layout: V2Header +
+ * V2Footer + CartSanitizer). Root ("/") is included so the homepage renders
+ * the same shell for every visitor. Everything not in this set falls back to
+ * the legacy RootLayout below (Header/Footer/FloatingAddPromptButton).
+ */
 const V2_PATHS = new Set([
+  "/",
   "explore",
   "skills",
   "automations",
