@@ -9,8 +9,8 @@
  * run in Supabase's SQL editor or a pgtap fixture.
  */
 import { describe, it, expect } from "bun:test";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, readdirSync } from "fs";
+import { join } from "path";
 
 const MIGRATIONS_DIR = "supabase/migrations";
 const CORRECTIVE_PREFIX = "20260727073236";
