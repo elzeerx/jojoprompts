@@ -161,19 +161,8 @@ export function LoginForm() {
     setIsGoogleLoading(true);
 
     try {
-      // Build redirect URL based on current context
-      let redirectUrl = `${window.location.origin}/prompts`;
-
-      // If we're on checkout page or have plan parameters, preserve that context
-      const currentPath = window.location.pathname;
-      const currentSearch = window.location.search;
-
-      if (nextPath) {
-        redirectUrl = `${window.location.origin}${nextPath}`;
-      } else if (currentPath === '/checkout' || currentSearch.includes('plan_id=') || selectedPlan) {
-        // Preserve the current checkout context
-        redirectUrl = `${window.location.origin}${currentPath}${currentSearch}`;
-      }
+      // V2: single safe destination — never a plan-gated URL.
+      const redirectUrl = `${window.location.origin}${safeNextPath}`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
