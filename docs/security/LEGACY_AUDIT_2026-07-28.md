@@ -49,7 +49,14 @@ Explicit non-goal: **no production DB functions were altered, no
 `user_subscriptions` / `subscription_plans` rows were touched, and no
 legacy admin code was deleted.**
 
-## 3. Follow-ups (not executed here)
+## 3. Advisor anon-SELECT tables — correction
+
+`resource_permissions` **is required pre-sign-in**: the public V2 resource
+detail route consumes it via `src/hooks/v2/useResourceDetail.ts` to render
+permission/licence badges before authentication. Its anon read grant is
+intentional and must be preserved. Do not change live grants on this table.
+
+## 4. Follow-ups (not executed here)
 
 * Deploy 410 stubs for the thirteen legacy Edge Functions above.
 * Apply `securityLogsHardening` and `performanceIndexes` fixtures.
