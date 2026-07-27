@@ -13,9 +13,15 @@ function read(rel: string): string {
   return fs.readFileSync(rel, "utf8");
 }
 
-const usersPage = read("src/pages/admin/components/users/UsersV2.tsx");
-const usersTable = read("src/pages/admin/components/users/UsersV2Table.tsx");
-const adminRouting = read("src/pages/admin/layout/adminSectionElements.tsx");
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
+
+const usersPage = stripComments(read("src/pages/admin/components/users/UsersV2.tsx"));
+const usersTable = stripComments(read("src/pages/admin/components/users/UsersV2Table.tsx"));
+const adminRouting = stripComments(read("src/pages/admin/layout/adminSectionElements.tsx"));
 const combined = `${usersPage}\n${usersTable}`;
 
 function absent(re: RegExp, hay: string): boolean {

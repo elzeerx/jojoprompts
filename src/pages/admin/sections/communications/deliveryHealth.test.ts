@@ -97,7 +97,10 @@ describe("deliveryHealthUtils.computeDomainStats", () => {
 });
 
 describe("DeliveryHealthPage source contract", () => {
-  const source = read("src/pages/admin/sections/communications/DeliveryHealthPage.tsx");
+  const raw = read("src/pages/admin/sections/communications/DeliveryHealthPage.tsx");
+  const source = raw
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
 
   it("renders a single Delivery Health H1", () => {
     const h1Matches = source.match(/<h1[^>]*>[\s\S]*?<\/h1>/g) ?? [];
