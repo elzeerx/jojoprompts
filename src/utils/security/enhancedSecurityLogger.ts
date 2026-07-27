@@ -29,34 +29,23 @@ export class EnhancedSecurityLogger {
 
   static async logSecurityEvent(event: EnhancedSecurityEvent): Promise<void> {
     try {
-      const clientInfo = this.getClientInfo();
-      
-      // Get current user if available
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      await supabase
-        .from('security_logs')
-        .insert({
-          action: event.action,
-          severity: event.severity,
-          event_category: event.category,
-          user_id: event.user_id || user?.id || null,
-          details: {
-            ...event.details,
-            ...clientInfo
-          },
-          ip_address: event.ip_address || 'client-side',
-          user_agent: event.user_agent || navigator.userAgent
-        });
-
-      // Log to console for development
+      // Pre-launch hardening (2026-07-27): browser must NOT INSERT into
+      // public.security_logs. Live migration 20260727135637 revoked
+      // authenticated write access on system/log tables. Any legitimate
+      // security-event capture happens server-side (Edge Functions,
+      // service_role) or via admin RPCs. Preserve the console signal
+      // for developer visibility only.
       const logLevel = this.mapSeverityToLogLevel(event.severity);
-      logger[logLevel](`[${event.category.toUpperCase()}] ${event.action}`, event.details);
-
+      logger[logLevel](
+        `[${event.category.toUpperCase()}] ${event.action}`,
+        event.details,
+      );
     } catch (error) {
       logger.error('Failed to log security event:', error);
     }
   }
+
+
 
   private static mapSeverityToLogLevel(severity: SecuritySeverity): 'error' | 'warn' | 'info' {
     switch (severity) {
