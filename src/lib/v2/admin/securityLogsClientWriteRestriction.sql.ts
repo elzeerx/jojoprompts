@@ -2,11 +2,13 @@
  * SOURCE FIXTURE — pre-launch client-write restriction for
  * `public.security_logs`.
  *
- * NOT applied to production. Held as a version-controlled record of the
- * intended additive migration so the SQL is testable without executing
- * it. The intended future filename is:
+ * APPLIED LIVE. This file is retained as a version-controlled, testable
+ * record of the exact SQL that shipped, so the intended contract can be
+ * diffed against the database at any time. Do NOT create a duplicate
+ * executable migration file — the migration already exists in the
+ * database catalog:
  *
- *   supabase/migrations/20260727150000_restrict_security_logs_client_writes.sql
+ *   20260727141455 restrict_security_logs_client_writes
  *
  * SCOPE (exact — do not broaden):
  *   • DROP the two known legacy INSERT policies on public.security_logs
@@ -34,9 +36,15 @@
  */
 
 export const SECURITY_LOGS_CLIENT_WRITE_RESTRICTION_MIGRATION_FILENAME =
-  "20260727150000_restrict_security_logs_client_writes.sql";
+  "20260727141455_restrict_security_logs_client_writes.sql";
 
-export const SECURITY_LOGS_CLIENT_WRITE_RESTRICTION_APPLIED = false;
+export const SECURITY_LOGS_CLIENT_WRITE_RESTRICTION_APPLIED = true;
+
+export const SECURITY_LOGS_CLIENT_WRITE_RESTRICTION_APPLIED_LIVE = {
+  version: "20260727141455",
+  name: "restrict_security_logs_client_writes",
+  applied: true,
+} as const;
 
 export const SECURITY_LOGS_CLIENT_WRITE_RESTRICTION_SQL = `-- V2 pre-launch hardening: restrict client (anon/authenticated) writes
 -- to public.security_logs. Server-side / service_role writers keep full
