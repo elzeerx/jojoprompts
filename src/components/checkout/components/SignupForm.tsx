@@ -52,39 +52,9 @@ export function SignupForm({ onSuccess, onSwitchToLogin, disabled }: SignupFormP
         username
       });
 
-      // Validate signup data
-      const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-signup', {
-        body: {
-          email: values.email,
-          username: username,
-          firstName: firstName,
-          lastName: lastName || firstName,
-          ipAddress: window.location.hostname
-        }
-      });
+      // V2 release-hardening: no pre-signup existence probe. Supabase
+      // Auth authoritatively rejects duplicates with a generic response.
 
-      if (validationError) {
-        logError("Validation error", "auth", { error: validationError.message });
-        toast({
-          variant: "destructive",
-          title: "Validation Error",
-          description: validationError.message || "Failed to validate signup data.",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      if (!validationData?.valid) {
-        const errors = validationData?.errors || ["Validation failed"];
-        logError("Validation failed", "auth", { errors });
-        toast({
-          variant: "destructive",
-          title: "Validation Error",
-          description: errors[0],
-        });
-        setIsLoading(false);
-        return;
-      }
 
       // Create account with password
       const { data, error } = await supabase.auth.signUp({
