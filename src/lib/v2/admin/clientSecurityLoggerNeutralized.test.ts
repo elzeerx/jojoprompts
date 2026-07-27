@@ -1,8 +1,11 @@
 import { describe, it, expect } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 
-const SRC = resolve(__dirname, "../../../");
+declare const require: (m: string) => any;
+const { readFileSync } = require("fs");
+const { resolve } = require("path");
+
+const HERE: string = (import.meta as unknown as { dir?: string }).dir ?? ".";
+const SRC = resolve(HERE, "../../../");
 
 function read(rel: string): string {
   return readFileSync(resolve(SRC, rel), "utf8");
