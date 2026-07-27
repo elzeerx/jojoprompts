@@ -23,6 +23,7 @@ import { securityLogger } from "@/utils/logging/security";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
 import { isLaunchLocked } from "@/config/siteMode";
+import { resolveSafeNext, DEFAULT_SAFE_NEXT } from "@/lib/v2/safeNext";
 
 const LAUNCH_LOCKED = isLaunchLocked();
 
@@ -40,12 +41,11 @@ export function LoginForm() {
   
   const logger = createLogger('LOGIN_FORM');
   
-  // Check for redirect and plan parameters
-  const redirectTo = searchParams.get('redirect');
-  // `next` = full same-origin path+search preserved through auth (used by MCP consent flow)
-  const rawNext = searchParams.get('next');
-  const nextPath = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null;
-  const selectedPlan = searchParams.get('plan');
+  // V2: `next` = same-origin post-auth destination validated by resolveSafeNext.
+  // `redirect` / `plan` are legacy inputs that MUST NOT override a safe `next`
+  // or the safe /explore fallback for the active V2 flow.
+  const safeNextPath = resolveSafeNext(searchParams.get("next"));
+  const hasExplicitNext = !!searchParams.get("next");
 
   // Create localized schemas
   const schemas = createLocalizedSchemas(t);
