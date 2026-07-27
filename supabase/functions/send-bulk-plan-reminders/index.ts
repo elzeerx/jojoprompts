@@ -192,16 +192,34 @@ const handler = async (req: Request): Promise<Response> => {
             pricingLink = rawLink.replace(/^https?:\/\/[^/]+/, siteUrl);
           }
 
-          // Generate smart unsubscribe link
-          const { data: unsubscribeData, error: unsubscribeError } = await supabaseClient.functions.invoke('smart-unsubscribe', {
-            headers: { Authorization: req.headers.get("Authorization") || "" },
-            body: { email: targetUser.email }
-          });
-
+          // Mint an unsubscribe token directly. `smart-unsubscribe` is
+          // now token-only and no longer issues tokens; server-side
+          // reminder pipelines must create the one-time token here.
           let unsubscribeLink = `${getSiteUrl()}/unsubscribe`;
-          if (unsubscribeData?.success) {
-            unsubscribeLink = unsubscribeData.unsubscribeLink;
+          try {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let unsubscribeToken = '';
+            const buf = new Uint8Array(48);
+            crypto.getRandomValues(buf);
+            for (let i = 0; i < buf.length; i++) unsubscribeToken += chars.charAt(buf[i] % chars.length);
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 72);
+            const { error: tokenError } = await supabaseClient
+              .from('email_magic_tokens')
+              .insert({
+                token: unsubscribeToken,
+                email: targetUser.email,
+                expires_at: expiresAt.toISOString(),
+                token_type: 'unsubscribe_link',
+                metadata: { unsubscribe_type: 'marketing' },
+              });
+            if (!tokenError) {
+              unsubscribeLink = `${getSiteUrl()}/unsubscribe?token=${unsubscribeToken}`;
+            }
+          } catch (_e) {
+            // fall back to link without token
           }
+
 
           // Validate email address
           if (!emailRegex.test(targetUser.email)) {
