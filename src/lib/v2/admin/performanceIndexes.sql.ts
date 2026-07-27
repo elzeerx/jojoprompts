@@ -53,8 +53,6 @@ export const V2_FK_INDEXES_APPLIED_LIVE = [
     applied: true,
   },
 ] as const;
-  },
-] as const;
 
 export interface TargetedIndex {
   index: string;
