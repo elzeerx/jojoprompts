@@ -95,18 +95,12 @@ export function LoginForm() {
           description: "You have been logged in.",
         });
         
-        // Handle redirection based on parameters or saved context
-        const savedContext = CheckoutContextManager.getContext();
-        if (nextPath) {
-          window.location.href = nextPath;
-        } else if (selectedPlan || savedContext?.planId) {
-          const planId = selectedPlan || savedContext?.planId;
-          CheckoutContextManager.clearContext(); // Clear after use
-          navigate(`/checkout?plan_id=${planId}&from_login=true`);
-        } else if (redirectTo) {
-          navigate(`/${redirectTo}`);
+        // V2: single safe destination — never a plan-based checkout redirect.
+        CheckoutContextManager.clearContext();
+        if (hasExplicitNext) {
+          window.location.href = safeNextPath;
         } else {
-          navigate("/prompts");
+          navigate(safeNextPath);
         }
       }
     } catch (error: any) {
