@@ -72,9 +72,9 @@ describe("legacy anon-table restriction — source fixture", () => {
 
   it("never revokes from authenticated or service_role", () => {
     for (const stmt of LEGACY_ANON_RESTRICTION_SQL) {
-      expect(stmt).not.toMatch(/FROM\s+authenticated/i);
-      expect(stmt).not.toMatch(/FROM\s+service_role/i);
-      expect(stmt).not.toMatch(/FROM\s+PUBLIC/i);
+      expect(/FROM\s+authenticated/i.test(stmt)).toBe(false);
+      expect(/FROM\s+service_role/i.test(stmt)).toBe(false);
+      expect(/FROM\s+PUBLIC/i.test(stmt)).toBe(false);
     }
     expect(F.guarantees.authenticatedUnchanged).toBe(true);
     expect(F.guarantees.serviceRoleUnchanged).toBe(true);
@@ -82,10 +82,10 @@ describe("legacy anon-table restriction — source fixture", () => {
 
   it("performs no policy DDL and no data or structural mutation", () => {
     for (const stmt of LEGACY_ANON_RESTRICTION_SQL) {
-      expect(stmt).not.toMatch(/\b(CREATE|DROP|ALTER)\s+POLICY\b/i);
-      expect(stmt).not.toMatch(/\bALTER\s+TABLE\b/i);
-      expect(stmt).not.toMatch(/\b(INSERT|UPDATE|DELETE|TRUNCATE)\b/i);
-      expect(stmt).not.toMatch(/\bENABLE\s+ROW\s+LEVEL\s+SECURITY\b/i);
+      expect(/\b(CREATE|DROP|ALTER)\s+POLICY\b/i.test(stmt)).toBe(false);
+      expect(/\bALTER\s+TABLE\b/i.test(stmt)).toBe(false);
+      expect(/\b(INSERT|UPDATE|DELETE|TRUNCATE)\b/i.test(stmt)).toBe(false);
+      expect(/\bENABLE\s+ROW\s+LEVEL\s+SECURITY\b/i.test(stmt)).toBe(false);
     }
     expect(F.guarantees.rlsPoliciesUnchanged).toBe(true);
     expect(F.guarantees.noDataMutation).toBe(true);
