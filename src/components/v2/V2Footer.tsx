@@ -48,7 +48,7 @@ export function V2Footer() {
         { to: "/library", label: lang === "ar" ? "مكتبتي" : "My Library" },
         { to: "/orders", label: lang === "ar" ? "طلباتي" : "Orders" },
         { to: "/cart", label: lang === "ar" ? "السلة" : "Cart" },
-        { to: "/dashboard", label: lang === "ar" ? "الحساب" : "Account" },
+        { to: "/account", label: lang === "ar" ? "حسابي" : "My account" },
       ]
     : [
         { to: "/library", label: lang === "ar" ? "مكتبتي" : "My Library" },

@@ -45,6 +45,8 @@ const V2_PATHS = new Set([
   "checkout/cancel",
   "checkout/cancel/:orderId",
   "orders",
+  "account",
+  "dashboard",
   "pricing",
   "how-it-works",
 ]);

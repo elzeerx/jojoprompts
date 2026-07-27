@@ -35,6 +35,9 @@ const PaymentRecoveryPage = lazy(() => import("@/pages/PaymentRecoveryPage"));
 const UserDashboardPage = lazy(() => import("@/pages/UserDashboardPage"));
 const SubscriptionDashboard = lazy(() => import("@/pages/dashboard/SubscriptionDashboard"));
 const PrompterDashboard = lazy(() => import("@/pages/prompter/PrompterDashboard"));
+// V2 account surface + legacy /dashboard compatibility redirect.
+const V2AccountPage = lazy(() => import("@/pages/v2/AccountPage"));
+const V2DashboardRedirect = lazy(() => import("@/pages/v2/DashboardRedirect"));
 
 const PlatformTest = lazy(() => import("@/pages/PlatformTest"));
 const AboutPage = lazy(() => import("@/pages/AboutPage"));
@@ -252,9 +255,12 @@ export const routes: RouteConfig[] = [
     protection: "premium"
   },
   {
+    // V2: legacy dashboard now redirects to /account (auth-gated at the page).
+    // Kept "public" so no subscription guard runs — the redirect target itself
+    // handles the auth bounce with a preserved `next`.
     path: "dashboard",
-    component: UserDashboardPage,
-    protection: "premium"
+    component: V2DashboardRedirect,
+    protection: "public"
   },
   {
     path: "dashboard/subscription",
@@ -311,6 +317,7 @@ export const routes: RouteConfig[] = [
   { path: "checkout/cancel", component: V2CheckoutCancelPage, protection: "public" },
   { path: "checkout/cancel/:orderId", component: V2CheckoutCancelPage, protection: "public" },
   { path: "orders", component: V2OrdersPage, protection: "auth" },
+  { path: "account", component: V2AccountPage, protection: "auth" },
 
   // 404 catch-all route
   {

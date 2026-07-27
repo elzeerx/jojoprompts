@@ -23,6 +23,7 @@ import { securityLogger } from "@/utils/logging/security";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
 import { isLaunchLocked } from "@/config/siteMode";
+import { resolveSafeNext, DEFAULT_SAFE_NEXT } from "@/lib/v2/safeNext";
 
 const LAUNCH_LOCKED = isLaunchLocked();
 
@@ -40,12 +41,11 @@ export function LoginForm() {
   
   const logger = createLogger('LOGIN_FORM');
   
-  // Check for redirect and plan parameters
-  const redirectTo = searchParams.get('redirect');
-  // `next` = full same-origin path+search preserved through auth (used by MCP consent flow)
-  const rawNext = searchParams.get('next');
-  const nextPath = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null;
-  const selectedPlan = searchParams.get('plan');
+  // V2: `next` = same-origin post-auth destination validated by resolveSafeNext.
+  // `redirect` / `plan` are legacy inputs that MUST NOT override a safe `next`
+  // or the safe /explore fallback for the active V2 flow.
+  const safeNextPath = resolveSafeNext(searchParams.get("next"));
+  const hasExplicitNext = !!searchParams.get("next");
 
   // Create localized schemas
   const schemas = createLocalizedSchemas(t);
@@ -95,18 +95,12 @@ export function LoginForm() {
           description: "You have been logged in.",
         });
         
-        // Handle redirection based on parameters or saved context
-        const savedContext = CheckoutContextManager.getContext();
-        if (nextPath) {
-          window.location.href = nextPath;
-        } else if (selectedPlan || savedContext?.planId) {
-          const planId = selectedPlan || savedContext?.planId;
-          CheckoutContextManager.clearContext(); // Clear after use
-          navigate(`/checkout?plan_id=${planId}&from_login=true`);
-        } else if (redirectTo) {
-          navigate(`/${redirectTo}`);
+        // V2: single safe destination — never a plan-based checkout redirect.
+        CheckoutContextManager.clearContext();
+        if (hasExplicitNext) {
+          window.location.href = safeNextPath;
         } else {
-          navigate("/prompts");
+          navigate(safeNextPath);
         }
       }
     } catch (error: any) {
@@ -128,17 +122,8 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      // Build redirect URL based on current context
-      let redirectUrl = `${window.location.origin}/prompts`;
-
-      // If we're on checkout page or have plan parameters, preserve that context
-      if (nextPath) {
-        redirectUrl = `${window.location.origin}${nextPath}`;
-      } else if (selectedPlan) {
-        redirectUrl = `${window.location.origin}/checkout?plan_id=${selectedPlan}`;
-      } else if (redirectTo) {
-        redirectUrl = `${window.location.origin}/${redirectTo}`;
-      }
+      // V2: single safe destination — never plan-gated.
+      const redirectUrl = `${window.location.origin}${safeNextPath}`;
 
       const { error } = await supabase.auth.signInWithOtp({
         email: values.email,
@@ -176,19 +161,8 @@ export function LoginForm() {
     setIsGoogleLoading(true);
 
     try {
-      // Build redirect URL based on current context
-      let redirectUrl = `${window.location.origin}/prompts`;
-
-      // If we're on checkout page or have plan parameters, preserve that context
-      const currentPath = window.location.pathname;
-      const currentSearch = window.location.search;
-
-      if (nextPath) {
-        redirectUrl = `${window.location.origin}${nextPath}`;
-      } else if (currentPath === '/checkout' || currentSearch.includes('plan_id=') || selectedPlan) {
-        // Preserve the current checkout context
-        redirectUrl = `${window.location.origin}${currentPath}${currentSearch}`;
-      }
+      // V2: single safe destination — never a plan-gated URL.
+      const redirectUrl = `${window.location.origin}${safeNextPath}`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -432,20 +406,10 @@ export function LoginForm() {
         </Form>
       )}
       
-      {!LAUNCH_LOCKED && selectedPlan && (
-        <div className={cn("pt-2 text-center", isRTL && "rtl-text")}>
-          <p className="text-sm text-muted-foreground">
-            {t('auth.dontHaveAccount')}{" "}
-            <Button 
-              variant="link" 
-              className="p-0" 
-              onClick={() => navigate(`/signup?plan=${selectedPlan}`)}
-            >
-              {t('auth.signUp')}
-            </Button>
-          </p>
-        </div>
-      )}
+
+      {/* Legacy plan-based signup CTA removed: V2 uses one-time ownership,
+          not plans. A generic signup link is shown instead. */}
     </div>
   );
 }
+
