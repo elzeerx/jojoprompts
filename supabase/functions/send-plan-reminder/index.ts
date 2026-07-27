@@ -174,19 +174,36 @@ const handler = async (req: Request): Promise<Response> => {
     } else {
       logger.warn('Magic link generation failed, using fallback', { error: magicLinkError });
     }
-    // Generate smart unsubscribe link
-    const { data: unsubscribeData, error: unsubscribeError } = await supabaseClient.functions.invoke('smart-unsubscribe', {
-      headers: { Authorization: authHeader },
-      body: { email }
-    });
-
+    // Mint an unsubscribe token directly. `smart-unsubscribe` is now
+    // token-only and no longer issues tokens; server-side reminder
+    // pipelines must create the one-time token themselves.
     let unsubscribeLink = `${getSiteUrl()}/unsubscribe`;
-    if (unsubscribeData?.success) {
-      unsubscribeLink = unsubscribeData.unsubscribeLink;
-      logger.debug('Smart unsubscribe link generated', { email });
-    } else {
-      logger.warn('Smart unsubscribe failed, using fallback', { error: unsubscribeError });
+    try {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let unsubscribeToken = '';
+      const buf = new Uint8Array(48);
+      crypto.getRandomValues(buf);
+      for (let i = 0; i < buf.length; i++) unsubscribeToken += chars.charAt(buf[i] % chars.length);
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 72);
+      const { error: tokenError } = await supabaseClient
+        .from('email_magic_tokens')
+        .insert({
+          token: unsubscribeToken,
+          email,
+          expires_at: expiresAt.toISOString(),
+          token_type: 'unsubscribe_link',
+          metadata: { unsubscribe_type: 'marketing' },
+        });
+      if (tokenError) {
+        logger.warn('Unsubscribe token mint failed, using fallback', { error: tokenError.message });
+      } else {
+        unsubscribeLink = `${getSiteUrl()}/unsubscribe?token=${unsubscribeToken}`;
+      }
+    } catch (e) {
+      logger.warn('Unsubscribe token mint threw, using fallback');
     }
+
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
