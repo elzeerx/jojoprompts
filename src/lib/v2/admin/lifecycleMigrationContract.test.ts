@@ -28,8 +28,9 @@ async function loadCorrectiveSql(): Promise<string> {
   return await Bun.file(`${MIGRATIONS_DIR}/${file}`).text();
 }
 
+const sql = await loadCorrectiveSql();
+
 describe("corrective lifecycle migration contract", () => {
-  const sql = loadCorrectiveSql();
 
   it("replaces admin_transition_resource_lifecycle and admin_publish_resource", () => {
     expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.admin_transition_resource_lifecycle/);
