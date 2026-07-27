@@ -9,16 +9,23 @@
  * run in Supabase's SQL editor or a pgtap fixture.
  */
 import { describe, it, expect } from "bun:test";
-import { readFileSync, readdirSync } from "fs";
-import { join } from "path";
+// Bun globals are available at test runtime; declare minimal types locally
+// to avoid depending on @types/node in the app tsconfig.
+declare const Bun: {
+  file(path: string): { text(): Promise<string> };
+  $: unknown;
+};
+declare const require: (m: string) => any;
 
 const MIGRATIONS_DIR = "supabase/migrations";
 const CORRECTIVE_PREFIX = "20260727073236";
 
-function loadCorrectiveSql(): string {
-  const file = readdirSync(MIGRATIONS_DIR).find((f) => f.startsWith(CORRECTIVE_PREFIX));
+async function loadCorrectiveSql(): Promise<string> {
+  // Use Node's fs via require to sidestep TS module resolution for "fs".
+  const fs = require("fs") as { readdirSync(p: string): string[] };
+  const file = fs.readdirSync(MIGRATIONS_DIR).find((f: string) => f.startsWith(CORRECTIVE_PREFIX));
   if (!file) throw new Error(`Corrective migration ${CORRECTIVE_PREFIX}_*.sql not found`);
-  return readFileSync(join(MIGRATIONS_DIR, file), "utf8");
+  return await Bun.file(`${MIGRATIONS_DIR}/${file}`).text();
 }
 
 describe("corrective lifecycle migration contract", () => {
