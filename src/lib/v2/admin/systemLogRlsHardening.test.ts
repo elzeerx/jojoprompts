@@ -166,8 +166,9 @@ describe("_v2_require_admin admin-RPC invariant contract", () => {
     // Null-check on auth.uid() (either directly or via a captured local).
     expect(/auth\.uid\(\)/.test(latest)).toBe(true);
     expect(/IS NULL/i.test(latest)).toBe(true);
-    // Admin role check.
-    expect(/has_role\([^)]*,\s*'admin'/i.test(latest)).toBe(true);
+    // Admin role check (has_role args may include auth.uid() with nested parens).
+    expect(/has_role\([^;]*'admin'/i.test(latest)).toBe(true);
+
   });
 
   it("every latest v2_admin_*/get_admin_v2_* RPC source enforces admin authorization", () => {
