@@ -138,14 +138,9 @@ export function useSignupForm() {
         description: "Please check your email to verify your account.",
       });
 
-      // Navigate directly to checkout if from checkout flow
-      if (selectedPlan) {
-        navigate(`/checkout?plan_id=${selectedPlan}&from_signup=true`);
-      } else if (fromCheckout) {
-        navigate('/checkout?from_signup=true');
-      } else {
-        navigate('/prompts');
-      }
+      // V2: default to the safe post-auth destination — no plan-based
+      // checkout redirect and no "complete your subscription" prompt.
+      navigate(safeNextPath);
     } catch (error) {
       const appError = handleError(error, { component: 'useSignupForm', action: 'signup' });
       logger.error('Unexpected signup error after all retries', appError);
@@ -176,8 +171,8 @@ export function useSignupForm() {
   return {
     form,
     isLoading,
-    selectedPlan,
-    fromCheckout,
+    selectedPlan: null as string | null,
+    fromCheckout: false,
     handleSubmit,
     handleFormError,
     onSubmit: handleSubmit,
