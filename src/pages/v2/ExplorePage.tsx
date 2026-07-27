@@ -161,7 +161,9 @@ export default function ExplorePage({ fixedType, title, emptyTitle, emptyDesc }:
         {isError ? <CatalogState variant="error" onRetry={() => refetch()} /> : null}
 
         {noResults ? <CatalogState variant="no-results" /> : null}
-        {emptyCatalog ? <CatalogState variant="empty" /> : null}
+        {emptyCatalog ? (
+          <CatalogState variant="empty" emptyTitle={emptyTitle} emptyDesc={emptyDesc} />
+        ) : null}
 
         {!isLoading && !isError && (rows?.length ?? 0) > 0 ? (
           <div className="space-y-8">
