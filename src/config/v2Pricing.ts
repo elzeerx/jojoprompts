@@ -19,7 +19,7 @@ export const V2_PRICING_TIERS: readonly PricingTier[] = [
     key: "free",
     en: { name: "Free resources", desc: "Selected starter resources at no cost." },
     ar: { name: "موارد مجانية", desc: "موارد مختارة للبدء بدون تكلفة." },
-    price: "0.000 KD",
+    price: "0 KD",
   },
   {
     key: "prompt_image_style",

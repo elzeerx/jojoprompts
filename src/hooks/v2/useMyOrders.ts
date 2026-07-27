@@ -1,27 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { parseMyOrdersPayload } from "@/hooks/v2/parseMyOrdersPayload";
+import type { MyOrderSummary } from "@/hooks/v2/useMyOrders.types";
 
-/**
- * Customer-safe order history/receipt reads via authenticated SECURITY DEFINER
- * RPCs. The RPCs use auth.uid() internally; no user id is trusted from the
- * client. They never expose payment_attempts, payment_events, or raw provider
- * payloads.
- */
-
-export interface MyOrderSummary {
-  id: string;
-  order_number: string | null;
-  status: string;
-  currency: string;
-  total_fils: number;
-  paid_fils: number;
-  refunded_fils: number;
-  placed_at: string | null;
-  settled_at: string | null;
-  created_at: string;
-  item_count: number;
-}
+export type { MyOrderSummary } from "@/hooks/v2/useMyOrders.types";
+export { parseMyOrdersPayload } from "@/hooks/v2/parseMyOrdersPayload";
 
 export interface MyOrderReceiptItem {
   id: string;
@@ -70,11 +54,12 @@ export interface MyOrderReceipt {
   refunds: MyOrderReceiptRefund[];
 }
 
+
 export function useMyOrders() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   return useQuery({
     queryKey: ["v2", "my-orders", user?.id ?? "anon"],
-    enabled: !!user,
+    enabled: !authLoading && !!user,
     staleTime: 15_000,
     queryFn: async (): Promise<MyOrderSummary[]> => {
       const { data, error } = await (supabase as any).rpc("v2_get_my_orders", {
@@ -82,18 +67,16 @@ export function useMyOrders() {
         p_offset: 0,
       });
       if (error) throw error;
-      const payload = (data ?? {}) as { ok?: boolean; orders?: MyOrderSummary[] };
-      if (!payload.ok) throw new Error("orders_unavailable");
-      return payload.orders ?? [];
+      return parseMyOrdersPayload(data);
     },
   });
 }
 
 export function useMyOrderDetail(orderId?: string) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   return useQuery({
     queryKey: ["v2", "my-order", orderId, user?.id ?? "anon"],
-    enabled: !!user && !!orderId,
+    enabled: !authLoading && !!user && !!orderId,
     staleTime: 10_000,
     queryFn: async (): Promise<MyOrderReceipt> => {
       const { data, error } = await (supabase as any).rpc("v2_get_my_order_receipt", {
@@ -107,7 +90,7 @@ export function useMyOrderDetail(orderId?: string) {
         items?: MyOrderReceiptItem[];
         refunds?: MyOrderReceiptRefund[];
       };
-      if (!payload.ok || !payload.order) {
+      if (!payload.order) {
         throw new Error(payload.error ?? "receipt_unavailable");
       }
       return {

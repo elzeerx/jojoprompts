@@ -1,16 +1,26 @@
 import { Link } from "react-router-dom";
 import { Instagram, Twitter } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 /**
- * V2 public footer. Describes Jojo-owned AI skills, automations, prompts,
- * image styles, and bundles — not prompt templates only.
+ * V2 public footer. All interactive elements meet the 44px mobile touch
+ * target. The "Sign in" account entry is hidden for authenticated visitors,
+ * who instead see Account / My Library / Orders links.
  */
 export function V2Footer() {
   const year = new Date().getFullYear();
   const { language, isRTL } = useTranslation();
   const lang: "en" | "ar" = language === "ar" ? "ar" : "en";
+
+  let user: unknown = null;
+  try {
+    user = useAuth().user;
+  } catch {
+    /* no auth context */
+  }
+  const isAuthed = !!user;
 
   const t = {
     tagline:
@@ -33,15 +43,22 @@ export function V2Footer() {
     { to: "/prompts-catalog", label: lang === "ar" ? "البرومبتات" : "Prompts" },
     { to: "/image-styles", label: lang === "ar" ? "أنماط الصور" : "Image styles" },
     { to: "/bundles", label: lang === "ar" ? "الحزم" : "Bundles" },
+    { to: "/how-it-works", label: lang === "ar" ? "كيف يعمل" : "How it works" },
     { to: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing" },
   ];
 
-  const accountLinks: Array<{ to: string; label: string }> = [
-    { to: "/library", label: lang === "ar" ? "مكتبتي" : "My Library" },
-    { to: "/orders", label: lang === "ar" ? "طلباتي" : "Orders" },
-    { to: "/cart", label: lang === "ar" ? "السلة" : "Cart" },
-    { to: "/login", label: lang === "ar" ? "تسجيل الدخول" : "Sign in" },
-  ];
+  const accountLinks: Array<{ to: string; label: string }> = isAuthed
+    ? [
+        { to: "/library", label: lang === "ar" ? "مكتبتي" : "My Library" },
+        { to: "/orders", label: lang === "ar" ? "طلباتي" : "Orders" },
+        { to: "/cart", label: lang === "ar" ? "السلة" : "Cart" },
+        { to: "/dashboard", label: lang === "ar" ? "الحساب" : "Account" },
+      ]
+    : [
+        { to: "/library", label: lang === "ar" ? "مكتبتي" : "My Library" },
+        { to: "/cart", label: lang === "ar" ? "السلة" : "Cart" },
+        { to: "/login", label: lang === "ar" ? "تسجيل الدخول" : "Sign in" },
+      ];
 
   const legalLinks: Array<{ to: string; label: string }> = [
     { to: "/privacy", label: lang === "ar" ? "سياسة الخصوصية" : "Privacy" },
@@ -54,6 +71,8 @@ export function V2Footer() {
       className="bg-dark-base text-soft-bg mt-16"
       dir={isRTL ? "rtl" : "ltr"}
       aria-label="Site footer"
+      data-testid="v2-footer"
+      data-authed={isAuthed ? "true" : "false"}
     >
       <div className="container mx-auto px-4 py-10">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -107,12 +126,13 @@ function FooterColumn({
   return (
     <div>
       <h3 className="mb-3 text-base font-semibold text-warm-gold">{title}</h3>
-      <ul className="space-y-2">
+      <ul className="space-y-1">
         {links.map((l) => (
           <li key={l.to}>
             <Link
               to={l.to}
-              className="block py-1 text-sm text-soft-bg/80 hover:text-warm-gold min-h-[32px]"
+              data-testid="v2-footer-link"
+              className="inline-flex min-h-[44px] w-full items-center py-2 text-sm text-soft-bg/80 hover:text-warm-gold"
             >
               {l.label}
             </Link>
