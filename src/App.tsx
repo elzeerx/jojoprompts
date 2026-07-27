@@ -97,10 +97,9 @@ function App() {
             <ErrorBoundary>
               <LanguageProvider>
                 <AuthProvider>
-                  <SecurityMonitoringWrapper>
-                    <Suspense fallback={<SuspenseLoader />}>
-                      <Routes>
-                        {/* MCP OAuth consent — standalone, outside any chrome */}
+                  <Suspense fallback={<SuspenseLoader />}>
+                    <Routes>
+                      {/* MCP OAuth consent — standalone, outside any chrome */}
                         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
 
                         {/* Admin — dedicated shell, no customer chrome */}
