@@ -1,6 +1,4 @@
-import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { describe, expect, it } from "bun:test";
 import {
   LEGACY_SECDEF_AUTHORIZATION,
   LEGACY_SECDEF_MIGRATION,
@@ -10,8 +8,6 @@ import {
   LEGACY_SECDEF_TIER3_INVESTIGATE,
 } from "./legacySecurityDefinerAuthorization.sql";
 import { SECDEF_ANON_ALLOWLIST } from "./securityDefinerExecutionAllowlist.sql";
-
-const ROOT = join(__dirname, "..", "..", "..", "..");
 
 describe("legacy SECURITY DEFINER authorization hardening — drafted migration", () => {
   it("is marked drafted and NOT applied live", () => {
