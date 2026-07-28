@@ -53,6 +53,15 @@ describe("ResourcePublisher — resource editor select", () => {
     expect(path.startsWith("/admin/publishing/resources/")).toBe(true);
     expect(path.endsWith("/edit")).toBe(true);
   });
+
+  it("programmatically associates metadata labels, controls, and validation errors", () => {
+    expect(src.includes("const controlId = useId()")).toBe(true);
+    expect(src.includes("htmlFor={effectiveControlId}")).toBe(true);
+    expect(src.includes("id: effectiveControlId")).toBe(true);
+    expect(src.includes('"aria-describedby"')).toBe(true);
+    expect(src.includes('"aria-invalid"')).toBe(true);
+    expect(src.includes("<p id={errorId}")).toBe(true);
+  });
 });
 
 describe("PackageUploader — V2 upload contract", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useId, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -715,14 +715,33 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
   );
 }
 
-function Field({ label, required, error, dir, children }: { label: string; required?: boolean; error?: string; dir?: string; children: React.ReactNode }) {
+function Field({ label, required, error, dir, children }: { label: string; required?: boolean; error?: string; dir?: "ltr" | "rtl" | "auto"; children: React.ReactNode }) {
+  const controlId = useId();
+  const errorId = `${controlId}-error`;
+  const effectiveControlId = isValidElement<{ id?: string }>(children)
+    ? children.props.id ?? controlId
+    : controlId;
+  const control = isValidElement<{
+    id?: string;
+    "aria-describedby"?: string;
+    "aria-invalid"?: boolean;
+  }>(children)
+    ? cloneElement(children, {
+        id: effectiveControlId,
+        "aria-describedby": error
+          ? [children.props["aria-describedby"], errorId].filter(Boolean).join(" ")
+          : children.props["aria-describedby"],
+        "aria-invalid": error ? true : children.props["aria-invalid"],
+      })
+    : children;
+
   return (
     <div>
-      <Label className="text-xs" dir={dir as any}>
+      <Label className="text-xs" dir={dir} htmlFor={effectiveControlId}>
         {label}{required ? <span className="text-red-600"> *</span> : null}
       </Label>
-      {children}
-      {error ? <p className="mt-1 text-[11px] text-red-600">{error}</p> : null}
+      {control}
+      {error ? <p id={errorId} className="mt-1 text-[11px] text-red-600">{error}</p> : null}
     </div>
   );
 }
