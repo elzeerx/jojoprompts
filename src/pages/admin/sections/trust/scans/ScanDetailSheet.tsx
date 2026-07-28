@@ -62,18 +62,23 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
   // scans[0] is displayed only; it MUST NOT drive Queue admission.
   const scans = detail?.scans ?? [];
   const hasPendingAggregate = scans.some((s) => s.status === "pending");
-  const hasFiles = (detail?.effective_scan?.has_files ?? (detail?.files.length ?? 0) > 0);
-
   const eff = detail?.effective_scan ?? null;
+  const effectiveStateKnown = eff != null;
+  const hasFiles = effectiveStateKnown
+    ? eff!.has_files
+    : (detail?.files.length ?? 0) > 0;
+  // Only trust status derived from the coverage-aware helper. When the
+  // effective state is not known we pass null (real unscanned semantics only
+  // apply when effectiveStateKnown=true; the guard fails closed via
+  // effectiveStateKnown=false before this value is interpreted).
   const effectiveStatus = (eff?.effective_status ?? null) as PackageScanState | null;
-  // Fail closed when the RPC didn't return effective_scan (older payloads) —
-  // pass coverageValid=undefined so the guard treats raw clean as "checking".
   const coverageValid = eff ? eff.coverage_valid : undefined;
 
   const probe = useVersionPendingChildProbe(scans);
   const guard = evaluateQueueGuard({
     providerReady: ready,
     hasFiles,
+    effectiveStateKnown,
     latestScanStatus: effectiveStatus,
     coverageValid,
     hasPendingAggregate,
@@ -81,6 +86,7 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
     pendingChildProbeLoading: probe.isUnresolved,
   });
   const canQueue = guard.canQueue;
+
 
 
 
