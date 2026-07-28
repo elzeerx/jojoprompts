@@ -96,9 +96,11 @@ export const adminSectionElements = {
   publishingDrafts: wrap(<DraftsQueuePage />),
   publishingReview: wrap(<ReviewQueuePage />),
   publishingVersions: wrap(<VersionsRegistryPage />),
-  publishingImports: wrap(<LegacyMigrationPreview />),
+  publishingImports: wrap(<ImportsHub />),
+  publishingImportsLegacy: wrap(<LegacyMigrationPreview />),
   publishingImportsJson: wrap(<JsonPromptImporter />),
   publishingImportsAiStudio: wrap(<AiStudioPage />),
+
   publishingTaxonomy: wrap(<CategoriesManagement />),
 
   // Orders (V2 commerce ops — Phase 5.2)
