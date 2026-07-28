@@ -969,20 +969,16 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     name: "admin-package-upload",
     verifyJwt: false,
     authMechanism: "verifyAdmin_shared",
-    callers: [
-      "src/pages/admin/sections/publishing/PackageUploader.tsx:133",
-      "src/pages/admin/sections/publishing/PackageUploader.tsx:160",
-    ],
+    callers: [],
     outbound: ["storage"],
-    purpose: "V1 admin package upload (still used by ResourcePublisher).",
+    purpose: "V1 admin package upload (migrated to v2-admin-upload-resource-file).",
     v2Replacement: "v2-admin-upload-resource-file",
-    classification: "required_shared_account_auth",
-    disposition: "harden",
-    recommendedRetirementAppliedLive: false,
+    ...R("admin-package-upload"),
     already410Live: false,
     evidence:
-      "PackageUploader is imported by ResourcePublisher, which IS wired into adminSectionElements.publishingNew/Edit/NewVersion. Active importer + reachable route => do NOT retire until PackageUploader migrates to v2-admin-upload-resource-file.",
+      "PackageUploader.tsx now invokes v2-admin-upload-resource-file exclusively (see line 154). Zero remaining src callers of admin-package-upload; safe to retire in source. Live deployment unchanged.",
   },
+
   {
     name: "v2-upayments-checkout",
     verifyJwt: false,
