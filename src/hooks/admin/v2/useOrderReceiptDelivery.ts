@@ -4,10 +4,10 @@
  * access is gated by the RLS policy `admin_read_receipt_deliveries` on
  * `public.v2_order_receipt_deliveries` (SELECT for authenticated admins).
  *
- * Never mutates. The admin resend action is intentionally NOT wired in
- * this hook — see `docs/security/RECEIPT_RESEND_BLOCKER.md` for why the
- * shared `v2_claim_order_receipt_delivery` RPC cannot safely support an
- * admin-triggered resend without a separate reviewed schema change.
+ * Never mutates. Admin-triggered resends are handled by the SEPARATE
+ * audited flow in `useOrderReceiptResends` (see
+ * `docs/security/RECEIPT_RESEND_BLOCKER.md` for the architecture). The
+ * original delivery row is never reopened or rewritten from the client.
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

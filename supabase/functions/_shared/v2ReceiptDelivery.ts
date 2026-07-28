@@ -37,6 +37,20 @@ export function receiptIdempotencyKey(orderId: string): string {
   return key.length > 256 ? key.slice(0, 256) : key;
 }
 
+/**
+ * Deterministic Resend idempotency key for admin-triggered receipt RESENDS.
+ * Derived from the resend REQUEST id (not the order id) so it cannot
+ * collide with the single-shot original delivery key above. Different
+ * resend attempts get different request ids -> different keys, so a
+ * previously accepted resend does NOT dedupe a later admin retry.
+ */
+export function receiptResendIdempotencyKey(requestId: string): string {
+  const id = typeof requestId === "string" ? requestId.trim() : "";
+  if (!id) throw new Error("receiptResendIdempotencyKey: empty requestId");
+  const key = `v2-order-receipt-resend/${id}`;
+  return key.length > 256 ? key.slice(0, 256) : key;
+}
+
 // ---------------------------------------------------------------- Pure helpers
 
 /** HTML-escape any string safely for use inside element text or attribute values. */
@@ -342,13 +356,21 @@ function resolveSiteUrl(explicit?: string): string {
  * Assemble the receipt data payload from the DB. Uses only trusted fields.
  * Returns null when the order is not paid or not readable.
  */
-async function loadReceiptOrder(svc: SupabaseClient, orderId: string): Promise<ReceiptOrder | null> {
+export async function loadReceiptOrder(
+  svc: SupabaseClient,
+  orderId: string,
+  opts: { allowPartialRefund?: boolean } = {},
+): Promise<ReceiptOrder | null> {
   const { data: order, error } = await svc
     .from("orders")
     .select("id, order_number, status, currency, subtotal_fils, discount_fils, total_fils, settled_at, provider, user_id")
     .eq("id", orderId)
     .maybeSingle();
-  if (error || !order || order.status !== "paid") return null;
+  if (error || !order) return null;
+  const allowedStatuses = opts.allowPartialRefund
+    ? new Set(["paid", "partially_refunded"])
+    : new Set(["paid"]);
+  if (!allowedStatuses.has(order.status)) return null;
 
   const [{ data: items }, { data: profile }] = await Promise.all([
     svc.from("order_items")
@@ -465,9 +487,10 @@ async function logAttempt(
  * failure. Transactional receipts must NOT be blocked by marketing
  * unsubscribe state — no such check is performed here.
  */
-async function sendReceiptViaResend(
+export async function sendReceiptViaResend(
   order: ReceiptOrder,
   rendered: { subject: string; html: string; text: string },
+  idempotencyKey?: string,
 ): Promise<string | null> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) throw new Error("resend_api_key_missing");
@@ -493,7 +516,11 @@ async function sendReceiptViaResend(
       "List-Unsubscribe": "<mailto:unsubscribe@jojoprompts.com>",
     },
   };
-  const options = { idempotencyKey: receiptIdempotencyKey(order.order_id) };
+  const options = {
+    idempotencyKey: idempotencyKey && idempotencyKey.trim().length > 0
+      ? idempotencyKey
+      : receiptIdempotencyKey(order.order_id),
+  };
 
   // Resend SDK v2: send(payload, options?) — options carries idempotencyKey.
   const result = await resend.emails.send(payload, options);

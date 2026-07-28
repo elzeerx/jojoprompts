@@ -1,78 +1,93 @@
 /**
- * Order detail operational-truth contract.
+ * Order detail operational-truth contract (post admin-resend flow).
  *
- * Guards against three specific regressions the release audit called out:
- *   1. The order detail drawer must render receipt-delivery status.
- *   2. It must NOT ship a "Resend receipt" action while the shared claim
- *      RPC still refuses to re-claim `sent` rows — the blocker is
- *      documented in docs/security/RECEIPT_RESEND_BLOCKER.md.
- *   3. It must NOT invoke any `v2-admin-resend-order-receipt` edge
- *      function from the client, and no such function may exist in the
- *      repository until (1)+(2)+(3) in the blocker doc are addressed.
+ * Guards against regressions in the audited admin receipt-resend flow:
+ *   1. The order detail drawer must still render receipt-delivery status.
+ *   2. It must expose an explicit, confirmation-gated Resend receipt action
+ *      wired to `useAdminResendOrderReceipt` -> `v2-admin-resend-order-receipt`.
+ *   3. The client MUST NOT send recipient, amount, items, or email overrides
+ *      to the edge function — only `{ order_id, reason }`.
+ *   4. The edge function directory must exist with a POST/OPTIONS handler
+ *      that does NOT accept client-supplied recipient/amount/items fields.
  */
 import { describe, it, expect } from "bun:test";
 
 const bunGlobal = (globalThis as unknown as {
   Bun: {
     file: (p: string) => { text: () => Promise<string>; exists: () => Promise<boolean> };
-    spawnSync: (opts: { cmd: string[] }) => { stdout: Uint8Array };
   };
 }).Bun;
 
 const SHEET_PATH = "src/pages/admin/sections/orders/OrderDetailSheet.tsx";
-const HOOK_PATH = "src/hooks/admin/v2/useOrderReceiptDelivery.ts";
+const READ_HOOK_PATH = "src/hooks/admin/v2/useOrderReceiptDelivery.ts";
+const RESENDS_HOOK_PATH = "src/hooks/admin/v2/useOrderReceiptResends.ts";
 const BLOCKER_DOC = "docs/security/RECEIPT_RESEND_BLOCKER.md";
-const RESEND_FN_DIR = "supabase/functions/v2-admin-resend-order-receipt";
+const FN_INDEX = "supabase/functions/v2-admin-resend-order-receipt/index.ts";
+const FN_DECISIONS = "supabase/functions/v2-admin-resend-order-receipt/decisions.ts";
 
-describe("OrderDetailSheet operational truth", () => {
+describe("OrderDetailSheet operational truth (with audited resend)", () => {
   it("renders a Receipt delivery section", async () => {
     const src = await bunGlobal.file(SHEET_PATH).text();
     expect(src.includes("Receipt delivery")).toBe(true);
-    expect(src.includes("data-testid=\"order-receipt-delivery\"")).toBe(true);
+    expect(src.includes('data-testid="order-receipt-delivery"')).toBe(true);
   });
 
-  it("uses the admin receipt-delivery read hook (no writes)", async () => {
-    const src = await bunGlobal.file(SHEET_PATH).text();
-    expect(src.includes("useOrderReceiptDelivery")).toBe(true);
-
-    const hook = await bunGlobal.file(HOOK_PATH).text();
-    // Read-only: no insert / update / upsert / delete / rpc calls.
+  it("read hook stays read-only", async () => {
+    const hook = await bunGlobal.file(READ_HOOK_PATH).text();
     for (const forbidden of [".insert(", ".update(", ".upsert(", ".delete(", ".rpc("]) {
       expect(hook.includes(forbidden)).toBe(false);
     }
   });
 
-  it("does NOT expose an admin resend control", async () => {
+  it("wires the audited Resend receipt UI + confirmation", async () => {
     const src = await bunGlobal.file(SHEET_PATH).text();
-    // No button label, no invoke, no rpc towards the resend function.
-    expect(/Resend receipt|resend_receipt|v2-admin-resend-order-receipt/.test(src)).toBe(false);
+    expect(src.includes("useAdminResendOrderReceipt")).toBe(true);
+    expect(src.includes("useOrderReceiptResendRequests")).toBe(true);
+    expect(src.includes("Resend receipt")).toBe(true);
+    expect(src.includes("AlertDialog")).toBe(true);
+    expect(src.includes('data-testid="order-receipt-resend"')).toBe(true);
+    // 44px touch target on the Resend button.
+    expect(/min-h-\[44px\]/.test(src)).toBe(true);
   });
 
-  it("no client code invokes the (not-yet-shipped) resend function", async () => {
-    // Search all source-managed client code.
-    const proc = bunGlobal.spawnSync({
-      cmd: [
-        "rg",
-        "-n",
-        "--no-heading",
-        "-g",
-        "!**/OrderDetailSheet.operationalTruth.test.ts",
-        "v2-admin-resend-order-receipt",
-        "src",
-      ],
-    });
-    const stdout = new TextDecoder().decode(proc.stdout);
-    expect(stdout.trim()).toBe("");
+  it("mutation hook only sends { order_id, reason } to the edge fn", async () => {
+    const hook = await bunGlobal.file(RESENDS_HOOK_PATH).text();
+    expect(hook.includes("v2-admin-resend-order-receipt")).toBe(true);
+    // Strip line/block comments before scanning for override keys.
+    const code = hook
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((l) => !l.trim().startsWith("*") && !l.trim().startsWith("//") && !l.trim().startsWith("/**"))
+      .join("\n");
+    expect(code.includes("order_id: orderId")).toBe(true);
+    expect(code.includes("reason: trimmed")).toBe(true);
+    // No client-supplied overrides in the invoke body.
+    for (const forbidden of ["email:", "amount:", "items:", "recipient:", "to:"]) {
+      expect(code.includes(forbidden)).toBe(false);
+    }
+    // Read side is via authenticated select gated by admin RLS; no rpc.
+    expect(code.includes(".rpc(")).toBe(false);
   });
 
-  it("has no `v2-admin-resend-order-receipt` edge function directory", async () => {
-    const exists = await bunGlobal.file(RESEND_FN_DIR + "/index.ts").exists();
-    expect(exists).toBe(false);
-  });
-
-  it("blocker note explains why the resend action is absent", async () => {
+  it("blocker doc reflects the new separate-request architecture", async () => {
     const doc = await bunGlobal.file(BLOCKER_DOC).text();
-    expect(doc.includes("v2_claim_order_receipt_delivery")).toBe(true);
-    expect(doc.includes("do not create `v2-admin-resend-order-receipt`")).toBe(true);
+    expect(doc.includes("v2_order_receipt_resend_requests")).toBe(true);
+    expect(doc.includes("receiptResendIdempotencyKey")).toBe(true);
+    // Old-blocker phrasing must be gone.
+    expect(doc.includes("do not create `v2-admin-resend-order-receipt`")).toBe(false);
+  });
+
+  it("edge function exists and rejects client overrides", async () => {
+    const idx = await bunGlobal.file(FN_INDEX).text();
+    expect(idx.includes("Deno.serve")).toBe(true);
+    expect(idx.includes("v2_internal_create_receipt_resend_request")).toBe(true);
+    expect(idx.includes("receiptResendIdempotencyKey")).toBe(true);
+    // No client-supplied overrides accepted.
+    for (const forbidden of ["body.email", "body.amount", "body.items", "body.recipient"]) {
+      expect(idx.includes(forbidden)).toBe(false);
+    }
+    const decisions = await bunGlobal.file(FN_DECISIONS).text();
+    // Strict allowlist of body fields.
+    expect(decisions.includes('new Set(["order_id", "reason"])')).toBe(true);
   });
 });

@@ -35,6 +35,27 @@ export const ALLOWED_ERROR_CODES = new Set<string>([
   "refund_not_found",
   "refund_conflict",
   "server_error",
+  // Admin receipt-resend codes (v2-admin-resend-order-receipt)
+  "invalid_arguments",
+  "invalid_reason",
+  "invalid_order_id",
+  "unexpected_field",
+  "body_too_large",
+  "method_not_allowed",
+  "unauthorized",
+  "forbidden",
+  "order_not_found",
+  "order_not_eligible",
+  "missing_recipient",
+  "pending_exists",
+  "cooldown_active",
+  "order_cap_exceeded",
+  "admin_cap_exceeded",
+  "order_load_failed",
+  "resend_send_failed",
+  "resend_request_failed",
+  "reconciliation_required",
+  "claim_lost",
 ]);
 
 async function extractFromResponse(res: unknown): Promise<string | undefined> {

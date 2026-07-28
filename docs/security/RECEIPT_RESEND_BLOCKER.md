@@ -1,23 +1,86 @@
-# Admin receipt-resend blocker (source-only note, 2026-07-28)
+# Admin Order-Receipt Resend — Architecture
 
-Live evidence (`v2_claim_order_receipt_delivery`, `v2_complete_order_receipt_delivery`, `v2_fail_order_receipt_delivery` — SECURITY DEFINER, `search_path=''`) shows the shared V2 receipt-delivery pipeline is **built as a single-shot claim/complete state machine**, not a re-triggerable action:
+**Status:** designed (source + reviewed draft migration, awaiting apply/deploy).
 
-- `v2_claim_order_receipt_delivery` refuses to (re-)claim a row once `status = 'sent'` (line 127 of the function body). It returns `claimed = false` and yields no delivery lease.
-- `v2_complete_order_receipt_delivery` only advances a row from `processing` to `sent`; it never resets a `sent` row.
-- There is no `service_role`-gated "reset to pending" RPC, and RLS on `public.v2_order_receipt_deliveries` exposes only `SELECT` to admins (policy `admin_read_receipt_deliveries`).
+Superseded the previous "blocker" note. The unsafe design that would have
+tried to re-open the original `v2_order_receipt_deliveries` row is
+**explicitly rejected**. See the reasoning below.
 
-Consequence: any Edge Function that tried to trigger an admin resend by reusing `scheduleReceiptDelivery` / `v2_claim_order_receipt_delivery` would be a **no-op on the exact rows admins actually want to resend** (paid + already-sent). Building it anyway would be a "fake action" that the user explicitly told us not to ship.
+## Why the original delivery row is never reopened
 
-Decision: **do not create `v2-admin-resend-order-receipt` yet.** The order-detail drawer surfaces the real receipt-delivery status (sent / failed / processing / attempts / last error / provider message id) so admins can see delivery truth. A `Resend receipt` control is deliberately absent, not disabled-with-a-fake-reason.
+`v2_order_receipt_deliveries` implements a single-shot claim/complete state
+machine driven by `v2_claim_order_receipt_delivery`. Its Resend idempotency
+key is derived deterministically from the order id
+(`receiptIdempotencyKey(orderId)` → `v2-order-receipt/{orderId}`). Reusing
+that row for an admin resend would:
 
-Unblocking work (out of scope for this source-only closure, requires a separate reviewed migration + Edge Function deploy):
+1. Race the original background delivery task.
+2. Hit Resend's provider-side idempotency dedup and silently no-op instead
+   of actually sending the second copy.
+3. Break the single-success-per-order invariant enforced by the partial
+   unique index on `email_logs` for `email_type = 'v2_order_receipt'`.
 
-1. Add a `service_role`-only RPC — e.g. `v2_admin_reopen_receipt_delivery(p_order_id uuid, p_admin_user_id uuid, p_reason text)` — that:
-   - Verifies the caller admin role server-side via `has_role`.
-   - Verifies the order is `paid`/`settled` and not fully refunded.
-   - Enforces a per-order cooldown (e.g. ≥ 5 minutes since last `sent_at`).
-   - Sets the row back to a claimable state and increments `max_attempts` by a bounded amount, with an audit trail in `v2_admin_activity_log`.
-2. Add an Edge Function `v2-admin-resend-order-receipt` that authenticates the admin, calls the new RPC, then invokes the existing `scheduleReceiptDelivery` runner. The function must **derive recipient / order / items / amount from server records only** and reject any client-supplied override.
-3. Wire a confirmation-gated `Resend receipt` control in `OrderDetailSheet.tsx` that appears only when the eligibility RPC returns true.
+## The separate resend-request model
 
-Until (1)–(3) are reviewed and deployed, the admin UI stays honest: it shows current receipt-delivery status and no resend action.
+A new audited table `public.v2_order_receipt_resend_requests` (see
+[draft migration](drafts/20260728152000_admin_receipt_resend_requests.sql))
+holds every admin-initiated resend as its own row. Four
+`SECURITY DEFINER SET search_path = ''` service-role-only functions gate
+every transition:
+
+| Function | Purpose |
+|---|---|
+| `v2_internal_create_receipt_resend_request(order, admin, reason)` | Validates admin role, order eligibility, canonical recipient email, active-request/cooldown/cap rules; inserts one `pending` row and one safe `activity_events` audit entry. |
+| `v2_internal_claim_receipt_resend_request(request_id)` | Atomic `pending → processing`. |
+| `v2_internal_complete_receipt_resend_request(request_id, provider_msg_id)` | `processing → sent` with sanitized provider id and an `order_receipt_resend_sent` audit event. |
+| `v2_internal_fail_receipt_resend_request(request_id, code, message)` | `processing → failed` with sanitized code/message and an `order_receipt_resend_failed` audit event. |
+
+Guarantees:
+
+* At most **one** active request (`pending`/`processing`) per order,
+  enforced by a partial unique index AND an explicit RPC check.
+* **5-minute cooldown** since `max(original sent_at, latest resend requested_at)`.
+* **Per-order cap** of 5 resend requests per rolling 24 h.
+* **Per-admin cap** of 50 resend requests per rolling 24 h.
+* Order must be `paid` or `partially_refunded`; anything else is rejected
+  server-side. Fully refunded / pending / failed / cancelled orders are ineligible.
+* `activity_events` metadata contains **only** `request_id`, `status`, and
+  (on failure) the sanitized `error_code`. It never contains email, amount,
+  items, HTML, or provider payload.
+
+## Distinct Resend idempotency key
+
+The shared receipt module now exports two keys:
+
+* `receiptIdempotencyKey(orderId)` → `v2-order-receipt/{orderId}` — the
+  original single-shot delivery. Unchanged.
+* `receiptResendIdempotencyKey(requestId)` → `v2-order-receipt-resend/{requestId}` —
+  used **only** by the admin resend Edge Function. Because each admin resend
+  gets a new request id, each attempt has its own idempotency key and
+  Resend will not dedupe a legitimate admin retry against an earlier resend.
+
+## Edge Function `v2-admin-resend-order-receipt` (verify_jwt=true)
+
+Accepts strictly `{ order_id: uuid, reason: string(3..300) }`. Any other
+field is rejected. Recipient/amount/items are **always** loaded from
+canonical DB rows on the service client — the browser cannot override them.
+
+Flow: `create RPC` → `claim RPC` → server-side `loadReceiptOrder` (with
+`allowPartialRefund`) → `renderReceiptHtml` → `sendReceiptViaResend(order,
+rendered, receiptResendIdempotencyKey(requestId))` → `complete/fail RPC` →
+`email_logs` row with `email_type = 'v2_order_receipt_resend'`.
+
+If Resend accepts the send but the DB complete write fails, the function
+returns HTTP `202 { error: 'reconciliation_required', request_id,
+provider_message_id }` instead of retrying blindly with a different key.
+
+## What the admin UI does
+
+`OrderDetailSheet.tsx` shows a confirmation-gated `Resend receipt` action
+for `paid` and `partially_refunded` orders. The reason is required
+(3–300 chars) and the button is disabled while the original delivery is
+still processing or a resend mutation is in flight. Below the button, the
+sheet renders the resend history (`useOrderReceiptResendRequests`) with
+status, timestamps, reason, sanitized error code, and provider id. There
+is no permanent-delete or reopen action — server RPCs are the sole
+authority.

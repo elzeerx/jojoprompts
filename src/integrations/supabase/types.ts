@@ -5040,6 +5040,21 @@ export type Database = {
         }
         Returns: string
       }
+      v2_internal_effective_scan_state: {
+        Args: { p_version_id: string }
+        Returns: {
+          coverage_valid: boolean
+          current_file_count: number
+          effective_status: string
+          has_files: boolean
+          latest_completed_at: string
+          latest_created_at: string
+          latest_scan_id: string
+          latest_scanned_at: string
+          scanned_file_count: number
+          stored_status: string
+        }[]
+      }
       v2_internal_record_scan_submission: {
         Args: { p_data_id: string; p_item_id: string; p_next_poll_at: string }
         Returns: undefined
