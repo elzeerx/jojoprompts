@@ -6,15 +6,24 @@ in this pass.**
 
 Applied migration (live Supabase version 20260728101016):
 
-- Canonical filename (owned by the supabase migration tool):
-  `supabase/migrations/20260728120000_legacy_security_definer_authorization_hardening.sql`
-  — cannot be written directly from this environment.
-- Physical draft for reviewer inspection (byte-identical body):
+- Canonical filename (now present under supabase/migrations, byte-identical to the reviewed draft):
+  `supabase/migrations/20260728120000_legacy_security_definer_authorization_hardening.sql`.
+- Audit-trail copy retained for reviewer reference (byte-identical body):
   `docs/security/drafts/20260728120000_legacy_security_definer_authorization_hardening.sql`.
 - Source fixture (mirror + tier enumeration):
   `src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts`
-  (`LEGACY_SECDEF_MIGRATION_SQL`, byte-parity asserted by
-  `legacySecurityDefinerAuthorization.test.ts`).
+  (`LEGACY_SECDEF_MIGRATION_SQL`, byte-parity to both physical files
+  asserted by `legacySecurityDefinerAuthorization.test.ts`).
+
+Post-apply live evidence (source of truth):
+
+- All 8 target signatures now show `authenticated_execute=false`,
+  `anon_execute=false`, `service_role_execute=true` per pg_proc +
+  `has_function_privilege`.
+- `admin_delete_user_data(uuid)` remains intentionally `authenticated`;
+  its SECURITY DEFINER body enforces `public.is_admin()`.
+  `admin_delete_user_data(uuid, uuid)` remains service_role-only.
+
 
 ### Correction notes vs. earlier draft
 
