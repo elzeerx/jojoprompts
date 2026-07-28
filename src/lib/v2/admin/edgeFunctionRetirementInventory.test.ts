@@ -142,17 +142,16 @@ describe("Edge Function retirement inventory", () => {
   it("every ALREADY_410_SLUGS entry is represented and classified already_410", () => {
     for (const slug of ALREADY_410_SLUGS) {
       const entry = EDGE_FUNCTION_AUDIT.find((e) => e.name === slug);
-      expect(entry).toBeDefined();
+      expect(Boolean(entry)).toBe(true);
       expect(entry!.classification).toBe("already_410");
     }
   });
 
   it("debug-environment is never classified as 'keep' without explicit hardening/retirement", () => {
     const debug = EDGE_FUNCTION_AUDIT.find((e) => e.name === "debug-environment");
-    expect(debug).toBeDefined();
+    expect(Boolean(debug)).toBe(true);
     expect(debug!.disposition === "harden" || debug!.disposition === "retire_to_410")
       .toBe(true);
-    // And its verify_jwt=false is documented, so evidence must not be empty.
     expect(debug!.evidence.length).toBeGreaterThan(20);
   });
 
@@ -189,7 +188,7 @@ describe("Edge Function retirement inventory", () => {
       "ai-studio-image",
     ];
     for (const slug of mustNotRetire) {
-      expect(RECOMMENDED_RETIREMENTS).not.toContain(slug);
+      expect(RECOMMENDED_RETIREMENTS.includes(slug)).toBe(false);
     }
   });
 });
