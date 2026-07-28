@@ -176,6 +176,8 @@ Coming Soon may be disabled only when all items below have evidence:
 
 - Local `verify:v2` passes.
 - Production dependency audit is reviewed and current.
+- Supabase security/performance advisors are re-run and diffed against
+  `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md`.
 - Backup and restore evidence exists.
 - All three migrations are applied and reconciled.
 - Exact Edge Function bundle is deployed and fetched back.
