@@ -89,13 +89,16 @@
 
 export const SECURITY_LOGS_INDEXES_MIGRATION = {
   version: "20260728123000",
+  /** Live Supabase migration version recorded when this hardening was applied. */
+  liveVersion: "20260728101447",
   name: "security_logs_admin_query_support",
   filename: "20260728123000_security_logs_admin_query_support.sql",
   migrationPath:
     "supabase/migrations/20260728123000_security_logs_admin_query_support.sql",
-  applied: false,
-  drafted: true,
+  applied: true,
+  drafted: false,
 } as const;
+
 
 export interface PlannedSecurityLogsIndex {
   readonly name: string;
