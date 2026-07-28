@@ -1,13 +1,17 @@
 -- =============================================================================
--- DRAFT — Phase 6 fail-closed hardening: single effective-scan-state source of
--- truth for authorize_resource_download, public trust badges, and admin scan
--- queue. Forward-only. No data mutations. All privileged helpers service_role
--- only. This file is SOURCE-ONLY and MUST NOT be applied to production without
--- the operator's explicit review + approval via the migration tool.
+-- PROMOTED — this draft has been promoted to the forward-only migration
+--   supabase/migrations/20260728143000_package_scan_fail_closed_effective_state.sql
+-- The migration file is the authoritative source of truth. This draft is kept
+-- as an unchanged historical copy to preserve the review trail. Do NOT edit
+-- this file in isolation — any change must be applied to the promoted
+-- migration in the same commit to avoid divergence. Static contract tests
+-- target the promoted migration path.
 --
--- Target destination when approved:
---   supabase/migrations/<TS>_package_scan_fail_closed_effective_state.sql
+-- Phase 6 fail-closed hardening: single effective-scan-state source of truth
+-- for authorize_resource_download, public trust badges, and admin scan queue.
+-- Forward-only. No data mutations. All privileged helpers service_role only.
 -- =============================================================================
+
 
 -- 1) v2_internal_effective_scan_state(version_id) --------------------------------
 -- Returns coverage-aware scan state. Effective clean requires the latest stored
