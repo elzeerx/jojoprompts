@@ -47,9 +47,10 @@ describe("security_logs admin query-support migration — physical file", () => 
     expect(SECURITY_LOGS_INDEXES_MIGRATION.drafted).toBe(false);
     expect(SECURITY_LOGS_INDEXES_MIGRATION.liveVersion).toBe("20260728101447");
   });
+});
 
+describe("security_logs admin query index plan — applied live migration", () => {
 
-describe("security_logs admin query index plan — drafted migration", () => {
   it("plans exactly three targeted indexes with the required names", () => {
     expect(SECURITY_LOGS_PLANNED_INDEXES.length).toBe(3);
     const names = SECURITY_LOGS_PLANNED_INDEXES.map((i) => i.name).sort();
