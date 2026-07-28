@@ -89,6 +89,8 @@ describe("evaluateQueueGuard", () => {
         coverageValid: false,
       }).canQueue,
     ).toBe(true);
+  });
+
 
   it("blocks pending latest with pending_exists", () => {
     const r = evaluateQueueGuard({ ...base, latestScanStatus: "pending" });
