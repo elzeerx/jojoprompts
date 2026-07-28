@@ -7,7 +7,11 @@ import {
   ROUTINE_NOISE_ACTIONS,
   SECURITY_EVENTS_PAGE_SIZE,
   FILTER_KEYS_RESETTING_PAGE,
+  CATEGORY_OPTIONS,
+  CATEGORY_LABELS,
+  IMPOSSIBLE_CATEGORY_SLUGS,
 } from "@/components/admin/securityEventsFilters";
+
 
 declare const require: (m: string) => any;
 const { readFileSync } = require("fs");
@@ -131,3 +135,45 @@ describe("SecurityMonitoringDashboard — source regression", () => {
     expect(src).toContain('if (!("page" in patch)) next.delete("page")');
   });
 });
+
+describe("SecurityMonitoringDashboard — CATEGORY_OPTIONS matches live check constraint", () => {
+  // security_logs_event_category_check allows exactly these values.
+  const ALLOWED_LIVE_CATEGORIES = [
+    "authentication",
+    "authorization",
+    "data_access",
+    "system",
+    "general",
+  ] as const;
+
+  it("CATEGORY_OPTIONS is exactly `all` plus the 5 live-allowed slugs", () => {
+    expect([...CATEGORY_OPTIONS].sort()).toEqual(
+      ["all", ...ALLOWED_LIVE_CATEGORIES].sort(),
+    );
+  });
+
+  it("exposes no slug that the DB check constraint would reject", () => {
+    for (const impossible of IMPOSSIBLE_CATEGORY_SLUGS) {
+      expect((CATEGORY_OPTIONS as readonly string[]).includes(impossible)).toBe(false);
+    }
+  });
+
+  it("parseSecurityEventsFilters falls back to `all` for every impossible slug", () => {
+    for (const impossible of IMPOSSIBLE_CATEGORY_SLUGS) {
+      const p = new URLSearchParams(`category=${impossible}`);
+      expect(parseSecurityEventsFilters(p).category).toBe("all");
+    }
+  });
+
+  it("provides a human-readable label for every option (Data access, etc.)", () => {
+    for (const c of CATEGORY_OPTIONS) {
+      expect(typeof CATEGORY_LABELS[c]).toBe("string");
+      expect(CATEGORY_LABELS[c].length).toBeGreaterThan(0);
+      // No underscores leak into the label.
+      expect(/_/.test(CATEGORY_LABELS[c])).toBe(false);
+    }
+    expect(CATEGORY_LABELS.data_access).toBe("Data access");
+    expect(CATEGORY_LABELS.all).toBe("All categories");
+  });
+});
+

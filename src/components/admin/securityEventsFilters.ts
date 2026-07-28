@@ -19,19 +19,41 @@ export const SEVERITY_OPTIONS = [
   "info",
 ] as const;
 
+/**
+ * Category slugs allowed by the live DB check constraint
+ * `security_logs_event_category_check`. Any other value cannot exist
+ * in the top-level `event_category` column and would always return
+ * zero rows — do NOT add impossible options here.
+ */
 export const CATEGORY_OPTIONS = [
   "all",
   "authentication",
   "authorization",
   "data_access",
+  "system",
+  "general",
+] as const;
+
+/** Impossible category slugs previously exposed by the UI. Retained
+ *  as a source-only constant so tests can assert they are rejected. */
+export const IMPOSSIBLE_CATEGORY_SLUGS = [
   "session_management",
   "api_security",
   "database_security",
   "security_incident",
   "access_control",
-  "system",
-  "general",
 ] as const;
+
+/** Human-readable labels for the category filter Select. */
+export const CATEGORY_LABELS: Record<(typeof CATEGORY_OPTIONS)[number], string> = {
+  all: "All categories",
+  authentication: "Authentication",
+  authorization: "Authorization",
+  data_access: "Data access",
+  system: "System",
+  general: "General",
+};
+
 
 /** Time window for the events LIST query. Metrics are always 24h. */
 export const WINDOW_OPTIONS = ["24h", "7d", "30d", "all"] as const;
