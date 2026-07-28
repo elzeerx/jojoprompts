@@ -19,9 +19,11 @@ function read(rel: string): string {
 }
 
 const PAGE = read("src/components/admin/EmailTemplatesManagement.tsx");
+const REGISTRY = read("src/lib/v2/admin/emailRuntimePaths.ts");
 
 // Strip comments so string checks don't hit doc prose.
 const CODE = PAGE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const REGISTRY_CODE = REGISTRY.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 describe("Transactional Templates admin surface", () => {
   it("keeps the exact route h1", () => {
@@ -31,11 +33,13 @@ describe("Transactional Templates admin surface", () => {
 
   it("declares an Active system emails section listing the four real sources", () => {
     expect(/Active system emails/.test(CODE)).toBe(true);
-    expect(/V2 delivery/.test(CODE)).toBe(true);
-    expect(/Application code/.test(CODE)).toBe(true);
-    expect(/Supabase Auth/.test(CODE)).toBe(true);
-    // Exactly four canonical surfaces enumerated in ACTIVE_SYSTEM_EMAILS.
-    const entries = CODE.match(/key:\s*"[^"]+"/g) ?? [];
+    // Sources are now sourced from the emailRuntimePaths registry, which the
+    // admin page renders. Assert both surfaces to prevent drift.
+    expect(CODE.includes("ACTIVE_SYSTEM_EMAILS.map")).toBe(true);
+    expect(/V2 delivery \(edge functions\)/.test(REGISTRY_CODE)).toBe(true);
+    expect(/Supabase Auth/.test(REGISTRY_CODE)).toBe(true);
+    // Exactly four canonical surfaces enumerated in the registry.
+    const entries = REGISTRY_CODE.match(/key:\s*"[^"]+"/g) ?? [];
     expect(entries.length).toBe(4);
   });
 
