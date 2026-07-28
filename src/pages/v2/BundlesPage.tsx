@@ -3,7 +3,7 @@ export default function BundlesPage() {
   return (
     <ExplorePage
       fixedType="bundle"
-      title="Bundles"
+      title={{ en: "Bundles", ar: "الحزم" }}
       canonicalPath="/bundles"
       seoTitle={{
         en: "AI bundles — curated resource collections at a better price",

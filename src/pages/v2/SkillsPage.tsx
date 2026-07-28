@@ -3,7 +3,7 @@ export default function SkillsPage() {
   return (
     <ExplorePage
       fixedType="skill"
-      title="Skills"
+      title={{ en: "Skills", ar: "المهارات" }}
       canonicalPath="/skills"
       seoTitle={{
         en: "AI skills — ready-made assistant setups",

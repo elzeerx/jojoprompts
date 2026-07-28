@@ -3,7 +3,7 @@ export default function AutomationsPage() {
   return (
     <ExplorePage
       fixedType="automation"
-      title="Automations"
+      title={{ en: "Automations", ar: "الأتمتة" }}
       canonicalPath="/automations"
       seoTitle={{
         en: "AI automations & workflows — pay once, keep forever",

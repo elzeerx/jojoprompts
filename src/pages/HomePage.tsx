@@ -19,7 +19,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { V2_PLATFORMS } from "@/config/v2Flags";
 import { V2_PRICING_TIERS, V2_LIFETIME_PRICE_KD } from "@/config/v2Pricing";
-import { useExploreResources } from "@/hooks/v2/useExploreResources";
+import { useLatestPublishedResources } from "@/hooks/v2/useLatestPublishedResources";
+import { VisualResourceCard } from "@/components/v2/VisualResourceCard";
+import { SkillResourceCard } from "@/components/v2/SkillResourceCard";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
 
@@ -245,13 +247,11 @@ export default function HomePage() {
 }
 
 function LiveCatalog({ lang, isRTL }: { lang: "en" | "ar"; isRTL: boolean }) {
-  const { data, isPending, isError, refetch, fetchStatus } = useExploreResources(
-    { sortBy: "newest" },
-    new Set<string>(),
-    false,
-  );
+  const { data, isPending, isError, refetch, fetchStatus } =
+    useLatestPublishedResources(6);
   const isLoading = isPending && fetchStatus !== "idle";
-  const rows = (data ?? []).slice(0, 6);
+  const rows = data ?? [];
+
 
   const t = {
     title: lang === "ar" ? "أحدث الموارد المنشورة" : "Latest published resources",
@@ -312,25 +312,17 @@ function LiveCatalog({ lang, isRTL }: { lang: "en" | "ar"; isRTL: boolean }) {
           ) : (
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {rows.map((r) => (
-                <li key={r.id} className="rounded-2xl border p-5">
-                  <div className="text-xs uppercase tracking-wide text-warm-gold">
-                    {r.type.replace("_", " ")}
-                  </div>
-                  <Link
-                    to={`/resources/${r.slug}`}
-                    className="mt-1 inline-flex min-h-[44px] items-center text-lg font-semibold hover:text-warm-gold md:block md:min-h-0"
-                  >
-                    {lang === "ar" ? r.title_ar || r.title_en : r.title_en}
-                  </Link>
-                  {r.summary_en ? (
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                      {lang === "ar" ? r.summary_ar || r.summary_en : r.summary_en}
-                    </p>
-                  ) : null}
+                <li key={r.id}>
+                  {r.type === "prompt" || r.type === "image_style" ? (
+                    <VisualResourceCard r={r} />
+                  ) : (
+                    <SkillResourceCard r={r} />
+                  )}
                 </li>
               ))}
             </ul>
           )}
+
         </div>
       </div>
     </section>
