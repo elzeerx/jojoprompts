@@ -5,6 +5,10 @@ Last updated: 2026-07-29
 Requirement-by-requirement evidence and residual gates are tracked in
 `docs/V2_REQUIREMENTS_COVERAGE.md`.
 
+The exact reviewed commit, migration hashes, function rollback versions,
+production baseline, deployment order, and stop conditions are frozen in
+`docs/V2_CONTROLLED_DEPLOYMENT_MANIFEST_2026-07-29.md`.
+
 ## Current release posture
 
 - Production URL: `https://jojoprompts.com`
