@@ -54,7 +54,10 @@ describe("archive_legacy_email_templates fixture", () => {
   });
 
   it("contains NO destructive statements", () => {
-    for (const sql of [archiveLegacyEmailTemplatesSql, rollbackSql]) {
+    const stripComments = (s: string) =>
+      s.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const raw of [archiveLegacyEmailTemplatesSql, rollbackSql]) {
+      const sql = stripComments(raw);
       expect(/\bDELETE\b/i.test(sql)).toBe(false);
       expect(/\bDROP\b/i.test(sql)).toBe(false);
       expect(/\bTRUNCATE\b/i.test(sql)).toBe(false);
