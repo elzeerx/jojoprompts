@@ -151,10 +151,17 @@ END IF;
 which is a no-op for RLS calls (`_user_id = auth.uid()`) and Edge calls
 (pass their own JWT sub), but blocks one customer from probing another.
 
-## Explicitly excluded — `admin_delete_user_data(uuid, uuid)`
+## Explicitly excluded from the revoke set
 
-Already `service_role`-only per live pg_proc. This migration does not
-reference it; contract test enforces the absence.
+Three functions are absent from the migration by design because live
+pg_proc shows them **already service_role-only** (`authenticated=false,
+service_role=true`). Emitting REVOKE/GRANT for them would either be a
+no-op or a mislabeled correction; the contract test enforces their
+absence from any REVOKE/GRANT statement:
+
+- `public.execute_response_action(uuid, text, jsonb, jsonb)`
+- `public.trigger_automated_response(text, text, jsonb)`
+- `public.admin_delete_user_data(uuid, uuid)`
 
 ## Rollback
 
@@ -167,7 +174,9 @@ GRANT EXECUTE ON FUNCTION public.<fn>(<sig>) TO authenticated;
 
 The exact signatures are enumerated in
 `LEGACY_SECDEF_TIER1_AUDIT_LOGGERS` and `LEGACY_SECDEF_TIER2_UNREACHABLE`
-in `src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts`.
+in `src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts`, and
+appear byte-for-byte in
+`docs/security/drafts/20260728120000_legacy_security_definer_authorization_hardening.sql`.
 
 ## Unknowns / limitations
 
@@ -181,12 +190,18 @@ in `src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts`.
   frontend references the column, not the function. If a future path
   begins calling the function from an authenticated context, it will
   need `service_role` (edge) instead — restore per Rollback.
+- The physical `.sql` draft cannot be placed at
+  `supabase/migrations/` directly in this environment; it lives at
+  `docs/security/drafts/` and will be submitted verbatim via the
+  supabase migration tool at approval time.
 
 ## Files added / changed this pass
 
-- `src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts` — drafted migration SQL + tiers.
-- `src/lib/v2/admin/legacySecurityDefinerAuthorization.test.ts` — contract tests.
-- `docs/security/LEGACY_SECURITY_DEFINER_AUDIT_2026-07-28.md` — this document.
+- `docs/security/drafts/20260728120000_legacy_security_definer_authorization_hardening.sql` — physical draft SQL (canonical body).
+- `src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts` — mirror fixture + tier enumeration + `alreadyServiceRoleOnly` list.
+- `src/lib/v2/admin/legacySecurityDefinerAuthorization.test.ts` — contract tests (byte parity with the physical draft, exact 8-signature set, absence of already-service-role-only functions, RLS helpers untouched, `applied:false`).
+- `docs/security/LEGACY_SECURITY_DEFINER_AUDIT_2026-07-28.md` — this document (corrected).
+
 
 ## Confirmation
 
