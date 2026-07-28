@@ -509,7 +509,8 @@ export function SecurityMonitoringDashboard() {
           ) : (
             <ul className="space-y-2" aria-label="Security events">
               {rows.map((log) => {
-                const severity = severityFromDetails(log.details);
+                const severity = log.severity ?? "info";
+                const category = log.event_category ?? "general";
                 return (
                   <li
                     key={log.id}
