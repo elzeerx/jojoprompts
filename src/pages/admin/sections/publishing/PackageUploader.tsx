@@ -25,6 +25,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, ShieldAlert, FileArchive, RotateCcw } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { packageScanGuidance } from "./packageScanGuidance";
 
 type Props = {
   resourceId: string;
@@ -68,12 +69,13 @@ function formatBytes(n: number): string {
 }
 
 function scanBadge(status: ScanStatus | null) {
-  if (status === "clean") return <Badge className="bg-emerald-600 text-white">Clean</Badge>;
-  if (status === "pending") return <Badge variant="secondary">Scan pending</Badge>;
-  if (status === "suspicious") return <Badge className="bg-amber-500 text-white">Suspicious</Badge>;
-  if (status === "malicious") return <Badge className="bg-red-600 text-white">Malicious</Badge>;
-  if (status === "failed") return <Badge className="bg-red-500 text-white">Scan failed</Badge>;
-  return <Badge variant="outline">No scan yet</Badge>;
+  const label = packageScanGuidance(status).badge;
+  if (status === "clean") return <Badge className="bg-emerald-600 text-white">{label}</Badge>;
+  if (status === "pending") return <Badge variant="secondary">{label}</Badge>;
+  if (status === "suspicious") return <Badge className="bg-amber-500 text-white">{label}</Badge>;
+  if (status === "malicious") return <Badge className="bg-red-600 text-white">{label}</Badge>;
+  if (status === "failed") return <Badge className="bg-red-500 text-white">{label}</Badge>;
+  return <Badge variant="outline">{label}</Badge>;
 }
 
 export function PackageUploader({ resourceId: _resourceId, resourceVersionId, resourceType }: Props) {
@@ -196,14 +198,34 @@ export function PackageUploader({ resourceId: _resourceId, resourceVersionId, re
         <div>{scanBadge(latestStatus)}</div>
       </div>
 
-      <Alert>
-        <ShieldAlert className="h-4 w-4" aria-hidden="true" />
-        <AlertDescription>
-          Scan pending; publishing remains blocked until a scanner marks it clean.
-          Uploads are limited to 25 MB. The server computes and verifies the SHA-256 —
-          only a successful scan proves integrity.
-        </AlertDescription>
-      </Alert>
+      {(() => {
+        const guidance = packageScanGuidance(latestStatus);
+        const toneClass =
+          guidance.tone === "success"
+            ? "border-emerald-500/40 bg-emerald-50 text-emerald-900"
+            : guidance.tone === "warning"
+              ? "border-amber-500/40 bg-amber-50 text-amber-900"
+              : guidance.tone === "danger"
+                ? "border-red-500/40 bg-red-50 text-red-900"
+                : "";
+        return (
+          <Alert
+            className={toneClass}
+            role={guidance.tone === "danger" ? "alert" : "status"}
+            aria-live={guidance.tone === "danger" ? "assertive" : "polite"}
+          >
+            <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>
+              <span className="font-medium">{guidance.badge}.</span>{" "}
+              {guidance.message}{" "}
+              <span className="text-muted-foreground">
+                Uploads are limited to 25 MB. The server computes and verifies
+                the SHA-256 — only a successful scan proves integrity.
+              </span>
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
 
       <div className="rounded-md border p-3">
         <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-dark-base">

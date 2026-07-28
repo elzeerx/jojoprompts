@@ -196,17 +196,9 @@ export class AdvancedSessionManager {
         // High risk - invalidate session immediately
         await this.invalidateSession(sessionId);
         
-        // Log security incident
-        await supabase.from('security_logs').insert({
-          user_id: userId,
-          action: 'session_hijacking_detected',
-          details: {
-            session_id: sessionId,
-            indicators: suspiciousIndicators,
-            risk_score: riskScore
-          },
-          severity: 'high',
-          event_category: 'security_incident'
+        // Pre-launch hardening: no client-role DB write into security_logs.
+        logger.warn('session_hijacking_detected', {
+          userId, sessionId, indicators: suspiciousIndicators, riskScore,
         });
 
         logger.warn('Session hijacking detected', { userId, sessionId, riskScore });
@@ -273,14 +265,8 @@ export class AdvancedSessionManager {
         return false;
       }
 
-      // Log session termination
-      await supabase.from('security_logs').insert({
-        user_id: userId,
-        action: 'session_terminated',
-        details: { session_id: sessionId },
-        severity: 'info',
-        event_category: 'session_management'
-      });
+      // Pre-launch hardening: no client-role DB write into security_logs.
+      logger.info('session_terminated', { userId, sessionId });
 
       return true;
     } catch (error) {
@@ -311,15 +297,9 @@ export class AdvancedSessionManager {
 
       // Log bulk session termination
       if (terminatedCount > 0) {
-        await supabase.from('security_logs').insert({
-          user_id: userId,
-          action: 'bulk_session_termination',
-          details: { 
-            terminated_count: terminatedCount,
-            kept_session: currentSessionId 
-          },
-          severity: 'info',
-          event_category: 'session_management'
+        // Pre-launch hardening: no client-role DB write into security_logs.
+        logger.info('bulk_session_termination', {
+          userId, terminated_count: terminatedCount, kept_session: currentSessionId,
         });
       }
 
