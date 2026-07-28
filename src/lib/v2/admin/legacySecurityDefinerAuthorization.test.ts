@@ -170,9 +170,12 @@ describe("legacy SECURITY DEFINER authorization hardening — applied live migra
     ).toBe(true);
   });
 
-  it("aggregates the drafted SQL under a single exported object with correct exclusions", () => {
+  it("aggregates the applied SQL under a single exported object with correct exclusions", () => {
     expect(LEGACY_SECDEF_AUTHORIZATION.sql).toBe(SQL);
-    expect(LEGACY_SECDEF_AUTHORIZATION.migration.applied).toBe(false);
+    expect(LEGACY_SECDEF_AUTHORIZATION.migration.applied).toBe(true);
+    expect(LEGACY_SECDEF_AUTHORIZATION.migration.liveVersion).toBe(
+      "20260728101016",
+    );
     expect([...LEGACY_SECDEF_AUTHORIZATION.alreadyServiceRoleOnly]).toEqual([
       "public.execute_response_action(uuid, text, jsonb, jsonb)",
       "public.trigger_automated_response(text, text, jsonb)",
