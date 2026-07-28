@@ -77,12 +77,14 @@ describe("retired auth helpers — active src/** has no callers", () => {
 });
 
 describe("admin Edge Function guards (source-only, no network)", () => {
+  // Note: `validate-file-upload` and `auto-generate-prompt` were replaced
+  // with source-only HTTP 410 retirement stubs; their auth-guard assertions
+  // are enforced by edgeFunctionRetirementSourceStubs.test.ts instead.
   const adminFns = [
     "translate-text",
-    "validate-file-upload",
     "suggest-prompt",
-    "auto-generate-prompt",
   ];
+
 
   for (const name of adminFns) {
     it(`${name} calls getUser and can_manage_prompts`, () => {
