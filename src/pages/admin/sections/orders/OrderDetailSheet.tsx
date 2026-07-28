@@ -1,12 +1,31 @@
+import { useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Printer } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Copy, Printer, MailPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAdminOrderDetail } from "@/hooks/admin/v2/useAdminCommerce";
 import { useOrderReceiptDelivery } from "@/hooks/admin/v2/useOrderReceiptDelivery";
+import {
+  useAdminResendOrderReceipt,
+  useOrderReceiptResendRequests,
+} from "@/hooks/admin/v2/useOrderReceiptResends";
 import { formatFils, formatDateTime, statusTone, copyToClipboard, bi } from "@/lib/v2/admin/format";
+
+const DEFAULT_RESEND_REASON = "Customer requested another copy";
+const RESEND_ELIGIBLE_STATUSES = new Set(["paid", "partially_refunded"]);
 
 interface Props {
   orderId: string | null;
@@ -168,6 +187,65 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
   const detail = query.data as unknown as Detail | undefined;
   const receiptQuery = useOrderReceiptDelivery(orderId);
   const receipt = receiptQuery.data ?? null;
+  const resendsQuery = useOrderReceiptResendRequests(orderId);
+  const resends = resendsQuery.data ?? [];
+  const resendMutation = useAdminResendOrderReceipt();
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reason, setReason] = useState(DEFAULT_RESEND_REASON);
+
+  const orderStatus = detail?.order.status ?? null;
+  const eligible = orderStatus ? RESEND_ELIGIBLE_STATUSES.has(orderStatus) : false;
+  const activeResend = useMemo(
+    () => resends.find((r) => r.status === "pending" || r.status === "processing") ?? null,
+    [resends],
+  );
+  const originalProcessing = !!receipt && receipt.status !== "sent" && receipt.status !== "failed";
+  const reasonTrim = reason.trim();
+  const reasonValid = reasonTrim.length >= 3 && reasonTrim.length <= 300;
+  const resendDisabled =
+    !orderId ||
+    !eligible ||
+    !!activeResend ||
+    originalProcessing ||
+    resendMutation.isPending ||
+    !reasonValid;
+
+  const runResend = () => {
+    if (!orderId || !reasonValid) return;
+    resendMutation.mutate(
+      { orderId, reason: reasonTrim },
+      {
+        onSuccess: (res) => {
+          setConfirmOpen(false);
+          if (res.ok) {
+            toast({ description: "Receipt resend queued / تمت جدولة إعادة الإرسال" });
+          } else if (res.error === "reconciliation_required") {
+            toast({
+              variant: "destructive",
+              title: "Reconciliation required",
+              description: "Provider accepted the send but DB confirmation failed. Check history.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Resend failed",
+              description: res.error ?? "unknown_error",
+            });
+          }
+        },
+        onError: (e) => {
+          setConfirmOpen(false);
+          toast({
+            variant: "destructive",
+            title: "Resend failed",
+            description: (e as Error).message,
+          });
+        },
+      },
+    );
+  };
+
 
   return (
     <Sheet open={!!orderId} onOpenChange={onOpenChange}>
@@ -343,12 +421,11 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
               </div>
             </Section>
 
-            {/* Receipt delivery — truth-only, no admin resend (see docs/security/RECEIPT_RESEND_BLOCKER.md) */}
+            {/* Receipt delivery — audited admin resend via v2-admin-resend-order-receipt
+                (see docs/security/RECEIPT_RESEND_BLOCKER.md). */}
             <Section title="Receipt delivery / حالة إرسال الإيصال">
-              <div className="p-3 text-xs space-y-2" data-testid="order-receipt-delivery">
-                {receiptQuery.isLoading && (
-                  <Skeleton className="h-10 w-full" />
-                )}
+              <div className="p-3 text-xs space-y-3" data-testid="order-receipt-delivery">
+                {receiptQuery.isLoading && <Skeleton className="h-10 w-full" />}
                 {!receiptQuery.isLoading && !receipt && (
                   <div className="text-muted-foreground">
                     No receipt-delivery record for this order.
@@ -386,14 +463,127 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
                     )}
                   </>
                 )}
-                <p className="text-[11px] text-muted-foreground/80 border-t pt-2">
-                  Admin resend is intentionally not exposed. The shared V2 delivery
-                  pipeline’s claim RPC refuses to re-claim already-sent rows; a safe
-                  resend requires a separate reviewed <code>service_role</code> RPC
-                  and Edge Function. See <code>docs/security/RECEIPT_RESEND_BLOCKER.md</code>.
-                </p>
+
+                <div
+                  className="border-t pt-3 space-y-2"
+                  data-testid="order-receipt-resend"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="min-h-[44px]"
+                      disabled={resendDisabled}
+                      onClick={() => setConfirmOpen(true)}
+                      aria-label="Resend receipt / إعادة إرسال الإيصال"
+                    >
+                      <MailPlus className="mr-1 h-4 w-4" />
+                      Resend receipt / إعادة إرسال الإيصال
+                    </Button>
+                    {!eligible && (
+                      <span className="text-muted-foreground">
+                        Only paid or partially-refunded orders are eligible.
+                      </span>
+                    )}
+                    {eligible && activeResend && (
+                      <span className="text-muted-foreground">
+                        A resend is already {activeResend.status}.
+                      </span>
+                    )}
+                    {eligible && !activeResend && originalProcessing && (
+                      <span className="text-muted-foreground">
+                        Original delivery still processing.
+                      </span>
+                    )}
+                  </div>
+
+                  {resendsQuery.isLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : resends.length === 0 ? (
+                    <div className="text-muted-foreground">
+                      No previous resend attempts.
+                    </div>
+                  ) : (
+                    <ul className="divide-y rounded border" data-testid="order-receipt-resend-history">
+                      {resends.map((r) => (
+                        <li key={r.id} className="p-2 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant={statusTone(r.status)}>{r.status}</Badge>
+                            <span className="text-muted-foreground">
+                              requested {formatDateTime(r.requested_at)}
+                            </span>
+                            {r.completed_at && (
+                              <span className="text-muted-foreground">
+                                · completed {formatDateTime(r.completed_at)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground">{r.reason}</div>
+                          {r.error_code && (
+                            <div className="text-destructive">
+                              <span className="font-mono">{r.error_code}</span>
+                              {r.error_message ? ` — ${r.error_message}` : ""}
+                            </div>
+                          )}
+                          {r.provider_message_id && (
+                            <div className="flex items-center gap-1 font-mono text-muted-foreground">
+                              provider id: {r.provider_message_id}
+                              <CopyBtn text={r.provider_message_id} label="provider id" />
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </Section>
+
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Resend receipt / إعادة إرسال الإيصال
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    A new audited resend request will be created and the receipt will
+                    be sent again to the customer on file. Only order data is
+                    resent — recipient, items, and amount cannot be edited here.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="resend-reason"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Reason (3–300 chars) / السبب
+                  </label>
+                  <Textarea
+                    id="resend-reason"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    maxLength={300}
+                    rows={3}
+                    className="min-h-[88px]"
+                  />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="min-h-[44px]"
+                    disabled={resendDisabled}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      runResend();
+                    }}
+                  >
+                    {resendMutation.isPending ? "Sending…" : "Confirm resend"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
 
             <Section title="Activity / النشاط">
               <div className="divide-y">
