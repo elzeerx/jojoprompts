@@ -306,8 +306,9 @@ export function SecurityMonitoringDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-dark-base">Security Events</h1>
           <p className="text-muted-foreground">
-            Actionable security signals from the last 24 hours. Routine route
-            access and developer-tools noise are hidden by default.
+            Metrics below always cover the last 24 hours. The event list follows
+            the selected time window. Routine route access and developer-tools
+            noise are hidden by default.
           </p>
         </div>
         <Button
