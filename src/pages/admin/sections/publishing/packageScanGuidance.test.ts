@@ -7,8 +7,8 @@ describe("packageScanGuidance — exhaustive state → guidance mapping", () => 
     expect(g.badge).toBe("Clean");
     expect(g.tone).toBe("success");
     expect(g.blocksPublishing).toBe(false);
-    expect(g.message.toLowerCase()).not.toContain("pending");
-    expect(g.message.toLowerCase()).not.toContain("blocked");
+    expect(g.message.toLowerCase().includes("pending")).toBe(false);
+    expect(g.message.toLowerCase().includes("blocked")).toBe(false);
     // Positive framing
     expect(/passed|proceed|publish/i.test(g.message)).toBe(true);
   });
