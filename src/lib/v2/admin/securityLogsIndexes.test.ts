@@ -60,7 +60,7 @@ describe("security_logs admin query index plan — drafted migration", () => {
     const partial = SECURITY_LOGS_PLANNED_INDEXES.find(
       (i) => i.name === "idx_security_logs_actionable_created_at",
     );
-    expect(partial).toBeDefined();
+    expect(partial === undefined).toBe(false);
     expect(
       partial!.definition.includes(
         "WHERE action NOT IN ('route_access','developer_tools_opened')",
