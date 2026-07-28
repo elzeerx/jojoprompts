@@ -545,6 +545,7 @@ export function SecurityMonitoringDashboard() {
                         </span>
                         <div className="flex items-center gap-2">
                           <Badge variant={severityBadgeVariant(severity)}>{severity}</Badge>
+                          <Badge variant="outline">{category.replace(/_/g, " ")}</Badge>
                           <span className="text-xs text-muted-foreground">
                             {format(new Date(log.created_at), "MMM dd, HH:mm:ss")}
                           </span>
