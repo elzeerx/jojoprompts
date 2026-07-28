@@ -46,8 +46,11 @@ import {
   ROUTINE_NOISE_ACTIONS,
   SEVERITY_OPTIONS,
   CATEGORY_OPTIONS,
+  WINDOW_OPTIONS,
+  WINDOW_LABELS,
   parseSecurityEventsFilters,
   twentyFourHoursAgoISO,
+  windowSinceISO,
 } from "./securityEventsFilters";
 
 const logger = createLogger("SECURITY_MONITORING");
@@ -57,7 +60,8 @@ interface SecurityLogRow {
   action: string;
   user_id: string | null;
   ip_address: string | null;
-  details: Record<string, unknown> | null;
+  severity: string | null;
+  event_category: string | null;
   created_at: string;
 }
 
@@ -74,14 +78,6 @@ function maskUserId(id: string | null): string {
   if (!id) return "—";
   const head = id.slice(0, 8);
   return `user_${head}***`;
-}
-
-function severityFromDetails(details: unknown): string {
-  if (details && typeof details === "object" && "severity" in details) {
-    const v = (details as { severity?: unknown }).severity;
-    if (typeof v === "string") return v;
-  }
-  return "info";
 }
 
 function severityBadgeVariant(
