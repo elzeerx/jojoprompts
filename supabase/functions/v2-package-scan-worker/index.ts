@@ -139,7 +139,10 @@ Deno.serve(async (req) => {
     return fail("invalid_json", 400);
   }
   const scanId = String(payload.scan_id ?? "");
-  if (!/^[0-9a-f-]{36}$/i.test(scanId)) return fail("invalid_scan_id", 400);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(scanId)) {
+    return fail("invalid_scan_id", 400);
+  }
+
 
   // Initialize the service client BEFORE readiness handling so we can persist
   // a safe state for pending items even when configuration is bad.
