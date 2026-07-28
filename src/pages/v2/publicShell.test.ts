@@ -156,8 +156,7 @@ describe("V2 route table — no premium/subscription/legacy customer surfaces", 
 
 describe("Legacy V1 → V2 redirects resolve to fixed V2 destinations", () => {
   const EXPECTED: Record<string, string> = {
-    prompts: "/prompts-catalog",
-    "prompts/chatgpt": "/prompts-catalog?platform=chatgpt",
+    "prompts/chatgpt": "/prompts?platform=chatgpt",
     "prompts/midjourney": "/image-styles",
     "prompts/workflow": "/automations",
     "prompts/gpts-builder": "/skills",
@@ -214,6 +213,16 @@ describe("Legacy V1 → V2 redirects resolve to fixed V2 destinations", () => {
         activeRouteCollision: false,
       });
     }
+  });
+
+  it("/prompts is the canonical route and /prompts-catalog is a legacy compatibility redirect", () => {
+    // /prompts must appear in routes.ts (canonical)
+    expect(/path:\s*["']prompts["']/.test(ROUTES_SRC)).toBe(true);
+    // /prompts-catalog must NOT appear in routes.ts as an active route
+    expect(/path:\s*["']prompts-catalog["']/.test(ROUTES_SRC)).toBe(false);
+    // App.tsx must expose the redirect wrapper
+    expect(/path=["']prompts-catalog["']/.test(APP)).toBe(true);
+    expect(/PromptsCatalogRedirect/.test(APP)).toBe(true);
   });
 });
 

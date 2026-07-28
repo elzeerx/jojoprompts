@@ -19,8 +19,8 @@ export type V2ResourceType = (typeof V2_RESOURCE_TYPES)[number];
 export const V2_TYPE_ROUTE: Record<V2ResourceType, string> = {
   skill: "/skills",
   automation: "/automations",
-  prompt: "/prompts-catalog",
-  prompt_pack: "/prompts-catalog",
+  prompt: "/prompts",
+  prompt_pack: "/prompts",
   image_style: "/image-styles",
   bundle: "/bundles",
 };
@@ -32,7 +32,7 @@ export const V2_TYPE_ROUTE: Record<V2ResourceType, string> = {
  */
 export const V2_CUTOVER_ROUTES = {
   /** Where the V2 Prompts catalog lives today (compatibility). */
-  currentV2Prompts: "/prompts-catalog",
+  currentV2Prompts: "/prompts",
   /** Post-cutover public path for V2 Prompts. */
   futureV2Prompts: "/prompts",
   /** Post-cutover public path for the legacy prompts app. */

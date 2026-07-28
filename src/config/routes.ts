@@ -95,7 +95,7 @@ export const routes: RouteConfig[] = [
   { path: "explore", component: V2ExplorePage, protection: "public" },
   { path: "skills", component: V2SkillsPage, protection: "public" },
   { path: "automations", component: V2AutomationsPage, protection: "public" },
-  { path: "prompts-catalog", component: V2PromptsCatalogPage, protection: "public" },
+  { path: "prompts", component: V2PromptsCatalogPage, protection: "public" },
   { path: "image-styles", component: V2ImageStylesPage, protection: "public" },
   { path: "bundles", component: V2BundlesPage, protection: "public" },
   { path: "resources/:slug", component: V2ResourceDetailPage, protection: "public" },

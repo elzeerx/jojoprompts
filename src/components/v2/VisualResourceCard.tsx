@@ -138,7 +138,7 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
               onQuickPreview(r.id);
             }}
             aria-label={V2_COPY.cards.quickPreview[lang]}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-background/90 text-foreground shadow focus-visible:ring-2 focus-visible:ring-warm-gold"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-background/90 text-foreground shadow touch-manipulation focus-visible:ring-2 focus-visible:ring-warm-gold md:h-9 md:w-9"
           >
             <Info className="h-4 w-4" aria-hidden />
           </button>

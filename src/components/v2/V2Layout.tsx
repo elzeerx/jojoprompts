@@ -12,13 +12,17 @@ import { CartSanitizer } from "./CartSanitizer";
  * "Add Prompt" shortcut. Admin creation belongs strictly inside /admin.
  */
 export function V2Layout() {
+  // NOTE: the shell wrapper is a <div>, not a <main>. Each route owns its
+  // own single <main> landmark. Nesting a <main> inside another <main>
+  // breaks WCAG 2.4.1 landmark structure — publicShell.test.ts enforces
+  // the invariant.
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <V2Header />
       <CartSanitizer />
-      <main className="flex-1">
+      <div className="flex-1">
         <Outlet />
-      </main>
+      </div>
       <V2Footer />
     </div>
   );

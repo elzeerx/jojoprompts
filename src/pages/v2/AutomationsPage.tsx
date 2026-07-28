@@ -4,10 +4,19 @@ export default function AutomationsPage() {
     <ExplorePage
       fixedType="automation"
       title="Automations"
+      canonicalPath="/automations"
+      seoTitle={{
+        en: "AI automations & workflows — pay once, keep forever",
+        ar: "أتمتة وسِيَر عمل ذكاء اصطناعي — ادفع مرة، امتلك للأبد",
+      }}
+      seoDescription={{
+        en: "End-to-end automations and workflows built by Jojo. One-time payment, permanent ownership, verified files.",
+        ar: "أتمتة وسِيَر عمل متكاملة من صنع جوجو. دفع لمرة واحدة، ملكية دائمة، وملفات موثّقة.",
+      }}
       emptyTitle={{ en: "No published automations yet", ar: "لا توجد أتمتات منشورة بعد" }}
       emptyDesc={{
-        en: "Verified Jojo automations and workflows will appear here as soon as they're published.",
-        ar: "ستظهر أتمتات جوجو وسير العمل الموثّق هنا فور نشرها.",
+        en: "Verified Jojo automations will appear here as soon as they're published.",
+        ar: "ستظهر أتمتات جوجو الموثّقة هنا فور نشرها.",
       }}
     />
   );

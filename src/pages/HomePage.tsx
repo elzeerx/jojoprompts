@@ -35,15 +35,19 @@ export default function HomePage() {
   const t = pageCopy(lang);
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"} className="bg-background text-foreground">
+    <main dir={isRTL ? "rtl" : "ltr"} className="bg-background text-foreground">
       <Helmet>
         <title>{t.seoTitle}</title>
         <meta name="description" content={t.seoDesc} />
-        <link rel="canonical" href="https://jojoprompts.lovable.app/" />
+        <link rel="canonical" href="https://jojoprompts.com/" />
         <meta property="og:type" content="website" />
         <meta property="og:title" content={t.seoTitle} />
         <meta property="og:description" content={t.seoDesc} />
-        <meta property="og:url" content="https://jojoprompts.lovable.app/" />
+        <meta property="og:url" content="https://jojoprompts.com/" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={t.seoTitle} />
+        <meta name="twitter:description" content={t.seoDesc} />
+        <meta name="twitter:url" content="https://jojoprompts.com/" />
       </Helmet>
 
       {/* Hero */}
@@ -89,7 +93,7 @@ export default function HomePage() {
             {[
               { to: "/skills", icon: Wand2, label: t.catSkills, desc: t.catSkillsDesc },
               { to: "/automations", icon: Workflow, label: t.catAutomations, desc: t.catAutomationsDesc },
-              { to: "/prompts-catalog", icon: Sparkles, label: t.catPrompts, desc: t.catPromptsDesc },
+              { to: "/prompts", icon: Sparkles, label: t.catPrompts, desc: t.catPromptsDesc },
               { to: "/image-styles", icon: ImageIcon, label: t.catImageStyles, desc: t.catImageStylesDesc },
               { to: "/bundles", icon: Package, label: t.catBundles, desc: t.catBundlesDesc },
               { to: "/explore", icon: Search, label: t.catExplore, desc: t.catExploreDesc },
@@ -244,7 +248,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-    </div>
+    </main>
   );
 }
 
@@ -322,7 +326,7 @@ function LiveCatalog({ lang, isRTL }: { lang: "en" | "ar"; isRTL: boolean }) {
                   </div>
                   <Link
                     to={`/resources/${r.slug}`}
-                    className="mt-1 block text-lg font-semibold hover:text-warm-gold"
+                    className="mt-1 inline-flex min-h-[44px] items-center text-lg font-semibold hover:text-warm-gold md:block md:min-h-0"
                   >
                     {lang === "ar" ? r.title_ar || r.title_en : r.title_en}
                   </Link>

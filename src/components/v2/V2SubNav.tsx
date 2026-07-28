@@ -15,7 +15,7 @@ const CATEGORY_LINKS: NavItem[] = [
   { to: "/explore", label: V2_COPY.nav.explore, end: true },
   { to: "/skills", label: V2_COPY.nav.skills },
   { to: "/automations", label: V2_COPY.nav.automations },
-  { to: "/prompts-catalog", label: V2_COPY.nav.prompts },
+  { to: "/prompts", label: V2_COPY.nav.prompts },
   { to: "/image-styles", label: V2_COPY.nav.imageStyles },
   { to: "/bundles", label: V2_COPY.nav.bundles },
 ];
