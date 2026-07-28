@@ -20,28 +20,19 @@ export function useUsersWithoutPlans() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchUsersWithoutPlans = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Call the edge function to get users without active subscriptions
-      const { data, error } = await supabase.functions.invoke('get-users-without-plans');
-
-      if (error) throw error;
-
-      setUsers(data.users || []);
-    } catch (error: any) {
-      logger.error('Failed to fetch users without plans', { error: error.message || error });
-      setError(error.message || "Failed to load users");
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load users without plans",
-      });
-    } finally {
-      setLoading(false);
-    }
+    // RETIRED (source-only, 2026-07-28): `get-users-without-plans` is
+    // a 410 stub. V2 has no subscription concept. The only importer of
+    // this hook (`MarketingEmailsPanel` -> `MarketingPage`) is not
+    // referenced by `adminSectionElements.tsx` — the marketing surface
+    // was removed from Admin V2.
+    setLoading(true);
+    setError(null);
+    logger.warn('get-users-without-plans is retired; hook returns empty set');
+    setUsers([]);
+    setError(null);
+    setLoading(false);
   };
+
 
   useEffect(() => {
     fetchUsersWithoutPlans();
