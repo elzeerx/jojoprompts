@@ -19,8 +19,10 @@
 //      service_role-only ACL).
 
 import { describe, it, expect } from "bun:test";
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { resolve, join } from "node:path";
+declare const require: (m: string) => any;
+const { readFileSync, readdirSync, statSync } = require("fs");
+const { resolve, join } = require("path");
+
 
 const HERE = new URL(".", import.meta.url).pathname;
 const REPO_ROOT = resolve(HERE, "../../../..");
