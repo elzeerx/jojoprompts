@@ -109,6 +109,67 @@ describe("admin Edge Function guards (source-only, no network)", () => {
       }).toEqual({ name, methodGuard: true });
     });
   }
+
+  const roleGuardedAiFns = [
+    "enhance-prompt",
+    "ai-gpt5-metaprompt",
+    "ai-json-spec",
+  ];
+
+  for (const name of roleGuardedAiFns) {
+    it(`${name} validates the bearer and an allowed publishing role before OpenAI`, () => {
+      const p = join(FUNCTIONS_ROOT, name, "index.ts");
+      expect({ name, exists: existsSync(p) }).toEqual({ name, exists: true });
+      const src = readFileSync(p, "utf8") as string;
+      const authIndex = src.search(/auth\.getUser\s*\(/);
+      const roleIndex = src.search(/\.in\s*\(\s*['"]role['"]/);
+      const fetchIndex = src.search(/\bfetch\s*\(/);
+
+      expect({ name, authIndex }).toEqual({ name, authIndex: expect.any(Number) });
+      expect(authIndex).toBeGreaterThanOrEqual(0);
+      expect(roleIndex).toBeGreaterThan(authIndex);
+      expect(fetchIndex).toBeGreaterThan(roleIndex);
+      expect(src).toMatch(/['"]admin['"]/);
+      expect(src).toMatch(/['"]prompter['"]/);
+      expect(src).toMatch(/['"]jadmin['"]/);
+      expect(
+        /req\.method\s*!==\s*['"]POST['"]/.test(src) ||
+        /Method Not Allowed|Method not allowed/.test(src),
+      ).toBe(true);
+    });
+  }
+});
+
+describe("custom-auth endpoints bind work to the authenticated principal", () => {
+  it("delete-my-account authenticates the bearer and deletes only user.id", () => {
+    const src = readFileSync(
+      join(FUNCTIONS_ROOT, "delete-my-account", "index.ts"),
+      "utf8",
+    ) as string;
+
+    const authIndex = src.search(/auth\.getUser\s*\(/);
+    const emailIndex = src.search(/confirmationEmail\s*!==\s*user\.email/);
+    const rpcIndex = src.search(/rpc\s*\(\s*['"]delete_user_account['"]/);
+    expect(authIndex).toBeGreaterThanOrEqual(0);
+    expect(emailIndex).toBeGreaterThan(authIndex);
+    expect(rpcIndex).toBeGreaterThan(emailIndex);
+    expect(src).toMatch(/_user_id:\s*user\.id/);
+    expect(src).not.toMatch(/_user_id:\s*(body|payload|request)\./);
+  });
+
+  it("MCP declares Supabase OAuth and every tool scopes by the caller context", () => {
+    const mcp = readFileSync(resolve(SRC, "lib/mcp/index.ts"), "utf8") as string;
+    const listTool = readFileSync(
+      resolve(SRC, "lib/mcp/tools/list-my-prompts.ts"),
+      "utf8",
+    ) as string;
+
+    expect(mcp).toMatch(/auth:\s*auth\.oauth\.issuer/);
+    expect(mcp).toMatch(/acceptedAudiences:\s*["']authenticated["']/);
+    expect(listTool).toMatch(/ctx\.isAuthenticated\s*\(\s*\)/);
+    expect(listTool).toMatch(/ctx\.getToken\s*\(\s*\)/);
+    expect(listTool).toMatch(/\.eq\s*\(\s*["']user_id["']\s*,\s*ctx\.getUserId\s*\(\s*\)\s*\)/);
+  });
 });
 
 describe("get-image enforces published-resource + image-only authorization", () => {
@@ -223,4 +284,3 @@ describe("smart-unsubscribe is token-only", () => {
     expect(/generateUnsubscribeToken/.test(src)).toBe(false);
   });
 });
-

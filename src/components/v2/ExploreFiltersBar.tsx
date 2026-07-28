@@ -32,7 +32,11 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
 
   const togglePlatform = (p: V2Platform) => {
     const cur = new Set(filters.platforms ?? []);
-    cur.has(p) ? cur.delete(p) : cur.add(p);
+    if (cur.has(p)) {
+      cur.delete(p);
+    } else {
+      cur.add(p);
+    }
     onChange({ platforms: Array.from(cur) });
   };
 

@@ -66,14 +66,20 @@ export function slugify(s: string): string {
     .slice(0, 80) || "imported-prompt";
 }
 
-export function mapLegacyPromptToV2Draft(raw: any): V2ResourceDraftInput | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+export function mapLegacyPromptToV2Draft(raw: unknown): V2ResourceDraftInput | null {
+  if (!isRecord(raw)) return null;
   const hasLegacyContent = typeof raw.content === "string" && raw.content.trim().length > 0;
   const hasV2Type = typeof raw.type === "string";
   if (!hasLegacyContent || hasV2Type) return null;
   const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim() : "Imported Prompt";
   const description = typeof raw.description === "string" ? raw.description.trim() : "";
-  const tags = Array.isArray(raw.tags) ? raw.tags.filter((t: any) => typeof t === "string") : [];
+  const tags = Array.isArray(raw.tags)
+    ? raw.tags.filter((tag): tag is string => typeof tag === "string")
+    : [];
   return {
     slug: slugify(title),
     type: "prompt",
@@ -118,7 +124,7 @@ export function validateRow(raw: unknown, index: number): RowValidation {
   }
 
   let fromLegacy = false;
-  let candidate: any = obj;
+  let candidate: Record<string, unknown> | V2ResourceDraftInput = obj;
   const mapped = mapLegacyPromptToV2Draft(obj);
   if (mapped) {
     fromLegacy = true;
@@ -132,17 +138,24 @@ export function validateRow(raw: unknown, index: number): RowValidation {
   if (Array.isArray(candidate.products)) {
     candidate = {
       ...candidate,
-      products: candidate.products.map((p: any) => ({
-        ...p,
-        price_fils: typeof p?.price_fils === "number"
-          ? p.price_fils
-          : parseInt(String(p?.price_fils ?? "0"), 10) || 0,
-      })),
+      products: candidate.products.map((value) => {
+        const product = isRecord(value) ? value : {};
+        return {
+          ...product,
+          price_fils:
+            typeof product.price_fils === "number"
+              ? product.price_fils
+              : parseInt(String(product.price_fils ?? "0"), 10) || 0,
+        };
+      }),
     };
   }
 
   const parsed = v2ResourceDraftSchema.safeParse(candidate);
-  const rawTitle = (candidate.title_en as string) || (obj.title as string) || `#${index + 1}`;
+  const rawTitle =
+    (typeof candidate.title_en === "string" && candidate.title_en) ||
+    (typeof obj.title === "string" && obj.title) ||
+    `#${index + 1}`;
 
   if (!parsed.success) {
     parsed.error.issues.forEach((i) => errors.push(`${i.path.join(".") || "(root)"}: ${i.message}`));

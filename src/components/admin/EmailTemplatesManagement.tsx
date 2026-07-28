@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ export function EmailTemplatesManagement() {
   const [query, setQuery] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("email_templates")
@@ -53,15 +53,14 @@ export function EmailTemplatesManagement() {
     if (error) {
       toast({ variant: "destructive", title: "Load failed", description: error.message });
     } else {
-      setItems((data as any) || []);
+      setItems(data ?? []);
     }
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (isAdmin) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isAdmin, load]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

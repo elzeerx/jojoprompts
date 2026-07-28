@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- command parsing is a pure exported contract used by route tests. */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {

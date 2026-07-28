@@ -8,6 +8,10 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "lint:v2": "eslint src/App.tsx src/config/routes.ts src/config/siteMode.ts src/config/v2Flags.ts src/config/v2Pricing.ts src/pages/v2 src/components/v2 src/hooks/v2 src/lib/v2 src/pages/MagicLoginPage.tsx src/pages/admin/layout src/pages/admin/sections src/pages/admin/components/users/UsersV2.tsx src/pages/admin/components/users/UsersV2Table.tsx src/pages/admin/components/users/components/ChangePasswordDialog.tsx src/pages/admin/components/users/components/CreateUserDialog.tsx src/pages/admin/components/users/components/EditUserDialog.tsx src/pages/admin/components/users/components/UserProfileSheet.tsx src/pages/admin/components/users/hooks/useUserBulkActions.ts src/pages/admin/components/users/hooks/useUserList.ts src/pages/admin/components/users/hooks/useUserService.ts src/components/admin/EmailTemplatesManagement.tsx src/components/admin/SecurityMonitoringDashboard.tsx --ignore-pattern '**/*.test.ts' --ignore-pattern '**/*.test.tsx' --ignore-pattern 'src/pages/admin/sections/content/**'",
+    "typecheck": "tsc --noEmit",
+    "test:v2": "bun test src",
+    "verify:v2": "bun run typecheck && bun run lint:v2 && bun run test:v2 && bun run build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -63,7 +67,7 @@
     "react-hook-form": "^7.53.0",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.1.3",
-    "react-router-dom": "^7.18.1",
+    "react-router-dom": "7.18.1",
     "recharts": "^2.15.4",
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.2",

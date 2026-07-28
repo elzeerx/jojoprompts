@@ -41,6 +41,7 @@ import {
   type ResourceType,
   type ScanState,
 } from "@/lib/v2/admin/publishingReadiness";
+import type { Database } from "@/integrations/supabase/types";
 
 const RESOURCE_TYPES: { value: ResourceType | "all"; label: string }[] = [
   { value: "all", label: "All types" },
@@ -72,12 +73,47 @@ interface QueryArgs {
   type: ResourceType | "all";
 }
 
+type ResourceFileProbe = Pick<
+  Database["public"]["Tables"]["resource_files"]["Row"],
+  "resource_version_id"
+>;
+
+type ScanProbe = Pick<
+  Database["public"]["Tables"]["package_scans"]["Row"],
+  "resource_version_id" | "status" | "created_at" | "scanned_at"
+>;
+
+type ProductProbe = Pick<
+  Database["public"]["Tables"]["products"]["Row"],
+  "resource_id" | "price_fils" | "is_active"
+>;
+
+interface QueueResourceRow {
+  id: string;
+  slug: string;
+  type: ResourceType;
+  lifecycle: Lifecycle;
+  title_en: string;
+  title_ar: string | null;
+  summary_en: string | null;
+  description_en: string | null;
+  current_version_id: string | null;
+  updated_at: string;
+  current_version: {
+    id: string;
+    version: string;
+    major_version: number;
+  } | null;
+  platform_compatibility: Array<{ platform_slug: string }>;
+  installation_guides: Array<{ id: string }>;
+}
+
 async function fetchQueue(args: QueryArgs): Promise<{ rows: Fetched[]; total: number }> {
   const lifecycle: Lifecycle = args.mode;
   const from = (args.page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  let q = (supabase as any)
+  let q = supabase
     .from("resources")
     .select(
       "id, slug, type, lifecycle, title_en, title_ar, summary_en, description_en, current_version_id, updated_at, current_version:current_version_id ( id, version, major_version ), platform_compatibility ( platform_slug ), installation_guides ( id )",
@@ -95,44 +131,52 @@ async function fetchQueue(args: QueryArgs): Promise<{ rows: Fetched[]; total: nu
 
   const { data, count, error } = await q;
   if (error) throw error;
-  const base = (data ?? []) as any[];
+  const base = (data ?? []) as unknown as QueueResourceRow[];
 
   const versionIds = base.map((r) => r.current_version_id).filter(Boolean) as string[];
   const resourceIds = base.map((r) => r.id);
 
   const [filesRes, scansRes, productsRes] = await Promise.all([
     versionIds.length
-      ? (supabase as any)
+      ? supabase
           .from("resource_files")
           .select("resource_version_id")
           .in("resource_version_id", versionIds)
-      : Promise.resolve({ data: [] as any[], error: null }),
+      : Promise.resolve({ data: [] as ResourceFileProbe[], error: null }),
     versionIds.length
-      ? (supabase as any)
+      ? supabase
           .from("package_scans")
           .select("resource_version_id, status, created_at, scanned_at")
           .in("resource_version_id", versionIds)
           .order("created_at", { ascending: false })
-      : Promise.resolve({ data: [] as any[], error: null }),
+      : Promise.resolve({ data: [] as ScanProbe[], error: null }),
     resourceIds.length
-      ? (supabase as any)
+      ? supabase
           .from("products")
           .select("resource_id, price_fils, is_active")
           .in("resource_id", resourceIds)
-      : Promise.resolve({ data: [] as any[], error: null }),
+      : Promise.resolve({ data: [] as ProductProbe[], error: null }),
   ]);
 
+  if (filesRes.error) throw filesRes.error;
+  if (scansRes.error) throw scansRes.error;
+  if (productsRes.error) throw productsRes.error;
+
+  const fileRows = (filesRes.data ?? []) as ResourceFileProbe[];
+  const scanRows = (scansRes.data ?? []) as ScanProbe[];
+  const productRows = (productsRes.data ?? []) as ProductProbe[];
+
   const files = new Map<string, number>();
-  ((filesRes as any).data ?? []).forEach((f: any) => {
+  fileRows.forEach((f) => {
     files.set(f.resource_version_id, (files.get(f.resource_version_id) ?? 0) + 1);
   });
   const scans = new Map<string, ScanState>();
-  ((scansRes as any).data ?? []).forEach((s: any) => {
+  scanRows.forEach((s) => {
     if (!scans.has(s.resource_version_id)) scans.set(s.resource_version_id, s.status as ScanState);
   });
   const priceByResource = new Map<string, number | null>();
   const activeByResource = new Map<string, boolean>();
-  ((productsRes as any).data ?? []).forEach((p: any) => {
+  productRows.forEach((p) => {
     if (p.is_active) {
       activeByResource.set(p.resource_id, true);
       const cur = priceByResource.get(p.resource_id);
@@ -253,8 +297,12 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
       toast({ title: "Published", description: "Resource is now live in the catalog." });
       invalidate();
     },
-    onError: (e: any) => {
-      toast({ variant: "destructive", title: "Publish blocked", description: e?.message ?? "unknown" });
+    onError: (error: unknown) => {
+      toast({
+        variant: "destructive",
+        title: "Publish blocked",
+        description: error instanceof Error ? error.message : "unknown",
+      });
     },
   });
 
@@ -282,8 +330,12 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
       toast({ title: label });
       invalidate();
     },
-    onError: (e: any) => {
-      toast({ variant: "destructive", title: "Action failed", description: e?.message ?? "unknown" });
+    onError: (error: unknown) => {
+      toast({
+        variant: "destructive",
+        title: "Action failed",
+        description: error instanceof Error ? error.message : "unknown",
+      });
     },
   });
 
@@ -453,7 +505,8 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
         </div>
       ) : q.isError ? (
         <Card className="p-6 text-sm text-red-600">
-          Failed to load queue: {(q.error as any)?.message ?? "unknown"}
+          Failed to load queue:{" "}
+          {q.error instanceof Error ? q.error.message : "unknown"}
         </Card>
       ) : rows.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">

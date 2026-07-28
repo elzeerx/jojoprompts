@@ -27,11 +27,13 @@ export function useFreeAcquisition() {
       });
       qc.invalidateQueries({ queryKey: ["v2"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
+      const description =
+        err instanceof Error ? err.message : "Please try again.";
       toast({
         variant: "destructive",
         title: "Could not add resource",
-        description: err?.message ?? "Please try again.",
+        description,
       });
     },
   });

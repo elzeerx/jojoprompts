@@ -76,8 +76,10 @@ export function AiStudioChat({ messages, setMessages, onAsset, kind, targetLlm }
       if (data?.asset) {
         onAsset(data.asset);
       }
-    } catch (err: any) {
-      toast.error("Network error", { description: err?.message });
+    } catch (err: unknown) {
+      toast.error("Network error", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
     } finally {
       setSending(false);
       setTimeout(() => inputRef.current?.focus(), 0);

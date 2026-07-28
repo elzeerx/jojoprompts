@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- card metadata is a pure exported UI contract. */
 import { Link } from "react-router-dom";
 import { FileJson, Sparkles, Archive, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

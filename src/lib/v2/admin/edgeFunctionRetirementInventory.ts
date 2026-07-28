@@ -1,7 +1,7 @@
 /**
  * Edge Function Retirement Inventory — Source-of-truth audit snapshot.
  *
- * Audit date: 2026-07-28 (route-graph refinement pass)
+ * Audit date: 2026-07-29 (live retirement verification refresh)
  * Live Supabase project: fxkqgjakbyrxkmevkglv
  * Live inventory: 68 ACTIVE functions.
  *
@@ -11,14 +11,16 @@
  * chain analysis (not just grep).
  *
  * Retirement application semantics:
- *   - `recommendedRetirementAppliedLive` is ALWAYS false in this pass:
- *     no new 410 stub has been shipped by this audit.
- *   - `already410Live` is true for slugs whose source already returns
- *     HTTP 410 or whose live deployment is already a 410 stub. Those
- *     are NOT "unapplied retirements"; they are the prior retirement
- *     state that the audit merely records.
- *   - Both flags are read independently to prevent the misleading
- *     `appliedLive:false` claim on already-410 stubs.
+ *   - `recommendedRetirementAppliedLive` is true only for the 24
+ *     route-graph retirement recommendations whose deployed source was
+ *     fetched from Supabase on 2026-07-29 and verified as the matching
+ *     minimal HTTP 410 stub.
+ *   - `magic-login` is a 25th, source-only retirement prepared after the
+ *     live refresh. It remains false until the stub is deployed and fetched
+ *     back from Supabase.
+ *   - `already410Live` is true for every currently verified live 410
+ *     function: the 10 pre-existing stubs plus those 24 retirements.
+ *   - Required/hardened functions remain false for both flags.
  *
  * Companion documents:
  *   - docs/security/EDGE_FUNCTION_AUDIT_2026-07-28.md (narrative + evidence)
@@ -67,29 +69,26 @@ export interface EdgeFunctionAuditEntry {
   v2Replacement: string | null;
   /** Audit classification. */
   classification: Classification;
-  /** Recommended disposition (documentation only — not yet applied). */
+  /** Recommended disposition. */
   disposition: Disposition;
   /**
-   * Whether THIS audit's NEW retirement recommendation has been
-   * shipped as a 410 stub. Always false in this pass. Do NOT read
-   * this field to infer whether an existing stub is live; use
-   * `already410Live` for that.
+   * Whether this audit's retirement recommendation is deployed as a
+   * verified 410 stub on the live Supabase project.
    */
-  recommendedRetirementAppliedLive: false;
+  recommendedRetirementAppliedLive: boolean;
   /**
-   * Whether the function already returns HTTP 410 in the current
-   * source/live deployment (independent of this audit's
-   * recommendations). True for the 10 pre-existing stubs.
+   * Whether the live function currently returns the audited HTTP 410
+   * stub contract, whether pre-existing or newly retired.
    */
   already410Live: boolean;
   /** Short rationale citing evidence. */
   evidence: string;
 }
 
-export const EDGE_FUNCTION_AUDIT_DATE = "2026-07-28" as const;
+export const EDGE_FUNCTION_AUDIT_DATE = "2026-07-29" as const;
 
-/** Slugs whose source or live deployment already returns HTTP 410. */
-export const ALREADY_410_SLUGS = [
+/** Slugs that were already HTTP 410 before the 24-function retirement pass. */
+export const PREEXISTING_410_SLUGS = [
   "check-email-exists",
   "paypal-webhook",
   "resend-confirmation-email",
@@ -103,14 +102,15 @@ export const ALREADY_410_SLUGS = [
 ] as const;
 
 /**
- * Bounded retirement recommendation for THIS audit. Exactly 24 slugs
+ * Bounded live retirement set for THIS audit. Exactly 24 slugs
  * (11 obsolete payment/debug + 12 route-graph-resolved + admin-package-upload,
  * which was migrated to `v2-admin-upload-resource-file` in a prior pass and
  * now has zero active callers).
  *
- * Application state (source-only, NOT deployed):
+ * Application state (verified live on 2026-07-29):
  *   - ALL 24 slugs have been replaced in-repo with a minimal HTTP 410
- *     retirement stub — see `RETIRED_STUB_SLUGS` below.
+ *     retirement stub and the deployed source for every slug was fetched
+ *     from Supabase and verified against that contract.
  *   - Zero blockers remain. The 7 slugs previously listed as
  *     blockers (create-subscription, cancel-subscription,
  *     validate-file-upload, get-admin-transactions,
@@ -121,10 +121,10 @@ export const ALREADY_410_SLUGS = [
  *     reachability proof — 7 retirement blockers"). Their dead
  *     caller modules were neutralized in-place before stubbing.
  *
- * No Edge Function has been deployed, deleted, or published as part of
- * this pass. Runtime behavior on Supabase is unchanged.
+ * The production website remains launch-locked; this records the current
+ * function state and does not authorize any further deployment.
  */
-export const RETIREMENT_SLUGS = [
+export const LIVE_RETIREMENT_SLUGS = [
   // 11 obsolete-payment / debug retirements
   "debug-environment",
   "get-paypal-client-id",
@@ -157,11 +157,33 @@ export const RETIREMENT_SLUGS = [
 ] as const;
 
 /**
- * Source-only 410 stubs written by the retirement passes (combined
+ * Source-prepared retirements that are not yet deployed. The custom
+ * `magic-login` exchange duplicated Supabase Auth's built-in OTP/magic-link
+ * flow and depended on a service-role token table. V2 routes old links to the
+ * normal login page and uses `supabase.auth.signInWithOtp`.
+ */
+export const PENDING_RETIREMENT_SLUGS = ["magic-login"] as const;
+
+/** Complete current recommendation: 24 verified live + 1 source-only. */
+export const RETIREMENT_SLUGS = [
+  ...LIVE_RETIREMENT_SLUGS,
+  ...PENDING_RETIREMENT_SLUGS,
+] as const;
+
+/** Every function verified live as the minimal HTTP 410 contract. */
+export const ALREADY_410_SLUGS = [
+  ...PREEXISTING_410_SLUGS,
+  ...LIVE_RETIREMENT_SLUGS,
+] as const;
+
+/**
+ * 410 stubs written by the retirement passes (combined
  * across 2026-07-28 phases). Each corresponding
  * `supabase/functions/<slug>/index.ts` is a minimal reversible retirement
  * stub with no imports, env reads, body parsing, external I/O, database
- * calls, secrets, or logging. NOT deployed.
+ * calls, secrets, or logging. The first 24 were verified live on
+ * 2026-07-29; `magic-login` remains source-only until the controlled
+ * deployment pass.
  */
 export const RETIRED_STUB_SLUGS = [
   "debug-environment",
@@ -191,19 +213,22 @@ export const RETIRED_STUB_SLUGS = [
   "get-users-without-plans",
   "send-plan-reminder",
   "send-bulk-plan-reminders",
+  // Prepared after the live refresh. V2 uses Supabase Auth directly.
+  "magic-login",
 ] as const;
 
 /**
  * Slugs in `RETIREMENT_SLUGS` NOT yet stubbed. After the 2026-07-28
  * route-graph-refinement pass this list is empty — every retirement
- * recommendation is now backed by a source-only 410 stub.
+ * recommendation is backed by a source stub. Live state is tracked
+ * separately by `recommendedRetirementAppliedLive`.
  */
 export const RETIREMENT_BLOCKERS = [] as const;
 
 
 /**
  * Unambiguous slug -> replacement mappings surfaced in the stub JSON body.
- * Only these five carry a `replacement` field.
+ * Only these six carry a `replacement` field.
  */
 export const STUB_REPLACEMENTS: Readonly<Record<string, string>> = {
   "process-upayments-payment": "v2-upayments-checkout",
@@ -211,14 +236,24 @@ export const STUB_REPLACEMENTS: Readonly<Record<string, string>> = {
   "validate-file-upload": "v2-admin-upload-resource-file",
   "auto-generate-prompt": "ai-studio-chat",
   "resend-confirmation-alternative": "supabase.auth",
+  "magic-login": "supabase.auth",
 };
 
 
 const R = (name: string): Pick<EdgeFunctionAuditEntry,
-  "classification" | "disposition" | "recommendedRetirementAppliedLive"> => ({
+  "classification" | "disposition" | "recommendedRetirementAppliedLive" | "already410Live"> => ({
   classification: "legacy_unreachable" as const,
   disposition: "retire_to_410" as const,
-  recommendedRetirementAppliedLive: false as const,
+  recommendedRetirementAppliedLive: true,
+  already410Live: true,
+});
+
+const P = (name: string): Pick<EdgeFunctionAuditEntry,
+  "classification" | "disposition" | "recommendedRetirementAppliedLive" | "already410Live"> => ({
+  classification: "legacy_unreachable" as const,
+  disposition: "retire_to_410" as const,
+  recommendedRetirementAppliedLive: false,
+  already410Live: false,
 });
 
 export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
@@ -248,12 +283,12 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: ["openai"],
     purpose: "AI: suggest new prompts.",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "harden",
+    classification: "required_v2",
+    disposition: "keep",
     recommendedRetirementAppliedLive: false,
     already410Live: false,
     evidence:
-      "Prior pass hardened with can_manage_prompts bearer auth; no direct src caller but not yet retired.",
+      "Compatibility admin helper has no current route caller. Source rejects non-POST requests, validates the bearer with auth.getUser, and requires can_manage_prompts before OpenAI or database work.",
   },
   {
     name: "get-all-users",
@@ -298,7 +333,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 subscription creation.",
     v2Replacement: null,
     ...R("create-subscription"),
-    already410Live: false,
     evidence:
       "subscriptionActivator has zero importers in src/; V2 has no subscriptions. Unreachable.",
   },
@@ -311,7 +345,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 subscription cancellation.",
     v2Replacement: null,
     ...R("cancel-subscription"),
-    already410Live: false,
     evidence:
       "Only cancelUserSubscription (useUserService) callers are UserTableRow + UsersManagement (V1). adminSectionElements.users wires UsersV2, not UsersManagement; UsersV2 does not use cancelUserSubscription. Unreachable.",
   },
@@ -324,7 +357,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 upload validator.",
     v2Replacement: "v2-admin-upload-resource-file",
     ...R("validate-file-upload"),
-    already410Live: false,
     evidence:
       "Only importer is src/pages/admin/components/prompts/components/SecureImageUploadField.tsx (V1 prompts admin). No adminSectionElements route wires that component (publishing uses ResourcePublisher, not V1 prompts). Unreachable.",
   },
@@ -337,7 +369,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 PayPal client-id exposure.",
     v2Replacement: null,
     ...R("get-paypal-client-id"),
-    already410Live: false,
     evidence: "No active src caller; PayPal retired in V2.",
   },
   {
@@ -349,7 +380,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 PayPal capture.",
     v2Replacement: "v2-upayments-checkout",
     ...R("process-paypal-payment"),
-    already410Live: false,
     evidence: "Registry-only reference; PayPal retired in V2.",
   },
   {
@@ -361,7 +391,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 PayPal verify.",
     v2Replacement: "v2-upayments-status",
     ...R("verify-paypal-payment"),
-    already410Live: false,
     evidence: "Registry-only reference.",
   },
   {
@@ -373,7 +402,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 payment cleanup (public, caller-supplied userId).",
     v2Replacement: null,
     ...R("recover-orphaned-payments"),
-    already410Live: false,
     evidence:
       "Registry-only ref in src. CRITICAL: live logs (24h) show repeated calls; current handler is unauthenticated, accepts caller-supplied userId, and uses service_role on user_subscriptions. Confirmed exposure; top-priority retirement even if calls are QA-origin.",
   },
@@ -402,7 +430,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 admin order lookup.",
     v2Replacement: null,
     ...R("get-transaction-by-order"),
-    already410Live: false,
     evidence:
       "Only importer is PurchaseHistoryManagement, which is NOT registered in adminSectionElements. V2 orders surface is OrdersV2Page/PaymentEventsPage. Unreachable. (Live handler calls shared verifyAdmin(req) before any body processing; that guard is not the retirement rationale — reachability is.)",
   },
@@ -415,11 +442,11 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "Self-service account deletion.",
     v2Replacement: null,
     classification: "required_v2",
-    disposition: "harden",
+    disposition: "keep",
     recommendedRetirementAppliedLive: false,
     already410Live: false,
     evidence:
-      "Reachable from /account. verify_jwt=false but validates Bearer token in-handler; consider flipping platform verify_jwt.",
+      "Dormant self-service helper. Source validates the bearer with auth.getUser, binds delete_user_account to user.id, and requires an exact confirmation-email match. Not currently surfaced by the V2 account page.",
   },
   {
     name: "send-email",
@@ -449,7 +476,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 admin transaction listing.",
     v2Replacement: null,
     ...R("get-admin-transactions"),
-    already410Live: false,
     evidence:
       "usePurchaseHistory only imported by PurchaseHistoryManagement, which is NOT wired into adminSectionElements. Live handler guards with shared verifyAdmin(req) prior to response, but no reachable UI. Unreachable.",
   },
@@ -490,7 +516,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 PayPal auto-capture.",
     v2Replacement: null,
     ...R("auto-capture-paypal"),
-    already410Live: false,
     evidence: "Registry only.",
   },
   {
@@ -502,7 +527,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 payment cleanup cron.",
     v2Replacement: null,
     ...R("scheduled-payment-cleanup"),
-    already410Live: false,
     evidence:
       "No pg_cron entry (only daily-security-cleanup runs). Registry-only src reference.",
   },
@@ -515,9 +539,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "Runtime/environment introspection.",
     v2Replacement: null,
     ...R("debug-environment"),
-    already410Live: false,
     evidence:
-      "verify_jwt=false, no request auth, exposes env/config. Live logs show version 318 returned 410, current version 320 is the unsafe diagnostic implementation — proving a later source/deploy sync resurrected the function. Retirement MUST be source-first, deploy-verified, and post-deploy source/hash/state confirmed.",
+      "Previously exposed unauthenticated environment/config diagnostics. Supabase live version 326 was fetched on 2026-07-29 and verified as the minimal endpoint_retired HTTP 410 stub; future syncs must preserve source-first and post-deploy source/hash verification.",
   },
   {
     name: "resend-confirmation-alternative",
@@ -528,7 +551,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "Alternative signup confirmation resender.",
     v2Replacement: "supabase.auth.resend",
     ...R("resend-confirmation-alternative"),
-    already410Live: false,
     evidence:
       "Zero references outside supabase/config.toml and this inventory. Supabase Auth owns confirmation flows. Unreachable.",
   },
@@ -569,10 +591,11 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "AI: prompt enhancement.",
     v2Replacement: null,
     classification: "required_v2",
-    disposition: "harden",
+    disposition: "keep",
     recommendedRetirementAppliedLive: false,
     already410Live: false,
-    evidence: "One active caller. verify_jwt=false; ensure bearer check.",
+    evidence:
+      "Legacy component caller is outside the active route graph. Source validates the bearer with auth.getUser and requires an admin/prompter/jadmin role before OpenAI work.",
   },
   {
     name: "send-email-confirmation-reminder",
@@ -597,7 +620,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 purchase confirmation.",
     v2Replacement: "v2ReceiptDelivery (hardcoded HTML)",
     ...R("send-purchase-confirmation"),
-    already410Live: false,
     evidence: "Registry only; V2 uses inline receipts.",
   },
   {
@@ -609,7 +631,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "Admin marketing: users without active plans.",
     v2Replacement: null,
     ...R("get-users-without-plans"),
-    already410Live: false,
     evidence:
       "Hook only used by src/pages/admin/components/users/components/MarketingEmailsPanel.tsx; MarketingEmailsPanel only rendered by MarketingPage.tsx; MarketingPage is NOT registered in adminSectionElements. V2 dropped plan reminders. Unreachable.",
   },
@@ -622,7 +643,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "Admin bulk plan reminders.",
     v2Replacement: null,
     ...R("send-bulk-plan-reminders"),
-    already410Live: false,
     evidence:
       "useMarketingEmails only used by MarketingEmailsPanel; MarketingPage unwired. Unreachable.",
   },
@@ -635,7 +655,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "Admin single plan reminder.",
     v2Replacement: null,
     ...R("send-plan-reminder"),
-    already410Live: false,
     evidence: "Same chain as bulk variant; MarketingPage unwired. Unreachable.",
   },
   {
@@ -650,23 +669,20 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "Admin magic-link issuance (used by plan reminders).",
     v2Replacement: null,
     ...R("generate-magic-link"),
-    already410Live: false,
     evidence:
-      "Only invoked internally by send-plan-reminder/send-bulk-plan-reminders, both unreachable. Not called by magic-login (that reads its own token). Unreachable.",
+      "Only invoked internally by send-plan-reminder/send-bulk-plan-reminders, both unreachable. V2 uses Supabase Auth signInWithOtp and the legacy magic-login exchange is separately retired. Unreachable.",
   },
   {
     name: "magic-login",
     verifyJwt: false,
-    authMechanism: "captcha_or_rate_limit",
-    callers: ["src/config/routes.ts", "src/pages/MagicLoginPage.tsx"],
-    outbound: ["auth.admin"],
-    purpose: "Magic-link login endpoint.",
-    v2Replacement: null,
-    classification: "required_shared_account_auth",
-    disposition: "harden",
-    recommendedRetirementAppliedLive: false,
-    already410Live: false,
-    evidence: "Route active; verify_jwt=false intentional (pre-auth).",
+    authMechanism: "none",
+    callers: [],
+    outbound: [],
+    purpose: "Legacy custom magic-token exchange.",
+    v2Replacement: "supabase.auth",
+    ...P("magic-login"),
+    evidence:
+      "V2 login and resend flows use supabase.auth.signInWithOtp. The compatibility /auth/magic-login route now redirects safely to /login and never invokes this function. Source is a 410 stub; live deployment remains pending.",
   },
   {
     name: "get-user-insights",
@@ -680,7 +696,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "Admin user insights (used by plan reminders).",
     v2Replacement: null,
     ...R("get-user-insights"),
-    already410Live: false,
     evidence:
       "Only internal callers are plan-reminder functions, both unreachable. No src caller. Unreachable.",
   },
@@ -707,10 +722,11 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "AI: GPT-5 metaprompt.",
     v2Replacement: null,
     classification: "required_v2",
-    disposition: "harden",
+    disposition: "keep",
     recommendedRetirementAppliedLive: false,
     already410Live: false,
-    evidence: "Active caller; check verify_jwt intent.",
+    evidence:
+      "Legacy component is outside the active route graph. Source rejects non-POST requests, validates the bearer with auth.getUser, and requires an admin/prompter/jadmin role before OpenAI work.",
   },
   {
     name: "ai-json-spec",
@@ -721,10 +737,11 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "AI: JSON spec generator.",
     v2Replacement: null,
     classification: "required_v2",
-    disposition: "harden",
+    disposition: "keep",
     recommendedRetirementAppliedLive: false,
     already410Live: false,
-    evidence: "Active caller; check verify_jwt intent.",
+    evidence:
+      "Legacy component is outside the active route graph. Source rejects non-POST requests, validates the bearer with auth.getUser, and requires an admin/prompter/jadmin role before OpenAI work.",
   },
   {
     name: "translate-prompt",
@@ -752,10 +769,11 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "AI: generic translation.",
     v2Replacement: null,
     classification: "required_v2",
-    disposition: "harden",
+    disposition: "keep",
     recommendedRetirementAppliedLive: false,
     already410Live: false,
-    evidence: "Two callers; verify_jwt=false — enforce bearer check.",
+    evidence:
+      "Legacy callers are outside the active route graph. Source rejects non-POST requests, validates the bearer with auth.getUser, and requires can_manage_prompts before OpenAI work.",
   },
   {
     name: "auto-generate-prompt",
@@ -766,7 +784,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "AI: prompt auto-generation.",
     v2Replacement: "ai-studio-chat",
     ...R("auto-generate-prompt"),
-    already410Live: false,
     evidence:
       "No source caller outside test fixtures. V2 prompt generation uses ai-studio-chat/ai-json-spec. Unreachable.",
   },
@@ -793,7 +810,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "Purpose-built V2 admin user management (unused).",
     v2Replacement: null,
     ...R("admin-users-v2"),
-    already410Live: false,
     evidence:
       "Zero src callers. UsersV2 uses useUserService (get-all-users, admin-bulk-confirm-users, resend-payment-email), not admin-users-v2. Slug name suggests intended V2 replacement but was never wired. Unreachable.",
   },
@@ -851,7 +867,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 UPayments processor.",
     v2Replacement: "v2-upayments-checkout",
     ...R("process-upayments-payment"),
-    already410Live: false,
     evidence: "Registry only.",
   },
   {
@@ -863,7 +878,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 UPayments webhook.",
     v2Replacement: "v2-upayments-webhook",
     ...R("upayments-webhook"),
-    already410Live: false,
     evidence: "Registry only; provider now targets v2-upayments-webhook.",
   },
   {
@@ -945,16 +959,17 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
   {
     name: "mcp",
     verifyJwt: false,
-    authMechanism: "service_secret",
+    authMechanism: "platform_jwt",
     callers: ["src/lib/v2/admin/integrationsSettings.ts"],
     outbound: [],
     purpose: "Model Context Protocol endpoint.",
     v2Replacement: null,
     classification: "required_v2",
-    disposition: "harden",
+    disposition: "keep",
     recommendedRetirementAppliedLive: false,
     already410Live: false,
-    evidence: "One caller; validate secret guard.",
+    evidence:
+      "Generated @lovable.dev/mcp-js handler declares Supabase OAuth issuer auth with authenticated audience; tools also require ctx.isAuthenticated and query through the caller bearer token.",
   },
   {
     name: "resource-download",
@@ -983,7 +998,6 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     purpose: "V1 admin package upload (migrated to v2-admin-upload-resource-file).",
     v2Replacement: "v2-admin-upload-resource-file",
     ...R("admin-package-upload"),
-    already410Live: false,
     evidence:
       "PackageUploader.tsx now invokes v2-admin-upload-resource-file exclusively (see line 154). Zero remaining src callers of admin-package-upload; safe to retire in source. Live deployment unchanged.",
   },
@@ -1202,7 +1216,7 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
   },
 ] as const;
 
-/** Bounded retirement recommendation (retire_to_410, not yet applied). */
+/** Bounded retirement set (retire_to_410, verified live on 2026-07-29). */
 export const RECOMMENDED_RETIREMENTS: readonly string[] = EDGE_FUNCTION_AUDIT
   .filter((e) => e.disposition === "retire_to_410")
   .map((e) => e.name);

@@ -73,8 +73,10 @@ export default function JsonResourceImporter() {
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
-    } catch (e: any) {
-      setParseError(`Invalid JSON: ${e?.message ?? "parse error"}`);
+    } catch (error: unknown) {
+      setParseError(
+        `Invalid JSON: ${error instanceof Error ? error.message : "parse error"}`,
+      );
       setRows([]);
       return;
     }
@@ -91,8 +93,12 @@ export default function JsonResourceImporter() {
     try {
       const text = await file.text();
       setRaw(text);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Failed to read file", description: e?.message ?? "unknown" });
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Failed to read file",
+        description: error instanceof Error ? error.message : "unknown",
+      });
     }
   };
 
@@ -107,13 +113,30 @@ export default function JsonResourceImporter() {
     for (const row of validRows) {
       try {
         const payload = buildDraftPayload(row.draft!);
-        const { data, error } = await (supabase as any).rpc("save_admin_resource_draft", { payload });
+        const { data, error } = await supabase.rpc("save_admin_resource_draft", {
+          payload,
+        });
         if (error) throw error;
-        if (!(data as any)?.ok) throw new Error("Save failed");
-        out.push({ index: row.index, title: row.rawTitle, status: "ok", message: (data as any)?.slug });
-      } catch (e: any) {
-        logger.error("Draft save failed", { index: row.index, error: e?.message ?? String(e) });
-        out.push({ index: row.index, title: row.rawTitle, status: "error", message: e?.message ?? "unknown" });
+        const result =
+          data && typeof data === "object" && !Array.isArray(data)
+            ? (data as Record<string, unknown>)
+            : {};
+        if (result.ok !== true) throw new Error("Save failed");
+        out.push({
+          index: row.index,
+          title: row.rawTitle,
+          status: "ok",
+          message: typeof result.slug === "string" ? result.slug : undefined,
+        });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "unknown";
+        logger.error("Draft save failed", { index: row.index, error: message });
+        out.push({
+          index: row.index,
+          title: row.rawTitle,
+          status: "error",
+          message,
+        });
       }
     }
     setImporting(false);

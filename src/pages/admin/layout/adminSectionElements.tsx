@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- this file is the intentional lazy route-element registry. */
 import { Suspense, lazy } from "react";
 import { AdminSectionSkeleton } from "./AdminSectionSkeleton";
 import { EmptyRouteState } from "../sections/common/EmptyRouteState";

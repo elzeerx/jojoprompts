@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- SEO helpers are deterministic metadata contracts shared by tests and the component. */
 import { Helmet } from "react-helmet-async";
 import { isLaunchLocked, isPreviewHost } from "@/config/siteMode";
 

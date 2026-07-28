@@ -63,7 +63,7 @@ interface OverviewData {
 }
 
 async function fetchOverview(periodDays: number): Promise<OverviewData> {
-  const { data, error } = await (supabase as any).rpc("get_admin_v2_overview", {
+  const { data, error } = await supabase.rpc("get_admin_v2_overview", {
     p_period_days: periodDays,
   });
   if (error) throw error;
@@ -185,7 +185,8 @@ export default function OverviewV2() {
         <Card>
           <CardContent className="flex items-center justify-between gap-3 p-4 text-sm">
             <span>
-              Failed to load overview: {(error as any)?.message ?? "unknown error"}
+              Failed to load overview:{" "}
+              {error instanceof Error ? error.message : "unknown error"}
             </span>
             <Button size="sm" variant="outline" onClick={() => refetch()}>
               Retry

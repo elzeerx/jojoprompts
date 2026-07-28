@@ -126,9 +126,11 @@ export function ImagePreviewStream({ prompt, draftId, initialThumbnailPath, onSa
       if (!sawCompleted) {
         toast.warning("Image stream ended without a completion event");
       }
-    } catch (err: any) {
-      if (err?.name !== "AbortError") {
-        toast.error("Image generation error", { description: err?.message });
+    } catch (err: unknown) {
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        toast.error("Image generation error", {
+          description: err instanceof Error ? err.message : "Please try again.",
+        });
       }
     } finally {
       setGenerating(false);

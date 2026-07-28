@@ -48,8 +48,13 @@ export function MonitoringAlertsPanel() {
         .order("created_at", { ascending: false })
         .limit(20);
       if (qErr) throw qErr;
-      const mapped: AlertRow[] = (data ?? []).map((r: any) => {
-        const details = (r.details ?? {}) as Record<string, unknown>;
+      const mapped: AlertRow[] = (data ?? []).map((r) => {
+        const details =
+          r.details &&
+          typeof r.details === "object" &&
+          !Array.isArray(r.details)
+            ? (r.details as Record<string, unknown>)
+            : {};
         const level: AlertLevel =
           r.action === "email_delivery_critical_failure"
             ? "critical"

@@ -5,14 +5,18 @@ import {
   EDGE_FUNCTION_AUDIT,
   EDGE_FUNCTION_AUDIT_DATE,
   ALREADY_410_SLUGS,
+  PREEXISTING_410_SLUGS,
   RECOMMENDED_RETIREMENTS,
   RECOMMENDED_HARDENING,
   REQUIRES_INVESTIGATION,
+  LIVE_RETIREMENT_SLUGS,
+  PENDING_RETIREMENT_SLUGS,
   RETIREMENT_SLUGS,
 } from "./edgeFunctionRetirementInventory";
 
 /**
- * Live Supabase inventory snapshot (2026-07-28). T=verify_jwt true, F=false.
+ * Live Supabase inventory snapshot refreshed 2026-07-29.
+ * T=verify_jwt true, F=false.
  */
 const LIVE_VERIFY_JWT: Record<string, boolean> = {
   "generate-metadata": true,
@@ -138,41 +142,62 @@ describe("Edge Function retirement inventory", () => {
     }
   });
 
-  it("every ALREADY_410_SLUGS entry is represented and marked already410Live", () => {
+  it("every live 410 entry is represented and marked already410Live", () => {
     for (const slug of ALREADY_410_SLUGS) {
       const entry = EDGE_FUNCTION_AUDIT.find((e) => e.name === slug);
       expect(Boolean(entry)).toBe(true);
-      expect(entry!.classification).toBe("already_410");
       expect(entry!.already410Live).toBe(true);
+      if (
+        PREEXISTING_410_SLUGS.includes(
+          slug as (typeof PREEXISTING_410_SLUGS)[number],
+        )
+      ) {
+        expect(entry!.classification).toBe("already_410");
+      } else {
+        expect(entry!.classification).toBe("legacy_unreachable");
+      }
     }
   });
 
-  it("debug-environment is retire_to_410 with concrete evidence", () => {
+  it("debug-environment is a verified live retirement", () => {
     const debug = EDGE_FUNCTION_AUDIT.find((e) => e.name === "debug-environment")!;
     expect(debug.disposition).toBe("retire_to_410");
-    expect(debug.evidence).toMatch(/318|320|source-first|deploy/i);
+    expect(debug.recommendedRetirementAppliedLive).toBe(true);
+    expect(debug.already410Live).toBe(true);
+    expect(debug.evidence).toMatch(/version 326|verified|410/i);
   });
 
-  it("recommendedRetirementAppliedLive is false for every entry", () => {
+  it("only the 24 verified retirements are marked applied live", () => {
     for (const e of EDGE_FUNCTION_AUDIT) {
-      expect(e.recommendedRetirementAppliedLive).toBe(false);
+      expect(e.recommendedRetirementAppliedLive).toBe(
+        LIVE_RETIREMENT_SLUGS.includes(
+          e.name as (typeof LIVE_RETIREMENT_SLUGS)[number],
+        ),
+      );
     }
   });
 
-  it("already410Live is only true for the ALREADY_410_SLUGS set", () => {
+  it("already410Live is exactly the 10 pre-existing plus 24 verified retirements", () => {
     const trueSet = new Set(
       EDGE_FUNCTION_AUDIT.filter((e) => e.already410Live).map((e) => e.name),
     );
     expect(trueSet).toEqual(new Set(ALREADY_410_SLUGS));
+    expect(PREEXISTING_410_SLUGS.length).toBe(10);
+    expect(ALREADY_410_SLUGS.length).toBe(34);
   });
 
-  it("audit date is 2026-07-28", () => {
-    expect(EDGE_FUNCTION_AUDIT_DATE).toBe("2026-07-28");
+  it("audit date reflects the live 2026-07-29 verification", () => {
+    expect(EDGE_FUNCTION_AUDIT_DATE).toBe("2026-07-29");
   });
 
-  it("recommended retirement set is exactly the 24 route-graph-resolved slugs", () => {
+  it("recommended retirement set is 24 live plus one source-only retirement", () => {
     expect(new Set(RECOMMENDED_RETIREMENTS)).toEqual(new Set(RETIREMENT_SLUGS));
-    expect(RECOMMENDED_RETIREMENTS.length).toBe(24);
+    expect(LIVE_RETIREMENT_SLUGS.length).toBe(24);
+    expect(PENDING_RETIREMENT_SLUGS).toEqual(["magic-login"]);
+    expect(RECOMMENDED_RETIREMENTS.length).toBe(25);
+    const magic = EDGE_FUNCTION_AUDIT.find((e) => e.name === "magic-login")!;
+    expect(magic.recommendedRetirementAppliedLive).toBe(false);
+    expect(magic.already410Live).toBe(false);
   });
 
   it("investigation set is empty after the route-graph pass", () => {
@@ -185,7 +210,6 @@ describe("Edge Function retirement inventory", () => {
       "delete-my-account",
       "send-email",
       "smart-unsubscribe",
-      "magic-login",
       "submit-contact",
       "resource-download",
       "v2-upayments-checkout",
@@ -224,21 +248,27 @@ describe("Edge Function retirement inventory", () => {
     expect(wh.callers.some((c) => c.includes("SimpleUpayButton"))).toBe(false);
   });
 
-  it("hardening set count matches doc-declared 8", () => {
-    expect(RECOMMENDED_HARDENING.length).toBeGreaterThanOrEqual(8);
+  it("all previously-open hardening entries are resolved", () => {
+    expect(RECOMMENDED_HARDENING).toEqual([]);
+    const byName = new Map(EDGE_FUNCTION_AUDIT.map((e) => [e.name, e]));
+    expect(byName.get("mcp")!.authMechanism).toBe("platform_jwt");
+    expect(byName.get("delete-my-account")!.authMechanism).toBe("custom_user_jwt");
   });
 
-  it("docs report exact 23 retirements and 0 investigate remaining", () => {
-    expect(DOC).toMatch(/24 slugs/);
+  it("docs report 24 retirements live, one pending, and 0 investigate remaining", () => {
+    expect(DOC).toMatch(/24/);
+    expect(DOC).toMatch(/verified live|live verification/i);
+    expect(DOC).toMatch(/magic-login/);
+    expect(DOC).toMatch(/source-only|pending/i);
     expect(/\b9 slugs\b/.test(DOC)).toBe(false);
     expect(/unknown\s*\/\s*investigate:\s*10/i.test(DOC)).toBe(false);
     expect(/three PRs|3 PRs/i.test(DOC)).toBe(false);
     expect(DOC.includes("#release")).toBe(false);
   });
 
-  it("docs mention debug-environment version 318/320 source/deploy sync warning", () => {
-    expect(DOC).toMatch(/318/);
-    expect(DOC).toMatch(/320/);
+  it("docs mention debug-environment live version 326 verification", () => {
+    expect(DOC).toMatch(/version \*\*326\*\*|version 326/i);
+    expect(DOC).toMatch(/debug-environment/);
   });
 
   it("docs flag recover-orphaned-payments as confirmed critical exposure", () => {

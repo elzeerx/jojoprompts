@@ -1,8 +1,9 @@
 # Edge Function Reachability & Retirement Audit — 2026-07-28
 
 Project: JojoPrompts V2 (Supabase `fxkqgjakbyrxkmevkglv`)
-Scope: source-only audit of all 68 live Edge Functions. No live deploys,
-no migrations, no publish. Companion inventory:
+Scope: reachability audit of all 68 live Edge Functions, refreshed with a
+read-only deployed-source verification on **2026-07-29**. No migration or
+website publish was performed during the refresh. Companion inventory:
 `src/lib/v2/admin/edgeFunctionRetirementInventory.ts`.
 
 ## Executive summary
@@ -12,41 +13,33 @@ no migrations, no publish. Companion inventory:
   `_shared`, `shared`). The live-only slug
   `v2-qa-one-time-package-upload` has no repo source; live already
   returns HTTP 410.
-- **Already 410 (source or live) — `already410Live: true`:** 10 slugs —
-  `check-email-exists`, `paypal-webhook`, `resend-confirmation-email`,
-  `send-email-confirmation-reminder`, `send-password-reset`,
-  `send-signup-confirmation`, `track-email-engagement`,
-  `validate-signup`, `verify-password-reset`,
-  `v2-qa-one-time-package-upload`. These are the pre-existing
-  retirement state, NOT unapplied recommendations.
-- **Bounded retirement set (recommended `retire_to_410`, NOT applied
-  by this audit — `recommendedRetirementAppliedLive: false`):**
-  **24 slugs** (11 obsolete payment/debug + 12 resolved via full
-  route-graph trace + `admin-package-upload`, which the prior pass
-  migrated away from on the client and now has zero src callers).
-  See §Retirement set.
-- **Source-only stub application (this pass):** **17 of 24** slugs
-  have had their `supabase/functions/<slug>/index.ts` replaced with a
-  minimal reversible HTTP 410 retirement stub. **7 slugs** remain
-  live in source because active `supabase.functions.invoke` callers
-  still exist and must be neutralised first: `create-subscription`,
-  `cancel-subscription`, `validate-file-upload`,
-  `get-admin-transactions`, `get-users-without-plans`,
-  `send-plan-reminder`, `send-bulk-plan-reminders`.
-  **These stubs are SOURCE ONLY. Nothing has been deployed, deleted,
-  or published; live Supabase behavior is unchanged.**
-- **Hardening set:** 8 slugs — active callers but `verify_jwt=false`
-  and/or in-code auth that should be tightened.
+- **Pre-existing HTTP 410 functions:** 10 slugs.
+- **Verified live retirement set:** all **24** previously approved slugs are
+  deployed as the minimal reversible HTTP 410 stub. Their deployed source
+  was fetched from Supabase and checked for `endpoint_retired`, status 410,
+  no environment access, no database client, and no outbound I/O.
+- **Source-only retirement pending deployment:** `magic-login`. V2 uses
+  Supabase Auth's built-in `signInWithOtp`; the compatibility route now
+  redirects safely to `/login` and no longer calls the custom service-role
+  token exchange.
+- **Total verified live HTTP 410 functions:** **34** (10 pre-existing +
+  24 route-graph retirements).
+- **Highest-risk legacy exposures are closed:** deployed versions of
+  `debug-environment`, `recover-orphaned-payments`, the V1 PayPal surface,
+  and the V1 UPayments surface are verified retirement stubs.
+- **Hardening set:** **0 unresolved slugs.** The five guarded AI helpers,
+  `delete-my-account`, and the generated MCP OAuth handler have explicit
+  source contracts. The unsafe duplicate `magic-login` path is retired in
+  source rather than preserved.
 - **Unknown / investigate remaining:** **0**. All 13 previously
   deferred slugs were resolved this pass.
 - **Retirement-application semantics:** `recommendedRetirementAppliedLive`
-  and `already410Live` are separate fields. The former is always
-  `false` in this pass; the latter records the pre-existing 410 state
-  of the 10 stub slugs.
+  is true for the 24 applied recommendations and false for the pending
+  `magic-login` source stub; `already410Live` remains true for the 34
+  functions whose deployed source is currently verified 410.
 
-Rollback principle: any source-only 410 stub is restored by reverting
-the stub commit. Live deployment is untouched and remains the prior
-function version until an explicit deploy happens.
+Rollback principle: revert the relevant source stub and redeploy the prior
+handler. No data migration is involved in a function retirement.
 
 
 
@@ -79,7 +72,7 @@ Full typed table lives in
 | Function | verify_jwt | Auth mechanism | Classification | Disposition |
 |---|---|---|---|---|
 | generate-metadata | T | platform_jwt | required_v2 | keep |
-| suggest-prompt | F | verifyAdmin_shared | unknown_review | harden |
+| suggest-prompt | F | verifyAdmin_shared | required_v2 | keep |
 | get-all-users | T | verifyAdmin_shared | required_shared_account_auth | keep |
 | get-image | F | published_resource_allowlist | required_v2 | keep |
 | create-subscription | F | none | legacy_unreachable | retire_to_410 |
@@ -91,7 +84,7 @@ Full typed table lives in
 | recover-orphaned-payments | F | none | legacy_unreachable | retire_to_410 |
 | paypal-webhook | F | none | already_410 | keep |
 | get-transaction-by-order | F | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
-| delete-my-account | F | custom_user_jwt | required_v2 | harden |
+| delete-my-account | F | custom_user_jwt | required_v2 | keep |
 | send-email | F | service_secret | required_shared_account_auth | keep |
 | get-admin-transactions | F | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
 | generate-use-case | T | platform_jwt | required_v2 | keep |
@@ -102,20 +95,20 @@ Full typed table lives in
 | resend-confirmation-alternative | T | platform_jwt | legacy_unreachable | retire_to_410 |
 | send-signup-confirmation | F | none | already_410 | keep |
 | track-email-engagement | F | none | already_410 | keep |
-| enhance-prompt | F | verifyAdmin_shared | required_v2 | harden |
+| enhance-prompt | F | verifyAdmin_shared | required_v2 | keep |
 | send-email-confirmation-reminder | F | none | already_410 | keep |
 | send-purchase-confirmation | F | none | legacy_unreachable | retire_to_410 |
 | get-users-without-plans | T | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
 | send-bulk-plan-reminders | T | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
 | send-plan-reminder | T | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
 | generate-magic-link | F | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
-| magic-login | F | captcha_or_rate_limit | required_shared_account_auth | harden |
+| magic-login | F | none | legacy_unreachable | retire_to_410 |
 | get-user-insights | F | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
 | smart-unsubscribe | F | captcha_or_rate_limit | required_v2 | keep |
-| ai-gpt5-metaprompt | F | platform_jwt | required_v2 | harden |
-| ai-json-spec | F | platform_jwt | required_v2 | harden |
+| ai-gpt5-metaprompt | F | platform_jwt | required_v2 | keep |
+| ai-json-spec | F | platform_jwt | required_v2 | keep |
 | translate-prompt | T | verifyAdmin_shared | required_v2 | keep |
-| translate-text | F | verifyAdmin_shared | required_v2 | harden |
+| translate-text | F | verifyAdmin_shared | required_v2 | keep |
 | auto-generate-prompt | F | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
 | validate-signup | F | none | already_410 | keep |
 | admin-users-v2 | T | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
@@ -129,9 +122,9 @@ Full typed table lives in
 | verify-password-reset | F | none | already_410 | keep |
 | ai-studio-chat | T | verifyAdmin_shared | required_v2 | keep |
 | ai-studio-image | T | verifyAdmin_shared | required_v2 | keep |
-| mcp | F | service_secret | required_v2 | harden |
+| mcp | F | platform_jwt | required_v2 | keep |
 | resource-download | F | custom_user_jwt | required_v2 | keep |
-| admin-package-upload | F | verifyAdmin_shared | required_shared_account_auth | harden |
+| admin-package-upload | F | verifyAdmin_shared | legacy_unreachable | retire_to_410 |
 | v2-upayments-checkout | F | custom_user_jwt | required_v2 | keep |
 | v2-upayments-refund | F | verifyAdmin_shared | required_v2 | keep |
 | v2-upayments-status | F | custom_user_jwt | required_v2 | keep |
@@ -194,51 +187,40 @@ For each slug we traced component/hook → importing parent → `adminSectionEle
     `admin-bulk-confirm-users`, `resend-payment-email`), NOT
     `admin-users-v2`. Slug name suggested intent that was never wired.
     → **retire_to_410**
-13. **admin-package-upload** → still imported by
-    `sections/publishing/PackageUploader.tsx` (`:133`, `:160`) via
-    `ResourcePublisher`, which IS wired into
-    `adminSectionElements.publishingNew/Edit/NewVersion`. Active
-    importer + reachable route ⇒ do NOT retire yet. → **harden**;
-    migrate `PackageUploader` to `v2-admin-upload-resource-file` in a
-    later pass, then retire.
+13. **admin-package-upload** → `PackageUploader` was migrated to
+    `v2-admin-upload-resource-file`; the old slug now has zero active
+    callers and is a verified live 410 stub. → **retired**
 
-## Confirmed security findings
+## Confirmed findings and current disposition
 
 1. **`debug-environment` — unauthenticated environment leak, and a
-   source/deploy sync regression.** `verify_jwt=false`, zero request
-   auth, returns runtime/config values. Live logs show version **318**
-   returned 410, but the currently deployed version **320** is the
-   unsafe diagnostic implementation. This proves that a later
-   source/deploy sync can resurrect a retired function. Every
-   retirement MUST be source-first, then live-deployed, with a
-   post-deploy source/hash/state verification.
-2. **`recover-orphaned-payments` — CRITICAL confirmed exposure.** Live
-   logs in the last 24h show repeated calls. Current handler is
-   public, accepts caller-supplied `userId`, uses `service_role`, and
-   creates/updates `user_subscriptions`. Even if the traffic is
-   QA/legacy client origin, the surface is unauthenticated
-   service-role write access to another user's subscription state.
-   Top-priority retirement.
+   source/deploy sync regression.** The unsafe diagnostic implementation
+   was a confirmed exposure. Deployed version **326** was fetched on
+   2026-07-29 and is now the audited HTTP 410 stub. Post-deploy source/hash
+   verification remains mandatory so a later broad sync cannot resurrect it.
+2. **`recover-orphaned-payments` — CRITICAL legacy exposure, resolved.**
+   The prior handler accepted caller-supplied user identity and wrote through
+   `service_role`. Deployed version **448** is now the verified HTTP 410 stub.
 3. **V1 PayPal surface (7 additional functions) — obsolete +
-   unauthenticated.** `get-paypal-client-id`, `process-paypal-payment`,
+   unauthenticated, resolved.** `get-paypal-client-id`, `process-paypal-payment`,
    `verify-paypal-payment`, `auto-capture-paypal`,
    `get-transaction-by-order`, `send-purchase-confirmation`,
-   `scheduled-payment-cleanup`. All `verify_jwt=false`, no active
-   caller beyond `src/lib/v2/legacyEndpoints.ts`.
-4. **V1 UPayments (2 functions).** `process-upayments-payment`,
-   `upayments-webhook`. Registry-only refs; replaced by
+   `scheduled-payment-cleanup` are verified live 410 stubs.
+4. **V1 UPayments (2 functions), resolved.** `process-upayments-payment`
+   and `upayments-webhook` are verified live 410 stubs and are replaced by
    `v2-upayments-checkout` / `v2-upayments-webhook`.
 5. **`get-admin-transactions`.** Live handler calls shared
    `verifyAdmin(req)` before any response/body processing — the guard
    is fine. Retiring solely because no active admin route reaches it.
-6. **Hardening set (8 with `verify_jwt=false` or in-code auth):**
+6. **Previously-open hardening set — resolved in source.**
    `suggest-prompt`, `enhance-prompt`, `ai-gpt5-metaprompt`,
-   `ai-json-spec`, `translate-text`, `mcp`, `magic-login`,
-   `delete-my-account`. Each has an active caller but should either
-   (a) flip `verify_jwt=true` where the caller is authenticated, or
-   (b) verify the in-code bearer/captcha/secret check is complete.
-   `admin-package-upload` is an additional harden-then-migrate
-   candidate because its V2 replacement exists.
+   `ai-json-spec`, and `translate-text` authenticate the bearer and
+   authorize a publishing role before any OpenAI request.
+   `delete-my-account` binds deletion to the authenticated `user.id` and
+   exact confirmation email. The generated `mcp` handler declares Supabase
+   OAuth with the authenticated audience and its tool scopes queries to the
+   caller context. The remaining duplicate custom `magic-login` exchange
+   was replaced by a source-only 410 stub; V2 already uses Supabase Auth.
 
 ## Auth-mechanism corrections vs prior pass
 
@@ -255,7 +237,7 @@ For each slug we traced component/hook → importing parent → `adminSectionEle
   the UPayments provider hitting the notification URL emitted by
   `v2-upayments-checkout`, not any UI component.
 
-## Bounded retirement set (recommended, NOT applied) — **23 slugs**
+## Bounded retirement set — **24 verified live + 1 source-only**
 
 Group A — 11 obsolete payment / debug surfaces:
 
@@ -286,32 +268,32 @@ route-graph trace:
 21. `get-user-insights`
 22. `auto-generate-prompt`
 23. `admin-users-v2`
+24. `admin-package-upload`
 
-Neither the 10 `already410Live` slugs nor `admin-package-upload` are
-in this set. Total = 11 + 12 = **23 slugs**.
+These are in addition to the 10 pre-existing 410 functions. Total verified
+live 410 functions = **34**.
 
-## Hardening set (keep, tighten auth)
+Pending controlled deployment:
 
-8 slugs: `suggest-prompt`, `enhance-prompt`, `ai-gpt5-metaprompt`,
-`ai-json-spec`, `translate-text`, `mcp`, `magic-login`,
-`delete-my-account`. Plus `admin-package-upload` as a
-harden-then-migrate candidate.
+25. `magic-login` → source-only 410 with replacement
+    `supabase.auth`; the active compatibility page does not invoke it.
+
+## Hardening set
+
+**0 unresolved slugs.** Guard contracts are enforced by
+`src/lib/v2/unsafeAuthHelpers.test.ts`.
 
 ## Unknown / review set
 
 **0 slugs.** All previously-deferred entries resolved.
 
-## Staged retirement order
+## Completed retirement stages
 
-Stage the retirement as separate source commits/deployments (there is
-no PR workflow here) so each is independently rollback-safe. No
-release-channel announcement is required or authorized. Each stage
-partitions the 23 slugs without overlap:
+The retirement was partitioned into rollback-safe stages. The 2026-07-29
+read-only verification confirmed stages 1–5 are live:
 
 1. **Stage 1 — `debug-environment` (1 slug).** Highest severity, zero
-   blast radius. Ship the 410 stub, redeploy, and post-deploy verify
-   both source content and live version so the version 318 → 320
-   regression cannot repeat.
+   blast radius. Live version 326 is verified 410.
 2. **Stage 2 — V1 PayPal / obsolete payment support (8 slugs):**
    `get-paypal-client-id`, `process-paypal-payment`,
    `verify-paypal-payment`, `auto-capture-paypal`,
@@ -329,6 +311,11 @@ partitions the 23 slugs without overlap:
    `send-bulk-plan-reminders`, `send-plan-reminder`,
    `generate-magic-link`, `get-user-insights`,
    `auto-generate-prompt`, `admin-users-v2`.
+5. **Stage 5 — replaced package upload:** `admin-package-upload`.
+6. **Stage 6 — custom magic-token exchange (source-only):**
+   `magic-login`. Deploy the 410 stub with the controlled backend bundle,
+   then fetch and invoke it to verify the live contract. Supabase Auth's
+   built-in magic-link flow remains active and is not affected.
 
 ## Rollback principle
 
@@ -344,8 +331,6 @@ above MUST include, after live deploy:
 
 1. Fetch the deployed function source or hash and confirm it matches
    the intended 410-stub commit.
-2. Curl the live endpoint and confirm HTTP 410 with the expected
-   Retry-After / body.
-3. Re-check inventory (`edgeFunctionRetirementInventory.ts`) to flip
-   `already410Live: true` for the newly retired slug in the following
-   audit pass.
+2. Call the live endpoint and confirm HTTP 410 with the expected JSON body.
+3. Reconcile the live set against `ALREADY_410_SLUGS` and keep
+   `recommendedRetirementAppliedLive` / `already410Live` current.

@@ -66,7 +66,7 @@ export type RouteProtection = "public" | "auth" | "premium" | "role" | "admin";
 
 export interface RouteConfig {
   path: string;
-  component: ComponentType<any>;
+  component: ComponentType;
   protection: RouteProtection;
   requiredRole?: UserRole;
   fallbackRoute?: string;

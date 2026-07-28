@@ -62,7 +62,7 @@ export function useMyOrders() {
     enabled: !authLoading && !!user,
     staleTime: 15_000,
     queryFn: async (): Promise<MyOrderSummary[]> => {
-      const { data, error } = await (supabase as any).rpc("v2_get_my_orders", {
+      const { data, error } = await supabase.rpc("v2_get_my_orders", {
         p_limit: 50,
         p_offset: 0,
       });
@@ -79,7 +79,7 @@ export function useMyOrderDetail(orderId?: string) {
     enabled: !authLoading && !!user && !!orderId,
     staleTime: 10_000,
     queryFn: async (): Promise<MyOrderReceipt> => {
-      const { data, error } = await (supabase as any).rpc("v2_get_my_order_receipt", {
+      const { data, error } = await supabase.rpc("v2_get_my_order_receipt", {
         p_order_id: orderId,
       });
       if (error) throw error;

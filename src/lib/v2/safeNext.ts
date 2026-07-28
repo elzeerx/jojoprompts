@@ -46,12 +46,21 @@ const AUTH_LOOP_EXACT = new Set([
 const DANGEROUS_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 // Any control character (C0 + DEL) OR whitespace inside the value is a
 // smuggling vector (CRLF injection, header/URL splitting) — reject outright.
-const CONTROL_OR_WHITESPACE_RE = /[\u0000-\u001F\u007F\s]/;
+const WHITESPACE_RE = /\s/u;
 // Backslashes anywhere in the value are a Windows-path / URL-normalization
 // smuggling vector (some parsers treat "\" as "/"). Reject.
 const BACKSLASH_RE = /\\/;
 
 const MAX_NESTED_DEPTH = 4;
+
+function containsControlOrWhitespace(value: string): boolean {
+  if (WHITESPACE_RE.test(value)) return true;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code <= 31 || code === 127) return true;
+  }
+  return false;
+}
 
 /**
  * Shallow validity check applied to a single candidate string. Does NOT
@@ -61,7 +70,7 @@ function isShallowSafe(value: string): boolean {
   // Must equal its own trim — no leading/trailing whitespace normalization.
   if (value !== value.trim()) return false;
   if (value.length === 0) return false;
-  if (CONTROL_OR_WHITESPACE_RE.test(value)) return false;
+  if (containsControlOrWhitespace(value)) return false;
   if (BACKSLASH_RE.test(value)) return false;
   // Reject protocol-relative ("//x") and any scheme-bearing input.
   if (value.startsWith("//")) return false;

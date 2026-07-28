@@ -1,5 +1,5 @@
 /**
- * Source-only stub contract for retired Edge Functions.
+ * Source/live stub contract for retired Edge Functions.
  *
  * This test reads each `supabase/functions/<slug>/index.ts` on disk and
  * asserts the stub contract described in the retirement inventory:
@@ -11,11 +11,13 @@
  *   - No forbidden behavior in the source: no imports, no env reads, no
  *     body parsing, no external I/O, no database calls, no secrets, no
  *     logging.
- *   - Only the five documented `STUB_REPLACEMENTS` slugs carry the
+ *   - Only the six documented `STUB_REPLACEMENTS` slugs carry the
  *     optional `replacement` field.
  *
- * These stubs are SOURCE ONLY. They have not been deployed and Supabase
- * runtime behavior is unchanged.
+ * The first 24 source stubs were fetched from the live Supabase project and
+ * verified on 2026-07-29. `magic-login` is source-only until the controlled
+ * deployment pass. This test keeps the in-repo contract deterministic; the
+ * release checklist owns the live re-verification gate.
  */
 import { describe, it, expect } from "bun:test";
 declare const require: (m: string) => any;
@@ -56,15 +58,15 @@ const V2_UNTOUCHED_SAMPLES: readonly string[] = [
 
 const stubPath = (slug: string) => `supabase/functions/${slug}/index.ts`;
 
-describe("Edge Function retirement source stubs (source-only)", () => {
-  it("stubs exactly 24 slugs after route-graph refinement", () => {
-    expect(RETIRED_STUB_SLUGS.length).toBe(24);
+describe("Edge Function retirement source stubs", () => {
+  it("stubs 24 verified-live slugs plus the source-only magic-login retirement", () => {
+    expect(RETIRED_STUB_SLUGS.length).toBe(25);
   });
 
-  it("stubbed set + blockers = full 24-slug retirement recommendation", () => {
+  it("stubbed set + blockers = full 25-slug retirement recommendation", () => {
     const union = new Set([...RETIRED_STUB_SLUGS, ...RETIREMENT_BLOCKERS]);
     expect(union).toEqual(new Set(RETIREMENT_SLUGS));
-    expect(RETIRED_STUB_SLUGS.length + RETIREMENT_BLOCKERS.length).toBe(24);
+    expect(RETIRED_STUB_SLUGS.length + RETIREMENT_BLOCKERS.length).toBe(25);
   });
 
   it("no blockers remain — route-graph proof cleared all seven", () => {
@@ -118,7 +120,7 @@ describe("Edge Function retirement source stubs (source-only)", () => {
     }
   });
 
-  it("only the five documented replacements carry a `replacement` field", () => {
+  it("only the six documented replacements carry a `replacement` field", () => {
     const replacementKeys = new Set(Object.keys(STUB_REPLACEMENTS));
     expect(replacementKeys).toEqual(new Set([
       "process-upayments-payment",
@@ -126,6 +128,7 @@ describe("Edge Function retirement source stubs (source-only)", () => {
       "validate-file-upload",
       "auto-generate-prompt",
       "resend-confirmation-alternative",
+      "magic-login",
     ]));
 
     for (const slug of RETIRED_STUB_SLUGS) {
@@ -162,7 +165,7 @@ describe("Edge Function retirement source stubs (source-only)", () => {
     }
   });
 
-  it("no active src/** file invokes any of the 24 retired slugs", () => {
+  it("no active src/** file invokes any of the 25 retired slugs", () => {
     const { readdirSync, statSync } = require("fs");
     const { join, relative } = require("path");
     const SRC = "src";
@@ -209,4 +212,3 @@ describe("Edge Function retirement source stubs (source-only)", () => {
     }
   });
 });
-

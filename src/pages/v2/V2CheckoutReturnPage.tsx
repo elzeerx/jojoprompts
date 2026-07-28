@@ -28,6 +28,13 @@ type Verdict =
   | { kind: "provider_down" }
   | { kind: "invalid" };
 
+interface PaymentStatusPayload {
+  next_check_after?: unknown;
+  product_ids?: unknown;
+  reason?: unknown;
+  status?: unknown;
+}
+
 /**
  * Parse the server's `next_check_after` ISO timestamp into a wait duration in
  * ms. The server enforces a 5-minute cap; we clamp to [MIN_INTERVAL_MS,
@@ -181,7 +188,8 @@ export default function V2CheckoutReturnPage() {
           return;
         }
 
-        const wait = parseNextCheckMs((data as any)?.next_check_after);
+        const payload = (data ?? {}) as PaymentStatusPayload;
+        const wait = parseNextCheckMs(payload.next_check_after);
         setNextAllowedAt(Date.now() + wait);
 
         if (error) {
@@ -190,9 +198,9 @@ export default function V2CheckoutReturnPage() {
           return;
         }
 
-        const status = (data as any)?.status;
+        const status = payload.status;
         if (status === "paid") {
-          const raw = (data as any)?.product_ids;
+          const raw = payload.product_ids;
           const productIds: string[] = Array.isArray(raw)
             ? raw.filter((x: unknown): x is string => typeof x === "string")
             : [];
