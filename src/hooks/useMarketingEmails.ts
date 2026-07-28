@@ -1,94 +1,61 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('MARKETING_EMAILS');
 
+/**
+ * RETIRED (source-only, 2026-07-28): `send-plan-reminder` and
+ * `send-bulk-plan-reminders` are now HTTP 410 stubs. V2 has no
+ * subscription/plan concept. This hook's only importer,
+ * `MarketingEmailsPanel` -> `MarketingPage`, is NOT referenced by
+ * `src/pages/admin/layout/adminSectionElements.tsx` — the marketing
+ * surface is not wired into Admin V2. The hook is preserved as a
+ * neutralized shim.
+ */
 export function useMarketingEmails() {
   const [sending, setSending] = useState(false);
 
   const sendReminderEmail = async (
     userEmail: string,
-    firstName: string,
-    lastName: string,
-    isIndividual = true
+    _firstName: string,
+    _lastName: string,
+    _isIndividual = true
   ) => {
-    try {
-      setSending(true);
-
-      const { data, error } = await supabase.functions.invoke('send-plan-reminder', {
-        body: {
-          email: userEmail,
-          firstName,
-          lastName,
-          isIndividual
-        }
-      });
-
-      if (error || (data && !data.success)) {
-        throw new Error(error?.message || data?.error || "There was an error sending the reminder email");
-      }
-
-      toast({
-        title: "Email sent successfully",
-        description: `Plan reminder email sent to ${userEmail}`,
-      });
-
-      return { success: true, data };
-    } catch (error: any) {
-      logger.error('Failed to send reminder email', { error: error.message || error, email: userEmail });
-      toast({
-        variant: "destructive",
-        title: "Failed to send email",
-        description: error.message || "There was an error sending the reminder email",
-      });
-      return { success: false, error };
-    } finally {
-      setSending(false);
-    }
+    setSending(true);
+    logger.warn('send-plan-reminder is retired', { email: userEmail });
+    toast({
+      variant: "destructive",
+      title: "Feature unavailable",
+      description: "Plan reminder emails were removed with the V2 one-time payment migration.",
+    });
+    setSending(false);
+    return {
+      success: false as const,
+      error: { message: "endpoint_retired: send-plan-reminder" },
+    };
   };
 
-  const sendBulkReminderEmails = async (users: Array<{
-    email: string;
-    first_name: string;
-    last_name: string;
-  }>) => {
-    try {
-      setSending(true);
-
-      const { data, error } = await supabase.functions.invoke('send-bulk-plan-reminders', {
-        body: {
-          users
-        }
-      });
-
-      if (error || (data && !data.success)) {
-        throw new Error(error?.message || data?.error || "There was an error sending the reminder emails");
-      }
-
-      toast({
-        title: "Bulk emails sent successfully",
-        description: `Plan reminder emails sent to ${users.length} users`,
-      });
-
-      return { success: true, data };
-    } catch (error: any) {
-      logger.error('Failed to send bulk reminder emails', { error: error.message || error, userCount: users.length });
-      toast({
-        variant: "destructive",
-        title: "Failed to send bulk emails",
-        description: error.message || "There was an error sending the reminder emails",
-      });
-      return { success: false, error };
-    } finally {
-      setSending(false);
-    }
+  const sendBulkReminderEmails = async (
+    users: Array<{ email: string; first_name: string; last_name: string }>
+  ) => {
+    setSending(true);
+    logger.warn('send-bulk-plan-reminders is retired', { userCount: users.length });
+    toast({
+      variant: "destructive",
+      title: "Feature unavailable",
+      description: "Bulk plan reminder emails were removed with the V2 one-time payment migration.",
+    });
+    setSending(false);
+    return {
+      success: false as const,
+      error: { message: "endpoint_retired: send-bulk-plan-reminders" },
+    };
   };
 
   return {
     sendReminderEmail,
     sendBulkReminderEmails,
-    sending
+    sending,
   };
 }
