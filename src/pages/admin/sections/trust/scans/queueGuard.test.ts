@@ -4,11 +4,13 @@ import { evaluateQueueGuard } from "./queueGuard";
 const base = {
   providerReady: true,
   hasFiles: true,
+  effectiveStateKnown: true,
   latestScanStatus: null,
   hasPendingAggregate: false,
   hasPendingChild: false,
   pendingChildProbeLoading: false,
 } as const;
+
 
 describe("evaluateQueueGuard", () => {
   it("allows queueing when unscanned and every signal is ready", () => {
