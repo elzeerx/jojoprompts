@@ -1,5 +1,6 @@
-import { RefreshCw, ShieldAlert, Lock, ExternalLink, Sparkles, FileJson } from "lucide-react";
+import { RefreshCw, ShieldAlert, Lock, ExternalLink, Sparkles, FileJson, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -417,11 +418,30 @@ export default function LegacyMigrationPreview() {
     <TooltipProvider>
       {/* Layout direction follows app language; numeric/technical values stay LTR via inner dir="ltr". */}
       <div className="space-y-6" dir={dir}>
+        {/* Breadcrumb */}
+        <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+          <ol className="flex flex-wrap items-center gap-1.5">
+            <li>
+              <Link
+                to="/admin/publishing/imports"
+                className="inline-flex min-h-[44px] items-center rounded-md px-2 py-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ChevronLeft className="me-1 h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+                Imports
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" className="text-foreground">
+              Legacy migration verification
+            </li>
+          </ol>
+        </nav>
+
         {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Legacy access migration preview / معاينة ترحيل الوصول
+              Legacy migration verification / التحقّق من الترحيل القديم
             </h1>
             <p className="text-sm text-muted-foreground">
               Read-only reconciliation. No customer entitlements, credits, or V1 data are changed by opening this page.
@@ -445,6 +465,7 @@ export default function LegacyMigrationPreview() {
             </Button>
           </div>
         </div>
+
 
         {/* Execution status banner */}
         <Card className="border-warning bg-warning/5">

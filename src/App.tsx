@@ -144,6 +144,8 @@ function App() {
                           <Route path="publishing/review" element={adminSectionElements.publishingReview} />
                           <Route path="publishing/versions" element={adminSectionElements.publishingVersions} />
                           <Route path="publishing/imports" element={adminSectionElements.publishingImports} />
+                          <Route path="publishing/imports/legacy" element={adminSectionElements.publishingImportsLegacy} />
+
                           <Route path="publishing/imports/json" element={adminSectionElements.publishingImportsJson} />
                           <Route path="publishing/imports/ai-studio" element={adminSectionElements.publishingImportsAiStudio} />
                           <Route path="publishing/imports/ai-studio/:draftId" element={adminSectionElements.publishingImportsAiStudio} />
