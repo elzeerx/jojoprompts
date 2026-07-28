@@ -1,33 +1,24 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
+// Retired endpoint (source-only stub). Do not add logic here.
+// This function has been retired; all requests receive HTTP 410.
+const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req: Request) => {
+Deno.serve((req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
-
-  try {
-    const paypalClientId = Deno.env.get("PAYPAL_CLIENT_ID");
-    
-    if (!paypalClientId) {
-      return new Response(JSON.stringify({ error: "PayPal client ID not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({ clientId: paypalClientId }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: "Failed to get PayPal client ID" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  return new Response(
+    '{"error":"endpoint_retired","function":"get-paypal-client-id"}',
+    {
+      status: 410,
+      headers: {
+        ...CORS_HEADERS,
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
+    },
+  );
 });
