@@ -67,8 +67,10 @@ Notes:
 - **Q3** (24h metric counts): expected `Index Only Scan` /
   `Bitmap Index Scan` on the same `created_at` index, optionally
   combined with `idx_security_logs_severity`.
-- **Q4** (explicit action filter): expected `Bitmap And` of
-  `idx_security_logs_action` and `idx_security_logs_created_at_desc`.
+- **Q4** (explicit action filter): expected `Index Scan Backward using
+  idx_security_logs_action_created_at_desc` with `action = ?` as the
+  leading equality and `created_at DESC LIMIT` served without a Sort.
+
 
 **This is a hypothesis, not a claim.** After application, re-run
 `EXPLAIN (ANALYZE, BUFFERS)` on Q1–Q4 and confirm the intended index
