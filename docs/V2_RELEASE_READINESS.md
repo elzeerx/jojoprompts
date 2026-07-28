@@ -2,6 +2,9 @@
 
 Last updated: 2026-07-29
 
+Requirement-by-requirement evidence and residual gates are tracked in
+`docs/V2_REQUIREMENTS_COVERAGE.md`.
+
 ## Current release posture
 
 - Production URL: `https://jojoprompts.com`
@@ -37,7 +40,9 @@ Canonical local gate:
 bun run verify:v2
 ```
 
-The gate must pass from a clean dependency install immediately before sync.
+Latest local result on 2026-07-29: TypeScript and scoped V2 lint passed, all
+927 tests passed, and the production build completed successfully. The gate
+must pass again from a clean dependency install immediately before sync.
 
 ## Pending database migrations
 

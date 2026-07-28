@@ -55,15 +55,21 @@ const draftSchema = z.object({
 interface PlatformRow {
   platform_slug: string; min_version: string; notes_en: string; notes_ar: string; is_verified: boolean;
 }
-interface GuideStep { title: string; body: string }
+interface GuideStep {
+  title_en: string;
+  body_en: string;
+  title_ar: string;
+  body_ar: string;
+}
 interface GuideRow {
   platform_slug: string; steps: GuideStep[]; estimated_minutes: string;
 }
-interface PermRow { kind: PermissionKind; key: string; label_en: string; is_required: boolean; is_public: boolean }
-interface ProductRow { sku: string; product_type: ProductType; title_en: string; price_fils: string }
-interface LicenseRow { license_key: string; terms_en: string; allows_commercial: boolean; allows_redistribution: boolean }
-interface EditorProduct extends Omit<ProductRow, "price_fils"> {
+interface PermRow { kind: PermissionKind; key: string; label_en: string; label_ar: string; is_required: boolean; is_public: boolean }
+interface ProductRow { sku: string; product_type: ProductType; title_en: string; title_ar: string; price_fils: string }
+interface LicenseRow { license_key: string; terms_en: string; terms_ar: string; allows_commercial: boolean; allows_redistribution: boolean }
+interface EditorProduct extends Omit<ProductRow, "price_fils" | "title_ar"> {
   id: string;
+  title_ar: string | null;
   price_fils: number | null;
   is_active: boolean;
 }
@@ -77,18 +83,21 @@ interface EditorPlatform {
 interface EditorGuide {
   platform_slug: string;
   steps_en: unknown;
+  steps_ar: unknown;
   estimated_minutes: number | null;
 }
 interface EditorPermission {
   kind: PermissionKind;
   key: string;
   label_en: string | null;
+  label_ar: string | null;
   is_required: boolean | null;
   is_public: boolean | null;
 }
 interface EditorLicense {
   license_key: string;
   terms_en: string | null;
+  terms_ar: string | null;
   allows_commercial: boolean | null;
   allows_redistribution: boolean | null;
 }
@@ -121,6 +130,7 @@ interface ResourceEditorRecord {
   current_version: {
     version: string;
     changelog_en: string | null;
+    changelog_ar: string | null;
     published_at: string | null;
   } | null;
   platform_compatibility: EditorPlatform[];
@@ -144,6 +154,8 @@ const standardLicense = (): LicenseRow => ({
   license_key: "jojo-standard-v1",
   terms_en:
     "Personal use and commercial use of outputs are allowed. The underlying resource files may not be redistributed, shared, or resold.",
+  terms_ar:
+    "يُسمح بالاستخدام الشخصي والتجاري للمخرجات. لا يجوز إعادة توزيع ملفات المورد الأساسية أو مشاركتها أو إعادة بيعها.",
   allows_commercial: true,
   allows_redistribution: false,
 });
@@ -159,7 +171,7 @@ interface FormState {
   support_en: string; support_ar: string;
   update_info_en: string; update_info_ar: string;
   category: string; tags: string; hero_image_path: string; effort_minutes: string;
-  version: string; changelog_en: string; is_new_version: boolean;
+  version: string; changelog_en: string; changelog_ar: string; is_new_version: boolean;
   private_content_en: string; private_content_ar: string;
   private_content_format: ProtectedContentFormat;
   platform_compatibility: PlatformRow[];
@@ -181,13 +193,13 @@ const emptyForm = (type: ResourceType = "skill"): FormState => ({
   support_en: "", support_ar: "",
   update_info_en: "", update_info_ar: "",
   category: "", tags: "", hero_image_path: "", effort_minutes: "",
-  version: "1.0.0", changelog_en: "", is_new_version: false,
+  version: "1.0.0", changelog_en: "", changelog_ar: "", is_new_version: false,
   private_content_en: "", private_content_ar: "", private_content_format: "text",
   platform_compatibility: [],
   installation_guides: [],
   permissions: [],
   license: standardLicense(),
-  products: [{ sku: "", product_type: "free", title_en: "", price_fils: "0" }],
+  products: [{ sku: "", product_type: "free", title_en: "", title_ar: "", price_fils: "0" }],
   bundle_items: [],
 });
 
@@ -216,10 +228,23 @@ const APPROVED_DEFAULT_PRICE_FILS: Record<ResourceType, number> = {
 // direct FK from resources, so it must be loaded in a second query keyed on
 // the resource's own products.
 const RESOURCE_EDITOR_SELECT =
-  "id, slug, type, lifecycle, latest_published_version_id, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar,published_at), products(id,sku,product_type,title_en,price_fils,is_active)";
+  "id, slug, type, lifecycle, latest_published_version_id, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar,published_at), products(id,sku,product_type,title_en,title_ar,price_fils,is_active)";
 
 function buildResourceEditUrl(resourceId: string): string {
   return `/admin/publishing/resources/${resourceId}/edit`;
+}
+
+function parseGuideSteps(value: unknown): Array<{ title: string; body: string }> {
+  if (!Array.isArray(value)) return [];
+  return value.map((step) => {
+    if (typeof step === "string") return { title: step, body: "" };
+    if (!step || typeof step !== "object") return { title: "", body: "" };
+    const item = step as { title?: unknown; body?: unknown };
+    return {
+      title: typeof item.title === "string" ? item.title : "",
+      body: typeof item.body === "string" ? item.body : "",
+    };
+  });
 }
 
 async function fetchResource(id: string) {
@@ -358,6 +383,7 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
       effort_minutes: existing.effort_minutes == null ? "" : String(existing.effort_minutes),
       version: mode === "new-version" ? "" : (existing.current_version?.version ?? "1.0.0"),
       changelog_en: mode === "new-version" ? "" : (existing.current_version?.changelog_en ?? ""),
+      changelog_ar: mode === "new-version" ? "" : (existing.current_version?.changelog_ar ?? ""),
       is_new_version: mode === "new-version",
       private_content_en: existing.private_content?.content_en ?? "",
       private_content_ar: existing.private_content?.content_ar ?? "",
@@ -369,37 +395,39 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
         notes_en: p.notes_en ?? "", notes_ar: p.notes_ar ?? "",
         is_verified: !!p.is_verified,
       })),
-      installation_guides: existing.installation_guides.map((g) => ({
-        platform_slug: g.platform_slug,
-        steps: Array.isArray(g.steps_en)
-          ? g.steps_en.map((step) => {
-              if (typeof step === "string") return { title: step, body: "" };
-              if (!step || typeof step !== "object") {
-                return { title: "", body: "" };
-              }
-              const value = step as { title?: unknown; body?: unknown };
-              return {
-                title: typeof value.title === "string" ? value.title : "",
-                body: typeof value.body === "string" ? value.body : "",
-              };
-            })
-          : [],
-        estimated_minutes: g.estimated_minutes == null ? "" : String(g.estimated_minutes),
-      })),
+      installation_guides: existing.installation_guides.map((g) => {
+        const stepsEn = parseGuideSteps(g.steps_en);
+        const stepsAr = parseGuideSteps(g.steps_ar);
+        return {
+          platform_slug: g.platform_slug,
+          steps: Array.from(
+            { length: Math.max(stepsEn.length, stepsAr.length) },
+            (_, index) => ({
+              title_en: stepsEn[index]?.title ?? "",
+              body_en: stepsEn[index]?.body ?? "",
+              title_ar: stepsAr[index]?.title ?? "",
+              body_ar: stepsAr[index]?.body ?? "",
+            }),
+          ),
+          estimated_minutes: g.estimated_minutes == null ? "" : String(g.estimated_minutes),
+        };
+      }),
       permissions: existing.resource_permissions.map((p) => ({
-        kind: p.kind, key: p.key, label_en: p.label_en ?? "",
+        kind: p.kind, key: p.key, label_en: p.label_en ?? "", label_ar: p.label_ar ?? "",
         is_required: !!p.is_required, is_public: p.is_public !== false,
       })),
       license: existing.licenses?.[0]
         ? {
             license_key: existing.licenses[0].license_key,
             terms_en: existing.licenses[0].terms_en ?? "",
+            terms_ar: existing.licenses[0].terms_ar ?? "",
             allows_commercial: !!existing.licenses[0].allows_commercial,
             allows_redistribution: !!existing.licenses[0].allows_redistribution,
           }
         : standardLicense(),
       products: existing.products.filter((p) => p.is_active).map((p) => ({
-        sku: p.sku, product_type: p.product_type, title_en: p.title_en, price_fils: String(p.price_fils ?? 0),
+        sku: p.sku, product_type: p.product_type, title_en: p.title_en,
+        title_ar: p.title_ar ?? "", price_fils: String(p.price_fils ?? 0),
       })),
       bundle_items: existing.product_bundle_items.map((item) => item.resource_id),
     });
@@ -455,9 +483,10 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
       hero_image_path: form.hero_image_path.trim() || null,
       effort_minutes: form.effort_minutes.trim() || null,
     },
-    version: (form.version || form.changelog_en || form.is_new_version) ? {
+    version: (form.version || form.changelog_en || form.changelog_ar || form.is_new_version) ? {
       version: form.version.trim() || "1.0.0",
       changelog_en: form.changelog_en || null,
+      changelog_ar: form.changelog_ar || null,
       is_new_version: form.is_new_version,
     } : null,
     private_content: form.type === "bundle" ? null : {
@@ -470,8 +499,12 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
     platform_compatibility: form.platform_compatibility,
     installation_guides: form.installation_guides.map((g) => ({
       platform_slug: g.platform_slug,
-      steps_en: g.steps.filter((s) => s.title || s.body),
-      steps_ar: [],
+      steps_en: g.steps
+        .filter((s) => s.title_en || s.body_en)
+        .map((s) => ({ title: s.title_en, body: s.body_en })),
+      steps_ar: g.steps
+        .filter((s) => s.title_ar || s.body_ar)
+        .map((s) => ({ title: s.title_ar, body: s.body_ar })),
       estimated_minutes: g.estimated_minutes || null,
     })),
     permissions: form.permissions,
@@ -579,6 +612,8 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
     if (form.type === "skill" || form.type === "automation") {
       if (form.platform_compatibility.length === 0) gates.push("At least one platform compatibility entry is required.");
       if (form.installation_guides.length === 0) gates.push("At least one installation guide is required.");
+      if (!form.limitations_en.trim()) gates.push("Limitations (EN) are required for skills and automations.");
+      if (!form.uninstall_en.trim()) gates.push("Uninstall guidance (EN) is required for skills and automations.");
     }
     if (!form.version.trim()) gates.push("Version is required.");
     if (!/^[0-9]+\.[0-9]+\.[0-9]+([.\-+][A-Za-z0-9._-]+)?$/.test(form.version.trim())) {
@@ -826,6 +861,46 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
               <Field label="Effort (minutes)">
                 <Input inputMode="numeric" value={form.effort_minutes} onChange={(e) => patch({ effort_minutes: e.target.value.replace(/\D/g, "") })} className="min-h-[44px]" />
               </Field>
+              <div className="space-y-3 rounded-lg border bg-muted/20 p-4 md:col-span-2">
+                <div>
+                  <h3 className="text-sm font-semibold">Usage, limitations & support</h3>
+                  <p className="text-xs text-muted-foreground">
+                    These fields appear on the public resource detail page and in My Library.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <Field label="Examples (EN)">
+                    <Textarea value={form.examples_en} onChange={(e) => patch({ examples_en: e.target.value })} rows={3} />
+                  </Field>
+                  <Field label="Examples (AR)" dir="rtl">
+                    <Textarea value={form.examples_ar} onChange={(e) => patch({ examples_ar: e.target.value })} rows={3} className="text-right" dir="rtl" />
+                  </Field>
+                  <Field label="Limitations (EN)">
+                    <Textarea value={form.limitations_en} onChange={(e) => patch({ limitations_en: e.target.value })} rows={3} />
+                  </Field>
+                  <Field label="Limitations (AR)" dir="rtl">
+                    <Textarea value={form.limitations_ar} onChange={(e) => patch({ limitations_ar: e.target.value })} rows={3} className="text-right" dir="rtl" />
+                  </Field>
+                  <Field label="Uninstall guidance (EN)">
+                    <Textarea value={form.uninstall_en} onChange={(e) => patch({ uninstall_en: e.target.value })} rows={3} />
+                  </Field>
+                  <Field label="Uninstall guidance (AR)" dir="rtl">
+                    <Textarea value={form.uninstall_ar} onChange={(e) => patch({ uninstall_ar: e.target.value })} rows={3} className="text-right" dir="rtl" />
+                  </Field>
+                  <Field label="Support information (EN)">
+                    <Textarea value={form.support_en} onChange={(e) => patch({ support_en: e.target.value })} rows={2} />
+                  </Field>
+                  <Field label="Support information (AR)" dir="rtl">
+                    <Textarea value={form.support_ar} onChange={(e) => patch({ support_ar: e.target.value })} rows={2} className="text-right" dir="rtl" />
+                  </Field>
+                  <Field label="Update information (EN)">
+                    <Textarea value={form.update_info_en} onChange={(e) => patch({ update_info_en: e.target.value })} rows={2} />
+                  </Field>
+                  <Field label="Update information (AR)" dir="rtl">
+                    <Textarea value={form.update_info_ar} onChange={(e) => patch({ update_info_ar: e.target.value })} rows={2} className="text-right" dir="rtl" />
+                  </Field>
+                </div>
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -920,9 +995,11 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
             />
             <div className="mt-3">
               <Label>Version</Label>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Input value={form.version} onChange={(e) => patch({ version: e.target.value })} className="min-h-[44px]" placeholder="1.0.0" />
-                <Textarea value={form.changelog_en} onChange={(e) => patch({ changelog_en: e.target.value })} rows={2} className="sm:col-span-2" placeholder="Changelog (EN)" />
+                <div className="hidden sm:block" aria-hidden />
+                <Textarea value={form.changelog_en} onChange={(e) => patch({ changelog_en: e.target.value })} rows={2} placeholder="Changelog (EN)" />
+                <Textarea value={form.changelog_ar} onChange={(e) => patch({ changelog_ar: e.target.value })} rows={2} placeholder="سجل التغييرات (AR)" className="text-right" dir="rtl" />
               </div>
               {mode === "new-version" ? (
                 <p className="mt-2 text-xs text-warm-gold">A new resource_versions row will be created and marked current; prior versions and files are preserved.</p>
@@ -976,6 +1053,18 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
                     rows={2}
                     value={form.license.terms_en}
                     onChange={(e) => patch({ license: { ...form.license, terms_en: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-start-2">
+                  <Label htmlFor={`${licenseTermsId}-ar`}>License terms (Arabic)</Label>
+                  <Textarea
+                    id={`${licenseTermsId}-ar`}
+                    placeholder="شروط الترخيص"
+                    rows={2}
+                    value={form.license.terms_ar}
+                    onChange={(e) => patch({ license: { ...form.license, terms_ar: e.target.value } })}
+                    className="text-right"
+                    dir="rtl"
                   />
                 </div>
                 <Label
@@ -1128,18 +1217,22 @@ function PlatformEditor({ platforms, value, onChange }: {
           <Input placeholder="Min version" className="min-h-[44px]"
             value={row.min_version}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, min_version: e.target.value }; onChange(next); }} />
-          <Input placeholder="Notes (EN)" className="min-h-[44px] sm:col-span-2"
-            value={row.notes_en}
-            onChange={(e) => { const next = [...value]; next[idx] = { ...row, notes_en: e.target.value }; onChange(next); }} />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:col-span-3">
             <label className="inline-flex items-center gap-1 text-xs">
               <Checkbox checked={row.is_verified}
                 onCheckedChange={(v) => { const next = [...value]; next[idx] = { ...row, is_verified: v === true }; onChange(next); }} />
               Verified
             </label>
-            <Button size="sm" variant="ghost" className="min-h-[40px] text-red-700"
+            <Button size="sm" variant="ghost" className="min-h-[44px] text-red-700"
               onClick={() => onChange(value.filter((_, i) => i !== idx))}>Remove</Button>
           </div>
+          <Input placeholder="Notes (EN)" className="min-h-[44px] sm:col-span-3"
+            value={row.notes_en}
+            onChange={(e) => { const next = [...value]; next[idx] = { ...row, notes_en: e.target.value }; onChange(next); }} />
+          <Input placeholder="ملاحظات المنصة (AR)" className="min-h-[44px] text-right sm:col-span-3"
+            dir="rtl"
+            value={row.notes_ar}
+            onChange={(e) => { const next = [...value]; next[idx] = { ...row, notes_ar: e.target.value }; onChange(next); }} />
         </div>
       ))}
       <Button size="sm" variant="outline" className="min-h-[44px]"
@@ -1177,26 +1270,52 @@ function GuideEditor({ platforms, value, onChange }: {
           </div>
           <div className="mt-2 space-y-2">
             {row.steps.map((s, si) => (
-              <div key={si} className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <Input placeholder={`Step ${si + 1} title`} className="min-h-[44px]"
-                  value={s.title}
+              <div key={si} className="grid grid-cols-1 gap-3 rounded-md bg-muted/30 p-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Input placeholder={`Step ${si + 1} title (EN)`} className="min-h-[44px]"
+                  value={s.title_en}
                   onChange={(e) => {
                     const next = [...value];
-                    const steps = [...row.steps]; steps[si] = { ...s, title: e.target.value };
+                    const steps = [...row.steps]; steps[si] = { ...s, title_en: e.target.value };
                     next[idx] = { ...row, steps }; onChange(next);
                   }} />
-                <Textarea placeholder="Body" className="sm:col-span-2" rows={2}
-                  value={s.body}
+                  <Textarea placeholder="Instructions (EN)" rows={3}
+                  value={s.body_en}
                   onChange={(e) => {
                     const next = [...value];
-                    const steps = [...row.steps]; steps[si] = { ...s, body: e.target.value };
+                    const steps = [...row.steps]; steps[si] = { ...s, body_en: e.target.value };
                     next[idx] = { ...row, steps }; onChange(next);
                   }} />
+                </div>
+                <div className="space-y-2" dir="rtl">
+                  <Input placeholder={`عنوان الخطوة ${si + 1} (AR)`} className="min-h-[44px] text-right"
+                    value={s.title_ar}
+                    onChange={(e) => {
+                      const next = [...value];
+                      const steps = [...row.steps]; steps[si] = { ...s, title_ar: e.target.value };
+                      next[idx] = { ...row, steps }; onChange(next);
+                    }} />
+                  <Textarea placeholder="التعليمات (AR)" className="text-right" rows={3}
+                    value={s.body_ar}
+                    onChange={(e) => {
+                      const next = [...value];
+                      const steps = [...row.steps]; steps[si] = { ...s, body_ar: e.target.value };
+                      next[idx] = { ...row, steps }; onChange(next);
+                    }} />
+                </div>
               </div>
             ))}
-            <Button size="sm" variant="outline" className="min-h-[40px]"
+            <Button size="sm" variant="outline" className="min-h-[44px]"
               onClick={() => {
-                const next = [...value]; next[idx] = { ...row, steps: [...row.steps, { title: "", body: "" }] }; onChange(next);
+                const next = [...value]; next[idx] = {
+                  ...row,
+                  steps: [...row.steps, {
+                    title_en: "",
+                    body_en: "",
+                    title_ar: "",
+                    body_ar: "",
+                  }],
+                }; onChange(next);
               }}>+ Add step</Button>
           </div>
         </div>
@@ -1220,21 +1339,25 @@ function PermissionEditor({ value, onChange }: { value: PermRow[]; onChange: (v:
           <Input placeholder="Key" className="min-h-[44px] sm:col-span-2"
             value={row.key}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, key: e.target.value }; onChange(next); }} />
-          <Input placeholder="Label (EN)" className="min-h-[44px] sm:col-span-2"
+          <Input placeholder="Label (EN)" className="min-h-[44px]"
             value={row.label_en}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, label_en: e.target.value }; onChange(next); }} />
+          <Input placeholder="التسمية (AR)" className="min-h-[44px] text-right"
+            dir="rtl"
+            value={row.label_ar}
+            onChange={(e) => { const next = [...value]; next[idx] = { ...row, label_ar: e.target.value }; onChange(next); }} />
           <div className="flex items-center gap-3">
             <label className="inline-flex items-center gap-1 text-xs">
               <Checkbox checked={row.is_required} onCheckedChange={(v) => { const next = [...value]; next[idx] = { ...row, is_required: v === true }; onChange(next); }} />
               Required
             </label>
-            <Button size="sm" variant="ghost" className="min-h-[40px] text-red-700"
+            <Button size="sm" variant="ghost" className="min-h-[44px] text-red-700"
               onClick={() => onChange(value.filter((_, i) => i !== idx))}>Remove</Button>
           </div>
         </div>
       ))}
       <Button size="sm" variant="outline" className="min-h-[44px]"
-        onClick={() => onChange([...value, { kind: "capability", key: "", label_en: "", is_required: false, is_public: true }])}>
+        onClick={() => onChange([...value, { kind: "capability", key: "", label_en: "", label_ar: "", is_required: false, is_public: true }])}>
         + Add permission
       </Button>
     </div>
@@ -1245,7 +1368,7 @@ function ProductEditor({ value, onChange, defaultSku }: { value: ProductRow[]; o
   return (
     <div className="space-y-2">
       {value.map((row, idx) => (
-        <div key={idx} className="grid grid-cols-1 gap-2 rounded border border-gray-200 p-2 sm:grid-cols-5">
+        <div key={idx} className="grid grid-cols-1 gap-2 rounded border border-gray-200 p-2 sm:grid-cols-6">
           <Input placeholder="SKU" className="min-h-[44px]"
             value={row.sku}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, sku: e.target.value }; onChange(next); }} />
@@ -1258,10 +1381,14 @@ function ProductEditor({ value, onChange, defaultSku }: { value: ProductRow[]; o
               {/* per-resource lifetime intentionally excluded */}
             </SelectContent>
           </Select>
-          <Input placeholder="Title (EN)" className="min-h-[44px] sm:col-span-2"
+          <Input placeholder="Title (EN)" className="min-h-[44px]"
             value={row.title_en}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, title_en: e.target.value }; onChange(next); }} />
-          <div className="flex items-center gap-2">
+          <Input placeholder="العنوان (AR)" className="min-h-[44px] text-right"
+            dir="rtl"
+            value={row.title_ar}
+            onChange={(e) => { const next = [...value]; next[idx] = { ...row, title_ar: e.target.value }; onChange(next); }} />
+          <div className="flex items-center gap-2 sm:col-span-2">
             <Input inputMode="numeric" placeholder="Price (fils)" className="min-h-[44px]"
               value={row.price_fils}
               onChange={(e) => { const next = [...value]; next[idx] = { ...row, price_fils: e.target.value.replace(/\D/g, "") }; onChange(next); }} />
@@ -1274,7 +1401,7 @@ function ProductEditor({ value, onChange, defaultSku }: { value: ProductRow[]; o
         </div>
       ))}
       <Button size="sm" variant="outline" className="min-h-[44px]"
-        onClick={() => onChange([...value, { sku: defaultSku ? `${defaultSku}-${value.length + 1}` : "", product_type: "individual", title_en: "", price_fils: "0" }])}>
+        onClick={() => onChange([...value, { sku: defaultSku ? `${defaultSku}-${value.length + 1}` : "", product_type: "individual", title_en: "", title_ar: "", price_fils: "0" }])}>
         + Add product
       </Button>
     </div>

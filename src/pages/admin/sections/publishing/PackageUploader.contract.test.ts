@@ -43,7 +43,7 @@ describe("ResourcePublisher — resource editor select", () => {
 
   it("still embeds the resource's own products so bundle items can be loaded via product ids", () => {
     expect(
-      src.includes("products(id,sku,product_type,title_en,price_fils,is_active)"),
+      src.includes("products(id,sku,product_type,title_en,title_ar,price_fils,is_active)"),
     ).toBe(true);
   });
 

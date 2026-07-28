@@ -17,16 +17,12 @@ export interface Category {
   updated_at: string;
 }
 
-export interface CategoryFormData {
+/** Fields the active V2 taxonomy editor is allowed to create or update. */
+export interface CategoryWriteInput {
   name: string;
-  description: string;
-  image_path: string;
-  required_plan: string;
-  icon_name: string;
-  icon_image_path?: string;
-  features: string[];
-  subcategories: string[];
-  bg_gradient: string;
+  description: string | null;
   link_path: string;
+  subcategories: string[];
+  display_order: number;
   is_active: boolean;
 }

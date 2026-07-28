@@ -859,8 +859,8 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="min-h-[40px]" onClick={() => applyView(v)}>Load</Button>
-                    <Button size="sm" variant="ghost" className="min-h-[40px] text-red-700" onClick={() => deleteView(v.name)}>
+                    <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => applyView(v)}>Load</Button>
+                    <Button size="sm" variant="ghost" className="min-h-[44px] text-red-700" onClick={() => deleteView(v.name)}>
                       <Trash2 className="h-3.5 w-3.5" aria-hidden />
                     </Button>
                   </div>

@@ -3,8 +3,6 @@
  * Kept small so it can be imported from anywhere without pulling extra deps.
  */
 
-export const V2_COMMERCE_ENABLED = false;
-
 /**
  * Keep the new audited admin receipt-resend UI fail-closed until its
  * forward-only migration and Edge Function have both been deployed and
@@ -144,7 +142,6 @@ export const V2_COPY = {
     open: { en: "Open", ar: "افتح" },
     addToLibrary: { en: "Add to library", ar: "أضف إلى المكتبة" },
     viewDetails: { en: "View details", ar: "عرض التفاصيل" },
-    checkoutSoon: { en: "Checkout coming", ar: "الدفع قريباً" },
     verified: { en: "Verified", ar: "موثّق" },
     awaitingScan: { en: "Awaiting scan", ar: "بانتظار الفحص" },
     notSpecified: { en: "Not specified", ar: "غير محدَّد" },

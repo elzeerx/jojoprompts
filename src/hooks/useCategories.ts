@@ -1,16 +1,20 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Category } from "@/types/category";
+import type { Category, CategoryWriteInput } from "@/types/category";
 import { toast } from "@/hooks/use-toast";
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('CATEGORIES');
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -26,8 +30,8 @@ export function useCategories() {
       }));
 
       setCategories(transformedData);
-    } catch (error: any) {
-      logger.error('Failed to fetch categories', { error: error.message || error });
+    } catch (error: unknown) {
+      logger.error('Failed to fetch categories', { error: errorMessage(error) });
       toast({
         title: "Error",
         description: "Failed to load categories",
@@ -36,9 +40,9 @@ export function useCategories() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const createCategory = async (categoryData: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
+  const createCategory = async (categoryData: CategoryWriteInput) => {
     try {
       const { data, error } = await supabase
         .from("categories")
@@ -54,8 +58,8 @@ export function useCategories() {
         description: "Category created successfully",
       });
       return data;
-    } catch (error: any) {
-      logger.error('Failed to create category', { error: error.message || error });
+    } catch (error: unknown) {
+      logger.error('Failed to create category', { error: errorMessage(error) });
       toast({
         title: "Error",
         description: "Failed to create category",
@@ -79,36 +83,11 @@ export function useCategories() {
         title: "Success",
         description: "Category updated successfully",
       });
-    } catch (error: any) {
-      logger.error('Failed to update category', { error: error.message || error, categoryId: id });
+    } catch (error: unknown) {
+      logger.error('Failed to update category', { error: errorMessage(error), categoryId: id });
       toast({
         title: "Error",
         description: "Failed to update category",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const deleteCategory = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from("categories")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-
-      await fetchCategories();
-      toast({
-        title: "Success",
-        description: "Category deleted successfully",
-      });
-    } catch (error: any) {
-      logger.error('Failed to delete category', { error: error.message || error, categoryId: id });
-      toast({
-        title: "Error",
-        description: "Failed to delete category",
         variant: "destructive",
       });
       throw error;
@@ -143,7 +122,7 @@ export function useCategories() {
       // Properly cleanup the channel
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchCategories]);
 
   return {
     categories,
@@ -151,6 +130,5 @@ export function useCategories() {
     fetchCategories,
     createCategory,
     updateCategory,
-    deleteCategory,
   };
 }

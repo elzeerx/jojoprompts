@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, FileText, Trash2 } from "lucide-react";
+import { Archive, FileText, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AiStudioDraft } from "./types";
@@ -60,17 +60,25 @@ export function DraftsSidebar({ activeId }: Props) {
     navigate(`${AI_STUDIO_BASE_ROUTE}/${data.id}`);
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleArchive = async (
+    draft: AiStudioDraft,
+    e: React.MouseEvent,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm("Delete this draft?")) return;
-    const { error } = await supabase.from("ai_studio_drafts").delete().eq("id", id);
+    const restoring = draft.status === "archived";
+    const { error } = await supabase
+      .from("ai_studio_drafts")
+      .update({ status: restoring ? "draft" : "archived" })
+      .eq("id", draft.id);
     if (error) {
-      toast.error("Delete failed", { description: error.message });
+      toast.error(restoring ? "Restore failed" : "Archive failed", {
+        description: error.message,
+      });
       return;
     }
-    toast.success("Draft deleted");
-    if (activeId === id) navigate(AI_STUDIO_BASE_ROUTE);
+    toast.success(restoring ? "Draft restored" : "Draft archived");
+    if (!restoring && activeId === draft.id) navigate(AI_STUDIO_BASE_ROUTE);
     else load();
   };
 
@@ -128,13 +136,19 @@ export function DraftsSidebar({ activeId }: Props) {
                     </Badge>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => handleDelete(d.id, e)}
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-muted-foreground transition-colors hover:text-destructive lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
-                  aria-label="Delete draft"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {(d.status === "draft" || d.status === "archived") && (
+                  <button
+                    onClick={(e) => handleArchive(d, e)}
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-muted-foreground transition-colors hover:text-foreground lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                    aria-label={`${d.status === "archived" ? "Restore" : "Archive"} draft`}
+                  >
+                    {d.status === "archived" ? (
+                      <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                    ) : (
+                      <Archive className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                  </button>
+                )}
               </Link>
             );
           })}

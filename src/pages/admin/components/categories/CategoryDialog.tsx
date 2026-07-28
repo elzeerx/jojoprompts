@@ -1,58 +1,51 @@
-
-import { useState, useEffect } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { createLogger } from '@/utils/logging';
-import { handleError } from '@/utils/errorHandler';
-
-const logger = createLogger('CATEGORY_DIALOG');
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Category, CategoryFormData } from "@/types/category";
-import { Badge } from "@/components/ui/badge";
-import { X, Plus } from "lucide-react";
-import { ImageUpload } from "@/components/ui/image-upload";
-import { GradientSelector } from "@/components/ui/gradient-selector";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import type { Category, CategoryWriteInput } from "@/types/category";
+import { createLogger } from "@/utils/logging";
+import { handleError } from "@/utils/errorHandler";
+
+const logger = createLogger("V2_TAXONOMY_DIALOG");
 
 interface CategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   category: Category | null;
-  onSave: (data: Omit<Category, 'id' | 'created_at' | 'updated_at'> | { id: string, data: Partial<Category> }) => Promise<void>;
+  onSave: (
+    data:
+      | CategoryWriteInput
+      | { id: string; data: Partial<CategoryWriteInput> },
+  ) => Promise<void>;
   onClose: () => void;
 }
 
-const iconOptions = [
-  "Sparkles", "Zap", "Workflow", "Image", "Video", "Music", 
-  "Code", "Palette", "Bot", "Brain", "Cpu", "Database"
-];
+const EMPTY_FORM: CategoryWriteInput = {
+  name: "",
+  description: null,
+  link_path: "",
+  subcategories: [],
+  display_order: 0,
+  is_active: true,
+};
 
-const planOptions = ["basic", "standard", "premium"];
-
-const gradientOptions = [
-  "from-warm-gold/20 via-warm-gold/10 to-transparent",
-  "from-muted-teal/20 via-muted-teal/10 to-transparent",
-  "from-blue-500/20 via-blue-500/10 to-transparent",
-  "from-green-500/20 via-green-500/10 to-transparent",
-  "from-purple-500/20 via-purple-500/10 to-transparent",
-  "from-red-500/20 via-red-500/10 to-transparent",
-];
+function normalizedPath(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
 
 export function CategoryDialog({
   open,
@@ -61,341 +54,237 @@ export function CategoryDialog({
   onSave,
   onClose,
 }: CategoryDialogProps) {
-  const [formData, setFormData] = useState<CategoryFormData>({
-    name: "",
-    description: "",
-    image_path: "",
-    required_plan: "basic",
-    icon_name: "Sparkles",
-    icon_image_path: "",
-    features: [],
-    subcategories: [],
-    bg_gradient: "from-warm-gold/20 via-warm-gold/10 to-transparent",
-    link_path: "",
-    is_active: true,
-  });
-  const [newFeature, setNewFeature] = useState("");
-  const [newSubcategory, setNewSubcategory] = useState("");
+  const [form, setForm] = useState<CategoryWriteInput>(EMPTY_FORM);
+  const [newLabel, setNewLabel] = useState("");
   const [loading, setLoading] = useState(false);
-  const [iconType, setIconType] = useState<'lucide' | 'custom'>('lucide');
 
   useEffect(() => {
-    if (category) {
-      setFormData({
-        name: category.name,
-        description: category.description || "",
-        image_path: category.image_path || "",
-        required_plan: category.required_plan,
-        icon_name: category.icon_name,
-        icon_image_path: (category as any).icon_image_path || "",
-        features: category.features || [],
-        subcategories: category.subcategories || [],
-        bg_gradient: category.bg_gradient,
-        link_path: category.link_path,
-        is_active: category.is_active,
-      });
-      setIconType((category as any).icon_image_path ? 'custom' : 'lucide');
-    } else {
-      setFormData({
-        name: "",
-        description: "",
-        image_path: "",
-        required_plan: "basic",
-        icon_name: "Sparkles",
-        icon_image_path: "",
-        features: [],
-        subcategories: [],
-        bg_gradient: "from-warm-gold/20 via-warm-gold/10 to-transparent",
-        link_path: "",
-        is_active: true,
-      });
-      setIconType('lucide');
-    }
+    setForm(
+      category
+        ? {
+            name: category.name,
+            description: category.description,
+            link_path: category.link_path,
+            subcategories: category.subcategories ?? [],
+            display_order: category.display_order,
+            is_active: category.is_active,
+          }
+        : EMPTY_FORM,
+    );
+    setNewLabel("");
   }, [category, open]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const addLabel = () => {
+    const label = newLabel.trim();
+    if (!label || form.subcategories.includes(label)) return;
+    setForm((current) => ({
+      ...current,
+      subcategories: [...current.subcategories, label],
+    }));
+    setNewLabel("");
+  };
 
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    const name = form.name.trim();
+    const linkPath = normalizedPath(form.link_path);
+    if (!name || !linkPath) return;
+
+    const payload: CategoryWriteInput = {
+      ...form,
+      name,
+      description: form.description?.trim() || null,
+      link_path: linkPath,
+      display_order: Math.max(0, Math.round(form.display_order)),
+    };
+
+    setLoading(true);
     try {
-      if (category) {
-        await onSave({ id: category.id, data: formData });
-      } else {
-        const maxDisplayOrder = 10; // We'll calculate this properly later
-        await onSave({
-          ...formData,
-          display_order: maxDisplayOrder + 1,
-        });
-      }
+      await onSave(
+        category
+          ? { id: category.id, data: payload }
+          : payload,
+      );
       onClose();
     } catch (error) {
-      const appError = handleError(error, { component: 'CategoryDialog', action: 'saveCategory' });
-      logger.error('Error saving category', { error: appError });
+      const appError = handleError(error, {
+        component: "CategoryDialog",
+        action: "saveCategory",
+      });
+      logger.error("Error saving category", { error: appError });
     } finally {
       setLoading(false);
     }
   };
 
-  const addFeature = () => {
-    if (newFeature.trim() && !formData.features.includes(newFeature.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        features: [...prev.features, newFeature.trim()]
-      }));
-      setNewFeature("");
-    }
-  };
-
-  const removeFeature = (featureToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      features: prev.features.filter(f => f !== featureToRemove)
-    }));
-  };
-
-  const addSubcategory = () => {
-    if (newSubcategory.trim() && !formData.subcategories.includes(newSubcategory.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        subcategories: [...prev.subcategories, newSubcategory.trim()]
-      }));
-      setNewSubcategory("");
-    }
-  };
-
-  const removeSubcategory = (subcategoryToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      subcategories: prev.subcategories.filter(s => s !== subcategoryToRemove)
-    }));
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="prompt-dialog w-full max-w-4xl h-[90vh] flex flex-col p-0">
-        {/* Fixed Header */}
-        <div className="flex-shrink-0 p-6 border-b border-gray-200">
-          <DialogHeader className="text-left p-0">
-            <DialogTitle className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-              {category ? "Edit Category" : "Create New Category"}
-            </DialogTitle>
-          </DialogHeader>
-        </div>
-        
-        {/* Scrollable Content */}
-        <ScrollArea className="flex-1 px-6">
-          <div className="py-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200">
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Name</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="link_path">Link Path</Label>
-                      <Input
-                        id="link_path"
-                        value={formData.link_path}
-                        onChange={(e) => setFormData(prev => ({ ...prev, link_path: e.target.value }))}
-                        placeholder="/prompts/category-name"
-                        required
-                      />
-                    </div>
-                  </div>
+      <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-2xl flex-col p-0">
+        <DialogHeader className="border-b p-5 text-start sm:p-6">
+          <DialogTitle>
+            {category ? "Edit category" : "Create category"}
+          </DialogTitle>
+        </DialogHeader>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      rows={3}
-                    />
-                  </div>
-
-                  <ImageUpload
-                    value={formData.image_path}
-                    onChange={(value) => setFormData(prev => ({ ...prev, image_path: value }))}
-                    label="Category Image"
-                    placeholder="Enter image URL or upload an image"
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Required Plan</Label>
-                      <Select
-                        value={formData.required_plan}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, required_plan: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {planOptions.map(plan => (
-                            <SelectItem key={plan} value={plan} className="capitalize">
-                              {plan}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Icon Type</Label>
-                      <Select
-                        value={iconType}
-                        onValueChange={(value: 'lucide' | 'custom') => {
-                          setIconType(value);
-                          if (value === 'lucide') {
-                            setFormData(prev => ({ ...prev, icon_image_path: "" }));
-                          } else {
-                            setFormData(prev => ({ ...prev, icon_name: "" }));
-                          }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="lucide">Lucide Icon</SelectItem>
-                          <SelectItem value="custom">Custom Image</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {iconType === 'lucide' ? (
-                      <div className="space-y-2">
-                        <Label>Lucide Icon</Label>
-                        <Select
-                          value={formData.icon_name}
-                          onValueChange={(value) => setFormData(prev => ({ ...prev, icon_name: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {iconOptions.map(icon => (
-                              <SelectItem key={icon} value={icon}>
-                                {icon}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <ImageUpload
-                          value={formData.icon_image_path || ""}
-                          onChange={(value) => setFormData(prev => ({ ...prev, icon_image_path: value }))}
-                          label="Icon Image"
-                          placeholder="Upload icon image or enter URL"
-                        />
-                      </div>
-                    )}
-
-                    <GradientSelector
-                      value={formData.bg_gradient}
-                      onChange={(value) => setFormData(prev => ({ ...prev, bg_gradient: value }))}
-                      label="Background Gradient"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Features</Label>
-                    <div className="flex gap-2 mb-2">
-                      <Input
-                        value={newFeature}
-                        onChange={(e) => setNewFeature(e.target.value)}
-                        placeholder="Add a feature"
-                        onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addFeature())}
-                      />
-                      <Button type="button" onClick={addFeature} size="sm">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.features.map((feature, index) => (
-                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                          {feature}
-                          <X
-                            className="h-3 w-3 cursor-pointer"
-                            onClick={() => removeFeature(feature)}
-                          />
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Subcategories (for prompt filtering)</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Add metadata values that should map to this category (e.g., "midjourney-style", "midjourney-full")
-                    </p>
-                    <div className="flex gap-2 mb-2">
-                      <Input
-                        value={newSubcategory}
-                        onChange={(e) => setNewSubcategory(e.target.value)}
-                        placeholder="e.g., midjourney-style"
-                        onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addSubcategory())}
-                      />
-                      <Button type="button" onClick={addSubcategory} size="sm">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.subcategories.map((subcategory, index) => (
-                        <Badge key={index} variant="outline" className="flex items-center gap-1 bg-warm-gold/10">
-                          {subcategory}
-                          <X
-                            className="h-3 w-3 cursor-pointer"
-                            onClick={() => removeSubcategory(subcategory)}
-                          />
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="is_active"
-                      checked={formData.is_active}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
-                    />
-                    <Label htmlFor="is_active">Active</Label>
-                  </div>
-                </div>
+        <ScrollArea className="flex-1">
+          <form
+            id="v2-taxonomy-form"
+            className="space-y-5 p-5 sm:p-6"
+            onSubmit={handleSubmit}
+          >
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="category-name">Name</Label>
+                <Input
+                  id="category-name"
+                  className="min-h-[44px]"
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  required
+                />
               </div>
-              
-              {/* Fixed Footer Buttons */}
-              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 pb-2">
+
+              <div className="space-y-2">
+                <Label htmlFor="category-path">Catalog path</Label>
+                <Input
+                  id="category-path"
+                  className="min-h-[44px]"
+                  value={form.link_path}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      link_path: event.target.value,
+                    }))
+                  }
+                  placeholder="/explore?category=marketing"
+                  dir="ltr"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category-description">Description</Label>
+              <Textarea
+                id="category-description"
+                value={form.description ?? ""}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+                }
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category-label">Filter labels</Label>
+              <p className="text-xs text-muted-foreground">
+                Add alternate labels that should map to this category.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  id="category-label"
+                  className="min-h-[44px]"
+                  value={newLabel}
+                  onChange={(event) => setNewLabel(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addLabel();
+                    }
+                  }}
+                  placeholder="e.g. image-generation"
+                />
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={onClose}
-                  disabled={loading}
-                  className="px-6 py-3 text-base font-semibold rounded-xl order-2 sm:order-1"
+                  className="min-h-[44px] min-w-[44px]"
+                  aria-label="Add filter label"
+                  onClick={addLabel}
                 >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  className="bg-[#c49d68] hover:bg-[#c49d68]/90 text-white px-6 py-3 text-base font-semibold rounded-xl shadow-md order-1 sm:order-2"
-                >
-                  {loading ? "Saving..." : "Save Category"}
+                  <Plus className="h-4 w-4" aria-hidden />
                 </Button>
               </div>
-            </form>
-          </div>
+              <div className="flex flex-wrap gap-2" aria-live="polite">
+                {form.subcategories.map((label) => (
+                  <Badge key={label} variant="secondary" className="gap-1 py-1">
+                    {label}
+                    <button
+                      type="button"
+                      className="inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warm-gold"
+                      aria-label={`Remove ${label}`}
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          subcategories: current.subcategories.filter(
+                            (value) => value !== label,
+                          ),
+                        }))
+                      }
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="category-order">Display order</Label>
+                <Input
+                  id="category-order"
+                  className="min-h-[44px]"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.display_order}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      display_order: Number(event.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="flex min-h-[44px] items-center justify-between gap-4 self-end rounded-lg border px-3">
+                <Label htmlFor="category-active">Visible in catalog</Label>
+                <Switch
+                  id="category-active"
+                  checked={form.is_active}
+                  onCheckedChange={(checked) =>
+                    setForm((current) => ({ ...current, is_active: checked }))
+                  }
+                />
+              </div>
+            </div>
+          </form>
         </ScrollArea>
+
+        <DialogFooter className="border-t p-5 sm:p-6">
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-[44px]"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="v2-taxonomy-form"
+            className="min-h-[44px]"
+            disabled={loading}
+          >
+            {loading ? "Saving…" : "Save category"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

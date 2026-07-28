@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
@@ -8,7 +8,7 @@ import { CategoryDialog } from "./CategoryDialog";
 import { Category } from "@/types/category";
 
 export function CategoriesManagement() {
-  const { categories, loading, createCategory, updateCategory, deleteCategory } = useCategories();
+  const { categories, loading, createCategory, updateCategory } = useCategories();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
@@ -27,27 +27,25 @@ export function CategoriesManagement() {
     setEditingCategory(null);
   };
 
-  const handleSave = async (data: any) => {
-    if ('id' in data && 'data' in data) {
-      // This is an update
+  const handleSave: ComponentProps<typeof CategoryDialog>["onSave"] = async (data) => {
+    if ("id" in data) {
       await updateCategory(data.id, data.data);
     } else {
-      // This is a create
       await createCategory(data);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Taxonomy</h1>
           <p className="text-muted-foreground">
-            Manage prompt categories and their visibility
+            Organize the V2 catalog with reusable categories and filter labels.
           </p>
         </div>
-        <Button onClick={handleCreateCategory}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button className="min-h-[44px] w-full sm:w-auto" onClick={handleCreateCategory}>
+          <Plus className="me-2 h-4 w-4" aria-hidden />
           Add Category
         </Button>
       </div>
@@ -56,7 +54,6 @@ export function CategoriesManagement() {
         categories={categories}
         loading={loading}
         onEdit={handleEditCategory}
-        onDelete={deleteCategory}
         onToggleActive={updateCategory}
       />
 

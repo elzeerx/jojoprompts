@@ -35,6 +35,12 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
     r.current_version?.updated_at ?? r.updated_at,
     lang,
   );
+  const heroAspect =
+    r.type === "image_style"
+      ? "aspect-[4/5]"
+      : r.type === "prompt_pack"
+        ? "aspect-[3/4]"
+        : "aspect-[4/3]";
 
   const stopPropagation = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
@@ -43,14 +49,14 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
 
 
   return (
-    <div className="group relative">
+    <div className="group relative mb-3 inline-block w-full break-inside-avoid">
       {/* Card link — no nested interactive markup inside. Overlays are siblings. */}
       <Link
         to={`/resources/${r.slug}`}
         className="block overflow-hidden rounded-2xl border border-border/60 bg-muted focus-visible:ring-2 focus-visible:ring-warm-gold"
         aria-label={title ?? undefined}
       >
-        <div className="aspect-square w-full bg-gradient-to-br from-muted to-muted/50">
+        <div className={`${heroAspect} w-full bg-gradient-to-br from-muted to-muted/50`}>
           {heroUrl ? (
             <img
               src={heroUrl}

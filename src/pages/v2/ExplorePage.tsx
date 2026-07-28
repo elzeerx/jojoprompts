@@ -279,7 +279,10 @@ export default function ExplorePage({
                 <h2 className="mb-3 text-lg font-semibold">
                   {V2_COPY.nav.prompts[lang]} & {V2_COPY.nav.imageStyles[lang]}
                 </h2>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+                <div
+                  className="columns-2 gap-3 md:columns-3 lg:columns-4"
+                  data-testid="visual-masonry"
+                >
                   {visual.map((r) => (
                     <VisualResourceCard key={r.id} r={r} onQuickPreview={openPreview} />
                   ))}

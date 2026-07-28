@@ -71,6 +71,15 @@ describe("AI Studio Admin V2 contract", () => {
     expect(pageSource).toContain('aria-label="Loading AI Studio draft"');
   });
 
+  it("archives and restores drafts instead of permanently deleting them", () => {
+    expect(sidebarSource).toContain('.update({ status: restoring ? "draft" : "archived" })');
+    expect(sidebarSource).toContain(
+      'aria-label={`${d.status === "archived" ? "Restore" : "Archive"} draft`}',
+    );
+    expect(sidebarSource).not.toContain('.from("ai_studio_drafts").delete()');
+    expect(sidebarSource).not.toContain("Delete draft");
+  });
+
   it("shows a clear error when deferred draft creation fails", () => {
     expect(pageSource).toContain(
       'toast.error("Could not create the draft. Please try again.")',

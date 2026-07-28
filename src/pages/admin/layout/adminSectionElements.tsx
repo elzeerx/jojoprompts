@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- this file is the intentional lazy route-element registry. */
 import { Suspense, lazy } from "react";
 import { AdminSectionSkeleton } from "./AdminSectionSkeleton";
-import { EmptyRouteState } from "../sections/common/EmptyRouteState";
 
 // Real V2 sections
 const OverviewV2 = lazy(() => import("../sections/overview/OverviewV2"));
@@ -58,12 +57,6 @@ const SecurityMonitoringDashboard = lazy(() =>
 const wrap = (node: React.ReactNode) => (
   <Suspense fallback={<AdminSectionSkeleton />}>{node}</Suspense>
 );
-
-const Empty = (
-  title: string,
-  description: string,
-  legacy?: { label: string; to: string }[],
-) => wrap(<EmptyRouteState title={title} description={description} legacy={legacy} />);
 
 // Locked-type catalog wrappers to preserve deterministic query keys.
 const AllCatalog = () => <CatalogPage />;

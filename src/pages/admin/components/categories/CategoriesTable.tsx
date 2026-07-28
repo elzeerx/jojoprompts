@@ -10,14 +10,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import { Edit, Eye, EyeOff } from "lucide-react";
 import { Category } from "@/types/category";
 
 interface CategoriesTableProps {
   categories: Category[];
   loading: boolean;
   onEdit: (category: Category) => void;
-  onDelete: (id: string) => void;
   onToggleActive: (id: string, data: Partial<Category>) => void;
 }
 
@@ -25,7 +24,6 @@ export function CategoriesTable({
   categories,
   loading,
   onEdit,
-  onDelete,
   onToggleActive,
 }: CategoriesTableProps) {
   if (loading) {
@@ -45,13 +43,13 @@ export function CategoriesTable({
   }
 
   return (
-    <div className="border rounded-lg">
-      <Table>
+    <div className="overflow-x-auto rounded-lg border">
+      <Table className="min-w-[760px]">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Plan Required</TableHead>
-            <TableHead>Features</TableHead>
+            <TableHead>Catalog path</TableHead>
+            <TableHead>Filter labels</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Order</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -72,25 +70,24 @@ export function CategoriesTable({
                   <div>
                     <div className="font-medium">{category.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      {category.description?.substring(0, 50)}...
+                      {category.description
+                        ? `${category.description.substring(0, 70)}${category.description.length > 70 ? "…" : ""}`
+                        : "No description"}
                     </div>
                   </div>
                 </div>
               </TableCell>
-              <TableCell>
-                <Badge variant="outline" className="capitalize">
-                  {category.required_plan}
-                </Badge>
-              </TableCell>
+              <TableCell><code className="text-xs">{category.link_path}</code></TableCell>
               <TableCell>
                 <div className="text-sm text-muted-foreground">
-                  {category.features.length} features
+                  {category.subcategories.length} label{category.subcategories.length === 1 ? "" : "s"}
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={category.is_active}
+                    aria-label={`${category.is_active ? "Deactivate" : "Activate"} ${category.name}`}
                     onCheckedChange={(checked) =>
                       onToggleActive(category.id, { is_active: checked })
                     }
@@ -111,19 +108,10 @@ export function CategoriesTable({
                     variant="outline"
                     size="sm"
                     aria-label="Edit category"
-                    className="min-w-[44px] md:min-w-0"
+                    className="min-h-[44px] min-w-[44px]"
                     onClick={() => onEdit(category)}
                   >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    aria-label="Delete category"
-                    className="min-w-[44px] md:min-w-0"
-                    onClick={() => onDelete(category.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
+                    <Edit className="h-4 w-4" aria-hidden />
                   </Button>
                 </div>
               </TableCell>
