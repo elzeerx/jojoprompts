@@ -356,7 +356,7 @@ describe("decideQueueAllowed — stale-clean must be re-queuable", () => {
 // -----------------------------------------------------------------------------
 describe("draft migration — fail-closed SQL contract", () => {
   const path = resolve(
-    __dirname,
+    HERE,
     "../../../../docs/security/drafts/20260728130000_package_scan_fail_closed_effective_state.sql",
   );
   const sql = readFileSync(path, "utf8");
