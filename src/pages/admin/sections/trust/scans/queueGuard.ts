@@ -21,6 +21,12 @@ export interface QueueGuardInput {
   /** Latest scan status for the version, or null when unscanned. */
   latestScanStatus: PackageScanState | null;
   /**
+   * Effective coverage of the latest stored clean scan against the version's
+   * current resource_files (from v2_internal_effective_scan_state). When false,
+   * a stored 'clean' is stale and MUST be re-queuable. Undefined = unknown.
+   */
+  coverageValid?: boolean;
+  /**
    * True when any package_scans row for the version is itself pending.
    * (Derived from the loaded scans list — cheap.)
    */
@@ -42,17 +48,12 @@ export interface QueueGuardResult {
   reason: QueueGuardReason | "ok";
 }
 
-const TERMINAL_CLEAN_STATES: PackageScanState[] = [
-  "clean",
-  "suspicious",
-  "malicious",
-];
-
 export function evaluateQueueGuard(input: QueueGuardInput): QueueGuardResult {
   const {
     providerReady,
     hasFiles,
     latestScanStatus,
+    coverageValid,
     hasPendingAggregate,
     hasPendingChild,
     pendingChildProbeLoading,
@@ -60,11 +61,14 @@ export function evaluateQueueGuard(input: QueueGuardInput): QueueGuardResult {
 
   if (!providerReady) return { canQueue: false, reason: "not_ready" };
   if (!hasFiles) return { canQueue: false, reason: "no_files" };
-  if (latestScanStatus && TERMINAL_CLEAN_STATES.includes(latestScanStatus)) {
-    return { canQueue: false, reason: "already_clean" };
-  }
   if (latestScanStatus === "pending" || hasPendingAggregate) {
     return { canQueue: false, reason: "pending_exists" };
+  }
+  // Only exact-coverage clean blocks re-queue. Stale clean (coverage_valid
+  // explicitly false) and terminal non-clean (suspicious/malicious) permit a
+  // fresh scan. Server RPC re-validates atomically.
+  if (latestScanStatus === "clean" && coverageValid === true) {
+    return { canQueue: false, reason: "already_clean" };
   }
   // Fail closed while the pending-child probe is still resolving so we never
   // enable Queue in the brief window between opening the sheet and confirming
