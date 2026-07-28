@@ -1,14 +1,44 @@
-# Legacy SECURITY DEFINER authorization audit — 2026-07-28
+# Legacy SECURITY DEFINER authorization audit — 2026-07-28 (corrected)
 
 Scope: schema `public`. Source-only. **No live migration, Supabase
 mutation, function deploy, publish, or Coming Soon change was performed
 in this pass.**
 
-Drafted (not applied) migration file:
-`20260728120000_legacy_security_definer_authorization_hardening.sql`
-(SQL body embedded in
-`src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts` under
-`LEGACY_SECDEF_MIGRATION_SQL`).
+Drafted (not applied) migration:
+
+- Canonical filename (owned by the supabase migration tool):
+  `supabase/migrations/20260728120000_legacy_security_definer_authorization_hardening.sql`
+  — cannot be written directly from this environment.
+- Physical draft for reviewer inspection (byte-identical body):
+  `docs/security/drafts/20260728120000_legacy_security_definer_authorization_hardening.sql`.
+- Source fixture (mirror + tier enumeration):
+  `src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts`
+  (`LEGACY_SECDEF_MIGRATION_SQL`, byte-parity asserted by
+  `legacySecurityDefinerAuthorization.test.ts`).
+
+### Correction notes vs. earlier draft
+
+Signatures below are the authoritative live `pg_proc` shapes at draft
+time — the caller supplied `has_function_privilege` evidence for
+`authenticated` and `service_role`. Earlier draft errors now fixed:
+
+- `calculate_anomaly_score` was `(uuid, jsonb)` → **`(uuid, text, jsonb)`**.
+- `confirm_user_email` was `(uuid)` → **`(uuid, boolean)`**.
+- `evaluate_compliance_status` was `(text, uuid)` → **`(text, jsonb)`**.
+- `execute_response_action` and `trigger_automated_response` were
+  included in the revoke set but live pg_proc shows them **already
+  service_role-only** (`authenticated=false, service_role=true`) — they
+  are now excluded and no statement is emitted for them.
+- The prior header claim that the migration used
+  `REVOKE ... IF EXISTS` was incorrect. PostgreSQL does not support
+  that syntax on function privileges; the migration uses plain
+  `REVOKE EXECUTE`. Idempotence comes from `REVOKE` being a no-op on
+  an unprivileged role and `GRANT` being a no-op when already granted.
+
+Sources are labeled as **live evidence** (from `pg_proc` /
+`has_function_privilege` values supplied by the caller) or **source
+inference** (`rg` sweep of this repo). Do not conflate them.
+
 
 ## Method
 
