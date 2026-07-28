@@ -5,6 +5,13 @@
 
 export const V2_COMMERCE_ENABLED = false;
 
+/**
+ * Keep the new audited admin receipt-resend UI fail-closed until its
+ * forward-only migration and Edge Function have both been deployed and
+ * runtime-tested. Flip only after the backend activation gate passes.
+ */
+export const ADMIN_RECEIPT_RESEND_ENABLED = false;
+
 export const V2_RESOURCE_TYPES = [
   "skill",
   "automation",

@@ -6,8 +6,13 @@
 // items, or email — order data is loaded server-side from canonical rows.
 //
 // Contract:
-//   POST { order_id: uuid, reason: string (3..300) }
-//   Any extra field is rejected. No overrides allowed.
+//   POST { order_id: uuid, reason: string (3..300) }  -> new resend
+//   POST { request_id: uuid }                         -> reconcile the SAME
+//                                                        ambiguous resend
+//   POST { request_id, resolution, reason }           -> record an explicit
+//                                                        manual provider review
+//   Any extra field is rejected. No overrides allowed. Reconciliation uses
+//   the persisted provider payload and original idempotency key.
 //
 // Guardrails:
 //   - Admin JWT + has_role('admin') check
@@ -23,18 +28,21 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
+  buildReceiptProviderPayload,
   loadReceiptOrder,
+  ReceiptDeliveryError,
+  type ReceiptProviderPayload,
   receiptResendIdempotencyKey,
   renderReceiptHtml,
   safeProviderMessageId,
   sanitizeErrorCode,
   sanitizeErrorMessage,
-  sendReceiptViaResend,
+  sendReceiptPayloadViaResend,
 } from "../_shared/v2ReceiptDelivery.ts";
 import {
   BODY_BYTES_MAX,
   mapCreateRpcError,
-  parseResendBody,
+  parseReceiptResendCommand,
 } from "./decisions.ts";
 
 function json(body: unknown, status = 200): Response {
@@ -107,6 +115,247 @@ async function logResendAttempt(
   }
 }
 
+async function markResendFailed(
+  svc: SupabaseClient,
+  requestId: string,
+  errorCode: string,
+  errorMessage: string,
+): Promise<boolean> {
+  try {
+    const { data, error } = await svc.rpc(
+      "v2_internal_fail_receipt_resend_request",
+      {
+        p_request_id: requestId,
+        p_error_code: sanitizeErrorCode(errorCode),
+        p_error_message: sanitizeErrorMessage(errorMessage),
+      },
+    );
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
+
+async function markReconciliationRequired(
+  svc: SupabaseClient,
+  requestId: string,
+  errorCode: string,
+  errorMessage: string,
+  providerMessageId: string | null = null,
+): Promise<boolean> {
+  try {
+    const { data, error } = await svc.rpc(
+      "v2_internal_require_receipt_resend_reconciliation",
+      {
+        p_request_id: requestId,
+        p_error_code: sanitizeErrorCode(errorCode),
+        p_error_message: sanitizeErrorMessage(errorMessage),
+        p_provider_message_id: safeProviderMessageId(providerMessageId),
+      },
+    );
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
+
+function reconciliationRequired(
+  requestId: string,
+  providerMessageId: string | null = null,
+): Response {
+  return json({
+    ok: false,
+    error: "reconciliation_required",
+    request_id: requestId,
+    ...(providerMessageId ? { provider_message_id: providerMessageId } : {}),
+  }, 202);
+}
+
+interface PersistedReceiptPayload {
+  payload: ReceiptProviderPayload;
+  recipientUserId: string | null;
+}
+
+function parsePersistedPayload(raw: unknown): PersistedReceiptPayload | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const row = raw as Record<string, unknown>;
+  const strings = [
+    "from_header",
+    "recipient_email",
+    "reply_to",
+    "subject",
+    "html_body",
+    "text_body",
+  ] as const;
+  for (const key of strings) {
+    if (typeof row[key] !== "string" || (row[key] as string).length === 0) return null;
+  }
+  if (
+    !row.provider_headers ||
+    typeof row.provider_headers !== "object" ||
+    Array.isArray(row.provider_headers)
+  ) return null;
+  const headers: Record<string, string> = {};
+  for (const [key, value] of Object.entries(row.provider_headers as Record<string, unknown>)) {
+    if (typeof value !== "string") return null;
+    headers[key] = value;
+  }
+  return {
+    payload: {
+      from: row.from_header as string,
+      to: row.recipient_email as string,
+      reply_to: row.reply_to as string,
+      subject: row.subject as string,
+      html: row.html_body as string,
+      text: row.text_body as string,
+      headers,
+    },
+    recipientUserId: typeof row.recipient_user_id === "string"
+      ? row.recipient_user_id
+      : null,
+  };
+}
+
+async function persistReceiptPayload(
+  svc: SupabaseClient,
+  requestId: string,
+  recipientUserId: string | null,
+  payload: ReceiptProviderPayload,
+): Promise<boolean> {
+  try {
+    const { error } = await svc.from("v2_order_receipt_resend_payloads").insert({
+      request_id: requestId,
+      from_header: payload.from,
+      recipient_user_id: recipientUserId,
+      recipient_email: payload.to,
+      reply_to: payload.reply_to,
+      subject: payload.subject,
+      html_body: payload.html,
+      text_body: payload.text,
+      provider_headers: payload.headers,
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+async function loadPersistedReceiptPayload(
+  svc: SupabaseClient,
+  requestId: string,
+): Promise<PersistedReceiptPayload | null> {
+  try {
+    const { data, error } = await svc
+      .from("v2_order_receipt_resend_payloads")
+      .select(
+        "from_header, recipient_user_id, recipient_email, reply_to, subject, html_body, text_body, provider_headers",
+      )
+      .eq("request_id", requestId)
+      .maybeSingle();
+    if (error) return null;
+    return parsePersistedPayload(data);
+  } catch {
+    return null;
+  }
+}
+
+async function deliverPersistedReceipt(
+  svc: SupabaseClient,
+  args: {
+    orderId: string;
+    requestId: string;
+    recipientUserId: string | null;
+    payload: ReceiptProviderPayload;
+  },
+): Promise<Response> {
+  const idempotencyKey = receiptResendIdempotencyKey(args.requestId);
+  let providerId: string | null = null;
+  try {
+    providerId = await sendReceiptPayloadViaResend(args.payload, idempotencyKey);
+  } catch (sendErr) {
+    const msg = sanitizeErrorMessage((sendErr as Error)?.message ?? "resend_send_failed");
+    if (
+      !(sendErr instanceof ReceiptDeliveryError) ||
+      sendErr.disposition === "unknown"
+    ) {
+      await markReconciliationRequired(
+        svc,
+        args.requestId,
+        "delivery_outcome_unknown",
+        msg,
+      );
+      return reconciliationRequired(args.requestId);
+    }
+    const closed = await markResendFailed(
+      svc,
+      args.requestId,
+      "resend_send_failed",
+      msg,
+    );
+    if (!closed) return reconciliationRequired(args.requestId);
+    await logResendAttempt(svc, {
+      orderId: args.orderId,
+      requestId: args.requestId,
+      userId: args.recipientUserId,
+      email: args.payload.to,
+      success: false,
+      errorCode: "resend_send_failed",
+      errorMessage: msg,
+    });
+    return json({
+      ok: false,
+      error: "resend_send_failed",
+      request_id: args.requestId,
+    }, 502);
+  }
+
+  const safeProviderId = safeProviderMessageId(providerId);
+  const { data: completeOk, error: completeErr } = await svc.rpc(
+    "v2_internal_complete_receipt_resend_request",
+    {
+      p_request_id: args.requestId,
+      p_provider_message_id: safeProviderId,
+    },
+  );
+  if (completeErr || completeOk !== true) {
+    await markReconciliationRequired(
+      svc,
+      args.requestId,
+      "db_complete_failed",
+      "provider accepted delivery but database completion failed",
+      safeProviderId,
+    );
+    return reconciliationRequired(args.requestId, safeProviderId);
+  }
+
+  await logResendAttempt(svc, {
+    orderId: args.orderId,
+    requestId: args.requestId,
+    userId: args.recipientUserId,
+    email: args.payload.to,
+    success: true,
+    providerMessageId: safeProviderId,
+  });
+
+  return json({
+    ok: true,
+    request_id: args.requestId,
+    provider_message_id: safeProviderId,
+  }, 200);
+}
+
+function reconciliationClaimError(code: string | null | undefined): Response {
+  const safeCode = code || "reconciliation_claim_failed";
+  const status = safeCode === "forbidden"
+    ? 403
+    : safeCode === "request_not_found"
+      ? 404
+      : safeCode === "reconciliation_attempt_cap_exceeded"
+        ? 429
+        : 409;
+  return err(safeCode, status);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return err("method_not_allowed", 405);
@@ -118,22 +367,87 @@ Deno.serve(async (req) => {
   } catch {
     return err("invalid_body", 400);
   }
-  if (raw.length > BODY_BYTES_MAX) return err("body_too_large", 413);
+  if (new TextEncoder().encode(raw).byteLength > BODY_BYTES_MAX) {
+    return err("body_too_large", 413);
+  }
   let parsedJson: unknown;
   try {
     parsedJson = raw ? JSON.parse(raw) : null;
   } catch {
     return err("invalid_body", 400);
   }
-  const parsed = parseResendBody(parsedJson);
-  if (!parsed.ok) return err(parsed.code, 400);
-  const { order_id, reason } = parsed;
+  const command = parseReceiptResendCommand(parsedJson);
+  if (!command.ok) return err(command.code, 400);
 
   const auth = await requireAdmin(req);
   if (!auth.ok) return auth.res;
   const { service, userId } = auth;
 
-  // 1. Create request via service-role RPC.
+  if (command.mode === "resolve") {
+    const { data, error } = await service.rpc(
+      "v2_internal_resolve_receipt_resend_reconciliation",
+      {
+        p_request_id: command.request_id,
+        p_admin_user_id: userId,
+        p_resolution: command.resolution,
+        p_reason: command.reason,
+      },
+    );
+    if (error || data !== true) return err("manual_resolution_failed", 409);
+    return json({
+      ok: true,
+      request_id: command.request_id,
+      resolution: command.resolution,
+    });
+  }
+
+  if (command.mode === "reconcile") {
+    const { data: claimRows, error: claimErr } = await service.rpc(
+      "v2_internal_claim_receipt_resend_reconciliation",
+      {
+        p_request_id: command.request_id,
+        p_admin_user_id: userId,
+      },
+    );
+    if (claimErr || !Array.isArray(claimRows) || claimRows.length === 0) {
+      return err("reconciliation_claim_failed", 500);
+    }
+    const claim = claimRows[0] as {
+      order_id: string | null;
+      requested_by: string | null;
+      claimed: boolean;
+      claim_error_code: string | null;
+    };
+    if (!claim.claimed || !claim.order_id) {
+      return reconciliationClaimError(claim.claim_error_code);
+    }
+
+    const stored = await loadPersistedReceiptPayload(service, command.request_id);
+    if (!stored) {
+      const closed = await markResendFailed(
+        service,
+        command.request_id,
+        "payload_snapshot_missing",
+        "persisted provider payload is unavailable",
+      );
+      if (!closed) return reconciliationRequired(command.request_id);
+      return json({
+        ok: false,
+        error: "payload_snapshot_missing",
+        request_id: command.request_id,
+      }, 409);
+    }
+    return deliverPersistedReceipt(service, {
+      orderId: claim.order_id,
+      requestId: command.request_id,
+      recipientUserId: stored.recipientUserId,
+      payload: stored.payload,
+    });
+  }
+
+  const { order_id, reason } = command;
+
+  // 1. Create a new request via the service-role RPC.
   let requestId: string;
   try {
     const { data, error } = await service.rpc("v2_internal_create_receipt_resend_request", {
@@ -158,88 +472,65 @@ Deno.serve(async (req) => {
     { p_request_id: requestId },
   );
   if (claimErr || !Array.isArray(claimRows) || claimRows.length === 0) {
+    const closed = await markResendFailed(
+      service,
+      requestId,
+      "claim_failed",
+      "request could not be claimed before provider delivery",
+    );
+    if (!closed) return reconciliationRequired(requestId);
     return json({ ok: false, error: "claim_failed", request_id: requestId }, 500);
   }
   const claim = claimRows[0] as { order_id: string; requested_by: string; claimed: boolean };
   if (!claim.claimed) {
-    return json({ ok: false, error: "claim_lost", request_id: requestId }, 409);
+    return reconciliationRequired(requestId);
   }
 
   // 3. Load canonical order server-side (allows paid + partially_refunded).
   const order = await loadReceiptOrder(service, order_id, { allowPartialRefund: true });
   if (!order) {
-    await service.rpc("v2_internal_fail_receipt_resend_request", {
-      p_request_id: requestId,
-      p_error_code: "order_load_failed",
-      p_error_message: "canonical order or recipient not available",
-    });
+    const closed = await markResendFailed(
+      service,
+      requestId,
+      "order_load_failed",
+      "canonical order or recipient not available",
+    );
+    if (!closed) return reconciliationRequired(requestId);
     return json({ ok: false, error: "order_load_failed", request_id: requestId }, 409);
   }
 
-  // 4. Render + send with the RESEND-scoped idempotency key.
+  // 4. Render and persist the exact provider payload before the first send.
+  //    A reconciliation must reuse both this payload and this request's key.
   const siteUrl = Deno.env.get("V2_PUBLIC_SITE_URL") ?? "https://jojoprompts.com";
   const rendered = renderReceiptHtml(order, siteUrl);
-  const idempotencyKey = receiptResendIdempotencyKey(requestId);
-
-  let providerId: string | null = null;
-  try {
-    providerId = await sendReceiptViaResend(order, rendered, idempotencyKey);
-  } catch (sendErr) {
-    const msg = sanitizeErrorMessage((sendErr as Error)?.message ?? "resend_send_failed");
-    await service.rpc("v2_internal_fail_receipt_resend_request", {
-      p_request_id: requestId,
-      p_error_code: sanitizeErrorCode("resend_send_failed"),
-      p_error_message: msg,
-    });
-    await logResendAttempt(service, {
-      orderId: order_id,
-      requestId,
-      userId: order.user_id,
-      email: order.user_email,
-      success: false,
-      errorCode: "resend_send_failed",
-      errorMessage: msg,
-    });
-    return json({ ok: false, error: "resend_send_failed", request_id: requestId }, 502);
-  }
-
-  // 5. Complete request. If provider succeeded but DB complete fails, return
-  //    a distinct reconciliation status instead of blindly retrying.
-  const safeProviderId = safeProviderMessageId(providerId);
-  const { data: completeOk, error: completeErr } = await service.rpc(
-    "v2_internal_complete_receipt_resend_request",
-    { p_request_id: requestId, p_provider_message_id: safeProviderId },
+  const payload = buildReceiptProviderPayload(order, rendered);
+  const stored = await persistReceiptPayload(
+    service,
+    requestId,
+    order.user_id,
+    payload,
   );
-  if (completeErr || completeOk !== true) {
-    await logResendAttempt(service, {
-      orderId: order_id,
+  if (!stored) {
+    const closed = await markResendFailed(
+      service,
       requestId,
-      userId: order.user_id,
-      email: order.user_email,
-      success: true,
-      providerMessageId: safeProviderId,
-      errorMessage: "db_complete_failed",
-    });
+      "payload_snapshot_failed",
+      "provider payload could not be persisted before delivery",
+    );
+    if (!closed) return reconciliationRequired(requestId);
     return json({
       ok: false,
-      error: "reconciliation_required",
+      error: "payload_snapshot_failed",
       request_id: requestId,
-      provider_message_id: safeProviderId,
-    }, 202);
+    }, 500);
   }
 
-  await logResendAttempt(service, {
+  // 5. Send and complete. The shared delivery helper transitions ambiguous
+  //    outcomes to reconciliation_required and never invents a new key.
+  return deliverPersistedReceipt(service, {
     orderId: order_id,
     requestId,
-    userId: order.user_id,
-    email: order.user_email,
-    success: true,
-    providerMessageId: safeProviderId,
+    recipientUserId: order.user_id,
+    payload,
   });
-
-  return json({
-    ok: true,
-    request_id: requestId,
-    provider_message_id: safeProviderId,
-  }, 200);
 });

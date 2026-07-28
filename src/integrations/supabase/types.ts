@@ -4229,6 +4229,121 @@ export type Database = {
           },
         ]
       }
+      v2_order_receipt_resend_requests: {
+        Row: {
+          completed_at: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          last_reconciliation_at: string | null
+          manual_resolution_note: string | null
+          manual_resolved_at: string | null
+          manual_resolved_by: string | null
+          order_id: string
+          provider_message_id: string | null
+          reason: string
+          reconciliation_attempts: number
+          requested_at: string
+          requested_by: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          last_reconciliation_at?: string | null
+          manual_resolution_note?: string | null
+          manual_resolved_at?: string | null
+          manual_resolved_by?: string | null
+          order_id: string
+          provider_message_id?: string | null
+          reason: string
+          reconciliation_attempts?: number
+          requested_at?: string
+          requested_by?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          last_reconciliation_at?: string | null
+          manual_resolution_note?: string | null
+          manual_resolved_at?: string | null
+          manual_resolved_by?: string | null
+          order_id?: string
+          provider_message_id?: string | null
+          reason?: string
+          reconciliation_attempts?: number
+          requested_at?: string
+          requested_by?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_order_receipt_resend_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v2_order_receipt_resend_payloads: {
+        Row: {
+          created_at: string
+          from_header: string
+          html_body: string
+          provider_headers: Json
+          recipient_email: string
+          recipient_user_id: string | null
+          reply_to: string
+          request_id: string
+          subject: string
+          text_body: string
+        }
+        Insert: {
+          created_at?: string
+          from_header: string
+          html_body: string
+          provider_headers: Json
+          recipient_email: string
+          recipient_user_id?: string | null
+          reply_to: string
+          request_id: string
+          subject: string
+          text_body: string
+        }
+        Update: {
+          created_at?: string
+          from_header?: string
+          html_body?: string
+          provider_headers?: Json
+          recipient_email?: string
+          recipient_user_id?: string | null
+          reply_to?: string
+          request_id?: string
+          subject?: string
+          text_body?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_order_receipt_resend_payloads_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "v2_order_receipt_resend_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v2_provider_status_rate_limit: {
         Row: {
           count: number
@@ -4979,6 +5094,41 @@ export type Database = {
         }
         Returns: boolean
       }
+      v2_internal_claim_receipt_resend_request: {
+        Args: { p_request_id: string }
+        Returns: {
+          claimed: boolean
+          order_id: string
+          requested_by: string | null
+        }[]
+      }
+      v2_internal_claim_receipt_resend_reconciliation: {
+        Args: {
+          p_admin_user_id: string
+          p_request_id: string
+        }
+        Returns: {
+          claim_error_code: string | null
+          claimed: boolean
+          order_id: string | null
+          requested_by: string | null
+        }[]
+      }
+      v2_internal_complete_receipt_resend_request: {
+        Args: {
+          p_provider_message_id: string | null
+          p_request_id: string
+        }
+        Returns: boolean
+      }
+      v2_internal_create_receipt_resend_request: {
+        Args: {
+          p_admin_user_id: string
+          p_order_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
       v2_get_entitled_resource_content: {
         Args: { p_resource_id: string }
         Returns: Json
@@ -5054,6 +5204,32 @@ export type Database = {
           scanned_file_count: number
           stored_status: string
         }[]
+      }
+      v2_internal_fail_receipt_resend_request: {
+        Args: {
+          p_error_code: string
+          p_error_message: string
+          p_request_id: string
+        }
+        Returns: boolean
+      }
+      v2_internal_require_receipt_resend_reconciliation: {
+        Args: {
+          p_error_code: string
+          p_error_message: string
+          p_provider_message_id?: string | null
+          p_request_id: string
+        }
+        Returns: boolean
+      }
+      v2_internal_resolve_receipt_resend_reconciliation: {
+        Args: {
+          p_admin_user_id: string
+          p_reason: string
+          p_request_id: string
+          p_resolution: string
+        }
+        Returns: boolean
       }
       v2_internal_record_scan_submission: {
         Args: { p_data_id: string; p_item_id: string; p_next_poll_at: string }

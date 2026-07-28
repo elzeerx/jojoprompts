@@ -14,11 +14,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Copy, Printer, MailPlus } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  MailPlus,
+  Printer,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAdminOrderDetail } from "@/hooks/admin/v2/useAdminCommerce";
 import { useOrderReceiptDelivery } from "@/hooks/admin/v2/useOrderReceiptDelivery";
+import { ADMIN_RECEIPT_RESEND_ENABLED } from "@/config/v2Flags";
 import {
+  useAdminReconcileOrderReceiptResend,
+  useAdminResolveOrderReceiptResend,
   useAdminResendOrderReceipt,
   useOrderReceiptResendRequests,
 } from "@/hooks/admin/v2/useOrderReceiptResends";
@@ -26,6 +36,35 @@ import { formatFils, formatDateTime, statusTone, copyToClipboard, bi } from "@/l
 
 const DEFAULT_RESEND_REASON = "Customer requested another copy";
 const RESEND_ELIGIBLE_STATUSES = new Set(["paid", "partially_refunded"]);
+const RESEND_ERROR_MESSAGES: Record<string, string> = {
+  forbidden: "Your account is not allowed to resend receipts.",
+  order_not_found: "This order no longer exists.",
+  order_not_eligible: "Only paid or partially-refunded orders can be resent.",
+  missing_recipient: "The customer account has no deliverable email address.",
+  pending_exists: "A receipt resend is already pending for this order.",
+  cooldown_active: "Please wait five minutes before sending another copy.",
+  order_cap_exceeded: "This order reached its 24-hour resend limit.",
+  admin_cap_exceeded: "Your account reached its 24-hour resend limit.",
+  order_load_failed: "The canonical order or recipient could not be loaded.",
+  resend_send_failed: "The email provider could not send the receipt.",
+  claim_failed: "The resend request was created but could not be claimed. Review the history before retrying.",
+  claim_lost: "Another process already claimed this resend request.",
+  resend_request_failed: "The resend request could not be created.",
+  reconciliation_claim_failed: "The ambiguous resend could not be claimed for reconciliation.",
+  reconciliation_not_required: "This resend no longer needs reconciliation.",
+  request_still_processing: "The original send is still processing. Try reconciliation after two minutes.",
+  reconciliation_window_expired: "The provider's 24-hour idempotency window is nearly over. Review this delivery manually.",
+  reconciliation_attempt_cap_exceeded: "This resend reached the safe reconciliation-attempt limit.",
+  payload_snapshot_missing: "The exact saved email payload is unavailable. No provider retry was made.",
+  payload_snapshot_failed: "The exact email payload could not be saved, so the receipt was not sent.",
+  manual_resolution_failed: "This request could not be closed from its current state.",
+  feature_unavailable: "Receipt resend is waiting for backend activation.",
+};
+
+function resendErrorMessage(code: string | undefined): string {
+  if (!code) return "The receipt could not be resent.";
+  return RESEND_ERROR_MESSAGES[code] ?? code.replaceAll("_", " ");
+}
 
 interface Props {
   orderId: string | null;
@@ -188,28 +227,42 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
   const receiptQuery = useOrderReceiptDelivery(orderId);
   const receipt = receiptQuery.data ?? null;
   const resendsQuery = useOrderReceiptResendRequests(orderId);
-  const resends = resendsQuery.data ?? [];
+  const resends = useMemo(() => resendsQuery.data ?? [], [resendsQuery.data]);
   const resendMutation = useAdminResendOrderReceipt();
+  const reconcileMutation = useAdminReconcileOrderReceiptResend();
+  const resolveMutation = useAdminResolveOrderReceiptResend();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reason, setReason] = useState(DEFAULT_RESEND_REASON);
+  const [manualResolution, setManualResolution] = useState<{
+    requestId: string;
+    resolution: "sent" | "failed";
+  } | null>(null);
+  const [manualResolutionReason, setManualResolutionReason] = useState("");
 
   const orderStatus = detail?.order.status ?? null;
   const eligible = orderStatus ? RESEND_ELIGIBLE_STATUSES.has(orderStatus) : false;
   const activeResend = useMemo(
-    () => resends.find((r) => r.status === "pending" || r.status === "processing") ?? null,
+    () => resends.find((r) =>
+      r.status === "pending" ||
+      r.status === "processing" ||
+      r.status === "reconciliation_required"
+    ) ?? null,
     [resends],
   );
   const originalProcessing = !!receipt && receipt.status !== "sent" && receipt.status !== "failed";
   const reasonTrim = reason.trim();
   const reasonValid = reasonTrim.length >= 3 && reasonTrim.length <= 300;
-  const resendDisabled =
+  const resendUnavailable =
+    !ADMIN_RECEIPT_RESEND_ENABLED ||
     !orderId ||
     !eligible ||
     !!activeResend ||
     originalProcessing ||
     resendMutation.isPending ||
-    !reasonValid;
+    reconcileMutation.isPending ||
+    resolveMutation.isPending;
+  const resendConfirmDisabled = resendUnavailable || !reasonValid;
 
   const runResend = () => {
     if (!orderId || !reasonValid) return;
@@ -219,7 +272,7 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
         onSuccess: (res) => {
           setConfirmOpen(false);
           if (res.ok) {
-            toast({ description: "Receipt resend queued / تمت جدولة إعادة الإرسال" });
+            toast({ description: "Receipt sent again / تمت إعادة إرسال الإيصال" });
           } else if (res.error === "reconciliation_required") {
             toast({
               variant: "destructive",
@@ -230,7 +283,7 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
             toast({
               variant: "destructive",
               title: "Resend failed",
-              description: res.error ?? "unknown_error",
+              description: resendErrorMessage(res.error),
             });
           }
         },
@@ -239,7 +292,83 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
           toast({
             variant: "destructive",
             title: "Resend failed",
-            description: (e as Error).message,
+            description: resendErrorMessage((e as Error).message),
+          });
+        },
+      },
+    );
+  };
+
+  const runReconciliation = (requestId: string) => {
+    if (!orderId) return;
+    reconcileMutation.mutate(
+      { requestId, orderId },
+      {
+        onSuccess: (res) => {
+          if (res.ok) {
+            toast({
+              description: "Receipt delivery reconciled / تمت مطابقة إرسال الإيصال",
+            });
+          } else if (res.error === "reconciliation_required") {
+            toast({
+              variant: "destructive",
+              title: "Still ambiguous",
+              description: "The same safe request remains queued for reconciliation.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Reconciliation failed",
+              description: resendErrorMessage(res.error),
+            });
+          }
+        },
+        onError: (e) => {
+          toast({
+            variant: "destructive",
+            title: "Reconciliation failed",
+            description: resendErrorMessage((e as Error).message),
+          });
+        },
+      },
+    );
+  };
+
+  const runManualResolution = () => {
+    if (!orderId || !manualResolution) return;
+    const trimmed = manualResolutionReason.trim();
+    if (trimmed.length < 3 || trimmed.length > 300) return;
+    const resolution = manualResolution.resolution;
+    resolveMutation.mutate(
+      {
+        requestId: manualResolution.requestId,
+        orderId,
+        resolution,
+        reason: trimmed,
+      },
+      {
+        onSuccess: (res) => {
+          setManualResolution(null);
+          setManualResolutionReason("");
+          if (res.ok) {
+            toast({
+              description: resolution === "sent"
+                ? "Manual review recorded: receipt was sent."
+                : "Manual review recorded: receipt was not sent.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Resolution failed",
+              description: resendErrorMessage(res.error),
+            });
+          }
+        },
+        onError: (e) => {
+          toast({
+            variant: "destructive",
+            title: "Resolution failed",
+            description: resendErrorMessage((e as Error).message),
           });
         },
       },
@@ -474,7 +603,7 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
                       size="sm"
                       variant="outline"
                       className="min-h-[44px]"
-                      disabled={resendDisabled}
+                      disabled={resendUnavailable}
                       onClick={() => setConfirmOpen(true)}
                       aria-label="Resend receipt / إعادة إرسال الإيصال"
                     >
@@ -484,6 +613,11 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
                     {!eligible && (
                       <span className="text-muted-foreground">
                         Only paid or partially-refunded orders are eligible.
+                      </span>
+                    )}
+                    {!ADMIN_RECEIPT_RESEND_ENABLED && (
+                      <span className="text-muted-foreground">
+                        Receipt resend is waiting for backend activation.
                       </span>
                     )}
                     {eligible && activeResend && (
@@ -498,7 +632,7 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
                     )}
                   </div>
 
-                  {resendsQuery.isLoading ? (
+                  {!ADMIN_RECEIPT_RESEND_ENABLED ? null : resendsQuery.isLoading ? (
                     <Skeleton className="h-10 w-full" />
                   ) : resends.length === 0 ? (
                     <div className="text-muted-foreground">
@@ -506,7 +640,25 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
                     </div>
                   ) : (
                     <ul className="divide-y rounded border" data-testid="order-receipt-resend-history">
-                      {resends.map((r) => (
+                      {resends.map((r) => {
+                        const requestAgeMs = Date.now() - Date.parse(r.requested_at);
+                        const processingAgeMs = Date.now() - Date.parse(r.updated_at);
+                        const withinSafeWindow =
+                          Number.isFinite(requestAgeMs) &&
+                          requestAgeMs >= 0 &&
+                          requestAgeMs < 23 * 60 * 60 * 1000;
+                        const staleProcessing =
+                          r.status === "processing" && processingAgeMs >= 2 * 60 * 1000;
+                        const ambiguous =
+                          r.status === "reconciliation_required" || staleProcessing;
+                        const canReconcile =
+                          withinSafeWindow &&
+                          r.reconciliation_attempts < 5 &&
+                          ambiguous;
+                        const manualReviewRequired =
+                          ambiguous &&
+                          (!withinSafeWindow || r.reconciliation_attempts >= 5);
+                        return (
                         <li key={r.id} className="p-2 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge variant={statusTone(r.status)}>{r.status}</Badge>
@@ -532,8 +684,85 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
                               <CopyBtn text={r.provider_message_id} label="provider id" />
                             </div>
                           )}
+                          {r.reconciliation_attempts > 0 && (
+                            <div className="text-muted-foreground">
+                              reconciliation attempts: {r.reconciliation_attempts} / 5
+                            </div>
+                          )}
+                          {r.manual_resolution_note && (
+                            <div className="text-muted-foreground">
+                              manual review: {r.manual_resolution_note}
+                              {r.manual_resolved_at
+                                ? ` · ${formatDateTime(r.manual_resolved_at)}`
+                                : ""}
+                            </div>
+                          )}
+                          {canReconcile && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="min-h-[44px]"
+                              disabled={reconcileMutation.isPending}
+                              onClick={() => runReconciliation(r.id)}
+                            >
+                              <RefreshCw
+                                className={`mr-1 h-4 w-4 ${
+                                  reconcileMutation.isPending ? "animate-spin" : ""
+                                }`}
+                              />
+                              Reconcile safely / مطابقة آمنة
+                            </Button>
+                          )}
+                          {manualReviewRequired && (
+                            <div className="space-y-2 rounded border border-amber-500/40 bg-amber-500/5 p-2 text-amber-800 dark:text-amber-200">
+                              <div>
+                                Automatic retry is disabled because the safe
+                                idempotency window or attempt limit was reached.
+                                Verify this request in Resend, then record the
+                                result below.
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="min-h-[44px]"
+                                  disabled={resolveMutation.isPending}
+                                  onClick={() => {
+                                    setManualResolution({
+                                      requestId: r.id,
+                                      resolution: "sent",
+                                    });
+                                    setManualResolutionReason("");
+                                  }}
+                                >
+                                  <CheckCircle2 className="mr-1 h-4 w-4" />
+                                  Mark sent
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="min-h-[44px]"
+                                  disabled={resolveMutation.isPending}
+                                  onClick={() => {
+                                    setManualResolution({
+                                      requestId: r.id,
+                                      resolution: "failed",
+                                    });
+                                    setManualResolutionReason("");
+                                  }}
+                                >
+                                  <XCircle className="mr-1 h-4 w-4" />
+                                  Mark not sent
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </li>
-                      ))}
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -572,13 +801,80 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
                   <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     className="min-h-[44px]"
-                    disabled={resendDisabled}
+                    disabled={resendConfirmDisabled}
                     onClick={(e) => {
                       e.preventDefault();
                       runResend();
                     }}
                   >
                     {resendMutation.isPending ? "Sending…" : "Confirm resend"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog
+              open={!!manualResolution}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setManualResolution(null);
+                  setManualResolutionReason("");
+                }
+              }}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Record provider review / تسجيل مراجعة المزود
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Only continue after checking this request in the Resend
+                    dashboard. This closes the ambiguous request and is recorded
+                    in admin activity.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                  <div className="rounded border bg-muted/30 p-2 text-sm">
+                    Resolution:{" "}
+                    <strong>
+                      {manualResolution?.resolution === "sent"
+                        ? "Receipt was sent"
+                        : "Receipt was not sent"}
+                    </strong>
+                  </div>
+                  <label
+                    htmlFor="manual-receipt-resolution-reason"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Review note (3–300 chars) / ملاحظة المراجعة
+                  </label>
+                  <Textarea
+                    id="manual-receipt-resolution-reason"
+                    value={manualResolutionReason}
+                    onChange={(e) => setManualResolutionReason(e.target.value)}
+                    maxLength={300}
+                    rows={3}
+                    className="min-h-[88px]"
+                    placeholder="What you verified in the provider dashboard"
+                  />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="min-h-[44px]">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    className="min-h-[44px]"
+                    disabled={
+                      resolveMutation.isPending ||
+                      manualResolutionReason.trim().length < 3 ||
+                      manualResolutionReason.trim().length > 300
+                    }
+                    onClick={(e) => {
+                      e.preventDefault();
+                      runManualResolution();
+                    }}
+                  >
+                    {resolveMutation.isPending ? "Saving…" : "Record resolution"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

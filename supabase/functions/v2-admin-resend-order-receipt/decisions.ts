@@ -22,6 +22,18 @@ export type ParseResendBodyResult =
   | { ok: true; order_id: string; reason: string }
   | { ok: false; code: string };
 
+export type ParseReceiptResendCommandResult =
+  | { ok: true; mode: "create"; order_id: string; reason: string }
+  | { ok: true; mode: "reconcile"; request_id: string }
+  | {
+      ok: true;
+      mode: "resolve";
+      request_id: string;
+      resolution: "sent" | "failed";
+      reason: string;
+    }
+  | { ok: false; code: string };
+
 /**
  * Strict body parser. Accepts EXACTLY `{ order_id, reason }`. Any extra key
  * (email/amount/items/recipient/etc.) is a hard error — the server never
@@ -45,6 +57,52 @@ export function parseResendBody(raw: unknown): ParseResendBodyResult {
 }
 
 /**
+ * Admin endpoint command parser. It accepts exactly one of:
+ *   - `{ order_id, reason }` to create a new audited resend request
+ *   - `{ request_id }` to reconcile the SAME ambiguous request with the SAME
+ *     Resend idempotency key and persisted provider payload
+ *   - `{ request_id, resolution, reason }` to record a manual provider review
+ *     after automatic same-key reconciliation is no longer safe
+ */
+export function parseReceiptResendCommand(
+  raw: unknown,
+): ParseReceiptResendCommandResult {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, code: "invalid_body" };
+  }
+  const rec = raw as Record<string, unknown>;
+  const keys = Object.keys(rec);
+  if (keys.length === 1 && keys[0] === "request_id") {
+    if (!isValidUuid(rec.request_id)) {
+      return { ok: false, code: "invalid_request_id" };
+    }
+    return { ok: true, mode: "reconcile", request_id: rec.request_id };
+  }
+  const resolveKeys = new Set(["request_id", "resolution", "reason"]);
+  if (keys.length === 3 && keys.every((key) => resolveKeys.has(key))) {
+    if (!isValidUuid(rec.request_id)) {
+      return { ok: false, code: "invalid_request_id" };
+    }
+    if (rec.resolution !== "sent" && rec.resolution !== "failed") {
+      return { ok: false, code: "invalid_resolution" };
+    }
+    const reason = normalizeReason(rec.reason);
+    if (!reason) return { ok: false, code: "invalid_reason" };
+    return {
+      ok: true,
+      mode: "resolve",
+      request_id: rec.request_id,
+      resolution: rec.resolution,
+      reason,
+    };
+  }
+
+  const created = parseResendBody(raw);
+  if (!created.ok) return created;
+  return { ok: true, mode: "create", ...created };
+}
+
+/**
  * Map RPC/RAISE EXCEPTION messages to stable client-safe error codes/statuses.
  * Never surfaces provider or DB internals verbatim.
  */
@@ -59,6 +117,9 @@ export function mapCreateRpcError(msg: string): { code: string; status: number }
   if (m.includes("order_not_eligible")) return { code: "order_not_eligible", status: 409 };
   if (m.includes("missing_recipient")) return { code: "missing_recipient", status: 409 };
   if (m.includes("pending_exists")) return { code: "pending_exists", status: 409 };
+  if (m.includes("uniq_v2_receipt_resend_active")) {
+    return { code: "pending_exists", status: 409 };
+  }
   if (m.includes("cooldown_active")) return { code: "cooldown_active", status: 429 };
   if (m.includes("order_cap_exceeded")) return { code: "order_cap_exceeded", status: 429 };
   if (m.includes("admin_cap_exceeded")) return { code: "admin_cap_exceeded", status: 429 };

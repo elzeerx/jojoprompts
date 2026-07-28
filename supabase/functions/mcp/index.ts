@@ -6,7 +6,7 @@
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.24.0";
 
 // src/lib/mcp/tools/list-my-prompts.ts
-import { createClient } from "npm:@supabase/supabase-js@^2.57.0";
+import { createClient } from "npm:@supabase/supabase-js@^2.110.9";
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.24.0";
 import { z } from "npm:zod@^4.4.3";
 function supabaseForUser(ctx) {

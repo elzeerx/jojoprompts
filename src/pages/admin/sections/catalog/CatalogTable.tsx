@@ -40,12 +40,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { isTransitionAllowed } from "@/lib/v2/admin/lifecycleTransitions";
 import { computeBulkEligibility } from "@/lib/v2/admin/bulkLifecycleEligibility";
+import {
+  getInitialCatalogView,
+  type CatalogViewMode,
+} from "@/lib/v2/admin/catalogView";
 
 type ResourceType =
   | "skill" | "automation" | "prompt" | "prompt_pack" | "image_style" | "bundle";
 type Lifecycle = "draft" | "review" | "published" | "archived";
 type ScanStatus = "clean" | "pending" | "suspicious" | "malicious" | "failed" | "none";
-type ViewMode = "table" | "card";
+type ViewMode = CatalogViewMode;
 
 const RESOURCE_TYPES: { value: ResourceType | "all"; label: string }[] = [
   { value: "all", label: "All types" },
@@ -100,22 +104,28 @@ interface FetchArgs {
 }
 
 interface PlatformOpt { slug: string; name: string }
+interface PublishRpcResult { ok?: boolean; errors?: string[] }
+interface TransitionRpcResult { ok?: boolean }
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "unknown";
+}
 
 async function fetchPlatforms(): Promise<PlatformOpt[]> {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("platforms")
     .select("slug,name,display_order")
     .eq("is_active", true)
     .order("display_order", { ascending: true });
   if (error) return [];
-  return (data ?? []).map((p: any) => ({ slug: p.slug, name: p.name }));
+  return (data ?? []).map((p) => ({ slug: p.slug, name: p.name }));
 }
 
 async function fetchCatalog(a: FetchArgs): Promise<{ rows: Row[]; total: number; extras: Extras }> {
   const from = (a.page - 1) * a.pageSize;
   const to = from + a.pageSize - 1;
 
-  let q = (supabase as any)
+  let q = supabase
     .from("resources")
     .select(
       sel(
@@ -158,17 +168,17 @@ async function fetchCatalog(a: FetchArgs): Promise<{ rows: Row[]; total: number;
 
   if (ids.length > 0) {
     const [products, bundleItems, scans] = await Promise.all([
-      (supabase as any)
+      supabase
         .from("products")
         .select(sel("resource_id, price_fils, product_type, is_active"))
         .in("resource_id", ids)
         .eq("is_active", true),
-      (supabase as any)
+      supabase
         .from("product_bundle_items")
         .select(sel("resource_id"))
         .in("resource_id", ids),
       versionIds.length > 0
-        ? (supabase as any)
+        ? supabase
             .from("package_scans")
             .select(sel("resource_version_id, status, created_at, scanned_at"))
             .in("resource_version_id", versionIds)
@@ -177,17 +187,19 @@ async function fetchCatalog(a: FetchArgs): Promise<{ rows: Row[]; total: number;
         : Promise.resolve({ data: [], error: null }),
     ]);
 
-    ((products as any).data ?? []).forEach((p: any) => {
+    (products.data ?? []).forEach((p) => {
       const cur = extras.price_fils.get(p.resource_id);
       if (cur == null || (p.price_fils ?? 0) < cur) {
         extras.price_fils.set(p.resource_id, p.price_fils ?? 0);
       }
     });
-    ((bundleItems as any).data ?? []).forEach((b: any) => extras.in_bundle.add(b.resource_id));
+    (bundleItems.data ?? []).forEach((b) => extras.in_bundle.add(b.resource_id));
 
     const versionScan = new Map<string, ScanStatus>();
-    ((scans as any).data ?? []).forEach((s: any) => {
-      if (!versionScan.has(s.resource_version_id)) versionScan.set(s.resource_version_id, s.status);
+    (scans.data ?? []).forEach((s) => {
+      if (!versionScan.has(s.resource_version_id)) {
+        versionScan.set(s.resource_version_id, s.status as ScanStatus);
+      }
     });
     rows.forEach((r) => {
       if (r.current_version_id) {
@@ -252,7 +264,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
   const [scan, setScan] = useState<ScanStatus | "all">("all");
   const [sortBy, setSortBy] = useState<FetchArgs["sortBy"]>("updated_at");
   const [sortDir, setSortDir] = useState<FetchArgs["sortDir"]>("desc");
-  const [view, setView] = useState<ViewMode>("table");
+  const [view, setView] = useState<ViewMode>(getInitialCatalogView);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState<null | "publish" | "review" | "archive" | "restore">(null);
   const [rowConfirm, setRowConfirm] = useState<{ id: string; action: "publish" | "archive" } | null>(null);
@@ -296,27 +308,30 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
   };
   const toggleOne = (id: string) => {
     const next = new Set(selected);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     setSelected(next);
   };
 
   // Server-validated actions
   const runPublish = useCallback(async (ids: string[]) => {
     const results = await Promise.all(ids.map(async (id) => {
-      const { data, error } = await (supabase as any).rpc("admin_publish_resource", { p_resource_id: id });
+      const { data, error } = await supabase.rpc("admin_publish_resource", { p_resource_id: id });
       if (error) return { id, ok: false, errors: [error.message] };
-      if (!(data as any)?.ok) return { id, ok: false, errors: ((data as any)?.errors ?? ["unknown"]) as string[] };
+      const result = data as PublishRpcResult | null;
+      if (!result?.ok) return { id, ok: false, errors: result?.errors ?? ["unknown"] };
       return { id, ok: true, errors: [] as string[] };
     }));
     return results;
   }, []);
   const runTransition = useCallback(async (ids: string[], action: "review" | "archive" | "restore") => {
     return Promise.all(ids.map(async (id) => {
-      const { data, error } = await (supabase as any).rpc("admin_transition_resource_lifecycle", {
+      const { data, error } = await supabase.rpc("admin_transition_resource_lifecycle", {
         p_resource_id: id, p_action: action,
       });
       if (error) return { id, ok: false, errors: [error.message] };
-      if (!(data as any)?.ok) return { id, ok: false, errors: ["failed"] };
+      const result = data as TransitionRpcResult | null;
+      if (!result?.ok) return { id, ok: false, errors: ["failed"] };
       return { id, ok: true, errors: [] as string[] };
     }));
   }, []);
@@ -349,8 +364,8 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
       setConfirmBulk(null);
       setRowConfirm(null);
     },
-    onError: (err: any) => {
-      toast({ variant: "destructive", title: "Action failed", description: err?.message ?? "unknown" });
+    onError: (err: unknown) => {
+      toast({ variant: "destructive", title: "Action failed", description: getErrorMessage(err) });
       setConfirmBulk(null);
       setRowConfirm(null);
     },
@@ -449,12 +464,12 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
           />
         </div>
         {!lockedType && !includeTypes ? (
-          <Select value={type} onValueChange={(v) => { setType(v as any); setPage(1); }}>
+          <Select value={type} onValueChange={(v) => { setType(v as ResourceType | "all"); setPage(1); }}>
             <SelectTrigger className="min-h-[44px] w-[160px]" aria-label="Type filter"><SelectValue /></SelectTrigger>
             <SelectContent>{RESOURCE_TYPES.map((t) => (<SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>))}</SelectContent>
           </Select>
         ) : null}
-        <Select value={status} onValueChange={(v) => { setStatus(v as any); setPage(1); }}>
+        <Select value={status} onValueChange={(v) => { setStatus(v as Lifecycle | "all"); setPage(1); }}>
           <SelectTrigger className="min-h-[44px] w-[160px]" aria-label="Status filter"><SelectValue /></SelectTrigger>
           <SelectContent>{STATUSES.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}</SelectContent>
         </Select>
@@ -465,7 +480,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
             {platforms.map((p) => (<SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>))}
           </SelectContent>
         </Select>
-        <Select value={scan} onValueChange={(v) => { setScan(v as ScanStatus); setPage(1); }}>
+        <Select value={scan} onValueChange={(v) => { setScan(v as ScanStatus | "all"); setPage(1); }}>
           <SelectTrigger className="min-h-[44px] w-[150px]" aria-label="Scan filter"><SelectValue /></SelectTrigger>
           <SelectContent>{SCAN_FILTERS.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}</SelectContent>
         </Select>
@@ -525,7 +540,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
       </div>
 
       {selected.size > 0 ? (() => {
-        const visible = rows.map((r) => ({ id: r.id, lifecycle: r.lifecycle as any }));
+        const visible = rows.map((r) => ({ id: r.id, lifecycle: r.lifecycle }));
         const elig = {
           review:  computeBulkEligibility(selected, visible, "review"),
           publish: computeBulkEligibility(selected, visible, "publish"),
@@ -607,7 +622,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
               ) : isError ? (
                 <tr>
                   <td colSpan={10} className="p-6 text-center text-sm">
-                    Failed to load catalog: {(error as any)?.message ?? ""}{" "}
+                    Failed to load catalog: {getErrorMessage(error)}{" "}
                     <Button variant="link" size="sm" onClick={() => refetch()}>Retry</Button>
                   </td>
                 </tr>
@@ -757,7 +772,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
       <AlertDialog open={!!confirmBulk} onOpenChange={(v) => (v ? null : setConfirmBulk(null))}>
         <AlertDialogContent>
           {(() => {
-            const visible = rows.map((r) => ({ id: r.id, lifecycle: r.lifecycle as any }));
+            const visible = rows.map((r) => ({ id: r.id, lifecycle: r.lifecycle }));
             const e = confirmBulk
               ? computeBulkEligibility(selected, visible, confirmBulk)
               : { eligibleIds: [], eligibleCount: 0, skippedCount: 0, totalSelected: selected.size };

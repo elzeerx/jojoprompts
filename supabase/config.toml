@@ -108,6 +108,9 @@ verify_jwt = true
 [functions.v2-admin-package-scan-control]
 verify_jwt = true
 
+[functions.v2-admin-resend-order-receipt]
+verify_jwt = true
+
 [functions.v2-package-scan-worker]
 verify_jwt = false
 

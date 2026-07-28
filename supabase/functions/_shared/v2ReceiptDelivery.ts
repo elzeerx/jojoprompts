@@ -15,9 +15,8 @@
 // Never embeds secrets, raw provider payloads, or permanent download URLs.
 
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-// Resend is imported lazily inside sendReceiptViaResend so the pure module
-// stays test-friendly under Deno's specifier check without a nodeModulesDir.
 import { createEdgeLogger } from "./logger.ts";
+import { sendResendEmail } from "./resendClient.ts";
 
 const logger = createEdgeLogger("v2-receipt-delivery");
 
@@ -487,23 +486,39 @@ async function logAttempt(
  * failure. Transactional receipts must NOT be blocked by marketing
  * unsubscribe state — no such check is performed here.
  */
-export async function sendReceiptViaResend(
+export type ReceiptDeliveryFailureDisposition = "definitive" | "unknown";
+
+export class ReceiptDeliveryError extends Error {
+  constructor(
+    message: string,
+    readonly disposition: ReceiptDeliveryFailureDisposition,
+  ) {
+    super(message);
+    this.name = "ReceiptDeliveryError";
+  }
+}
+
+export interface ReceiptProviderPayload {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  reply_to: string;
+  headers: Record<string, string>;
+}
+
+/**
+ * Build the exact provider payload separately from transport. Admin resend
+ * requests persist this payload before the first provider call so an
+ * ambiguous delivery can be retried with the same idempotency key AND the
+ * same payload. Resend rejects reuse of a key with a changed payload.
+ */
+export function buildReceiptProviderPayload(
   order: ReceiptOrder,
   rendered: { subject: string; html: string; text: string },
-  idempotencyKey?: string,
-): Promise<string | null> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) throw new Error("resend_api_key_missing");
-  // Variable specifier hides the import from Deno's static graph check
-  // so pure tests do not require resolving npm:resend. Resolved at runtime
-  // by the Edge Functions runtime, which supports npm: specifiers directly.
-  const resendSpec = "npm:" + "resend@2.0.0";
-  const mod = await import(resendSpec) as { Resend: new (k: string) => unknown };
-  const resend = new mod.Resend(apiKey) as {
-    emails: { send: (p: unknown, o: unknown) => Promise<{ data?: { id?: string } | null; error?: { name?: string; message?: string } | null; id?: string }> };
-  };
-
-  const payload = {
+): ReceiptProviderPayload {
+  return {
     from: RECEIPT_FROM,
     to: order.user_email,
     subject: rendered.subject,
@@ -516,21 +531,47 @@ export async function sendReceiptViaResend(
       "List-Unsubscribe": "<mailto:unsubscribe@jojoprompts.com>",
     },
   };
-  const options = {
-    idempotencyKey: idempotencyKey && idempotencyKey.trim().length > 0
+}
+
+export async function sendReceiptPayloadViaResend(
+  payload: ReceiptProviderPayload,
+  idempotencyKey: string,
+): Promise<string | null> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) {
+    throw new ReceiptDeliveryError("resend_api_key_missing", "definitive");
+  }
+  const result = await sendResendEmail(payload, apiKey, idempotencyKey);
+  if (!result.ok) {
+    // A network exception, timeout/server response, or Resend's explicit
+    // concurrent-key response can occur after acceptance. Reuse the SAME
+    // key and exact payload; never create a fresh delivery blindly.
+    if (
+      result.status === 0 ||
+      result.status === 408 ||
+      result.status >= 500 ||
+      result.providerCode === "concurrent_idempotent_requests"
+    ) {
+      throw new ReceiptDeliveryError("resend_delivery_unknown", "unknown");
+    }
+    const code = result.providerCode ?? result.errorCode ?? "resend_error";
+    throw new ReceiptDeliveryError(`resend_${sanitizeErrorCode(code)}`, "definitive");
+  }
+  return safeProviderMessageId(result.id);
+}
+
+export async function sendReceiptViaResend(
+  order: ReceiptOrder,
+  rendered: { subject: string; html: string; text: string },
+  idempotencyKey?: string,
+): Promise<string | null> {
+  const payload = buildReceiptProviderPayload(order, rendered);
+  return sendReceiptPayloadViaResend(
+    payload,
+    idempotencyKey && idempotencyKey.trim().length > 0
       ? idempotencyKey
       : receiptIdempotencyKey(order.order_id),
-  };
-
-  // Resend SDK v2: send(payload, options?) — options carries idempotencyKey.
-  const result = await resend.emails.send(payload, options);
-
-  if (result?.error) {
-    const name = result.error.name ?? "resend_error";
-    const msg = result.error.message ?? "resend send failed";
-    throw new Error(`${name}: ${msg}`);
-  }
-  return safeProviderMessageId(result?.data?.id ?? result?.id ?? null);
+  );
 }
 
 /**
@@ -613,4 +654,3 @@ export function scheduleReceiptDelivery(
     });
   });
 }
-

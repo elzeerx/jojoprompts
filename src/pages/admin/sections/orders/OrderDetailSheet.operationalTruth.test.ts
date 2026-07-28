@@ -5,8 +5,9 @@
  *   1. The order detail drawer must still render receipt-delivery status.
  *   2. It must expose an explicit, confirmation-gated Resend receipt action
  *      wired to `useAdminResendOrderReceipt` -> `v2-admin-resend-order-receipt`.
- *   3. The client MUST NOT send recipient, amount, items, or email overrides
- *      to the edge function — only `{ order_id, reason }`.
+ *   3. The client MUST NOT send recipient, amount, items, or email overrides.
+ *      It may create `{ order_id, reason }`, reconcile `{ request_id }`, or
+ *      record an explicit provider review.
  *   4. The edge function directory must exist with a POST/OPTIONS handler
  *      that does NOT accept client-supplied recipient/amount/items fields.
  */
@@ -42,6 +43,8 @@ describe("OrderDetailSheet operational truth (with audited resend)", () => {
   it("wires the audited Resend receipt UI + confirmation", async () => {
     const src = await bunGlobal.file(SHEET_PATH).text();
     expect(src.includes("useAdminResendOrderReceipt")).toBe(true);
+    expect(src.includes("useAdminReconcileOrderReceiptResend")).toBe(true);
+    expect(src.includes("useAdminResolveOrderReceiptResend")).toBe(true);
     expect(src.includes("useOrderReceiptResendRequests")).toBe(true);
     expect(src.includes("Resend receipt")).toBe(true);
     expect(src.includes("AlertDialog")).toBe(true);
@@ -50,7 +53,7 @@ describe("OrderDetailSheet operational truth (with audited resend)", () => {
     expect(/min-h-\[44px\]/.test(src)).toBe(true);
   });
 
-  it("mutation hook only sends { order_id, reason } to the edge fn", async () => {
+  it("mutation hook sends strict commands without content overrides", async () => {
     const hook = await bunGlobal.file(RESENDS_HOOK_PATH).text();
     expect(hook.includes("v2-admin-resend-order-receipt")).toBe(true);
     // Strip line/block comments before scanning for override keys.
@@ -61,6 +64,8 @@ describe("OrderDetailSheet operational truth (with audited resend)", () => {
       .join("\n");
     expect(code.includes("order_id: orderId")).toBe(true);
     expect(code.includes("reason: trimmed")).toBe(true);
+    expect(code.includes("request_id: requestId")).toBe(true);
+    expect(code.includes("resolution,")).toBe(true);
     // No client-supplied overrides in the invoke body.
     for (const forbidden of ["email:", "amount:", "items:", "recipient:", "to:"]) {
       expect(code.includes(forbidden)).toBe(false);
@@ -81,6 +86,9 @@ describe("OrderDetailSheet operational truth (with audited resend)", () => {
     const idx = await bunGlobal.file(FN_INDEX).text();
     expect(idx.includes("Deno.serve")).toBe(true);
     expect(idx.includes("v2_internal_create_receipt_resend_request")).toBe(true);
+    expect(idx.includes("v2_internal_claim_receipt_resend_reconciliation")).toBe(true);
+    expect(idx.includes("v2_internal_resolve_receipt_resend_reconciliation")).toBe(true);
+    expect(idx.includes("v2_order_receipt_resend_payloads")).toBe(true);
     expect(idx.includes("receiptResendIdempotencyKey")).toBe(true);
     // No client-supplied overrides accepted.
     for (const forbidden of ["body.email", "body.amount", "body.items", "body.recipient"]) {

@@ -2,7 +2,7 @@
  * Audited admin receipt-resend flow — source & contract guarantees.
  *
  * These tests verify the *design invariants* end-to-end across:
- *   - the reviewed forward-only migration draft
+ *   - the reviewed forward-only migration
  *   - the shared receipt module (distinct idempotency key)
  *   - the new Edge Function contract
  *   - the admin UI hook
@@ -15,6 +15,7 @@ import {
   isValidUuid,
   mapCreateRpcError,
   normalizeReason,
+  parseReceiptResendCommand,
   parseResendBody,
   REASON_MAX,
   REASON_MIN,
@@ -24,10 +25,13 @@ const bunGlobal = (globalThis as unknown as {
   Bun: { file: (p: string) => { text: () => Promise<string>; exists: () => Promise<boolean> } };
 }).Bun;
 
-const MIGRATION_DRAFT = "docs/security/drafts/20260728152000_admin_receipt_resend_requests.sql";
+const MIGRATION = "supabase/migrations/20260728152000_admin_receipt_resend_requests.sql";
+const SUPABASE_CONFIG = "supabase/config.toml";
 const SHARED_RECEIPT = "supabase/functions/_shared/v2ReceiptDelivery.ts";
+const RESEND_CLIENT = "supabase/functions/_shared/resendClient.ts";
 const FN_INDEX = "supabase/functions/v2-admin-resend-order-receipt/index.ts";
 const HOOK = "src/hooks/admin/v2/useOrderReceiptResends.ts";
+const V2_FLAGS = "src/config/v2Flags.ts";
 
 const VALID_UUID = "9c1b2c3d-4e5f-4abc-8def-1234567890ab";
 
@@ -73,6 +77,41 @@ describe("receiptResend / body parser", () => {
   });
 });
 
+describe("receiptResend / command parser", () => {
+  it("accepts a same-request reconciliation command only", () => {
+    expect(parseReceiptResendCommand({ request_id: VALID_UUID })).toEqual({
+      ok: true,
+      mode: "reconcile",
+      request_id: VALID_UUID,
+    });
+  });
+
+  it("accepts a bounded manual provider-review resolution", () => {
+    expect(parseReceiptResendCommand({
+      request_id: VALID_UUID,
+      resolution: "sent",
+      reason: "Verified in Resend dashboard",
+    })).toEqual({
+      ok: true,
+      mode: "resolve",
+      request_id: VALID_UUID,
+      resolution: "sent",
+      reason: "Verified in Resend dashboard",
+    });
+  });
+
+  it("rejects mixed commands and unexpected resolution fields", () => {
+    for (const body of [
+      { request_id: VALID_UUID, email: "attacker@example.com" },
+      { request_id: VALID_UUID, resolution: "maybe", reason: "checked provider" },
+      { request_id: VALID_UUID, resolution: "sent", reason: "ok" },
+      { order_id: VALID_UUID, reason: "Customer asked", request_id: VALID_UUID },
+    ]) {
+      expect(parseReceiptResendCommand(body).ok).toBe(false);
+    }
+  });
+});
+
 describe("receiptResend / normalizeReason", () => {
   it("collapses whitespace and trims", () => {
     expect(normalizeReason("  hello   there  ")).toBe("hello there");
@@ -100,6 +139,7 @@ describe("receiptResend / RPC error mapping", () => {
     ["order_not_eligible", "order_not_eligible", 409],
     ["missing_recipient", "missing_recipient", 409],
     ["pending_exists", "pending_exists", 409],
+    ["uniq_v2_receipt_resend_active", "pending_exists", 409],
     ["cooldown_active", "cooldown_active", 429],
     ["order_cap_exceeded", "order_cap_exceeded", 429],
     ["admin_cap_exceeded", "admin_cap_exceeded", 429],
@@ -114,15 +154,20 @@ describe("receiptResend / RPC error mapping", () => {
   }
 });
 
-describe("receiptResend / migration draft invariants", () => {
+describe("receiptResend / migration invariants", () => {
   it("creates the resend requests table with the required contract", async () => {
-    const sql = await bunGlobal.file(MIGRATION_DRAFT).text();
+    const sql = await bunGlobal.file(MIGRATION).text();
     expect(sql.includes("CREATE TABLE public.v2_order_receipt_resend_requests")).toBe(true);
     expect(sql.includes("REFERENCES public.orders(id) ON DELETE CASCADE")).toBe(true);
-    expect(sql.includes("CHECK (status IN ('pending','processing','sent','failed'))")).toBe(true);
+    expect(sql.includes(
+      "CHECK (status IN ('pending','processing','reconciliation_required','sent','failed'))",
+    )).toBe(true);
     expect(sql.includes("char_length(reason) BETWEEN 3 AND 300")).toBe(true);
     // At most one active request per order.
-    expect(/CREATE UNIQUE INDEX .* WHERE status IN \('pending','processing'\)/s.test(sql)).toBe(true);
+    expect(
+      /CREATE UNIQUE INDEX .* WHERE status IN \('pending','processing','reconciliation_required'\)/s
+        .test(sql),
+    ).toBe(true);
     // Admin RLS SELECT only; no write policies.
     expect(sql.includes("CREATE POLICY admin_read_receipt_resend_requests")).toBe(true);
     expect(/CREATE POLICY[^;]*FOR (INSERT|UPDATE|DELETE)/i.test(sql)).toBe(false);
@@ -131,13 +176,32 @@ describe("receiptResend / migration draft invariants", () => {
       .toBe(true);
     expect(sql.includes("GRANT ALL ON public.v2_order_receipt_resend_requests TO service_role"))
       .toBe(true);
+    expect(sql.includes("FROM PUBLIC, anon, authenticated")).toBe(true);
   });
 
-  it("exposes 4 service-role-only SECURITY DEFINER RPCs with search_path=''", async () => {
-    const sql = await bunGlobal.file(MIGRATION_DRAFT).text();
+  it("keeps exact provider payload snapshots service-role-only", async () => {
+    const sql = await bunGlobal.file(MIGRATION).text();
+    expect(sql.includes("CREATE TABLE public.v2_order_receipt_resend_payloads")).toBe(true);
+    expect(sql.includes("GRANT ALL ON public.v2_order_receipt_resend_payloads TO service_role"))
+      .toBe(true);
+    expect(sql).toMatch(
+      /REVOKE ALL ON TABLE public\.v2_order_receipt_resend_payloads\s+FROM PUBLIC, anon, authenticated/,
+    );
+    expect(sql).not.toMatch(
+      /GRANT (SELECT|INSERT|UPDATE|DELETE).*v2_order_receipt_resend_payloads.*authenticated/,
+    );
+    expect(sql.includes("ALTER TABLE public.v2_order_receipt_resend_payloads ENABLE ROW LEVEL SECURITY"))
+      .toBe(true);
+  });
+
+  it("exposes service-role-only SECURITY DEFINER RPCs with search_path=''", async () => {
+    const sql = await bunGlobal.file(MIGRATION).text();
     for (const fn of [
       "v2_internal_create_receipt_resend_request",
       "v2_internal_claim_receipt_resend_request",
+      "v2_internal_require_receipt_resend_reconciliation",
+      "v2_internal_claim_receipt_resend_reconciliation",
+      "v2_internal_resolve_receipt_resend_reconciliation",
       "v2_internal_complete_receipt_resend_request",
       "v2_internal_fail_receipt_resend_request",
     ]) {
@@ -147,19 +211,47 @@ describe("receiptResend / migration draft invariants", () => {
     }
     // security definer + hardened search_path applied
     const defCount = (sql.match(/SECURITY DEFINER SET search_path = ''/g) || []).length;
-    expect(defCount).toBeGreaterThanOrEqual(4);
+    expect(defCount).toBeGreaterThanOrEqual(7);
   });
 
   it("enforces paid + partially_refunded eligibility and rate rules in create RPC", async () => {
-    const sql = await bunGlobal.file(MIGRATION_DRAFT).text();
+    const sql = await bunGlobal.file(MIGRATION).text();
     expect(sql.includes("IN ('paid','partially_refunded')")).toBe(true);
     expect(sql.includes("interval '5 minutes'")).toBe(true);
     expect(sql.includes("v_recent_order_count >= 5")).toBe(true);
     expect(sql.includes("v_recent_admin_count >= 50")).toBe(true);
-    // Audit metadata never contains email/amount/items/HTML.
+    expect(sql.includes("pg_advisory_xact_lock")).toBe(true);
+    expect(sql.includes("FOR UPDATE")).toBe(true);
+    expect(sql.includes("actor_user_id")).toBe(true);
+    // The create-event metadata never contains email/amount/items/HTML.
+    const eventAt = sql.indexOf("'order_receipt_resend_requested'");
+    expect(eventAt).toBeGreaterThan(-1);
+    const auditFragment = sql.slice(eventAt, eventAt + 350);
     for (const forbidden of ["'email'", "user_email", "html", "amount_fils", "line_total"]) {
-      expect(sql.includes(forbidden)).toBe(false);
+      expect(auditFragment.includes(forbidden)).toBe(false);
     }
+  });
+
+  it("can close pre-send claim failures without leaving a permanent active request", async () => {
+    const sql = await bunGlobal.file(MIGRATION).text();
+    expect(sql).toMatch(
+      /v2_internal_fail_receipt_resend_request[\s\S]*WHERE id = p_request_id AND status IN \('pending','processing'\)/,
+    );
+  });
+
+  it("bounds automatic reconciliation to Resend's safe key-retention window", async () => {
+    const sql = await bunGlobal.file(MIGRATION).text();
+    expect(sql.includes("interval '23 hours'")).toBe(true);
+    expect(sql.includes("reconciliation_attempts >= 5")).toBe(true);
+    expect(sql.includes("interval '2 minutes'")).toBe(true);
+    expect(sql.includes("v2_internal_resolve_receipt_resend_reconciliation")).toBe(true);
+  });
+
+  it("registers the Edge Function with JWT verification enabled", async () => {
+    const config = await bunGlobal.file(SUPABASE_CONFIG).text();
+    expect(config).toMatch(
+      /\[functions\.v2-admin-resend-order-receipt\]\s+verify_jwt = true/,
+    );
   });
 });
 
@@ -184,12 +276,36 @@ describe("receiptResend / shared receipt module", () => {
     // Signature includes the optional third arg used by the resend fn.
     expect(/sendReceiptViaResend\([^)]*idempotencyKey\?: string/s.test(src)).toBe(true);
   });
+
+  it("separates exact provider-payload construction from transport", async () => {
+    const src = await bunGlobal.file(SHARED_RECEIPT).text();
+    expect(src.includes("export interface ReceiptProviderPayload")).toBe(true);
+    expect(src.includes("export function buildReceiptProviderPayload")).toBe(true);
+    expect(src.includes("export async function sendReceiptPayloadViaResend")).toBe(true);
+  });
+
+  it("distinguishes definitive provider rejection from delivery-unknown transport failure", async () => {
+    const src = await bunGlobal.file(SHARED_RECEIPT).text();
+    expect(src.includes("ReceiptDeliveryFailureDisposition")).toBe(true);
+    expect(src.includes('"definitive" | "unknown"')).toBe(true);
+    expect(src.includes('ReceiptDeliveryError("resend_delivery_unknown", "unknown")')).toBe(true);
+    expect(src.includes('result.providerCode === "concurrent_idempotent_requests"')).toBe(true);
+    expect(src.includes("result.status >= 500")).toBe(true);
+  });
+
+  it("uses the direct REST helper that sends a real Idempotency-Key header", async () => {
+    const receipt = await bunGlobal.file(SHARED_RECEIPT).text();
+    const client = await bunGlobal.file(RESEND_CLIENT).text();
+    expect(receipt.includes('import { sendResendEmail } from "./resendClient.ts"')).toBe(true);
+    expect(client.includes("'Idempotency-Key': idempotencyKey")).toBe(true);
+    expect(receipt.includes("resend@2.0.0")).toBe(false);
+  });
 });
 
 describe("receiptResend / edge function invariants", () => {
   it("uses the RESEND-scoped key and never falls back to the order key", async () => {
     const src = await bunGlobal.file(FN_INDEX).text();
-    expect(src.includes("receiptResendIdempotencyKey(requestId)")).toBe(true);
+    expect(src.includes("receiptResendIdempotencyKey(args.requestId)")).toBe(true);
     expect(src.includes("receiptIdempotencyKey(")).toBe(false);
   });
 
@@ -204,6 +320,41 @@ describe("receiptResend / edge function invariants", () => {
     expect(src.includes("202")).toBe(true);
   });
 
+  it("persists the exact provider payload before the first provider call", async () => {
+    const src = await bunGlobal.file(FN_INDEX).text();
+    const persistAt = src.indexOf("persistReceiptPayload(");
+    const deliverAt = src.lastIndexOf("deliverPersistedReceipt(service");
+    expect(persistAt).toBeGreaterThan(-1);
+    expect(deliverAt).toBeGreaterThan(persistAt);
+    expect(src.includes('from("v2_order_receipt_resend_payloads")')).toBe(true);
+  });
+
+  it("reconciles the same request and same idempotency key", async () => {
+    const src = await bunGlobal.file(FN_INDEX).text();
+    expect(src.includes("v2_internal_claim_receipt_resend_reconciliation")).toBe(true);
+    expect(src.includes("loadPersistedReceiptPayload(service, command.request_id)")).toBe(true);
+    expect(src.includes("receiptResendIdempotencyKey(args.requestId)")).toBe(true);
+  });
+
+  it("supports explicit manual provider-review resolution", async () => {
+    const src = await bunGlobal.file(FN_INDEX).text();
+    expect(src.includes('command.mode === "resolve"')).toBe(true);
+    expect(src.includes("v2_internal_resolve_receipt_resend_reconciliation")).toBe(true);
+  });
+
+  it("closes claim failures and reconciles any unprovable state", async () => {
+    const src = await bunGlobal.file(FN_INDEX).text();
+    expect(src.includes('markResendFailed(')).toBe(true);
+    expect(src.includes('"claim_failed"')).toBe(true);
+    expect(src.includes("if (!closed) return reconciliationRequired(requestId)")).toBe(true);
+  });
+
+  it("never marks a delivery-unknown provider call as failed", async () => {
+    const src = await bunGlobal.file(FN_INDEX).text();
+    expect(src.includes('sendErr.disposition === "unknown"')).toBe(true);
+    expect(src.includes("return reconciliationRequired(requestId)")).toBe(true);
+  });
+
   it("requires admin JWT via has_role and rejects non-POST", async () => {
     const src = await bunGlobal.file(FN_INDEX).text();
     expect(src.includes("has_role")).toBe(true);
@@ -212,11 +363,11 @@ describe("receiptResend / edge function invariants", () => {
 
   it("never reads client recipient/amount/items overrides from the request body", async () => {
     const src = await bunGlobal.file(FN_INDEX).text();
-    // The only client-body fields consumed are `order_id` and `reason`
-    // (both flow through parseResendBody). No other body field is ever
-    // read directly from the parsed JSON.
+    // The command parser is the only browser-body access point. It accepts
+    // new resend, same-request reconciliation, or manual provider review.
     expect(src.includes("parsed.order_id") || src.includes("const { order_id, reason } = parsed"))
-      .toBe(true);
+      .toBe(false);
+    expect(src.includes("parseReceiptResendCommand(parsedJson)")).toBe(true);
     // Guard against any accidental direct body reads for other fields.
     for (const forbidden of [
       "parsedJson.email",
@@ -238,12 +389,22 @@ describe("receiptResend / edge function invariants", () => {
 });
 
 describe("receiptResend / UI hook", () => {
-  it("mutation invokes only the audited edge function with a stripped body", async () => {
+  it("mutations invoke only the audited edge function with strict command bodies", async () => {
     const src = await bunGlobal.file(HOOK).text();
     expect(src.includes("v2-admin-resend-order-receipt")).toBe(true);
     expect(src.includes("order_id: orderId")).toBe(true);
     expect(src.includes("reason: trimmed")).toBe(true);
+    expect(src.includes("request_id: requestId")).toBe(true);
+    expect(src.includes("resolution,")).toBe(true);
     // Read side goes through authenticated RLS SELECT, not RPC.
     expect(src.includes(".rpc(")).toBe(false);
+  });
+
+  it("stays fail-closed until the migration and function pass runtime QA", async () => {
+    const flags = await bunGlobal.file(V2_FLAGS).text();
+    const hook = await bunGlobal.file(HOOK).text();
+    expect(flags.includes("export const ADMIN_RECEIPT_RESEND_ENABLED = false")).toBe(true);
+    expect(hook.includes("!!orderId && ADMIN_RECEIPT_RESEND_ENABLED")).toBe(true);
+    expect(hook.includes('throw new Error("feature_unavailable")')).toBe(true);
   });
 });
