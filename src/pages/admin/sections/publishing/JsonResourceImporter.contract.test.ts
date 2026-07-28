@@ -234,7 +234,7 @@ describe("V2 Resource JSON Importer — draft payload", () => {
     // Client-supplied server-owned identifiers are never in the payload.
     expect(payload.resource_id).toBeNull();
     // Never sets a lifecycle transition or publication flag.
-    expect(JSON.stringify(payload)).not.toMatch(/lifecycle|is_published|published_at/);
+    expect(/lifecycle|is_published|published_at/.test(JSON.stringify(payload))).toBe(false);
   });
 
   it("bundle_items only included for bundle type", () => {
