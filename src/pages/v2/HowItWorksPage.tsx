@@ -17,15 +17,19 @@ export default function HowItWorksPage() {
   const t = copy(lang);
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"} className="bg-background text-foreground">
+    <main dir={isRTL ? "rtl" : "ltr"} className="bg-background text-foreground">
       <Helmet>
         <title>{t.seoTitle}</title>
         <meta name="description" content={t.seoDesc} />
-        <link rel="canonical" href="https://jojoprompts.lovable.app/how-it-works" />
+        <link rel="canonical" href="https://jojoprompts.com/how-it-works" />
         <meta property="og:type" content="website" />
         <meta property="og:title" content={t.seoTitle} />
         <meta property="og:description" content={t.seoDesc} />
-        <meta property="og:url" content="https://jojoprompts.lovable.app/how-it-works" />
+        <meta property="og:url" content="https://jojoprompts.com/how-it-works" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={t.seoTitle} />
+        <meta name="twitter:description" content={t.seoDesc} />
+        <meta name="twitter:url" content="https://jojoprompts.com/how-it-works" />
       </Helmet>
 
       <section className="border-b border-border/60 bg-gradient-to-b from-warm-gold/10 to-transparent">
@@ -80,7 +84,7 @@ export default function HowItWorksPage() {
           </Button>
         </div>
       </section>
-    </div>
+    </main>
   );
 }
 
