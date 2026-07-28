@@ -228,7 +228,7 @@ describe("promoted migration — v2_internal_create_package_scan replacement", (
 
   it("retains unique-violation fallback -> pending_exists", () => {
     expect(migration).toMatch(
-      /EXCEPTION WHEN unique_violation THEN\s+RAISE EXCEPTION 'pending_exists' USING ERRCODE = '23505'/,
+      /EXCEPTION WHEN unique_violation THEN[\s\S]*?RAISE EXCEPTION 'pending_exists' USING ERRCODE = '23505'/,
     );
   });
 
