@@ -98,7 +98,7 @@ export const adminSectionElements = {
   publishingVersions: wrap(<VersionsRegistryPage />),
   publishingImports: wrap(<ImportsHub />),
   publishingImportsLegacy: wrap(<LegacyMigrationPreview />),
-  publishingImportsJson: wrap(<JsonPromptImporter />),
+  publishingImportsJson: wrap(<JsonResourceImporter />),
   publishingImportsAiStudio: wrap(<AiStudioPage />),
 
   publishingTaxonomy: wrap(<CategoriesManagement />),
