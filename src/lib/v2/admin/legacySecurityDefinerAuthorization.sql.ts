@@ -97,17 +97,13 @@ export const LEGACY_SECDEF_ALREADY_SERVICE_ROLE_ONLY: readonly string[] = [
  */
 export const LEGACY_SECDEF_MIGRATION_SQL = `-- 20260728120000_legacy_security_definer_authorization_hardening.sql
 --
--- SOURCE-ONLY DRAFT. NOT APPLIED LIVE in this pass. A human must review
--- this file and docs/security/LEGACY_SECURITY_DEFINER_AUDIT_2026-07-28.md
--- before submission to the supabase migration tool.
+-- APPLIED LIVE as Supabase migration version 20260728101016.
+-- All 8 target signatures below now show authenticated=false, anon=false,
+-- service_role=true. This file is the canonical body under
+-- supabase/migrations/; a byte-identical copy is retained under
+-- docs/security/drafts/ purely as an audit-trail artifact.
 --
--- NOTE ON FILE LOCATION: the Lovable build environment blocks direct
--- writes under \`supabase/migrations/\`. This physical file therefore
--- lives at \`docs/security/drafts/\` for reviewer inspection. When
--- approved, its byte-identical body will be submitted through the
--- supabase migration tool, which owns the canonical
--- \`supabase/migrations/20260728120000_...sql\` path.
---
+
 -- Scope: schema \`public\`. Revoke browser (PUBLIC / anon / authenticated)
 -- EXECUTE on 8 legacy SECURITY DEFINER helpers that live pg_proc
 -- evidence shows are currently exposed to the \`authenticated\` role, and
