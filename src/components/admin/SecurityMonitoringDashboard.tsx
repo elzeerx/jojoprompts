@@ -46,8 +46,11 @@ import {
   ROUTINE_NOISE_ACTIONS,
   SEVERITY_OPTIONS,
   CATEGORY_OPTIONS,
+  WINDOW_OPTIONS,
+  WINDOW_LABELS,
   parseSecurityEventsFilters,
   twentyFourHoursAgoISO,
+  windowSinceISO,
 } from "./securityEventsFilters";
 
 const logger = createLogger("SECURITY_MONITORING");
@@ -57,7 +60,8 @@ interface SecurityLogRow {
   action: string;
   user_id: string | null;
   ip_address: string | null;
-  details: Record<string, unknown> | null;
+  severity: string | null;
+  event_category: string | null;
   created_at: string;
 }
 
@@ -74,14 +78,6 @@ function maskUserId(id: string | null): string {
   if (!id) return "—";
   const head = id.slice(0, 8);
   return `user_${head}***`;
-}
-
-function severityFromDetails(details: unknown): string {
-  if (details && typeof details === "object" && "severity" in details) {
-    const v = (details as { severity?: unknown }).severity;
-    if (typeof v === "string") return v;
-  }
-  return "info";
 }
 
 function severityBadgeVariant(
@@ -237,11 +233,15 @@ export function SecurityMonitoringDashboard() {
         const to = from + SECURITY_EVENTS_PAGE_SIZE - 1;
         let query = supabase
           .from("security_logs")
-          .select("id, action, user_id, ip_address, details, created_at", {
-            count: "exact",
-          })
+          .select(
+            "id, action, user_id, ip_address, severity, event_category, created_at",
+            { count: "exact" },
+          )
           .order("created_at", { ascending: false })
           .range(from, to);
+
+        const listSince = windowSinceISO(filters.window);
+        if (listSince) query = query.gte("created_at", listSince);
 
         if (!filters.includeNoise) {
           query = query.not(
@@ -254,11 +254,10 @@ export function SecurityMonitoringDashboard() {
           query = query.eq("action", filters.action);
         }
         if (filters.severity !== "all") {
-          // Severity lives inside JSON details.
-          query = query.eq("details->>severity", filters.severity);
+          query = query.eq("severity", filters.severity);
         }
         if (filters.category !== "all") {
-          query = query.eq("details->>event_category", filters.category);
+          query = query.eq("event_category", filters.category);
         }
         if (filters.q.trim()) {
           // ilike against the action slug — safe, indexable string column.
@@ -268,7 +267,7 @@ export function SecurityMonitoringDashboard() {
         const { data, count, error } = await query;
         if (cancelled) return;
         if (error) throw error;
-        setRows((data ?? []) as SecurityLogRow[]);
+        setRows(((data ?? []) as unknown) as SecurityLogRow[]);
         setTotalMatching(count ?? 0);
       } catch (err) {
         if (cancelled) return;
@@ -290,6 +289,7 @@ export function SecurityMonitoringDashboard() {
     filters.action,
     filters.q,
     filters.includeNoise,
+    filters.window,
     refreshTick,
   ]);
 
@@ -306,8 +306,9 @@ export function SecurityMonitoringDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-dark-base">Security Events</h1>
           <p className="text-muted-foreground">
-            Actionable security signals from the last 24 hours. Routine route
-            access and developer-tools noise are hidden by default.
+            Metrics below always cover the last 24 hours. The event list follows
+            the selected time window. Routine route access and developer-tools
+            noise are hidden by default.
           </p>
         </div>
         <Button
@@ -383,7 +384,27 @@ export function SecurityMonitoringDashboard() {
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div>
+              <label htmlFor="win" className="mb-1 block text-xs font-medium">
+                Time window
+              </label>
+              <Select
+                value={filters.window}
+                onValueChange={(v) => updateFilter({ window: v === "24h" ? null : v })}
+              >
+                <SelectTrigger id="win" className="min-h-[44px]">
+                  <SelectValue placeholder="Last 24 hours" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WINDOW_OPTIONS.map((w) => (
+                    <SelectItem key={w} value={w}>
+                      {WINDOW_LABELS[w]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label htmlFor="sev" className="mb-1 block text-xs font-medium">
                 Severity
@@ -473,7 +494,7 @@ export function SecurityMonitoringDashboard() {
           <CardTitle className="text-base">
             Events{" "}
             <span className="text-sm font-normal text-muted-foreground">
-              ({totalMatching.toLocaleString()} matching · page {filters.page} of{" "}
+              ({WINDOW_LABELS[filters.window]} · {totalMatching.toLocaleString()} matching · page {filters.page} of{" "}
               {totalPages})
             </span>
           </CardTitle>
@@ -509,7 +530,8 @@ export function SecurityMonitoringDashboard() {
           ) : (
             <ul className="space-y-2" aria-label="Security events">
               {rows.map((log) => {
-                const severity = severityFromDetails(log.details);
+                const severity = log.severity ?? "info";
+                const category = log.event_category ?? "general";
                 return (
                   <li
                     key={log.id}
@@ -523,6 +545,7 @@ export function SecurityMonitoringDashboard() {
                         </span>
                         <div className="flex items-center gap-2">
                           <Badge variant={severityBadgeVariant(severity)}>{severity}</Badge>
+                          <Badge variant="outline">{category.replace(/_/g, " ")}</Badge>
                           <span className="text-xs text-muted-foreground">
                             {format(new Date(log.created_at), "MMM dd, HH:mm:ss")}
                           </span>
