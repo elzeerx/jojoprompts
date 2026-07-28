@@ -277,8 +277,12 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.authorize_resource_download(uuid) FROM PUBLIC, anon;
-GRANT  EXECUTE ON FUNCTION public.authorize_resource_download(uuid) TO authenticated;
+-- Preserve the authoritative ACL from migration 20260723122822: the one-arg
+-- overload must NEVER be reachable from the browser. The frontend goes through
+-- the resource-download Edge Function; only service_role (the Edge Function's
+-- SUPABASE_SERVICE_ROLE_KEY client) may execute it.
+REVOKE ALL ON FUNCTION public.authorize_resource_download(uuid) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.authorize_resource_download(uuid) TO service_role;
 
 -- 4) get_public_resource_trust_badges — derives from effective state ------------
 CREATE OR REPLACE FUNCTION public.get_public_resource_trust_badges(
