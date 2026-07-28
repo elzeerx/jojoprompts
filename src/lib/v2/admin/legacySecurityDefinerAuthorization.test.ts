@@ -1,5 +1,12 @@
+// Test-only: read the physical draft file to assert byte parity with
+// the embedded fixture. Bun provides these at runtime; declared inline
+// so the strict tsc pass does not need `@types/node` visibility.
+declare const process: { cwd(): string };
+// @ts-expect-error - node builtin resolved by Bun at test runtime
 import { readFileSync } from "node:fs";
+// @ts-expect-error - node builtin resolved by Bun at test runtime
 import { join } from "node:path";
+
 import { describe, expect, it } from "bun:test";
 import {
   LEGACY_SECDEF_ALREADY_SERVICE_ROLE_ONLY,
