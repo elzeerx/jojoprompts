@@ -494,7 +494,7 @@ export function SecurityMonitoringDashboard() {
           <CardTitle className="text-base">
             Events{" "}
             <span className="text-sm font-normal text-muted-foreground">
-              ({totalMatching.toLocaleString()} matching · page {filters.page} of{" "}
+              ({WINDOW_LABELS[filters.window]} · {totalMatching.toLocaleString()} matching · page {filters.page} of{" "}
               {totalPages})
             </span>
           </CardTitle>
