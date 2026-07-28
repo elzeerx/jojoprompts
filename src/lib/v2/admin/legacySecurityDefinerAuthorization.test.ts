@@ -19,8 +19,12 @@ import {
 } from "./legacySecurityDefinerAuthorization.sql";
 import { SECDEF_ANON_ALLOWLIST } from "./securityDefinerExecutionAllowlist.sql";
 
-const PHYSICAL_SQL = readFileSync(
+const PHYSICAL_DRAFT_SQL = readFileSync(
   join(process.cwd(), LEGACY_SECDEF_MIGRATION.draftPath),
+  "utf8",
+);
+const PHYSICAL_MIGRATION_SQL = readFileSync(
+  join(process.cwd(), LEGACY_SECDEF_MIGRATION.migrationPath),
   "utf8",
 );
 const SQL = LEGACY_SECDEF_MIGRATION_SQL;
@@ -38,19 +42,27 @@ function esc(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-describe("legacy SECURITY DEFINER authorization hardening — drafted migration", () => {
-  it("is marked drafted and NOT applied live", () => {
-    expect(LEGACY_SECDEF_MIGRATION.applied).toBe(false);
-    expect(LEGACY_SECDEF_MIGRATION.drafted).toBe(true);
+describe("legacy SECURITY DEFINER authorization hardening — applied live migration", () => {
+  it("is marked applied live with the recorded Supabase migration version", () => {
+    expect(LEGACY_SECDEF_MIGRATION.applied).toBe(true);
+    expect(LEGACY_SECDEF_MIGRATION.drafted).toBe(false);
+    expect(LEGACY_SECDEF_MIGRATION.liveVersion).toBe("20260728101016");
     expect(LEGACY_SECDEF_MIGRATION.filename).toBe(
       "20260728120000_legacy_security_definer_authorization_hardening.sql",
     );
+    expect(LEGACY_SECDEF_MIGRATION.migrationPath).toBe(
+      "supabase/migrations/20260728120000_legacy_security_definer_authorization_hardening.sql",
+    );
   });
 
-  it("embedded SQL is byte-identical to the physical draft file", () => {
-    // Single source of truth: the .sql file. Fixture string is a mirror.
-    expect(SQL).toBe(PHYSICAL_SQL);
+  it("canonical supabase/migrations body is byte-identical to the embedded fixture", () => {
+    expect(SQL).toBe(PHYSICAL_MIGRATION_SQL);
   });
+
+  it("draft audit-trail copy remains byte-identical to the canonical migration", () => {
+    expect(PHYSICAL_DRAFT_SQL).toBe(PHYSICAL_MIGRATION_SQL);
+  });
+
 
   it("proposes exactly 8 unique signatures across Tier 1 + Tier 2", () => {
     const all = [
