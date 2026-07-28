@@ -142,7 +142,11 @@ describe("security_logs admin query index plan — applied live migration", () =
   it("aggregates the plan under a single exported object", () => {
     expect(SECURITY_LOGS_INDEX_PLAN.sql).toBe(SQL);
     expect(SECURITY_LOGS_INDEX_PLAN.indexes.length).toBe(3);
-    expect(SECURITY_LOGS_INDEX_PLAN.migration.applied).toBe(false);
+    expect(SECURITY_LOGS_INDEX_PLAN.migration.applied).toBe(true);
+    expect(SECURITY_LOGS_INDEX_PLAN.migration.liveVersion).toBe(
+      "20260728101447",
+    );
+
   });
 });
 
