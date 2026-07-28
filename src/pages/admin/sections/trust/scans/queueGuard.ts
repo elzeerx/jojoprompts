@@ -65,6 +65,7 @@ export function evaluateQueueGuard(input: QueueGuardInput): QueueGuardResult {
   const {
     providerReady,
     hasFiles,
+    effectiveStateKnown,
     latestScanStatus,
     coverageValid,
     hasPendingAggregate,
@@ -74,15 +75,18 @@ export function evaluateQueueGuard(input: QueueGuardInput): QueueGuardResult {
 
   if (!providerReady) return { canQueue: false, reason: "not_ready" };
   if (!hasFiles) return { canQueue: false, reason: "no_files" };
+  // Fail closed BEFORE interpreting latestScanStatus: if the coverage-aware
+  // effective state is not known (older RPC payload, loading, partial), we
+  // cannot distinguish real unscanned from raw clean. Real unscanned is
+  // expressed as effectiveStateKnown=true with latestScanStatus null/unscanned.
+  if (!effectiveStateKnown) return { canQueue: false, reason: "checking" };
   if (latestScanStatus === "pending" || hasPendingAggregate) {
     return { canQueue: false, reason: "pending_exists" };
   }
   // Coverage-aware clean gating (single source of truth):
   //   coverage_valid === true  => exact current clean, block re-queue
   //   coverage_valid === false => stale clean, allow fresh scan
-  //   coverage_valid === undefined => unknown (older RPC or loading) — fail
-  //     closed with "checking" so a raw clean status can never enable Queue
-  //     without confirmation from the effective-state helper.
+  //   coverage_valid === undefined => unknown — fail closed with "checking".
   if (latestScanStatus === "clean") {
     if (coverageValid === true) return { canQueue: false, reason: "already_clean" };
     if (coverageValid === undefined) return { canQueue: false, reason: "checking" };
@@ -98,3 +102,4 @@ export function evaluateQueueGuard(input: QueueGuardInput): QueueGuardResult {
   }
   return { canQueue: true, reason: "ok" };
 }
+
