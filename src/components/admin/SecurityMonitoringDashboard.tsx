@@ -384,7 +384,27 @@ export function SecurityMonitoringDashboard() {
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div>
+              <label htmlFor="win" className="mb-1 block text-xs font-medium">
+                Time window
+              </label>
+              <Select
+                value={filters.window}
+                onValueChange={(v) => updateFilter({ window: v === "24h" ? null : v })}
+              >
+                <SelectTrigger id="win" className="min-h-[44px]">
+                  <SelectValue placeholder="Last 24 hours" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WINDOW_OPTIONS.map((w) => (
+                    <SelectItem key={w} value={w}>
+                      {WINDOW_LABELS[w]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label htmlFor="sev" className="mb-1 block text-xs font-medium">
                 Severity
