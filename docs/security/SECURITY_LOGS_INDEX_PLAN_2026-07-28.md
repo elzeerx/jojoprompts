@@ -4,10 +4,11 @@ Source-only. **No live migration, Supabase mutation, publish, or
 Coming Soon change was performed in this pass.**
 
 Drafted (not applied) migration:
-`20260728123000_security_logs_admin_query_indexes.sql`
-(SQL body embedded in
-`src/lib/v2/admin/securityLogsIndexes.sql.ts` under
-`SECURITY_LOGS_INDEXES_SQL`).
+`supabase/migrations/20260728123000_security_logs_admin_query_support.sql`
+— the canonical body. `src/lib/v2/admin/securityLogsIndexes.sql.ts`
+carries an embedded mirror (`SECURITY_LOGS_INDEXES_SQL`) that the
+contract test compares to the physical file for normalized byte parity.
+
 
 ## Table snapshot (live evidence)
 
@@ -43,7 +44,7 @@ by itself to change that plan.
 |---|---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|
 | 1 | `idx_security_logs_created_at_desc`         | `CREATE INDEX IF NOT EXISTS ... ON public.security_logs (created_at DESC)`                                                                          | All-events list + 24h metric counts; composes with existing severity / category indexes via bitmap AND. |
 | 2 | `idx_security_logs_actionable_created_at`   | `CREATE INDEX IF NOT EXISTS ... ON public.security_logs (created_at DESC) WHERE action NOT IN ('route_access','developer_tools_opened')`            | Default dashboard list (hot path). Partial index sized to the actionable subset only. |
-| 3 | `idx_security_logs_action`                  | `CREATE INDEX IF NOT EXISTS ... ON public.security_logs (action)`                                                                                   | Explicit action-slug drill-down filter. |
+| 3 | `idx_security_logs_action_created_at_desc` | `CREATE INDEX IF NOT EXISTS ... ON public.security_logs (action, created_at DESC)`                                                                  | Explicit action drill-down: `action = ?` plus `ORDER BY created_at DESC LIMIT` satisfied by a single Index Scan, no follow-up Sort. Supersedes the earlier action-only index. |
 
 Notes:
 
@@ -66,8 +67,10 @@ Notes:
 - **Q3** (24h metric counts): expected `Index Only Scan` /
   `Bitmap Index Scan` on the same `created_at` index, optionally
   combined with `idx_security_logs_severity`.
-- **Q4** (explicit action filter): expected `Bitmap And` of
-  `idx_security_logs_action` and `idx_security_logs_created_at_desc`.
+- **Q4** (explicit action filter): expected `Index Scan Backward using
+  idx_security_logs_action_created_at_desc` with `action = ?` as the
+  leading equality and `created_at DESC LIMIT` served without a Sort.
+
 
 **This is a hypothesis, not a claim.** After application, re-run
 `EXPLAIN (ANALYZE, BUFFERS)` on Q1–Q4 and confirm the intended index
@@ -148,7 +151,8 @@ migration does not assert on this number.
 -- Indexes
 DROP INDEX IF EXISTS public.idx_security_logs_created_at_desc;
 DROP INDEX IF EXISTS public.idx_security_logs_actionable_created_at;
-DROP INDEX IF EXISTS public.idx_security_logs_action;
+DROP INDEX IF EXISTS public.idx_security_logs_action_created_at_desc;
+
 
 -- Normalization: no automatic rollback. The prior top-level 'info'
 -- values are lost; the details JSON retains the original severity tag

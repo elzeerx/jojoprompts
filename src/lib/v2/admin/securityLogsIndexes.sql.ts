@@ -1,12 +1,10 @@
 /**
- * SOURCE FIXTURE — Security Events admin performance indexes.
+ * SOURCE FIXTURE — Security Events admin query-support migration.
  *
- * STATUS: DRAFTED, NOT APPLIED LIVE. Source-only. Not wired to the
- * supabase--migration tool in this pass. A human must review the SQL
- * below and the accompanying note
- * (`docs/security/SECURITY_LOGS_INDEX_PLAN_2026-07-28.md`) before any
- * live application. After application, EXPLAIN must be re-run to
- * confirm index adoption before claiming any improvement.
+ * STATUS: DRAFTED, NOT APPLIED LIVE. The canonical body lives at
+ * `supabase/migrations/20260728123000_security_logs_admin_query_support.sql`.
+ * The embedded `SECURITY_LOGS_INDEXES_SQL` below is a mirror; the
+ * contract test enforces normalized byte parity between the two.
  *
  * TARGET TABLE — public.security_logs
  *   • ~52k rows / ~23 MB (as of 2026-07-28)
@@ -16,7 +14,7 @@
  *
  * QUERY SHAPES SERVED (from SecurityMonitoringDashboard.tsx):
  *
- *   Q1 · Default list (hot path, hits every dashboard render):
+ *   Q1 · Default list (hot path):
  *     WHERE created_at >= now() - <window>
  *       AND action NOT IN ('route_access','developer_tools_opened')
  *     ORDER BY created_at DESC LIMIT 50
@@ -25,59 +23,57 @@
  *     WHERE created_at >= now() - <window>
  *     ORDER BY created_at DESC LIMIT 50
  *
- *   Q3 · 24h metric counts (fixed 24h window, count-only, head:true):
+ *   Q3 · 24h metric counts (count-only, head:true):
  *     SELECT count(*) WHERE created_at >= now() - '24 hours'
  *       [AND severity = ?]  ← existing severity index composes fine
  *
- *   Q4 · Explicit action filter (rare, admin drill-down):
+ *   Q4 · Explicit action drill-down:
  *     WHERE created_at >= now() - <window> AND action = ?
  *     ORDER BY created_at DESC LIMIT 50
  *
- * INDEX PLAN (three targeted indexes, no duplicates of existing
- * severity/category indexes):
+ * INDEX PLAN — exactly three targeted indexes:
  *
  *   I1  idx_security_logs_created_at_desc
  *       ON public.security_logs (created_at DESC)
- *       → serves Q2 and Q3 directly; also composes with the existing
- *         severity/category indexes for filtered metric counts.
  *
  *   I2  idx_security_logs_actionable_created_at
  *       ON public.security_logs (created_at DESC)
  *       WHERE action NOT IN ('route_access','developer_tools_opened')
- *       → partial index sized to the actionable subset only. Q1 is the
- *         default dashboard view, so this pays for its own maintenance
- *         cost quickly and keeps the ordering step free.
  *
- *   I3  idx_security_logs_action
- *       ON public.security_logs (action)
- *       → serves Q4 explicit action drill-down. B-tree on a low-arity
- *         text column; small and cheap.
+ *   I3  idx_security_logs_action_created_at_desc
+ *       ON public.security_logs (action, created_at DESC)
+ *       → serves Q4: exact-equality on `action` plus ORDER BY
+ *         created_at DESC LIMIT is satisfied by a single Index Scan
+ *         without a follow-up Sort.
  *
- * WRITE OVERHEAD: security_logs is append-only. Three additional
- * B-tree indexes (one partial) add roughly three index inserts per
- * event. Acceptable given the read-side wins.
+ * WRITE OVERHEAD: three additional B-tree indexes on an append-only
+ * table. Same total index count as the earlier draft (the composite
+ * replaces the action-only index).
  *
  * INDEXES INTENTIONALLY NOT ADDED:
+ *   • No `idx_security_logs_action` (action-only). Superseded by I3
+ *     which additionally supports the LIMIT/ORDER without a Sort.
  *   • No composite (severity, created_at) or (event_category, created_at)
- *     — existing single-column severity/category indexes already exist
- *     and can be combined with I1 via bitmap AND; adding wide composites
- *     would duplicate coverage.
- *   • No index on details JSONB paths — the dashboard reads top-level
- *     severity/event_category columns per the recent correction.
+ *     — existing single-column indexes already cover those filters.
+ *   • No JSONB / details index — the dashboard reads top-level columns.
  *
- * IDEMPOTENCY: every statement uses CREATE INDEX IF NOT EXISTS.
- * Re-applying the file is a no-op.
+ * IDEMPOTENCY: every DDL uses CREATE INDEX IF NOT EXISTS. The one-time
+ * normalization UPDATE has a WHERE predicate that becomes vacuous
+ * after the first apply (see below).
  *
  * ROLLBACK:
  *   DROP INDEX IF EXISTS public.idx_security_logs_created_at_desc;
  *   DROP INDEX IF EXISTS public.idx_security_logs_actionable_created_at;
- *   DROP INDEX IF EXISTS public.idx_security_logs_action;
+ *   DROP INDEX IF EXISTS public.idx_security_logs_action_created_at_desc;
+ *   (No auto-rollback for the normalization UPDATE.)
  */
 
 export const SECURITY_LOGS_INDEXES_MIGRATION = {
   version: "20260728123000",
-  name: "security_logs_admin_query_indexes",
-  filename: "20260728123000_security_logs_admin_query_indexes.sql",
+  name: "security_logs_admin_query_support",
+  filename: "20260728123000_security_logs_admin_query_support.sql",
+  migrationPath:
+    "supabase/migrations/20260728123000_security_logs_admin_query_support.sql",
   applied: false,
   drafted: true,
 } as const;
@@ -107,11 +103,12 @@ export const SECURITY_LOGS_PLANNED_INDEXES: readonly PlannedSecurityLogsIndex[] 
       "default noise-excluded dashboard list; partial index confined to the actionable subset",
   },
   {
-    name: "idx_security_logs_action",
+    name: "idx_security_logs_action_created_at_desc",
     table: "security_logs",
     definition:
-      "CREATE INDEX IF NOT EXISTS idx_security_logs_action ON public.security_logs (action)",
-    purpose: "explicit action-slug drill-down filter",
+      "CREATE INDEX IF NOT EXISTS idx_security_logs_action_created_at_desc ON public.security_logs (action, created_at DESC)",
+    purpose:
+      "explicit action drill-down: exact action= plus ORDER BY created_at DESC LIMIT satisfied by a single Index Scan (no follow-up Sort)",
   },
 ] as const;
 
@@ -125,25 +122,13 @@ export const SECURITY_LOGS_EXISTING_INDEXES: readonly string[] = [
  * One-time legacy severity normalization (see doc §Normalization).
  *
  * Live evidence at draft time:
- *   • 53,865 total rows in public.security_logs.
- *   • 117 rows carry details->>'severity' and all 117 disagree with the
- *     authoritative top-level `severity` column:
- *         65 rows: top-level 'info', details 'medium'
- *         52 rows: top-level 'info', details 'high'
- *   • Zero rows have details->>'event_category', so no category
- *     backfill is required.
+ *   • 53,865 total rows.
+ *   • 117 rows carry details->>'severity' and all 117 disagree with
+ *     the top-level column (65 medium + 52 high; 0 critical).
+ *   • Zero rows carry details->>'event_category' — no category backfill.
  *
- * Guards:
- *   • Only update rows whose top-level severity is exactly 'info'.
- *     Non-'info' top-level values are treated as already authoritative
- *     and are never overwritten.
- *   • The details value must be in an explicit allowlist —
- *     ('medium','high','critical'). Any other string is ignored so a
- *     stray tag cannot promote a row to an arbitrary severity.
- *   • event_category is not touched.
- *
- * Idempotence: after the first apply the affected rows no longer match
- *   `severity = 'info'`, so re-running the migration updates zero rows.
+ * Guards: severity = 'info' AND details->>'severity' IN allowlist.
+ * Idempotence: after apply the WHERE no longer matches → zero rows.
  */
 export const SECURITY_LOGS_LEGACY_SEVERITY_ALLOWLIST: readonly string[] = [
   "medium",
@@ -173,7 +158,7 @@ WHERE severity = 'info'
 --   WHERE severity = 'info' AND details->>'severity' IN ('medium','high','critical');
 --   -- Expect 0 after successful application.`;
 
-export const SECURITY_LOGS_INDEXES_SQL = `-- 20260728123000_security_logs_admin_query_indexes.sql
+export const SECURITY_LOGS_INDEXES_SQL = `-- 20260728123000_security_logs_admin_query_support.sql
 -- SOURCE-ONLY DRAFT. Do NOT apply without review. Idempotent.
 --
 -- Two independent concerns, applied in this file together because both
