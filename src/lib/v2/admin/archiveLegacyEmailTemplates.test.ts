@@ -1,12 +1,12 @@
 /**
- * Contract for the source-only archive_legacy_email_templates fixture.
+ * Contract for the applied-live archive_legacy_email_templates fixture.
  *
  * The fixture must:
  *   - Target exactly the seven audited slugs and no others.
  *   - Be idempotent (UPDATE-only, guarded).
  *   - Contain NO destructive DDL/DML (DELETE / DROP / TRUNCATE).
  *   - Ship a reversible rollback that restores is_active = true.
- *   - Not be marked as applied live.
+ *   - Be recorded as applied live on 2026-07-28.
  */
 import { describe, it, expect } from "bun:test";
 import {
@@ -73,8 +73,9 @@ describe("archive_legacy_email_templates fixture", () => {
     }
   });
 
-  it("metadata records the fixture as NOT applied live and reversible", () => {
-    expect(metadata.appliedLive).toBe(false);
+  it("metadata records the fixture as applied live on 2026-07-28", () => {
+    expect(metadata.appliedLive).toBe(true);
+    expect(metadata.appliedOn).toBe("2026-07-28");
     expect(metadata.idempotent).toBe(true);
     expect(metadata.containsDelete).toBe(false);
     expect(metadata.reversible).toBe(true);
