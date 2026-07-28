@@ -1,4 +1,5 @@
 import { describe, it, expect } from "bun:test";
+declare const require: (m: string) => any;
 const { readFileSync } = require("fs");
 import {
   EDGE_FUNCTION_AUDIT,
