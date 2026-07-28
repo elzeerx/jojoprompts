@@ -110,6 +110,8 @@ export function CategoriesTable({
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label="Edit category"
+                    className="min-w-[44px] md:min-w-0"
                     onClick={() => onEdit(category)}
                   >
                     <Edit className="h-4 w-4" />
@@ -117,6 +119,8 @@ export function CategoriesTable({
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label="Delete category"
+                    className="min-w-[44px] md:min-w-0"
                     onClick={() => onDelete(category.id)}
                   >
                     <Trash2 className="h-4 w-4" />

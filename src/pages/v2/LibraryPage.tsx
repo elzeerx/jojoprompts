@@ -155,7 +155,7 @@ export default function LibraryPage() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap gap-1 h-auto">
             {(["all", ...V2_RESOURCE_TYPES] as const).map((t) => (
-              <TabsTrigger key={t} value={t} className="min-h-[40px]">
+              <TabsTrigger key={t} value={t}>
                 {tabLabel(t, lang)}
               </TabsTrigger>
             ))}
@@ -202,7 +202,7 @@ export default function LibraryPage() {
                     <div>
                       <Link
                         to={`/resources/${r.slug}`}
-                        className="font-semibold hover:text-warm-gold"
+                        className="inline-flex min-h-[44px] items-center font-semibold hover:text-warm-gold md:min-h-0"
                       >
                         {title}
                       </Link>
@@ -297,7 +297,7 @@ export default function LibraryPage() {
                       <div>
                         <Link
                           to={`/resources/${e.resource_slug}`}
-                          className="font-medium hover:text-warm-gold"
+                          className="inline-flex min-h-[44px] items-center font-medium hover:text-warm-gold md:min-h-0"
                         >
                           {title}
                         </Link>

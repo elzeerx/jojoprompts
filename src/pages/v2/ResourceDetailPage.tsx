@@ -135,7 +135,7 @@ export default function ResourceDetailPage() {
     "@type": product && !isFree ? "Product" : "CreativeWork",
     name: title,
     description: summary ?? description ?? undefined,
-    url: `https://jojoprompts.lovable.app/resources/${r.slug}`,
+    url: `https://jojoprompts.com/resources/${r.slug}`,
     ...(product && !isFree
       ? {
           offers: {
