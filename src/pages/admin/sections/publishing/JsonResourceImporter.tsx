@@ -15,7 +15,7 @@
  *   - Prices persist as integer fils in the payload sent to the RPC.
  *   - Never auto-publishes. Never persists invalid rows. Never creates empty drafts.
  *     The user must explicitly click "Import valid drafts".
- *   - Never touches the legacy `prompts` table or PromptService.
+ *   - Never touches the legacy prompts table or the legacy prompt service surface.
  */
 
 import { useMemo, useState } from "react";
