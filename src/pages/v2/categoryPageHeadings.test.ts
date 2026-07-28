@@ -18,9 +18,11 @@ describe("category page H1 localization", () => {
     it(`${p.file} passes a bilingual title object`, async () => {
       // Bun-native file read; avoids requiring @types/node in the TS project.
       // Bun-native file read; avoids requiring @types/node in the TS project.
-      const src = await (globalThis as { Bun: { file: (p: string) => { text: () => Promise<string> } } }).Bun
-        .file(`src/pages/v2/${p.file}`)
-        .text();
+      const bun = (globalThis as unknown as {
+        Bun: { file: (p: string) => { text: () => Promise<string> } };
+      }).Bun;
+      const src = await bun.file(`src/pages/v2/${p.file}`).text();
+
 
       expect(/title=\{\s*\{[^}]*en:/.test(src)).toBe(true);
       expect(src.includes(`en: "${p.en}"`)).toBe(true);
