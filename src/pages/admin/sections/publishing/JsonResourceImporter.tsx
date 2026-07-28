@@ -41,25 +41,7 @@ import {
 } from "./jsonResourceImporterContract";
 
 const logger = createLogger("V2_JSON_RESOURCE_IMPORTER");
-      title_en: "Example Skill",
-      title_ar: "مهارة تجريبية",
-      summary_en: "A concise description.",
-      description_en: "Full description body...",
-      category: "productivity",
-      tags: ["example", "demo"],
-      version: "1.0.0",
-      products: [{ sku: "example-skill-free", product_type: "free", title_en: "Free tier", price_fils: 0 }],
-    },
-    {
-      title: "Legacy prompt example",
-      content: "Write a haiku about {topic}.",
-      description: "Short haiku generator",
-      tags: ["poetry"],
-    },
-  ],
-  null,
-  2,
-);
+
 
 // ── Component ──────────────────────────────────────────────────────────────
 type ImportResult = { index: number; title: string; status: "ok" | "error"; message?: string };
