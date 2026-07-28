@@ -14,6 +14,10 @@ const sharedImportsSource = readFileSync(
   "supabase/functions/_shared/standardImports.ts",
   "utf8",
 );
+const usersPageSource = readFileSync(
+  "src/pages/admin/components/users/UsersV2.tsx",
+  "utf8",
+);
 
 describe("Admin Users loading contract", () => {
   it("invokes the function by its stable slug and sends pagination in the body", () => {
@@ -47,5 +51,13 @@ describe("Admin Users loading contract", () => {
     expect(sharedImportsSource).toContain(
       "'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS'",
     );
+  });
+
+  it("keeps the inline Admin Activity link touch-safe on mobile", () => {
+    expect(usersPageSource).toContain(
+      'className="-mx-1 inline-flex min-h-[44px] items-center px-1 underline underline-offset-2 hover:text-dark-base sm:mx-0 sm:min-h-0 sm:px-0"',
+    );
+    expect(usersPageSource).toContain('href="/admin/trust/admin-activity"');
+    expect(usersPageSource).toContain("Admin Activity");
   });
 });
