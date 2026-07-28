@@ -41,7 +41,7 @@ export function CategoriesManagement() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Categories Management</h2>
+          <h1 className="text-2xl font-bold">Taxonomy</h1>
           <p className="text-muted-foreground">
             Manage prompt categories and their visibility
           </p>
