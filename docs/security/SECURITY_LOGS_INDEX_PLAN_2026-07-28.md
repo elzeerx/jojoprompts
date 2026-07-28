@@ -3,7 +3,7 @@
 Source-only. **No live migration, Supabase mutation, publish, or
 Coming Soon change was performed in this pass.**
 
-Drafted (not applied) migration:
+Applied migration (live Supabase version 20260728101447):
 `supabase/migrations/20260728123000_security_logs_admin_query_support.sql`
 — the canonical body. `src/lib/v2/admin/securityLogsIndexes.sql.ts`
 carries an embedded mirror (`SECURITY_LOGS_INDEXES_SQL`) that the
@@ -56,7 +56,24 @@ Notes:
   `severity` and `event_category` columns.
 - No `CONCURRENTLY` — cannot run inside a migration transaction.
 
-## Expected plan improvement (unverified until applied)
+## Live plan (verified after apply — Supabase migration version 20260728101447)
+
+- **Q1** (default noise-excluded list): live EXPLAIN now uses **Index
+  Scan on `idx_security_logs_actionable_created_at`**, startup cost
+  **0.29**, no Sort. Prior startup cost was **≈3558.54** (Seq Scan +
+  Sort).
+- Normalization applied: `normalization_candidates = 0` and
+  `all_severity_mismatches = 0` after apply (117 rows normalized).
+- 7-day top-level `severity = 'high'` count = **2**; both
+  `suspicious_activity` rows now visible in the admin preview.
+- Live indexes present exactly:
+  `idx_security_logs_created_at_desc`,
+  `idx_security_logs_actionable_created_at`,
+  `idx_security_logs_action_created_at_desc`
+  (plus pre-existing PK / category / severity indexes).
+
+### Original expected plan (retained for reference)
+
 
 - **Q1** (default noise-excluded list): expected `Index Scan Backward
   using idx_security_logs_actionable_created_at` with the time bound
@@ -167,6 +184,6 @@ DROP INDEX IF EXISTS public.idx_security_logs_action_created_at_desc;
 
 ## Confirmation
 
-**No live migration was applied. No Supabase objects were mutated. No
+**Applied live. Post-apply evidence recorded in the source fixture. No further Supabase mutation was performed in this reconciliation pass. No
 Edge Functions were deployed or edited. The site was not published.
 The Coming Soon launch lock was not disabled.**

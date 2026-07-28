@@ -42,13 +42,15 @@ describe("security_logs admin query-support migration — physical file", () => 
     expect(normalize(PHYSICAL_SQL)).toBe(normalize(SQL));
   });
 
-  it("is marked drafted and NOT applied live", () => {
-    expect(SECURITY_LOGS_INDEXES_MIGRATION.applied).toBe(false);
-    expect(SECURITY_LOGS_INDEXES_MIGRATION.drafted).toBe(true);
+  it("is marked applied live with the recorded Supabase migration version", () => {
+    expect(SECURITY_LOGS_INDEXES_MIGRATION.applied).toBe(true);
+    expect(SECURITY_LOGS_INDEXES_MIGRATION.drafted).toBe(false);
+    expect(SECURITY_LOGS_INDEXES_MIGRATION.liveVersion).toBe("20260728101447");
   });
 });
 
-describe("security_logs admin query index plan — drafted migration", () => {
+describe("security_logs admin query index plan — applied live migration", () => {
+
   it("plans exactly three targeted indexes with the required names", () => {
     expect(SECURITY_LOGS_PLANNED_INDEXES.length).toBe(3);
     const names = SECURITY_LOGS_PLANNED_INDEXES.map((i) => i.name).sort();
@@ -140,11 +142,15 @@ describe("security_logs admin query index plan — drafted migration", () => {
   it("aggregates the plan under a single exported object", () => {
     expect(SECURITY_LOGS_INDEX_PLAN.sql).toBe(SQL);
     expect(SECURITY_LOGS_INDEX_PLAN.indexes.length).toBe(3);
-    expect(SECURITY_LOGS_INDEX_PLAN.migration.applied).toBe(false);
+    expect(SECURITY_LOGS_INDEX_PLAN.migration.applied).toBe(true);
+    expect(SECURITY_LOGS_INDEX_PLAN.migration.liveVersion).toBe(
+      "20260728101447",
+    );
+
   });
 });
 
-describe("security_logs legacy severity normalization — drafted UPDATE", () => {
+describe("security_logs legacy severity normalization — applied UPDATE", () => {
   const NORM = SECURITY_LOGS_LEGACY_SEVERITY_NORMALIZATION_SQL;
 
   it("has exactly one bounded UPDATE statement in the migration", () => {
