@@ -199,16 +199,20 @@ appear byte-for-byte in
   frontend references the column, not the function. If a future path
   begins calling the function from an authenticated context, it will
   need `service_role` (edge) instead — restore per Rollback.
-- The physical `.sql` draft cannot be placed at
-  `supabase/migrations/` directly in this environment; it lives at
-  `docs/security/drafts/` and will be submitted verbatim via the
-  supabase migration tool at approval time.
+- The reviewed body now lives at
+  `supabase/migrations/20260728120000_legacy_security_definer_authorization_hardening.sql`
+  and was applied as live Supabase migration version `20260728101016`.
+  The identical body is retained under `docs/security/drafts/` as an
+  audit-trail artifact.
 
-## Files added / changed this pass
+## Files added / changed
 
-- `docs/security/drafts/20260728120000_legacy_security_definer_authorization_hardening.sql` — physical draft SQL (canonical body).
-- `src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts` — mirror fixture + tier enumeration + `alreadyServiceRoleOnly` list.
-- `src/lib/v2/admin/legacySecurityDefinerAuthorization.test.ts` — contract tests (byte parity with the physical draft, exact 8-signature set, absence of already-service-role-only functions, RLS helpers untouched, `applied:false`).
+- `supabase/migrations/20260728120000_legacy_security_definer_authorization_hardening.sql` — canonical applied SQL body.
+- `docs/security/drafts/20260728120000_legacy_security_definer_authorization_hardening.sql` — audit-trail copy (byte-identical).
+- `src/lib/v2/admin/legacySecurityDefinerAuthorization.sql.ts` — mirror fixture + tier enumeration + `alreadyServiceRoleOnly` list; records `applied:true` and `liveVersion:"20260728101016"`.
+- `src/lib/v2/admin/legacySecurityDefinerAuthorization.test.ts` — contract tests (byte parity against both physical files, exact 8-signature set, absence of already-service-role-only functions, RLS helpers untouched, `applied:true`, recorded live version).
+- `docs/security/LEGACY_SECURITY_DEFINER_AUDIT_2026-07-28.md` — this document (reconciled to live state).
+
 - `docs/security/LEGACY_SECURITY_DEFINER_AUDIT_2026-07-28.md` — this document (corrected).
 
 
