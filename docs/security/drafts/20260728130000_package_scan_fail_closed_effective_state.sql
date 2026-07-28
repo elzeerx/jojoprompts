@@ -637,3 +637,107 @@ $fn$;
 -- Preserve authoritative ACL from migration 20260724165802.
 REVOKE ALL ON FUNCTION public.v2_admin_get_resource_version_detail(uuid) FROM PUBLIC, anon, service_role;
 GRANT  EXECUTE ON FUNCTION public.v2_admin_get_resource_version_detail(uuid) TO authenticated;
+
+-- =============================================================================
+-- 8) v2_internal_create_package_scan — atomic authority using effective helper
+-- =============================================================================
+-- The historical definition (migration 20260724182504) computed already_clean
+-- by locating the latest CLEAN scan and re-deriving exact coverage inline. That
+-- meant: after an older exact-current clean scan, if a later scan reported
+-- failed/suspicious/malicious, the create-scan RPC would still reject
+-- 'already_clean' by walking back to the older clean row — while the edge
+-- preflight (which uses effective_status of the LATEST attempt) correctly
+-- allowed a retry. The two paths disagreed, blocking legitimate retries.
+--
+-- This forward-only replacement makes v2_internal_effective_scan_state the
+-- single source of truth for already_clean and adds a row-level lock on the
+-- target resource_versions row so concurrent queue attempts serialize cleanly.
+-- Pending-child rejection covers ANY package_scan_items row still pending
+-- under ANY scan for the version (terminal aggregate with pending child
+-- included). Unique-violation fallback and service_role-only ACL preserved.
+CREATE OR REPLACE FUNCTION public.v2_internal_create_package_scan(
+  p_version_id uuid,
+  p_scanner text,
+  p_requested_by uuid
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_scan_id uuid;
+  v_version_id uuid;
+  v_eff record;
+BEGIN
+  -- 1) Validate arguments
+  IF p_version_id IS NULL OR p_scanner IS NULL OR btrim(p_scanner) = '' THEN
+    RAISE EXCEPTION 'invalid_arguments' USING ERRCODE = '22023';
+  END IF;
+
+  -- 2) Serialize concurrent queue attempts on the same version by locking the
+  --    resource_versions row FOR UPDATE. Missing version -> stable error.
+  SELECT id INTO v_version_id
+    FROM public.resource_versions
+   WHERE id = p_version_id
+   FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'version_not_found' USING ERRCODE = 'P0002';
+  END IF;
+
+  -- 3) Verify current files exist
+  IF NOT EXISTS (
+    SELECT 1 FROM public.resource_files
+     WHERE resource_version_id = p_version_id
+  ) THEN
+    RAISE EXCEPTION 'no_files' USING ERRCODE = '22023';
+  END IF;
+
+  -- 4) pending_exists: ANY pending package_scan_items row under ANY scan for
+  --    this version (covers terminal aggregate with recoverable pending child).
+  IF EXISTS (
+    SELECT 1
+      FROM public.package_scan_items psi
+      JOIN public.package_scans ps ON ps.id = psi.package_scan_id
+     WHERE ps.resource_version_id = p_version_id
+       AND psi.status = 'pending'
+  ) THEN
+    RAISE EXCEPTION 'pending_exists' USING ERRCODE = '23505';
+  END IF;
+
+  -- 5) already_clean — SINGLE source of truth. Do NOT duplicate exact-coverage
+  --    SQL here; delegate to v2_internal_effective_scan_state. Reject only
+  --    when the latest effective_status is 'clean' AND coverage_valid=true.
+  SELECT effective_status, coverage_valid
+    INTO v_eff
+    FROM public.v2_internal_effective_scan_state(p_version_id);
+  IF v_eff.effective_status = 'clean' AND COALESCE(v_eff.coverage_valid, false) THEN
+    RAISE EXCEPTION 'already_clean' USING ERRCODE = '23505';
+  END IF;
+
+  -- 6) Create one pending scan + one pending item per current file.
+  BEGIN
+    INSERT INTO public.package_scans (
+      resource_version_id, scanner, status, findings,
+      requested_by, requested_at, attempt_count
+    ) VALUES (
+      p_version_id, p_scanner, 'pending', '{}'::jsonb,
+      p_requested_by, now(), 0
+    ) RETURNING id INTO v_scan_id;
+  EXCEPTION WHEN unique_violation THEN
+    -- Concurrent queue race collided with the partial-unique pending index.
+    RAISE EXCEPTION 'pending_exists' USING ERRCODE = '23505';
+  END;
+
+  INSERT INTO public.package_scan_items (
+    package_scan_id, resource_file_id, status, progress
+  )
+  SELECT v_scan_id, rf.id, 'pending', 0
+    FROM public.resource_files rf
+   WHERE rf.resource_version_id = p_version_id;
+
+  RETURN v_scan_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.v2_internal_create_package_scan(uuid, text, uuid) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.v2_internal_create_package_scan(uuid, text, uuid) TO service_role;
