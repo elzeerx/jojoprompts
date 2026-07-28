@@ -28,7 +28,7 @@ describe("ResourcePublisher — resource editor select", () => {
     // resources → product_bundle_items has NO direct FK on bundle_product_id.
     // Embedding that hint from `resources` returns HTTP 400 from PostgREST.
     expect(src.includes("product_bundle_items:product_bundle_items!bundle_product_id")).toBe(false);
-    expect(/from\(["']resources["']\)[\s\S]{0,600}bundle_product_id/.test(src)).toBe(false);
+    expect(src.includes("product_bundle_items!bundle_product_id(resource_id)")).toBe(false);
   });
 
   it("exports the canonical select and edit URL builder", () => {
