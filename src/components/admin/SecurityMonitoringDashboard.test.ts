@@ -170,7 +170,7 @@ describe("SecurityMonitoringDashboard — CATEGORY_OPTIONS matches live check co
       expect(typeof CATEGORY_LABELS[c]).toBe("string");
       expect(CATEGORY_LABELS[c].length).toBeGreaterThan(0);
       // No underscores leak into the label.
-      expect(CATEGORY_LABELS[c]).not.toMatch(/_/);
+      expect(/_/.test(CATEGORY_LABELS[c])).toBe(false);
     }
     expect(CATEGORY_LABELS.data_access).toBe("Data access");
     expect(CATEGORY_LABELS.all).toBe("All categories");
