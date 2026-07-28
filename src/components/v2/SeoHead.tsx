@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { isLaunchLocked } from "@/config/siteMode";
+import { isLaunchLocked, isPreviewHost } from "@/config/siteMode";
 
 interface SeoHeadProps {
   title: string;
@@ -8,7 +8,7 @@ interface SeoHeadProps {
   noindex?: boolean;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   ogType?: "website" | "article" | "product";
-  /** Absolute production https URL. Optional — omit to skip og:image. */
+  /** Absolute production https URL. Optional — defaults to DEFAULT_OG_IMAGE. */
   ogImage?: string;
 }
 
@@ -19,6 +19,43 @@ interface SeoHeadProps {
  * production page to a private preview subdomain.
  */
 export const PRODUCTION_ORIGIN = "https://jojoprompts.com";
+export const PRODUCTION_HOST = "jojoprompts.com";
+
+/**
+ * Stable, production-hosted share image. Reuses the existing Jojo wordmark
+ * asset copied into a stable `/og/` path so crawlers cache a permanent URL.
+ * A 1200x630 branded share card is a later design enhancement — this
+ * placeholder is intentionally non-preview and non-lovable.app.
+ */
+export const DEFAULT_OG_IMAGE = `${PRODUCTION_ORIGIN}/og/jojoprompts-v2.png`;
+
+/**
+ * Pure indexability decision — exported for tests. Production origin
+ * (jojoprompts.com) can emit `index,follow` only when the launch lock is
+ * deliberately disabled AND the caller has not opted out (`noindex`).
+ * Every other environment (preview subdomains, dev hosts, SSR/window
+ * absence, or launch-locked production) MUST emit `noindex,nofollow`.
+ */
+export function shouldNoindex(params: {
+  optOut?: boolean;
+  hostname: string | null | undefined;
+  launchLocked: boolean;
+}): boolean {
+  if (params.optOut) return true;
+  if (params.launchLocked) return true;
+  const host =
+    typeof params.hostname === "string" ? params.hostname.toLowerCase() : "";
+  if (host === PRODUCTION_HOST) return false;
+  // Preview hosts, dev hosts, unknown hosts, and SSR (no hostname) all
+  // fail closed to noindex so crawlers never see a preview as canonical.
+  if (isPreviewHost(host)) return true;
+  return true;
+}
+
+function currentHostname(): string | null {
+  if (typeof window === "undefined" || !window.location) return null;
+  return window.location.hostname || null;
+}
 
 export function SeoHead({
   title,
@@ -27,16 +64,17 @@ export function SeoHead({
   noindex,
   jsonLd,
   ogType = "website",
-  ogImage,
+  ogImage = DEFAULT_OG_IMAGE,
 }: SeoHeadProps) {
   const url = canonicalPath.startsWith("http")
     ? canonicalPath
     : `${PRODUCTION_ORIGIN}${canonicalPath}`;
   const ldItems = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
-  // Environment/maintenance gate — while Coming Soon is in effect every
-  // route must remain noindex regardless of per-page opt-out. Removing
-  // launch lock re-enables per-route index,follow.
-  const effectiveNoindex = noindex || isLaunchLocked();
+  const effectiveNoindex = shouldNoindex({
+    optOut: noindex,
+    hostname: currentHostname(),
+    launchLocked: isLaunchLocked(),
+  });
   return (
     <Helmet>
       <title>{title}</title>

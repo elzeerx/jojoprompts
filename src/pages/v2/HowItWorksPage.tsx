@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { SeoHead } from "@/components/v2/SeoHead";
 import { ArrowRight, Search, ShieldCheck, ShoppingBag, DownloadCloud, LibraryBig } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -18,19 +18,11 @@ export default function HowItWorksPage() {
 
   return (
     <main dir={isRTL ? "rtl" : "ltr"} className="bg-background text-foreground">
-      <Helmet>
-        <title>{t.seoTitle}</title>
-        <meta name="description" content={t.seoDesc} />
-        <link rel="canonical" href="https://jojoprompts.com/how-it-works" />
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content={t.seoTitle} />
-        <meta property="og:description" content={t.seoDesc} />
-        <meta property="og:url" content="https://jojoprompts.com/how-it-works" />
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content={t.seoTitle} />
-        <meta name="twitter:description" content={t.seoDesc} />
-        <meta name="twitter:url" content="https://jojoprompts.com/how-it-works" />
-      </Helmet>
+      <SeoHead
+        title={t.seoTitle}
+        description={t.seoDesc}
+        canonicalPath="/how-it-works"
+      />
 
       <section className="border-b border-border/60 bg-gradient-to-b from-warm-gold/10 to-transparent">
         <div className="container mx-auto max-w-4xl px-4 py-12 sm:py-16">

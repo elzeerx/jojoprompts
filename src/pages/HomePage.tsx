@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { SeoHead } from "@/components/v2/SeoHead";
 import {
   ArrowRight,
   Search,
@@ -36,19 +36,11 @@ export default function HomePage() {
 
   return (
     <main dir={isRTL ? "rtl" : "ltr"} className="bg-background text-foreground">
-      <Helmet>
-        <title>{t.seoTitle}</title>
-        <meta name="description" content={t.seoDesc} />
-        <link rel="canonical" href="https://jojoprompts.com/" />
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content={t.seoTitle} />
-        <meta property="og:description" content={t.seoDesc} />
-        <meta property="og:url" content="https://jojoprompts.com/" />
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content={t.seoTitle} />
-        <meta name="twitter:description" content={t.seoDesc} />
-        <meta name="twitter:url" content="https://jojoprompts.com/" />
-      </Helmet>
+      <SeoHead
+        title={t.seoTitle}
+        description={t.seoDesc}
+        canonicalPath="/"
+      />
 
       {/* Hero */}
       <section className="border-b border-border/60 bg-gradient-to-b from-warm-gold/10 to-transparent">

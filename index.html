@@ -4,12 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/lovable-uploads/501cb37c-003d-41ce-a8c4-4ad410a18846.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Route-owned metadata: description, canonical, og:*, twitter:*, and
+      robots are emitted per-route via <SeoHead /> (react-helmet-async).
+      We intentionally do NOT ship duplicate static tags here — that would
+      cause competing tags (e.g. two robots directives) after hydration.
+      Only a minimal fallback <title> stays for the pre-hydration frame.
+    -->
     <title>JojoPrompts</title>
-    <meta name="description" content="JojoPrompts is being rebuilt for the next generation of AI — skills, automations, prompts, image styles, and more." />
-    <meta name="robots" content="noindex,nofollow" />
-    <meta property="og:title" content="JojoPrompts" />
-    <meta property="og:description" content="Something new is taking shape." />
-    <meta property="og:type" content="website" />
   </head>
   <body>
     <div id="root"></div>
