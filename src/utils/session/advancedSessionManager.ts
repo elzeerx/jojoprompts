@@ -265,14 +265,8 @@ export class AdvancedSessionManager {
         return false;
       }
 
-      // Log session termination
-      await supabase.from('security_logs').insert({
-        user_id: userId,
-        action: 'session_terminated',
-        details: { session_id: sessionId },
-        severity: 'info',
-        event_category: 'session_management'
-      });
+      // Pre-launch hardening: no client-role DB write into security_logs.
+      logger.info('session_terminated', { userId, sessionId });
 
       return true;
     } catch (error) {
