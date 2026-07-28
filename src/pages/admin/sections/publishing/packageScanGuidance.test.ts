@@ -62,6 +62,6 @@ describe("packageScanGuidance — exhaustive state → guidance mapping", () => 
     // even when the badge showed 'Clean'. Ensure such a combination is impossible.
     const g = packageScanGuidance("clean");
     expect(g.blocksPublishing).toBe(false);
-    expect(g.badge).not.toMatch(/pending|blocked/i);
+    expect(/pending|blocked/i.test(g.badge)).toBe(false);
   });
 });
