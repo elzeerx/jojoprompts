@@ -441,9 +441,10 @@ export function SecurityMonitoringDashboard() {
                 <SelectContent>
                   {CATEGORY_OPTIONS.map((c) => (
                     <SelectItem key={c} value={c}>
-                      {c === "all" ? "All categories" : c.replace(/_/g, " ")}
+                      {CATEGORY_LABELS[c]}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
