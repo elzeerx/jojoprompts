@@ -4,10 +4,11 @@ Source-only. **No live migration, Supabase mutation, publish, or
 Coming Soon change was performed in this pass.**
 
 Drafted (not applied) migration:
-`20260728123000_security_logs_admin_query_indexes.sql`
-(SQL body embedded in
-`src/lib/v2/admin/securityLogsIndexes.sql.ts` under
-`SECURITY_LOGS_INDEXES_SQL`).
+`supabase/migrations/20260728123000_security_logs_admin_query_support.sql`
+— the canonical body. `src/lib/v2/admin/securityLogsIndexes.sql.ts`
+carries an embedded mirror (`SECURITY_LOGS_INDEXES_SQL`) that the
+contract test compares to the physical file for normalized byte parity.
+
 
 ## Table snapshot (live evidence)
 
