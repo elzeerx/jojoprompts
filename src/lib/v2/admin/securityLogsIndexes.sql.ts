@@ -23,9 +23,10 @@
  *     LIMIT 50 query now uses Index Scan on
  *     `idx_security_logs_actionable_created_at`, startup cost 0.29,
  *     no Sort (prior startup cost was ~3558.54 Seq Scan + Sort).
- */
-
+ *
+ * TARGET TABLE — public.security_logs
  *   • ~52k rows / ~23 MB (as of 2026-07-28)
+
  *   • Existing indexes: PK(id), idx_security_logs_category(event_category),
  *     idx_security_logs_severity(severity)
  *   • Missing: any index on created_at or action
