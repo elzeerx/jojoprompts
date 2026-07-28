@@ -229,7 +229,7 @@ describe("Edge Function retirement inventory", () => {
   });
 
   it("docs report exact 23 retirements and 0 investigate remaining", () => {
-    expect(DOC).toMatch(/23 slugs/);
+    expect(DOC).toMatch(/24 slugs/);
     expect(/\b9 slugs\b/.test(DOC)).toBe(false);
     expect(/unknown\s*\/\s*investigate:\s*10/i.test(DOC)).toBe(false);
     expect(/three PRs|3 PRs/i.test(DOC)).toBe(false);
