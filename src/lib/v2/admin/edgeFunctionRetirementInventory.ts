@@ -1,17 +1,27 @@
 /**
  * Edge Function Retirement Inventory — Source-of-truth audit snapshot.
  *
- * Audit date: 2026-07-28
+ * Audit date: 2026-07-28 (route-graph refinement pass)
  * Live Supabase project: fxkqgjakbyrxkmevkglv
  * Live inventory: 68 ACTIVE functions.
  *
  * This module is READ-ONLY documentation. It reflects the current live
  * `verify_jwt` flags and the auditor's classification of each function's
- * active source callers. `appliedLive` is false for every retirement
- * recommendation: no function has been retired to a 410 stub in this pass.
+ * active source callers, resolved via full component -> parent -> route
+ * chain analysis (not just grep).
+ *
+ * Retirement application semantics:
+ *   - `recommendedRetirementAppliedLive` is ALWAYS false in this pass:
+ *     no new 410 stub has been shipped by this audit.
+ *   - `already410Live` is true for slugs whose source already returns
+ *     HTTP 410 or whose live deployment is already a 410 stub. Those
+ *     are NOT "unapplied retirements"; they are the prior retirement
+ *     state that the audit merely records.
+ *   - Both flags are read independently to prevent the misleading
+ *     `appliedLive:false` claim on already-410 stubs.
  *
  * Companion documents:
- *   - docs/security/EDGE_FUNCTION_AUDIT_2026-07-28.md (narrative + methodology)
+ *   - docs/security/EDGE_FUNCTION_AUDIT_2026-07-28.md (narrative + evidence)
  *   - src/lib/v2/legacyEndpoints.ts (previously-retired V1 payment slugs)
  */
 
@@ -30,9 +40,12 @@ export type Disposition =
 
 export type AuthMechanism =
   | "platform_jwt"
+  | "custom_user_jwt"
   | "verifyAdmin_shared"
   | "service_secret"
   | "provider_signature"
+  | "provider_status_reconciliation"
+  | "published_resource_allowlist"
   | "captcha_or_rate_limit"
   | "none"
   | "unknown";
@@ -56,15 +69,26 @@ export interface EdgeFunctionAuditEntry {
   classification: Classification;
   /** Recommended disposition (documentation only — not yet applied). */
   disposition: Disposition;
-  /** Whether the current recommendation has already been applied live. */
-  appliedLive: false;
+  /**
+   * Whether THIS audit's NEW retirement recommendation has been
+   * shipped as a 410 stub. Always false in this pass. Do NOT read
+   * this field to infer whether an existing stub is live; use
+   * `already410Live` for that.
+   */
+  recommendedRetirementAppliedLive: false;
+  /**
+   * Whether the function already returns HTTP 410 in the current
+   * source/live deployment (independent of this audit's
+   * recommendations). True for the 10 pre-existing stubs.
+   */
+  already410Live: boolean;
   /** Short rationale citing evidence. */
   evidence: string;
 }
 
 export const EDGE_FUNCTION_AUDIT_DATE = "2026-07-28" as const;
 
-/** Slugs that are already HTTP 410 stubs in source or live. */
+/** Slugs whose source or live deployment already returns HTTP 410. */
 export const ALREADY_410_SLUGS = [
   "check-email-exists",
   "paypal-webhook",
@@ -77,6 +101,47 @@ export const ALREADY_410_SLUGS = [
   "verify-password-reset",
   "v2-qa-one-time-package-upload",
 ] as const;
+
+/**
+ * Bounded retirement recommendation for THIS audit. Exactly 23 slugs
+ * (11 obsolete payment/debug + 12 resolved from the previous
+ * investigate set after full route-graph analysis). Not yet applied.
+ */
+export const RETIREMENT_SLUGS = [
+  // 11 obsolete-payment / debug retirements
+  "debug-environment",
+  "get-paypal-client-id",
+  "process-paypal-payment",
+  "verify-paypal-payment",
+  "auto-capture-paypal",
+  "recover-orphaned-payments",
+  "get-transaction-by-order",
+  "send-purchase-confirmation",
+  "scheduled-payment-cleanup",
+  "process-upayments-payment",
+  "upayments-webhook",
+  // 12 resolved after route-graph trace (parent chain unreachable
+  // from any active adminSectionElements route)
+  "create-subscription",
+  "cancel-subscription",
+  "validate-file-upload",
+  "get-admin-transactions",
+  "resend-confirmation-alternative",
+  "get-users-without-plans",
+  "send-bulk-plan-reminders",
+  "send-plan-reminder",
+  "generate-magic-link",
+  "get-user-insights",
+  "auto-generate-prompt",
+  "admin-users-v2",
+] as const;
+
+const R = (name: string): Pick<EdgeFunctionAuditEntry,
+  "classification" | "disposition" | "recommendedRetirementAppliedLive"> => ({
+  classification: "legacy_unreachable" as const,
+  disposition: "retire_to_410" as const,
+  recommendedRetirementAppliedLive: false as const,
+});
 
 export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
   {
@@ -93,8 +158,9 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "3 active src callers; verify_jwt=true covers auth.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence: "Active callers; verify_jwt=true covers auth.",
   },
   {
     name: "suggest-prompt",
@@ -106,9 +172,10 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "unknown_review",
     disposition: "harden",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence:
-      "No active src caller (test-only ref). Prior pass hardened with can_manage_prompts bearer auth; verify no legacy caller before retiring.",
+      "Prior pass hardened with can_manage_prompts bearer auth; no direct src caller but not yet retired.",
   },
   {
     name: "get-all-users",
@@ -121,24 +188,28 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     ],
     outbound: ["auth.admin"],
     purpose: "Admin user listing.",
-    v2Replacement: "admin-users-v2",
+    v2Replacement: null,
     classification: "required_shared_account_auth",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "3 active admin src callers; still reachable.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence:
+      "Reached from adminSectionElements.users (UsersV2) via useUserService chain.",
   },
   {
     name: "get-image",
     verifyJwt: false,
-    authMechanism: "verifyAdmin_shared",
+    authMechanism: "published_resource_allowlist",
     callers: ["src/components/ui/prompt-card/ImageWrapper.tsx"],
     outbound: ["storage"],
-    purpose: "Image proxy (published resources, image MIME only).",
+    purpose: "Image proxy (published, non-archived resources only, image MIME).",
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "Hardened in prior pass; still called from prompt card.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence:
+      "Intentionally public; live handler restricts to published_resource_allowlist paths and image content-types.",
   },
   {
     name: "create-subscription",
@@ -148,24 +219,23 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: [],
     purpose: "V1 subscription creation.",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
+    ...R("create-subscription"),
+    already410Live: false,
     evidence:
-      "subscriptionActivator hook may be dead V1 code; needs route-graph confirmation before retiring.",
+      "subscriptionActivator has zero importers in src/; V2 has no subscriptions. Unreachable.",
   },
   {
     name: "cancel-subscription",
     verifyJwt: false,
     authMechanism: "verifyAdmin_shared",
-    callers: ["src/pages/admin/components/users/hooks/useUserService.ts"],
+    callers: ["src/pages/admin/components/users/hooks/useUserService.ts:406"],
     outbound: [],
     purpose: "V1 subscription cancellation.",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
-    evidence: "One admin caller; V2 has no subscription surface.",
+    ...R("cancel-subscription"),
+    already410Live: false,
+    evidence:
+      "Only cancelUserSubscription (useUserService) callers are UserTableRow + UsersManagement (V1). adminSectionElements.users wires UsersV2, not UsersManagement; UsersV2 does not use cancelUserSubscription. Unreachable.",
   },
   {
     name: "validate-file-upload",
@@ -173,13 +243,12 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     authMechanism: "verifyAdmin_shared",
     callers: ["src/hooks/useSecureFileUpload.ts"],
     outbound: [],
-    purpose: "Upload validation (V1 admin uploads).",
+    purpose: "V1 upload validator.",
     v2Replacement: "v2-admin-upload-resource-file",
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
+    ...R("validate-file-upload"),
+    already410Live: false,
     evidence:
-      "Referenced by useSecureFileUpload; confirm whether any V2 route reaches this hook.",
+      "Only importer is src/pages/admin/components/prompts/components/SecureImageUploadField.tsx (V1 prompts admin). No adminSectionElements route wires that component (publishing uses ResourcePublisher, not V1 prompts). Unreachable.",
   },
   {
     name: "get-paypal-client-id",
@@ -189,9 +258,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: ["paypal"],
     purpose: "V1 PayPal client-id exposure.",
     v2Replacement: null,
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
+    ...R("get-paypal-client-id"),
+    already410Live: false,
     evidence: "No active src caller; PayPal retired in V2.",
   },
   {
@@ -202,10 +270,9 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: ["paypal"],
     purpose: "V1 PayPal capture.",
     v2Replacement: "v2-upayments-checkout",
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
-    evidence: "Only registry reference; already in RETIRED_LEGACY_EDGE_SLUGS.",
+    ...R("process-paypal-payment"),
+    already410Live: false,
+    evidence: "Registry-only reference; PayPal retired in V2.",
   },
   {
     name: "verify-paypal-payment",
@@ -215,23 +282,22 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: ["paypal"],
     purpose: "V1 PayPal verify.",
     v2Replacement: "v2-upayments-status",
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
-    evidence: "Only registry reference.",
+    ...R("verify-paypal-payment"),
+    already410Live: false,
+    evidence: "Registry-only reference.",
   },
   {
     name: "recover-orphaned-payments",
     verifyJwt: false,
     authMechanism: "none",
     callers: ["src/lib/v2/legacyEndpoints.ts"],
-    outbound: [],
-    purpose: "V1 payment cleanup.",
+    outbound: ["user_subscriptions (service_role)"],
+    purpose: "V1 payment cleanup (public, caller-supplied userId).",
     v2Replacement: null,
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
-    evidence: "Only registry reference.",
+    ...R("recover-orphaned-payments"),
+    already410Live: false,
+    evidence:
+      "Registry-only ref in src. CRITICAL: live logs (24h) show repeated calls; current handler is unauthenticated, accepts caller-supplied userId, and uses service_role on user_subscriptions. Confirmed exposure; top-priority retirement even if calls are QA-origin.",
   },
   {
     name: "paypal-webhook",
@@ -243,40 +309,44 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "Live returns 410 per problem statement; source stub present.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
+    evidence: "Live returns 410; source stub present.",
   },
   {
     name: "get-transaction-by-order",
     verifyJwt: false,
-    authMechanism: "none",
-    callers: ["src/lib/v2/legacyEndpoints.ts"],
+    authMechanism: "verifyAdmin_shared",
+    callers: [
+      "src/pages/admin/components/purchases/hooks/usePurchaseHistory.ts:70",
+    ],
     outbound: [],
-    purpose: "V1 order lookup.",
+    purpose: "V1 admin order lookup.",
     v2Replacement: null,
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
-    evidence: "Only registry reference.",
+    ...R("get-transaction-by-order"),
+    already410Live: false,
+    evidence:
+      "Only importer is PurchaseHistoryManagement, which is NOT registered in adminSectionElements. V2 orders surface is OrdersV2Page/PaymentEventsPage. Unreachable. (Live handler calls shared verifyAdmin(req) before any body processing; that guard is not the retirement rationale — reachability is.)",
   },
   {
     name: "delete-my-account",
     verifyJwt: false,
-    authMechanism: "platform_jwt",
+    authMechanism: "custom_user_jwt",
     callers: ["src/components/account/DeleteAccountDialog.tsx"],
     outbound: ["auth.admin"],
     purpose: "Self-service account deletion.",
     v2Replacement: null,
     classification: "required_v2",
     disposition: "harden",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence:
-      "Reachable from /account. verify_jwt=false but validates Bearer token in code; consider enabling platform verify_jwt.",
+      "Reachable from /account. verify_jwt=false but validates Bearer token in-handler; consider flipping platform verify_jwt.",
   },
   {
     name: "send-email",
     verifyJwt: false,
-    authMechanism: "verifyAdmin_shared",
+    authMechanism: "service_secret",
     callers: [
       "src/utils/emailService.ts",
       "src/lib/v2/admin/emailSettings.ts",
@@ -286,24 +356,24 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_shared_account_auth",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "Two active callers; signature-checked HMAC path.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence: "Two active callers; HMAC/service-secret gated.",
   },
   {
     name: "get-admin-transactions",
     verifyJwt: false,
     authMechanism: "verifyAdmin_shared",
     callers: [
-      "src/pages/admin/components/purchases/hooks/usePurchaseHistory.ts",
+      "src/pages/admin/components/purchases/hooks/usePurchaseHistory.ts:70",
     ],
     outbound: [],
-    purpose: "Admin transaction listing.",
+    purpose: "V1 admin transaction listing.",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
+    ...R("get-admin-transactions"),
+    already410Live: false,
     evidence:
-      "verify_jwt=false with custom verifyAdmin path; confirm verifyAdmin covers all response paths including error branches.",
+      "usePurchaseHistory only imported by PurchaseHistoryManagement, which is NOT wired into adminSectionElements. Live handler guards with shared verifyAdmin(req) prior to response, but no reachable UI. Unreachable.",
   },
   {
     name: "generate-use-case",
@@ -315,7 +385,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Admin prompt tooling.",
   },
   {
@@ -328,8 +399,9 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "Source is 410 stub (39 lines).",
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
+    evidence: "Source is 410 stub.",
   },
   {
     name: "auto-capture-paypal",
@@ -339,9 +411,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: ["paypal"],
     purpose: "V1 PayPal auto-capture.",
     v2Replacement: null,
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
+    ...R("auto-capture-paypal"),
+    already410Live: false,
     evidence: "Registry only.",
   },
   {
@@ -352,11 +423,10 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: [],
     purpose: "V1 payment cleanup cron.",
     v2Replacement: null,
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
+    ...R("scheduled-payment-cleanup"),
+    already410Live: false,
     evidence:
-      "No pg_cron entry (only daily-security-cleanup runs); registry-only src reference.",
+      "No pg_cron entry (only daily-security-cleanup runs). Registry-only src reference.",
   },
   {
     name: "debug-environment",
@@ -366,11 +436,10 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: [],
     purpose: "Runtime/environment introspection.",
     v2Replacement: null,
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
+    ...R("debug-environment"),
+    already410Live: false,
     evidence:
-      "verify_jwt=false, no request authorization, exposes env/config. No active src caller. Confirmed retirement candidate.",
+      "verify_jwt=false, no request auth, exposes env/config. Live logs show version 318 returned 410, current version 320 is the unsafe diagnostic implementation — proving a later source/deploy sync resurrected the function. Retirement MUST be source-first, deploy-verified, and post-deploy source/hash/state confirmed.",
   },
   {
     name: "resend-confirmation-alternative",
@@ -379,12 +448,11 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     callers: [],
     outbound: [],
     purpose: "Alternative signup confirmation resender.",
-    v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
+    v2Replacement: "supabase.auth.resend",
+    ...R("resend-confirmation-alternative"),
+    already410Live: false,
     evidence:
-      "verify_jwt=true; no src caller. Do NOT retire without confirming no auth-form or edge-to-edge dependency.",
+      "Zero references outside supabase/config.toml and this inventory. Supabase Auth owns confirmation flows. Unreachable.",
   },
   {
     name: "send-signup-confirmation",
@@ -396,7 +464,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
     evidence: "Source is 410 stub.",
   },
   {
@@ -409,7 +478,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
     evidence: "Source is 410 stub.",
   },
   {
@@ -422,9 +492,9 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "harden",
-    appliedLive: false,
-    evidence:
-      "One active caller. verify_jwt=false; ensure bearer check is complete.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence: "One active caller. verify_jwt=false; ensure bearer check.",
   },
   {
     name: "send-email-confirmation-reminder",
@@ -436,9 +506,9 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
-    evidence:
-      "Source is 410 stub; hook still references slug but receives 410 error.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
+    evidence: "Source is 410 stub; hook still references slug but receives 410.",
   },
   {
     name: "send-purchase-confirmation",
@@ -448,9 +518,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: [],
     purpose: "V1 purchase confirmation.",
     v2Replacement: "v2ReceiptDelivery (hardcoded HTML)",
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
+    ...R("send-purchase-confirmation"),
+    already410Live: false,
     evidence: "Registry only; V2 uses inline receipts.",
   },
   {
@@ -461,50 +530,51 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: [],
     purpose: "Admin marketing: users without active plans.",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
+    ...R("get-users-without-plans"),
+    already410Live: false,
     evidence:
-      "V2 dropped subscriptions; verify admin page still uses this hook.",
+      "Hook only used by src/pages/admin/components/users/components/MarketingEmailsPanel.tsx; MarketingEmailsPanel only rendered by MarketingPage.tsx; MarketingPage is NOT registered in adminSectionElements. V2 dropped plan reminders. Unreachable.",
   },
   {
     name: "send-bulk-plan-reminders",
     verifyJwt: true,
     authMechanism: "verifyAdmin_shared",
     callers: ["src/hooks/useMarketingEmails.ts"],
-    outbound: ["send-email"],
+    outbound: ["send-email", "generate-magic-link", "get-user-insights"],
     purpose: "Admin bulk plan reminders.",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
-    evidence: "V2 dropped plans; likely legacy admin marketing.",
+    ...R("send-bulk-plan-reminders"),
+    already410Live: false,
+    evidence:
+      "useMarketingEmails only used by MarketingEmailsPanel; MarketingPage unwired. Unreachable.",
   },
   {
     name: "send-plan-reminder",
     verifyJwt: true,
     authMechanism: "verifyAdmin_shared",
     callers: ["src/hooks/useMarketingEmails.ts"],
-    outbound: ["send-email"],
+    outbound: ["send-email", "generate-magic-link", "get-user-insights"],
     purpose: "Admin single plan reminder.",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
-    evidence: "Same as bulk variant.",
+    ...R("send-plan-reminder"),
+    already410Live: false,
+    evidence: "Same chain as bulk variant; MarketingPage unwired. Unreachable.",
   },
   {
     name: "generate-magic-link",
     verifyJwt: false,
     authMechanism: "verifyAdmin_shared",
-    callers: [],
+    callers: [
+      "supabase/functions/send-bulk-plan-reminders/index.ts:178",
+      "supabase/functions/send-plan-reminder/index.ts:158",
+    ],
     outbound: ["auth.admin"],
-    purpose: "Admin magic-link issuance.",
+    purpose: "Admin magic-link issuance (used by plan reminders).",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
-    evidence: "No src caller; may be reachable via magic-login flow.",
+    ...R("generate-magic-link"),
+    already410Live: false,
+    evidence:
+      "Only invoked internally by send-plan-reminder/send-bulk-plan-reminders, both unreachable. Not called by magic-login (that reads its own token). Unreachable.",
   },
   {
     name: "magic-login",
@@ -516,21 +586,25 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_shared_account_auth",
     disposition: "harden",
-    appliedLive: false,
-    evidence: "Route active; verify_jwt=false intentionally (pre-auth).",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence: "Route active; verify_jwt=false intentional (pre-auth).",
   },
   {
     name: "get-user-insights",
     verifyJwt: false,
     authMechanism: "verifyAdmin_shared",
-    callers: [],
+    callers: [
+      "supabase/functions/send-plan-reminder/index.ts:137",
+      "supabase/functions/send-bulk-plan-reminders/index.ts:160",
+    ],
     outbound: [],
-    purpose: "Admin user insights.",
+    purpose: "Admin user insights (used by plan reminders).",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
-    evidence: "No active src caller; admin page graph unclear.",
+    ...R("get-user-insights"),
+    already410Live: false,
+    evidence:
+      "Only internal callers are plan-reminder functions, both unreachable. No src caller. Unreachable.",
   },
   {
     name: "smart-unsubscribe",
@@ -542,7 +616,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Hardened in prior pass; token-only.",
   },
   {
@@ -555,7 +630,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "harden",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Active caller; check verify_jwt intent.",
   },
   {
@@ -568,7 +644,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "harden",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Active caller; check verify_jwt intent.",
   },
   {
@@ -581,7 +658,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Hardened in prior pass.",
   },
   {
@@ -597,7 +675,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "harden",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Two callers; verify_jwt=false — enforce bearer check.",
   },
   {
@@ -607,11 +686,11 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     callers: [],
     outbound: ["openai"],
     purpose: "AI: prompt auto-generation.",
-    v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
-    evidence: "No active src caller (test-only ref).",
+    v2Replacement: "ai-studio-chat",
+    ...R("auto-generate-prompt"),
+    already410Live: false,
+    evidence:
+      "No source caller outside test fixtures. V2 prompt generation uses ai-studio-chat/ai-json-spec. Unreachable.",
   },
   {
     name: "validate-signup",
@@ -623,7 +702,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
     evidence: "Source is 410 stub; hook receives 410.",
   },
   {
@@ -632,13 +712,12 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     authMechanism: "verifyAdmin_shared",
     callers: [],
     outbound: ["auth.admin"],
-    purpose: "V2 admin user management.",
+    purpose: "Purpose-built V2 admin user management (unused).",
     v2Replacement: null,
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
+    ...R("admin-users-v2"),
+    already410Live: false,
     evidence:
-      "No direct src reference found; may be invoked via generated bindings or admin V2 hook not scanned. Do NOT retire without further trace.",
+      "Zero src callers. UsersV2 uses useUserService (get-all-users, admin-bulk-confirm-users, resend-payment-email), not admin-users-v2. Slug name suggests intended V2 replacement but was never wired. Unreachable.",
   },
   {
     name: "resend-payment-email",
@@ -650,8 +729,9 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_shared_account_auth",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "Active admin caller.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence: "Reachable from adminSectionElements.users (UsersV2).",
   },
   {
     name: "admin-bulk-confirm-users",
@@ -666,8 +746,9 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_shared_account_auth",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "Two active admin callers.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence: "Reachable from adminSectionElements.users (UsersV2).",
   },
   {
     name: "check-email-exists",
@@ -679,7 +760,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
     evidence: "Source is 410 stub.",
   },
   {
@@ -690,9 +772,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: ["upayments"],
     purpose: "V1 UPayments processor.",
     v2Replacement: "v2-upayments-checkout",
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
+    ...R("process-upayments-payment"),
+    already410Live: false,
     evidence: "Registry only.",
   },
   {
@@ -703,9 +784,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     outbound: [],
     purpose: "V1 UPayments webhook.",
     v2Replacement: "v2-upayments-webhook",
-    classification: "legacy_unreachable",
-    disposition: "retire_to_410",
-    appliedLive: false,
+    ...R("upayments-webhook"),
+    already410Live: false,
     evidence: "Registry only; provider now targets v2-upayments-webhook.",
   },
   {
@@ -721,7 +801,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_shared_account_auth",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Two active callers.",
   },
   {
@@ -734,9 +815,9 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: "supabase.auth.resetPasswordForEmail",
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
-    evidence:
-      "Source is 410 stub. Admin caller path still exists but receives 410.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
+    evidence: "Source is 410 stub; admin caller receives 410.",
   },
   {
     name: "verify-password-reset",
@@ -748,7 +829,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
     evidence: "Source is 410 stub.",
   },
   {
@@ -764,7 +846,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Two admin callers.",
   },
   {
@@ -777,7 +860,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Admin integrations probe.",
   },
   {
@@ -790,13 +874,14 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "harden",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "One caller; validate secret guard.",
   },
   {
     name: "resource-download",
     verifyJwt: false,
-    authMechanism: "platform_jwt",
+    authMechanism: "custom_user_jwt",
     callers: [
       "src/hooks/v2/useResourceDownload.ts",
       "src/lib/v2/admin/storageSettings.ts",
@@ -806,35 +891,43 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "V2 library download flow.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence:
+      "verify_jwt=false with in-handler user JWT validation (custom_user_jwt); V2 library download flow.",
   },
   {
     name: "admin-package-upload",
     verifyJwt: false,
     authMechanism: "verifyAdmin_shared",
-    callers: ["src/pages/admin/sections/publishing/PackageUploader.tsx"],
+    callers: [
+      "src/pages/admin/sections/publishing/PackageUploader.tsx:133",
+      "src/pages/admin/sections/publishing/PackageUploader.tsx:160",
+    ],
     outbound: ["storage"],
-    purpose: "V1 admin package upload.",
+    purpose: "V1 admin package upload (still used by ResourcePublisher).",
     v2Replacement: "v2-admin-upload-resource-file",
-    classification: "unknown_review",
-    disposition: "investigate",
-    appliedLive: false,
+    classification: "required_shared_account_auth",
+    disposition: "harden",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence:
-      "Still called by PackageUploader; confirm whether V2 upload fully replaces it before retiring.",
+      "PackageUploader is imported by ResourcePublisher, which IS wired into adminSectionElements.publishingNew/Edit/NewVersion. Active importer + reachable route => do NOT retire until PackageUploader migrates to v2-admin-upload-resource-file.",
   },
   {
     name: "v2-upayments-checkout",
     verifyJwt: false,
-    authMechanism: "platform_jwt",
+    authMechanism: "custom_user_jwt",
     callers: ["src/pages/v2/V2CheckoutPage.tsx"],
     outbound: ["upayments"],
     purpose: "V2 UPayments checkout initiation.",
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "V2 checkout entry point.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence:
+      "verify_jwt=false with in-handler user JWT validation; V2 checkout entry point. Emits notification URL that provider posts back to v2-upayments-webhook.",
   },
   {
     name: "v2-upayments-refund",
@@ -846,13 +939,14 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Admin commerce path.",
   },
   {
     name: "v2-upayments-status",
     verifyJwt: false,
-    authMechanism: "platform_jwt",
+    authMechanism: "custom_user_jwt",
     callers: [
       "src/hooks/admin/v2/useAdminCommerce.ts",
       "src/pages/v2/V2CheckoutReturnPage.tsx",
@@ -863,21 +957,27 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "Three active callers.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence:
+      "verify_jwt=false with in-handler user JWT validation; three active callers.",
   },
   {
     name: "v2-upayments-webhook",
     verifyJwt: false,
-    authMechanism: "provider_signature",
-    callers: ["src/components/payment/SimpleUpayButton.tsx"],
-    outbound: [],
-    purpose: "V2 UPayments webhook.",
+    authMechanism: "provider_status_reconciliation",
+    callers: [
+      "supabase/functions/v2-upayments-checkout (emits notification URL)",
+    ],
+    outbound: ["upayments"],
+    purpose: "V2 UPayments notification receiver.",
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
-    evidence: "Provider callback; signature-verified.",
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
+    evidence:
+      "Inbound caller is the UPayments provider hitting the notification URL emitted by v2-upayments-checkout — NOT any UI component. Handler validates envelope, resolves local attempt, then performs a server-to-server status reconciliation with UPayments before settlement. No cryptographic provider signature is verified in current source.",
   },
   {
     name: "submit-contact",
@@ -889,7 +989,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Public form; verify_jwt=false intentional.",
   },
   {
@@ -905,7 +1006,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "V2 replacement for admin-package-upload.",
   },
   {
@@ -921,7 +1023,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Admin scan controls.",
   },
   {
@@ -934,7 +1037,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Triggered internally by scan control.",
   },
   {
@@ -947,9 +1051,10 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "already_410",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: true,
     evidence:
-      "Live returns 410 per problem statement; no source directory in this repo.",
+      "Live returns 410; no source directory in this repo.",
   },
   {
     name: "v2-admin-payment-settings-status",
@@ -961,7 +1066,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Admin V2 dashboard.",
   },
   {
@@ -974,7 +1080,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Admin V2 dashboard.",
   },
   {
@@ -987,7 +1094,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Admin V2 dashboard.",
   },
   {
@@ -1000,7 +1108,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Admin V2 dashboard.",
   },
   {
@@ -1013,7 +1122,8 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     v2Replacement: null,
     classification: "required_v2",
     disposition: "keep",
-    appliedLive: false,
+    recommendedRetirementAppliedLive: false,
+    already410Live: false,
     evidence: "Admin V2 dashboard.",
   },
 ] as const;
@@ -1028,7 +1138,7 @@ export const RECOMMENDED_HARDENING: readonly string[] = EDGE_FUNCTION_AUDIT
   .filter((e) => e.disposition === "harden")
   .map((e) => e.name);
 
-/** Functions requiring further investigation. */
+/** Functions requiring further investigation. Zero after this route-graph pass. */
 export const REQUIRES_INVESTIGATION: readonly string[] = EDGE_FUNCTION_AUDIT
   .filter((e) => e.disposition === "investigate")
   .map((e) => e.name);
