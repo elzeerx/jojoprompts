@@ -57,7 +57,9 @@ describe("retired auth helpers — active src/** has no callers", () => {
     }))
     .filter(({ rel }) => !/\.test\.tsx?$/.test(rel))
     // The retired-slug list literals themselves live in this file.
-    .filter(({ rel }) => rel !== "lib/v2/unsafeAuthHelpers.test.ts");
+    .filter(({ rel }) => rel !== "lib/v2/unsafeAuthHelpers.test.ts")
+    // Audit registry — records slug names as documentation, does not invoke.
+    .filter(({ rel }) => rel !== "lib/v2/admin/edgeFunctionRetirementInventory.ts");
 
   for (const slug of RETIRED_AUTH_SLUGS) {
     it(`no active file invokes '${slug}'`, () => {
