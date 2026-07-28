@@ -123,9 +123,9 @@ export default function DiscountsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-dark-base">
+          <h1 className="text-2xl font-bold text-dark-base">
             Discounts <span className="text-muted-foreground text-lg">/ الخصومات</span>
-          </h2>
+          </h1>
           <p className="text-muted-foreground text-sm">
             Manage V2 one-time discount codes. Server-authoritative pricing; historical orders remain
             immutable.
