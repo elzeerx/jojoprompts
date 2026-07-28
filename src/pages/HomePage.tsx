@@ -20,9 +20,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { V2_PLATFORMS } from "@/config/v2Flags";
 import { V2_PRICING_TIERS, V2_LIFETIME_PRICE_KD } from "@/config/v2Pricing";
 import { useLatestPublishedResources } from "@/hooks/v2/useLatestPublishedResources";
+import { useLibraryState } from "@/hooks/v2/useLibraryState";
 import { VisualResourceCard } from "@/components/v2/VisualResourceCard";
 import { SkillResourceCard } from "@/components/v2/SkillResourceCard";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 /**
@@ -247,10 +249,42 @@ export default function HomePage() {
 }
 
 function LiveCatalog({ lang, isRTL }: { lang: "en" | "ar"; isRTL: boolean }) {
-  const { data, isPending, isError, refetch, fetchStatus } =
+  const { user } = useAuth();
+  const {
+    data: library,
+    isPending: isLibraryPending,
+    isError: isLibraryError,
+    refetch: refetchLibrary,
+  } = useLibraryState();
+  const {
+    data,
+    isPending,
+    isError,
+    refetch,
+    fetchStatus,
+  } =
     useLatestPublishedResources(6);
-  const isLoading = isPending && fetchStatus !== "idle";
-  const rows = data ?? [];
+  const isLoading =
+    (isPending && fetchStatus !== "idle") || (!!user && isLibraryPending);
+  const hasError = isError || (!!user && isLibraryError);
+  const ownedResourceIds = new Set(
+    (library?.entitlements ?? [])
+      .filter((entitlement) => entitlement.scope === "resource" && entitlement.resource_id)
+      .map((entitlement) => entitlement.resource_id as string),
+  );
+  const rows = (data ?? []).map((resource) => {
+    const ownedViaLibrary = !!library?.has_library_access;
+    const ownedIndividually = ownedResourceIds.has(resource.id);
+    return {
+      ...resource,
+      owned: ownedViaLibrary || ownedIndividually,
+      ownedVia: ownedViaLibrary
+        ? ("library" as const)
+        : ownedIndividually
+          ? ("resource" as const)
+          : null,
+    };
+  });
 
 
   const t = {
@@ -290,7 +324,7 @@ function LiveCatalog({ lang, isRTL }: { lang: "en" | "ar"; isRTL: boolean }) {
                 <Skeleton key={i} className="h-32 w-full rounded-2xl" />
               ))}
             </div>
-          ) : isError ? (
+          ) : hasError ? (
             <div
               data-testid="home-live-error"
               className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive"
@@ -300,7 +334,10 @@ function LiveCatalog({ lang, isRTL }: { lang: "en" | "ar"; isRTL: boolean }) {
                 variant="outline"
                 size="sm"
                 className="mt-3 min-h-[44px]"
-                onClick={() => refetch()}
+                onClick={() => {
+                  void refetch();
+                  if (user) void refetchLibrary();
+                }}
               >
                 {t.retry}
               </Button>

@@ -3,10 +3,8 @@
  * catch regressions to legacy prompt-only copy or broken hash CTAs.
  */
 import { describe, it, expect } from "bun:test";
-
-declare const require: (m: string) => any;
-const { readFileSync } = require("fs");
-const { resolve } = require("path");
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const HERE: string =
   (import.meta as unknown as { dir?: string }).dir ?? ".";
@@ -68,6 +66,13 @@ describe("V2 homepage contract", () => {
     expect(/skills, automations|Skills, automations|AI skills/i.test(HOMEPAGE)).toBe(true);
     expect(HOMEPAGE.includes("V2_PLATFORMS")).toBe(true);
     expect(/Full Library Lifetime|Jojo Full Library/.test(HOMEPAGE)).toBe(true);
+  });
+
+  it("personalizes featured cards for lifetime and individually owned resources", () => {
+    expect(HOMEPAGE.includes("useLibraryState")).toBe(true);
+    expect(HOMEPAGE.includes("library?.has_library_access")).toBe(true);
+    expect(HOMEPAGE.includes('("library" as const)')).toBe(true);
+    expect(HOMEPAGE.includes('("resource" as const)')).toBe(true);
   });
 
   it("exposes an in-page id=how-it-works overview section", () => {
