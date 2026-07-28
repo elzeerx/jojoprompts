@@ -60,16 +60,32 @@ describe("evaluateQueueGuard", () => {
     }
   });
 
-  it("fails closed on raw clean with unknown coverage (effective_scan missing)", () => {
-    // The RPC did not return effective_scan (older payload or loading). A raw
-    // clean status must NOT enable Queue — the guard must fail closed with
-    // "checking" so we never re-queue an exact-current clean scan by accident.
+  it("fails closed when effective_scan is missing (real caller path: raw clean scans present but detail.effective_scan == null)", () => {
+    // Reproduces the exact real ScanDetailSheet path: RPC returns files + raw
+    // package_scans containing a clean row, but detail.effective_scan is null
+    // (older payload or loading). effectiveStateKnown=false MUST fail closed
+    // BEFORE the guard interprets latestScanStatus — the caller now passes
+    // latestScanStatus=null in this case, so the previous test that spoofed
+    // raw "clean" did not represent the real path.
     const r = evaluateQueueGuard({
       ...base,
-      latestScanStatus: "clean",
-      // coverageValid intentionally omitted
+      effectiveStateKnown: false,
+      latestScanStatus: null,
     });
     expect(r).toEqual({ canQueue: false, reason: "checking" });
+  });
+
+  it("known effective unscanned enables Queue when all other signals are ready", () => {
+    // Real unscanned is expressed as effectiveStateKnown=true with
+    // latestScanStatus null/"unscanned" — the ONLY way to admit Queue.
+    for (const s of [null, "unscanned"] as const) {
+      const r = evaluateQueueGuard({
+        ...base,
+        effectiveStateKnown: true,
+        latestScanStatus: s as null,
+      });
+      expect(r).toEqual({ canQueue: true, reason: "ok" });
+    }
   });
 
   it("list / detail / control agree: same coverage_valid drives every path", () => {
@@ -92,6 +108,7 @@ describe("evaluateQueueGuard", () => {
       }).canQueue,
     ).toBe(true);
   });
+
 
 
   it("blocks pending latest with pending_exists", () => {
