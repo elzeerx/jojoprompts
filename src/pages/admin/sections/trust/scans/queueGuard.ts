@@ -18,7 +18,19 @@ export type QueueGuardReason =
 export interface QueueGuardInput {
   providerReady: boolean;
   hasFiles: boolean;
-  /** Latest scan status for the version, or null when unscanned. */
+  /**
+   * True when the coverage-aware effective scan state is known for this
+   * version (i.e. detail.effective_scan was returned by the RPC). When false,
+   * the guard fails closed with "checking" regardless of any raw signal —
+   * real unscanned is expressed as effectiveStateKnown=true with
+   * latestScanStatus=null/"unscanned".
+   */
+  effectiveStateKnown: boolean;
+  /**
+   * Effective latest scan status from v2_internal_effective_scan_state, or
+   * null when the helper reports no scans. MUST NOT be derived from raw
+   * package_scans rows.
+   */
   latestScanStatus: PackageScanState | null;
   /**
    * Effective coverage of the latest stored clean scan against the version's
@@ -42,6 +54,7 @@ export interface QueueGuardInput {
    */
   pendingChildProbeLoading: boolean;
 }
+
 
 export interface QueueGuardResult {
   canQueue: boolean;
