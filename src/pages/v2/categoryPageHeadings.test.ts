@@ -3,7 +3,7 @@
  * "English-only heading in Arabic mode" runtime bug by asserting that
  * every category page hands ExplorePage a bilingual title object.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
