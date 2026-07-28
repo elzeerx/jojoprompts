@@ -72,6 +72,14 @@ describe("shared primitive mobile touch-target contract", () => {
     ).toBe(true);
   });
 
+  it("Admin shell provides a keyboard skip link to the focusable main region", () => {
+    const src = read("src/pages/admin/layout/AdminLayout.tsx");
+    expect(src.includes('href="#admin-main-content"')).toBe(true);
+    expect(src.includes("Skip to admin content")).toBe(true);
+    expect(src.includes('id="admin-main-content"')).toBe(true);
+    expect(src.includes("tabIndex={-1}")).toBe(true);
+  });
+
   it("ResourcePublisher remove product button is 44x44 on mobile", () => {
     const src = read("src/pages/admin/sections/publishing/ResourcePublisher.tsx");
     expect(

@@ -40,10 +40,20 @@ export default function AdminLayout() {
         remain free to opt back in with their own `dir="rtl"`.
       */}
       <div lang="en" dir="ltr" className="min-h-screen flex w-full bg-soft-bg/30">
+        <a
+          href="#admin-main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-md focus:bg-dark-base focus:px-4 focus:py-3 focus:text-sm focus:font-medium focus:text-white focus:outline-none focus:ring-2 focus:ring-warm-gold focus:ring-offset-2"
+        >
+          Skip to admin content
+        </a>
         <AdminSidebar />
         <SidebarInset className="flex-1 flex flex-col min-w-0">
           <AdminTopBar onOpenCommandPalette={() => setPaletteOpen(true)} />
-          <main className="flex-1 p-3 sm:p-5 lg:p-6">
+          <main
+            id="admin-main-content"
+            tabIndex={-1}
+            className="flex-1 p-3 sm:p-5 lg:p-6"
+          >
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="p-3 sm:p-4 lg:p-6">
                 <Outlet />
