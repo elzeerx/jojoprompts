@@ -56,21 +56,26 @@ export default function ScanDetailSheet({ versionId, onOpenChange }: Props) {
   const queueMutation = useQueueScan();
   const refreshMutation = useRefreshScan();
 
-  // Server admission is authoritative. The frontend also mirrors the guard so
-  // that Queue stays visibly disabled while any scan for the version has a
-  // pending child item — even when the aggregate is terminal
-  // (failed/suspicious/malicious). The probe uses only the safe admin RPC.
+  // Server admission is authoritative. The frontend mirrors the guard using
+  // the SAME coverage-aware effective state the download authorization path
+  // uses (v2_internal_effective_scan_state via detail.effective_scan). Raw
+  // scans[0] is displayed only; it MUST NOT drive Queue admission.
   const scans = detail?.scans ?? [];
-  const latestScan = scans[0] ?? null;
-  const latestStatus = (latestScan?.status ?? null) as PackageScanState | null;
   const hasPendingAggregate = scans.some((s) => s.status === "pending");
-  const hasFiles = (detail?.files.length ?? 0) > 0;
+  const hasFiles = (detail?.effective_scan?.has_files ?? (detail?.files.length ?? 0) > 0);
+
+  const eff = detail?.effective_scan ?? null;
+  const effectiveStatus = (eff?.effective_status ?? null) as PackageScanState | null;
+  // Fail closed when the RPC didn't return effective_scan (older payloads) —
+  // pass coverageValid=undefined so the guard treats raw clean as "checking".
+  const coverageValid = eff ? eff.coverage_valid : undefined;
 
   const probe = useVersionPendingChildProbe(scans);
   const guard = evaluateQueueGuard({
     providerReady: ready,
     hasFiles,
-    latestScanStatus: latestStatus,
+    latestScanStatus: effectiveStatus,
+    coverageValid,
     hasPendingAggregate,
     hasPendingChild: probe.hasPendingChild,
     pendingChildProbeLoading: probe.isUnresolved,
