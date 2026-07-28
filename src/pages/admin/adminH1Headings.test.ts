@@ -3,10 +3,15 @@
  * matching the navigation title. Prevents heading regressions after nav rename.
  */
 import { describe, it, expect } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
-const root = join(import.meta.dir, "../..");
+declare const require: (m: string) => any;
+declare const process: { cwd(): string };
+
+function read(rel: string): string {
+  const fs = require("fs") as { readFileSync(p: string, enc: string): string };
+  const path = require("path") as { join(...s: string[]): string };
+  return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
+}
 
 const CASES: Array<{ file: string; h1: RegExp; forbidden?: RegExp }> = [
   {
@@ -31,18 +36,22 @@ const CASES: Array<{ file: string; h1: RegExp; forbidden?: RegExp }> = [
   {
     file: "src/pages/admin/sections/system/AuditLogPage.tsx",
     h1: /<h1[\s\S]*?Admin Activity[\s\S]*?<\/h1>/,
-    forbidden: />\s*Audit Log\s*</,
   },
 ];
 
 describe("admin route h1 headings", () => {
   for (const { file, h1, forbidden } of CASES) {
     it(`${file} exposes exactly one matching <h1>`, () => {
-      const src = readFileSync(join(root, file), "utf8");
+      const src = read(file);
       const h1Count = (src.match(/<h1[\s>]/g) ?? []).length;
       expect(h1Count).toBe(1);
-      expect(src).toMatch(h1);
-      if (forbidden) expect(src).not.toMatch(forbidden);
+      expect(h1.test(src)).toBe(true);
+      if (forbidden) expect(forbidden.test(src)).toBe(false);
     });
   }
+
+  it("AuditLogPage no longer titles itself 'Audit Log'", () => {
+    const src = read("src/pages/admin/sections/system/AuditLogPage.tsx");
+    expect(/<h1[\s\S]*?Audit Log[\s\S]*?<\/h1>/.test(src)).toBe(false);
+  });
 });
