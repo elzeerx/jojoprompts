@@ -289,25 +289,10 @@ export class DatabaseSecurityEnhancer {
    */
   private static async handleSuspiciousActivity(event: DatabaseActivityEvent): Promise<void> {
     try {
-      // Log the suspicious activity
-      await supabase.from('security_logs').insert({
-        user_id: event.userId,
-        action: 'suspicious_database_activity',
-        details: {
-          table_name: event.tableName,
-          operation: event.operation,
-          affected_rows: event.affectedRows,
-          risk_score: event.riskScore,
-          duration_ms: event.duration
-        },
-        severity: event.riskScore > 75 ? 'high' : 'medium',
-        event_category: 'database_security'
-      });
-
-      // For very high risk, we might want to trigger additional security measures
+      // Pre-launch hardening: no client-role DB write into security_logs.
+      logger.warn('suspicious_database_activity', event);
       if (event.riskScore > 75) {
         logger.warn('High-risk database activity detected', event);
-        // Could trigger session invalidation, admin alerts, etc.
       }
     } catch (error) {
       logger.error('Failed to handle suspicious activity', { error, event });
@@ -319,20 +304,7 @@ export class DatabaseSecurityEnhancer {
    */
   private static async escalateSecurityIncident(violation: RLSPolicyViolation): Promise<void> {
     try {
-      await supabase.from('security_logs').insert({
-        user_id: violation.userId,
-        action: 'security_incident_escalated',
-        details: {
-          violation_type: 'rls_policy_violation',
-          table_name: violation.tableName,
-          operation: violation.operation,
-          block_reason: violation.blockReason,
-          escalation_reason: 'sensitive_table_access_attempt'
-        },
-        severity: 'high',
-        event_category: 'security_incident'
-      });
-
+      // Pre-launch hardening: no client-role DB write into security_logs.
       logger.error('Security incident escalated', violation);
     } catch (error) {
       logger.error('Failed to escalate security incident', { error, violation });
