@@ -1,6 +1,4 @@
-import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { describe, expect, it } from "bun:test";
 import {
   authorizeDownload,
   effectiveScanState,
@@ -9,6 +7,11 @@ import {
   type ScanItem,
 } from "./effectiveScanState";
 import { decideQueueAllowed } from "../../../../supabase/functions/_shared/scanProvider";
+
+declare const require: (m: string) => any;
+const { readFileSync } = require("fs");
+const { resolve } = require("path");
+const HERE: string = (import.meta as unknown as { dir?: string }).dir ?? ".";
 
 const VERSION = "00000000-0000-0000-0000-00000000000v";
 const OTHER_VERSION = "00000000-0000-0000-0000-00000000000w";
