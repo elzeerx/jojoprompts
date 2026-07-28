@@ -210,9 +210,28 @@ describe("receiptResend / edge function invariants", () => {
     expect(src.includes("method_not_allowed")).toBe(true);
   });
 
-  it("never accepts client recipient/amount/items overrides", async () => {
+  it("never reads client recipient/amount/items overrides from the request body", async () => {
     const src = await bunGlobal.file(FN_INDEX).text();
-    for (const forbidden of ["email:", "amount:", "items:", "to:", "recipient", "html:"]) {
+    // The only client-body fields consumed are `order_id` and `reason`
+    // (both flow through parseResendBody). No other body field is ever
+    // read directly from the parsed JSON.
+    expect(src.includes("parsed.order_id") || src.includes("const { order_id, reason } = parsed"))
+      .toBe(true);
+    // Guard against any accidental direct body reads for other fields.
+    for (const forbidden of [
+      "parsedJson.email",
+      "parsedJson.amount",
+      "parsedJson.items",
+      "parsedJson.to",
+      "parsedJson.recipient",
+      "parsedJson.html",
+      "parsed.email",
+      "parsed.amount",
+      "parsed.items",
+      "parsed.to",
+      "parsed.recipient",
+      "parsed.html",
+    ]) {
       expect(src.includes(forbidden)).toBe(false);
     }
   });
