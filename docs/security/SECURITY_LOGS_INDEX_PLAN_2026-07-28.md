@@ -79,18 +79,86 @@ is chosen before declaring any improvement.
 partial) add roughly three index inserts per event. Acceptable given
 the read-side wins.
 
+## Schema normalization (distinct from indexing)
+
+The same drafted migration also carries a **bounded one-time
+`UPDATE`** on `public.security_logs` to normalize legacy
+`details->>'severity'` values into the authoritative top-level
+`severity` column. This is a data fix, not an index change — the
+dashboard already reads only the top-level columns and this pass does
+**not** reintroduce JSON filtering anywhere in the UI or query paths.
+
+### Live evidence at draft time
+
+- 53,865 total rows.
+- 117 rows carry `details->>'severity'`; **all 117 disagree** with the
+  top-level `severity`:
+  - 65 rows: top-level `info`, details `medium`
+  - 52 rows: top-level `info`, details `high`
+- 0 rows carry `details->>'event_category'` — no category backfill is
+  required or performed.
+- Consequence today: recent `suspicious_activity` rows appear as
+  top-level `severity = 'info'`, so the corrected
+  `severity = 'high'` (7d) filter returns zero until this normalization
+  runs.
+
+### Scope, guards, and idempotence
+
+```sql
+UPDATE public.security_logs
+SET severity = details->>'severity'
+WHERE severity = 'info'
+  AND details->>'severity' IN ('medium','high','critical');
+```
+
+- Only rows whose top-level severity is exactly `'info'` are eligible;
+  non-`info` authoritative values are never overwritten.
+- The details value must be in the explicit allowlist
+  `('medium','high','critical')`. Arbitrary strings are ignored so a
+  stray tag cannot promote a row to an unknown severity.
+- `event_category` is not touched.
+- After the first apply the WHERE predicate no longer matches those
+  rows, so a re-run is a no-op — the migration is safely idempotent.
+
+### Preflight (informational, does not fail on drift)
+
+```sql
+SELECT count(*) AS expected_affected_rows
+FROM public.security_logs
+WHERE severity = 'info'
+  AND details->>'severity' IN ('medium','high','critical');
+-- Expected at draft time: 117 (65 medium + 52 high, 0 critical).
+```
+
+Future environments may legitimately show a different count. The
+migration does not assert on this number.
+
+### Post-apply verification (REQUIRED before declaring the fix live)
+
+1. Re-run the preflight query — expect `0`.
+2. From the Security Events dashboard, apply the 7d window and
+   `severity = high` filter and confirm the previously-hidden
+   `suspicious_activity` rows now appear.
+3. Then re-run `EXPLAIN (ANALYZE, BUFFERS)` on Q1–Q4 above to verify
+   the index plans (a separate concern from the normalization).
+
 ## Rollback
 
 ```sql
+-- Indexes
 DROP INDEX IF EXISTS public.idx_security_logs_created_at_desc;
 DROP INDEX IF EXISTS public.idx_security_logs_actionable_created_at;
 DROP INDEX IF EXISTS public.idx_security_logs_action;
+
+-- Normalization: no automatic rollback. The prior top-level 'info'
+-- values are lost; the details JSON retains the original severity tag
+-- and can be inspected if a reversal is ever needed.
 ```
 
-## Files added this pass
+## Files added / amended this pass
 
-- `src/lib/v2/admin/securityLogsIndexes.sql.ts` — drafted migration SQL + planned index list.
-- `src/lib/v2/admin/securityLogsIndexes.test.ts` — contract tests (idempotency, no duplicates of existing indexes, exact partial-index predicate, order direction).
+- `src/lib/v2/admin/securityLogsIndexes.sql.ts` — drafted migration SQL: planned indexes + bounded severity normalization UPDATE.
+- `src/lib/v2/admin/securityLogsIndexes.test.ts` — contract tests (idempotency, no duplicates of existing indexes, exact partial-index predicate, order direction, normalization allowlist / `severity='info'` guard / no `event_category` backfill / idempotence).
 - `docs/security/SECURITY_LOGS_INDEX_PLAN_2026-07-28.md` — this note.
 
 ## Confirmation
