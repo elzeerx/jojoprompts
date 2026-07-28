@@ -19,12 +19,23 @@ interface Props {
   title?: string;
   emptyTitle?: { en: string; ar: string };
   emptyDesc?: { en: string; ar: string };
+  seoTitle?: { en: string; ar: string };
+  seoDescription?: { en: string; ar: string };
+  canonicalPath?: string;
 }
 
 // Simple in-memory scroll cache keyed by (path+search minus the preview slug)
 const scrollCache = new Map<string, number>();
 
-export default function ExplorePage({ fixedType, title, emptyTitle, emptyDesc }: Props) {
+export default function ExplorePage({
+  fixedType,
+  title,
+  emptyTitle,
+  emptyDesc,
+  seoTitle,
+  seoDescription,
+  canonicalPath,
+}: Props) {
   const { user } = useAuth();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
@@ -119,13 +130,19 @@ export default function ExplorePage({ fixedType, title, emptyTitle, emptyDesc }:
     isFetched && !isLoading && !isError && (rows?.length ?? 0) === 0 && !noResults;
 
   const pageTitle = title ?? V2_COPY.nav.explore[lang];
+  const resolvedTitle = seoTitle
+    ? `${seoTitle[lang]} · JojoPrompts`
+    : `${pageTitle} · JojoPrompts`;
+  const resolvedDesc = seoDescription
+    ? seoDescription[lang]
+    : V2_COPY.explore.subtitle[lang];
 
   return (
     <div className="min-h-screen bg-background" ref={containerRef} dir={isRTL ? "rtl" : "ltr"}>
       <SeoHead
-        title={`${pageTitle} · JojoPrompts`}
-        description={V2_COPY.states.emptyCatalogDesc.en}
-        canonicalPath={location.pathname}
+        title={resolvedTitle}
+        description={resolvedDesc}
+        canonicalPath={canonicalPath ?? location.pathname}
         noindex={emptyCatalog}
       />
       <main className="container mx-auto px-4 py-6 space-y-6">
