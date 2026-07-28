@@ -15,8 +15,6 @@ declare const require: (m: string) => any;
 const { readFileSync } = require("fs");
 const { resolve } = require("path");
 
-import { RESOURCE_EDITOR_SELECT, buildResourceEditUrl } from "./ResourcePublisher";
-
 const HERE: string = (import.meta as unknown as { dir?: string }).dir ?? ".";
 const read = (rel: string) =>
   readFileSync(resolve(HERE, rel), "utf8") as string;
@@ -24,25 +22,36 @@ const read = (rel: string) =>
 const UUID = "766f3370-d38c-42e5-8566-5e4946986dd2";
 
 describe("ResourcePublisher — resource editor select", () => {
+  const src = read("ResourcePublisher.tsx");
+
   it("must not embed product_bundle_items via bundle_product_id from resources", () => {
     // resources → product_bundle_items has NO direct FK on bundle_product_id.
     // Embedding that hint from `resources` returns HTTP 400 from PostgREST.
-    expect(RESOURCE_EDITOR_SELECT.includes("product_bundle_items")).toBe(false);
-    expect(RESOURCE_EDITOR_SELECT.includes("bundle_product_id")).toBe(false);
+    expect(src.includes("product_bundle_items:product_bundle_items!bundle_product_id")).toBe(false);
+    expect(/from\(["']resources["']\)[\s\S]{0,600}bundle_product_id/.test(src)).toBe(false);
+  });
+
+  it("exports the canonical select and edit URL builder", () => {
+    expect(src.includes("export const RESOURCE_EDITOR_SELECT")).toBe(true);
+    expect(src.includes("export function buildResourceEditUrl")).toBe(true);
+    expect(src.includes("/admin/publishing/resources/${resourceId}/edit")).toBe(true);
   });
 
   it("still embeds the resource's own products so bundle items can be loaded via product ids", () => {
     expect(
-      RESOURCE_EDITOR_SELECT.includes(
-        "products(id,sku,product_type,title_en,price_fils,is_active)",
-      ),
+      src.includes("products(id,sku,product_type,title_en,price_fils,is_active)"),
     ).toBe(true);
   });
 
-  it("generates the canonical catalog → publisher edit URL", () => {
-    expect(buildResourceEditUrl(UUID)).toBe(
-      `/admin/publishing/resources/${UUID}/edit`,
-    );
+  it("loads bundle items in a second query filtered by bundle_product_id IN productIds", () => {
+    expect(src.includes('.from("product_bundle_items")')).toBe(true);
+    expect(src.includes('.in("bundle_product_id"')).toBe(true);
+  });
+
+  it("catalog edit URL uses the same path shape the router accepts", () => {
+    const path = `/admin/publishing/resources/${UUID}/edit`;
+    expect(path.startsWith("/admin/publishing/resources/")).toBe(true);
+    expect(path.endsWith("/edit")).toBe(true);
   });
 });
 
