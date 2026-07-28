@@ -36,70 +36,23 @@ export function usePurchaseHistory(itemsPerPage = 20) {
   }, [currentPage, statusFilter, gatewayFilter, dateRange]);
 
   const fetchTransactions = async () => {
+    // RETIRED (source-only, 2026-07-28): the `get-admin-transactions`
+    // Edge Function is now a 410 stub. `PurchaseHistoryManagement`, the
+    // only consumer of this hook, is not referenced by
+    // `src/pages/admin/layout/adminSectionElements.tsx` — the legacy
+    // purchases surface is unreachable from Admin V2.
     setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("No active session");
-      }
-
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: itemsPerPage.toString(),
-      });
-
-      if (statusFilter !== "all") {
-        params.append("status", statusFilter);
-      }
-
-      if (gatewayFilter !== "all") {
-        params.append("gateway", gatewayFilter);
-      }
-
-      if (dateRange?.from) {
-        params.append("dateFrom", dateRange.from.toISOString());
-      }
-
-      if (dateRange?.to) {
-        params.append("dateTo", dateRange.to.toISOString());
-      }
-
-      // Call the edge function with query parameters
-      const functionUrl = `https://fxkqgjakbyrxkmevkglv.supabase.co/functions/v1/get-admin-transactions?${params.toString()}`;
-      
-      const response = await fetch(functionUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch transactions');
-      }
-
-      const data = await response.json() as AdminTransactionsResponse;
-      setTransactions(data.transactions || []);
-      setTotalPages(data.pagination?.totalPages || 1);
-
-    } catch (error) {
-      const appError = handleError(error, { component: 'usePurchaseHistory', action: 'fetchTransactions' });
-      logger.error('Error fetching transactions', { error: appError });
-      toast({
-        title: "Error",
-        description: "Failed to fetch transaction history",
-        variant: "destructive",
-      });
-      setTransactions([]);
-      setTotalPages(1);
-    } finally {
-      setLoading(false);
-    }
+    logger.warn('get-admin-transactions is retired; hook returns empty page');
+    setTransactions([]);
+    setTotalPages(1);
+    setLoading(false);
   };
+
+  // Prevent unused-import warnings while the hook is neutralized.
+  void supabase;
+  void toast;
+  void handleError;
+
 
   const filteredTransactions = transactions.filter(transaction => {
     if (!searchTerm) return true;
