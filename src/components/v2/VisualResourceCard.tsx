@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Info, Loader2 } from "lucide-react";
+import { Info, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
 import type { ExploreResource } from "@/hooks/v2/useExploreResources";
 import { formatKwd, safeHeroImageUrl, V2_COPY } from "@/config/v2Flags";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -8,6 +8,7 @@ import { useFreeAcquisition } from "@/hooks/v2/useFreeAcquisition";
 import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
 import { Button } from "@/components/ui/button";
+import { formatShortDate, ownershipLabel, trustBadge } from "@/components/v2/cardMetadata";
 
 interface Props {
   r: ExploreResource;
@@ -26,18 +27,20 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
   const isFree = r.product?.product_type === "free";
   const heroUrl = safeHeroImageUrl(r.hero_image_path);
 
-  const priceBadge = r.owned
-    ? V2_COPY.cards.owned[lang]
-    : isFree
-      ? V2_COPY.cards.free[lang]
-      : r.product
-        ? `${formatKwd(r.product.price_fils)} KD`
-        : lang === "ar" ? "غير متاح" : "Unavailable";
+  const ownership = ownershipLabel(r, lang, formatKwd);
+  const priceBadge = ownership.text;
+  const tb = trustBadge(r, lang);
+  const TrustIcon = tb.tone === "verified" ? ShieldCheck : ShieldAlert;
+  const updated = formatShortDate(
+    r.current_version?.updated_at ?? r.updated_at,
+    lang,
+  );
 
   const stopPropagation = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
   };
+
 
   return (
     <div className="group relative">
@@ -71,11 +74,32 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
                 : ""}
             </div>
           </div>
-          <span className="rounded-md bg-background/95 px-2 py-1 text-xs font-medium text-foreground">
+          <span
+            className="rounded-md bg-background/95 px-2 py-1 text-xs font-medium text-foreground"
+            data-testid="ownership-label"
+          >
             {priceBadge}
           </span>
         </div>
       </Link>
+
+      {/* Truthful metadata footer: version, updated date, trust state.
+          Missing values collapse to a neutral "Not specified" chip. */}
+      <div className="mt-2 flex flex-wrap items-center gap-2 px-1 text-[11px] text-muted-foreground">
+        <span data-testid="version-label">
+          {r.current_version ? `v${r.current_version.version}` : `v${V2_COPY.cards.notSpecified[lang]}`}
+        </span>
+        {updated ? (
+          <span data-testid="updated-on">
+            {V2_COPY.cards.updated[lang]}: {updated}
+          </span>
+        ) : null}
+        <span className="inline-flex items-center gap-1" data-testid={`trust-${tb.tone}`}>
+          <TrustIcon className="h-3 w-3" aria-hidden />
+          {tb.label}
+        </span>
+      </div>
+
 
       {/* Overlay actions — sibling of the link; block bubbling so the tile
           navigation never fires when interacting with these controls. */}

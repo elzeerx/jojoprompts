@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Loader2, Timer, Info } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Loader2, Timer, Info, Calendar } from "lucide-react";
 import type { ExploreResource } from "@/hooks/v2/useExploreResources";
 import { formatKwd, V2_COPY } from "@/config/v2Flags";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +9,8 @@ import { useFreeAcquisition } from "@/hooks/v2/useFreeAcquisition";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
+import { formatShortDate, ownershipLabel, trustBadge } from "@/components/v2/cardMetadata";
+
 
 
 interface Props {
@@ -75,13 +77,23 @@ export function SkillResourceCard({ r, onQuickPreview }: Props) {
             <Badge variant="outline" className="capitalize">
               {r.type.replace("_", " ")}
             </Badge>
-            {r.platforms.slice(0, 3).map((p) => (
-              <Badge key={p} variant="secondary" className="capitalize">
-                {p}
+            {r.platforms.length > 0 ? (
+              r.platforms.slice(0, 3).map((p) => (
+                <Badge key={p} variant="secondary" className="capitalize">
+                  {p}
+                </Badge>
+              ))
+            ) : (
+              <Badge variant="outline" className="text-muted-foreground">
+                {V2_COPY.cards.notSpecified[lang]}
               </Badge>
-            ))}
-            {r.current_version && (
+            )}
+            {r.current_version ? (
               <Badge variant="outline">v{r.current_version.version}</Badge>
+            ) : (
+              <Badge variant="outline" className="text-muted-foreground">
+                v{V2_COPY.cards.notSpecified[lang]}
+              </Badge>
             )}
             {r.effort_minutes ? (
               <span className="inline-flex items-center gap-1 text-muted-foreground">
@@ -89,24 +101,52 @@ export function SkillResourceCard({ r, onQuickPreview }: Props) {
                 {r.effort_minutes} {V2_COPY.cards.minutes[lang]}
               </span>
             ) : null}
-            {r.trust?.scan_status === "clean" && (
-              <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <ShieldCheck className="h-3 w-3" aria-hidden />
-                {V2_COPY.cards.verified[lang]}
-              </span>
-            )}
+            {(() => {
+              const tb = trustBadge(r, lang);
+              const Icon = tb.tone === "verified" ? ShieldCheck : ShieldAlert;
+              return (
+                <span
+                  className="inline-flex items-center gap-1 text-muted-foreground"
+                  data-testid={`trust-${tb.tone}`}
+                >
+                  <Icon className="h-3 w-3" aria-hidden />
+                  {tb.label}
+                </span>
+              );
+            })()}
+            {(() => {
+              const iso = r.current_version?.updated_at ?? r.updated_at;
+              const label = formatShortDate(iso, lang);
+              return label ? (
+                <span
+                  className="inline-flex items-center gap-1 text-muted-foreground"
+                  data-testid="updated-on"
+                >
+                  <Calendar className="h-3 w-3" aria-hidden />
+                  {V2_COPY.cards.updated[lang]}: {label}
+                </span>
+              ) : null;
+            })()}
           </div>
 
           <div className="mt-3 flex items-center justify-between gap-2">
-            <div className="text-sm font-medium">
-              {r.owned ? (
-                <span className="text-emerald-600">{V2_COPY.cards.owned[lang]}</span>
-              ) : isFree ? (
-                <span className="text-warm-gold">{V2_COPY.cards.free[lang]}</span>
-              ) : (
-                <span>{priceLabel}</span>
-              )}
+            <div className="text-sm font-medium" data-testid="ownership-label">
+              {(() => {
+                const o = ownershipLabel(r, lang, formatKwd);
+                const cls =
+                  o.kind === "lifetime"
+                    ? "text-warm-gold"
+                    : o.kind === "owned"
+                      ? "text-emerald-600"
+                      : o.kind === "free"
+                        ? "text-warm-gold"
+                        : o.kind === "unknown"
+                          ? "text-muted-foreground"
+                          : "";
+                return <span className={cls}>{o.text}</span>;
+              })()}
             </div>
+
             {r.owned ? (
               <Button asChild size="sm" variant="outline" className="min-h-[44px]">
                 <Link to={`/resources/${r.slug}`}>{V2_COPY.cards.open[lang]}</Link>

@@ -133,14 +133,19 @@ export const V2_COPY = {
   cards: {
     free: { en: "Free", ar: "مجاني" },
     owned: { en: "Owned", ar: "مملوك" },
+    includedLifetime: { en: "Included with Lifetime", ar: "ضمن الوصول الدائم" },
     open: { en: "Open", ar: "افتح" },
     addToLibrary: { en: "Add to library", ar: "أضف إلى المكتبة" },
     viewDetails: { en: "View details", ar: "عرض التفاصيل" },
     checkoutSoon: { en: "Checkout coming", ar: "الدفع قريباً" },
     verified: { en: "Verified", ar: "موثّق" },
+    awaitingScan: { en: "Awaiting scan", ar: "بانتظار الفحص" },
+    notSpecified: { en: "Not specified", ar: "غير محدَّد" },
+    updated: { en: "Updated", ar: "آخر تحديث" },
     minutes: { en: "min", ar: "د" },
     quickPreview: { en: "Quick preview", ar: "معاينة سريعة" },
   },
+
   explore: {
     subtitle: {
       en: "Verified Jojo resources for your AI workflow.",

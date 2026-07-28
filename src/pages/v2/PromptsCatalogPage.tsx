@@ -8,7 +8,7 @@ export default function PromptsCatalogPage() {
   return (
     <ExplorePage
       fixedType="prompt"
-      title="Prompts"
+      title={{ en: "Prompts", ar: "البرومبتات" }}
       canonicalPath="/prompts"
       seoTitle={{
         en: "AI prompts — verified, ownable prompt library",
