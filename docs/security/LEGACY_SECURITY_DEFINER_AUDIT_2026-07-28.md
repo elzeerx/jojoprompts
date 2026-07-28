@@ -4,7 +4,7 @@ Scope: schema `public`. Source-only. **No live migration, Supabase
 mutation, function deploy, publish, or Coming Soon change was performed
 in this pass.**
 
-Drafted (not applied) migration:
+Applied migration (live Supabase version 20260728101016):
 
 - Canonical filename (owned by the supabase migration tool):
   `supabase/migrations/20260728120000_legacy_security_definer_authorization_hardening.sql`
@@ -205,6 +205,6 @@ appear byte-for-byte in
 
 ## Confirmation
 
-**No live migration was applied. No Supabase objects were mutated. No
+**Applied live. Post-apply evidence recorded in the source fixture. No further Supabase mutation was performed in this reconciliation pass. No
 Edge Functions were deployed or edited. The site was not published. The
 Coming Soon launch lock was not disabled.**

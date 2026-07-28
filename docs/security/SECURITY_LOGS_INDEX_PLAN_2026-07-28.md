@@ -3,7 +3,7 @@
 Source-only. **No live migration, Supabase mutation, publish, or
 Coming Soon change was performed in this pass.**
 
-Drafted (not applied) migration:
+Applied migration (live Supabase version 20260728101447):
 `supabase/migrations/20260728123000_security_logs_admin_query_support.sql`
 — the canonical body. `src/lib/v2/admin/securityLogsIndexes.sql.ts`
 carries an embedded mirror (`SECURITY_LOGS_INDEXES_SQL`) that the
@@ -167,6 +167,6 @@ DROP INDEX IF EXISTS public.idx_security_logs_action_created_at_desc;
 
 ## Confirmation
 
-**No live migration was applied. No Supabase objects were mutated. No
+**Applied live. Post-apply evidence recorded in the source fixture. No further Supabase mutation was performed in this reconciliation pass. No
 Edge Functions were deployed or edited. The site was not published.
 The Coming Soon launch lock was not disabled.**
