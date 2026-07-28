@@ -44,7 +44,7 @@ by itself to change that plan.
 |---|---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|
 | 1 | `idx_security_logs_created_at_desc`         | `CREATE INDEX IF NOT EXISTS ... ON public.security_logs (created_at DESC)`                                                                          | All-events list + 24h metric counts; composes with existing severity / category indexes via bitmap AND. |
 | 2 | `idx_security_logs_actionable_created_at`   | `CREATE INDEX IF NOT EXISTS ... ON public.security_logs (created_at DESC) WHERE action NOT IN ('route_access','developer_tools_opened')`            | Default dashboard list (hot path). Partial index sized to the actionable subset only. |
-| 3 | `idx_security_logs_action`                  | `CREATE INDEX IF NOT EXISTS ... ON public.security_logs (action)`                                                                                   | Explicit action-slug drill-down filter. |
+| 3 | `idx_security_logs_action_created_at_desc` | `CREATE INDEX IF NOT EXISTS ... ON public.security_logs (action, created_at DESC)`                                                                  | Explicit action drill-down: `action = ?` plus `ORDER BY created_at DESC LIMIT` satisfied by a single Index Scan, no follow-up Sort. Supersedes the earlier action-only index. |
 
 Notes:
 
