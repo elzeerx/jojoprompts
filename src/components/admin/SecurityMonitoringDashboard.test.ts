@@ -177,4 +177,3 @@ describe("SecurityMonitoringDashboard — CATEGORY_OPTIONS matches live check co
   });
 });
 
-});
