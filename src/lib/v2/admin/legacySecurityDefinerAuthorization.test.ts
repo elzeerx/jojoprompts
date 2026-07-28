@@ -130,9 +130,15 @@ describe("legacy SECURITY DEFINER authorization hardening — drafted migration"
     expect(/DROP\s+FUNCTION/i.test(SQL)).toBe(false);
   });
 
-  it("does not use REVOKE ... IF EXISTS (unsupported for function privileges)", () => {
-    expect(/REVOKE\s+[^;]*\bIF\s+EXISTS\b/i.test(SQL)).toBe(false);
+  it("does not use REVOKE ... IF EXISTS in any statement (unsupported for function privileges)", () => {
+    const statementLines = SQL.split("\n").filter(
+      (line) => !line.trimStart().startsWith("--"),
+    );
+    for (const line of statementLines) {
+      expect(/REVOKE\b[^;]*\bIF\s+EXISTS\b/i.test(line)).toBe(false);
+    }
   });
+
 
   it("does not touch the six-entry anonymous allowlist from the prior hardening pass", () => {
     for (const anonFn of SECDEF_ANON_ALLOWLIST) {
