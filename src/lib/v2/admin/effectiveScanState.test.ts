@@ -419,6 +419,37 @@ describe("draft migration — fail-closed SQL contract", () => {
     expect(sql).toMatch(
       /REVOKE ALL ON FUNCTION public\.v2_enforce_published_file_immutability\(\)\s+FROM PUBLIC,\s*anon,\s*authenticated/,
     );
+    // UPDATE branch MUST consult BOTH OLD.resource_version_id and
+    // NEW.resource_version_id so a row cannot be moved into or out of a
+    // published version.
+    expect(sql).toMatch(/id = OLD\.resource_version_id/);
+    expect(sql).toMatch(/id = NEW\.resource_version_id/);
+    expect(sql).toMatch(/TG_OP IN \('UPDATE', 'DELETE'\)/);
+    expect(sql).toMatch(/TG_OP IN \('INSERT', 'UPDATE'\)/);
+  });
+
+  it("preserves authoritative ACL: one-arg authorize_resource_download is service_role only (not executable by authenticated)", () => {
+    // Regression: migration 20260723122822 revoked the one-arg overload from
+    // PUBLIC/anon/authenticated. The frontend must call the resource-download
+    // Edge Function and must never receive a private storage locator. Preserve
+    // that ACL — this migration must NOT re-grant to authenticated.
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.authorize_resource_download\(uuid\)\s+FROM PUBLIC,\s*anon,\s*authenticated/,
+    );
+    expect(sql).toMatch(
+      /GRANT\s+EXECUTE ON FUNCTION public\.authorize_resource_download\(uuid\)\s+TO service_role/,
+    );
+    const bad = sql.match(
+      /GRANT[^;]*authorize_resource_download\(uuid\)[^;]*(anon|authenticated|PUBLIC)/gi,
+    ) ?? [];
+    expect(bad).toEqual([]);
+    // Two-arg service-only overload must also remain service_role only.
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.authorize_resource_download\(uuid,\s*uuid\)\s+FROM PUBLIC,\s*anon,\s*authenticated/,
+    );
+    expect(sql).toMatch(
+      /GRANT\s+EXECUTE ON FUNCTION public\.authorize_resource_download\(uuid,\s*uuid\)\s+TO service_role/,
+    );
   });
 
   it("does not weaken execute grants on internal helper for anon/authenticated", () => {
