@@ -195,7 +195,7 @@ export function EmailTemplatesManagement() {
     <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
         <div>
-          <h2 className="section-title text-lg sm:text-xl">Email Templates</h2>
+          <h1 className="section-title text-lg sm:text-xl">Transactional Templates</h1>
           <p className="text-muted-foreground text-xs sm:text-sm">Create, edit, and send test emails with variables.</p>
         </div>
         <div className="flex gap-2">

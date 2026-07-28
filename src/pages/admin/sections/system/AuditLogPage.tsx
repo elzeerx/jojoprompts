@@ -85,7 +85,7 @@ export default function AuditLogPage() {
           <div className="flex items-center gap-2">
             <ScrollText className="h-5 w-5 text-warm-gold" />
             <h1 className="text-xl sm:text-2xl font-semibold tracking-tight break-words">
-              Audit Log
+              Admin Activity
             </h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
