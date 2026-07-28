@@ -5,23 +5,24 @@
 //   - Resource has a currentVersionId (returned by save_admin_resource_draft).
 //   - Resource type is 'skill' or 'automation'.
 //
-// Flow:
+// Flow (V2 hardened):
 //   1) User picks a file.
-//   2) Compute SHA-256 in the browser (client-declared, stored as such).
-//   3) POST { action: "create_upload", ... } to admin-package-upload → get signed URL.
-//   4) PUT the file bytes to Supabase storage via uploadToSignedUrl.
-//   5) POST { action: "finalize_upload", ... } → server verifies size in storage
-//      and enqueues a pending scan. Publishing remains blocked until clean.
+//   2) Preflight extension + size on the client (server is authoritative).
+//   3) POST multipart { version_id, file } → v2-admin-upload-resource-file.
+//      The Edge Function verifies admin role, size, extension/MIME, computes
+//      the SHA-256 server-side, stores privately, and registers via SECURITY
+//      DEFINER RPC. Package scans remain gated by the scanner slice.
+//   4) On success we invalidate the files + scan queries and reset the input.
 //
-// The scanner is NOT invented here. This UI only surfaces "Scan pending" until
-// an external scanner marks the version clean.
+// This UI intentionally invokes ONLY the V2 upload Edge Function. The
+// legacy two-step upload slug is retired at source.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Upload, ShieldAlert, FileArchive } from "lucide-react";
+import { Loader2, Upload, ShieldAlert, FileArchive, RotateCcw } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,23 +34,31 @@ type Props = {
 
 type ScanStatus = "pending" | "clean" | "suspicious" | "malicious" | "failed";
 
-const BUCKET = "resource-packages";
-const ALLOWED_TYPES = [
-  "application/zip",
-  "application/x-zip-compressed",
-  "application/octet-stream",
-  "application/json",
-  "text/plain",
-];
-const MAX_BYTES = 200 * 1024 * 1024;
-const SAFE_FILE_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/;
+// Extensions accepted by v2-admin-upload-resource-file. Server validation is authoritative.
+const ACCEPT_ATTR =
+  ".zip,.md,.markdown,.json,.yaml,.yml,.txt,application/zip,application/json,text/markdown,text/plain,application/yaml,application/x-yaml,text/yaml,text/x-yaml";
+const ALLOWED_EXT = new Set(["zip", "md", "markdown", "json", "yaml", "yml", "txt"]);
+const MAX_BYTES = 25 * 1024 * 1024;
 
-async function sha256Hex(file: File): Promise<string> {
-  const buf = await file.arrayBuffer();
-  const hash = await crypto.subtle.digest("SHA-256", buf);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+const ERR_LABEL: Record<string, string> = {
+  invalid_extension: "That file type is not allowed.",
+  invalid_content_type: "Content type does not match the file extension.",
+  invalid_file_name: "File name is not allowed.",
+  invalid_file_size: "File must be 1 byte – 25 MB.",
+  invalid_version_id: "Invalid version id.",
+  missing_file: "No file selected.",
+  too_many_files: "Only one file per upload.",
+  forbidden: "You do not have permission to upload.",
+  unauthorized: "Please sign in again.",
+  version_not_found: "Version no longer exists.",
+  upload_failed: "Storage upload failed — please try again.",
+  registration_failed: "Registration failed — please try again.",
+};
+
+function extOf(name: string): string | null {
+  const i = name.lastIndexOf(".");
+  if (i <= 0 || i === name.length - 1) return null;
+  return name.slice(i + 1).toLowerCase();
 }
 
 function formatBytes(n: number): string {
@@ -67,12 +76,14 @@ function scanBadge(status: ScanStatus | null) {
   return <Badge variant="outline">No scan yet</Badge>;
 }
 
-export function PackageUploader({ resourceId, resourceVersionId, resourceType }: Props) {
+export function PackageUploader({ resourceId: _resourceId, resourceVersionId, resourceType }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string>("");
+  const inputId = `pkg-upload-${resourceVersionId}`;
 
   // Load existing files on this version + latest scan.
   const filesQ = useQuery({
@@ -80,7 +91,7 @@ export function PackageUploader({ resourceId, resourceVersionId, resourceType }:
     queryFn: async () => {
       const { data, error } = await supabase
         .from("resource_files")
-        .select("id, file_name, size_bytes, content_type, created_at, storage_path")
+        .select("id, file_name, size_bytes, content_type, created_at")
         .eq("resource_version_id", resourceVersionId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -110,10 +121,13 @@ export function PackageUploader({ resourceId, resourceVersionId, resourceType }:
 
   const filePreflight = useMemo(() => {
     if (!file) return null;
-    if (!SAFE_FILE_RE.test(file.name)) return "File name may only contain letters, numbers, dot, dash, underscore.";
-    if (file.size <= 0 || file.size > MAX_BYTES) return `File must be 1..${formatBytes(MAX_BYTES)}.`;
-    const ct = file.type || "application/octet-stream";
-    if (!ALLOWED_TYPES.includes(ct)) return `Content type ${ct} not allowed. Zip your package first.`;
+    const ext = extOf(file.name);
+    if (!ext || !ALLOWED_EXT.has(ext)) {
+      return `File type .${ext ?? "?"} not allowed. Accepted: .zip, .md, .markdown, .json, .yaml, .yml, .txt.`;
+    }
+    if (file.size <= 0 || file.size > MAX_BYTES) {
+      return `File must be 1 byte – ${formatBytes(MAX_BYTES)}.`;
+    }
     return null;
   }, [file]);
 
@@ -121,65 +135,43 @@ export function PackageUploader({ resourceId, resourceVersionId, resourceType }:
     if (!busy) setProgress("");
   }, [busy]);
 
+  const resetInput = () => {
+    setFile(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
   const doUpload = async () => {
     if (!file || filePreflight) return;
     setBusy(true);
+    setProgress("Uploading package…");
     try {
-      setProgress("Hashing file…");
-      const checksum = await sha256Hex(file);
+      const form = new FormData();
+      form.append("version_id", resourceVersionId);
+      form.append("file", file);
 
-      setProgress("Requesting upload URL…");
-      const { data: created, error: cErr } = await supabase.functions.invoke(
-        "admin-package-upload",
-        {
-          body: {
-            action: "create_upload",
-            resource_id: resourceId,
-            resource_version_id: resourceVersionId,
-            file_name: file.name,
-            size_bytes: file.size,
-            content_type: file.type || "application/octet-stream",
-          },
-        },
+      const { data, error } = await supabase.functions.invoke(
+        "v2-admin-upload-resource-file",
+        { body: form },
       );
-      if (cErr || !created?.path || !created?.token) {
-        throw new Error(cErr?.message ?? created?.message ?? "Failed to obtain upload URL");
+
+      if (error) {
+        let code: string | undefined;
+        try {
+          const ctx = (error as unknown as { context?: Response }).context;
+          if (ctx && typeof ctx.json === "function") {
+            const parsed = await ctx.json();
+            code = parsed?.error;
+          }
+        } catch { /* noop */ }
+        throw new Error(ERR_LABEL[code ?? ""] ?? "Upload failed. Please try again.");
       }
 
-      setProgress("Uploading to storage…");
-      const { error: upErr } = await supabase.storage
-        .from(BUCKET)
-        .uploadToSignedUrl(created.path, created.token, file, {
-          contentType: file.type || "application/octet-stream",
-          upsert: false,
-        });
-      if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`);
-
-      setProgress("Finalizing and enqueueing scan…");
-      const { data: fin, error: fErr } = await supabase.functions.invoke(
-        "admin-package-upload",
-        {
-          body: {
-            action: "finalize_upload",
-            resource_id: resourceId,
-            resource_version_id: resourceVersionId,
-            path: created.path,
-            file_name: file.name,
-            size_bytes: file.size,
-            content_type: file.type || "application/octet-stream",
-            checksum_sha256_client: checksum,
-          },
-        },
-      );
-      if (fErr || !fin?.ok) {
-        throw new Error(fErr?.message ?? fin?.message ?? "Finalize failed");
-      }
-
+      const uploaded = (data as { file?: { file_name?: string } })?.file;
       toast({
-        title: "Upload finalized",
-        description: "Scan pending. Publishing stays blocked until a scanner marks it clean.",
+        title: "Upload complete",
+        description: `${uploaded?.file_name ?? file.name} · scan pending. Publishing stays blocked until it is marked clean.`,
       });
-      setFile(null);
+      resetInput();
       qc.invalidateQueries({ queryKey: ["admin", "package-files", resourceVersionId] });
       qc.invalidateQueries({ queryKey: ["admin", "package-scan", resourceVersionId] });
     } catch (e) {
@@ -195,9 +187,9 @@ export function PackageUploader({ resourceId, resourceVersionId, resourceType }:
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm">
-          <FileArchive className="h-4 w-4 text-muted-foreground" />
+          <FileArchive className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <span className="font-medium">Package files</span>
           <span className="text-muted-foreground">— {resourceType} · version files</span>
         </div>
@@ -205,36 +197,67 @@ export function PackageUploader({ resourceId, resourceVersionId, resourceType }:
       </div>
 
       <Alert>
-        <ShieldAlert className="h-4 w-4" />
+        <ShieldAlert className="h-4 w-4" aria-hidden="true" />
         <AlertDescription>
           Scan pending; publishing remains blocked until a scanner marks it clean.
-          Checksums shown here are client-declared and are not proof of integrity —
-          only a successful scan is.
+          Uploads are limited to 25 MB. The server computes and verifies the SHA-256 —
+          only a successful scan proves integrity.
         </AlertDescription>
       </Alert>
 
       <div className="rounded-md border p-3">
+        <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-dark-base">
+          Choose a package file
+        </label>
         <input
+          ref={inputRef}
+          id={inputId}
           type="file"
-          accept=".zip,application/zip,application/octet-stream,application/json,text/plain"
+          accept={ACCEPT_ATTR}
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           disabled={busy}
-          className="block w-full text-sm"
+          aria-describedby={`${inputId}-help`}
+          className="block w-full text-sm file:me-3 file:min-h-[44px] file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm"
         />
+        <p id={`${inputId}-help`} className="mt-1 text-[11px] text-muted-foreground">
+          Accepted: .zip, .md, .markdown, .json, .yaml, .yml, .txt · max 25 MB · one file per upload.
+        </p>
         {file && (
-          <div className="mt-2 text-xs text-muted-foreground">
-            {file.name} · {formatBytes(file.size)} · {file.type || "application/octet-stream"}
+          <div className="mt-2 truncate text-xs text-muted-foreground">
+            <span className="font-medium text-dark-base">{file.name}</span>
+            {" · "}{formatBytes(file.size)}
+            {file.type ? ` · ${file.type}` : ""}
           </div>
         )}
         {filePreflight && (
-          <div className="mt-2 text-xs text-red-600">{filePreflight}</div>
+          <div className="mt-2 text-xs text-red-600" role="alert">{filePreflight}</div>
         )}
-        <div className="mt-3 flex items-center gap-2">
-          <Button onClick={doUpload} disabled={!file || !!filePreflight || busy} size="sm">
-            {busy ? <Loader2 className="h-4 w-4 me-2 animate-spin" /> : <Upload className="h-4 w-4 me-2" />}
-            Upload
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            onClick={doUpload}
+            disabled={!file || !!filePreflight || busy}
+            aria-busy={busy}
+            className="min-h-[44px]"
+          >
+            {busy
+              ? <Loader2 className="h-4 w-4 me-2 animate-spin" aria-hidden="true" />
+              : <Upload className="h-4 w-4 me-2" aria-hidden="true" />}
+            {busy ? "Uploading…" : "Upload"}
           </Button>
-          {busy && <span className="text-xs text-muted-foreground">{progress}</span>}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={resetInput}
+            disabled={busy || !file}
+            className="min-h-[44px]"
+          >
+            <RotateCcw className="h-4 w-4 me-2" aria-hidden="true" />
+            Reset
+          </Button>
+          <span className="text-xs text-muted-foreground" aria-live="polite" role="status">
+            {busy ? progress : ""}
+          </span>
         </div>
       </div>
 
@@ -251,8 +274,8 @@ export function PackageUploader({ resourceId, resourceVersionId, resourceType }:
         ) : (
           <ul className="divide-y">
             {(filesQ.data ?? []).map((f) => (
-              <li key={f.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                <div className="min-w-0">
+              <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{f.file_name}</div>
                   <div className="text-xs text-muted-foreground">
                     {formatBytes(f.size_bytes ?? 0)} · {f.content_type ?? "unknown"}

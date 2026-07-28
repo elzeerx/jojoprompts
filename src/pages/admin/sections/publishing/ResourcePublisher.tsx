@@ -119,16 +119,40 @@ const APPROVED_DEFAULT_PRICE_FILS: Record<ResourceType, number> = {
   bundle: 4500,
 };
 
+// Direct FK from resources to its own rows/embeds only. The bundle-membership
+// relation (product_bundle_items.bundle_product_id → products.id) is NOT a
+// direct FK from resources, so it must be loaded in a second query keyed on
+// the resource's own products.
+export const RESOURCE_EDITOR_SELECT =
+  "id, slug, type, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar), products(id,sku,product_type,title_en,price_fils,is_active)";
+
+export function buildResourceEditUrl(resourceId: string): string {
+  return `/admin/publishing/resources/${resourceId}/edit`;
+}
+
 async function fetchResource(id: string) {
   const { data, error } = await (supabase as any)
     .from("resources")
-    .select(
-      "id, slug, type, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar), products(id,sku,product_type,title_en,price_fils,is_active), product_bundle_items:product_bundle_items!bundle_product_id(resource_id)",
-    )
+    .select(RESOURCE_EDITOR_SELECT)
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  if (!data) return null;
+
+  // Load bundle items via the resource's own bundle-typed products.
+  const productIds: string[] = (data.products ?? [])
+    .filter((p: any) => p?.product_type === "bundle")
+    .map((p: any) => p.id);
+  let bundleItems: { resource_id: string }[] = [];
+  if (productIds.length > 0) {
+    const { data: items, error: bErr } = await (supabase as any)
+      .from("product_bundle_items")
+      .select("resource_id")
+      .in("bundle_product_id", productIds);
+    if (bErr) throw bErr;
+    bundleItems = items ?? [];
+  }
+  return { ...data, product_bundle_items: bundleItems };
 }
 
 async function fetchPlatforms(): Promise<{ slug: string; name: string }[]> {
@@ -152,10 +176,16 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
     queryKey: ["admin","v2","platforms"], queryFn: fetchPlatforms, staleTime: 60_000,
   });
 
-  const { data: existing, isLoading: loadingResource } = useQuery({
+  const {
+    data: existing,
+    isLoading: loadingResource,
+    isError: resourceLoadError,
+    error: resourceError,
+  } = useQuery({
     queryKey: ["admin","v2","publisher","resource", resourceId],
     queryFn: () => fetchResource(resourceId!),
     enabled: !!resourceId,
+    retry: false,
   });
 
   useEffect(() => {
@@ -399,6 +429,33 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
   const needsPackage = form.type === "skill" || form.type === "automation";
 
   if (loadingResource) return <div className="p-6 text-sm text-muted-foreground">Loading resource…</div>;
+
+  // Distinguish load failure (PostgREST/query error, forbidden) from a true zero-row not-found.
+  if ((mode === "edit" || mode === "new-version") && resourceId && resourceLoadError) {
+    const msg = (resourceError as { message?: string } | null)?.message ?? "";
+    const isForbidden = /permission|forbidden|denied|rls/i.test(msg);
+    return (
+      <div className="space-y-3 p-6">
+        <h1 className="text-xl font-semibold text-dark-base">
+          {isForbidden ? "Access denied" : "Failed to load resource"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {isForbidden
+            ? "You do not have permission to open this resource."
+            : "The editor query failed. This is not a missing-resource error — please retry or check the network log."}
+          {" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">{resourceId}</code>
+        </p>
+        {msg && (
+          <pre className="max-w-full overflow-x-auto rounded bg-muted p-2 text-xs">{msg}</pre>
+        )}
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate("/admin/catalog")}>Back to Catalog</Button>
+          <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ["admin","v2","publisher","resource", resourceId] })}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   // Not-found guard: an edit/new-version route with a resourceId that returned no row
   // must never render a blank editable form (which would silently create a new resource on save).
