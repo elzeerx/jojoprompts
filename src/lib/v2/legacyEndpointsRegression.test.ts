@@ -21,6 +21,9 @@ const SRC = resolve(HERE, "../..");
 const IGNORE_FILES = new Set<string>([
   relative(SRC, resolve(HERE, "legacyEndpoints.ts")),
   relative(SRC, resolve(HERE, "legacyEndpointsRegression.test.ts")),
+  // Audit documentation registry — records slug names as data, does not invoke.
+  relative(SRC, resolve(HERE, "admin/edgeFunctionRetirementInventory.ts")),
+  relative(SRC, resolve(HERE, "admin/edgeFunctionRetirementInventory.test.ts")),
   // The retired stub pages themselves reference the legacy route only in
   // comments; they don't invoke the endpoint. Grep patterns below match only
   // invocation shapes and the raw slug in code strings, so the stubs are OK.
