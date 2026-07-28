@@ -100,18 +100,11 @@ export class DatabaseSecurityEnhancer {
         timestamp: new Date()
       };
 
-      // Log to security logs
-      await supabase.from('security_logs').insert({
-        user_id: userId,
-        action: 'rls_policy_violation',
-        details: {
-          table_name: tableName,
-          operation: operation,
-          block_reason: blockReason,
-          data_summary: this.summarizeData(attemptedData)
-        },
-        severity: 'medium',
-        event_category: 'database_security'
+      // Pre-launch hardening: browser must NOT INSERT into security_logs.
+      // Route to unified logger only; server-side capture is the source of truth.
+      logger.warn('rls_policy_violation', {
+        userId, tableName, operation, blockReason,
+        data_summary: this.summarizeData(attemptedData),
       });
 
       // For sensitive tables, escalate immediately
