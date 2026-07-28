@@ -121,20 +121,88 @@ export const SECURITY_LOGS_EXISTING_INDEXES: readonly string[] = [
   "idx_security_logs_severity",
 ] as const;
 
+/**
+ * One-time legacy severity normalization (see doc §Normalization).
+ *
+ * Live evidence at draft time:
+ *   • 53,865 total rows in public.security_logs.
+ *   • 117 rows carry details->>'severity' and all 117 disagree with the
+ *     authoritative top-level `severity` column:
+ *         65 rows: top-level 'info', details 'medium'
+ *         52 rows: top-level 'info', details 'high'
+ *   • Zero rows have details->>'event_category', so no category
+ *     backfill is required.
+ *
+ * Guards:
+ *   • Only update rows whose top-level severity is exactly 'info'.
+ *     Non-'info' top-level values are treated as already authoritative
+ *     and are never overwritten.
+ *   • The details value must be in an explicit allowlist —
+ *     ('medium','high','critical'). Any other string is ignored so a
+ *     stray tag cannot promote a row to an arbitrary severity.
+ *   • event_category is not touched.
+ *
+ * Idempotence: after the first apply the affected rows no longer match
+ *   `severity = 'info'`, so re-running the migration updates zero rows.
+ */
+export const SECURITY_LOGS_LEGACY_SEVERITY_ALLOWLIST: readonly string[] = [
+  "medium",
+  "high",
+  "critical",
+] as const;
+
+export const SECURITY_LOGS_LEGACY_SEVERITY_EXPECTED_AFFECTED = 117 as const;
+
+export const SECURITY_LOGS_LEGACY_SEVERITY_NORMALIZATION_SQL = `-- One-time bounded normalization of legacy details->>'severity' values
+-- into the authoritative top-level column. Idempotent (see fixture doc).
+--
+-- PREFLIGHT (informational — does NOT fail the migration on drift):
+--   SELECT count(*) AS expected_affected_rows
+--   FROM public.security_logs
+--   WHERE severity = 'info'
+--     AND details->>'severity' IN ('medium','high','critical');
+--   -- Expected at draft time: 117 (65 medium + 52 high, 0 critical).
+--
+UPDATE public.security_logs
+SET severity = details->>'severity'
+WHERE severity = 'info'
+  AND details->>'severity' IN ('medium','high','critical');
+--
+-- POSTCONDITION (informational — verify manually after apply):
+--   SELECT count(*) FROM public.security_logs
+--   WHERE severity = 'info' AND details->>'severity' IN ('medium','high','critical');
+--   -- Expect 0 after successful application.`;
+
 export const SECURITY_LOGS_INDEXES_SQL = `-- 20260728123000_security_logs_admin_query_indexes.sql
 -- SOURCE-ONLY DRAFT. Do NOT apply without review. Idempotent.
 --
--- Targets the corrected Security Events admin dashboard queries
--- against public.security_logs. See
--- docs/security/SECURITY_LOGS_INDEX_PLAN_2026-07-28.md for the
--- before-plan evidence and post-apply verification steps.
+-- Two independent concerns, applied in this file together because both
+-- serve the corrected Security Events admin dashboard:
+--   1) Query-support indexes on public.security_logs.
+--   2) Bounded one-time normalization of legacy details->>'severity'
+--      values into the authoritative top-level column.
+--
+-- See docs/security/SECURITY_LOGS_INDEX_PLAN_2026-07-28.md for the
+-- before-plan evidence, per-query rationale, normalization scope, and
+-- post-apply verification steps.
+
+-- ── 1) Query-support indexes ─────────────────────────────────────────
 
 ${SECURITY_LOGS_PLANNED_INDEXES.map((i) => `${i.definition};`).join("\n\n")}
+
+-- ── 2) Legacy severity normalization ─────────────────────────────────
+
+${SECURITY_LOGS_LEGACY_SEVERITY_NORMALIZATION_SQL}
 `;
 
 export const SECURITY_LOGS_INDEX_PLAN = {
   migration: SECURITY_LOGS_INDEXES_MIGRATION,
   indexes: SECURITY_LOGS_PLANNED_INDEXES,
   existing: SECURITY_LOGS_EXISTING_INDEXES,
+  legacySeverityAllowlist: SECURITY_LOGS_LEGACY_SEVERITY_ALLOWLIST,
+  legacySeverityExpectedAffected:
+    SECURITY_LOGS_LEGACY_SEVERITY_EXPECTED_AFFECTED,
+  legacySeverityNormalizationSql:
+    SECURITY_LOGS_LEGACY_SEVERITY_NORMALIZATION_SQL,
   sql: SECURITY_LOGS_INDEXES_SQL,
 } as const;
