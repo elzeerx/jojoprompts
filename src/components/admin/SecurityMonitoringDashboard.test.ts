@@ -7,7 +7,11 @@ import {
   ROUTINE_NOISE_ACTIONS,
   SECURITY_EVENTS_PAGE_SIZE,
   FILTER_KEYS_RESETTING_PAGE,
+  CATEGORY_OPTIONS,
+  CATEGORY_LABELS,
+  IMPOSSIBLE_CATEGORY_SLUGS,
 } from "@/components/admin/securityEventsFilters";
+
 
 declare const require: (m: string) => any;
 const { readFileSync } = require("fs");
