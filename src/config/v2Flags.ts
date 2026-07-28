@@ -170,6 +170,28 @@ export const V2_COPY = {
     downloads: { en: "Downloads", ar: "التنزيلات" },
     required: { en: "Required", ar: "مطلوب" },
     optional: { en: "Optional", ar: "اختياري" },
+    examples: { en: "Examples", ar: "أمثلة" },
+    limitations: { en: "Limitations", ar: "القيود" },
+    uninstall: { en: "Uninstall guidance", ar: "إرشادات الإزالة" },
+    support: { en: "Support", ar: "الدعم" },
+    updates: { en: "Updates", ar: "التحديثات" },
+    lastUpdated: { en: "Last updated", ar: "آخر تحديث" },
+    standardLicense: {
+      en: "Jojo Standard License v1",
+      ar: "ترخيص جوجو القياسي v1",
+    },
+    standardLicenseTerms: {
+      en: "Personal use and commercial use of outputs are allowed. The underlying resource files may not be redistributed, shared, or resold.",
+      ar: "يُسمح بالاستخدام الشخصي والتجاري للمخرجات. لا يجوز إعادة توزيع ملفات المورد الأساسية أو مشاركتها أو إعادة بيعها.",
+    },
+    standardUpdates: {
+      en: "Includes the current major version and applicable fixes and minor updates.",
+      ar: "يشمل الإصدار الرئيسي الحالي والإصلاحات والتحديثات الفرعية المنطبقة.",
+    },
+    standardSupport: {
+      en: "For help with this resource, contact info@jojoprompts.com.",
+      ar: "للمساعدة في هذا المورد، تواصل عبر info@jojoprompts.com.",
+    },
     stepsUnavailable: {
       en: "Installation steps unavailable.",
       ar: "خطوات التثبيت غير متاحة.",
@@ -180,6 +202,14 @@ export const V2_COPY = {
       ar: "أنفق {threshold} د.ك على الموارد لفتح كل مورد جوجو الحالي والمستقبلي.",
     },
     lifetimeTitle: { en: "Lifetime access", ar: "وصول مدى الحياة" },
+    lifetimeActiveTitle: {
+      en: "Lifetime access is active",
+      ar: "الوصول مدى الحياة مفعّل",
+    },
+    lifetimeActiveCallout: {
+      en: "This resource is already included in your Full Library Lifetime access.",
+      ar: "هذا المورد مشمول بالفعل ضمن وصولك إلى المكتبة الكاملة مدى الحياة.",
+    },
   },
   library: {
     title: { en: "My Library", ar: "مكتبتي" },

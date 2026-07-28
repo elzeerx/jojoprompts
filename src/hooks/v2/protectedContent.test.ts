@@ -8,9 +8,13 @@
  */
 import { describe, it, expect } from "bun:test";
 
-declare const require: (m: string) => any;
-const { readFileSync } = require("fs");
-const { resolve } = require("path");
+declare const require: (m: string) => unknown;
+const { readFileSync } = require("fs") as {
+  readFileSync: (path: string, encoding: string) => string;
+};
+const { resolve } = require("path") as {
+  resolve: (...paths: string[]) => string;
+};
 
 const HERE: string = (import.meta as unknown as { dir?: string }).dir ?? ".";
 const read = (rel: string) => readFileSync(resolve(HERE, rel), "utf8") as string;
@@ -28,6 +32,14 @@ describe("V2 protected-content wiring", () => {
     expect(DETAIL_HOOK.includes("prompt_text_ar")).toBe(false);
     expect(DETAIL_HOOK).toContain("hero_image_path");
     expect(DETAIL_HOOK).toContain("legacy_prompt_id");
+  });
+
+  it("useResourceDetail matches the promoted V2 schema and fails loudly on related-query errors", () => {
+    expect(DETAIL_HOOK).toContain("published_at, created_at, updated_at");
+    expect(DETAIL_HOOK).not.toContain("released_at");
+    expect(DETAIL_HOOK).toContain("notes_en, notes_ar, is_verified");
+    expect(DETAIL_HOOK).not.toMatch(/min_version,\s*notes[";]/);
+    expect(DETAIL_HOOK).toContain("if (result.error) throw result.error");
   });
 
   it("useEntitledResourceContent is disabled unless signed-in + owned", () => {
@@ -52,5 +64,13 @@ describe("V2 protected-content wiring", () => {
     expect(PAGE).toContain("legacy_prompt_id");
     expect(PAGE).toContain("useEntitledResourceContent");
     expect(PAGE).toContain('data-testid="entitled-prompt-section"');
+  });
+
+  it("ResourceDetailPage distinguishes Lifetime inclusion and always explains license, updates, and support", () => {
+    expect(PAGE).toContain("includedLifetime");
+    expect(PAGE).toContain("lifetimeActiveCallout");
+    expect(PAGE).toContain("standardLicenseTerms");
+    expect(PAGE).toContain("standardUpdates");
+    expect(PAGE).toContain("standardSupport");
   });
 });

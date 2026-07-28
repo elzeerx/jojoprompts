@@ -46,14 +46,15 @@ export default function ResourceDetailPage() {
   const nextPath = useNextLoginPath();
   const { language, isRTL } = useTranslation();
   const lang: Lang = language === "ar" ? "ar" : "en";
+  const hasLifetimeAccess = !!library?.has_library_access;
 
-  const owned = useMemo(() => {
+  const individuallyOwned = useMemo(() => {
     if (!data?.resource) return false;
-    if (library?.has_library_access) return true;
     return (library?.entitlements ?? []).some(
       (e) => e.scope === "resource" && e.resource_id === data.resource.id,
     );
   }, [data, library]);
+  const owned = hasLifetimeAccess || individuallyOwned;
 
   const legacyPromptId = (data?.resource as { legacy_prompt_id?: string | null } | undefined)
     ?.legacy_prompt_id ?? null;
@@ -118,6 +119,42 @@ export default function ResourceDetailPage() {
   const description =
     lang === "ar" && r.description_ar ? r.description_ar : r.description_en;
   const heroUrl = safeHeroImageUrl(r.hero_image_path);
+  const localizedField = (
+    valueEn: string | null | undefined,
+    valueAr: string | null | undefined,
+  ) => (lang === "ar" && valueAr ? valueAr : valueEn);
+  const examples = localizedField(r.examples_en, r.examples_ar);
+  const limitations = localizedField(r.limitations_en, r.limitations_ar);
+  const uninstall = localizedField(r.uninstall_en, r.uninstall_ar);
+  const support =
+    localizedField(r.support_en, r.support_ar) ??
+    V2_COPY.detail.standardSupport[lang];
+  const updates =
+    localizedField(r.update_info_en, r.update_info_ar) ??
+    V2_COPY.detail.standardUpdates[lang];
+  const versionUpdatedAt =
+    data.version?.published_at ?? data.version?.updated_at ?? r.updated_at;
+  const formattedUpdatedAt = versionUpdatedAt
+    ? new Intl.DateTimeFormat(lang === "ar" ? "ar-KW" : "en-KW", {
+        dateStyle: "medium",
+      }).format(new Date(versionUpdatedAt))
+    : null;
+  const scanStatus =
+    typeof data.trust?.scan_status === "string"
+      ? data.trust.scan_status
+      : null;
+  const scanLabel =
+    scanStatus === "clean"
+      ? V2_COPY.cards.verified[lang]
+      : scanStatus === "pending"
+        ? V2_COPY.cards.awaitingScan[lang]
+        : scanStatus
+          ? lang === "ar"
+            ? `حالة الفحص: ${scanStatus}`
+            : `Scan status: ${scanStatus}`
+          : lang === "ar"
+            ? `الفحص: ${V2_COPY.cards.notSpecified.ar}`
+            : `Scan: ${V2_COPY.cards.notSpecified.en}`;
 
   const product = data.products.find((p) => p.is_active) ?? null;
   const isFree = product?.product_type === "free";
@@ -187,16 +224,22 @@ export default function ResourceDetailPage() {
                 {data.version && (
                   <Badge variant="outline">v{data.version.version}</Badge>
                 )}
-                {data.trust?.scan_status === "clean" && (
-                  <Badge variant="secondary" className="gap-1">
-                    <ShieldCheck className="h-3 w-3" aria-hidden />
-                    {V2_COPY.cards.verified[lang]}
-                  </Badge>
-                )}
+                <Badge
+                  variant={scanStatus === "clean" ? "secondary" : "outline"}
+                  className="gap-1"
+                >
+                  <ShieldCheck className="h-3 w-3" aria-hidden />
+                  {scanLabel}
+                </Badge>
                 {r.effort_minutes ? (
                   <Badge variant="outline" className="gap-1">
                     <Timer className="h-3 w-3" aria-hidden />
                     {r.effort_minutes} {V2_COPY.cards.minutes[lang]}
+                  </Badge>
+                ) : null}
+                {formattedUpdatedAt ? (
+                  <Badge variant="outline">
+                    {V2_COPY.detail.lastUpdated[lang]}: {formattedUpdatedAt}
                   </Badge>
                 ) : null}
               </div>
@@ -220,12 +263,19 @@ export default function ResourceDetailPage() {
                 <h2 className="mb-2 text-lg font-semibold">
                   {V2_COPY.detail.platforms[lang]}
                 </h2>
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-2">
                   {data.platforms.map((p) => (
-                    <Badge key={p.id} variant="outline" className="capitalize">
-                      {p.platform_slug}
-                      {p.min_version ? ` ≥ ${p.min_version}` : ""}
-                    </Badge>
+                    <div key={p.id} className="rounded-lg border p-3">
+                      <Badge variant="outline" className="capitalize">
+                        {p.platform_slug}
+                        {p.min_version ? ` ≥ ${p.min_version}` : ""}
+                      </Badge>
+                      {localizedField(p.notes_en, p.notes_ar) ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {localizedField(p.notes_en, p.notes_ar)}
+                        </p>
+                      ) : null}
+                    </div>
                   ))}
                 </div>
               </section>
@@ -298,21 +348,78 @@ export default function ResourceDetailPage() {
               </section>
             )}
 
-            {data.license && (
+            {examples ? (
               <section>
                 <h2 className="mb-2 text-lg font-semibold">
-                  {V2_COPY.detail.license[lang]}
+                  {V2_COPY.detail.examples[lang]}
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  {data.license.license_key}
+                <p className="whitespace-pre-line text-sm text-muted-foreground">
+                  {examples}
                 </p>
-                {(lang === "ar" ? data.license.terms_ar : data.license.terms_en) ? (
-                  <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">
-                    {lang === "ar" ? data.license.terms_ar : data.license.terms_en}
-                  </p>
-                ) : null}
               </section>
-            )}
+            ) : null}
+
+            {limitations || r.type === "skill" || r.type === "automation" ? (
+              <section>
+                <h2 className="mb-2 text-lg font-semibold">
+                  {V2_COPY.detail.limitations[lang]}
+                </h2>
+                <p className="whitespace-pre-line text-sm text-muted-foreground">
+                  {limitations ?? V2_COPY.cards.notSpecified[lang]}
+                </p>
+              </section>
+            ) : null}
+
+            {uninstall || r.type === "skill" || r.type === "automation" ? (
+              <section>
+                <h2 className="mb-2 text-lg font-semibold">
+                  {V2_COPY.detail.uninstall[lang]}
+                </h2>
+                <p className="whitespace-pre-line text-sm text-muted-foreground">
+                  {uninstall ?? V2_COPY.cards.notSpecified[lang]}
+                </p>
+              </section>
+            ) : null}
+
+            <section>
+              <h2 className="mb-2 text-lg font-semibold">
+                {V2_COPY.detail.license[lang]}
+              </h2>
+              <p className="text-sm font-medium">
+                {data.license?.license_key ??
+                  V2_COPY.detail.standardLicense[lang]}
+              </p>
+              <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">
+                {localizedField(
+                  data.license?.terms_en,
+                  data.license?.terms_ar,
+                ) ?? V2_COPY.detail.standardLicenseTerms[lang]}
+              </p>
+              <Link
+                to="/terms"
+                className="mt-2 inline-flex min-h-[44px] items-center text-sm font-medium text-warm-gold underline-offset-4 hover:underline"
+              >
+                {lang === "ar" ? "اقرأ الشروط الكاملة" : "Read the full terms"}
+              </Link>
+            </section>
+
+            <section>
+              <h2 className="mb-2 text-lg font-semibold">
+                {V2_COPY.detail.updates[lang]}
+              </h2>
+              <p className="whitespace-pre-line text-sm text-muted-foreground">
+                {updates}
+              </p>
+            </section>
+
+            <section>
+              <h2 className="mb-2 text-lg font-semibold">
+                {V2_COPY.detail.support[lang]}
+              </h2>
+              <p className="whitespace-pre-line text-sm text-muted-foreground">
+                {support}
+              </p>
+            </section>
 
             {shouldFetchProtected && (
               <section
@@ -420,7 +527,11 @@ export default function ResourceDetailPage() {
           <aside className="space-y-4">
             <div className="rounded-2xl border p-4 space-y-3">
               <div className="text-sm font-medium">
-                {owned ? (
+                {hasLifetimeAccess ? (
+                  <span className="text-emerald-600">
+                    {V2_COPY.cards.includedLifetime[lang]}
+                  </span>
+                ) : individuallyOwned ? (
                   <span className="text-emerald-600">{V2_COPY.cards.owned[lang]}</span>
                 ) : isFree ? (
                   <span className="text-warm-gold text-lg font-bold">
@@ -472,9 +583,15 @@ export default function ResourceDetailPage() {
 
               <div className="rounded-lg bg-warm-gold/10 p-3 text-xs">
                 <div className="font-semibold text-warm-gold">
-                  {V2_COPY.detail.lifetimeTitle[lang]}
+                  {hasLifetimeAccess
+                    ? V2_COPY.detail.lifetimeActiveTitle[lang]
+                    : V2_COPY.detail.lifetimeTitle[lang]}
                 </div>
-                <div className="mt-1 text-muted-foreground">{lifetimeText}</div>
+                <div className="mt-1 text-muted-foreground">
+                  {hasLifetimeAccess
+                    ? V2_COPY.detail.lifetimeActiveCallout[lang]
+                    : lifetimeText}
+                </div>
               </div>
             </div>
 

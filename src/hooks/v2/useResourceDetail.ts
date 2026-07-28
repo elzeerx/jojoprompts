@@ -22,21 +22,31 @@ const RESOURCE_PUBLIC_COLUMNS = [
   "effort_minutes",
   "current_version_id",
   "legacy_prompt_id",
+  "examples_en",
+  "examples_ar",
+  "limitations_en",
+  "limitations_ar",
+  "uninstall_en",
+  "uninstall_ar",
+  "support_en",
+  "support_ar",
+  "update_info_en",
+  "update_info_ar",
   "published_at",
   "created_at",
   "updated_at",
 ].join(", ");
 
 const RESOURCE_VERSION_COLUMNS =
-  "id, resource_id, version, changelog_en, changelog_ar, released_at, created_at";
+  "id, resource_id, version, changelog_en, changelog_ar, published_at, created_at, updated_at";
 const PLATFORM_COMPAT_COLUMNS =
-  "id, resource_id, platform_slug, min_version, notes";
+  "id, resource_id, platform_slug, min_version, notes_en, notes_ar, is_verified";
 const INSTALL_GUIDE_COLUMNS =
   "id, resource_id, platform_slug, estimated_minutes, steps_en, steps_ar";
 const RESOURCE_PERMISSION_COLUMNS =
   "id, resource_id, kind, key, label_en, label_ar, is_required, is_public";
 const LICENSE_COLUMNS =
-  "id, resource_id, license_key, terms_en, terms_ar";
+  "id, resource_id, license_key, terms_en, terms_ar, allows_commercial, allows_redistribution";
 const PRODUCT_PUBLIC_COLUMNS =
   "id, resource_id, product_type, price_fils, currency, is_active";
 
@@ -58,12 +68,12 @@ export function useResourceDetail(slug: string | undefined) {
       const currentVersionId = rec.current_version_id;
 
       const [
-        { data: version },
-        { data: platforms },
-        { data: guides },
-        { data: license },
-        { data: permissions },
-        { data: products },
+        versionResult,
+        platformsResult,
+        guidesResult,
+        licenseResult,
+        permissionsResult,
+        productsResult,
         badgeRes,
       ] = await Promise.all([
         currentVersionId
@@ -72,7 +82,7 @@ export function useResourceDetail(slug: string | undefined) {
               .select(RESOURCE_VERSION_COLUMNS)
               .eq("id", currentVersionId)
               .maybeSingle()
-          : Promise.resolve({ data: null }),
+          : Promise.resolve({ data: null, error: null }),
         supabase
           .from("platform_compatibility")
           .select(PLATFORM_COMPAT_COLUMNS)
@@ -101,17 +111,29 @@ export function useResourceDetail(slug: string | undefined) {
         }),
       ]);
 
-      const badges = (badgeRes.data ?? []) as any[];
+      for (const result of [
+        versionResult,
+        platformsResult,
+        guidesResult,
+        licenseResult,
+        permissionsResult,
+        productsResult,
+        badgeRes,
+      ]) {
+        if (result.error) throw result.error;
+      }
+
+      const badges = (badgeRes.data ?? []) as Array<Record<string, unknown>>;
       return {
         resource,
-        version: version ?? null,
-        platforms: platforms ?? [],
-        guides: guides ?? [],
-        license: license ?? null,
-        permissions: permissions ?? [],
-        products: products ?? [],
+        version: versionResult.data ?? null,
+        platforms: platformsResult.data ?? [],
+        guides: guidesResult.data ?? [],
+        license: licenseResult.data ?? null,
+        permissions: permissionsResult.data ?? [],
+        products: productsResult.data ?? [],
         trust: badges[0] ?? null,
-      } as any;
+      };
     },
   });
 }

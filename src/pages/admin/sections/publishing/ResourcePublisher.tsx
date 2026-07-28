@@ -59,6 +59,14 @@ interface PermRow { kind: PermissionKind; key: string; label_en: string; is_requ
 interface ProductRow { sku: string; product_type: ProductType; title_en: string; price_fils: string }
 interface LicenseRow { license_key: string; terms_en: string; allows_commercial: boolean; allows_redistribution: boolean }
 
+const standardLicense = (): LicenseRow => ({
+  license_key: "jojo-standard-v1",
+  terms_en:
+    "Personal use and commercial use of outputs are allowed. The underlying resource files may not be redistributed, shared, or resold.",
+  allows_commercial: true,
+  allows_redistribution: false,
+});
+
 interface FormState {
   slug: string; type: ResourceType;
   title_en: string; title_ar: string;
@@ -94,7 +102,7 @@ const emptyForm = (type: ResourceType = "skill"): FormState => ({
   platform_compatibility: [],
   installation_guides: [],
   permissions: [],
-  license: { license_key: "", terms_en: "", allows_commercial: false, allows_redistribution: false },
+  license: standardLicense(),
   products: [{ sku: "", product_type: "free", title_en: "", price_fils: "0" }],
   bundle_items: [],
 });
@@ -171,6 +179,10 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
   const [dirty, setDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [publishErrors, setPublishErrors] = useState<string[] | null>(null);
+  const licenseKeyId = useId();
+  const licenseTermsId = useId();
+  const licenseCommercialId = useId();
+  const licenseRedistributionId = useId();
 
   const { data: platforms = [] } = useQuery({
     queryKey: ["admin","v2","platforms"], queryFn: fetchPlatforms, staleTime: 60_000,
@@ -230,7 +242,7 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
             allows_commercial: !!existing.licenses[0].allows_commercial,
             allows_redistribution: !!existing.licenses[0].allows_redistribution,
           }
-        : { license_key: "", terms_en: "", allows_commercial: false, allows_redistribution: false },
+        : standardLicense(),
       products: (existing.products ?? []).filter((p: any) => p.is_active).map((p: any) => ({
         sku: p.sku, product_type: p.product_type, title_en: p.title_en, price_fils: String(p.price_fils ?? 0),
       })),
@@ -635,23 +647,51 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
             <GuideEditor platforms={platforms} value={form.installation_guides} onChange={(v) => patch({ installation_guides: v })} />
             <div className="mt-4 border-t pt-4">
               <h3 className="mb-2 text-sm font-semibold">License</h3>
+              <p className="mb-3 text-xs text-muted-foreground">
+                V2.0 defaults to the Jojo Standard License: outputs may be used
+                commercially, but the underlying files may not be redistributed.
+              </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Input placeholder="License key (e.g. MIT, CC-BY-4.0)" className="min-h-[44px]"
-                  value={form.license.license_key}
-                  onChange={(e) => patch({ license: { ...form.license, license_key: e.target.value } })} />
-                <Textarea placeholder="Terms (EN)" rows={2}
-                  value={form.license.terms_en}
-                  onChange={(e) => patch({ license: { ...form.license, terms_en: e.target.value } })} />
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <Checkbox checked={form.license.allows_commercial}
+                <div className="space-y-1.5">
+                  <Label htmlFor={licenseKeyId}>License key</Label>
+                  <Input
+                    id={licenseKeyId}
+                    placeholder="jojo-standard-v1"
+                    className="min-h-[44px]"
+                    value={form.license.license_key}
+                    onChange={(e) => patch({ license: { ...form.license, license_key: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor={licenseTermsId}>License terms (English)</Label>
+                  <Textarea
+                    id={licenseTermsId}
+                    placeholder="Terms (EN)"
+                    rows={2}
+                    value={form.license.terms_en}
+                    onChange={(e) => patch({ license: { ...form.license, terms_en: e.target.value } })}
+                  />
+                </div>
+                <Label
+                  htmlFor={licenseCommercialId}
+                  className="inline-flex min-h-[44px] items-center gap-2 text-sm"
+                >
+                  <Checkbox
+                    id={licenseCommercialId}
+                    checked={form.license.allows_commercial}
                     onCheckedChange={(v) => patch({ license: { ...form.license, allows_commercial: v === true } })} />
                   Allows commercial use
-                </label>
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <Checkbox checked={form.license.allows_redistribution}
+                </Label>
+                <Label
+                  htmlFor={licenseRedistributionId}
+                  className="inline-flex min-h-[44px] items-center gap-2 text-sm"
+                >
+                  <Checkbox
+                    id={licenseRedistributionId}
+                    checked={form.license.allows_redistribution}
                     onCheckedChange={(v) => patch({ license: { ...form.license, allows_redistribution: v === true } })} />
                   Allows redistribution
-                </label>
+                </Label>
               </div>
             </div>
           </AccordionContent>

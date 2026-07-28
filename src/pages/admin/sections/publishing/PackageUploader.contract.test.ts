@@ -11,9 +11,13 @@
  */
 import { describe, it, expect } from "bun:test";
 
-declare const require: (m: string) => any;
-const { readFileSync } = require("fs");
-const { resolve } = require("path");
+declare const require: (m: string) => unknown;
+const { readFileSync } = require("fs") as {
+  readFileSync: (path: string, encoding: string) => string;
+};
+const { resolve } = require("path") as {
+  resolve: (...paths: string[]) => string;
+};
 
 const HERE: string = (import.meta as unknown as { dir?: string }).dir ?? ".";
 const read = (rel: string) =>
@@ -61,6 +65,16 @@ describe("ResourcePublisher — resource editor select", () => {
     expect(src.includes('"aria-describedby"')).toBe(true);
     expect(src.includes('"aria-invalid"')).toBe(true);
     expect(src.includes("<p id={errorId}")).toBe(true);
+  });
+
+  it("defaults V2 resources to the Jojo Standard License with labelled controls", () => {
+    expect(src).toContain('license_key: "jojo-standard-v1"');
+    expect(src).toContain("allows_commercial: true");
+    expect(src).toContain("allows_redistribution: false");
+    expect(src).toContain("<Label htmlFor={licenseKeyId}>");
+    expect(src).toContain("<Label htmlFor={licenseTermsId}>");
+    expect(src).toContain("htmlFor={licenseCommercialId}");
+    expect(src).toContain("htmlFor={licenseRedistributionId}");
   });
 });
 
