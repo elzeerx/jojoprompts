@@ -403,10 +403,17 @@ export function useUserService() {
         return false;
       }
       
-      const { data, error } = await supabase.functions.invoke("cancel-subscription", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { userId }
-      });
+      // RETIRED (source-only, 2026-07-28): `cancel-subscription` is a
+      // 410 stub. V2 has no subscription concept. This code path lives
+      // inside `useUserService`, which is only imported by the legacy
+      // `UsersManagement` tree (unreachable from
+      // `adminSectionElements.tsx` — only `UsersV2` is wired).
+      const data: { success?: boolean; error?: string } | null = null;
+      const error = {
+        message:
+          "endpoint_retired: cancel-subscription is no longer available.",
+      } as { message: string };
+
 
       if (error || (data && !data.success)) {
         throw new Error(error?.message || data?.error || "Error cancelling subscription");
