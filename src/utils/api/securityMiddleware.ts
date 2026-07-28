@@ -343,13 +343,8 @@ export class APISecurityMiddleware {
     details: Record<string, any>
   ): Promise<void> {
     try {
-      await supabase.from('security_logs').insert({
-        user_id: details.userId,
-        action: 'api_abuse_detected',
-        details: { type, ...details },
-        severity: 'medium',
-        event_category: 'api_security'
-      });
+      // Pre-launch hardening: no client-role DB write into security_logs.
+      logger.warn('api_abuse_detected', { type, ...details });
     } catch (error) {
       logger.error('Failed to log suspicious activity', { error });
     }
