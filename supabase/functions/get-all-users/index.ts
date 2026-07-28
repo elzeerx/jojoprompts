@@ -7,6 +7,10 @@ import { checkRateLimit, RATE_LIMITS, createRateLimitResponse } from "../_shared
 
 const logger = createEdgeLogger('GET_ALL_USERS');
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -63,14 +67,24 @@ serve(async (req) => {
       let body;
       try {
         body = await req.json();
-      } catch (parseError: any) {
-        logger.error('Failed to parse POST body', { error: parseError.message });
+      } catch (parseError: unknown) {
+        logger.error('Failed to parse POST body', {
+          error: getErrorMessage(parseError)
+        });
         return createErrorResponse('Invalid JSON body', 400);
       }
       
       const { action, userId: targetUserId } = body;
       
       logger.info("User action requested", { action, targetUserId });
+
+      if (action === 'list') {
+        return await handleGetUsers(supabase, userId, req, {
+          page: body.page,
+          limit: body.limit,
+          search: body.search
+        });
+      }
       
       if (action === 'delete') {
         // Call the admin_delete_user_data function with verified admin ID
@@ -99,17 +113,18 @@ serve(async (req) => {
     
     return createErrorResponse('Method not allowed', 405);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = getErrorMessage(error);
     logger.error('Function error', {
-      error: error.message,
+      error: errorMessage,
       method: req.method,
       hasAuth: !!req.headers.get('authorization')
     });
 
     // Determine appropriate status code based on error
-    const status = error.message === 'UNAUTHORIZED' ? 401 :
-                   error.message === 'FORBIDDEN' ? 403 : 500;
+    const status = errorMessage === 'UNAUTHORIZED' ? 401 :
+                   errorMessage === 'FORBIDDEN' ? 403 : 500;
     
-    return createErrorResponse(error.message, status);
+    return createErrorResponse(errorMessage, status);
   }
 });

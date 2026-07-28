@@ -8,8 +8,8 @@ export { createClient };
 // Standard CORS headers for all functions
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-retry-count',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
 };
 
 // Standard Supabase client factory
@@ -41,7 +41,7 @@ export function createErrorResponse(error: string, status: number = 400) {
 }
 
 // Standard success response
-export function createSuccessResponse(data: any) {
+export function createSuccessResponse(data: unknown) {
   return new Response(
     JSON.stringify(data), 
     { 

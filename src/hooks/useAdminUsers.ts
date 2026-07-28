@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ExtendedUserProfile } from "@/types/user";
+import { ExtendedUserProfile, UserRole } from "@/types/user";
 import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('ADMIN_USERS');
@@ -15,12 +15,36 @@ export interface AdminUser extends ExtendedUserProfile {
   } | null;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function normalizeRole(value: unknown): UserRole {
+  return value === "admin" ||
+    value === "jadmin" ||
+    value === "prompter" ||
+    value === "user"
+    ? value
+    : "user";
+}
+
 export function useAdminUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestGenerationRef = useRef(0);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
+    const requestGeneration = ++requestGenerationRef.current;
+
     try {
       setLoading(true);
       setError(null);
@@ -33,40 +57,79 @@ export function useAdminUsers() {
       // Fetch users in batches until all are loaded
       while (hasMore) {
         const { data: response, error: functionError } = await supabase.functions.invoke(
-          `get-all-users?page=${page}&limit=${batchSize}`
+          "get-all-users",
+          {
+            body: {
+              action: "list",
+              page,
+              limit: batchSize,
+            },
+          },
         );
 
         if (functionError) throw functionError;
-        if (!response?.users) throw new Error('Failed to fetch users');
+        if (!Array.isArray(response?.users)) {
+          throw new Error('Failed to fetch users');
+        }
         
         // Transform response data to AdminUser format
-        const transformedUsers: AdminUser[] = (response.users || []).map((user: any) => ({
-          id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          avatar_url: user.avatar_url,
-          bio: user.bio,
-          country: user.country,
-          phone_number: user.phone_number,
-          timezone: user.timezone,
-          membership_tier: user.membership_tier,
-          social_links: user.social_links,
-          created_at: user.created_at,
-          last_sign_in_at: user.last_sign_in_at,
-          updated_at: user.auth_updated_at || user.updated_at,
-          is_email_confirmed: user.is_email_confirmed ?? null,
-          has_auth_account: user.has_auth_account ?? null,
-          
-          subscription: user.subscription ? {
-            plan_name: user.subscription.plan_name,
-            status: user.subscription.status,
-            is_lifetime: user.subscription.is_lifetime || false,
-            price_usd: user.subscription.price_usd || 0
-          } : null
-        }));
+        const transformedUsers: AdminUser[] = (response.users as unknown[])
+          .flatMap((rawUser) => {
+            if (!isRecord(rawUser) || typeof rawUser.id !== "string") return [];
+
+            const rawSubscription = isRecord(rawUser.subscription)
+              ? rawUser.subscription
+              : null;
+            const socialLinks = isRecord(rawUser.social_links)
+              ? Object.fromEntries(
+                  Object.entries(rawUser.social_links).filter(
+                    (entry): entry is [string, string] =>
+                      typeof entry[1] === "string",
+                  ),
+                )
+              : null;
+
+            return [{
+              id: rawUser.id,
+              first_name: optionalString(rawUser.first_name) ?? "",
+              last_name: optionalString(rawUser.last_name) ?? "",
+              username: optionalString(rawUser.username) ?? "",
+              email: optionalString(rawUser.email),
+              role: normalizeRole(rawUser.role),
+              avatar_url: nullableString(rawUser.avatar_url),
+              bio: nullableString(rawUser.bio),
+              country: nullableString(rawUser.country),
+              phone_number: nullableString(rawUser.phone_number),
+              timezone: nullableString(rawUser.timezone),
+              membership_tier: nullableString(rawUser.membership_tier),
+              social_links: socialLinks,
+              created_at: nullableString(rawUser.created_at),
+              last_sign_in_at: nullableString(rawUser.last_sign_in_at),
+              updated_at:
+                nullableString(rawUser.auth_updated_at) ??
+                nullableString(rawUser.updated_at),
+              is_email_confirmed:
+                typeof rawUser.is_email_confirmed === "boolean"
+                  ? rawUser.is_email_confirmed
+                  : undefined,
+              has_auth_account:
+                typeof rawUser.has_auth_account === "boolean"
+                  ? rawUser.has_auth_account
+                  : undefined,
+              subscription: rawSubscription
+                ? {
+                    plan_name:
+                      optionalString(rawSubscription.plan_name) ?? "Unknown",
+                    status: optionalString(rawSubscription.status) ?? "unknown",
+                    is_lifetime: rawSubscription.is_lifetime === true,
+                    price_usd:
+                      typeof rawSubscription.price_usd === "number"
+                        ? rawSubscription.price_usd
+                        : 0,
+                  }
+                : null,
+            }];
+          });
 
         allUsers = [...allUsers, ...transformedUsers];
         
@@ -81,19 +144,31 @@ export function useAdminUsers() {
         page++;
       }
 
+      if (requestGeneration !== requestGenerationRef.current) return;
+
       logger.info('Loaded all users successfully', { count: allUsers.length });
+      setError(null);
       setUsers(allUsers);
-    } catch (err: any) {
-      logger.error('Failed to load users', { error: err.message || err });
-      setError(err.message || 'Failed to load users');
+    } catch (err: unknown) {
+      if (requestGeneration !== requestGenerationRef.current) return;
+
+      const message = err instanceof Error ? err.message : "Failed to load users";
+      logger.error('Failed to load users', { error: message });
+      setError(message);
     } finally {
-      setLoading(false);
+      if (requestGeneration === requestGenerationRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    void fetchUsers();
+
+    return () => {
+      requestGenerationRef.current += 1;
+    };
+  }, [fetchUsers]);
 
   return { users, loading, error, refetch: fetchUsers };
 }

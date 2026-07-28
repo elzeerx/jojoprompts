@@ -11,16 +11,42 @@ import {
 } from './responseBuilder.ts';
 
 const logger = createEdgeLogger('get-all-users:get-users');
+type AdminSupabaseClient = Parameters<typeof buildProfileQuery>[0];
 
-export async function handleGetUsers(supabase: any, adminId: string, req: Request) {
+interface ListUsersOptions {
+  page?: unknown;
+  limit?: unknown;
+  search?: unknown;
+}
+
+function parseInteger(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isInteger(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isInteger(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+export async function handleGetUsers(
+  supabase: AdminSupabaseClient,
+  adminId: string,
+  req: Request,
+  options: ListUsersOptions = {}
+) {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
   try {
     const url = new URL(req.url);
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '10'), 100);
-    const search = url.searchParams.get('search') || '';
+    const page = parseInteger(options.page, parseInteger(url.searchParams.get('page'), 1));
+    const limit = Math.min(
+      parseInteger(options.limit, parseInteger(url.searchParams.get('limit'), 10)),
+      100
+    );
+    const search = typeof options.search === 'string'
+      ? options.search
+      : (url.searchParams.get('search') || '');
     
     logger.info('Starting getUsersHandler', { requestId, page, limit, search });
     
@@ -112,14 +138,17 @@ export async function handleGetUsers(supabase: any, adminId: string, req: Reques
       }
     );
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errorDuration = Date.now() - startTime;
+    const errorMessage = error instanceof Error
+      ? error.message
+      : 'Unknown error occurred';
     logger.error('Error in handleGetUsers', { 
       requestId, 
       duration_ms: errorDuration, 
-      error: error.message 
+      error: errorMessage
     });
     
-    return buildErrorResponse(error.message, requestId, errorDuration);
+    return buildErrorResponse(errorMessage, requestId, errorDuration);
   }
 }
