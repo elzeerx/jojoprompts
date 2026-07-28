@@ -430,6 +430,33 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
 
   if (loadingResource) return <div className="p-6 text-sm text-muted-foreground">Loading resource…</div>;
 
+  // Distinguish load failure (PostgREST/query error, forbidden) from a true zero-row not-found.
+  if ((mode === "edit" || mode === "new-version") && resourceId && resourceLoadError) {
+    const msg = (resourceError as { message?: string } | null)?.message ?? "";
+    const isForbidden = /permission|forbidden|denied|rls/i.test(msg);
+    return (
+      <div className="space-y-3 p-6">
+        <h1 className="text-xl font-semibold text-dark-base">
+          {isForbidden ? "Access denied" : "Failed to load resource"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {isForbidden
+            ? "You do not have permission to open this resource."
+            : "The editor query failed. This is not a missing-resource error — please retry or check the network log."}
+          {" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">{resourceId}</code>
+        </p>
+        {msg && (
+          <pre className="max-w-full overflow-x-auto rounded bg-muted p-2 text-xs">{msg}</pre>
+        )}
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate("/admin/catalog")}>Back to Catalog</Button>
+          <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ["admin","v2","publisher","resource", resourceId] })}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
   // Not-found guard: an edit/new-version route with a resourceId that returned no row
   // must never render a blank editable form (which would silently create a new resource on save).
   if ((mode === "edit" || mode === "new-version") && resourceId && !existing) {
