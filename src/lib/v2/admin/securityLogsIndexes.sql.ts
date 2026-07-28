@@ -1,12 +1,30 @@
 /**
  * SOURCE FIXTURE — Security Events admin query-support migration.
  *
- * STATUS: DRAFTED, NOT APPLIED LIVE. The canonical body lives at
+ * STATUS: APPLIED LIVE as migration version `20260728101447`. The
+ * canonical body lives at
  * `supabase/migrations/20260728123000_security_logs_admin_query_support.sql`.
  * The embedded `SECURITY_LOGS_INDEXES_SQL` below is a mirror; the
  * contract test enforces normalized byte parity between the two.
  *
- * TARGET TABLE — public.security_logs
+ * POST-APPLY LIVE EVIDENCE (recorded 2026-07-28):
+ *   • normalization_candidates = 0 and all_severity_mismatches = 0
+ *     after apply (117 rows normalized from top-level 'info' →
+ *     details->>'severity').
+ *   • 7-day top-level `severity = 'high'` count = 2; both
+ *     suspicious_activity rows now visible in the admin preview.
+ *   • Live indexes present exactly:
+ *     `idx_security_logs_created_at_desc`,
+ *     `idx_security_logs_actionable_created_at`,
+ *     `idx_security_logs_action_created_at_desc`
+ *     (in addition to the pre-existing PK / category / severity
+ *     indexes).
+ *   • Live EXPLAIN for the default 24h noise-excluded ordered
+ *     LIMIT 50 query now uses Index Scan on
+ *     `idx_security_logs_actionable_created_at`, startup cost 0.29,
+ *     no Sort (prior startup cost was ~3558.54 Seq Scan + Sort).
+ */
+
  *   • ~52k rows / ~23 MB (as of 2026-07-28)
  *   • Existing indexes: PK(id), idx_security_logs_category(event_category),
  *     idx_security_logs_severity(severity)
