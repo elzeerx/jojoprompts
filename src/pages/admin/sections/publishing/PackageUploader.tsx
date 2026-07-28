@@ -25,6 +25,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, ShieldAlert, FileArchive, RotateCcw } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { packageScanGuidance } from "./packageScanGuidance";
 
 type Props = {
   resourceId: string;
