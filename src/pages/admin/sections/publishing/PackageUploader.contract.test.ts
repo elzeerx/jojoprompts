@@ -17,8 +17,9 @@ const { resolve } = require("path");
 
 import { RESOURCE_EDITOR_SELECT, buildResourceEditUrl } from "./ResourcePublisher";
 
+const HERE: string = (import.meta as unknown as { dir?: string }).dir ?? ".";
 const read = (rel: string) =>
-  readFileSync(resolve(__dirname, rel), "utf8") as string;
+  readFileSync(resolve(HERE, rel), "utf8") as string;
 
 const UUID = "766f3370-d38c-42e5-8566-5e4946986dd2";
 
