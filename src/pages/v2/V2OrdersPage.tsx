@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { Loader2, Receipt, Printer, ChevronRight } from "lucide-react";
+import { Loader2, Receipt, Printer, ChevronRight, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,10 +10,18 @@ import { useMyOrders, useMyOrderDetail } from "@/hooks/v2/useMyOrders";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatKwd } from "@/config/v2Flags";
 import { format } from "date-fns";
+import {
+  reconstructLegacyUpaymentsFils,
+  useMyLegacyTransactions,
+  type MyLegacyTransaction,
+} from "@/hooks/v2/useMyLegacyTransactions";
 
 function statusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
   switch (status) {
     case "paid":
+    case "completed":
+    case "captured":
+    case "success":
       return "default";
     case "refunded":
     case "partially_refunded":
@@ -34,6 +42,13 @@ export default function V2OrdersPage() {
     refetch,
     fetchStatus,
   } = useMyOrders();
+  const {
+    data: legacyTransactions,
+    isPending: legacyPending,
+    isError: legacyError,
+    refetch: refetchLegacy,
+    fetchStatus: legacyFetchStatus,
+  } = useMyLegacyTransactions();
   const { language, isRTL } = useTranslation();
   const lang = language === "ar" ? "ar" : "en";
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -45,7 +60,10 @@ export default function V2OrdersPage() {
   // A disabled query (fetchStatus === 'idle') OR a settled empty query
   // must NOT render a permanent skeleton.
   const showSkeleton =
-    authLoading || (!!user && isPending && fetchStatus === "fetching");
+    authLoading ||
+    (!!user &&
+      ((isPending && fetchStatus === "fetching") ||
+        (legacyPending && legacyFetchStatus === "fetching")));
 
   if (!authLoading && !user) {
     return <Navigate to={`/login?next=${encodeURIComponent("/orders")}`} replace />;
@@ -62,7 +80,21 @@ export default function V2OrdersPage() {
     items: lang === "ar" ? "العناصر" : "Items",
     print: lang === "ar" ? "طباعة الإيصال" : "Print receipt",
     error: lang === "ar" ? "تعذّر تحميل الطلبات." : "Couldn't load orders.",
+    noV2:
+      lang === "ar"
+        ? "لا توجد طلبات V2 حتى الآن. مشترياتك السابقة محفوظة أدناه."
+        : "No V2 orders yet. Your earlier purchases are preserved below.",
+    historical: lang === "ar" ? "المشتريات السابقة" : "Historical purchases",
+    historicalDesc:
+      lang === "ar"
+        ? "سجلات دفع للقراءة فقط من JojoPrompts قبل V2. تُعاد قيمة UPayments بالدينار من خريطة الباقات الأصلية عندما يكون ذلك ممكناً."
+        : "Read-only payment records from JojoPrompts before V2. UPayments KWD value is reconstructed from the original package mapping when possible.",
+    historicalError:
+      lang === "ar"
+        ? "تعذّر تحميل سجل المشتريات السابقة."
+        : "Couldn't load historical purchases.",
   };
+  const hasLegacyTransactions = (legacyTransactions ?? []).length > 0;
 
   return (
     <div className="min-h-[70vh]" dir={isRTL ? "rtl" : "ltr"}>
@@ -98,7 +130,9 @@ export default function V2OrdersPage() {
             className="rounded-2xl border p-12 text-center space-y-4"
             data-testid="orders-empty"
           >
-            <p className="text-muted-foreground">{t.empty}</p>
+            <p className="text-muted-foreground">
+              {hasLegacyTransactions ? t.noV2 : t.empty}
+            </p>
             <p className="text-sm text-muted-foreground">
               {lang === "ar"
                 ? "بمجرد إتمام أول عملية شراء ستظهر إيصالاتها هنا."
@@ -159,8 +193,120 @@ export default function V2OrdersPage() {
           </ul>
         )}
 
+        {legacyError ? (
+          <section className="mt-8 space-y-3" aria-labelledby="legacy-orders-title">
+            <h2 id="legacy-orders-title" className="text-lg font-semibold">
+              {t.historical}
+            </h2>
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              <p>{t.historicalError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 min-h-[44px]"
+                onClick={() => refetchLegacy()}
+              >
+                {lang === "ar" ? "إعادة المحاولة" : "Retry"}
+              </Button>
+            </div>
+          </section>
+        ) : hasLegacyTransactions ? (
+          <section className="mt-8 space-y-3" aria-labelledby="legacy-orders-title">
+            <div>
+              <h2
+                id="legacy-orders-title"
+                className="flex items-center gap-2 text-lg font-semibold"
+              >
+                <History className="h-5 w-5 text-warm-gold" aria-hidden />
+                {t.historical}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t.historicalDesc}
+              </p>
+            </div>
+            <ul className="space-y-2" data-testid="legacy-orders-list">
+              {(legacyTransactions ?? []).map((transaction) => (
+                <LegacyTransactionRow
+                  key={transaction.id}
+                  transaction={transaction}
+                  lang={lang}
+                />
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </main>
     </div>
+  );
+}
+
+function LegacyTransactionRow({
+  transaction,
+  lang,
+}: {
+  transaction: MyLegacyTransaction;
+  lang: "en" | "ar";
+}) {
+  const reconstructedFils = reconstructLegacyUpaymentsFils(transaction);
+  const gateway =
+    transaction.payment_gateway?.toLowerCase() === "upayments"
+      ? "UPayments"
+      : transaction.payment_gateway?.toLowerCase() === "paypal"
+        ? "PayPal"
+        : transaction.payment_gateway ?? (lang === "ar" ? "بوابة سابقة" : "Legacy gateway");
+  const occurredAt = transaction.completed_at ?? transaction.created_at;
+  const amount =
+    reconstructedFils !== null
+      ? `${formatKwd(reconstructedFils)} KD`
+      : transaction.payment_gateway?.toLowerCase() === "paypal"
+        ? `${Number(transaction.amount_usd).toFixed(2)} USD`
+        : `${Number(transaction.amount_usd).toFixed(2)} ${transaction.currency ?? "USD"}`;
+  const reference =
+    transaction.upayments_invoice_id ??
+    transaction.upayments_track_id ??
+    transaction.paypal_order_id ??
+    transaction.paypal_payment_id;
+
+  return (
+    <li className="rounded-xl border p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">
+              {transaction.subscription_plans?.name ??
+                (lang === "ar" ? "شراء سابق" : "Historical purchase")}
+            </span>
+            <Badge variant={statusVariant(transaction.status)} className="capitalize">
+              {transaction.status.replaceAll("_", " ")}
+            </Badge>
+            <Badge variant="outline">{gateway}</Badge>
+            {reconstructedFils !== null ? (
+              <Badge variant="secondary">
+                {lang === "ar" ? "قيمة مُعاد حسابها" : "Reconstructed value"}
+              </Badge>
+            ) : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {format(new Date(occurredAt), "PPp")}
+            {reference ? ` · #${reference.slice(-10)}` : ` · #${transaction.id.slice(0, 8)}`}
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-3 sm:block sm:text-end">
+          <div className="font-semibold tabular-nums">{amount}</div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-[44px] px-2"
+            onClick={() => window.print()}
+          >
+            <Printer className="me-1 h-4 w-4" aria-hidden />
+            {lang === "ar" ? "طباعة" : "Print"}
+          </Button>
+        </div>
+      </div>
+    </li>
   );
 }
 

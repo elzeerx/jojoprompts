@@ -15,11 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Receipt, Search } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { V2_COPY, V2_RESOURCE_TYPES, type V2ResourceType } from "@/config/v2Flags";
+import { Input } from "@/components/ui/input";
 
 type Lang = "en" | "ar";
+const PAGE_SIZE = 20;
 
 interface LibraryResourceRow {
   id: string;
@@ -27,7 +29,21 @@ interface LibraryResourceRow {
   type: V2ResourceType;
   title_en: string;
   title_ar: string | null;
+  summary_en: string | null;
+  summary_ar: string | null;
+  update_info_en: string | null;
+  update_info_ar: string | null;
+  updated_at: string;
   lifecycle: "draft" | "review" | "published" | "archived";
+  current_version:
+    | { id: string; version: string; published_at: string | null }
+    | Array<{ id: string; version: string; published_at: string | null }>
+    | null;
+  installation_guides: Array<{ id: string }>;
+  licenses:
+    | { id: string; license_key: string }
+    | Array<{ id: string; license_key: string }>
+    | null;
 }
 
 const TABS: Array<{ id: "all" | V2ResourceType; labelKey: keyof typeof V2_COPY.nav | "all" }> = [
@@ -47,6 +63,22 @@ function tabLabel(id: string, lang: Lang): string {
   return V2_COPY.nav[entry.labelKey][lang];
 }
 
+function firstRelated<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+function formatDate(value: string | null | undefined, lang: Lang): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat(lang === "ar" ? "ar-KW" : "en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(parsed);
+}
+
 export default function LibraryPage() {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -58,6 +90,8 @@ export default function LibraryPage() {
   const { language, isRTL } = useTranslation();
   const lang: Lang = language === "ar" ? "ar" : "en";
   const [tab, setTab] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     document.title = "My Library · JojoPrompts";
@@ -88,7 +122,9 @@ export default function LibraryPage() {
     queryFn: async () => {
       let query = supabase
         .from("resources")
-        .select("id, slug, type, title_en, title_ar, lifecycle")
+        .select(
+          "id, slug, type, title_en, title_ar, summary_en, summary_ar, update_info_en, update_info_ar, updated_at, lifecycle, current_version:current_version_id(id,version,published_at), installation_guides(id), licenses(id,license_key)",
+        )
         .in("lifecycle", ["published", "archived"]);
       if (!hasLibrary) query = query.in("id", entitledIds);
       const { data, error } = await query.order("updated_at", { ascending: false });
@@ -96,11 +132,6 @@ export default function LibraryPage() {
       return (data ?? []) as LibraryResourceRow[];
     },
   });
-
-  if (!loading && !user) {
-    const next = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/login?next=${next}`} replace />;
-  }
 
   const filesByResource = useMemo(() => {
     const map = new Map<string, DownloadableFile[]>();
@@ -112,9 +143,34 @@ export default function LibraryPage() {
     return map;
   }, [files]);
 
-  const filtered = (resources ?? []).filter(
-    (r) => tab === "all" || r.type === tab,
-  );
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [tab, search]);
+
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLocaleLowerCase(lang === "ar" ? "ar" : "en");
+    return (resources ?? []).filter((r) => {
+      if (tab !== "all" && r.type !== tab) return false;
+      if (!needle) return true;
+      return [
+        r.title_en,
+        r.title_ar,
+        r.summary_en,
+        r.summary_ar,
+        r.type.replace("_", " "),
+      ]
+        .filter(Boolean)
+        .some((value) =>
+          String(value).toLocaleLowerCase(lang === "ar" ? "ar" : "en").includes(needle),
+        );
+    });
+  }, [lang, resources, search, tab]);
+  const visibleResources = filtered.slice(0, visibleCount);
+
+  if (!loading && !user) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?next=${next}`} replace />;
+  }
 
   return (
     <div className="min-h-screen bg-background" dir={isRTL ? "rtl" : "ltr"}>
@@ -125,13 +181,21 @@ export default function LibraryPage() {
         noindex
       />
       <main className="container mx-auto px-4 py-6 space-y-6">
-        <header>
-          <h1 className="text-2xl font-bold sm:text-3xl">
-            {V2_COPY.library.title[lang]}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {V2_COPY.library.subtitle[lang]}
-          </p>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold sm:text-3xl">
+              {V2_COPY.library.title[lang]}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {V2_COPY.library.subtitle[lang]}
+            </p>
+          </div>
+          <Button asChild variant="outline" className="min-h-[44px] w-full sm:w-auto">
+            <Link to="/orders">
+              <Receipt className="me-2 h-4 w-4" aria-hidden />
+              {V2_COPY.library.orders[lang]}
+            </Link>
+          </Button>
         </header>
 
         {isLoading ? (
@@ -162,6 +226,31 @@ export default function LibraryPage() {
           </TabsList>
         </Tabs>
 
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-md">
+            <label htmlFor="library-search" className="sr-only">
+              {V2_COPY.library.search[lang]}
+            </label>
+            <Search
+              className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              id="library-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={V2_COPY.library.search[lang]}
+              className="min-h-[44px] ps-9"
+              type="search"
+            />
+          </div>
+          {!resourcesLoading && !resourcesError ? (
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {filtered.length} {V2_COPY.library.results[lang]}
+            </p>
+          ) : null}
+        </div>
+
         {resourcesLoading ? (
           <div className="grid gap-4 md:grid-cols-2">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -190,12 +279,27 @@ export default function LibraryPage() {
             </p>
           </div>
         ) : (
+          <>
           <div className="grid gap-4 md:grid-cols-2">
-            {filtered.map((r) => {
+            {visibleResources.map((r) => {
               const title = lang === "ar" && r.title_ar ? r.title_ar : r.title_en;
+              const summary =
+                lang === "ar" && r.summary_ar ? r.summary_ar : r.summary_en;
+              const updateInfo =
+                lang === "ar" && r.update_info_ar
+                  ? r.update_info_ar
+                  : r.update_info_en;
               const list = filesByResource.get(r.id) ?? [];
               const archived = r.lifecycle === "archived";
               const individuallyOwned = entitledIds.includes(r.id);
+              const version = firstRelated(r.current_version);
+              const license = firstRelated(r.licenses);
+              const updated = formatDate(
+                version?.published_at ?? r.updated_at,
+                lang,
+              );
+              const expectsPackage =
+                r.type === "skill" || r.type === "automation" || r.type === "bundle";
               return (
                 <article key={r.id} className="rounded-2xl border p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
@@ -224,6 +328,50 @@ export default function LibraryPage() {
                       </div>
                     </div>
                   </div>
+                  {summary ? (
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {summary}
+                    </p>
+                  ) : null}
+                  <dl className="grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+                    <div className="flex items-center justify-between gap-2 sm:block">
+                      <dt className="text-muted-foreground">
+                        {V2_COPY.library.version[lang]}
+                      </dt>
+                      <dd className="font-medium">{version?.version ?? "—"}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 sm:block">
+                      <dt className="text-muted-foreground">
+                        {V2_COPY.library.updated[lang]}
+                      </dt>
+                      <dd className="font-medium">{updated ?? "—"}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 sm:block">
+                      <dt className="text-muted-foreground">
+                        {V2_COPY.library.standardLicense[lang]}
+                      </dt>
+                      <dd className="font-medium">
+                        {license?.license_key === "jojo-standard-v1"
+                          ? "v1"
+                          : license?.license_key ?? "v1"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 sm:block">
+                      <dt className="text-muted-foreground">
+                        {V2_COPY.library.installGuide[lang]}
+                      </dt>
+                      <dd className="font-medium">
+                        {r.installation_guides?.length > 0
+                          ? lang === "ar" ? "متاح" : "Available"
+                          : lang === "ar" ? "داخل صفحة المورد" : "On resource page"}
+                      </dd>
+                    </div>
+                  </dl>
+                  {updateInfo ? (
+                    <p className="line-clamp-2 rounded-lg bg-muted/40 p-2 text-xs text-muted-foreground">
+                      {updateInfo}
+                    </p>
+                  ) : null}
                   {filesLoading ? (
                     <Skeleton className="h-10 w-full" />
                   ) : list.length > 0 ? (
@@ -258,15 +406,33 @@ export default function LibraryPage() {
                         );
                       })}
                     </div>
-                  ) : (
+                  ) : expectsPackage ? (
                     <p className="text-xs text-muted-foreground">
                       {V2_COPY.library.noPackage[lang]}
                     </p>
-                  )}
+                  ) : null}
+                  <Button asChild variant="outline" className="min-h-[44px] w-full">
+                    <Link to={`/resources/${r.slug}`}>
+                      {V2_COPY.library.openResource[lang]}
+                    </Link>
+                  </Button>
                 </article>
               );
             })}
           </div>
+          {visibleCount < filtered.length ? (
+            <div className="flex justify-center pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-[44px] min-w-36"
+                onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+              >
+                {V2_COPY.library.loadMore[lang]}
+              </Button>
+            </div>
+          ) : null}
+          </>
         )}
 
         {inactive && inactive.length > 0 ? (

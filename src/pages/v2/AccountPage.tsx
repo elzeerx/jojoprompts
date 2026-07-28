@@ -90,9 +90,13 @@ export default function AccountPage() {
         ? "كل الموارد التي تملكها بشكل دائم."
         : "Every resource you permanently own.",
     ownedCount:
-      lang === "ar"
-        ? `${ownedCount} مورد مملوك`
-        : `${ownedCount} owned resource${ownedCount === 1 ? "" : "s"}`,
+      hasLibrary
+        ? lang === "ar"
+          ? "وصول المكتبة الكاملة مفعّل"
+          : "Full library access active"
+        : lang === "ar"
+          ? `${ownedCount} مورد مملوك`
+          : `${ownedCount} owned resource${ownedCount === 1 ? "" : "s"}`,
     ordersTitle: lang === "ar" ? "الطلبات والفواتير" : "Orders & receipts",
     ordersDesc:
       lang === "ar"

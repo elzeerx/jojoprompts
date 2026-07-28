@@ -234,6 +234,42 @@ export const V2_COPY = {
       en: "No downloadable package for your entitled version yet.",
       ar: "لا توجد حزمة قابلة للتنزيل لإصدارك بعد.",
     },
+    search: {
+      en: "Search your library",
+      ar: "ابحث في مكتبتك",
+    },
+    results: {
+      en: "resources",
+      ar: "موارد",
+    },
+    version: {
+      en: "Version",
+      ar: "الإصدار",
+    },
+    updated: {
+      en: "Updated",
+      ar: "آخر تحديث",
+    },
+    standardLicense: {
+      en: "Jojo Standard License",
+      ar: "ترخيص جوجو القياسي",
+    },
+    installGuide: {
+      en: "Installation guide",
+      ar: "دليل التثبيت",
+    },
+    openResource: {
+      en: "Open resource",
+      ar: "افتح المورد",
+    },
+    orders: {
+      en: "Orders & receipts",
+      ar: "الطلبات والإيصالات",
+    },
+    loadMore: {
+      en: "Load more",
+      ar: "عرض المزيد",
+    },
     retry: { en: "Retry", ar: "أعد المحاولة" },
     loadError: {
       en: "Something went wrong loading your library.",

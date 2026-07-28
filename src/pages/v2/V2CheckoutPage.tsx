@@ -159,12 +159,15 @@ export default function V2CheckoutPage() {
 
   if (cart.items.length === 0) {
     return (
-      <div className="container mx-auto max-w-2xl px-4 py-12 text-center">
+      <div className="min-h-[70vh]" dir={isRTL ? "rtl" : "ltr"}>
         <SeoHead title={`${t.title} · JojoPrompts`} canonicalPath="/checkout" noindex />
-        <p className="text-muted-foreground">{t.nothing}</p>
-        <Button asChild className="mt-4 min-h-[44px]">
-          <Link to="/cart">{t.review}</Link>
-        </Button>
+        <main className="container mx-auto max-w-2xl px-4 py-12 text-center">
+          <h1 className="text-2xl font-bold">{t.title}</h1>
+          <p className="mt-3 text-muted-foreground">{t.nothing}</p>
+          <Button asChild className="mt-4 min-h-[44px]">
+            <Link to="/cart">{t.review}</Link>
+          </Button>
+        </main>
       </div>
     );
   }
@@ -223,18 +226,20 @@ export default function V2CheckoutPage() {
 
             <div className="rounded-2xl border p-4 space-y-2">
               <h2 className="font-semibold">{t.gateway}</h2>
-              <div className="flex items-center gap-2 rounded-lg border border-warm-gold/40 bg-warm-gold/5 p-3">
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-warm-gold/40 bg-warm-gold/5 p-3">
                 <CreditCard className="h-4 w-4 text-warm-gold" aria-hidden />
-                <div className="text-sm">
+                <div className="min-w-[12rem] flex-1 text-sm">
                   <div className="font-medium">UPayments</div>
                   <div className="text-xs text-muted-foreground">
                     {t.upaymentsDesc}
                   </div>
                 </div>
-                <Badge variant="secondary" className="ms-auto">KNET</Badge>
-                <Badge variant="secondary">Visa</Badge>
-                <Badge variant="secondary">Mastercard</Badge>
-                <Badge variant="secondary">Apple Pay</Badge>
+                <div className="ms-auto flex flex-wrap gap-2">
+                  <Badge variant="secondary">KNET</Badge>
+                  <Badge variant="secondary">Visa</Badge>
+                  <Badge variant="secondary">Mastercard</Badge>
+                  <Badge variant="secondary">Apple Pay</Badge>
+                </div>
               </div>
               <p className="flex items-center gap-1 text-xs text-muted-foreground">
                 <ShieldCheck className="h-3 w-3" aria-hidden />

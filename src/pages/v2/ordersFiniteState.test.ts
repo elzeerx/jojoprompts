@@ -5,16 +5,18 @@
  */
 import { describe, it, expect } from "bun:test";
 import { parseMyOrdersPayload } from "../../hooks/v2/parseMyOrdersPayload";
-
-declare const require: (m: string) => any;
-const { readFileSync } = require("fs");
-const { resolve } = require("path");
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const HERE: string =
   (import.meta as unknown as { dir?: string }).dir ?? ".";
 const PAGE: string = readFileSync(resolve(HERE, "./V2OrdersPage.tsx"), "utf8");
 const HOOK: string = readFileSync(
   resolve(HERE, "../../hooks/v2/useMyOrders.ts"),
+  "utf8",
+);
+const LEGACY_HOOK: string = readFileSync(
+  resolve(HERE, "../../hooks/v2/useMyLegacyTransactions.ts"),
   "utf8",
 );
 
@@ -28,11 +30,11 @@ describe("parseMyOrdersPayload", () => {
     expect(parseMyOrdersPayload({ ok: true })).toEqual([]);
   });
   it("passes through envelope shapes", () => {
-    expect(parseMyOrdersPayload({ ok: true, orders: [{ id: "1" } as any] }).length).toBe(1);
-    expect(parseMyOrdersPayload({ orders: [{ id: "2" } as any] }).length).toBe(1);
+    expect(parseMyOrdersPayload({ ok: true, orders: [{ id: "1" }] }).length).toBe(1);
+    expect(parseMyOrdersPayload({ orders: [{ id: "2" }] }).length).toBe(1);
   });
   it("passes through raw arrays", () => {
-    expect(parseMyOrdersPayload([{ id: "3" } as any]).length).toBe(1);
+    expect(parseMyOrdersPayload([{ id: "3" }]).length).toBe(1);
   });
 });
 
@@ -53,5 +55,19 @@ describe("V2OrdersPage finite-state semantics", () => {
 describe("useMyOrders enablement", () => {
   it("waits for auth to resolve before enabling the query", () => {
     expect(HOOK.includes("!authLoading && !!user")).toBe(true);
+  });
+});
+
+describe("Historical purchases contract", () => {
+  it("loads the caller's legacy rows through an authenticated self-only query", () => {
+    expect(LEGACY_HOOK.includes('.from("transactions")')).toBe(true);
+    expect(LEGACY_HOOK.includes('.eq("user_id", user.id)')).toBe(true);
+    expect(LEGACY_HOOK.includes("!authLoading && !!user")).toBe(true);
+  });
+
+  it("separates historical purchases from V2 orders", () => {
+    expect(PAGE.includes('data-testid="legacy-orders-list"')).toBe(true);
+    expect(PAGE.includes("Historical purchases")).toBe(true);
+    expect(PAGE.includes("Reconstructed value")).toBe(true);
   });
 });
