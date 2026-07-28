@@ -170,9 +170,9 @@ describe("Edge Function retirement inventory", () => {
     expect(EDGE_FUNCTION_AUDIT_DATE).toBe("2026-07-28");
   });
 
-  it("recommended retirement set is exactly the 23 route-graph-resolved slugs", () => {
+  it("recommended retirement set is exactly the 24 route-graph-resolved slugs", () => {
     expect(new Set(RECOMMENDED_RETIREMENTS)).toEqual(new Set(RETIREMENT_SLUGS));
-    expect(RECOMMENDED_RETIREMENTS.length).toBe(23);
+    expect(RECOMMENDED_RETIREMENTS.length).toBe(24);
   });
 
   it("investigation set is empty after the route-graph pass", () => {
@@ -199,7 +199,6 @@ describe("Edge Function retirement inventory", () => {
       "translate-prompt",
       "ai-studio-chat",
       "ai-studio-image",
-      "admin-package-upload",
       "resend-payment-email",
       "admin-bulk-confirm-users",
     ];
@@ -207,6 +206,7 @@ describe("Edge Function retirement inventory", () => {
       expect(RECOMMENDED_RETIREMENTS.includes(slug)).toBe(false);
     }
   });
+
 
   it("auth mechanism corrections are recorded", () => {
     const byName = new Map(EDGE_FUNCTION_AUDIT.map((e) => [e.name, e]));
