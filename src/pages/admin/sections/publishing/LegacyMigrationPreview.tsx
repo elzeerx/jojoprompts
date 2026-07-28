@@ -448,6 +448,16 @@ export default function LegacyMigrationPreview() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" className="min-h-[44px] min-w-[44px]">
+              <Link
+                to="/admin/publishing/imports"
+                data-legacy-back-to-imports
+                aria-label="Back to Imports / العودة إلى الاستيراد"
+              >
+                <ChevronLeft className="me-1.5 h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+                Back to Imports / العودة إلى الاستيراد
+              </Link>
+            </Button>
             <Button asChild variant="outline" className="min-h-[44px]">
               <Link to="/admin/publishing/imports/json"><FileJson className="me-1.5 h-4 w-4" /> JSON Importer</Link>
             </Button>

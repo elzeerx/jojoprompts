@@ -35,7 +35,7 @@ const DeliveryHealthPage = lazy(
 );
 
 // Cross-cutting utilities and V2 pages that reuse existing surfaces.
-const JsonPromptImporter = lazy(() => import("../sections/content/JsonPromptImporter"));
+const JsonResourceImporter = lazy(() => import("../sections/publishing/JsonResourceImporter"));
 const AuditLogPage = lazy(() => import("../sections/system/AuditLogPage"));
 const AiStudioPage = lazy(() => import("../sections/ai-studio/AiStudioPage"));
 const CategoriesManagement = lazy(() =>
@@ -98,7 +98,7 @@ export const adminSectionElements = {
   publishingVersions: wrap(<VersionsRegistryPage />),
   publishingImports: wrap(<ImportsHub />),
   publishingImportsLegacy: wrap(<LegacyMigrationPreview />),
-  publishingImportsJson: wrap(<JsonPromptImporter />),
+  publishingImportsJson: wrap(<JsonResourceImporter />),
   publishingImportsAiStudio: wrap(<AiStudioPage />),
 
   publishingTaxonomy: wrap(<CategoriesManagement />),
