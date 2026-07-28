@@ -15,7 +15,7 @@ import {
   mapLegacyPromptToV2Draft,
   validateRow,
   buildDraftPayload,
-} from "@/pages/admin/sections/publishing/JsonResourceImporter";
+} from "@/pages/admin/sections/publishing/jsonResourceImporterContract";
 
 const IMPORTER = readFileSync(
   "src/pages/admin/sections/publishing/JsonResourceImporter.tsx",
