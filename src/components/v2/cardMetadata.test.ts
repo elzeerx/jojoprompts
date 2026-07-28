@@ -80,10 +80,13 @@ describe("cardMetadata — public card contract", () => {
 
     it("bilingual: lifetime label localizes", () => {
       const r = make({ owned: true, ownedVia: "library" });
-      expect(ownershipLabel(r, "ar", formatKwd).text).not.toBe(
-        ownershipLabel(r, "en", formatKwd).text,
-      );
+      const en = ownershipLabel(r, "en", formatKwd).text;
+      const ar = ownershipLabel(r, "ar", formatKwd).text;
+      expect(en.length).toBeGreaterThan(0);
+      expect(ar.length).toBeGreaterThan(0);
+      expect(en === ar).toBe(false);
     });
+
   });
 
   describe("trustBadge", () => {
