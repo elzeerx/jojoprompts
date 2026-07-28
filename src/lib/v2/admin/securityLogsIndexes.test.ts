@@ -4,10 +4,14 @@ import {
   SECURITY_LOGS_INDEX_PLAN,
   SECURITY_LOGS_INDEXES_MIGRATION,
   SECURITY_LOGS_INDEXES_SQL,
+  SECURITY_LOGS_LEGACY_SEVERITY_ALLOWLIST,
+  SECURITY_LOGS_LEGACY_SEVERITY_EXPECTED_AFFECTED,
+  SECURITY_LOGS_LEGACY_SEVERITY_NORMALIZATION_SQL,
   SECURITY_LOGS_PLANNED_INDEXES,
 } from "./securityLogsIndexes.sql";
 
 const SQL = SECURITY_LOGS_INDEXES_SQL;
+
 
 describe("security_logs admin query index plan — drafted migration", () => {
   it("is marked drafted and NOT applied live", () => {
