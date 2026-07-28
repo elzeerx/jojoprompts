@@ -106,7 +106,7 @@ describe("package_scan_items column contract (source-wide)", () => {
 describe("v2-admin-package-scan-control edge function", () => {
   it("uses the strict 8-4-4-4-12 UUID regex for version_id and scan_id", () => {
     // Loose 36-char accept must not remain.
-    expect(control).not.toContain(LOOSE_UUID_LITERAL);
+    expect(String(control).includes(LOOSE_UUID_LITERAL)).toBe(false);
     // Strict pattern present for both action paths (queue_scan + refresh_scan).
     const strictHits = control.split(STRICT_UUID_LITERAL).length - 1;
     expect(strictHits).toBeGreaterThanOrEqual(2);
@@ -129,7 +129,7 @@ describe("v2-admin-package-scan-control edge function", () => {
       /\.in\(\s*["']package_scan_id["'],\s*scanIds\s*\)[\s\S]*?\.eq\(\s*["']status["'],\s*["']pending["']\s*\)/,
     );
     // The old gated probe (only when effStatus === "pending") must be gone.
-    expect(control).not.toMatch(/effStatus\s*===\s*["']pending["']\s*&&\s*row\?\.latest_scan_id/);
+    expect(/effStatus\s*===\s*["']pending["']\s*&&\s*row\?\.latest_scan_id/.test(String(control))).toBe(false);
   });
 
   it("handles DB errors from every awaited query with a stable db_error 500", () => {
@@ -144,7 +144,7 @@ describe("v2-admin-package-scan-control edge function", () => {
 
 describe("v2-package-scan-worker edge function", () => {
   it("uses the strict 8-4-4-4-12 UUID regex for scan_id", () => {
-    expect(worker).not.toContain(LOOSE_UUID_LITERAL);
+    expect(String(worker).includes(LOOSE_UUID_LITERAL)).toBe(false);
     expect(worker).toContain(STRICT_UUID_LITERAL);
   });
 
@@ -218,9 +218,9 @@ describe("promoted migration — v2_internal_create_package_scan replacement", (
     const bodyEnd = migration.indexOf("$$;", bodyStart + 2);
     const body = migration.slice(bodyStart, bodyEnd);
     // Historical inline pattern must NOT reappear inside create-scan.
-    expect(body).not.toMatch(/v_prev_scan_id/);
-    expect(body).not.toMatch(/bool_and\(psi\.status = 'clean'\)/);
-    expect(body).not.toMatch(/= v_file_count/);
+    expect(/v_prev_scan_id/.test(String(body))).toBe(false);
+    expect(/bool_and\(psi\.status = 'clean'\)/.test(String(body))).toBe(false);
+    expect(/= v_file_count/.test(String(body))).toBe(false);
   });
 
   it("retains unique-violation fallback -> pending_exists", () => {
