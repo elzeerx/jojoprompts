@@ -150,7 +150,7 @@ describe("security_logs admin query index plan — applied live migration", () =
   });
 });
 
-describe("security_logs legacy severity normalization — drafted UPDATE", () => {
+describe("security_logs legacy severity normalization — applied UPDATE", () => {
   const NORM = SECURITY_LOGS_LEGACY_SEVERITY_NORMALIZATION_SQL;
 
   it("has exactly one bounded UPDATE statement in the migration", () => {
