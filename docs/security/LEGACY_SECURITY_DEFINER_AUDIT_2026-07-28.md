@@ -90,22 +90,38 @@ rg "from.*(incidentResponse|complianceFramework|behavioralAnalytics)" src/
 # (no matches outside the modules themselves)
 ```
 
-| Function (signature)                                     | Only frontend reference                                   | DB-internal caller                                                     |
-| -------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `calculate_anomaly_score(uuid, jsonb)`                   | `src/utils/analytics/behavioralAnalytics.ts:272` (dead)   | none                                                                   |
-| `confirm_user_email(uuid)`                               | none                                                      | none                                                                   |
-| `evaluate_compliance_status(text, uuid)`                 | `src/utils/compliance/complianceFramework.ts:171,379` (dead) | none                                                                |
-| `evaluate_response_conditions(jsonb, jsonb)`             | none                                                      | `trigger_automated_response` body                                      |
-| `execute_response_action(jsonb, jsonb)`                  | none                                                      | `trigger_automated_response` body                                      |
-| `is_super_admin(uuid)`                                   | none (frontend `.rpc` calls do not exist; only `profiles.is_super_admin` column reads via `src/hooks/useSuperAdmin.ts`) | `handle_new_user()` trigger; `v2_internal_admin_roles_settings_summary()` |
-| `trigger_automated_response(text, jsonb)`                | `src/utils/incident/incidentResponse.ts:440` (dead)       | none                                                                   |
-| `user_has_any_role(uuid)`                                | none                                                      | none                                                                   |
+| Function (exact live signature)                          | Only frontend reference                                                                                                | DB-internal caller                                                        |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `calculate_anomaly_score(uuid, text, jsonb)`             | `src/utils/analytics/behavioralAnalytics.ts` (dead module)                                                             | none                                                                       |
+| `confirm_user_email(uuid, boolean)`                      | none                                                                                                                    | none                                                                       |
+| `evaluate_compliance_status(text, jsonb)`                | `src/utils/compliance/complianceFramework.ts` (dead module)                                                             | none                                                                       |
+| `evaluate_response_conditions(jsonb, jsonb)`             | none                                                                                                                    | `trigger_automated_response` body                                          |
+| `is_super_admin(uuid)`                                   | none (frontend `.rpc` calls do not exist; only `profiles.is_super_admin` column reads via `src/hooks/useSuperAdmin.ts`) | `handle_new_user()` trigger; `v2_internal_admin_roles_settings_summary()`  |
+| `user_has_any_role(uuid)`                                | none                                                                                                                    | none                                                                       |
 
 DB-internal callers execute under the function owner, so revoking
 browser roles does not affect them.
 
-**Disposition (drafted):** for each signature, revoke EXECUTE from
-`PUBLIC`, `anon`, `authenticated`; grant to `service_role` only.
+**Disposition (drafted):** for each of the six signatures above, revoke
+EXECUTE from `PUBLIC`, `anon`, `authenticated`; grant to `service_role`
+only. Combined with the two Group A audit-log signatures, the migration
+touches **exactly 8 unique signatures**.
+
+### Already service_role-only — NOT in the revoke set (live evidence)
+
+These two SECURITY DEFINER helpers are `authenticated=false,
+service_role=true` in live pg_proc today, so no migration statement is
+emitted for them and no re-grant is required:
+
+- `public.execute_response_action(uuid, text, jsonb, jsonb)` — invoked
+  by `trigger_automated_response` body under function-owner privilege.
+- `public.trigger_automated_response(text, text, jsonb)` — invoked
+  only from server-side automation paths.
+
+`public.admin_delete_user_data(uuid, uuid)` is likewise already
+service_role-only and is not referenced by this migration. A contract
+test enforces the absence of all three.
+
 
 ## Group C · Customer / RLS helpers — INVESTIGATE (no change in this migration)
 
