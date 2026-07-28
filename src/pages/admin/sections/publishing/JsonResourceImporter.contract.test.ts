@@ -43,14 +43,14 @@ describe("V2 Resource JSON Importer — route wiring", () => {
   });
 
   it("no reference remains to the legacy JsonPromptImporter surface in the active element map", () => {
-    expect(ELEMENTS).not.toMatch(/JsonPromptImporter/);
+    expect(/JsonPromptImporter/.test(ELEMENTS)).toBe(false)
   });
 });
 
 describe("V2 Resource JSON Importer — page contract", () => {
   it("presents a V2-Resource heading, not the legacy 'JSON Prompt Importer'", () => {
     expect(IMPORTER).toMatch(/V2 Resource JSON Importer/);
-    expect(IMPORTER).not.toMatch(/JSON Prompt Importer/);
+    expect(/JSON Prompt Importer/.test(IMPORTER)).toBe(false)
   });
 
   it("advertises all six locked V2 resource types in the UI", () => {
@@ -79,23 +79,23 @@ describe("V2 Resource JSON Importer — page contract", () => {
   });
 
   it("never invokes the legacy prompts table or PromptService", () => {
-    expect(IMPORTER).not.toMatch(/PromptService/);
-    expect(IMPORTER).not.toMatch(/\.from\(["']prompts["']\)/);
-    expect(IMPORTER).not.toMatch(/createPrompt/);
-    expect(IMPORTER).not.toMatch(/prompts library/i);
+    expect(/PromptService/.test(IMPORTER)).toBe(false)
+    expect(/\.from\(["']prompts["']\)/.test(IMPORTER)).toBe(false)
+    expect(/createPrompt/.test(IMPORTER)).toBe(false)
+    expect(/prompts library/i.test(IMPORTER)).toBe(false)
   });
 
   it("never auto-publishes or transitions lifecycle", () => {
-    expect(IMPORTER).not.toMatch(/admin_publish_resource/);
-    expect(IMPORTER).not.toMatch(/admin_transition_resource_lifecycle/);
+    expect(/admin_publish_resource/.test(IMPORTER)).toBe(false)
+    expect(/admin_transition_resource_lifecycle/.test(IMPORTER)).toBe(false)
   });
 
   it("persists exclusively through the authorized save_admin_resource_draft RPC", () => {
     expect(IMPORTER).toMatch(/rpc\(\s*["']save_admin_resource_draft["']/);
     // No arbitrary table writes from the importer.
-    expect(IMPORTER).not.toMatch(/\.from\(["'][^"']+["']\)\.(insert|update|upsert|delete)\(/);
+    expect(/\.from\(["'][^"']+["']\)\.(insert|update|upsert|delete)\(/.test(IMPORTER)).toBe(false)
     // No edge function invocations.
-    expect(IMPORTER).not.toMatch(/functions\.invoke\(/);
+    expect(/functions\.invoke\(/.test(IMPORTER)).toBe(false)
   });
 });
 
