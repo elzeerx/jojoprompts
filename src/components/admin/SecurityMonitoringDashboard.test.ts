@@ -4,7 +4,7 @@ import {
   twentyFourHoursAgoISO,
   ROUTINE_NOISE_ACTIONS,
   SECURITY_EVENTS_PAGE_SIZE,
-} from "@/components/admin/SecurityMonitoringDashboard";
+} from "@/components/admin/securityEventsFilters";
 
 describe("SecurityMonitoringDashboard — filter mapping & bounds", () => {
   it("defaults exclude routine noise and start at page 1", () => {
