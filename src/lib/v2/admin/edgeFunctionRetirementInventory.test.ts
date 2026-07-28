@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync } from "fs";
 import {
   EDGE_FUNCTION_AUDIT,
   EDGE_FUNCTION_AUDIT_DATE,
@@ -218,9 +218,8 @@ describe("Edge Function retirement inventory", () => {
 
   it("v2-upayments-webhook is NOT claimed to verify a provider signature", () => {
     const wh = EDGE_FUNCTION_AUDIT.find((e) => e.name === "v2-upayments-webhook")!;
-    expect(wh.authMechanism).not.toBe("provider_signature");
-    expect(wh.evidence.toLowerCase()).not.toMatch(/signature-verified|verifies (a )?signature/);
-    // Provider (UPayments) is the caller, not a UI component.
+    expect(wh.authMechanism === "provider_signature").toBe(false);
+    expect(/signature-verified|verifies (a )?signature/.test(wh.evidence.toLowerCase())).toBe(false);
     expect(wh.callers.some((c) => c.includes("SimpleUpayButton"))).toBe(false);
   });
 
@@ -230,10 +229,10 @@ describe("Edge Function retirement inventory", () => {
 
   it("docs report exact 23 retirements and 0 investigate remaining", () => {
     expect(DOC).toMatch(/23 slugs/);
-    expect(DOC).not.toMatch(/\b9 slugs\b/);
-    expect(DOC).not.toMatch(/unknown\s*\/\s*investigate:\s*10/i);
-    expect(DOC).not.toMatch(/three PRs|3 PRs/i);
-    expect(DOC).not.toMatch(/#release/);
+    expect(/\b9 slugs\b/.test(DOC)).toBe(false);
+    expect(/unknown\s*\/\s*investigate:\s*10/i.test(DOC)).toBe(false);
+    expect(/three PRs|3 PRs/i.test(DOC)).toBe(false);
+    expect(DOC.includes("#release")).toBe(false);
   });
 
   it("docs mention debug-environment version 318/320 source/deploy sync warning", () => {
