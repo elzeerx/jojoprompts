@@ -64,11 +64,15 @@ export function evaluateQueueGuard(input: QueueGuardInput): QueueGuardResult {
   if (latestScanStatus === "pending" || hasPendingAggregate) {
     return { canQueue: false, reason: "pending_exists" };
   }
-  // Only exact-coverage clean blocks re-queue. Stale clean (coverage_valid
-  // explicitly false) and terminal non-clean (suspicious/malicious) permit a
-  // fresh scan. Server RPC re-validates atomically.
-  if (latestScanStatus === "clean" && coverageValid === true) {
-    return { canQueue: false, reason: "already_clean" };
+  // Coverage-aware clean gating (single source of truth):
+  //   coverage_valid === true  => exact current clean, block re-queue
+  //   coverage_valid === false => stale clean, allow fresh scan
+  //   coverage_valid === undefined => unknown (older RPC or loading) — fail
+  //     closed with "checking" so a raw clean status can never enable Queue
+  //     without confirmation from the effective-state helper.
+  if (latestScanStatus === "clean") {
+    if (coverageValid === true) return { canQueue: false, reason: "already_clean" };
+    if (coverageValid === undefined) return { canQueue: false, reason: "checking" };
   }
   // Fail closed while the pending-child probe is still resolving so we never
   // enable Queue in the brief window between opening the sheet and confirming

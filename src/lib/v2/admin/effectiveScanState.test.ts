@@ -408,6 +408,40 @@ describe("draft migration — fail-closed SQL contract", () => {
     expect(sql).toMatch(/eff\.coverage_valid/);
   });
 
+  it("v2_admin_get_resource_version_detail exposes effective_scan from the same helper (list/detail/control agreement)", () => {
+    // Detail RPC must call v2_internal_effective_scan_state and emit an
+    // effective_scan object with coverage_valid + effective_status so the
+    // frontend ScanDetailSheet can drive the Queue guard from the same
+    // authoritative signal used by authorization, badges, and admin queue.
+    expect(sql).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.v2_admin_get_resource_version_detail\(\s*p_version_id uuid/,
+    );
+    expect(sql).toMatch(/public\.v2_internal_effective_scan_state\(p_version_id\)/);
+    // JSON keys required for the AdminResourceVersionEffectiveScan contract.
+    for (const key of [
+      "'has_files'",
+      "'latest_scan_id'",
+      "'stored_status'",
+      "'effective_status'",
+      "'coverage_valid'",
+      "'current_file_count'",
+      "'scanned_file_count'",
+      "'latest_created_at'",
+      "'latest_scanned_at'",
+    ]) {
+      expect(sql).toContain(key);
+    }
+    // Result envelope must include the effective_scan key alongside version/files/scans.
+    expect(sql).toMatch(/'effective_scan',\s*v_effective_scan/);
+    // ACL from migration 20260724165802 must be preserved (authenticated-only).
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.v2_admin_get_resource_version_detail\(uuid\)\s+FROM PUBLIC,\s*anon,\s*service_role/,
+    );
+    expect(sql).toMatch(
+      /GRANT\s+EXECUTE ON FUNCTION public\.v2_admin_get_resource_version_detail\(uuid\)\s+TO authenticated/,
+    );
+  });
+
   it("published-version file immutability trigger uses stable error and covers INSERT/UPDATE/DELETE", () => {
     expect(sql).toMatch(
       /RAISE EXCEPTION 'published_version_immutable' USING ERRCODE = '42501'/,

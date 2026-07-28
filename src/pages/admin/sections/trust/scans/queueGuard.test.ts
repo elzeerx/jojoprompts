@@ -58,6 +58,40 @@ describe("evaluateQueueGuard", () => {
     }
   });
 
+  it("fails closed on raw clean with unknown coverage (effective_scan missing)", () => {
+    // The RPC did not return effective_scan (older payload or loading). A raw
+    // clean status must NOT enable Queue — the guard must fail closed with
+    // "checking" so we never re-queue an exact-current clean scan by accident.
+    const r = evaluateQueueGuard({
+      ...base,
+      latestScanStatus: "clean",
+      // coverageValid intentionally omitted
+    });
+    expect(r).toEqual({ canQueue: false, reason: "checking" });
+  });
+
+  it("list / detail / control agree: same coverage_valid drives every path", () => {
+    // Exact-coverage clean => queueGuard blocks with already_clean, mirroring
+    // decideQueueAllowed on the server (already asserted in scanProvider_test).
+    expect(
+      evaluateQueueGuard({
+        ...base,
+        latestScanStatus: "clean",
+        coverageValid: true,
+      }).reason,
+    ).toBe("already_clean");
+    // Stale clean => queueGuard allows, mirroring decideQueueAllowed which
+    // returns allow=true when coverageValid=false.
+    expect(
+      evaluateQueueGuard({
+        ...base,
+        latestScanStatus: "clean",
+        coverageValid: false,
+      }).canQueue,
+    ).toBe(true);
+  });
+
+
   it("blocks pending latest with pending_exists", () => {
     const r = evaluateQueueGuard({ ...base, latestScanStatus: "pending" });
     expect(r).toEqual({ canQueue: false, reason: "pending_exists" });

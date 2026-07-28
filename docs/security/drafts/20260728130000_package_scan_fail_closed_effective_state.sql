@@ -509,3 +509,127 @@ CREATE TRIGGER resource_files_published_immutable
 
 COMMENT ON TRIGGER resource_files_published_immutable ON public.resource_files IS
   'Rejects file mutations when the referenced resource_versions row is published. Admins must create a new draft version to alter a published package. Draft versions remain freely editable. Stable error: published_version_immutable.';
+
+-- 7) v2_admin_get_resource_version_detail — expose effective_scan --------------
+-- The admin detail RPC is the ONLY signal the ScanDetailSheet reads. It must
+-- surface the coverage-aware effective scan state so the frontend Queue guard
+-- can (a) treat exact-coverage clean as already_clean and (b) treat stale
+-- clean as re-queuable, both from the same authoritative helper the
+-- authorization path uses. This is a forward-only CREATE OR REPLACE; the
+-- original definition in migration 20260724165802 is superseded intact.
+CREATE OR REPLACE FUNCTION public.v2_admin_get_resource_version_detail(
+  p_version_id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $fn$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_version jsonb;
+  v_files jsonb;
+  v_scans jsonb;
+  v_eff record;
+  v_effective_scan jsonb;
+BEGIN
+  IF v_uid IS NULL OR NOT public.has_role(v_uid, 'admin') THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  IF p_version_id IS NULL THEN
+    RAISE EXCEPTION 'invalid_version' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'version_id', rv.id,
+    'resource_id', r.id,
+    'slug', r.slug,
+    'resource_type', r.type::text,
+    'lifecycle', r.lifecycle::text,
+    'title_en', r.title_en,
+    'title_ar', r.title_ar,
+    'version', rv.version,
+    'major_version', rv.major_version,
+    'is_current', rv.is_current,
+    'published_at', rv.published_at,
+    'created_at', rv.created_at,
+    'updated_at', rv.updated_at,
+    'changelog_en', rv.changelog_en,
+    'changelog_ar', rv.changelog_ar,
+    'package_size_bytes', rv.package_size_bytes,
+    'package_checksum', rv.package_checksum
+  )
+  INTO v_version
+  FROM public.resource_versions rv
+  JOIN public.resources r ON r.id = rv.resource_id
+  WHERE rv.id = p_version_id;
+
+  IF v_version IS NULL THEN
+    RAISE EXCEPTION 'version_not_found' USING ERRCODE = 'P0002';
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'id', rf.id,
+    'file_name', rf.file_name,
+    'content_type', rf.content_type,
+    'size_bytes', rf.size_bytes,
+    'checksum_sha256', rf.checksum_sha256,
+    'created_at', rf.created_at
+  ) ORDER BY rf.created_at DESC), '[]'::jsonb)
+  INTO v_files
+  FROM (
+    SELECT * FROM public.resource_files
+    WHERE resource_version_id = p_version_id
+    ORDER BY created_at DESC
+    LIMIT 200
+  ) rf;
+
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'id', ps.id,
+    'scanner', ps.scanner,
+    'status', ps.status::text,
+    'findings', ps.findings,
+    'scanned_at', ps.scanned_at,
+    'created_at', ps.created_at
+  ) ORDER BY COALESCE(ps.scanned_at, ps.created_at) DESC), '[]'::jsonb)
+  INTO v_scans
+  FROM (
+    SELECT * FROM public.package_scans
+    WHERE resource_version_id = p_version_id
+    ORDER BY COALESCE(scanned_at, created_at) DESC, created_at DESC
+    LIMIT 50
+  ) ps;
+
+  -- Single source of truth for coverage-aware trust. Because this function is
+  -- SECURITY DEFINER and owned by the DB owner, it can invoke the
+  -- service_role-only helper without exposing it to the caller.
+  SELECT
+    has_files, latest_scan_id, stored_status, effective_status, coverage_valid,
+    current_file_count, scanned_file_count, latest_created_at, latest_scanned_at
+  INTO v_eff
+  FROM public.v2_internal_effective_scan_state(p_version_id);
+
+  v_effective_scan := jsonb_build_object(
+    'has_files',           v_eff.has_files,
+    'latest_scan_id',      v_eff.latest_scan_id,
+    'stored_status',       v_eff.stored_status,
+    'effective_status',    v_eff.effective_status,
+    'coverage_valid',      v_eff.coverage_valid,
+    'current_file_count',  v_eff.current_file_count,
+    'scanned_file_count',  v_eff.scanned_file_count,
+    'latest_created_at',   v_eff.latest_created_at,
+    'latest_scanned_at',   v_eff.latest_scanned_at
+  );
+
+  RETURN jsonb_build_object(
+    'version', v_version,
+    'files', v_files,
+    'scans', v_scans,
+    'effective_scan', v_effective_scan
+  );
+END;
+$fn$;
+
+-- Preserve authoritative ACL from migration 20260724165802.
+REVOKE ALL ON FUNCTION public.v2_admin_get_resource_version_detail(uuid) FROM PUBLIC, anon, service_role;
+GRANT  EXECUTE ON FUNCTION public.v2_admin_get_resource_version_detail(uuid) TO authenticated;
