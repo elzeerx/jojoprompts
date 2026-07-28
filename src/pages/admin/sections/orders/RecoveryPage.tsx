@@ -429,8 +429,14 @@ function IntegritySection({
           {data?.as_of && (
             <span className="text-xs text-muted-foreground">{formatDateTime(data.as_of)}</span>
           )}
-          <Button size="sm" variant="ghost" className="min-h-[44px]"
-            onClick={() => query.refetch()} disabled={query.isFetching}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="min-h-[44px] min-w-[44px]"
+            onClick={() => query.refetch()}
+            disabled={query.isFetching}
+            aria-label="Refresh commerce integrity"
+          >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -488,11 +494,13 @@ function OrderReconciliationPanel() {
     // Try order number via v2_admin_list_orders search
     setResolving(true);
     try {
-      const { data, error } = await (supabase.rpc as any)("v2_admin_list_orders", {
+      const { data, error } = await supabase.rpc("v2_admin_list_orders", {
         p_search: trimmed, p_limit: 5, p_offset: 0,
       });
       if (error) throw error;
-      const rows = (data?.rows ?? []) as Array<{ id: string; order_number: string }>;
+      const rows = (
+        data as { rows?: Array<{ id: string; order_number: string }> } | null
+      )?.rows ?? [];
       const exact = rows.find((r) => r.order_number === trimmed) ?? rows[0];
       if (!exact) {
         setResolveError("No matching order");

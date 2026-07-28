@@ -29,6 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Shield,
   AlertTriangle,
@@ -475,17 +476,21 @@ export function SecurityMonitoringDashboard() {
               />
             </div>
             <div className="flex items-end">
-              <label className="inline-flex items-center gap-2 min-h-[44px] cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
+              <div className="inline-flex items-center gap-2 min-h-[44px]">
+                <Checkbox
+                  id="include-all-security-events"
                   checked={filters.includeNoise}
-                  onChange={(e) =>
-                    updateFilter({ noise: e.target.checked ? "1" : null })
+                  onCheckedChange={(checked) =>
+                    updateFilter({ noise: checked === true ? "1" : null })
                   }
                 />
-                <span className="text-sm">Include all events (route + dev tools)</span>
-              </label>
+                <label
+                  htmlFor="include-all-security-events"
+                  className="flex min-h-[44px] cursor-pointer items-center text-sm"
+                >
+                  Include all events (route + dev tools)
+                </label>
+              </div>
             </div>
           </div>
         </CardContent>

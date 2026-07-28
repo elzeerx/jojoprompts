@@ -9,10 +9,12 @@
  */
 import { describe, it, expect } from "bun:test";
 
-declare const require: (m: string) => any;
+declare const require: (m: string) => {
+  readFileSync(p: string, enc: string): string;
+};
 
 function read(rel: string): string {
-  const fs = require("fs") as { readFileSync(p: string, enc: string): string };
+  const fs = require("fs");
   return fs.readFileSync(rel, "utf8");
 }
 
@@ -75,5 +77,20 @@ describe("shared primitive mobile touch-target contract", () => {
     expect(
       /aria-label="Remove product"[\s\S]*?min-h-\[44px\] min-w-\[44px\]/.test(src),
     ).toBe(true);
+  });
+
+  it("Recovery commerce-integrity refresh is 44x44 and labelled", () => {
+    const src = read("src/pages/admin/sections/orders/RecoveryPage.tsx");
+    expect(src.includes('className="min-h-[44px] min-w-[44px]"')).toBe(true);
+    expect(src.includes('aria-label="Refresh commerce integrity"')).toBe(true);
+  });
+
+  it("Security Events uses the shared 44x44 Checkbox root", () => {
+    const src = read("src/components/admin/SecurityMonitoringDashboard.tsx");
+    expect(src.includes('import { Checkbox } from "@/components/ui/checkbox"')).toBe(
+      true,
+    );
+    expect(src.includes('id="include-all-security-events"')).toBe(true);
+    expect(src.includes('type="checkbox"')).toBe(false);
   });
 });
