@@ -235,6 +235,7 @@ export async function handleRequest(req: Request, deps: HandlerDeps): Promise<Re
     await deps.storage.remove(path).catch(() => {});
     const msg = reg.error.message ?? "";
     console.error("register_failed");
+    if (msg.includes("published_version_immutable")) return json({ error: "published_version_immutable" }, 409);
     if (msg.includes("forbidden")) return json({ error: "forbidden" }, 403);
     if (msg.includes("version_not_found")) return json({ error: "version_not_found" }, 404);
     if (msg.includes("invalid_file_name")) return json({ error: "invalid_file_name" }, 400);

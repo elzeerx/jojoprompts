@@ -351,6 +351,11 @@ export type QueueAllowedInput = {
   hasAnyPendingChild: boolean;
   hasFiles: boolean;
   providerReady: boolean;
+  // Effective coverage of the latest stored clean scan against the version's
+  // current resource_files. When false, a stored 'clean' status is stale and
+  // must NOT short-circuit as already_clean — a fresh scan is required. The
+  // DB RPC v2_internal_create_package_scan re-validates atomically either way.
+  coverageValid?: boolean;
 };
 export type QueueDecision =
   | { allow: true }
@@ -362,7 +367,10 @@ export function decideQueueAllowed(input: QueueAllowedInput): QueueDecision {
   if (input.hasAnyPendingChild) return { allow: false, reason: "pending_exists" };
   const s = input.latestScanStatus;
   if (s === "pending") return { allow: false, reason: "pending_exists" };
-  if (s === "clean" || s === "suspicious" || s === "malicious") {
+  // Only exact-coverage clean scans block re-queue. Stale clean (coverage
+  // invalid) or terminal non-clean (suspicious/malicious/failed) permit a
+  // fresh scan.
+  if (s === "clean" && input.coverageValid === true) {
     return { allow: false, reason: "already_clean" };
   }
   return { allow: true };

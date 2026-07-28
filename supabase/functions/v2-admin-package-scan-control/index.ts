@@ -135,39 +135,45 @@ Deno.serve(async (req) => {
     if (filesErr) return err("db_error", 500);
     const hasFiles = !!(files && files.length > 0);
 
-    // Latest scan for admission gates.
-    const { data: latestScan, error: latestErr } = await auth.supabase
-      .from("package_scans")
-      .select("id, status")
-      .eq("resource_version_id", versionId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (latestErr) return err("db_error", 500);
-
-    // Pending child items across ANY scan for this version.
-    const { data: allScans, error: allScansErr } = await auth.supabase
-      .from("package_scans")
-      .select("id")
-      .eq("resource_version_id", versionId);
-    if (allScansErr) return err("db_error", 500);
-    const allScanIds = (allScans ?? []).map((s: { id: string }) => s.id);
+    // Effective coverage-aware scan state (single source of truth). Stale
+    // clean coverage MUST NOT short-circuit as already_clean.
+    let latestStatus: NormalizedStatus | null = null;
+    let coverageValid = false;
     let hasAnyPendingChild = false;
-    if (allScanIds.length > 0) {
-      const probe = await auth.supabase
-        .from("package_scan_items")
-        .select("id")
-        .in("scan_id", allScanIds)
-        .eq("status", "pending")
-        .limit(1);
-      hasAnyPendingChild = (probe.data?.length ?? 0) > 0;
+    {
+      const { data: eff, error: effErr } = await auth.supabase.rpc(
+        "v2_internal_effective_scan_state",
+        { p_version_id: versionId },
+      );
+      if (effErr) return err("db_error", 500);
+      const row = Array.isArray(eff) ? eff[0] : eff;
+      const effStatus = (row?.effective_status ?? null) as string | null;
+      if (
+        effStatus === "pending" || effStatus === "clean" ||
+        effStatus === "suspicious" || effStatus === "malicious" ||
+        effStatus === "failed"
+      ) {
+        latestStatus = effStatus as NormalizedStatus;
+      }
+      coverageValid = row?.coverage_valid === true;
+      // Any pending scan (regardless of coverage) blocks re-queue.
+      if (effStatus === "pending" && row?.latest_scan_id) {
+        const probe = await auth.supabase
+          .from("package_scan_items")
+          .select("id")
+          .eq("package_scan_id", row.latest_scan_id)
+          .eq("status", "pending")
+          .limit(1);
+        hasAnyPendingChild = (probe.data?.length ?? 0) > 0;
+      }
     }
 
     const decision = decideQueueAllowed({
-      latestScanStatus: (latestScan?.status as NormalizedStatus | undefined) ?? null,
+      latestScanStatus: latestStatus,
       hasAnyPendingChild,
       hasFiles,
       providerReady: readiness.ready,
+      coverageValid,
     });
     if (!decision.allow) {
       const status =

@@ -34,10 +34,27 @@ describe("evaluateQueueGuard", () => {
     expect(r).toEqual({ canQueue: false, reason: "no_files" });
   });
 
-  it("blocks clean/suspicious/malicious latest with already_clean", () => {
-    for (const s of ["clean", "suspicious", "malicious"] as const) {
-      const r = evaluateQueueGuard({ ...base, latestScanStatus: s });
-      expect(r).toEqual({ canQueue: false, reason: "already_clean" });
+  it("blocks only exact-coverage clean latest with already_clean", () => {
+    const r = evaluateQueueGuard({
+      ...base,
+      latestScanStatus: "clean",
+      coverageValid: true,
+    });
+    expect(r).toEqual({ canQueue: false, reason: "already_clean" });
+  });
+
+  it("allows queueing on stale clean (coverage invalid) and non-clean terminals", () => {
+    expect(
+      evaluateQueueGuard({
+        ...base,
+        latestScanStatus: "clean",
+        coverageValid: false,
+      }),
+    ).toEqual({ canQueue: true, reason: "ok" });
+    for (const s of ["suspicious", "malicious", "failed"] as const) {
+      expect(
+        evaluateQueueGuard({ ...base, latestScanStatus: s }),
+      ).toEqual({ canQueue: true, reason: "ok" });
     }
   });
 
@@ -51,20 +68,14 @@ describe("evaluateQueueGuard", () => {
     expect(r).toEqual({ canQueue: false, reason: "pending_exists" });
   });
 
-  it("blocks when a pending child exists under a terminal aggregate", () => {
+  it("blocks when a pending child exists under any terminal aggregate", () => {
     for (const s of ["failed", "malicious", "suspicious"] as const) {
       const r = evaluateQueueGuard({
         ...base,
         latestScanStatus: s,
-        // suspicious/malicious will already block earlier via already_clean,
-        // but we still verify pending-child blocks for `failed` explicitly.
         hasPendingChild: true,
       });
-      if (s === "failed") {
-        expect(r).toEqual({ canQueue: false, reason: "pending_exists" });
-      } else {
-        expect(r).toEqual({ canQueue: false, reason: "already_clean" });
-      }
+      expect(r).toEqual({ canQueue: false, reason: "pending_exists" });
     }
   });
 
