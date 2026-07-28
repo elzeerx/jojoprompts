@@ -17,8 +17,6 @@
  *    Helmet meta that would compete).
  */
 import { describe, it, expect } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import {
   DEFAULT_OG_IMAGE,
   PRODUCTION_HOST,
@@ -26,8 +24,15 @@ import {
   shouldNoindex,
 } from "@/components/v2/SeoHead";
 
+declare const require: (m: string) => any;
+const { readFileSync } = require("fs");
+const { resolve } = require("path");
+
+const HERE: string = (import.meta as unknown as { dir?: string }).dir ?? ".";
+const REPO_ROOT = resolve(HERE, "../../..");
+
 function read(rel: string) {
-  return readFileSync(resolve(process.cwd(), rel), "utf8");
+  return readFileSync(resolve(REPO_ROOT, rel), "utf8") as string;
 }
 
 describe("index.html static head no longer competes with SeoHead/Helmet", () => {
@@ -119,7 +124,10 @@ describe("Private / authenticated routes always pass noindex to SeoHead", () => 
     it(`${file} — every SeoHead usage includes noindex`, () => {
       const src = read(file);
       const seoBlocks = src.match(/<SeoHead[\s\S]*?\/>/g) ?? [];
-      expect({ file, count: seoBlocks.length }).not.toEqual({ file, count: 0 });
+      expect({ file, hasSeoHead: seoBlocks.length > 0 }).toEqual({
+        file,
+        hasSeoHead: true,
+      });
       for (const block of seoBlocks) {
         expect({ file, block, hasNoindex: /\bnoindex\b/.test(block) }).toEqual({
           file,
