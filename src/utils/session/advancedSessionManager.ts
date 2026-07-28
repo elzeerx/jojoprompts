@@ -196,17 +196,9 @@ export class AdvancedSessionManager {
         // High risk - invalidate session immediately
         await this.invalidateSession(sessionId);
         
-        // Log security incident
-        await supabase.from('security_logs').insert({
-          user_id: userId,
-          action: 'session_hijacking_detected',
-          details: {
-            session_id: sessionId,
-            indicators: suspiciousIndicators,
-            risk_score: riskScore
-          },
-          severity: 'high',
-          event_category: 'security_incident'
+        // Pre-launch hardening: no client-role DB write into security_logs.
+        logger.warn('session_hijacking_detected', {
+          userId, sessionId, indicators: suspiciousIndicators, riskScore,
         });
 
         logger.warn('Session hijacking detected', { userId, sessionId, riskScore });
