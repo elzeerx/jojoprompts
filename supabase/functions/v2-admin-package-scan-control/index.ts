@@ -230,7 +230,9 @@ Deno.serve(async (req) => {
 
   if (action === "refresh_scan") {
     const scanId = String(payload.scan_id ?? "");
-    if (!/^[0-9a-f-]{36}$/i.test(scanId)) return err("invalid_scan_id", 400);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(scanId)) {
+      return err("invalid_scan_id", 400);
+    }
 
     const readiness = currentReadiness();
     if (!readiness.ready) {
@@ -247,14 +249,17 @@ Deno.serve(async (req) => {
 
     let pendingCount = 0;
     if (scan) {
+      // Correct column: package_scan_id (there is no scan_id column on
+      // package_scan_items — the live UNIQUE is (package_scan_id, resource_file_id)).
       const { data: pending, error: pendingErr } = await auth.supabase
         .from("package_scan_items")
         .select("id")
-        .eq("scan_id", scanId)
+        .eq("package_scan_id", scanId)
         .eq("status", "pending");
       if (pendingErr) return err("db_error", 500);
       pendingCount = pending?.length ?? 0;
     }
+
 
     const decision = decideRefreshAllowed({
       scanExists: !!scan,
