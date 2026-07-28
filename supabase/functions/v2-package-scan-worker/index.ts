@@ -115,8 +115,9 @@ async function persistReadinessFailure(
   const { data: pending } = await supabase
     .from("package_scan_items")
     .select("id")
-    .eq("scan_id", scanId)
+    .eq("package_scan_id", scanId)
     .eq("status", "pending");
+
   for (const item of (pending ?? []) as Array<{ id: string }>) {
     await failItem(supabase, item.id, `provider_not_ready_${reasonSuffix}`);
   }
