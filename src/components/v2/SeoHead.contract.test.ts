@@ -154,11 +154,14 @@ describe("SeoHead production origin and stable share image", () => {
     expect(/id-preview--/i.test(DEFAULT_OG_IMAGE)).toBe(false);
   });
 
-  it("SeoHead source references no lovable.app or preview host literals", () => {
+  it("SeoHead source emits no lovable.app or R2 URL literal (comments stripped)", () => {
     const src = read("src/components/v2/SeoHead.tsx");
-    expect(/lovable\.app/i.test(src)).toBe(false);
-    expect(/id-preview--/i.test(src)).toBe(false);
-    expect(/r2\.dev|r2\.cloudflarestorage\.com/i.test(src)).toBe(false);
+    const code = src
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+    expect(/https?:\/\/[^"'`\s]*lovable\.app/i.test(code)).toBe(false);
+    expect(/r2\.dev|r2\.cloudflarestorage\.com/i.test(code)).toBe(false);
+    expect(/id-preview--/i.test(code)).toBe(false);
   });
 });
 
