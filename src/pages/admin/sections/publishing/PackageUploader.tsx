@@ -68,12 +68,13 @@ function formatBytes(n: number): string {
 }
 
 function scanBadge(status: ScanStatus | null) {
-  if (status === "clean") return <Badge className="bg-emerald-600 text-white">Clean</Badge>;
-  if (status === "pending") return <Badge variant="secondary">Scan pending</Badge>;
-  if (status === "suspicious") return <Badge className="bg-amber-500 text-white">Suspicious</Badge>;
-  if (status === "malicious") return <Badge className="bg-red-600 text-white">Malicious</Badge>;
-  if (status === "failed") return <Badge className="bg-red-500 text-white">Scan failed</Badge>;
-  return <Badge variant="outline">No scan yet</Badge>;
+  const label = packageScanGuidance(status).badge;
+  if (status === "clean") return <Badge className="bg-emerald-600 text-white">{label}</Badge>;
+  if (status === "pending") return <Badge variant="secondary">{label}</Badge>;
+  if (status === "suspicious") return <Badge className="bg-amber-500 text-white">{label}</Badge>;
+  if (status === "malicious") return <Badge className="bg-red-600 text-white">{label}</Badge>;
+  if (status === "failed") return <Badge className="bg-red-500 text-white">{label}</Badge>;
+  return <Badge variant="outline">{label}</Badge>;
 }
 
 export function PackageUploader({ resourceId: _resourceId, resourceVersionId, resourceType }: Props) {
