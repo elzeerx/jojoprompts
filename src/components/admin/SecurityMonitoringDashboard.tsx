@@ -233,11 +233,15 @@ export function SecurityMonitoringDashboard() {
         const to = from + SECURITY_EVENTS_PAGE_SIZE - 1;
         let query = supabase
           .from("security_logs")
-          .select("id, action, user_id, ip_address, details, created_at", {
-            count: "exact",
-          })
+          .select(
+            "id, action, user_id, ip_address, severity, event_category, created_at",
+            { count: "exact" },
+          )
           .order("created_at", { ascending: false })
           .range(from, to);
+
+        const listSince = windowSinceISO(filters.window);
+        if (listSince) query = query.gte("created_at", listSince);
 
         if (!filters.includeNoise) {
           query = query.not(
@@ -250,11 +254,10 @@ export function SecurityMonitoringDashboard() {
           query = query.eq("action", filters.action);
         }
         if (filters.severity !== "all") {
-          // Severity lives inside JSON details.
-          query = query.eq("details->>severity", filters.severity);
+          query = query.eq("severity", filters.severity);
         }
         if (filters.category !== "all") {
-          query = query.eq("details->>event_category", filters.category);
+          query = query.eq("event_category", filters.category);
         }
         if (filters.q.trim()) {
           // ilike against the action slug — safe, indexable string column.
@@ -264,7 +267,7 @@ export function SecurityMonitoringDashboard() {
         const { data, count, error } = await query;
         if (cancelled) return;
         if (error) throw error;
-        setRows((data ?? []) as SecurityLogRow[]);
+        setRows(((data ?? []) as unknown) as SecurityLogRow[]);
         setTotalMatching(count ?? 0);
       } catch (err) {
         if (cancelled) return;
@@ -286,6 +289,7 @@ export function SecurityMonitoringDashboard() {
     filters.action,
     filters.q,
     filters.includeNoise,
+    filters.window,
     refreshTick,
   ]);
 
