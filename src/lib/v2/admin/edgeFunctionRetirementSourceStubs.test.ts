@@ -57,8 +57,8 @@ const V2_UNTOUCHED_SAMPLES: readonly string[] = [
 const stubPath = (slug: string) => `supabase/functions/${slug}/index.ts`;
 
 describe("Edge Function retirement source stubs (source-only)", () => {
-  it("stubs exactly 17 slugs in this pass", () => {
-    expect(RETIRED_STUB_SLUGS.length).toBe(17);
+  it("stubs exactly 24 slugs after route-graph refinement", () => {
+    expect(RETIRED_STUB_SLUGS.length).toBe(24);
   });
 
   it("stubbed set + blockers = full 24-slug retirement recommendation", () => {
@@ -67,12 +67,17 @@ describe("Edge Function retirement source stubs (source-only)", () => {
     expect(RETIRED_STUB_SLUGS.length + RETIREMENT_BLOCKERS.length).toBe(24);
   });
 
+  it("no blockers remain — route-graph proof cleared all seven", () => {
+    expect(RETIREMENT_BLOCKERS.length).toBe(0);
+  });
+
   it("stubbed and blocker sets are disjoint", () => {
     const stubs = new Set<string>(RETIRED_STUB_SLUGS);
     for (const b of RETIREMENT_BLOCKERS) {
       expect(stubs.has(b)).toBe(false);
     }
   });
+
 
   it("every stub file exists on disk", () => {
     for (const slug of RETIRED_STUB_SLUGS) {
