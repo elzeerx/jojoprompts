@@ -176,10 +176,16 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
     queryKey: ["admin","v2","platforms"], queryFn: fetchPlatforms, staleTime: 60_000,
   });
 
-  const { data: existing, isLoading: loadingResource } = useQuery({
+  const {
+    data: existing,
+    isLoading: loadingResource,
+    isError: resourceLoadError,
+    error: resourceError,
+  } = useQuery({
     queryKey: ["admin","v2","publisher","resource", resourceId],
     queryFn: () => fetchResource(resourceId!),
     enabled: !!resourceId,
+    retry: false,
   });
 
   useEffect(() => {
