@@ -14,12 +14,14 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Rocket, Save, Sparkles, Undo2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { useAiStudioDraft } from "./useAiStudioDraft";
 import { AiStudioChat } from "./AiStudioChat";
 import { AssetPreviewPane } from "./AssetPreviewPane";
 import { DraftsSidebar } from "./DraftsSidebar";
 import { ImagePreviewStream } from "./ImagePreviewStream";
 import { PublishDialog } from "./PublishDialog";
+import { AI_STUDIO_BASE_ROUTE } from "./routes";
 import type { AiAssetKind } from "./types";
 
 const KIND_OPTIONS: { value: AiAssetKind; label: string }[] = [
@@ -46,7 +48,7 @@ export default function AiStudioPage() {
   const navigate = useNavigate();
 
   // Deferred draft creation. We no longer auto-INSERT on mount, so simply
-  // opening /admin/ai-studio does not litter the drafts table.
+  // Opening AI Studio does not litter the drafts table.
   const [creating, setCreating] = useState(false);
   const createDraft = async () => {
     if (!user?.id || creating) return;
@@ -57,9 +59,13 @@ export default function AiStudioPage() {
         .insert({ user_id: user.id, kind: "text", title: "New draft" })
         .select("id")
         .single();
-      if (data?.id && !error) {
-        navigate(`/admin/ai-studio/${data.id}`);
+      if (error || !data?.id) {
+        throw error ?? new Error("The draft was not created.");
       }
+      navigate(`${AI_STUDIO_BASE_ROUTE}/${data.id}`);
+    } catch (error) {
+      console.error("Failed to create AI Studio draft:", error);
+      toast.error("Could not create the draft. Please try again.");
     } finally {
       setCreating(false);
     }
@@ -89,11 +95,11 @@ export default function AiStudioPage() {
 
   if (!draftId) {
     return (
-      <div className="grid grid-cols-[240px_1fr] h-[calc(100vh-9rem)] gap-3">
+      <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 gap-3 lg:h-[calc(100vh-9rem)] lg:grid-cols-[240px_minmax(0,1fr)]">
         <DraftsSidebar activeId={undefined} />
         <div className="flex flex-col items-center justify-center border rounded-lg bg-background p-8 text-center">
           <Sparkles className="h-8 w-8 text-primary mb-3" />
-          <h2 className="text-lg font-semibold">AI Studio</h2>
+          <h1 className="text-lg font-semibold">AI Studio</h1>
           <p className="mt-1 mb-4 max-w-md text-sm text-muted-foreground">
             Pick an existing draft from the sidebar or start a new one. Drafts are only
             created when you explicitly begin, so the drafts table stays clean.
@@ -109,14 +115,15 @@ export default function AiStudioPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
+      <div className="flex h-[60vh] items-center justify-center" role="status" aria-label="Loading AI Studio draft">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-[240px_1fr_1fr] h-[calc(100vh-9rem)] gap-3">
+    <div className="grid min-h-[calc(100vh-9rem)] grid-cols-1 gap-3 lg:h-[calc(100vh-9rem)] lg:grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)]">
+      <h1 className="sr-only">AI Studio</h1>
       <DraftsSidebar activeId={draftId} />
 
       <div className="flex flex-col border rounded-lg overflow-hidden bg-background">
@@ -129,7 +136,7 @@ export default function AiStudioPage() {
             defaultValue={draft?.title || ""}
             onBlur={(e) => setTitle(e.target.value)}
             placeholder="Draft title…"
-            className="h-8 text-sm"
+            className="min-h-[44px] text-sm sm:min-h-[36px]"
           />
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -137,7 +144,7 @@ export default function AiStudioPage() {
                 Kind
               </Label>
               <Select value={kind} onValueChange={(v) => setKind(v as AiAssetKind)}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="min-h-[44px] text-xs sm:min-h-[36px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -154,7 +161,7 @@ export default function AiStudioPage() {
                 Target LLM
               </Label>
               <Select value={targetLlm} onValueChange={setTargetLlm}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="min-h-[44px] text-xs sm:min-h-[36px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

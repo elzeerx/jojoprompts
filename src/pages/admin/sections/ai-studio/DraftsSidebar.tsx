@@ -8,6 +8,7 @@ import { Plus, FileText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AiStudioDraft } from "./types";
+import { AI_STUDIO_BASE_ROUTE } from "./routes";
 
 interface Props {
   activeId?: string;
@@ -56,7 +57,7 @@ export function DraftsSidebar({ activeId }: Props) {
       toast.error("Could not create draft", { description: error?.message });
       return;
     }
-    navigate(`/admin/ai-studio/${data.id}`);
+    navigate(`${AI_STUDIO_BASE_ROUTE}/${data.id}`);
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -69,12 +70,12 @@ export function DraftsSidebar({ activeId }: Props) {
       return;
     }
     toast.success("Draft deleted");
-    if (activeId === id) navigate("/admin/ai-studio");
+    if (activeId === id) navigate(AI_STUDIO_BASE_ROUTE);
     else load();
   };
 
   return (
-    <div className="flex flex-col h-full border-r bg-muted/20">
+    <div className="flex min-h-[220px] flex-col border bg-muted/20 lg:h-full lg:min-h-0 lg:border-y-0 lg:border-s-0">
       <div className="p-3 border-b">
         <Button
           onClick={handleNew}
@@ -101,8 +102,8 @@ export function DraftsSidebar({ activeId }: Props) {
             return (
               <Link
                 key={d.id}
-                to={`/admin/ai-studio/${d.id}`}
-                className={`group flex items-start gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent transition-colors ${
+                to={`${AI_STUDIO_BASE_ROUTE}/${d.id}`}
+                className={`group flex min-h-[44px] items-start gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent transition-colors ${
                   isActive ? "bg-accent" : ""
                 }`}
               >
@@ -125,7 +126,7 @@ export function DraftsSidebar({ activeId }: Props) {
                 </div>
                 <button
                   onClick={(e) => handleDelete(d.id, e)}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-muted-foreground transition-colors hover:text-destructive lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                   aria-label="Delete draft"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

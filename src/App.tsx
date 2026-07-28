@@ -2,7 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useParams,
+} from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -102,6 +108,19 @@ function PromptsCatalogRedirect() {
   return <Navigate to={`/prompts${search}${hash}`} replace />;
 }
 
+/**
+ * Preserve the selected AI Studio draft when redirecting old admin bookmarks.
+ * The legacy route is local-only and draft IDs are encoded before interpolation.
+ */
+function LegacyAiStudioDraftRedirect() {
+  const { draftId } = useParams<{ draftId: string }>();
+  const destination = draftId
+    ? `/admin/publishing/imports/ai-studio/${encodeURIComponent(draftId)}`
+    : "/admin/publishing/imports/ai-studio";
+
+  return <Navigate to={destination} replace />;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -189,7 +208,7 @@ function App() {
                           <Route path="prompts" element={<Navigate to="/admin/catalog/prompts" replace />} />
                           <Route path="prompts/import" element={<Navigate to="/admin/publishing/imports" replace />} />
                           <Route path="ai-studio" element={<Navigate to="/admin/publishing/imports/ai-studio" replace />} />
-                          <Route path="ai-studio/:draftId" element={<Navigate to="/admin/publishing/imports/ai-studio" replace />} />
+                          <Route path="ai-studio/:draftId" element={<LegacyAiStudioDraftRedirect />} />
                           <Route path="categories" element={<Navigate to="/admin/publishing/taxonomy" replace />} />
                           <Route path="purchases" element={<Navigate to="/admin/orders" replace />} />
                           <Route path="abandoned-cart" element={<Navigate to="/admin/orders/recovery" replace />} />
