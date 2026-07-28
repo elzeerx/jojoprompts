@@ -125,7 +125,7 @@ describe("receiptResend / migration draft invariants", () => {
     expect(/CREATE UNIQUE INDEX .* WHERE status IN \('pending','processing'\)/s.test(sql)).toBe(true);
     // Admin RLS SELECT only; no write policies.
     expect(sql.includes("CREATE POLICY admin_read_receipt_resend_requests")).toBe(true);
-    expect(/FOR (INSERT|UPDATE|DELETE)/.test(sql)).toBe(false);
+    expect(/CREATE POLICY[^;]*FOR (INSERT|UPDATE|DELETE)/i.test(sql)).toBe(false);
     // Grants
     expect(sql.includes("GRANT SELECT ON public.v2_order_receipt_resend_requests TO authenticated"))
       .toBe(true);
