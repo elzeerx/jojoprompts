@@ -222,6 +222,11 @@ function App() {
                               />
                             ))}
 
+                            <Route
+                              path="prompts-catalog"
+                              element={<PromptsCatalogRedirect />}
+                            />
+
                             {LEGACY_REDIRECTS.map(([from, to]) => (
                               <Route
                                 key={`redirect:${from}`}
