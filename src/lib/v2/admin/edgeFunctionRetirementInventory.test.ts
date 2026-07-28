@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { readFileSync } from "fs";
+const { readFileSync } = require("fs");
 import {
   EDGE_FUNCTION_AUDIT,
   EDGE_FUNCTION_AUDIT_DATE,
