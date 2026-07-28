@@ -14,8 +14,8 @@
 //      DEFINER RPC. Package scans remain gated by the scanner slice.
 //   4) On success we invalidate the files + scan queries and reset the input.
 //
-// This UI intentionally invokes ONLY `v2-admin-upload-resource-file`. The
-// legacy two-step `admin-package-upload` slug is retired at source.
+// This UI intentionally invokes ONLY the V2 upload Edge Function. The
+// legacy two-step upload slug is retired at source.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
