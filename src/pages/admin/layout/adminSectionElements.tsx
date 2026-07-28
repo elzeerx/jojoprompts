@@ -35,7 +35,7 @@ const DeliveryHealthPage = lazy(
 );
 
 // Cross-cutting utilities and V2 pages that reuse existing surfaces.
-const JsonPromptImporter = lazy(() => import("../sections/content/JsonPromptImporter"));
+const JsonResourceImporter = lazy(() => import("../sections/publishing/JsonResourceImporter"));
 const AuditLogPage = lazy(() => import("../sections/system/AuditLogPage"));
 const AiStudioPage = lazy(() => import("../sections/ai-studio/AiStudioPage"));
 const CategoriesManagement = lazy(() =>
