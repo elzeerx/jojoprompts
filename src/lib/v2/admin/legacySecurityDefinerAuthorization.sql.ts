@@ -108,9 +108,8 @@ export const LEGACY_SECDEF_MIGRATION_SQL = `-- 20260728120000_legacy_security_de
 -- supabase migration tool, which owns the canonical
 -- \`supabase/migrations/20260728120000_...sql\` path.
 --
-
-
 -- Scope: schema \`public\`. Revoke browser (PUBLIC / anon / authenticated)
+
 -- EXECUTE on 8 legacy SECURITY DEFINER helpers that live pg_proc
 -- evidence shows are currently exposed to the \`authenticated\` role, and
 -- retain / grant EXECUTE to \`service_role\` only. No function bodies,
