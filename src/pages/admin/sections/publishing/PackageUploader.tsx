@@ -198,14 +198,34 @@ export function PackageUploader({ resourceId: _resourceId, resourceVersionId, re
         <div>{scanBadge(latestStatus)}</div>
       </div>
 
-      <Alert>
-        <ShieldAlert className="h-4 w-4" aria-hidden="true" />
-        <AlertDescription>
-          Scan pending; publishing remains blocked until a scanner marks it clean.
-          Uploads are limited to 25 MB. The server computes and verifies the SHA-256 —
-          only a successful scan proves integrity.
-        </AlertDescription>
-      </Alert>
+      {(() => {
+        const guidance = packageScanGuidance(latestStatus);
+        const toneClass =
+          guidance.tone === "success"
+            ? "border-emerald-500/40 bg-emerald-50 text-emerald-900"
+            : guidance.tone === "warning"
+              ? "border-amber-500/40 bg-amber-50 text-amber-900"
+              : guidance.tone === "danger"
+                ? "border-red-500/40 bg-red-50 text-red-900"
+                : "";
+        return (
+          <Alert
+            className={toneClass}
+            role={guidance.tone === "danger" ? "alert" : "status"}
+            aria-live={guidance.tone === "danger" ? "assertive" : "polite"}
+          >
+            <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>
+              <span className="font-medium">{guidance.badge}.</span>{" "}
+              {guidance.message}{" "}
+              <span className="text-muted-foreground">
+                Uploads are limited to 25 MB. The server computes and verifies
+                the SHA-256 — only a successful scan proves integrity.
+              </span>
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
 
       <div className="rounded-md border p-3">
         <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-dark-base">
