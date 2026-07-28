@@ -119,16 +119,40 @@ const APPROVED_DEFAULT_PRICE_FILS: Record<ResourceType, number> = {
   bundle: 4500,
 };
 
+// Direct FK from resources to its own rows/embeds only. The bundle-membership
+// relation (product_bundle_items.bundle_product_id → products.id) is NOT a
+// direct FK from resources, so it must be loaded in a second query keyed on
+// the resource's own products.
+export const RESOURCE_EDITOR_SELECT =
+  "id, slug, type, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar), products(id,sku,product_type,title_en,price_fils,is_active)";
+
+export function buildResourceEditUrl(resourceId: string): string {
+  return `/admin/publishing/resources/${resourceId}/edit`;
+}
+
 async function fetchResource(id: string) {
   const { data, error } = await (supabase as any)
     .from("resources")
-    .select(
-      "id, slug, type, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar), products(id,sku,product_type,title_en,price_fils,is_active), product_bundle_items:product_bundle_items!bundle_product_id(resource_id)",
-    )
+    .select(RESOURCE_EDITOR_SELECT)
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  if (!data) return null;
+
+  // Load bundle items via the resource's own bundle-typed products.
+  const productIds: string[] = (data.products ?? [])
+    .filter((p: any) => p?.product_type === "bundle")
+    .map((p: any) => p.id);
+  let bundleItems: { resource_id: string }[] = [];
+  if (productIds.length > 0) {
+    const { data: items, error: bErr } = await (supabase as any)
+      .from("product_bundle_items")
+      .select("resource_id")
+      .in("bundle_product_id", productIds);
+    if (bErr) throw bErr;
+    bundleItems = items ?? [];
+  }
+  return { ...data, product_bundle_items: bundleItems };
 }
 
 async function fetchPlatforms(): Promise<{ slug: string; name: string }[]> {
