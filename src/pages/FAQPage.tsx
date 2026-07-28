@@ -84,7 +84,7 @@ export default function FAQPage() {
                 type="button"
                 size="sm"
                 variant={selectedCategory === category ? "default" : "outline"}
-                className="min-h-[44px]"
+                className="min-h-[44px] min-w-[44px]"
                 aria-pressed={selectedCategory === category}
                 onClick={() => setSelectedCategory(category)}
               >

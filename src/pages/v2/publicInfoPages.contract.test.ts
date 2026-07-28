@@ -85,6 +85,7 @@ describe("V2 public information pages", () => {
     expect(FAQ.includes('htmlFor="faq-search"')).toBe(true);
     expect(FAQ.includes("aria-pressed")).toBe(true);
     expect(FAQ.includes("min-h-[44px]")).toBe(true);
+    expect(FAQ.includes("min-w-[44px]")).toBe(true);
     expect(CONTACT.includes('htmlFor="contact-name"')).toBe(true);
     expect(CONTACT.includes('htmlFor="contact-message"')).toBe(true);
     expect(CONTACT.includes("min-h-[44px]")).toBe(true);
