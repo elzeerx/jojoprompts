@@ -6,21 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, Lock, Archive, RotateCcw } from "lucide-react";
+import { EMAIL_RUNTIME_PATHS } from "@/lib/v2/admin/emailRuntimePaths";
 
 /**
  * V2 Transactional Templates admin
  *
- * The audit (docs/security/LEGACY_AUDIT_2026-07-28.md) confirmed that the seven
- * public.email_templates rows are NOT used by any active V2 delivery path.
- * V2 actually delivers email through:
- *   - `send-order-receipt` Edge Function  (V2 order receipt)
- *   - `send-welcome` Edge Function        (application-managed welcome)
- *   - Supabase Auth email templates       (email confirmation + password reset)
+ * "Active system emails" is rendered from `emailRuntimePaths.ts`, which is
+ * the single source of truth mapping each customer-facing email surface to
+ * its ACTUAL runtime path in this repository. Any card status shown here is
+ * whatever the registry currently declares — the UI never invents claims.
  *
- * This screen therefore surfaces the real code-managed sources as read-only
- * system emails, and gives admins Archive/Restore-only controls over the
- * legacy DB rows. There is deliberately no hard-Delete and no Test-send for
- * rows that active V2 delivery never touches.
+ * Legacy `public.email_templates` rows are surfaced separately as archive-
+ * only, with reversible Archive / Restore controls only (no hard delete,
+ * no test-send).
  */
 
 type EmailTemplateRow = {
@@ -34,42 +32,9 @@ type EmailTemplateRow = {
   updated_at: string;
 };
 
-type ActiveSystemEmail = {
-  key: string;
-  name: string;
-  purpose: string;
-  source: "V2 delivery" | "Application code" | "Supabase Auth";
-};
-
-// Authoritative list of active email surfaces in V2. Keep this in code — do
-// NOT reintroduce a DB-driven registry unless real V2 delivery starts reading
-// from it. See LEGACY_AUDIT_2026-07-28.md for the send-* callers.
-export const ACTIVE_SYSTEM_EMAILS: ReadonlyArray<ActiveSystemEmail> = [
-  {
-    key: "v2-order-receipt",
-    name: "Order receipt",
-    purpose: "Sent after a paid V2 order is captured (send-order-receipt).",
-    source: "V2 delivery",
-  },
-  {
-    key: "welcome",
-    name: "Welcome",
-    purpose: "Sent to new accounts by the send-welcome Edge Function.",
-    source: "Application code",
-  },
-  {
-    key: "auth-email-confirmation",
-    name: "Email confirmation",
-    purpose: "Delivered by Supabase Auth on sign-up / email change.",
-    source: "Supabase Auth",
-  },
-  {
-    key: "auth-password-reset",
-    name: "Password reset",
-    purpose: "Delivered by Supabase Auth via resetPasswordForEmail().",
-    source: "Supabase Auth",
-  },
-];
+// Re-export for backwards compatibility with existing importers/tests.
+// New code should import `EMAIL_RUNTIME_PATHS` directly.
+export const ACTIVE_SYSTEM_EMAILS = EMAIL_RUNTIME_PATHS;
 
 export function EmailTemplatesManagement() {
   const { isAdmin, user } = useAuth();
@@ -152,16 +117,18 @@ export function EmailTemplatesManagement() {
       <header className="space-y-1">
         <h1 className="section-title text-lg sm:text-xl">Transactional Templates</h1>
         <p className="text-muted-foreground text-xs sm:text-sm max-w-3xl">
-          V2 delivers transactional email from application code and Supabase Auth. The
-          legacy <code>email_templates</code> rows below are retained for history only —
-          they are not read by any active V2 delivery path, so this screen exposes
-          reversible Archive / Restore controls in place of Test-send or Delete.
+          V2 delivers transactional email from application code and Supabase Auth. Each
+          card below is generated from the source-of-truth registry
+          (<code>emailRuntimePaths.ts</code>) so status can never drift from the actual
+          runtime paths in this repository. Legacy <code>email_templates</code> rows are
+          retained for history only — this screen only exposes reversible Archive /
+          Restore controls in place of Test-send or Delete.
         </p>
       </header>
 
       {/* Section 1 — Active system emails (code-managed, read-only) */}
       <section aria-labelledby="active-system-emails-heading" className="space-y-3">
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
           <h2 id="active-system-emails-heading" className="text-base font-semibold text-dark-base">
             Active system emails
           </h2>
@@ -173,21 +140,53 @@ export function EmailTemplatesManagement() {
           <table className="w-full text-sm">
             <thead className="bg-soft-bg/60">
               <tr>
-                <th className="text-left p-3">Email</th>
-                <th className="text-left p-3">Source</th>
-                <th className="text-left p-3">Purpose</th>
+                <th className="text-start p-3">Email</th>
+                <th className="text-start p-3">Source</th>
+                <th className="text-start p-3">Status</th>
+                <th className="text-start p-3">Purpose</th>
               </tr>
             </thead>
             <tbody>
               {ACTIVE_SYSTEM_EMAILS.map((e) => (
-                <tr key={e.key} className="border-t">
-                  <td className="p-3 font-medium text-dark-base">{e.name}</td>
+                <tr key={e.key} className="border-t align-top">
+                  <td className="p-3 font-medium text-dark-base">
+                    <div>{e.name}</div>
+                    <div dir="rtl" className="text-[11px] text-muted-foreground font-normal">
+                      {e.nameAr}
+                    </div>
+                  </td>
                   <td className="p-3">
                     <Badge variant="outline" className="text-[10px]">
                       {e.source}
                     </Badge>
                   </td>
-                  <td className="p-3 text-muted-foreground">{e.purpose}</td>
+                  <td className="p-3">
+                    {e.status === "active" ? (
+                      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px]">
+                        Active
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300">
+                        Not configured
+                      </Badge>
+                    )}
+                  </td>
+                  <td className="p-3 text-muted-foreground">
+                    <div>{e.purpose}</div>
+                    <div dir="rtl" className="text-[11px] mt-0.5">{e.purposeAr}</div>
+                    {e.status === "not_configured" && e.notConfiguredReason && (
+                      <div className="mt-1 text-[11px] text-amber-700">
+                        {e.notConfiguredReason}
+                      </div>
+                    )}
+                    {e.runtimePaths.length > 0 && (
+                      <ul className="mt-1 text-[11px] text-muted-foreground/80 list-disc ps-4">
+                        {e.runtimePaths.map((p) => (
+                          <li key={p}><code>{p}</code></li>
+                        ))}
+                      </ul>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

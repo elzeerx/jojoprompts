@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Copy, Printer } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAdminOrderDetail } from "@/hooks/admin/v2/useAdminCommerce";
+import { useOrderReceiptDelivery } from "@/hooks/admin/v2/useOrderReceiptDelivery";
 import { formatFils, formatDateTime, statusTone, copyToClipboard, bi } from "@/lib/v2/admin/format";
 
 interface Props {
@@ -165,6 +166,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
   const query = useAdminOrderDetail(orderId);
   const detail = query.data as unknown as Detail | undefined;
+  const receiptQuery = useOrderReceiptDelivery(orderId);
+  const receipt = receiptQuery.data ?? null;
 
   return (
     <Sheet open={!!orderId} onOpenChange={onOpenChange}>
@@ -337,6 +340,58 @@ export function OrderDetailSheet({ orderId, onOpenChange }: Props) {
                     <div className="text-muted-foreground">{formatDateTime(e.received_at)}</div>
                   </div>
                 ))}
+              </div>
+            </Section>
+
+            {/* Receipt delivery — truth-only, no admin resend (see docs/security/RECEIPT_RESEND_BLOCKER.md) */}
+            <Section title="Receipt delivery / حالة إرسال الإيصال">
+              <div className="p-3 text-xs space-y-2" data-testid="order-receipt-delivery">
+                {receiptQuery.isLoading && (
+                  <Skeleton className="h-10 w-full" />
+                )}
+                {!receiptQuery.isLoading && !receipt && (
+                  <div className="text-muted-foreground">
+                    No receipt-delivery record for this order.
+                  </div>
+                )}
+                {receipt && (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={statusTone(receipt.status)}>{receipt.status}</Badge>
+                      <span className="text-muted-foreground">
+                        attempt {receipt.attempts} / {receipt.max_attempts}
+                      </span>
+                      {receipt.sent_at && (
+                        <span className="text-muted-foreground">
+                          sent {formatDateTime(receipt.sent_at)}
+                        </span>
+                      )}
+                      {!receipt.sent_at && receipt.status !== "sent" && (
+                        <span className="text-muted-foreground">
+                          next attempt {formatDateTime(receipt.next_attempt_at)}
+                        </span>
+                      )}
+                    </div>
+                    {receipt.provider_message_id && (
+                      <div className="flex items-center gap-1 font-mono text-muted-foreground">
+                        provider id: {receipt.provider_message_id}
+                        <CopyBtn text={receipt.provider_message_id} label="provider id" />
+                      </div>
+                    )}
+                    {receipt.last_error_code && (
+                      <div className="text-destructive">
+                        <span className="font-mono">{receipt.last_error_code}</span>
+                        {receipt.last_error_message ? ` — ${receipt.last_error_message}` : ""}
+                      </div>
+                    )}
+                  </>
+                )}
+                <p className="text-[11px] text-muted-foreground/80 border-t pt-2">
+                  Admin resend is intentionally not exposed. The shared V2 delivery
+                  pipeline’s claim RPC refuses to re-claim already-sent rows; a safe
+                  resend requires a separate reviewed <code>service_role</code> RPC
+                  and Edge Function. See <code>docs/security/RECEIPT_RESEND_BLOCKER.md</code>.
+                </p>
               </div>
             </Section>
 
