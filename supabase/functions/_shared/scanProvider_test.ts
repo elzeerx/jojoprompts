@@ -355,16 +355,37 @@ Deno.test("decideQueueAllowed: pending child under terminal aggregate blocks que
   if (!d.allow) assertEquals(d.reason, "pending_exists");
 });
 
-Deno.test("decideQueueAllowed: clean/suspicious/malicious latest -> already_clean", () => {
-  for (const s of ["clean", "suspicious", "malicious"] as const) {
+Deno.test("decideQueueAllowed: exact-coverage clean -> already_clean; stale clean and non-clean terminals -> allow", () => {
+  // Exact coverage clean blocks re-queue.
+  const exact = decideQueueAllowed({
+    latestScanStatus: "clean",
+    hasAnyPendingChild: false,
+    hasFiles: true,
+    providerReady: true,
+    coverageValid: true,
+  });
+  assertStrictEquals(exact.allow, false);
+  if (!exact.allow) assertEquals(exact.reason, "already_clean");
+
+  // Stale clean (coverage invalid) must proceed to fresh scan.
+  const stale = decideQueueAllowed({
+    latestScanStatus: "clean",
+    hasAnyPendingChild: false,
+    hasFiles: true,
+    providerReady: true,
+    coverageValid: false,
+  });
+  assertStrictEquals(stale.allow, true);
+
+  // Suspicious/malicious/failed no longer short-circuit.
+  for (const s of ["suspicious", "malicious", "failed"] as const) {
     const d = decideQueueAllowed({
       latestScanStatus: s,
       hasAnyPendingChild: false,
       hasFiles: true,
       providerReady: true,
     });
-    assertStrictEquals(d.allow, false);
-    if (!d.allow) assertEquals(d.reason, "already_clean");
+    assertStrictEquals(d.allow, true);
   }
 });
 
