@@ -1,6 +1,4 @@
 import { describe, it, expect } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import {
   parseSecurityEventsFilters,
   twentyFourHoursAgoISO,
@@ -10,6 +8,10 @@ import {
   SECURITY_EVENTS_PAGE_SIZE,
   FILTER_KEYS_RESETTING_PAGE,
 } from "@/components/admin/securityEventsFilters";
+
+declare const require: (m: string) => any;
+const { readFileSync } = require("fs");
+const { resolve } = require("path");
 
 describe("SecurityMonitoringDashboard — filter mapping & bounds", () => {
   it("defaults exclude routine noise, start at page 1, and use the 24h window", () => {
