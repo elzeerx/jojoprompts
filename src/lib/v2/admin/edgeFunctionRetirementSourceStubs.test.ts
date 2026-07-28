@@ -57,8 +57,8 @@ const V2_UNTOUCHED_SAMPLES: readonly string[] = [
 const stubPath = (slug: string) => `supabase/functions/${slug}/index.ts`;
 
 describe("Edge Function retirement source stubs (source-only)", () => {
-  it("stubs exactly 17 slugs in this pass", () => {
-    expect(RETIRED_STUB_SLUGS.length).toBe(17);
+  it("stubs exactly 24 slugs after route-graph refinement", () => {
+    expect(RETIRED_STUB_SLUGS.length).toBe(24);
   });
 
   it("stubbed set + blockers = full 24-slug retirement recommendation", () => {
@@ -67,12 +67,17 @@ describe("Edge Function retirement source stubs (source-only)", () => {
     expect(RETIRED_STUB_SLUGS.length + RETIREMENT_BLOCKERS.length).toBe(24);
   });
 
+  it("no blockers remain — route-graph proof cleared all seven", () => {
+    expect(RETIREMENT_BLOCKERS.length).toBe(0);
+  });
+
   it("stubbed and blocker sets are disjoint", () => {
     const stubs = new Set<string>(RETIRED_STUB_SLUGS);
     for (const b of RETIREMENT_BLOCKERS) {
       expect(stubs.has(b)).toBe(false);
     }
   });
+
 
   it("every stub file exists on disk", () => {
     for (const slug of RETIRED_STUB_SLUGS) {
@@ -136,14 +141,58 @@ describe("Edge Function retirement source stubs (source-only)", () => {
     }
   });
 
-  it("blockers are NOT stubbed (source still contains real handler code)", () => {
-    for (const slug of RETIREMENT_BLOCKERS) {
-      if (!existsSync(stubPath(slug))) continue;
-      const src = readFileSync(stubPath(slug), "utf8");
-      // A blocker source should not encode our minimal stub body.
-      const isStub = src.includes('"error":"endpoint_retired"') &&
-        src.includes('status: 410');
-      expect({ slug, isStub }).toEqual({ slug, isStub: false });
+  it("previously-blocking caller modules have been neutralized (no live invokes)", () => {
+    const NEUTRALIZED_CALLERS: readonly { file: string; slug: string }[] = [
+      { file: "src/hooks/payment/helpers/subscriptionActivator.ts", slug: "create-subscription" },
+      { file: "src/pages/admin/components/users/hooks/useUserService.ts", slug: "cancel-subscription" },
+      { file: "src/hooks/useSecureFileUpload.ts", slug: "validate-file-upload" },
+      { file: "src/pages/admin/components/purchases/hooks/usePurchaseHistory.ts", slug: "get-admin-transactions" },
+      { file: "src/hooks/useUsersWithoutPlans.ts", slug: "get-users-without-plans" },
+      { file: "src/hooks/useMarketingEmails.ts", slug: "send-plan-reminder" },
+      { file: "src/hooks/useMarketingEmails.ts", slug: "send-bulk-plan-reminders" },
+    ];
+    for (const { file, slug } of NEUTRALIZED_CALLERS) {
+      expect(existsSync(file)).toBe(true);
+      const src = readFileSync(file, "utf8");
+      const invokeRe = new RegExp(
+        `functions\\.invoke\\(\\s*['"\`]${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}['"\`]`,
+      );
+      expect({ file, slug, invoked: invokeRe.test(src) })
+        .toEqual({ file, slug, invoked: false });
+    }
+  });
+
+  it("no active src/** file invokes any of the 24 retired slugs", () => {
+    const { readdirSync, statSync } = require("fs");
+    const { join, relative } = require("path");
+    const SRC = "src";
+    const walk = (dir: string, out: string[] = []): string[] => {
+      for (const name of readdirSync(dir) as string[]) {
+        if (name === "node_modules" || name.startsWith(".")) continue;
+        const full = join(dir, name);
+        const st = statSync(full);
+        if (st.isDirectory()) walk(full, out);
+        else if (/\.(ts|tsx|js|jsx)$/.test(name)) out.push(full);
+      }
+      return out;
+    };
+    const files = walk(SRC)
+      .map((f: string) => ({
+        rel: relative(".", f).replace(/\\/g, "/"),
+        src: readFileSync(f, "utf8") as string,
+      }))
+      // Exclude tests + the inventory registry (documents slugs as data).
+      .filter(({ rel }: { rel: string }) => !/\.test\.tsx?$/.test(rel))
+      .filter(({ rel }: { rel: string }) =>
+        rel !== "src/lib/v2/admin/edgeFunctionRetirementInventory.ts"
+      );
+    for (const slug of RETIRED_STUB_SLUGS) {
+      const escaped = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`functions\\.invoke\\(\\s*['"\`]${escaped}['"\`]`);
+      const hits = files
+        .filter(({ src }: { src: string }) => re.test(src))
+        .map(({ rel }: { rel: string }) => rel);
+      expect({ slug, hits }).toEqual({ slug, hits: [] });
     }
   });
 
@@ -160,3 +209,4 @@ describe("Edge Function retirement source stubs (source-only)", () => {
     }
   });
 });
+

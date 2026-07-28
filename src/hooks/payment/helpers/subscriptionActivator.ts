@@ -1,36 +1,29 @@
-
-import { supabase } from "@/integrations/supabase/client";
-
 /**
- * Checks if an active subscription exists for the user-plan pair,
- * or creates one if the payment is verified.
+ * RETIRED (source-only, 2026-07-28): the `create-subscription` Edge
+ * Function has been replaced with an HTTP 410 stub. The V2 contract is
+ * one-time payments only — subscriptions no longer exist.
+ *
+ * This module has NO active importer (verified: route-graph unreachable
+ * from `src/pages/admin/layout/adminSectionElements.tsx` and `src/App.tsx`).
+ * It is preserved as a neutralized shim so any accidental future import
+ * fails loudly instead of hitting the 410 stub over the network.
  */
-export async function activateSubscription({ planId, userId, paymentMethod, paymentId, paymentDetails, accessToken }: {
-  planId: string,
-  userId: string,
-  paymentMethod: string,
-  paymentId: string,
-  paymentDetails: any,
-  accessToken?: string
+
+export async function activateSubscription(_args: {
+  planId: string;
+  userId: string;
+  paymentMethod: string;
+  paymentId: string;
+  paymentDetails: unknown;
+  accessToken?: string;
 }) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+  return {
+    data: null,
+    error: {
+      message:
+        "endpoint_retired: create-subscription is no longer available (V2 is one-time payments only).",
+      name: "EndpointRetiredError",
+    },
   };
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
-  // Try to create a subscription via edge function
-  const { data, error } = await supabase.functions.invoke("create-subscription", {
-    headers,
-    body: {
-      planId,
-      userId,
-      paymentData: {
-        paymentMethod,
-        paymentId,
-        details: paymentDetails
-      }
-    }
-  });
-  return { data, error };
 }
+

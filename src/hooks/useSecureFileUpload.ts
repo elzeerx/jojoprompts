@@ -17,35 +17,30 @@ export function useSecureFileUpload() {
   const [isValidating, setIsValidating] = useState(false);
 
   const validateFile = async (
-    file: File, 
+    file: File,
     fileType: 'image' | 'document'
   ): Promise<FileValidationResult> => {
+    // RETIRED (source-only, 2026-07-28): `validate-file-upload` is now a
+    // 410 stub. Replacement: `v2-admin-upload-resource-file` performs
+    // server-side validation as part of the multipart upload flow.
+    // This hook's only importer (`SecureImageUploadField.tsx`) has no
+    // active route parent (unreachable from `adminSectionElements.tsx`).
     setIsValidating(true);
-    
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('fileType', fileType);
-
-      const { data, error } = await supabase.functions.invoke('validate-file-upload', {
-        body: formData
+      logger.warn('validate-file-upload is retired; use v2-admin-upload-resource-file', {
+        fileName: file.name,
+        fileType,
       });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data as FileValidationResult;
-    } catch (error) {
-      logger.error('File validation error', { error, fileType });
       return {
         isValid: false,
-        error: error instanceof Error ? error.message : 'File validation failed'
+        error:
+          'endpoint_retired: validate-file-upload. Use v2-admin-upload-resource-file.',
       };
     } finally {
       setIsValidating(false);
     }
   };
+
 
   const secureUpload = async (
     file: File,
