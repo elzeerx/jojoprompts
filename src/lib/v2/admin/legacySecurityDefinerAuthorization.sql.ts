@@ -1,16 +1,21 @@
 /**
  * SOURCE FIXTURE — legacy SECURITY DEFINER authorization hardening.
  *
- * STATUS: DRAFTED, NOT APPLIED LIVE. Source-only. Intentionally not
- * wired to the supabase migration tool in this pass. Reviewers must
- * approve this fixture, the physical SQL draft
- * (`docs/security/drafts/20260728120000_legacy_security_definer_authorization_hardening.sql`),
- * and the audit doc
- * (`docs/security/LEGACY_SECURITY_DEFINER_AUDIT_2026-07-28.md`) before
- * live application. The physical draft file is the canonical artifact
- * that will be re-submitted through the supabase migration tool; the
- * `LEGACY_SECDEF_MIGRATION_SQL` string below MUST stay byte-identical
- * to it (asserted by `legacySecurityDefinerAuthorization.test.ts`).
+ * STATUS: APPLIED LIVE as migration version `20260728101016`. The
+ * canonical byte-identical body has been copied from the draft path
+ * into `supabase/migrations/20260728120000_legacy_security_definer_authorization_hardening.sql`;
+ * the draft file is retained as an audit-trail artifact. The embedded
+ * `LEGACY_SECDEF_MIGRATION_SQL` string below is enforced byte-identical
+ * to the physical migration file by `legacySecurityDefinerAuthorization.test.ts`.
+ *
+ * POST-APPLY LIVE EVIDENCE (recorded 2026-07-28, source of truth):
+ *   • All 8 target functions listed below now have
+ *     authenticated_execute=false, anon_execute=false,
+ *     service_role_execute=true (per pg_proc + has_function_privilege).
+ *   • `admin_delete_user_data(uuid)` remains intentionally
+ *     `authenticated`-callable; its SECURITY DEFINER body enforces
+ *     `public.is_admin()`. The two-arg overload
+ *     `admin_delete_user_data(uuid, uuid)` remains service_role-only.
  *
  * The 8 signatures below were reconciled to authoritative live
  * `pg_proc` evidence supplied by the caller. Two functions that older
@@ -23,20 +28,28 @@
 
 export const LEGACY_SECDEF_MIGRATION = {
   version: "20260728120000",
+  /** Live Supabase migration version recorded when this hardening was applied. */
+  liveVersion: "20260728101016",
   name: "legacy_security_definer_authorization_hardening",
   filename:
     "20260728120000_legacy_security_definer_authorization_hardening.sql",
   /**
-   * Physical draft path in this repo. When approved, this file's exact
-   * bytes are submitted through the supabase migration tool, which
-   * owns the canonical `supabase/migrations/<filename>` slot (writes to
-   * that directory are blocked in the Lovable build environment).
+   * Canonical physical migration path. Bytes here are the applied
+   * live body and are compared to `LEGACY_SECDEF_MIGRATION_SQL` by the
+   * contract test.
+   */
+  migrationPath:
+    "supabase/migrations/20260728120000_legacy_security_definer_authorization_hardening.sql",
+  /**
+   * Draft path retained as an audit-trail artifact. Kept byte-identical
+   * to the canonical migration file; the contract test asserts parity.
    */
   draftPath:
     "docs/security/drafts/20260728120000_legacy_security_definer_authorization_hardening.sql",
-  applied: false,
-  drafted: true,
+  applied: true,
+  drafted: false,
 } as const;
+
 
 /** TIER 1 — audit-log functions. Exact live pg_proc signatures. */
 export const LEGACY_SECDEF_TIER1_AUDIT_LOGGERS: readonly string[] = [
