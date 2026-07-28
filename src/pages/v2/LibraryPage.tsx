@@ -19,6 +19,7 @@ import { Download, Loader2, Receipt, Search } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { V2_COPY, V2_RESOURCE_TYPES, type V2ResourceType } from "@/config/v2Flags";
 import { Input } from "@/components/ui/input";
+import { withoutAcquisitionInstruction } from "@/lib/v2/resourceCopy";
 
 type Lang = "en" | "ar";
 const PAGE_SIZE = 20;
@@ -61,6 +62,10 @@ function tabLabel(id: string, lang: Lang): string {
   const entry = TABS.find((t) => t.id === id);
   if (!entry || entry.labelKey === "all") return id;
   return V2_COPY.nav[entry.labelKey][lang];
+}
+
+function resourceTypeLabel(type: V2ResourceType, lang: Lang): string {
+  return tabLabel(type, lang);
 }
 
 function firstRelated<T>(value: T | T[] | null | undefined): T | null {
@@ -219,7 +224,7 @@ export default function LibraryPage() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap gap-1 h-auto">
             {(["all", ...V2_RESOURCE_TYPES] as const).map((t) => (
-              <TabsTrigger key={t} value={t}>
+              <TabsTrigger key={t} value={t} className="min-w-[44px]">
                 {tabLabel(t, lang)}
               </TabsTrigger>
             ))}
@@ -283,8 +288,9 @@ export default function LibraryPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {visibleResources.map((r) => {
               const title = lang === "ar" && r.title_ar ? r.title_ar : r.title_en;
-              const summary =
-                lang === "ar" && r.summary_ar ? r.summary_ar : r.summary_en;
+              const summary = withoutAcquisitionInstruction(
+                lang === "ar" && r.summary_ar ? r.summary_ar : r.summary_en,
+              );
               const updateInfo =
                 lang === "ar" && r.update_info_ar
                   ? r.update_info_ar
@@ -311,8 +317,8 @@ export default function LibraryPage() {
                         {title}
                       </Link>
                       <div className="mt-1 flex flex-wrap gap-1.5">
-                        <Badge variant="outline" className="capitalize">
-                          {r.type?.replace("_", " ")}
+                        <Badge variant="outline">
+                          {resourceTypeLabel(r.type, lang)}
                         </Badge>
                         {individuallyOwned ? (
                           <Badge variant="secondary">
@@ -324,7 +330,11 @@ export default function LibraryPage() {
                             {V2_COPY.library.lifetimeBadge[lang]}
                           </Badge>
                         ) : null}
-                        {archived ? <Badge variant="outline">Archived</Badge> : null}
+                        {archived ? (
+                          <Badge variant="outline">
+                            {lang === "ar" ? "مؤرشف" : "Archived"}
+                          </Badge>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -468,8 +478,8 @@ export default function LibraryPage() {
                           {title}
                         </Link>
                         <div className="mt-1 flex flex-wrap gap-1.5">
-                          <Badge variant="outline" className="capitalize">
-                            {e.resource_type?.replace("_", " ")}
+                          <Badge variant="outline">
+                            {resourceTypeLabel(e.resource_type as V2ResourceType, lang)}
                           </Badge>
                           <Badge variant="destructive">{status}</Badge>
                         </div>

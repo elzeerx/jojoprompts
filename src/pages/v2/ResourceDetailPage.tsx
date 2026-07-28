@@ -29,9 +29,22 @@ import {
   shouldRevealProtectedContent,
 } from "@/hooks/v2/protectedContentDisplay";
 import { useCopyToClipboard } from "@/hooks/ui/useCopyToClipboard";
+import { withoutAcquisitionInstruction } from "@/lib/v2/resourceCopy";
 
 
 type Lang = "en" | "ar";
+
+function resourceTypeLabel(type: string, lang: Lang): string {
+  const labels: Record<string, { en: string; ar: string }> = {
+    skill: V2_COPY.nav.skills,
+    automation: V2_COPY.nav.automations,
+    prompt: V2_COPY.nav.prompts,
+    prompt_pack: V2_COPY.nav.promptPacks,
+    image_style: V2_COPY.nav.imageStyles,
+    bundle: V2_COPY.nav.bundles,
+  };
+  return labels[type]?.[lang] ?? type.replaceAll("_", " ");
+}
 
 export default function ResourceDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -116,6 +129,9 @@ export default function ResourceDetailPage() {
   const title = lang === "ar" && r.title_ar ? r.title_ar : r.title_en;
   const summary =
     lang === "ar" && r.summary_ar ? r.summary_ar : r.summary_en;
+  const visibleSummary = owned
+    ? withoutAcquisitionInstruction(summary)
+    : summary;
   const description =
     lang === "ar" && r.description_ar ? r.description_ar : r.description_en;
   const heroUrl = safeHeroImageUrl(r.hero_image_path);
@@ -143,6 +159,12 @@ export default function ResourceDetailPage() {
     typeof data.trust?.scan_status === "string"
       ? data.trust.scan_status
       : null;
+  const scanStatusAr: Record<string, string> = {
+    unscanned: "غير مفحوص",
+    suspicious: "يحتاج مراجعة",
+    malicious: "ضار",
+    failed: "فشل الفحص",
+  };
   const scanLabel =
     scanStatus === "clean"
       ? V2_COPY.cards.verified[lang]
@@ -150,7 +172,7 @@ export default function ResourceDetailPage() {
         ? V2_COPY.cards.awaitingScan[lang]
         : scanStatus
           ? lang === "ar"
-            ? `حالة الفحص: ${scanStatus}`
+            ? `حالة الفحص: ${scanStatusAr[scanStatus] ?? scanStatus}`
             : `Scan status: ${scanStatus}`
           : lang === "ar"
             ? `الفحص: ${V2_COPY.cards.notSpecified.ar}`
@@ -220,7 +242,7 @@ export default function ResourceDetailPage() {
                 />
               ) : null}
               <div className="flex flex-wrap gap-2">
-                <Badge className="capitalize">{r.type?.replace("_", " ")}</Badge>
+                <Badge>{resourceTypeLabel(r.type, lang)}</Badge>
                 {data.version && (
                   <Badge variant="outline">v{data.version.version}</Badge>
                 )}
@@ -244,7 +266,9 @@ export default function ResourceDetailPage() {
                 ) : null}
               </div>
               <h1 className="text-2xl font-bold sm:text-3xl">{title}</h1>
-              {summary && <p className="text-muted-foreground">{summary}</p>}
+              {visibleSummary && (
+                <p className="text-muted-foreground">{visibleSummary}</p>
+              )}
             </header>
 
             {description && (

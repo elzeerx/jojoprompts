@@ -9,12 +9,36 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMyOrders, useMyOrderDetail } from "@/hooks/v2/useMyOrders";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatKwd } from "@/config/v2Flags";
-import { format } from "date-fns";
 import {
   reconstructLegacyUpaymentsFils,
   useMyLegacyTransactions,
   type MyLegacyTransaction,
 } from "@/hooks/v2/useMyLegacyTransactions";
+
+function statusLabel(status: string, lang: "en" | "ar"): string {
+  if (lang === "en") return status.replaceAll("_", " ");
+  const labels: Record<string, string> = {
+    paid: "مدفوع",
+    completed: "مكتمل",
+    captured: "مكتمل",
+    success: "مكتمل",
+    pending: "قيد الانتظار",
+    failed: "فشل",
+    cancelled: "ملغى",
+    refunded: "مسترد",
+    partially_refunded: "مسترد جزئياً",
+  };
+  return labels[status] ?? status.replaceAll("_", " ");
+}
+
+function formatOrderDate(value: string, lang: "en" | "ar"): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return new Intl.DateTimeFormat(lang === "ar" ? "ar-KW" : "en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed);
+}
 
 function statusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
   switch (status) {
@@ -93,6 +117,10 @@ export default function V2OrdersPage() {
       lang === "ar"
         ? "تعذّر تحميل سجل المشتريات السابقة."
         : "Couldn't load historical purchases.",
+    newReceipt:
+      lang === "ar"
+        ? "عند إتمام أول عملية شراء عبر V2 سيظهر إيصالها هنا."
+        : "Your first completed V2 purchase receipt will appear here.",
   };
   const hasLegacyTransactions = (legacyTransactions ?? []).length > 0;
 
@@ -134,9 +162,11 @@ export default function V2OrdersPage() {
               {hasLegacyTransactions ? t.noV2 : t.empty}
             </p>
             <p className="text-sm text-muted-foreground">
-              {lang === "ar"
-                ? "بمجرد إتمام أول عملية شراء ستظهر إيصالاتها هنا."
-                : "As soon as you complete your first purchase, its receipt will appear here."}
+              {hasLegacyTransactions
+                ? t.newReceipt
+                : lang === "ar"
+                  ? "بمجرد إتمام أول عملية شراء ستظهر إيصالاتها هنا."
+                  : "As soon as you complete your first purchase, its receipt will appear here."}
             </p>
             <Button asChild className="min-h-[44px]">
               <Link to="/explore">{t.browse}</Link>
@@ -162,11 +192,11 @@ export default function V2OrdersPage() {
                           {o.order_number ?? `#${o.id.slice(0, 8)}`}
                         </span>
                         <Badge variant={statusVariant(o.status)} className="capitalize">
-                          {o.status.replace("_", " ")}
+                          {statusLabel(o.status, lang)}
                         </Badge>
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {created ? format(new Date(created), "PPp") : "—"} · {o.item_count} {t.items}
+                        {created ? formatOrderDate(created, lang) : "—"} · {o.item_count} {t.items}
                       </div>
                     </div>
                     <div className="text-end">
@@ -278,7 +308,7 @@ function LegacyTransactionRow({
                 (lang === "ar" ? "شراء سابق" : "Historical purchase")}
             </span>
             <Badge variant={statusVariant(transaction.status)} className="capitalize">
-              {transaction.status.replaceAll("_", " ")}
+              {statusLabel(transaction.status, lang)}
             </Badge>
             <Badge variant="outline">{gateway}</Badge>
             {reconstructedFils !== null ? (
@@ -288,7 +318,7 @@ function LegacyTransactionRow({
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            {format(new Date(occurredAt), "PPp")}
+            {formatOrderDate(occurredAt, lang)}
             {reference ? ` · #${reference.slice(-10)}` : ` · #${transaction.id.slice(0, 8)}`}
           </p>
         </div>

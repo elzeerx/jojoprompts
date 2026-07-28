@@ -56,7 +56,7 @@ export default function AccountPage() {
     const username = typeof meta.username === "string" ? meta.username.trim() : "";
     if (first || last) return [first, last].filter(Boolean).join(" ");
     if (username) return username;
-    return user?.email ?? "";
+    return "";
   }, [user]);
 
   // Redirect to login while preserving return path — same helper the rest of
@@ -178,10 +178,14 @@ export default function AccountPage() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <div className="truncate font-medium">{displayName || t.email}</div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {user?.email}
+                <div className="truncate font-medium">
+                  {displayName || user?.email || t.email}
                 </div>
+                {displayName && user?.email ? (
+                  <div className="truncate text-xs text-muted-foreground">
+                    {user.email}
+                  </div>
+                ) : null}
               </div>
             </div>
             {isAdmin && (
