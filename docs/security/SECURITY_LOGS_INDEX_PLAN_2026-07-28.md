@@ -151,7 +151,8 @@ migration does not assert on this number.
 -- Indexes
 DROP INDEX IF EXISTS public.idx_security_logs_created_at_desc;
 DROP INDEX IF EXISTS public.idx_security_logs_actionable_created_at;
-DROP INDEX IF EXISTS public.idx_security_logs_action;
+DROP INDEX IF EXISTS public.idx_security_logs_action_created_at_desc;
+
 
 -- Normalization: no automatic rollback. The prior top-level 'info'
 -- values are lost; the details JSON retains the original severity tag
