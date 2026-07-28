@@ -120,7 +120,9 @@ Deno.serve(async (req) => {
 
   if (action === "queue_scan") {
     const versionId = String(payload.version_id ?? "");
-    if (!/^[0-9a-f-]{36}$/i.test(versionId)) return err("invalid_version_id", 400);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(versionId)) {
+      return err("invalid_version_id", 400);
+    }
 
     const readiness = currentReadiness();
     if (!readiness.ready) {
@@ -139,7 +141,6 @@ Deno.serve(async (req) => {
     // clean coverage MUST NOT short-circuit as already_clean.
     let latestStatus: NormalizedStatus | null = null;
     let coverageValid = false;
-    let hasAnyPendingChild = false;
     {
       const { data: eff, error: effErr } = await auth.supabase.rpc(
         "v2_internal_effective_scan_state",
@@ -156,17 +157,33 @@ Deno.serve(async (req) => {
         latestStatus = effStatus as NormalizedStatus;
       }
       coverageValid = row?.coverage_valid === true;
-      // Any pending scan (regardless of coverage) blocks re-queue.
-      if (effStatus === "pending" && row?.latest_scan_id) {
-        const probe = await auth.supabase
+    }
+
+    // Pending-child preflight across ALL scans for this version, regardless
+    // of the aggregate effective status. Terminal aggregates (failed /
+    // suspicious / malicious) can still have recoverable pending children —
+    // the RPC is the atomic authority, but rejecting early here yields a
+    // safer, faster 409 UX. Uses the correct column: package_scan_id.
+    let hasAnyPendingChild = false;
+    {
+      const { data: scanRows, error: scanIdsErr } = await auth.supabase
+        .from("package_scans")
+        .select("id")
+        .eq("resource_version_id", versionId);
+      if (scanIdsErr) return err("db_error", 500);
+      const scanIds = (scanRows ?? []).map((r) => r.id as string).filter(Boolean);
+      if (scanIds.length > 0) {
+        const { data: pending, error: pendingErr } = await auth.supabase
           .from("package_scan_items")
           .select("id")
-          .eq("package_scan_id", row.latest_scan_id)
+          .in("package_scan_id", scanIds)
           .eq("status", "pending")
           .limit(1);
-        hasAnyPendingChild = (probe.data?.length ?? 0) > 0;
+        if (pendingErr) return err("db_error", 500);
+        hasAnyPendingChild = (pending?.length ?? 0) > 0;
       }
     }
+
 
     const decision = decideQueueAllowed({
       latestScanStatus: latestStatus,
