@@ -12,6 +12,7 @@ import {
 
 // Read the physical migration at test time. Bun resolves this via node:fs.
 declare const require: (m: string) => any;
+declare const process: { cwd(): string };
 const { readFileSync } = require("fs");
 const { resolve } = require("path");
 
@@ -19,6 +20,7 @@ const PHYSICAL_PATH = resolve(
   process.cwd(),
   SECURITY_LOGS_INDEXES_MIGRATION.migrationPath,
 );
+
 const PHYSICAL_SQL: string = readFileSync(PHYSICAL_PATH, "utf8");
 const SQL = SECURITY_LOGS_INDEXES_SQL;
 
