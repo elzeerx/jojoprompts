@@ -105,14 +105,14 @@ describe("SecurityMonitoringDashboard — filter mapping & bounds", () => {
 
 describe("SecurityMonitoringDashboard — source regression", () => {
   const src = readFileSync(
-    resolve(process.cwd(), "src/components/admin/SecurityMonitoringDashboard.tsx"),
+    resolve("src/components/admin/SecurityMonitoringDashboard.tsx"),
     "utf8",
-  );
+  ) as string;
 
   it("must not filter or read severity/category from JSON details", () => {
-    expect(src).not.toContain("details->>severity");
-    expect(src).not.toContain("details->>event_category");
-    expect(src).not.toContain("severityFromDetails");
+    expect(src.includes("details->>severity")).toBe(false);
+    expect(src.includes("details->>event_category")).toBe(false);
+    expect(src.includes("severityFromDetails")).toBe(false);
   });
 
   it("must query the top-level severity and event_category columns", () => {
