@@ -245,18 +245,14 @@ export class ZeroTrustAccessController {
     context: AccessContext
   ): Promise<void> {
     try {
-      await supabase.from('security_logs').insert({
-        user_id: userId,
-        action: 'permission_enforcement',
-        details: {
-          requested_permissions: requested,
-          granted_permissions: granted,
-          denied_count: requested.length - granted.length
-        },
+      // Pre-launch hardening: no client-role DB write into security_logs.
+      logger.info('permission_enforcement', {
+        userId,
+        requested_permissions: requested,
+        granted_permissions: granted,
+        denied_count: requested.length - granted.length,
         ip_address: context.ipAddress,
         user_agent: context.userAgent,
-        severity: 'info',
-        event_category: 'access_control'
       });
     } catch (error) {
       logger.error('Failed to log permission enforcement', { error });
