@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Rocket, X } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
+import {
+  buildAiStudioPublisherHandoff,
+} from "../publishing/aiStudioHandoff";
 import type { AiAssetKind, AiAssetPayload, AiStudioDraft } from "./types";
 
 interface Props {
@@ -32,27 +34,6 @@ interface Props {
   asset: AiAssetPayload | null;
   kind: AiAssetKind;
   targetLlm: string;
-  onPublished: (promptId: string) => void;
-}
-
-function mapKindToPromptType(kind: AiAssetKind): "text" | "image" | "workflow" | "video" {
-  switch (kind) {
-    case "image":
-      return "image";
-    case "workflow":
-      return "workflow";
-    default:
-      return "text";
-  }
-}
-
-function serializeBody(asset: AiAssetPayload | null): string {
-  if (!asset) return "";
-  if (asset.json && typeof asset.json === "object") {
-    const base = asset.body ? `${asset.body}\n\n` : "";
-    return base + "```json\n" + JSON.stringify(asset.json, null, 2) + "\n```";
-  }
-  return asset.body || "";
 }
 
 export function PublishDialog({
@@ -62,219 +43,187 @@ export function PublishDialog({
   asset,
   kind,
   targetLlm,
-  onPublished,
 }: Props) {
-  const { user } = useAuth();
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<string>("");
-  const [language, setLanguage] = useState<"en" | "ar" | "bilingual">("en");
+  const [language, setLanguage] =
+    useState<"en" | "ar" | "bilingual">("en");
   const [tagsInput, setTagsInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setTitle(draft?.title || asset?.title || "");
     setDescription("");
-    setLanguage((asset?.language as "en" | "ar" | "bilingual") || "en");
+    setLanguage(
+      (asset?.language as "en" | "ar" | "bilingual") || "en",
+    );
     setTags(asset?.tags || []);
-    supabase
-      .from("categories")
-      .select("id, name")
-      .eq("is_active", true)
-      .order("name")
-      .then(({ data }) => setCategories(data || []));
+    setTagsInput("");
   }, [open, draft, asset]);
 
   const addTag = () => {
-    const t = tagsInput.trim();
-    if (!t) return;
-    if (!tags.includes(t)) setTags([...tags, t]);
+    const tag = tagsInput.trim();
+    if (!tag) return;
+    if (!tags.includes(tag)) setTags([...tags, tag]);
     setTagsInput("");
   };
-  const removeTag = (t: string) => setTags(tags.filter((x) => x !== t));
 
-  const handlePublish = async () => {
-    if (!draft || !user?.id) return;
+  const continueToPublisher = () => {
+    if (!draft || !asset) return;
     const finalTitle = title.trim();
     if (!finalTitle) {
       toast.error("Title is required");
       return;
     }
-    const body = serializeBody(asset);
-    if (!body.trim()) {
-      toast.error("Asset has no content to publish");
+    if (!description.trim()) {
+      toast.error("A public summary is required");
       return;
     }
-    setPublishing(true);
-    try {
-      const selectedCat = categories.find((c) => c.id === category);
-      const metadata: Record<string, unknown> = {
-        description,
-        tags,
-        category: selectedCat?.name,
-        language,
-        target_llm: targetLlm,
-        ai_generated: true,
-        source_draft_id: draft.id,
-        asset_kind: kind,
-        params: asset?.params || {},
-      };
 
-      const { data: inserted, error: insertErr } = await supabase
-        .from("prompts")
-        .insert({
-          title: finalTitle,
-          prompt_text: body,
-          prompt_type: mapKindToPromptType(kind),
-          user_id: user.id,
-          image_path: draft.thumbnail_path,
-          metadata: metadata as never,
-        })
-        .select("id")
-        .single();
-
-      if (insertErr || !inserted) {
-        throw insertErr || new Error("Insert failed");
-      }
-
-      const { error: updErr } = await supabase
-        .from("ai_studio_drafts")
-        .update({
-          status: "published",
-          published_prompt_id: inserted.id,
-          title: finalTitle,
-        })
-        .eq("id", draft.id);
-      if (updErr) throw updErr;
-
-      toast.success("Published to prompts catalog");
-      onPublished(inserted.id);
-      onOpenChange(false);
-    } catch (e: any) {
-      toast.error("Publish failed", { description: e?.message });
-    } finally {
-      setPublishing(false);
+    const handoff = buildAiStudioPublisherHandoff({
+      draft,
+      asset,
+      kind,
+      targetLlm,
+      title: finalTitle,
+      description,
+      tags,
+      language,
+    });
+    if (
+      !handoff.private_content.content_en.trim() &&
+      !handoff.private_content.content_ar.trim()
+    ) {
+      toast.error("The generated asset has no delivery content");
+      return;
     }
+
+    onOpenChange(false);
+    navigate("/admin/publishing/new", {
+      state: { aiStudioImport: handoff },
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Publish to prompts catalog</DialogTitle>
+          <DialogTitle>Continue in the V2 publisher</DialogTitle>
           <DialogDescription>
-            Promote this AI Studio draft into a public prompt.
+            AI Studio prepares the source. The unified publisher handles
+            bilingual metadata, protected version content, compatibility,
+            pricing, review, and publication.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-2">
           <div>
-            <Label className="text-xs">Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">Description</Label>
-            <Textarea
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Short summary shown in the catalog…"
+            <Label htmlFor="ai-publisher-title">Title</Label>
+            <Input
+              id="ai-publisher-title"
+              className="min-h-[44px]"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Choose…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Language</Label>
-              <Select value={language} onValueChange={(v) => setLanguage(v as typeof language)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="ar">Arabic</SelectItem>
-                  <SelectItem value="bilingual">Bilingual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label htmlFor="ai-publisher-summary">Public summary</Label>
+            <Textarea
+              id="ai-publisher-summary"
+              rows={3}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Explain the outcome without exposing the paid content."
+              maxLength={280}
+            />
           </div>
           <div>
-            <Label className="text-xs">Tags</Label>
+            <Label htmlFor="ai-publisher-language">Content language</Label>
+            <Select
+              value={language}
+              onValueChange={(value) =>
+                setLanguage(value as typeof language)
+              }
+            >
+              <SelectTrigger
+                id="ai-publisher-language"
+                className="min-h-[44px]"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="ar">Arabic</SelectItem>
+                <SelectItem value="bilingual">Bilingual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="ai-publisher-tags">Tags</Label>
             <div className="flex gap-2">
               <Input
+                id="ai-publisher-tags"
+                className="min-h-[44px]"
                 value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
+                onChange={(event) => setTagsInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
                     addTag();
                   }
                 }}
                 placeholder="Add tag and press Enter"
               />
-              <Button type="button" variant="outline" size="sm" onClick={addTag}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-[44px]"
+                onClick={addTag}
+              >
                 Add
               </Button>
             </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {tags.map((t) => (
-                  <Badge key={t} variant="secondary" className="gap-1">
-                    {t}
-                    <button onClick={() => removeTag(t)} aria-label={`Remove ${t}`}>
-                      <X className="h-3 w-3" />
+            {tags.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="gap-1">
+                    {tag}
+                    <button
+                      type="button"
+                      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center"
+                      onClick={() =>
+                        setTags(tags.filter((value) => value !== tag))
+                      }
+                      aria-label={`Remove ${tag}`}
+                    >
+                      <X className="h-3 w-3" aria-hidden />
                     </button>
                   </Badge>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
-          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs space-y-1">
-            <div>
-              <span className="text-muted-foreground">Type:</span>{" "}
-              <Badge variant="outline" className="text-[10px]">{kind}</Badge>{" "}
-              → published as{" "}
-              <Badge variant="outline" className="text-[10px]">
-                {mapKindToPromptType(kind)}
-              </Badge>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Target LLM:</span> {targetLlm}
-            </div>
-            <div>
-              <span className="text-muted-foreground">Thumbnail:</span>{" "}
-              {draft?.thumbnail_path ? "Attached" : "None (using default)"}
-            </div>
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs">
+            Source kind: <strong>{kind}</strong> · Target:{" "}
+            <strong>{targetLlm}</strong>. Nothing is published from this
+            dialog.
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={publishing}>
+          <Button
+            variant="outline"
+            className="min-h-[44px]"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
-          <Button onClick={handlePublish} disabled={publishing}>
-            {publishing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Rocket className="h-4 w-4 mr-2" />
-            )}
-            Publish
+          <Button className="min-h-[44px]" onClick={continueToPublisher}>
+            Continue to publisher
+            <ArrowRight className="ms-2 h-4 w-4" aria-hidden />
           </Button>
         </DialogFooter>
       </DialogContent>

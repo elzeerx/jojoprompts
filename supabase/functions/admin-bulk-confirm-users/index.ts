@@ -1,175 +1,180 @@
-import { serve, corsHeaders, handleCors, createErrorResponse, createSuccessResponse } from "../_shared/standardImports.ts";
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  handleCors,
+  serve,
+} from "../_shared/standardImports.ts";
 import { verifyAdmin } from "../_shared/adminAuth.ts";
 import { createEdgeLogger } from "../_shared/logger.ts";
+import { logAdminAction } from "../shared/securityLogger.ts";
 
-const logger = createEdgeLogger('ADMIN_BULK_CONFIRM_USERS');
+const logger = createEdgeLogger("ADMIN_BULK_CONFIRM_USERS");
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_USERS_PER_REQUEST = 100;
 
 interface ConfirmUsersRequest {
-  userIds?: string[];
-  startDate?: string;
-  endDate?: string;
-  onlyWithActiveSubscriptions?: boolean;
-  dryRun?: boolean;
+  userIds?: unknown;
+  dryRun?: unknown;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown error";
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return handleCors();
   }
 
   try {
-    // Verify admin authentication
-    const { supabase, userId: adminUserId } = await verifyAdmin(req);
-    
-    logger.info('Bulk confirm users request', { adminUserId });
-
-    if (req.method !== 'POST') {
-      return createErrorResponse('Method not allowed', 405);
+    if (req.method !== "POST") {
+      return createErrorResponse("Method not allowed", 405);
     }
 
-    const body: ConfirmUsersRequest = await req.json();
-    const { userIds, startDate, endDate, onlyWithActiveSubscriptions = false, dryRun = false } = body;
+    const {
+      supabase,
+      userId: adminUserId,
+      userRole,
+    } = await verifyAdmin(req);
 
-    let targetUserIds: string[] = [];
-
-    // Determine which users to process
-    if (userIds && userIds.length > 0) {
-      targetUserIds = userIds;
-    } else {
-      // Query users based on date range and subscription status
-      let query = supabase
-        .from('profiles')
-        .select('id, created_at, user_subscriptions!inner(status)');
-
-      if (startDate) {
-        query = query.gte('created_at', startDate);
-      }
-      if (endDate) {
-        query = query.lte('created_at', endDate);
-      }
-
-      if (onlyWithActiveSubscriptions) {
-        query = query.eq('user_subscriptions.status', 'active');
-      }
-
-      const { data: profiles, error: profileError } = await query;
-
-      if (profileError) {
-        logger.error('Failed to query profiles', { error: profileError });
-        throw new Error('Failed to query user profiles');
-      }
-
-      targetUserIds = profiles?.map(p => p.id) || [];
-    }
-
-    logger.info('Processing users', { 
-      count: targetUserIds.length, 
-      dryRun,
-      onlyWithActiveSubscriptions 
-    });
-
-    if (targetUserIds.length === 0) {
-      return createSuccessResponse({
-        processed: 0,
-        confirmed: 0,
-        failed: 0,
-        dryRun,
-        message: 'No users found matching criteria'
-      });
-    }
-
-    // If dry run, just return the count
-    if (dryRun) {
-      // Get user emails for preview
-      const { data: previewUsers } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email')
-        .in('id', targetUserIds.slice(0, 10)); // Preview first 10
-
-      return createSuccessResponse({
-        dryRun: true,
-        totalUsers: targetUserIds.length,
-        preview: previewUsers,
-        message: `Would confirm ${targetUserIds.length} users`
-      });
-    }
-
-    // Process confirmations
-    const results = {
-      processed: 0,
-      confirmed: 0,
-      failed: 0,
-      errors: [] as any[]
-    };
-
-    const BATCH_SIZE = 10;
-    for (let i = 0; i < targetUserIds.length; i += BATCH_SIZE) {
-      const batch = targetUserIds.slice(i, i + BATCH_SIZE);
-      
-      const batchResults = await Promise.allSettled(
-        batch.map(async (userId) => {
-          try {
-            // Update user email confirmation in auth
-            const { data, error } = await supabase.auth.admin.updateUserById(userId, {
-              email_confirm: true
-            });
-
-            if (error) throw error;
-
-            // Log the confirmation in audit log
-            await supabase.from('admin_audit_log').insert({
-              admin_user_id: adminUserId,
-              action: 'admin_confirm_email',
-              target_resource: 'auth.users',
-              metadata: {
-                target_user_id: userId,
-                reason: 'bulk_confirmation',
-                date_range: { startDate, endDate },
-                only_with_subscriptions: onlyWithActiveSubscriptions
-              }
-            });
-
-            results.confirmed++;
-            return { userId, success: true };
-          } catch (err: any) {
-            results.failed++;
-            results.errors.push({ userId, error: err.message });
-            logger.error('Failed to confirm user', { userId, error: err.message });
-            return { userId, success: false, error: err.message };
-          } finally {
-            results.processed++;
-          }
-        })
+    if (userRole !== "admin") {
+      return createErrorResponse(
+        "Super admin required to confirm user email addresses",
+        403,
       );
     }
 
-    logger.info('Bulk confirmation completed', results);
+    const { data: actorRole, error: actorRoleError } = await supabase
+      .from("user_roles")
+      .select("is_super_admin")
+      .eq("user_id", adminUserId)
+      .eq("role", "admin")
+      .maybeSingle();
 
-    // Log summary in audit log
-    await supabase.from('admin_audit_log').insert({
-      admin_user_id: adminUserId,
-      action: 'bulk_confirm_email_completed',
-      target_resource: 'auth.users',
-      metadata: {
-        total_processed: results.processed,
+    if (actorRoleError || actorRole?.is_super_admin !== true) {
+      logger.warn("Unauthorized email-confirmation attempt", {
+        adminUserId,
+        roleLookupError: actorRoleError?.message,
+      });
+      return createErrorResponse(
+        "Super admin required to confirm user email addresses",
+        403,
+      );
+    }
+
+    const parsed = await req.json() as ConfirmUsersRequest;
+    const requestedIds = Array.isArray(parsed.userIds)
+      ? parsed.userIds
+      : [];
+    const targetUserIds = [
+      ...new Set(
+        requestedIds.filter(
+          (value): value is string =>
+            typeof value === "string" && UUID_PATTERN.test(value),
+        ),
+      ),
+    ];
+
+    if (
+      targetUserIds.length === 0 ||
+      targetUserIds.length !== requestedIds.length
+    ) {
+      return createErrorResponse(
+        "Provide one or more valid user IDs",
+        400,
+      );
+    }
+
+    if (targetUserIds.length > MAX_USERS_PER_REQUEST) {
+      return createErrorResponse(
+        `A maximum of ${MAX_USERS_PER_REQUEST} users can be confirmed at once`,
+        400,
+      );
+    }
+
+    const dryRun = parsed.dryRun === true;
+    if (dryRun) {
+      return createSuccessResponse({
+        dryRun: true,
+        totalUsers: targetUserIds.length,
+        processed: 0,
+        confirmed: 0,
+        failed: 0,
+      });
+    }
+
+    const results = {
+      dryRun: false,
+      totalUsers: targetUserIds.length,
+      processed: 0,
+      confirmed: 0,
+      failed: 0,
+      errors: [] as Array<{ userId: string; error: string }>,
+    };
+
+    const batchSize = 10;
+    for (let index = 0; index < targetUserIds.length; index += batchSize) {
+      const batch = targetUserIds.slice(index, index + batchSize);
+      const batchResults = await Promise.all(
+        batch.map(async (targetUserId) => {
+          const { error } = await supabase.auth.admin.updateUserById(
+            targetUserId,
+            { email_confirm: true },
+          );
+
+          return { targetUserId, error };
+        }),
+      );
+
+      for (const result of batchResults) {
+        results.processed += 1;
+        if (result.error) {
+          results.failed += 1;
+          results.errors.push({
+            userId: result.targetUserId,
+            error: result.error.message,
+          });
+        } else {
+          results.confirmed += 1;
+        }
+      }
+    }
+
+    await logAdminAction(
+      supabase,
+      adminUserId,
+      "admin_confirm_user_emails",
+      "auth.users",
+      {
+        target_user_ids: targetUserIds,
+        processed: results.processed,
         confirmed: results.confirmed,
         failed: results.failed,
-        date_range: { startDate, endDate },
-        only_with_subscriptions: onlyWithActiveSubscriptions
-      }
+      },
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+    );
+
+    logger.info("Email confirmation request completed", {
+      adminUserId,
+      processed: results.processed,
+      confirmed: results.confirmed,
+      failed: results.failed,
     });
 
-    return createSuccessResponse({
-      ...results,
-      message: `Confirmed ${results.confirmed} out of ${results.processed} users`
-    }, corsHeaders);
+    return createSuccessResponse(results);
+  } catch (error: unknown) {
+    const message = getErrorMessage(error);
+    logger.error("Function error", { error: message });
 
-  } catch (error: any) {
-    logger.error('Function error', { error: error.message });
-    
-    const status = error.message === 'UNAUTHORIZED' ? 401 :
-                   error.message === 'FORBIDDEN' ? 403 : 500;
-    
-    return createErrorResponse(error.message, status);
+    const status = message.includes("authorization") ||
+        message.includes("token")
+      ? 401
+      : message.includes("privilege") ||
+          message.includes("Admin access required")
+      ? 403
+      : 500;
+
+    return createErrorResponse(message, status);
   }
 });

@@ -10,6 +10,10 @@ import { handleError } from '@/utils/errorHandler';
 
 const logger = createLogger('USER_SERVICE');
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 /**
  * Consolidated hook for all user CRUD operations
  * Replaces: useUserCreation, useUserUpdate, useUserDeletion, useUserRoleManagement, 
@@ -22,7 +26,7 @@ export function useUserService() {
 
   // Transform frontend field names to edge function expected format
   const transformDataForEdgeFunction = (data: UserUpdateData) => {
-    const transformed: Record<string, any> = {};
+    const transformed: Record<string, unknown> = {};
     
     if (data.first_name !== undefined) transformed.firstName = data.first_name;
     if (data.last_name !== undefined) transformed.lastName = data.last_name;
@@ -46,21 +50,30 @@ export function useUserService() {
   const createUser = async (userData: CreateUserData): Promise<boolean> => {
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.rpc('admin_create_user' as any, {
-        user_email: userData.email,
-        user_password: userData.password,
-        user_first_name: userData.first_name || 'User',
-        user_last_name: userData.last_name || '',
-        user_role: userData.role || 'user'
-      }) as { data: any, error: any };
+      const { data, error } = await supabase.functions.invoke('get-all-users', {
+        body: {
+          action: 'create',
+          email: userData.email,
+          password: userData.password,
+          first_name: userData.first_name || 'User',
+          last_name: userData.last_name || '',
+          role: userData.role || 'user'
+        }
+      });
       
       if (error) {
-        logger.error('RPC error creating user', { error: error.message });
+        logger.error('Edge Function error creating user', { error: error.message });
         throw new Error(error.message || "Failed to create user");
       }
-      
-      if (!data) {
-        throw new Error("User creation failed - no response");
+
+      if (!data?.success) {
+        throw new Error(
+          typeof data?.details === "string"
+            ? data.details
+            : typeof data?.error === "string"
+              ? data.error
+              : "User creation failed",
+        );
       }
       
       toast({
@@ -69,11 +82,11 @@ export function useUserService() {
       });
       
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, { component: 'useUserService', action: 'createUser' });
       toast({
         title: "Creation failed",
-        description: error.message || "Failed to create user",
+        description: getErrorMessage(error, "Failed to create user"),
         variant: "destructive"
       });
       return false;
@@ -106,11 +119,11 @@ export function useUserService() {
       
       logger.info('User updated successfully', { userId, fields: Object.keys(data) });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, { component: 'useUserService', action: 'updateUser' });
       toast({
         title: "Update failed",
-        description: error.message || "Failed to update user information.",
+        description: getErrorMessage(error, "Failed to update user information."),
         variant: "destructive"
       });
       return false;
@@ -140,18 +153,19 @@ export function useUserService() {
       
       logger.info('User deleted successfully', { userId });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, { component: 'useUserService', action: 'deleteUser' });
       
       let errorMessage = "Failed to delete user.";
-      if (error.message?.includes("Admin access required") || error.message?.includes("UNAUTHORIZED")) {
+      const rawMessage = getErrorMessage(error, "");
+      if (rawMessage.includes("Admin access required") || rawMessage.includes("UNAUTHORIZED")) {
         errorMessage = "You don't have permission to delete users.";
-      } else if (error.message?.includes("User not found")) {
+      } else if (rawMessage.includes("User not found")) {
         errorMessage = "User not found in database.";
-      } else if (error.message?.includes("foreign key") || error.message?.includes("FK_VIOLATION")) {
+      } else if (rawMessage.includes("foreign key") || rawMessage.includes("FK_VIOLATION")) {
         errorMessage = "Cannot delete user due to existing references.";
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (rawMessage) {
+        errorMessage = rawMessage;
       }
       
       toast({
@@ -173,67 +187,37 @@ export function useUserService() {
       if (!roleValidation.isValid) {
         throw new Error(roleValidation.error);
       }
-      
-      // Check current role
-      const { data: currentRole, error: fetchError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-        
-      if (fetchError) throw new Error(`Failed to verify current role: ${fetchError.message}`);
-      
-      // Insert if no role exists
-      if (!currentRole) {
-        const { error: insertError } = await supabase
-          .from('user_roles')
-          .insert({ 
-            user_id: userId, 
+
+      const { data, error } = await supabase.functions.invoke(
+        "get-all-users",
+        {
+          body: {
+            action: "update",
+            userId,
             role: newRole,
-            assigned_at: new Date().toISOString()
-          });
-          
-        if (insertError) throw new Error(`Failed to assign role: ${insertError.message}`);
-        
-        toast({
-          title: "Role assigned",
-          description: `User has been assigned the role ${newRole}`,
-        });
-        return true;
+          },
+        },
+      );
+
+      if (error) {
+        throw new Error(error.message || "Failed to update user role");
       }
-      
-      // Update if different
-      if (currentRole.role !== newRole) {
-        // Delete and insert for clean transition
-        await supabase.from('user_roles').delete().eq('user_id', userId);
-        
-        const { error: insertError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: userId,
-            role: newRole,
-            assigned_at: new Date().toISOString()
-          });
-          
-        if (insertError) throw new Error(`Failed to update role: ${insertError.message}`);
-        
-        toast({
-          title: "Role updated",
-          description: `User role has been changed to ${newRole}`,
-        });
-        return true;
+      if (data?.error) {
+        throw new Error(
+          typeof data.details === "string" ? data.details : data.error,
+        );
       }
-      
+
       toast({
-        title: "No change needed",
-        description: `User already has the role ${newRole}`,
+        title: "Role updated",
+        description: `User role has been changed to ${newRole}`,
       });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, { component: 'useUserService', action: 'updateUserRole' });
       toast({
         title: "Error updating role",
-        description: error.message || "Failed to update user role",
+        description: getErrorMessage(error, "Failed to update user role"),
         variant: "destructive",
       });
       return false;
@@ -259,11 +243,11 @@ export function useUserService() {
         return true;
       }
       throw new Error("Failed to confirm email");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Confirmation Failed",
-        description: error.message || "Failed to confirm user email",
+        description: getErrorMessage(error, "Failed to confirm user email"),
       });
       return false;
     } finally {
@@ -284,7 +268,6 @@ export function useUserService() {
 
       if (error) {
         // Log server-side only; user sees a generic success toast.
-        // eslint-disable-next-line no-console
         console.warn('Password reset request rejected by Auth server');
       }
 
@@ -293,7 +276,7 @@ export function useUserService() {
         description: "If an account exists for that address, a reset email has been sent."
       });
       return true;
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       toast({
         title: "Password reset email sent",
         description: "If an account exists for that address, a reset email has been sent."
@@ -377,11 +360,11 @@ export function useUserService() {
       });
       
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, { component: 'useUserService', action: 'assignPlan' });
       toast({
         title: "Assignment failed",
-        description: error.message || "Failed to assign plan to user.",
+        description: getErrorMessage(error, "Failed to assign plan to user."),
         variant: "destructive"
       });
       return false;
@@ -425,11 +408,11 @@ export function useUserService() {
       });
 
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, { component: 'useUserService', action: 'cancelSubscription' });
       toast({
         title: "Cancellation Failed",
-        description: error.message || "Failed to cancel subscription",
+        description: getErrorMessage(error, "Failed to cancel subscription"),
         variant: "destructive",
       });
       return false;

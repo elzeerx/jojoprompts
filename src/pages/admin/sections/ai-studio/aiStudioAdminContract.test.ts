@@ -14,6 +14,14 @@ const routesSource = readFileSync(
   "utf8",
 );
 const appSource = readFileSync("src/App.tsx", "utf8");
+const publishDialogSource = readFileSync(
+  "src/pages/admin/sections/ai-studio/PublishDialog.tsx",
+  "utf8",
+);
+const draftHookSource = readFileSync(
+  "src/pages/admin/sections/ai-studio/useAiStudioDraft.ts",
+  "utf8",
+);
 
 describe("AI Studio Admin V2 contract", () => {
   it("uses only the canonical nested publishing route for draft navigation", () => {
@@ -69,6 +77,20 @@ describe("AI Studio Admin V2 contract", () => {
     );
     expect(pageSource).toContain(
       'console.error("Failed to create AI Studio draft:", error)',
+    );
+  });
+
+  it("hands assets to the unified publisher without mutating legacy prompts", () => {
+    expect(publishDialogSource).toContain(
+      'navigate("/admin/publishing/new"',
+    );
+    expect(publishDialogSource).toContain("buildAiStudioPublisherHandoff");
+    expect(publishDialogSource).not.toContain('.from("prompts")');
+    expect(draftHookSource).not.toContain('.from("prompts")');
+    expect(draftHookSource).not.toContain("unpublish");
+    expect(pageSource).toContain("Sent to publisher");
+    expect(pageSource).toContain(
+      "/admin/publishing/resources/${importedResourceId}/edit",
     );
   });
 });

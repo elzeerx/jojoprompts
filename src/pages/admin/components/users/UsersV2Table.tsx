@@ -31,7 +31,6 @@ import { EditUserDialog } from "./components/EditUserDialog";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
 import { UserProfileSheet } from "./components/UserProfileSheet";
 import { RoleBadge, VerificationBadge, OrphanedBadge } from "./components/shared";
-import { useAuth } from "@/contexts/AuthContext";
 
 export type UsersV2Row = ExtendedUserProfile & {
   is_email_confirmed?: boolean | null;
@@ -46,10 +45,11 @@ interface UsersV2TableProps {
   onPageChange: (page: number) => void;
   onUpdateUser: (userId: string, data: Partial<ExtendedUserProfile>) => void;
   onSendResetEmail: (email: string) => void;
-  onResendConfirmation: (userId: string, email: string) => void;
   onConfirmEmail: (userId: string, userName?: string) => Promise<boolean>;
   onRefresh: () => void;
   updatingUserId: string | null;
+  canEditUsers: boolean;
+  canManageSensitiveUsers: boolean;
 }
 
 export function UsersV2Table({
@@ -60,12 +60,12 @@ export function UsersV2Table({
   onPageChange,
   onUpdateUser,
   onSendResetEmail,
-  onResendConfirmation,
   onConfirmEmail,
   onRefresh,
   updatingUserId,
+  canEditUsers,
+  canManageSensitiveUsers,
 }: UsersV2TableProps) {
-  const { canFullCRUD, canChangePasswords } = useAuth();
   const [selectedUser, setSelectedUser] = useState<UsersV2Row | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -154,8 +154,8 @@ export function UsersV2Table({
                   <TableCell className="text-right">
                     <RowActions
                       user={u}
-                      canFullCRUD={canFullCRUD}
-                      canChangePasswords={canChangePasswords}
+                      canEditUsers={canEditUsers}
+                      canManageSensitiveUsers={canManageSensitiveUsers}
                       isUpdating={updatingUserId === u.id}
                       onView={() => {
                         setSelectedUser(u);
@@ -170,9 +170,6 @@ export function UsersV2Table({
                         setPasswordOpen(true);
                       }}
                       onSendReset={() => onSendResetEmail(u.email!)}
-                      onResendConfirmation={() =>
-                        onResendConfirmation(u.id, u.email!)
-                      }
                       onConfirmEmail={async () => {
                         const ok = await onConfirmEmail(
                           u.id,
@@ -207,8 +204,8 @@ export function UsersV2Table({
               </div>
               <RowActions
                 user={u}
-                canFullCRUD={canFullCRUD}
-                canChangePasswords={canChangePasswords}
+                canEditUsers={canEditUsers}
+                canManageSensitiveUsers={canManageSensitiveUsers}
                 isUpdating={updatingUserId === u.id}
                 onView={() => {
                   setSelectedUser(u);
@@ -223,9 +220,6 @@ export function UsersV2Table({
                   setPasswordOpen(true);
                 }}
                 onSendReset={() => onSendResetEmail(u.email!)}
-                onResendConfirmation={() =>
-                  onResendConfirmation(u.id, u.email!)
-                }
                 onConfirmEmail={async () => {
                   const ok = await onConfirmEmail(
                     u.id,
@@ -272,14 +266,13 @@ export function UsersV2Table({
         open={profileOpen}
         onOpenChange={setProfileOpen}
         user={selectedUser}
-        onSave={onUpdateUser}
-        isLoading={updatingUserId === selectedUser?.id}
       />
       <EditUserDialog
         user={selectedUser}
         open={editOpen}
         onOpenChange={setEditOpen}
         onSave={(id, data) => onUpdateUser(id, data)}
+        canManageSensitiveFields={canManageSensitiveUsers}
       />
       <ChangePasswordDialog
         user={selectedUser}
@@ -293,27 +286,25 @@ export function UsersV2Table({
 
 interface RowActionsProps {
   user: UsersV2Row;
-  canFullCRUD: boolean;
-  canChangePasswords: boolean;
+  canEditUsers: boolean;
+  canManageSensitiveUsers: boolean;
   isUpdating: boolean;
   onView: () => void;
   onEdit: () => void;
   onPassword: () => void;
   onSendReset: () => void;
-  onResendConfirmation: () => void;
   onConfirmEmail: () => void;
 }
 
 function RowActions({
   user,
-  canFullCRUD,
-  canChangePasswords,
+  canEditUsers,
+  canManageSensitiveUsers,
   isUpdating,
   onView,
   onEdit,
   onPassword,
   onSendReset,
-  onResendConfirmation,
   onConfirmEmail,
 }: RowActionsProps) {
   const orphan = user.has_auth_account === false;
@@ -347,12 +338,12 @@ function RowActions({
         <DropdownMenuItem onClick={onView} className="min-h-[44px]">
           <UserIcon className="mr-2 h-4 w-4" /> View profile
         </DropdownMenuItem>
-        {canFullCRUD && (
+        {canEditUsers && (
           <DropdownMenuItem onClick={onEdit} className="min-h-[44px]">
             <Edit className="mr-2 h-4 w-4" /> Edit
           </DropdownMenuItem>
         )}
-        {canChangePasswords && (
+        {canManageSensitiveUsers && (
           <DropdownMenuItem
             onClick={guardOrphan("change password", onPassword)}
             className="min-h-[44px]"
@@ -360,21 +351,17 @@ function RowActions({
             <Key className="mr-2 h-4 w-4" /> Change password
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem
-          onClick={guardOrphan("send reset email", onSendReset)}
-          className="min-h-[44px]"
-        >
-          <Send className="mr-2 h-4 w-4" /> Send password reset
-        </DropdownMenuItem>
-        {user.is_email_confirmed === false && (
+        {canEditUsers && (
           <DropdownMenuItem
-            onClick={guardOrphan("resend confirmation", onResendConfirmation)}
+            onClick={guardOrphan("send reset email", onSendReset)}
             className="min-h-[44px]"
           >
-            <Send className="mr-2 h-4 w-4" /> Resend confirmation
+            <Send className="mr-2 h-4 w-4" /> Send password reset
           </DropdownMenuItem>
         )}
-        {user.is_email_confirmed === false && canFullCRUD && !orphan && (
+        {user.is_email_confirmed === false &&
+          canManageSensitiveUsers &&
+          !orphan && (
           <DropdownMenuItem
             onClick={onConfirmEmail}
             className="min-h-[44px]"
@@ -382,7 +369,7 @@ function RowActions({
             <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" />
             <span className="text-emerald-600">Confirm email (admin)</span>
           </DropdownMenuItem>
-        )}
+          )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

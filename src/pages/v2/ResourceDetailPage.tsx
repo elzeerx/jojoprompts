@@ -63,18 +63,14 @@ export default function ResourceDetailPage() {
 
   const individuallyOwned = useMemo(() => {
     if (!data?.resource) return false;
-    return (library?.entitlements ?? []).some(
-      (e) => e.scope === "resource" && e.resource_id === data.resource.id,
-    );
+    return (library?.owned_resource_ids ?? []).includes(data.resource.id);
   }, [data, library]);
   const owned = hasLifetimeAccess || individuallyOwned;
 
-  const legacyPromptId = (data?.resource as { legacy_prompt_id?: string | null } | undefined)
-    ?.legacy_prompt_id ?? null;
   const shouldFetchProtected = shouldRevealProtectedContent({
     hasUser: !!user,
     owned,
-    legacyPromptId,
+    resourceType: data?.resource?.type,
   });
   const {
     data: protectedContent,
@@ -94,7 +90,7 @@ export default function ResourceDetailPage() {
   const { copyToClipboard, hasCopied } = useCopyToClipboard({
     successTitle: language === "ar" ? "تم النسخ" : "Copied",
     successDescription:
-      language === "ar" ? "تم نسخ البرومبت." : "Prompt copied to clipboard.",
+      language === "ar" ? "تم نسخ المحتوى." : "Content copied to clipboard.",
   });
 
   if (isLoading) {
@@ -445,21 +441,22 @@ export default function ResourceDetailPage() {
               </p>
             </section>
 
-            {shouldFetchProtected && (
-              <section
-                data-testid="entitled-prompt-section"
-                className="rounded-2xl border border-warm-gold/30 bg-warm-gold/5 p-4"
-              >
+            {shouldFetchProtected &&
+              protectedContent?.kind !== "package" && (
+                <section
+                  data-testid="entitled-prompt-section"
+                  className="rounded-2xl border border-warm-gold/30 bg-warm-gold/5 p-4"
+                >
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-lg font-semibold">
-                    {lang === "ar" ? "برومبتك" : "Your prompt"}
+                    {lang === "ar" ? "محتوى المورد" : "Your resource content"}
                   </h2>
                   {displayProtectedText ? (
                     <Button
                       size="sm"
                       variant="outline"
                       className="min-h-[44px]"
-                      aria-label={lang === "ar" ? "نسخ البرومبت" : "Copy prompt"}
+                      aria-label={lang === "ar" ? "نسخ المحتوى" : "Copy content"}
                       onClick={() => copyToClipboard(displayProtectedText)}
                     >
                       {hasCopied ? (
@@ -481,8 +478,8 @@ export default function ResourceDetailPage() {
                 ) : protectedError ? (
                   <p className="text-sm text-destructive">
                     {lang === "ar"
-                      ? "تعذّر تحميل البرومبت. حاول مرة أخرى."
-                      : "Couldn't load the prompt. Please try again."}
+                      ? "تعذّر تحميل المحتوى. حاول مرة أخرى."
+                      : "Couldn't load the content. Please try again."}
                   </p>
                 ) : protectedContent && !protectedContent.ok ? (
                   <p className="text-sm text-muted-foreground">
@@ -497,8 +494,8 @@ export default function ResourceDetailPage() {
                     {lang === "ar" ? "لا يوجد محتوى نصي." : "No text content."}
                   </p>
                 ) : null}
-              </section>
-            )}
+                </section>
+              )}
 
 
             {owned && files && files.length > 0 && (

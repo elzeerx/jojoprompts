@@ -4,16 +4,19 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export interface EntitledResourceContent {
   ok: boolean;
-  kind?: "prompt" | "package";
+  kind?: "resource" | "prompt" | "package";
   resource_id?: string;
   resource_type?: string | null;
+  version_id?: string | null;
+  version?: string | null;
+  content_format?: "text" | "markdown" | "json" | "yaml" | null;
   prompt_text?: string | null;
   prompt_text_ar?: string | null;
   error?: string;
 }
 
 /**
- * Fetch protected legacy prompt content via the SECURITY DEFINER RPC
+ * Fetch protected, entitlement-eligible published-version content via the RPC
  * `v2_get_entitled_resource_content`. Enabled only when a signed-in user
  * has a confirmed entitlement for the resource. Never called for
  * public/unowned visitors — the query is disabled and no network request

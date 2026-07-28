@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, User, Shield } from "lucide-react";
-import { UserProfile } from "@/types";
 import { ExtendedUserProfile } from "@/types/user";
 
 interface EditUserDialogProps {
@@ -28,6 +27,7 @@ interface EditUserDialogProps {
   user: ExtendedUserProfile | null;
   onSave: (userId: string, data: Partial<ExtendedUserProfile>) => void;
   isLoading?: boolean;
+  canManageSensitiveFields: boolean;
 }
 
 export function EditUserDialog({
@@ -36,10 +36,12 @@ export function EditUserDialog({
   user,
   onSave,
   isLoading = false,
+  canManageSensitiveFields,
 }: EditUserDialogProps) {
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
+    username: "",
     email: "",
     role: "user" as "user" | "admin" | "prompter" | "jadmin",
   });
@@ -49,6 +51,7 @@ export function EditUserDialog({
       setFormData({
         first_name: user.first_name || "",
         last_name: user.last_name || "",
+        username: user.username || "",
         email: user.email || "",
         role: user.role as "user" | "admin" | "prompter" | "jadmin",
       });
@@ -67,10 +70,16 @@ export function EditUserDialog({
     if (formData.last_name !== (user.last_name || "")) {
       changes.last_name = formData.last_name;
     }
-    if (formData.email !== (user.email || "")) {
+    if (formData.username !== (user.username || "")) {
+      changes.username = formData.username;
+    }
+    if (
+      canManageSensitiveFields &&
+      formData.email !== (user.email || "")
+    ) {
       changes.email = formData.email;
     }
-    if (formData.role !== user.role) {
+    if (canManageSensitiveFields && formData.role !== user.role) {
       changes.role = formData.role;
     }
 
@@ -90,21 +99,23 @@ export function EditUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="prompt-dialog">
-        <div className="p-8">
-          <DialogHeader className="space-y-3 mb-6">
-            <DialogTitle className="text-3xl font-bold text-gray-900 leading-tight flex items-center gap-3">
-              <User className="h-8 w-8 text-warm-gold" />
+      <DialogContent className="prompt-dialog max-h-[calc(100dvh-2rem)] overflow-y-auto p-0 sm:max-w-2xl">
+        <div className="p-5 sm:p-8">
+          <DialogHeader className="mb-6 space-y-3">
+            <DialogTitle className="flex items-center gap-3 text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
+              <User className="h-7 w-7 text-warm-gold sm:h-8 sm:w-8" />
               Edit User Details
             </DialogTitle>
             <DialogDescription className="text-base text-muted-foreground">
-              Update the user's information and permissions. Changes will be saved immediately.
+              {canManageSensitiveFields
+                ? "Update profile information, account email, and authorization role."
+                : "Update basic profile information. Sensitive account controls require a super admin."}
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-white/40 p-6 rounded-xl border border-gray-200 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-6 rounded-xl border border-gray-200 bg-white/40 p-4 sm:p-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName" className="text-sm font-medium">
                     First Name
@@ -133,6 +144,23 @@ export function EditUserDialog({
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="username" className="text-sm font-medium">
+                  Username
+                </Label>
+                <Input
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) => handleChange("username", e.target.value)}
+                  placeholder="Enter username"
+                  className="h-12 text-base"
+                  minLength={3}
+                  maxLength={30}
+                  pattern="[a-zA-Z0-9_-]+"
+                />
+              </div>
+
+              {canManageSensitiveFields && (
+                <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
                   Email Address
                 </Label>
@@ -145,63 +173,66 @@ export function EditUserDialog({
                   className="h-12 text-base"
                 />
               </div>
+              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-sm font-medium flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  User Role
-                </Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => handleChange("role", value)}
-                >
-                  <SelectTrigger id="role" className="h-12 text-base">
-                    <SelectValue placeholder="Select user role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">User</span>
-                        <span className="text-xs text-muted-foreground">Standard access</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="prompter">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium text-blue-600">Prompter</span>
-                        <span className="text-xs text-muted-foreground">Can create and manage own prompts</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="jadmin">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium text-orange-600">Junior Admin</span>
-                        <span className="text-xs text-muted-foreground">Admin access without user/subscription management</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="admin">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium text-warm-gold">Administrator</span>
-                        <span className="text-xs text-muted-foreground">Full system access</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {canManageSensitiveFields && (
+                <div className="space-y-2">
+                  <Label htmlFor="role" className="flex items-center gap-2 text-sm font-medium">
+                    <Shield className="h-4 w-4" />
+                    User Role
+                  </Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={(value) => handleChange("role", value)}
+                  >
+                    <SelectTrigger id="role" className="h-12 text-base">
+                      <SelectValue placeholder="Select user role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">User</span>
+                          <span className="text-xs text-muted-foreground">Standard account access</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="prompter">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium text-blue-600">Prompter</span>
+                          <span className="text-xs text-muted-foreground">Can create and manage prompt content</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="jadmin">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium text-orange-600">Junior Admin</span>
+                          <span className="text-xs text-muted-foreground">Read-only administrative access</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="admin">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium text-warm-gold">Administrator</span>
+                          <span className="text-xs text-muted-foreground">Operational administration access</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
-            <DialogFooter className="space-x-3 pt-6">
+            <DialogFooter className="flex flex-col-reverse gap-3 pt-6 sm:flex-row sm:justify-end">
               <Button 
                 type="button"
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
                 disabled={isLoading}
-                className="px-6 py-3 text-base font-semibold rounded-xl"
+                className="min-h-11 rounded-xl px-6 py-3 text-base font-semibold"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="bg-[#c49d68] hover:bg-[#c49d68]/90 text-white px-6 py-3 text-base font-semibold rounded-xl shadow-md"
+                className="min-h-11 rounded-xl bg-[#c49d68] px-6 py-3 text-base font-semibold text-white shadow-md hover:bg-[#c49d68]/90"
               >
                 {isLoading ? (
                   <>

@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Rocket, Save, Sparkles, Undo2 } from "lucide-react";
+import { ArrowRight, Loader2, Rocket, Save, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useAiStudioDraft } from "./useAiStudioDraft";
@@ -84,14 +84,14 @@ export default function AiStudioPage() {
     setAsset,
     setTitle,
     setThumbnailPath,
-    markPublished,
-    unpublish,
     draft,
     save,
   } = useAiStudioDraft(draftId);
 
   const [publishOpen, setPublishOpen] = useState(false);
-  const isPublished = draft?.status === "published";
+  const importedResourceId =
+    draft?.status === "imported" ? draft.published_resource_id : null;
+  const isImported = Boolean(importedResourceId);
 
   if (!draftId) {
     return (
@@ -186,9 +186,9 @@ export default function AiStudioPage() {
 
       <div className="flex flex-col gap-3 min-h-0">
         <div className="flex justify-end items-center gap-2">
-          {isPublished && (
+          {isImported && (
             <Badge variant="default" className="mr-auto">
-              Published
+              Sent to publisher
             </Badge>
           )}
           <Button onClick={save} disabled={saving} size="sm" variant="outline">
@@ -199,20 +199,27 @@ export default function AiStudioPage() {
             )}
             Save draft
           </Button>
-          {isPublished ? (
-            <Button size="sm" variant="destructive" onClick={unpublish}>
-              <Undo2 className="h-4 w-4 mr-2" />
-              Unpublish
+          {isImported ? (
+            <Button
+              size="sm"
+              onClick={() =>
+                navigate(
+                  `/admin/publishing/resources/${importedResourceId}/edit`,
+                )
+              }
+            >
+              Continue in publisher
+              <ArrowRight className="h-4 w-4 ms-2" aria-hidden />
             </Button>
           ) : (
             <Button
               size="sm"
               onClick={() => setPublishOpen(true)}
               disabled={!asset}
-              title={!asset ? "Generate an asset first" : "Publish to prompts catalog"}
+              title={!asset ? "Generate an asset first" : "Continue to the V2 publisher"}
             >
               <Rocket className="h-4 w-4 mr-2" />
-              Publish
+              Continue to publisher
             </Button>
           )}
         </div>
@@ -234,7 +241,6 @@ export default function AiStudioPage() {
         asset={asset}
         kind={kind}
         targetLlm={targetLlm}
-        onPublished={markPublished}
       />
     </div>
   );

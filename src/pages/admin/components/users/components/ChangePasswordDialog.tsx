@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Key, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { UserProfile } from "@/types";
 import { ExtendedUserProfile } from "@/types/user";
 import { useAdminErrorHandler } from "../hooks/useAdminErrorHandler";
 
@@ -86,7 +85,7 @@ export function ChangePasswordDialog({
       setConfirmPassword("");
       onOpenChange(false);
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, "change password");
     } finally {
       setLoading(false);
@@ -95,11 +94,11 @@ export function ChangePasswordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="prompt-dialog">
-        <div className="p-8">
-          <DialogHeader className="space-y-3 mb-6">
-            <DialogTitle className="text-3xl font-bold text-gray-900 leading-tight flex items-center gap-3">
-              <Key className="h-8 w-8 text-warm-gold" />
+      <DialogContent className="prompt-dialog max-h-[calc(100dvh-2rem)] overflow-y-auto p-0 sm:max-w-2xl">
+        <div className="p-5 sm:p-8">
+          <DialogHeader className="mb-6 space-y-3">
+            <DialogTitle className="flex items-center gap-3 text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
+              <Key className="h-7 w-7 text-warm-gold sm:h-8 sm:w-8" />
               Change User Password
             </DialogTitle>
             <DialogDescription className="text-base text-muted-foreground">
@@ -108,7 +107,7 @@ export function ChangePasswordDialog({
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-white/40 p-6 rounded-xl border border-gray-200 space-y-6">
+            <div className="space-y-6 rounded-xl border border-gray-200 bg-white/40 p-4 sm:p-6">
               <div className="space-y-2">
                 <Label htmlFor="newPassword" className="text-sm font-medium">
                   New Password
@@ -120,7 +119,7 @@ export function ChangePasswordDialog({
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
-                    className="h-12 text-base pr-12"
+                    className="h-12 pe-12 text-base"
                     required
                     minLength={8}
                   />
@@ -128,8 +127,9 @@ export function ChangePasswordDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                    className="absolute end-0 top-1/2 h-11 w-11 -translate-y-1/2 p-0"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide new password" : "Show new password"}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -151,7 +151,7 @@ export function ChangePasswordDialog({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
-                    className="h-12 text-base pr-12"
+                    className="h-12 pe-12 text-base"
                     required
                     minLength={8}
                   />
@@ -159,8 +159,13 @@ export function ChangePasswordDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                    className="absolute end-0 top-1/2 h-11 w-11 -translate-y-1/2 p-0"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={
+                      showConfirmPassword
+                        ? "Hide confirmed password"
+                        : "Show confirmed password"
+                    }
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -186,24 +191,24 @@ export function ChangePasswordDialog({
               </div>
             </div>
 
-            <DialogFooter className="space-x-3 pt-6">
+            <DialogFooter className="flex flex-col-reverse gap-3 pt-6 sm:flex-row sm:justify-end">
               <Button 
                 type="button"
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
                 disabled={loading}
-                className="px-6 py-3 text-base font-semibold rounded-xl"
+                className="min-h-11 rounded-xl px-6 py-3 text-base font-semibold"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-[#c49d68] hover:bg-[#c49d68]/90 text-white px-6 py-3 text-base font-semibold rounded-xl shadow-md"
+                className="min-h-11 rounded-xl bg-[#c49d68] px-6 py-3 text-base font-semibold text-white shadow-md hover:bg-[#c49d68]/90"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
                     Changing Password...
                   </>
                 ) : (

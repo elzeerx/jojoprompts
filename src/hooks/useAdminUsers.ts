@@ -5,14 +5,9 @@ import { createLogger } from '@/utils/logging';
 
 const logger = createLogger('ADMIN_USERS');
 
-// AdminUser extends ExtendedUserProfile with subscription data
 export interface AdminUser extends ExtendedUserProfile {
-  subscription?: {
-    plan_name: string;
-    status: string;
-    is_lifetime: boolean;
-    price_usd: number;
-  } | null;
+  account_disabled?: boolean;
+  email_confirmed_at?: string | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -77,9 +72,6 @@ export function useAdminUsers() {
           .flatMap((rawUser) => {
             if (!isRecord(rawUser) || typeof rawUser.id !== "string") return [];
 
-            const rawSubscription = isRecord(rawUser.subscription)
-              ? rawUser.subscription
-              : null;
             const socialLinks = isRecord(rawUser.social_links)
               ? Object.fromEntries(
                   Object.entries(rawUser.social_links).filter(
@@ -112,22 +104,13 @@ export function useAdminUsers() {
                 typeof rawUser.is_email_confirmed === "boolean"
                   ? rawUser.is_email_confirmed
                   : undefined,
+              email_confirmed_at:
+                nullableString(rawUser.email_confirmed_at),
               has_auth_account:
                 typeof rawUser.has_auth_account === "boolean"
                   ? rawUser.has_auth_account
                   : undefined,
-              subscription: rawSubscription
-                ? {
-                    plan_name:
-                      optionalString(rawSubscription.plan_name) ?? "Unknown",
-                    status: optionalString(rawSubscription.status) ?? "unknown",
-                    is_lifetime: rawSubscription.is_lifetime === true,
-                    price_usd:
-                      typeof rawSubscription.price_usd === "number"
-                        ? rawSubscription.price_usd
-                        : 0,
-                  }
-                : null,
+              account_disabled: rawUser.account_disabled === true,
             }];
           });
 

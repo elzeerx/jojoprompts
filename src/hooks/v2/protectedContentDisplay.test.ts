@@ -41,27 +41,36 @@ describe("pickProtectedText", () => {
 });
 
 describe("shouldRevealProtectedContent", () => {
-  it("requires all three signals to be truthy", () => {
+  it("allows signed-in owners of inline-delivery resource types", () => {
     expect(
-      shouldRevealProtectedContent({ hasUser: true, owned: true, legacyPromptId: "p1" }),
+      shouldRevealProtectedContent({ hasUser: true, owned: true, resourceType: "prompt" }),
+    ).toBe(true);
+    expect(
+      shouldRevealProtectedContent({ hasUser: true, owned: true, resourceType: "prompt_pack" }),
+    ).toBe(true);
+    expect(
+      shouldRevealProtectedContent({ hasUser: true, owned: true, resourceType: "image_style" }),
+    ).toBe(true);
+    expect(
+      shouldRevealProtectedContent({ hasUser: true, owned: true, resourceType: "automation" }),
+    ).toBe(true);
+    expect(
+      shouldRevealProtectedContent({ hasUser: true, owned: true, resourceType: "skill" }),
     ).toBe(true);
   });
 
-  it("fails closed when any signal is missing", () => {
+  it("fails closed for anonymous, unowned, bundle, or unknown resources", () => {
     expect(
-      shouldRevealProtectedContent({ hasUser: false, owned: true, legacyPromptId: "p1" }),
+      shouldRevealProtectedContent({ hasUser: false, owned: true, resourceType: "prompt" }),
     ).toBe(false);
     expect(
-      shouldRevealProtectedContent({ hasUser: true, owned: false, legacyPromptId: "p1" }),
+      shouldRevealProtectedContent({ hasUser: true, owned: false, resourceType: "prompt" }),
     ).toBe(false);
     expect(
-      shouldRevealProtectedContent({ hasUser: true, owned: true, legacyPromptId: null }),
+      shouldRevealProtectedContent({ hasUser: true, owned: true, resourceType: "bundle" }),
     ).toBe(false);
     expect(
-      shouldRevealProtectedContent({ hasUser: true, owned: true, legacyPromptId: "" }),
-    ).toBe(false);
-    expect(
-      shouldRevealProtectedContent({ hasUser: true, owned: true, legacyPromptId: undefined }),
+      shouldRevealProtectedContent({ hasUser: true, owned: true, resourceType: undefined }),
     ).toBe(false);
   });
 });

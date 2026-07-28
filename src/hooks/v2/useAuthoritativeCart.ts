@@ -35,12 +35,7 @@ export interface AuthoritativeCart {
 export function useAuthoritativeCart() {
   const { items } = useCart();
   const { data: library } = useLibraryState();
-  const ownedResourceIds = new Set(
-    (library?.entitlements ?? [])
-      .filter((e) => e.scope === "resource" && !e.expires_at)
-      .map((e) => e.resource_id)
-      .filter((x): x is string => !!x),
-  );
+  const ownedResourceIds = new Set(library?.owned_resource_ids ?? []);
   const hasLibrary = !!library?.has_library_access;
 
   const productIds = items.map((i) => i.product_id).sort();
@@ -67,14 +62,25 @@ export function useAuthoritativeCart() {
       const linkedResourceIds = Array.from(
         new Set(products.map((p) => p.resource_id).filter((x): x is string => !!x)),
       );
-      let resourcesById = new Map<string, { id: string; slug: string; type: string; title_en: string; title_ar: string | null }>();
+      const resourcesById = new Map<
+        string,
+        {
+          id: string;
+          slug: string;
+          type: string;
+          title_en: string;
+          title_ar: string | null;
+        }
+      >();
       if (linkedResourceIds.length > 0) {
         const { data: rrows, error: rErr } = await supabase
           .from("resources")
           .select("id, slug, type, title_en, title_ar")
           .in("id", linkedResourceIds);
         if (rErr) throw rErr;
-        (rrows ?? []).forEach((r: any) => resourcesById.set(r.id, r));
+        (rrows ?? []).forEach((resource) =>
+          resourcesById.set(resource.id, resource),
+        );
       }
 
       const byId = new Map<string, typeof products[number]>();
@@ -86,20 +92,23 @@ export function useAuthoritativeCart() {
       const bundleIds = products
         .filter((p) => p.product_type === "bundle")
         .map((p) => p.id);
-      let bundleItems: Array<{ product_id: string; resource_id: string }> = [];
+      let bundleItems: Array<{
+        bundle_product_id: string;
+        resource_id: string;
+      }> = [];
       if (bundleIds.length > 0) {
-        const { data: bi, error: biErr } = await (supabase as any)
+        const { data: bi, error: biErr } = await supabase
           .from("product_bundle_items")
-          .select("product_id, resource_id")
-          .in("product_id", bundleIds);
+          .select("bundle_product_id, resource_id")
+          .in("bundle_product_id", bundleIds);
         if (biErr) throw biErr;
-        bundleItems = (bi ?? []) as Array<{ product_id: string; resource_id: string }>;
+        bundleItems = bi ?? [];
       }
       const bundleMembers = new Map<string, string[]>();
       bundleItems.forEach((row) => {
-        const arr = bundleMembers.get(row.product_id) ?? [];
+        const arr = bundleMembers.get(row.bundle_product_id) ?? [];
         arr.push(row.resource_id);
-        bundleMembers.set(row.product_id, arr);
+        bundleMembers.set(row.bundle_product_id, arr);
       });
 
       const lines: AuthoritativeCartLine[] = items.map((cartItem) => {
@@ -156,4 +165,3 @@ export function useAuthoritativeCart() {
     },
   });
 }
-

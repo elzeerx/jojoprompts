@@ -68,7 +68,7 @@ interface ResourceRow {
   effort_minutes: number | null;
   published_at: string | null;
   updated_at: string;
-  current_version_id: string | null;
+  latest_published_version_id: string | null;
 }
 
 export function useExploreResources(
@@ -89,7 +89,7 @@ export function useExploreResources(
       let q = supabase
         .from("resources")
         .select(
-          "id, slug, type, title_en, title_ar, summary_en, summary_ar, hero_image_path, effort_minutes, published_at, updated_at, current_version_id",
+          "id, slug, type, title_en, title_ar, summary_en, summary_ar, hero_image_path, effort_minutes, published_at, updated_at, latest_published_version_id",
         )
         .eq("lifecycle", "published");
 
@@ -114,7 +114,7 @@ export function useExploreResources(
 
       const resourceIds = resources.map((r) => r.id);
       const versionIds = resources
-        .map((r) => r.current_version_id)
+        .map((r) => r.latest_published_version_id)
         .filter((v): v is string => !!v);
 
       const [versionsRes, platsRes, productsRes, badgeRes] = await Promise.all([
@@ -194,7 +194,9 @@ export function useExploreResources(
           effort_minutes: r.effort_minutes,
           published_at: r.published_at,
           updated_at: r.updated_at,
-          current_version: r.current_version_id ? vMap.get(r.current_version_id) ?? null : null,
+          current_version: r.latest_published_version_id
+            ? vMap.get(r.latest_published_version_id) ?? null
+            : null,
           platforms: pMap.get(r.id) ?? [],
           product: prodMap.get(r.id) ?? null,
           trust: tMap.get(r.id) ?? null,

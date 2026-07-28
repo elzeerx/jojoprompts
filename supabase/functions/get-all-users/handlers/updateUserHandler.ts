@@ -1,33 +1,137 @@
 import { createEdgeLogger } from '../../_shared/logger.ts';
 // Enhanced updateUserHandler with comprehensive audit logging
-import { corsHeaders } from "../../_shared/standardImports.ts";
+import {
+  createClient,
+  corsHeaders,
+} from "../../_shared/standardImports.ts";
 import { ParameterValidator } from "../../shared/parameterValidator.ts";
 import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
 
 const logger = createEdgeLogger('get-all-users:update-user');
 
-export async function handleUpdateUser(supabase: any, adminId: string, req: Request, parsedBody?: any) {
+type AdminClient = ReturnType<typeof createClient>;
+
+function jsonError(
+  error: string,
+  status: number,
+  details?: unknown,
+): Response {
+  return new Response(
+    JSON.stringify({ error, ...(details === undefined ? {} : { details }) }),
+    {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    },
+  );
+}
+
+export async function handleUpdateUser(
+  supabase: AdminClient,
+  adminId: string,
+  actorRole: string,
+  req: Request,
+  parsedBody?: unknown,
+) {
   try {
     // Use pre-parsed body if provided, otherwise parse from request
-    const body = parsedBody || await req.json();
+    const parsed = parsedBody ?? await req.json();
+    const body =
+      parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : {};
+    const validationBody = { ...body };
+    delete validationBody.action;
     
     // Get client information for audit logging
     const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
     const userAgent = req.headers.get('user-agent') || 'unknown';
     
     // Validate request parameters
-    const validation = ParameterValidator.validateParameters(body, ParameterValidator.SCHEMAS.USER_UPDATE);
+    const validation = ParameterValidator.validateParameters(
+      validationBody,
+      ParameterValidator.SCHEMAS.USER_UPDATE,
+    );
     if (!validation.isValid) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid parameters', details: validation.errors }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      return jsonError('Invalid parameters', 400, validation.errors);
     }
 
     const userId = validation.sanitizedData.userId;
+    const requestedFields = Object.keys(validation.sanitizedData)
+      .filter((field) => field !== "userId");
+
+    if (requestedFields.length === 0) {
+      return jsonError("No user changes were provided", 400);
+    }
+
+    if (actorRole !== "admin") {
+      return jsonError("Admin role required to update users", 403);
+    }
+
+    const sensitiveFields = [
+      "email",
+      "password",
+      "role",
+      "accountStatus",
+      "emailConfirmed",
+      "membershipTier",
+    ];
+    const requestsSensitiveChange = sensitiveFields.some(
+      (field) => validation.sanitizedData[field] !== undefined,
+    );
+
+    if (validation.sanitizedData.membershipTier !== undefined) {
+      return jsonError(
+        "Legacy membership tiers cannot be changed in V2. Manage access through entitlements.",
+        400,
+      );
+    }
+
+    if (validation.sanitizedData.emailConfirmed === false) {
+      return jsonError(
+        "Removing email confirmation is not supported.",
+        400,
+      );
+    }
+
+    const [
+      { data: actorAdminRole, error: actorRoleError },
+      { data: targetAdminRole, error: targetRoleError },
+    ] = await Promise.all([
+      supabase
+        .from("user_roles")
+        .select("is_super_admin")
+        .eq("user_id", adminId)
+        .eq("role", "admin")
+        .maybeSingle(),
+      supabase
+        .from("user_roles")
+        .select("is_super_admin")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle(),
+    ]);
+
+    if (actorRoleError || targetRoleError) {
+      logger.error("Failed to verify user-update authority", {
+        actorRoleError: actorRoleError?.message,
+        targetRoleError: targetRoleError?.message,
+      });
+      return jsonError("Unable to verify update permission", 500);
+    }
+
+    const actorIsSuperAdmin = actorAdminRole?.is_super_admin === true;
+    const targetIsSuperAdmin = targetAdminRole?.is_super_admin === true;
+
+    if (targetIsSuperAdmin && !actorIsSuperAdmin) {
+      return jsonError("Super admin required to update this account", 403);
+    }
+
+    if (requestsSensitiveChange && !actorIsSuperAdmin) {
+      return jsonError(
+        "Super admin required for role, email, password, verification, or account-status changes",
+        403,
+      );
+    }
     
     // Get existing user data for comparison and audit logging
     const { data: existingUser, error: userCheckError } = await supabase
@@ -49,11 +153,11 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
     // Log the user update attempt
     await logAdminAction(supabase, adminId, 'update_user', 'users', {
       target_user_id: userId,
-      updated_fields: Object.keys(validation.sanitizedData).filter(k => k !== 'userId')
+      updated_fields: requestedFields,
     });
 
     // Prepare profile updates with comprehensive field mapping
-    const profileUpdates: Record<string, any> = {};
+    const profileUpdates: Record<string, unknown> = {};
     
     // Basic profile fields
     if (validation.sanitizedData.firstName !== undefined) {
@@ -85,28 +189,6 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       }
       profileUpdates.username = validation.sanitizedData.username;
     }
-    // Role updates are handled separately via user_roles table
-    if (validation.sanitizedData.role !== undefined) {
-      // Update role in user_roles table
-      const newRole = validation.sanitizedData.role;
-      
-      // Delete existing roles for this user
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-      
-      // Insert new role
-      await supabase
-        .from('user_roles')
-        .insert({
-          user_id: userId,
-          role: newRole,
-          assigned_by: adminId,
-          assigned_at: new Date().toISOString()
-        });
-    }
-    
     // Extended profile fields
     if (validation.sanitizedData.bio !== undefined) {
       profileUpdates.bio = validation.sanitizedData.bio;
@@ -123,8 +205,8 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
     if (validation.sanitizedData.timezone !== undefined) {
       profileUpdates.timezone = validation.sanitizedData.timezone;
     }
-    if (validation.sanitizedData.membershipTier !== undefined) {
-      profileUpdates.membership_tier = validation.sanitizedData.membershipTier;
+    if (validation.sanitizedData.socialLinks !== undefined) {
+      profileUpdates.social_links = validation.sanitizedData.socialLinks;
     }
     
     // Update profile if there are changes with detailed audit logging
@@ -202,10 +284,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       
       const { error: statusUpdateError } = await supabase.auth.admin.updateUserById(
         userId,
-        { 
-          user_metadata: { account_disabled: !isEnabled },
-          app_metadata: { account_disabled: !isEnabled }
-        }
+        { ban_duration: isEnabled ? "none" : "876000h" },
       );
 
       if (statusUpdateError) {
@@ -224,14 +303,10 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
     }
 
     // Handle email confirmation status
-    if (validation.sanitizedData.emailConfirmed !== undefined) {
+    if (validation.sanitizedData.emailConfirmed === true) {
       const { error: confirmationError } = await supabase.auth.admin.updateUserById(
         userId,
-        { 
-          email_confirmed_at: validation.sanitizedData.emailConfirmed 
-            ? new Date().toISOString() 
-            : null
-        }
+        { email_confirm: true },
       );
 
       if (confirmationError) {
@@ -250,8 +325,21 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
     }
 
 
-    // Update email if provided
+    // Update Auth first and then keep the profile email aligned. If the
+    // profile update fails, restore the original Auth email as compensation.
     if (validation.sanitizedData.email) {
+      const { data: existingAuthData, error: existingAuthError } =
+        await supabase.auth.admin.getUserById(userId);
+
+      if (existingAuthError || !existingAuthData.user) {
+        logger.error("Unable to snapshot user before email update", {
+          error: existingAuthError?.message,
+          targetUserId: userId,
+        });
+        return jsonError("Unable to prepare user email update", 400);
+      }
+
+      const previousAuthEmail = existingAuthData.user.email;
       const { error: emailUpdateError } = await supabase.auth.admin.updateUserById(
         userId,
         { email: validation.sanitizedData.email }
@@ -282,6 +370,37 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
+        );
+      }
+
+      const { error: profileEmailError } = await supabase
+        .from("profiles")
+        .update({ email: validation.sanitizedData.email })
+        .eq("id", userId);
+
+      if (profileEmailError) {
+        if (previousAuthEmail) {
+          const { error: compensationError } =
+            await supabase.auth.admin.updateUserById(
+              userId,
+              { email: previousAuthEmail },
+            );
+
+          if (compensationError) {
+            logger.error("Email-update compensation failed", {
+              error: compensationError.message,
+              targetUserId: userId,
+            });
+          }
+        }
+
+        logger.error("Profile email update failed", {
+          error: profileEmailError.message,
+          targetUserId: userId,
+        });
+        return jsonError(
+          "Failed to keep the profile email synchronized",
+          400,
         );
       }
     }
@@ -333,6 +452,34 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       logger.info('Password changed successfully by admin', { adminId, targetUserId: userId });
     }
 
+    // Apply authorization changes last. This database function serializes the
+    // replacement, verifies the actor's super-admin flag, preserves that flag
+    // only for an admin role, and protects the final super admin.
+    if (validation.sanitizedData.role !== undefined) {
+      const { error: roleUpdateError } = await supabase.rpc(
+        "admin_set_user_role_v2",
+        {
+          p_actor_id: adminId,
+          p_target_user_id: userId,
+          p_role: validation.sanitizedData.role,
+        },
+      );
+
+      if (roleUpdateError) {
+        logger.error("Atomic role update failed", {
+          targetUserId: userId,
+          error: roleUpdateError.message,
+        });
+        return jsonError(
+          "Failed to update user role",
+          roleUpdateError.message.includes("last_super_admin")
+            ? 409
+            : 400,
+          roleUpdateError.message,
+        );
+      }
+    }
+
     // Log successful user update
     await logSecurityEvent(supabase, {
       user_id: adminId,
@@ -355,7 +502,7 @@ export async function handleUpdateUser(supabase: any, adminId: string, req: Requ
       }
     );
     
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error('Error in handleUpdateUser', { error });
     return new Response(
       JSON.stringify({ error: 'Failed to update user' }), 

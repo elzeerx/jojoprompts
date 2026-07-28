@@ -29,7 +29,7 @@ interface Row {
   effort_minutes: number | null;
   published_at: string | null;
   updated_at: string;
-  current_version_id: string | null;
+  latest_published_version_id: string | null;
 }
 
 const SELECT = (s: string): string => s;
@@ -43,7 +43,7 @@ export function useLatestPublishedResources(limit: number = 6) {
         .from("resources")
         .select(
           SELECT(
-            "id, slug, type, title_en, title_ar, summary_en, summary_ar, hero_image_path, effort_minutes, published_at, updated_at, current_version_id",
+            "id, slug, type, title_en, title_ar, summary_en, summary_ar, hero_image_path, effort_minutes, published_at, updated_at, latest_published_version_id",
           ),
         )
         .eq("lifecycle", "published")
@@ -58,7 +58,7 @@ export function useLatestPublishedResources(limit: number = 6) {
 
       const ids = rows.map((r) => r.id);
       const versionIds = rows
-        .map((r) => r.current_version_id)
+        .map((r) => r.latest_published_version_id)
         .filter((v): v is string => !!v);
 
       // Best-effort side hydration. If any single side query fails, the main
@@ -140,8 +140,8 @@ export function useLatestPublishedResources(limit: number = 6) {
         effort_minutes: r.effort_minutes,
         published_at: r.published_at,
         updated_at: r.updated_at,
-        current_version: r.current_version_id
-          ? vMap.get(r.current_version_id) ?? null
+        current_version: r.latest_published_version_id
+          ? vMap.get(r.latest_published_version_id) ?? null
           : null,
         platforms: pMap.get(r.id) ?? [],
         product: prodMap.get(r.id) ?? null,

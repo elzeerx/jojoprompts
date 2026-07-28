@@ -1,12 +1,44 @@
 import { createEdgeLogger } from '../../_shared/logger.ts';
+import { createClient } from "../../_shared/standardImports.ts";
 
 const logger = createEdgeLogger('get-all-users:data-enrichment');
+type AdminClient = ReturnType<typeof createClient>;
+
+interface UserRoleRow {
+  user_id: string;
+  role: string;
+}
+
+interface AuthUserRecord {
+  email?: string;
+  email_confirmed_at?: string | null;
+  last_sign_in_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  banned_until?: string | null;
+}
+
+interface ProfileRecord {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  username?: string | null;
+  email?: string | null;
+  bio?: string | null;
+  avatar_url?: string | null;
+  country?: string | null;
+  phone_number?: string | null;
+  timezone?: string | null;
+  membership_tier?: string | null;
+  social_links?: Record<string, unknown> | null;
+  created_at?: string | null;
+}
 
 /**
  * Build a map of user roles with priority handling
  * Priority: admin > jadmin > prompter > user
  */
-export function buildRoleMap(userRoleData: any[]): Map<string, string> {
+export function buildRoleMap(userRoleData: UserRoleRow[]): Map<string, string> {
   const roleMap = new Map<string, string>();
   const rolePriority: Record<string, number> = { admin: 1, jadmin: 2, prompter: 3, user: 4 };
   
@@ -30,9 +62,13 @@ export function buildRoleMap(userRoleData: any[]): Map<string, string> {
  * Fetch auth data for specific user IDs using batched getUserById
  * This ensures we get auth data for ALL users, not just the first page from listUsers
  */
-export async function fetchAuthData(supabase: any, profileIds: string[], requestId: string) {
+export async function fetchAuthData(
+  supabase: AdminClient,
+  profileIds: string[],
+  requestId: string,
+): Promise<Map<string, AuthUserRecord>> {
   const startTime = Date.now();
-  const authUserMap = new Map();
+  const authUserMap = new Map<string, AuthUserRecord>();
   const BATCH_SIZE = 25;
   
   try {
@@ -76,69 +112,19 @@ export async function fetchAuthData(supabase: any, profileIds: string[], request
 }
 
 /**
- * Fetch subscription data for specific user IDs
- */
-export async function fetchSubscriptionData(supabase: any, profileIds: string[], requestId: string) {
-  const startTime = Date.now();
-  const subscriptionMap = new Map();
-  
-  try {
-    const { data: subscriptions, error: subscriptionError } = await supabase
-      .from('user_subscriptions')
-      .select(`
-        user_id,
-        status,
-        start_date,
-        end_date,
-        payment_method,
-        created_at,
-        subscription_plans!inner(
-          id,
-          name,
-          price_usd,
-          is_lifetime,
-          duration_days
-        )
-      `)
-      .in('user_id', profileIds)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
-
-    if (subscriptionError) {
-      logger.warn('Error fetching subscriptions', { requestId, error: subscriptionError });
-    } else if (subscriptions) {
-      subscriptions.forEach((sub: any) => {
-        if (!subscriptionMap.has(sub.user_id)) {
-          subscriptionMap.set(sub.user_id, sub);
-        }
-      });
-    }
-  } catch (subFetchError) {
-    logger.warn('Subscription fetch failed', { requestId, error: subFetchError });
-  }
-  
-  logger.debug('Subscription data fetched', {
-    duration_ms: Date.now() - startTime,
-    subscriptionsFound: subscriptionMap.size,
-    profileCount: profileIds.length
-  });
-  
-  return subscriptionMap;
-}
-
-/**
- * Enrich user profiles with auth, role, and subscription data
+ * Enrich user profiles with Auth and role data.
  */
 export function enrichUserProfiles(
-  profiles: any[],
-  authUserMap: Map<string, any>,
-  roleMap: Map<string, string>,
-  subscriptionMap: Map<string, any>
+  profiles: ProfileRecord[],
+  authUserMap: Map<string, AuthUserRecord>,
+  roleMap: Map<string, string>
 ) {
-  return profiles.map((profile: any) => {
+  return profiles.map((profile) => {
     const authUser = authUserMap.get(profile.id);
-    const subscription = subscriptionMap.get(profile.id);
     const userRole = roleMap.get(profile.id) || 'user';
+    const bannedUntil = typeof authUser?.banned_until === 'string'
+      ? Date.parse(authUser.banned_until)
+      : Number.NaN;
 
     return {
       // Core identity
@@ -165,23 +151,11 @@ export function enrichUserProfiles(
       last_sign_in_at: authUser?.last_sign_in_at || null,
       auth_created_at: authUser?.created_at || null,
       auth_updated_at: authUser?.updated_at || null,
+      account_disabled:
+        Number.isFinite(bannedUntil) && bannedUntil > Date.now(),
       
       // Orphaned profile detection
       has_auth_account: !!authUser,
-      
-      // Subscription data
-      subscription: subscription ? {
-        plan_id: subscription.subscription_plans?.id,
-        plan_name: subscription.subscription_plans?.name || 'Unknown',
-        price_usd: subscription.subscription_plans?.price_usd || 0,
-        is_lifetime: subscription.subscription_plans?.is_lifetime || false,
-        duration_days: subscription.subscription_plans?.duration_days,
-        status: subscription.status,
-        start_date: subscription.start_date,
-        end_date: subscription.end_date,
-        payment_method: subscription.payment_method,
-        subscription_created_at: subscription.created_at
-      } : null
     };
   });
 }

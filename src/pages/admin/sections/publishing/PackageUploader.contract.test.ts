@@ -35,9 +35,9 @@ describe("ResourcePublisher — resource editor select", () => {
     expect(src.includes("product_bundle_items!bundle_product_id(resource_id)")).toBe(false);
   });
 
-  it("exports the canonical select and edit URL builder", () => {
-    expect(src.includes("export const RESOURCE_EDITOR_SELECT")).toBe(true);
-    expect(src.includes("export function buildResourceEditUrl")).toBe(true);
+  it("defines the canonical select and edit URL builder", () => {
+    expect(src.includes("const RESOURCE_EDITOR_SELECT")).toBe(true);
+    expect(src.includes("function buildResourceEditUrl")).toBe(true);
     expect(src.includes("/admin/publishing/resources/${resourceId}/edit")).toBe(true);
   });
 

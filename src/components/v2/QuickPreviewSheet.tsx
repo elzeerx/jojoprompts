@@ -36,9 +36,7 @@ export function QuickPreviewSheet({ slug, open, onOpenChange }: Props) {
   const owned = useMemo(() => {
     if (!data?.resource) return false;
     if (library?.has_library_access) return true;
-    return (library?.entitlements ?? []).some(
-      (e) => e.scope === "resource" && e.resource_id === data.resource.id,
-    );
+    return (library?.owned_resource_ids ?? []).includes(data.resource.id);
   }, [data, library]);
 
   const product = data?.products.find((p) => p.is_active) ?? null;

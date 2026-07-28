@@ -11,8 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
 import { useUserManagement } from "./hooks/useUserManagement";
-import { useUserActions } from "./hooks/useUserActions";
 import { useUserBulkActions } from "./hooks/useUserBulkActions";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { UsersV2Table } from "./UsersV2Table";
@@ -30,6 +30,7 @@ import { CreateUserDialog } from "./components/CreateUserDialog";
  *   - Preserves admin/super-admin authorization behaviour.
  */
 export default function UsersV2() {
+  const { isAdmin } = useAuth();
   const { isSuperAdmin } = useSuperAdmin();
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -54,7 +55,6 @@ export default function UsersV2() {
     sendPasswordResetEmail,
   } = useUserManagement();
 
-  const { resendConfirmationEmail } = useUserActions();
   const { exportUsers } = useUserBulkActions();
 
   const unverified = users.filter((u) => u.is_email_confirmed === false).length;
@@ -159,15 +159,17 @@ export default function UsersV2() {
             <Download className="me-1 h-4 w-4" />
             Export CSV
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-            className="min-h-[44px]"
-          >
-            <UserPlus className="me-1 h-4 w-4" />
-            New user
-          </Button>
+          {isAdmin && (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              className="min-h-[44px]"
+            >
+              <UserPlus className="me-1 h-4 w-4" />
+              New user
+            </Button>
+          )}
         </div>
       </div>
 
@@ -201,10 +203,11 @@ export default function UsersV2() {
           onPageChange={onPageChange}
           onUpdateUser={updateUser}
           onSendResetEmail={sendPasswordResetEmail}
-          onResendConfirmation={resendConfirmationEmail}
           onConfirmEmail={confirmUserEmail}
           onRefresh={refetch}
           updatingUserId={null}
+          canEditUsers={isAdmin}
+          canManageSensitiveUsers={isSuperAdmin}
         />
       )}
 
@@ -212,6 +215,7 @@ export default function UsersV2() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onUserCreated={refetch}
+        canAssignPrivilegedRoles={isSuperAdmin}
       />
     </div>
   );

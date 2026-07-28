@@ -19,7 +19,9 @@ describe("My Library V2 contract", () => {
   });
 
   it("shows version, guide, license, and update metadata", () => {
-    expect(library.includes("current_version:current_version_id")).toBe(true);
+    expect(
+      library.includes("current_version:latest_published_version_id"),
+    ).toBe(true);
     expect(library.includes("installation_guides(id)")).toBe(true);
     expect(library.includes("licenses(id,license_key)")).toBe(true);
     expect(library.includes("update_info_en")).toBe(true);

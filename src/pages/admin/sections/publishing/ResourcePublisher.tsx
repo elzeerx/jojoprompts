@@ -1,5 +1,5 @@
 import { cloneElement, isValidElement, useEffect, useId, useMemo, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
@@ -23,6 +23,10 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PackageUploader } from "./PackageUploader";
+import {
+  readAiStudioPublisherHandoff,
+  type ProtectedContentFormat,
+} from "./aiStudioHandoff";
 
 type ResourceType =
   | "skill" | "automation" | "prompt" | "prompt_pack" | "image_style" | "bundle";
@@ -58,6 +62,83 @@ interface GuideRow {
 interface PermRow { kind: PermissionKind; key: string; label_en: string; is_required: boolean; is_public: boolean }
 interface ProductRow { sku: string; product_type: ProductType; title_en: string; price_fils: string }
 interface LicenseRow { license_key: string; terms_en: string; allows_commercial: boolean; allows_redistribution: boolean }
+interface EditorProduct extends Omit<ProductRow, "price_fils"> {
+  id: string;
+  price_fils: number | null;
+  is_active: boolean;
+}
+interface EditorPlatform {
+  platform_slug: string;
+  min_version: string | null;
+  notes_en: string | null;
+  notes_ar: string | null;
+  is_verified: boolean | null;
+}
+interface EditorGuide {
+  platform_slug: string;
+  steps_en: unknown;
+  estimated_minutes: number | null;
+}
+interface EditorPermission {
+  kind: PermissionKind;
+  key: string;
+  label_en: string | null;
+  is_required: boolean | null;
+  is_public: boolean | null;
+}
+interface EditorLicense {
+  license_key: string;
+  terms_en: string | null;
+  allows_commercial: boolean | null;
+  allows_redistribution: boolean | null;
+}
+interface ResourceEditorRecord {
+  slug: string;
+  type: ResourceType;
+  lifecycle: "draft" | "review" | "published" | "archived";
+  latest_published_version_id: string | null;
+  title_en: string;
+  title_ar: string | null;
+  summary_en: string | null;
+  summary_ar: string | null;
+  description_en: string | null;
+  description_ar: string | null;
+  examples_en: string | null;
+  examples_ar: string | null;
+  limitations_en: string | null;
+  limitations_ar: string | null;
+  uninstall_en: string | null;
+  uninstall_ar: string | null;
+  support_en: string | null;
+  support_ar: string | null;
+  update_info_en: string | null;
+  update_info_ar: string | null;
+  category: string | null;
+  tags: string[];
+  hero_image_path: string | null;
+  effort_minutes: number | null;
+  current_version_id: string | null;
+  current_version: {
+    version: string;
+    changelog_en: string | null;
+    published_at: string | null;
+  } | null;
+  platform_compatibility: EditorPlatform[];
+  installation_guides: EditorGuide[];
+  resource_permissions: EditorPermission[];
+  licenses: EditorLicense[];
+  products: EditorProduct[];
+}
+interface AdminPrivateContent {
+  ok: boolean;
+  content_en?: string | null;
+  content_ar?: string | null;
+  content_format?: ProtectedContentFormat | null;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "unknown";
+}
 
 const standardLicense = (): LicenseRow => ({
   license_key: "jojo-standard-v1",
@@ -79,6 +160,8 @@ interface FormState {
   update_info_en: string; update_info_ar: string;
   category: string; tags: string; hero_image_path: string; effort_minutes: string;
   version: string; changelog_en: string; is_new_version: boolean;
+  private_content_en: string; private_content_ar: string;
+  private_content_format: ProtectedContentFormat;
   platform_compatibility: PlatformRow[];
   installation_guides: GuideRow[];
   permissions: PermRow[];
@@ -99,6 +182,7 @@ const emptyForm = (type: ResourceType = "skill"): FormState => ({
   update_info_en: "", update_info_ar: "",
   category: "", tags: "", hero_image_path: "", effort_minutes: "",
   version: "1.0.0", changelog_en: "", is_new_version: false,
+  private_content_en: "", private_content_ar: "", private_content_format: "text",
   platform_compatibility: [],
   installation_guides: [],
   permissions: [],
@@ -131,52 +215,108 @@ const APPROVED_DEFAULT_PRICE_FILS: Record<ResourceType, number> = {
 // relation (product_bundle_items.bundle_product_id → products.id) is NOT a
 // direct FK from resources, so it must be loaded in a second query keyed on
 // the resource's own products.
-export const RESOURCE_EDITOR_SELECT =
-  "id, slug, type, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar), products(id,sku,product_type,title_en,price_fils,is_active)";
+const RESOURCE_EDITOR_SELECT =
+  "id, slug, type, lifecycle, latest_published_version_id, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar,published_at), products(id,sku,product_type,title_en,price_fils,is_active)";
 
-export function buildResourceEditUrl(resourceId: string): string {
+function buildResourceEditUrl(resourceId: string): string {
   return `/admin/publishing/resources/${resourceId}/edit`;
 }
 
 async function fetchResource(id: string) {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("resources")
     .select(RESOURCE_EDITOR_SELECT)
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
+  const editor = data as unknown as ResourceEditorRecord;
 
   // Load bundle items via the resource's own bundle-typed products.
-  const productIds: string[] = (data.products ?? [])
-    .filter((p: any) => p?.product_type === "bundle")
-    .map((p: any) => p.id);
+  const productIds = editor.products
+    .filter((product) => product.product_type === "bundle")
+    .map((product) => product.id);
   let bundleItems: { resource_id: string }[] = [];
   if (productIds.length > 0) {
-    const { data: items, error: bErr } = await (supabase as any)
+    const { data: items, error: bErr } = await supabase
       .from("product_bundle_items")
       .select("resource_id")
       .in("bundle_product_id", productIds);
     if (bErr) throw bErr;
     bundleItems = items ?? [];
   }
-  return { ...data, product_bundle_items: bundleItems };
+  const { data: privateContent, error: privateContentError } =
+    await supabase.rpc("admin_get_resource_private_content", {
+      p_resource_id: id,
+      p_version_id: null,
+    });
+  if (privateContentError) throw privateContentError;
+  const protectedContent =
+    privateContent as unknown as AdminPrivateContent | null;
+
+  return {
+    ...editor,
+    product_bundle_items: bundleItems,
+    private_content: protectedContent?.ok ? protectedContent : null,
+  };
 }
 
 async function fetchPlatforms(): Promise<{ slug: string; name: string }[]> {
-  const { data } = await (supabase as any).from("platforms").select("slug,name,display_order").eq("is_active", true).order("display_order");
-  return (data ?? []).map((p: any) => ({ slug: p.slug, name: p.name }));
+  const { data } = await supabase
+    .from("platforms")
+    .select("slug,name,display_order")
+    .eq("is_active", true)
+    .order("display_order");
+  return (data ?? []).map((platform) => ({
+    slug: platform.slug,
+    name: platform.name,
+  }));
 }
 
 interface PublisherProps { mode: "new" | "edit" | "new-version" }
 
 export default function ResourcePublisher({ mode }: PublisherProps) {
   const params = useParams<{ resourceId?: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const resourceId = params.resourceId;
-  const [form, setForm] = useState<FormState>(() => emptyForm());
-  const [dirty, setDirty] = useState(false);
+  const aiStudioImport = useMemo(
+    () =>
+      mode === "new"
+        ? readAiStudioPublisherHandoff(location.state)
+        : null,
+    [location.state, mode],
+  );
+  const [form, setForm] = useState<FormState>(() => {
+    if (!aiStudioImport) return emptyForm();
+    const imported = emptyForm(aiStudioImport.resource.type);
+    return {
+      ...imported,
+      slug: aiStudioImport.resource.slug,
+      title_en: aiStudioImport.resource.title_en,
+      title_ar: aiStudioImport.resource.title_ar,
+      summary_en: aiStudioImport.resource.summary_en,
+      summary_ar: aiStudioImport.resource.summary_ar,
+      description_en: aiStudioImport.resource.description_en,
+      description_ar: aiStudioImport.resource.description_ar,
+      tags: aiStudioImport.resource.tags.join(", "),
+      hero_image_path: aiStudioImport.resource.hero_image_path,
+      private_content_en: aiStudioImport.private_content.content_en,
+      private_content_ar: aiStudioImport.private_content.content_ar,
+      private_content_format: aiStudioImport.private_content.content_format,
+      platform_compatibility: [
+        {
+          platform_slug: aiStudioImport.resource.platform_slug,
+          min_version: "",
+          notes_en: "Imported from AI Studio",
+          notes_ar: "",
+          is_verified: false,
+        },
+      ],
+    };
+  });
+  const [dirty, setDirty] = useState(!!aiStudioImport);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [publishErrors, setPublishErrors] = useState<string[] | null>(null);
   const licenseKeyId = useId();
@@ -219,19 +359,34 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
       version: mode === "new-version" ? "" : (existing.current_version?.version ?? "1.0.0"),
       changelog_en: mode === "new-version" ? "" : (existing.current_version?.changelog_en ?? ""),
       is_new_version: mode === "new-version",
-      platform_compatibility: (existing.platform_compatibility ?? []).map((p: any) => ({
+      private_content_en: existing.private_content?.content_en ?? "",
+      private_content_ar: existing.private_content?.content_ar ?? "",
+      private_content_format:
+        (existing.private_content?.content_format as ProtectedContentFormat) ??
+        "text",
+      platform_compatibility: existing.platform_compatibility.map((p) => ({
         platform_slug: p.platform_slug, min_version: p.min_version ?? "",
         notes_en: p.notes_en ?? "", notes_ar: p.notes_ar ?? "",
         is_verified: !!p.is_verified,
       })),
-      installation_guides: (existing.installation_guides ?? []).map((g: any) => ({
+      installation_guides: existing.installation_guides.map((g) => ({
         platform_slug: g.platform_slug,
         steps: Array.isArray(g.steps_en)
-          ? g.steps_en.map((s: any) => typeof s === "string" ? { title: s, body: "" } : { title: s?.title ?? "", body: s?.body ?? "" })
+          ? g.steps_en.map((step) => {
+              if (typeof step === "string") return { title: step, body: "" };
+              if (!step || typeof step !== "object") {
+                return { title: "", body: "" };
+              }
+              const value = step as { title?: unknown; body?: unknown };
+              return {
+                title: typeof value.title === "string" ? value.title : "",
+                body: typeof value.body === "string" ? value.body : "",
+              };
+            })
           : [],
         estimated_minutes: g.estimated_minutes == null ? "" : String(g.estimated_minutes),
       })),
-      permissions: (existing.resource_permissions ?? []).map((p: any) => ({
+      permissions: existing.resource_permissions.map((p) => ({
         kind: p.kind, key: p.key, label_en: p.label_en ?? "",
         is_required: !!p.is_required, is_public: p.is_public !== false,
       })),
@@ -243,10 +398,10 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
             allows_redistribution: !!existing.licenses[0].allows_redistribution,
           }
         : standardLicense(),
-      products: (existing.products ?? []).filter((p: any) => p.is_active).map((p: any) => ({
+      products: existing.products.filter((p) => p.is_active).map((p) => ({
         sku: p.sku, product_type: p.product_type, title_en: p.title_en, price_fils: String(p.price_fils ?? 0),
       })),
-      bundle_items: (existing.product_bundle_items ?? []).map((b: any) => b.resource_id),
+      bundle_items: existing.product_bundle_items.map((item) => item.resource_id),
     });
     setDirty(false);
   }, [existing, mode]);
@@ -305,6 +460,13 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
       changelog_en: form.changelog_en || null,
       is_new_version: form.is_new_version,
     } : null,
+    private_content: form.type === "bundle" ? null : {
+      content_en: form.private_content_en,
+      content_ar: form.private_content_ar,
+      content_format: form.private_content_format,
+    },
+    source_ai_studio_draft_id:
+      aiStudioImport?.source_ai_studio_draft_id ?? null,
     platform_compatibility: form.platform_compatibility,
     installation_guides: form.installation_guides.map((g) => ({
       platform_slug: g.platform_slug,
@@ -322,24 +484,48 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
 
   const saveDraft = useMutation({
     mutationFn: async () => {
-      const { data, error } = await (supabase as any).rpc("save_admin_resource_draft", { payload: buildPayload() });
+      const { data, error } = await supabase.rpc(
+        "save_admin_resource_draft_v2",
+        { payload: buildPayload() },
+      );
       if (error) throw error;
-      if (!(data as any)?.ok) throw new Error("Save failed");
-      return data as { ok: true; resource_id: string; slug: string };
+      const result = data as unknown as {
+        ok?: boolean;
+        resource_id?: string;
+        slug?: string;
+      };
+      if (!result.ok || !result.resource_id || !result.slug) {
+        throw new Error("Save failed");
+      }
+      return {
+        ok: true as const,
+        resource_id: result.resource_id,
+        slug: result.slug,
+      };
     },
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["admin","v2","catalog"] });
       qc.invalidateQueries({ queryKey: ["admin","v2","publisher","resource", res.resource_id] });
       toast({ title: "Draft saved", description: `/${res.slug}` });
       setDirty(false);
-      if (!resourceId) navigate(`/admin/publishing/resources/${res.resource_id}/edit`, { replace: true });
+      if (!resourceId) {
+        navigate(buildResourceEditUrl(res.resource_id), { replace: true });
+      }
     },
-    onError: (err: any) => toast({ variant: "destructive", title: "Save failed", description: err?.message ?? "unknown" }),
+    onError: (error: unknown) =>
+      toast({
+        variant: "destructive",
+        title: "Save failed",
+        description: errorMessage(error),
+      }),
   });
 
   const submitReview = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await (supabase as any).rpc("admin_transition_resource_lifecycle", { p_resource_id: id, p_action: "review" });
+      const { data, error } = await supabase.rpc(
+        "admin_transition_resource_lifecycle",
+        { p_resource_id: id, p_action: "review" },
+      );
       if (error) throw error;
       return data;
     },
@@ -347,14 +533,21 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
       qc.invalidateQueries({ queryKey: ["admin","v2","catalog"] });
       toast({ title: "Submitted for review" });
     },
-    onError: (err: any) => toast({ variant: "destructive", title: "Failed", description: err?.message ?? "unknown" }),
+    onError: (error: unknown) =>
+      toast({
+        variant: "destructive",
+        title: "Failed",
+        description: errorMessage(error),
+      }),
   });
 
   const publish = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await (supabase as any).rpc("admin_publish_resource", { p_resource_id: id });
+      const { data, error } = await supabase.rpc("admin_publish_resource", {
+        p_resource_id: id,
+      });
       if (error) throw error;
-      return data as { ok: boolean; errors?: string[] };
+      return data as unknown as { ok: boolean; errors?: string[] };
     },
     onSuccess: (res) => {
       if (!res.ok) { setPublishErrors(res.errors ?? ["unknown"]); return; }
@@ -362,7 +555,12 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
       qc.invalidateQueries({ queryKey: ["admin","v2","overview"] });
       toast({ title: "Published" });
     },
-    onError: (err: any) => toast({ variant: "destructive", title: "Publish failed", description: err?.message ?? "unknown" }),
+    onError: (error: unknown) =>
+      toast({
+        variant: "destructive",
+        title: "Publish failed",
+        description: errorMessage(error),
+      }),
   });
 
   // Client-side publish gates. Server remains authoritative.
@@ -371,6 +569,13 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
     if (!form.title_en.trim()) gates.push("Title (EN) is required to publish.");
     if (!form.summary_en.trim()) gates.push("Summary (EN) is required to publish.");
     if (!form.description_en.trim()) gates.push("Description (EN) is required to publish.");
+    if (
+      ["prompt", "prompt_pack", "image_style"].includes(form.type) &&
+      !form.private_content_en.trim() &&
+      !form.private_content_ar.trim()
+    ) {
+      gates.push("Protected delivery content is required for this resource type.");
+    }
     if (form.type === "skill" || form.type === "automation") {
       if (form.platform_compatibility.length === 0) gates.push("At least one platform compatibility entry is required.");
       if (form.installation_guides.length === 0) gates.push("At least one installation guide is required.");
@@ -378,6 +583,9 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
     if (!form.version.trim()) gates.push("Version is required.");
     if (!/^[0-9]+\.[0-9]+\.[0-9]+([.\-+][A-Za-z0-9._-]+)?$/.test(form.version.trim())) {
       gates.push("Version must look like 1.0.0.");
+    }
+    if (!form.license.license_key.trim() || !form.license.terms_en.trim()) {
+      gates.push("A license key and English license terms are required.");
     }
     const products = form.products.filter((p) => p.sku.trim());
     if (products.length === 0) gates.push("Add at least one product (free or paid).");
@@ -436,9 +644,19 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
   }, [mode, form.title_en, form.slug]);
 
   const busy = saveDraft.isPending || submitReview.isPending || publish.isPending;
-  const disabledSave = busy || (!dirty && !!resourceId && mode !== "new-version");
+  const isArchived = existing?.lifecycle === "archived";
+  const canSubmitReview = !resourceId || existing?.lifecycle === "draft";
+  const canPublish = !isArchived;
+  const hasPublishedVersion = Boolean(
+    existing?.latest_published_version_id,
+  );
+  const disabledSave =
+    busy ||
+    isArchived ||
+    (!dirty && !!resourceId && mode !== "new-version");
 
-  const needsPackage = form.type === "skill" || form.type === "automation";
+  const supportsPackage = form.type === "skill" || form.type === "automation";
+  const requiresPackage = form.type === "skill";
 
   if (loadingResource) return <div className="p-6 text-sm text-muted-foreground">Loading resource…</div>;
 
@@ -496,25 +714,36 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {resourceId ? (
+          {resourceId && hasPublishedVersion ? (
             <Button asChild variant="outline" size="sm" className="min-h-[44px]">
               <Link to={`/resources/${form.slug || ""}`} target="_blank" rel="noreferrer">
                 <ExternalLink className="me-1.5 h-3.5 w-3.5" /> Preview public
               </Link>
             </Button>
           ) : null}
-          <Button variant="outline" size="sm" className="min-h-[44px]" onClick={onSubmit} disabled={busy}>
-            <ClipboardCheck className="me-1.5 h-3.5 w-3.5" /> Submit for review
-          </Button>
-          <Button size="sm" className="min-h-[44px] bg-warm-gold text-dark-base hover:bg-warm-gold/90" onClick={onPublish} disabled={busy}>
-            <Send className="me-1.5 h-3.5 w-3.5" /> Publish
-          </Button>
+          {canSubmitReview ? (
+            <Button variant="outline" size="sm" className="min-h-[44px]" onClick={onSubmit} disabled={busy}>
+              <ClipboardCheck className="me-1.5 h-3.5 w-3.5" /> Submit for review
+            </Button>
+          ) : null}
+          {canPublish ? (
+            <Button size="sm" className="min-h-[44px] bg-warm-gold text-dark-base hover:bg-warm-gold/90" onClick={onPublish} disabled={busy}>
+              <Send className="me-1.5 h-3.5 w-3.5" /> Publish
+            </Button>
+          ) : null}
           <Button size="sm" className="min-h-[44px]" onClick={onSave} disabled={disabledSave}>
             {saveDraft.isPending ? <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="me-1.5 h-3.5 w-3.5" />}
             Save draft
           </Button>
         </div>
       </header>
+
+      {isArchived ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+          This resource is archived. Restore it from Catalog before editing or
+          publishing another version.
+        </div>
+      ) : null}
 
       <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
         <div className="flex items-start gap-2">
@@ -527,7 +756,7 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
         </div>
       </div>
 
-      <Accordion type="multiple" defaultValue={["type","meta","platforms","commerce"]} className="space-y-2">
+      <Accordion type="multiple" defaultValue={["type","meta","content","platforms","commerce"]} className="space-y-2">
         {/* Type & source */}
         <AccordionItem value="type">
           <AccordionTrigger className="text-sm font-semibold">1 · Type & source</AccordionTrigger>
@@ -601,10 +830,87 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
           </AccordionContent>
         </AccordionItem>
 
+        {/* Protected delivery content */}
+        {form.type !== "bundle" ? (
+          <AccordionItem value="content">
+            <AccordionTrigger className="text-sm font-semibold">
+              3 · Protected delivery content
+              {["prompt", "prompt_pack", "image_style"].includes(form.type) ? (
+                <Badge className="ms-2" variant="secondary">
+                  required for publish
+                </Badge>
+              ) : form.type === "automation" ? (
+                <Badge className="ms-2" variant="outline">
+                  content or package required
+                </Badge>
+              ) : null}
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="rounded-md border border-warm-gold/30 bg-warm-gold/5 p-3">
+                <p className="mb-3 text-xs text-muted-foreground">
+                  This content is stored per version outside the public Data API.
+                  Only entitled customers and admins can retrieve it. Publishing
+                  freezes the version; later edits require a new version.
+                </p>
+                <div className="mb-3 max-w-xs">
+                  <Label htmlFor="private-content-format">Content format</Label>
+                  <Select
+                    value={form.private_content_format}
+                    onValueChange={(value) =>
+                      patch({
+                        private_content_format:
+                          value as ProtectedContentFormat,
+                      })
+                    }
+                  >
+                    <SelectTrigger
+                      id="private-content-format"
+                      className="min-h-[44px]"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="text">Plain text</SelectItem>
+                      <SelectItem value="markdown">Markdown</SelectItem>
+                      <SelectItem value="json">JSON</SelectItem>
+                      <SelectItem value="yaml">YAML</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <Field label="Protected content (EN)">
+                    <Textarea
+                      value={form.private_content_en}
+                      onChange={(event) =>
+                        patch({ private_content_en: event.target.value })
+                      }
+                      rows={12}
+                      spellCheck={false}
+                      className="font-mono text-xs"
+                    />
+                  </Field>
+                  <Field label="Protected content (AR)" dir="rtl">
+                    <Textarea
+                      value={form.private_content_ar}
+                      onChange={(event) =>
+                        patch({ private_content_ar: event.target.value })
+                      }
+                      rows={12}
+                      spellCheck={false}
+                      dir="rtl"
+                      className="text-right font-mono text-xs"
+                    />
+                  </Field>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        ) : null}
+
         {/* Platforms */}
         <AccordionItem value="platforms">
           <AccordionTrigger className="text-sm font-semibold">
-            3 · Platform compatibility {needsPackage ? <Badge className="ms-2" variant="secondary">required for publish</Badge> : null}
+            4 · Platform compatibility {supportsPackage ? <Badge className="ms-2" variant="secondary">required for publish</Badge> : null}
           </AccordionTrigger>
           <AccordionContent>
             <PlatformEditor
@@ -632,7 +938,7 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
 
         {/* Permissions */}
         <AccordionItem value="perms">
-          <AccordionTrigger className="text-sm font-semibold">4 · Permissions / dependencies</AccordionTrigger>
+          <AccordionTrigger className="text-sm font-semibold">5 · Permissions / dependencies</AccordionTrigger>
           <AccordionContent>
             <PermissionEditor value={form.permissions} onChange={(v) => patch({ permissions: v })} />
           </AccordionContent>
@@ -641,7 +947,7 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
         {/* Guides & license */}
         <AccordionItem value="guides">
           <AccordionTrigger className="text-sm font-semibold">
-            5 · Installation guides {needsPackage ? <Badge className="ms-2" variant="secondary">required for publish</Badge> : null}
+            6 · Installation guides {supportsPackage ? <Badge className="ms-2" variant="secondary">required for publish</Badge> : null}
           </AccordionTrigger>
           <AccordionContent>
             <GuideEditor platforms={platforms} value={form.installation_guides} onChange={(v) => patch({ installation_guides: v })} />
@@ -699,7 +1005,7 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
 
         {/* Commerce */}
         <AccordionItem value="commerce">
-          <AccordionTrigger className="text-sm font-semibold">6 · Commerce</AccordionTrigger>
+          <AccordionTrigger className="text-sm font-semibold">7 · Commerce</AccordionTrigger>
           <AccordionContent>
             <p className="mb-2 text-xs text-muted-foreground">{TYPE_PRICE_HINT[form.type]}</p>
             <p className="mb-3 text-xs text-warm-gold">Every eligible resource is included with the 30.000 KWD Lifetime pass.</p>
@@ -715,13 +1021,28 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
         </AccordionItem>
 
         {/* Package upload — skill/automation only, after first save creates a version */}
-        {needsPackage ? (
+        {supportsPackage ? (
           <AccordionItem value="package">
-            <AccordionTrigger>Package files & scan</AccordionTrigger>
+            <AccordionTrigger>
+              8 · Package files & scan
+              {requiresPackage ? (
+                <Badge className="ms-2" variant="secondary">
+                  required for skills
+                </Badge>
+              ) : (
+                <Badge className="ms-2" variant="outline">
+                  optional for automations
+                </Badge>
+              )}
+            </AccordionTrigger>
             <AccordionContent>
-              {!resourceId || !existing?.current_version_id ? (
+              {!resourceId ||
+              !existing?.current_version_id ||
+              existing.current_version?.published_at ? (
                 <p className="text-sm text-muted-foreground">
-                  Save the draft first — an initial version is created on save, and uploads attach to that version.
+                  Save the draft first — uploads can only attach to an
+                  unpublished working version. Published packages are
+                  immutable.
                 </p>
               ) : (
                 <PackageUploader

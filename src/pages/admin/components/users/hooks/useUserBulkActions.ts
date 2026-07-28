@@ -6,6 +6,12 @@ import { ExtendedUserProfile } from "@/types/user";
 
 const logger = createLogger('USER_BULK_ACTIONS');
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message
+    ? error.message
+    : fallback;
+}
+
 interface BulkConfirmResult {
   totalUsers: number;
   confirmed: number;
@@ -79,12 +85,13 @@ export function useUserBulkActions() {
 
       logger.info('Bulk confirm completed', { dryRun: isDryRun, result });
       return result;
-    } catch (error: any) {
-      logger.error('Bulk confirm failed', { error: error.message });
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, "Failed to confirm users");
+      logger.error('Bulk confirm failed', { error: message });
       toast({
         variant: "destructive",
         title: "Bulk Confirmation Failed",
-        description: error.message || "Failed to confirm users",
+        description: message,
       });
       return null;
     } finally {
@@ -102,7 +109,6 @@ export function useUserBulkActions() {
       username?: string;
       role?: string;
       created_at?: string;
-      subscription?: { plan_name?: string; status?: string } | null;
     }>,
     format: 'csv' | 'json' = 'csv'
   ): Promise<boolean> => {
@@ -110,7 +116,7 @@ export function useUserBulkActions() {
     
     try {
       if (format === 'csv') {
-        const headers = ['ID', 'Email', 'First Name', 'Last Name', 'Username', 'Role', 'Plan', 'Status', 'Created'];
+        const headers = ['ID', 'Email', 'First Name', 'Last Name', 'Username', 'Role', 'Created'];
         const rows = users.map(u => [
           u.id,
           u.email || '',
@@ -118,8 +124,6 @@ export function useUserBulkActions() {
           u.last_name || '',
           u.username || '',
           u.role || 'user',
-          u.subscription?.plan_name || 'Free',
-          u.subscription?.status || 'N/A',
           u.created_at ? new Date(u.created_at).toLocaleDateString() : ''
         ]);
         
@@ -153,12 +157,13 @@ export function useUserBulkActions() {
       
       logger.info('Users exported', { count: users.length, format });
       return true;
-    } catch (error: any) {
-      logger.error('Export failed', { error: error.message });
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, "Failed to export users");
+      logger.error('Export failed', { error: message });
       toast({
         variant: "destructive",
         title: "Export Failed",
-        description: error.message || "Failed to export users",
+        description: message,
       });
       return false;
     } finally {
@@ -196,12 +201,13 @@ export function useUserBulkActions() {
       } else {
         throw new Error(result.error || 'Failed to change roles');
       }
-    } catch (error: any) {
-      logger.error('Bulk role change failed', { error: error.message });
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, "Failed to change user roles");
+      logger.error('Bulk role change failed', { error: message });
       toast({
         variant: "destructive",
         title: "Role Change Failed",
-        description: error.message || "Failed to change user roles",
+        description: message,
       });
       return false;
     } finally {
@@ -254,12 +260,13 @@ export function useUserBulkActions() {
       } else {
         throw new Error('Failed to delete any users');
       }
-    } catch (error: any) {
-      logger.error('Bulk delete failed', { error: error.message });
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, "Failed to delete users");
+      logger.error('Bulk delete failed', { error: message });
       toast({
         variant: "destructive",
         title: "Bulk Delete Failed",
-        description: error.message || "Failed to delete users",
+        description: message,
       });
       return false;
     } finally {

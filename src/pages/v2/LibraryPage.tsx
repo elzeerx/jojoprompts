@@ -105,11 +105,7 @@ export default function LibraryPage() {
   const hasLegacyLifetime = !!legacySummary?.lifetime;
   const hasLibrary = !!library?.has_library_access || hasLegacyLifetime;
   const entitledIds = useMemo(() => {
-    const ids: string[] = [];
-    (library?.entitlements ?? []).forEach((e) => {
-      if (e.scope === "resource" && e.resource_id) ids.push(e.resource_id);
-    });
-    return ids;
+    return library?.owned_resource_ids ?? [];
   }, [library]);
   const stableEntitledKey = useMemo(
     () => [...entitledIds].sort().join(","),
@@ -128,7 +124,7 @@ export default function LibraryPage() {
       let query = supabase
         .from("resources")
         .select(
-          "id, slug, type, title_en, title_ar, summary_en, summary_ar, update_info_en, update_info_ar, updated_at, lifecycle, current_version:current_version_id(id,version,published_at), installation_guides(id), licenses(id,license_key)",
+          "id, slug, type, title_en, title_ar, summary_en, summary_ar, update_info_en, update_info_ar, updated_at, lifecycle, current_version:latest_published_version_id(id,version,published_at), installation_guides(id), licenses(id,license_key)",
         )
         .in("lifecycle", ["published", "archived"]);
       if (!hasLibrary) query = query.in("id", entitledIds);

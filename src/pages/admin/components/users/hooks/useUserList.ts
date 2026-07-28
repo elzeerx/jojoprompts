@@ -51,12 +51,6 @@ export function useUserList(options: UseUserListOptions = {}) {
         user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.username?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Tier filter
-      const planName = user.subscription?.plan_name?.toLowerCase() || '';
-      const matchesTier = filters.tier === 'all' || 
-        (filters.tier === 'free' && !user.subscription?.plan_name) ||
-        planName.includes(filters.tier.toLowerCase());
-      
       // Verification filter
       const matchesVerification = filters.verification === 'all' ||
         (filters.verification === 'verified' && user.is_email_confirmed) ||
@@ -71,7 +65,7 @@ export function useUserList(options: UseUserListOptions = {}) {
       const matchesRole = filters.role === 'all' ||
         user.role === filters.role;
       
-      return matchesSearch && matchesTier && matchesVerification && matchesAccountStatus && matchesRole;
+      return matchesSearch && matchesVerification && matchesAccountStatus && matchesRole;
     });
   }, [allUsers, searchTerm, filters]);
   
@@ -82,7 +76,6 @@ export function useUserList(options: UseUserListOptions = {}) {
     orphaned: allUsers.filter(u => u.has_auth_account === false).length,
     unverified: allUsers.filter(u => !u.is_email_confirmed).length,
     admins: allUsers.filter(u => u.role === 'admin' || u.role === 'jadmin').length,
-    withSubscription: allUsers.filter(u => u.subscription?.plan_name).length
   }), [allUsers, filteredUsers.length]);
   
   // Pagination calculations

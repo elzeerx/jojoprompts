@@ -307,6 +307,7 @@ export type Database = {
           messages: Json
           payload: Json
           published_prompt_id: string | null
+          published_resource_id: string | null
           status: string
           target_llm: string | null
           thumbnail_path: string | null
@@ -322,6 +323,7 @@ export type Database = {
           messages?: Json
           payload?: Json
           published_prompt_id?: string | null
+          published_resource_id?: string | null
           status?: string
           target_llm?: string | null
           thumbnail_path?: string | null
@@ -337,6 +339,7 @@ export type Database = {
           messages?: Json
           payload?: Json
           published_prompt_id?: string | null
+          published_resource_id?: string | null
           status?: string
           target_llm?: string | null
           thumbnail_path?: string | null
@@ -344,7 +347,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_studio_drafts_published_resource_id_fkey"
+            columns: ["published_resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       api_request_logs: {
         Row: {
@@ -3139,6 +3150,7 @@ export type Database = {
           examples_en: string | null
           hero_image_path: string | null
           id: string
+          latest_published_version_id: string | null
           legacy_prompt_id: string | null
           lifecycle: Database["public"]["Enums"]["v2_resource_lifecycle"]
           limitations_ar: string | null
@@ -3172,6 +3184,7 @@ export type Database = {
           examples_en?: string | null
           hero_image_path?: string | null
           id?: string
+          latest_published_version_id?: string | null
           legacy_prompt_id?: string | null
           lifecycle?: Database["public"]["Enums"]["v2_resource_lifecycle"]
           limitations_ar?: string | null
@@ -3205,6 +3218,7 @@ export type Database = {
           examples_en?: string | null
           hero_image_path?: string | null
           id?: string
+          latest_published_version_id?: string | null
           legacy_prompt_id?: string | null
           lifecycle?: Database["public"]["Enums"]["v2_resource_lifecycle"]
           limitations_ar?: string | null
@@ -3230,6 +3244,13 @@ export type Database = {
           {
             foreignKeyName: "resources_current_version_fk"
             columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "resource_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resources_latest_published_version_id_fkey"
+            columns: ["latest_published_version_id"]
             isOneToOne: false
             referencedRelation: "resource_versions"
             referencedColumns: ["id"]
@@ -4475,6 +4496,10 @@ export type Database = {
         Args: { new_password: string; user_id: string }
         Returns: Json
       }
+      admin_get_resource_private_content: {
+        Args: { p_resource_id: string; p_version_id?: string | null }
+        Returns: Json
+      }
       admin_create_user: {
         Args: {
           user_email: string
@@ -4482,6 +4507,14 @@ export type Database = {
           user_last_name?: string
           user_password: string
           user_role?: string
+        }
+        Returns: Json
+      }
+      admin_set_user_role_v2: {
+        Args: {
+          p_actor_id: string
+          p_role: string
+          p_target_user_id: string
         }
         Returns: Json
       }
@@ -4758,6 +4791,7 @@ export type Database = {
         Returns: boolean
       }
       save_admin_resource_draft: { Args: { payload: Json }; Returns: Json }
+      save_admin_resource_draft_v2: { Args: { payload: Json }; Returns: Json }
       schedule_security_assessment: {
         Args: {
           p_assessment_type: string

@@ -1,10 +1,10 @@
 /**
- * Contract tests: V2 protected legacy content is entitlement-gated.
+ * Contract tests: V2 protected published-version content is entitlement-gated.
  * - useResourceDetail must never select protected prompt columns.
  * - useEntitledResourceContent is enabled only for signed-in owners.
  * - V2Header/V2Footer call useAuth unconditionally at the top level.
  * - ResourceDetailPage renders the "Your prompt" section only when the
- *   resource is owned AND has a legacy_prompt_id.
+ *   resource is owned and supports protected inline delivery.
  */
 import { describe, it, expect } from "bun:test";
 
@@ -31,7 +31,8 @@ describe("V2 protected-content wiring", () => {
     expect(DETAIL_HOOK.includes("prompt_text")).toBe(false);
     expect(DETAIL_HOOK.includes("prompt_text_ar")).toBe(false);
     expect(DETAIL_HOOK).toContain("hero_image_path");
-    expect(DETAIL_HOOK).toContain("legacy_prompt_id");
+    expect(DETAIL_HOOK).toContain("latest_published_version_id");
+    expect(DETAIL_HOOK).not.toContain("legacy_prompt_id");
   });
 
   it("useResourceDetail matches the promoted V2 schema and fails loudly on related-query errors", () => {
@@ -59,9 +60,10 @@ describe("V2 protected-content wiring", () => {
     expect(/try\s*\{[^}]*useAuth\(\)/.test(FOOTER)).toBe(false);
   });
 
-  it("ResourceDetailPage gates the Your prompt section on ownership + legacy_prompt_id", () => {
+  it("ResourceDetailPage gates protected delivery on ownership + resource type", () => {
     expect(PAGE).toContain("shouldFetchProtected");
-    expect(PAGE).toContain("legacy_prompt_id");
+    expect(PAGE).toContain("resourceType: data?.resource?.type");
+    expect(PAGE).not.toContain("legacy_prompt_id");
     expect(PAGE).toContain("useEntitledResourceContent");
     expect(PAGE).toContain('data-testid="entitled-prompt-section"');
   });

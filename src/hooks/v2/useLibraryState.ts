@@ -6,13 +6,16 @@ export interface LibraryState {
   entitlements: Array<{
     id: string;
     resource_id: string | null;
-    scope: "resource" | "library";
+    scope: "resource" | "collection" | "library";
+    collection_key: string | null;
     grant_reason: string;
     version_major: number | null;
     granted_at: string;
     expires_at: string | null;
   }>;
   has_library_access: boolean;
+  active_collection_keys: string[];
+  owned_resource_ids: string[];
   lifetime_progress_fils: number;
   lifetime_threshold_fils: number;
   lifetime_remaining_fils: number;

@@ -3,6 +3,7 @@ import { verifyAdmin } from "../_shared/adminAuth.ts";
 import { createEdgeLogger } from "../_shared/logger.ts";
 import { handleGetUsers } from "./handlers/getUsersHandler.ts";
 import { handleUpdateUser } from "./handlers/updateUserHandler.ts";
+import { handleCreateUser } from "./handlers/createUserHandler.ts";
 import { checkRateLimit, RATE_LIMITS, createRateLimitResponse } from "../_shared/rateLimit.ts";
 
 const logger = createEdgeLogger('GET_ALL_USERS');
@@ -19,7 +20,7 @@ serve(async (req) => {
 
   try {
     // Admin authentication using shared module
-    const { supabase, userId } = await verifyAdmin(req);
+    const { supabase, userId, userRole } = await verifyAdmin(req);
     
     // Check rate limit for admin user
     const rateLimitResult = await checkRateLimit(supabase, userId, RATE_LIMITS.GET_ALL_USERS);
@@ -85,8 +86,54 @@ serve(async (req) => {
           search: body.search
         });
       }
+
+      if (action === 'create') {
+        if (userRole !== "admin") {
+          return createErrorResponse(
+            "Admin role required to create users",
+            403,
+          );
+        }
+
+        logger.info("User creation requested", { requestedRole: body.role });
+        return await handleCreateUser(supabase, userId, {
+          ...body,
+          ip_address:
+            req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+            "unknown",
+          user_agent: req.headers.get("user-agent") ?? "unknown",
+        });
+      }
       
       if (action === 'delete') {
+        if (targetUserId === userId) {
+          return createErrorResponse("You cannot delete your own account", 400);
+        }
+
+        const { data: actorRole, error: actorRoleError } = await supabase
+          .from("user_roles")
+          .select("is_super_admin")
+          .eq("user_id", userId)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (actorRoleError) {
+          logger.error("Super-admin verification failed", {
+            error: actorRoleError.message,
+          });
+          return createErrorResponse(
+            "Unable to verify deletion permission",
+            500,
+          );
+        }
+
+        if (actorRole?.is_super_admin !== true) {
+          return createErrorResponse(
+            "Super admin required to delete users",
+            403,
+          );
+        }
+
         // Call the admin_delete_user_data function with verified admin ID
         const { data, error } = await supabase.rpc('admin_delete_user_data', {
           target_user_id: targetUserId,
@@ -105,7 +152,13 @@ serve(async (req) => {
       
       if (action === 'update') {
         logger.info("User update requested", { targetUserId: body.userId });
-        return await handleUpdateUser(supabase, userId, req, body);
+        return await handleUpdateUser(
+          supabase,
+          userId,
+          userRole,
+          req,
+          body,
+        );
       }
       
       return createErrorResponse('Invalid action', 400);

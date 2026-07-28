@@ -1,165 +1,284 @@
-import { createEdgeLogger } from '../../_shared/logger.ts';
-import { corsHeaders } from "../../_shared/standardImports.ts";
-import { logAdminAction, logSecurityEvent } from "../../shared/securityLogger.ts";
+import { createClient, corsHeaders } from "../../_shared/standardImports.ts";
+import { createEdgeLogger } from "../../_shared/logger.ts";
+import {
+  logAdminAction,
+  logSecurityEvent,
+} from "../../shared/securityLogger.ts";
 
-const logger = createEdgeLogger('get-all-users:create-user');
+const logger = createEdgeLogger("get-all-users:create-user");
+const ALLOWED_ROLES = new Set(["user", "admin", "prompter", "jadmin"]);
+const PRIVILEGED_ROLES = new Set(["admin", "prompter", "jadmin"]);
+
+type AdminClient = ReturnType<typeof createClient>;
+
+function jsonResponse(
+  body: Record<string, unknown>,
+  status: number,
+): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function stringValue(
+  source: Record<string, unknown>,
+  key: string,
+): string {
+  return typeof source[key] === "string"
+    ? source[key].trim()
+    : "";
+}
+
+function safeUsername(email: string, userId: string): string {
+  const localPart = email.split("@")[0] ?? "user";
+  const normalized = localPart
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 32);
+  return `${normalized || "user"}_${userId.slice(0, 8)}`;
+}
 
 /**
- * Create a new user with optional role assignment
- * Only super admin can create users with admin/jadmin roles
+ * Creates a real Auth user, a V2 profile, and a user_roles row as one
+ * compensating workflow. Privileged roles require the actor's explicit
+ * is_super_admin flag; no email address is treated as authority.
  */
-export async function handleCreateUser(supabase: any, adminId: string, requestBody: any) {
-  try {
-    const { email, password, first_name, last_name, role = 'user' } = requestBody;
-    const ipAddress = requestBody.ip_address || 'unknown';
-    const userAgent = requestBody.user_agent || 'unknown';
+export async function handleCreateUser(
+  supabase: AdminClient,
+  adminId: string,
+  requestBody: unknown,
+): Promise<Response> {
+  const body = asRecord(requestBody);
+  const email = stringValue(body, "email").toLowerCase();
+  const password = stringValue(body, "password");
+  const firstName = stringValue(body, "first_name") || "User";
+  const lastName = stringValue(body, "last_name");
+  const role = stringValue(body, "role") || "user";
+  const ipAddress = stringValue(body, "ip_address") || "unknown";
+  const userAgent = stringValue(body, "user_agent") || "unknown";
 
-    // Validate required fields
-    if (!email || !password) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing required fields', 
-          details: 'Email and password are required'
-        }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+  if (!email || !email.includes("@") || !password) {
+    return jsonResponse(
+      {
+        error: "missing_required_fields",
+        details: "A valid email and password are required.",
+      },
+      400,
+    );
+  }
 
-    // Check if creating privileged role (admin/jadmin/prompter)
-    if (['admin', 'jadmin', 'prompter'].includes(role)) {
-      // Get admin's email from auth
-      const { data: adminAuth } = await supabase.auth.admin.getUserById(adminId);
-      const adminEmail = adminAuth?.user?.email;
+  if (password.length < 8) {
+    return jsonResponse(
+      {
+        error: "password_too_short",
+        details: "Password must contain at least 8 characters.",
+      },
+      400,
+    );
+  }
 
-      // Only super admin can create privileged users
-      if (adminEmail !== 'nawaf@elzeer.com') {
-        await logSecurityEvent(supabase, {
-          user_id: adminId,
-          action: 'unauthorized_privileged_user_creation_attempt',
-          details: {
-            attempted_role: role,
-            admin_email: adminEmail || 'unknown',
-            target_email: email
-          }
-        });
+  if (!ALLOWED_ROLES.has(role)) {
+    return jsonResponse(
+      { error: "invalid_role", details: "The requested role is not valid." },
+      400,
+    );
+  }
 
-        return new Response(
-          JSON.stringify({ 
-            error: 'Only super admin can create users with privileged roles',
-            details: `Cannot create ${role} users`
-          }), 
-          { 
-            status: 403, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-    }
+  if (PRIVILEGED_ROLES.has(role)) {
+    const { data: actorRole, error: actorRoleError } = await supabase
+      .from("user_roles")
+      .select("is_super_admin")
+      .eq("user_id", adminId)
+      .eq("role", "admin")
+      .maybeSingle();
 
-    // Log user creation attempt
-    await logAdminAction(supabase, adminId, 'create_user', 'users', {
-      target_email: email,
-      role,
-      ip_address: ipAddress,
-      user_agent: userAgent
-    }, ipAddress);
-
-    // Create user in auth
-    const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Auto-confirm email for admin-created users
-      user_metadata: {
-        first_name: first_name || 'User',
-        last_name: last_name || ''
-      }
-    });
-
-    if (createError) {
-      logger.error('Failed to create user', { error: createError.message });
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to create user', 
-          details: createError.message
-        }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Create profile with specified role
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: newUser.user.id,
-        first_name: first_name || 'User',
-        last_name: last_name || '',
-        username: email.split('@')[0],
-        role
+    if (actorRoleError || actorRole?.is_super_admin !== true) {
+      await logSecurityEvent(supabase, {
+        user_id: adminId,
+        action: "unauthorized_privileged_user_creation_attempt",
+        details: {
+          attempted_role: role,
+          target_email: email,
+        },
+        ip_address: ipAddress,
+        user_agent: userAgent,
       });
 
-    if (profileError) {
-      logger.error('Failed to create profile', { error: profileError.message });
-      // If profile creation fails, delete the auth user
-      await supabase.auth.admin.deleteUser(newUser.user.id);
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to create user profile', 
-          details: profileError.message
-        }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+      return jsonResponse(
+        {
+          error: "super_admin_required",
+          details: "Only a super admin may assign a privileged role.",
+        },
+        403,
+      );
+    }
+  }
+
+  await logAdminAction(
+    supabase,
+    adminId,
+    "create_user_requested",
+    "users",
+    {
+      target_email: email,
+      role,
+      user_agent: userAgent,
+    },
+    ipAddress,
+  );
+
+  try {
+    const { data: created, error: createError } =
+      await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          first_name: firstName,
+          last_name: lastName,
+        },
+      });
+
+    const newUser = created.user;
+    if (createError || !newUser) {
+      logger.warn("Auth user creation failed", {
+        code: createError?.code,
+        message: createError?.message,
+      });
+      return jsonResponse(
+        {
+          error: "auth_user_creation_failed",
+          details: createError?.message ?? "The Auth user was not created.",
+        },
+        400,
       );
     }
 
-    // Log successful user creation
+    const compensate = async () => {
+      const { error } = await supabase.auth.admin.deleteUser(newUser.id);
+      if (error) {
+        logger.error("Auth-user compensation failed", {
+          userId: newUser.id,
+          message: error.message,
+        });
+      }
+    };
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert(
+        {
+          id: newUser.id,
+          first_name: firstName,
+          last_name: lastName,
+          username: safeUsername(email, newUser.id),
+          email,
+        },
+        { onConflict: "id" },
+      );
+
+    if (profileError) {
+      await compensate();
+      logger.error("Profile creation failed", {
+        userId: newUser.id,
+        message: profileError.message,
+      });
+      return jsonResponse(
+        {
+          error: "profile_creation_failed",
+          details: "The user profile could not be created.",
+        },
+        400,
+      );
+    }
+
+    const { error: clearRolesError } = await supabase
+      .from("user_roles")
+      .delete()
+      .eq("user_id", newUser.id);
+
+    if (clearRolesError) {
+      await compensate();
+      logger.error("Default role cleanup failed", {
+        userId: newUser.id,
+        message: clearRolesError.message,
+      });
+      return jsonResponse(
+        {
+          error: "role_assignment_failed",
+          details: "The user's role could not be prepared.",
+        },
+        400,
+      );
+    }
+
+    const { error: roleError } = await supabase
+      .from("user_roles")
+      .insert({
+        user_id: newUser.id,
+        role,
+        assigned_by: adminId,
+        is_super_admin: false,
+      });
+
+    if (roleError) {
+      await compensate();
+      logger.error("Role assignment failed", {
+        userId: newUser.id,
+        message: roleError.message,
+      });
+      return jsonResponse(
+        {
+          error: "role_assignment_failed",
+          details: "The requested role could not be assigned.",
+        },
+        400,
+      );
+    }
+
     await logSecurityEvent(supabase, {
       user_id: adminId,
-      action: 'user_created',
+      action: "user_created",
       details: {
-        new_user_id: newUser.user.id,
-        email,
+        new_user_id: newUser.id,
+        target_email: email,
         role,
-        created_by_admin: true
-      }
+        created_by_admin: true,
+      },
+      ip_address: ipAddress,
+      user_agent: userAgent,
     });
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'User created successfully',
+    return jsonResponse(
+      {
+        success: true,
+        message: "User created successfully",
         user: {
-          id: newUser.user.id,
+          id: newUser.id,
           email,
-          role
-        }
-      }), 
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+          role,
+        },
+      },
+      200,
     );
-    
-  } catch (error: any) {
-    logger.error('Critical error', { error: error.message });
-    
-    return new Response(
-      JSON.stringify({ 
-        error: 'Failed to create user', 
-        details: error.message
-      }), 
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Unknown create-user error";
+    logger.error("Critical create-user error", { message });
+    return jsonResponse(
+      {
+        error: "user_creation_failed",
+        details: "The user could not be created.",
+      },
+      500,
     );
   }
 }

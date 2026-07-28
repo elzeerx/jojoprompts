@@ -156,8 +156,9 @@ export const canViewAuditLogs = (role?: string | null): boolean => {
  * use the database query via useSuperAdmin hook or is_super_admin() function
  */
 export const isSuperAdmin = (role?: string | null, _email?: string | null): boolean => {
-  // Simplified check - actual super admin status should be queried from database
-  return isAdmin(role);
+  // A role or email alone cannot prove super-admin authority. Callers that
+  // need this capability must use the database-backed useSuperAdmin hook.
+  return false;
 };
 
 // ============================================================================

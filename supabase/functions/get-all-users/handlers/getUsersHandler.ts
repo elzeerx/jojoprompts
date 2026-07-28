@@ -1,7 +1,11 @@
 import { createEdgeLogger } from '../../_shared/logger.ts';
 import { logAdminAction } from "../../shared/securityLogger.ts";
 import { validatePagination, buildProfileQuery, fetchUserRoles } from './queryBuilder.ts';
-import { fetchAuthData, fetchSubscriptionData, buildRoleMap, enrichUserProfiles } from './dataEnrichment.ts';
+import {
+  buildRoleMap,
+  enrichUserProfiles,
+  fetchAuthData,
+} from './dataEnrichment.ts';
 import {
   buildSuccessResponse,
   buildEmptyResponse,
@@ -92,10 +96,9 @@ export async function handleGetUsers(
     // Fetch related data for enrichment
     const profileIds = profiles.map(p => p.id);
     
-    const [userRoleData, authUserMap, subscriptionMap] = await Promise.all([
+    const [userRoleData, authUserMap] = await Promise.all([
       fetchUserRoles(supabase, profileIds),
       fetchAuthData(supabase, profileIds, requestId),
-      fetchSubscriptionData(supabase, profileIds, requestId)
     ]);
     
     const roleMap = buildRoleMap(userRoleData);
@@ -113,7 +116,11 @@ export async function handleGetUsers(
     }
     
     // Enrich profiles with all related data
-    const enrichedUsers = enrichUserProfiles(profiles, authUserMap, roleMap, subscriptionMap);
+    const enrichedUsers = enrichUserProfiles(
+      profiles,
+      authUserMap,
+      roleMap,
+    );
     
     logger.info('Request completed successfully', { 
       requestId, 
@@ -133,7 +140,6 @@ export async function handleGetUsers(
         dataEnrichment: {
           profilesEnriched: enrichedUsers.length,
           authDataAvailable: authUserMap.size,
-          subscriptionsAvailable: subscriptionMap.size
         }
       }
     );

@@ -19,8 +19,11 @@ function stripComments(src: string): string {
 
 const usersPage = stripComments(read("src/pages/admin/components/users/UsersV2.tsx"));
 const usersTable = stripComments(read("src/pages/admin/components/users/UsersV2Table.tsx"));
+const profileSheet = stripComments(
+  read("src/pages/admin/components/users/components/UserProfileSheet.tsx"),
+);
 const adminRouting = stripComments(read("src/pages/admin/layout/adminSectionElements.tsx"));
-const combined = `${usersPage}\n${usersTable}`;
+const combined = `${usersPage}\n${usersTable}\n${profileSheet}`;
 
 function absent(re: RegExp, hay: string): boolean {
   return !re.test(hay);
@@ -58,7 +61,7 @@ describe("Users V2 route contract", () => {
     expect(/Refresh/.test(usersPage)).toBe(true);
     expect(/Export/i.test(usersPage)).toBe(true);
     expect(/reset/i.test(usersTable)).toBe(true);
-    expect(/Resend/i.test(usersTable)).toBe(true);
+    expect(absent(/Resend confirmation/i, usersTable)).toBe(true);
     expect(/min-h-\[44px\]/.test(usersTable)).toBe(true);
     expect(/min-h-\[44px\]/.test(usersPage)).toBe(true);
     expect(
@@ -66,6 +69,26 @@ describe("Users V2 route contract", () => {
         usersPage,
       ),
     ).toBe(true);
+  });
+
+  it("uses database-backed super-admin capability for sensitive actions", () => {
+    expect(usersPage).toContain("useSuperAdmin()");
+    expect(usersPage).toContain(
+      "canManageSensitiveUsers={isSuperAdmin}",
+    );
+    expect(usersTable).toContain(
+      "canManageSensitiveFields={canManageSensitiveUsers}",
+    );
+    expect(usersTable).not.toContain("canFullCRUD");
+    expect(usersTable).not.toContain("canChangePasswords");
+  });
+
+  it("keeps the profile sheet read-only and free of legacy access controls", () => {
+    expect(profileSheet).not.toContain("onSave");
+    expect(profileSheet).not.toContain("AvatarUpload");
+    expect(profileSheet).not.toMatch(/<Edit|<Save/);
+    expect(profileSheet).not.toContain("SubscriptionBadge");
+    expect(profileSheet).not.toMatch(/subscription|plan/i);
   });
 
   it("routes /admin/users to the lean V2 page and no longer imports legacy shells", () => {

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-// Explicit safe column lists. Never select protected legacy payload
+// Explicit safe column lists. Never select protected delivery payload
 // fields here — those are gated behind the SECURITY DEFINER RPC
 // `v2_get_entitled_resource_content` and only fetched when an owner is
 // signed in.
@@ -20,8 +20,7 @@ const RESOURCE_PUBLIC_COLUMNS = [
   "tags",
   "category",
   "effort_minutes",
-  "current_version_id",
-  "legacy_prompt_id",
+  "latest_published_version_id",
   "examples_en",
   "examples_ar",
   "limitations_en",
@@ -63,9 +62,12 @@ export function useResourceDetail(slug: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       if (!resource) return null;
-      const rec = resource as unknown as { id: string; current_version_id: string | null };
+      const rec = resource as unknown as {
+        id: string;
+        latest_published_version_id: string | null;
+      };
       const rid = rec.id;
-      const currentVersionId = rec.current_version_id;
+      const publishedVersionId = rec.latest_published_version_id;
 
       const [
         versionResult,
@@ -76,11 +78,11 @@ export function useResourceDetail(slug: string | undefined) {
         productsResult,
         badgeRes,
       ] = await Promise.all([
-        currentVersionId
+        publishedVersionId
           ? supabase
               .from("resource_versions")
               .select(RESOURCE_VERSION_COLUMNS)
-              .eq("id", currentVersionId)
+              .eq("id", publishedVersionId)
               .maybeSingle()
           : Promise.resolve({ data: null, error: null }),
         supabase

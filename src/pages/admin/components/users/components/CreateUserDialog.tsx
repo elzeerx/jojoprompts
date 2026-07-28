@@ -24,12 +24,14 @@ interface CreateUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUserCreated: () => void;
+  canAssignPrivilegedRoles?: boolean;
 }
 
 export function CreateUserDialog({
   open,
   onOpenChange,
   onUserCreated,
+  canAssignPrivilegedRoles = false,
 }: CreateUserDialogProps) {
   const [formData, setFormData] = useState({
     first_name: "",
@@ -53,7 +55,7 @@ export function CreateUserDialog({
     e.preventDefault();
     const result = await createUser({
       ...formData,
-      role: formData.role as UserRole
+      role: (canAssignPrivilegedRoles ? formData.role : "user") as UserRole,
     });
     if (result) {
       onUserCreated();
@@ -71,21 +73,21 @@ export function CreateUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="prompt-dialog">
-        <div className="p-8">
+      <DialogContent className="prompt-dialog max-h-[calc(100dvh-2rem)] overflow-y-auto p-0 sm:max-w-2xl">
+        <div className="p-5 sm:p-8">
           <DialogHeader className="mb-6">
             <DialogTitle className="text-3xl font-bold text-gray-900 leading-tight flex items-center gap-3">
               <UserPlus className="h-8 w-8 text-warm-gold" />
               Create New User
             </DialogTitle>
             <DialogDescription className="text-base text-muted-foreground mt-2">
-              Add a new user to the system. They'll receive a welcome email.
+              Create a confirmed account and assign its initial role.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-white/40 p-6 rounded-xl border border-gray-200 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/40 p-4 sm:p-6 rounded-xl border border-gray-200 space-y-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="first_name" className="text-base font-medium">
                     First Name
@@ -149,41 +151,53 @@ export function CreateUserDialog({
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-base font-medium">
-                  Role
-                </Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={handleRoleChange}
-                >
-                  <SelectTrigger className="h-12 text-base">
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="prompter">Prompter</SelectItem>
-                    <SelectItem value="jadmin">Junior Admin</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {canAssignPrivilegedRoles ? (
+                <div className="space-y-2">
+                  <Label htmlFor="role" className="text-base font-medium">
+                    Role
+                  </Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={handleRoleChange}
+                  >
+                    <SelectTrigger id="role" className="h-12 text-base">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="prompter">Prompter</SelectItem>
+                      <SelectItem value="jadmin">Junior Admin</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Role</Label>
+                  <div className="flex min-h-12 items-center rounded-md border bg-muted/40 px-3 text-base">
+                    User
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Only a super admin can create privileged accounts.
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-6">
+            <div className="flex flex-col-reverse gap-3 pt-6 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isCreating}
-                className="px-6 py-3 text-base font-semibold rounded-xl"
+                className="min-h-11 px-6 py-3 text-base font-semibold rounded-xl"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isCreating}
-                className="bg-[#c49d68] hover:bg-[#c49d68]/90 text-white px-6 py-3 text-base font-semibold rounded-xl shadow-md"
+                className="min-h-11 bg-[#c49d68] hover:bg-[#c49d68]/90 text-white px-6 py-3 text-base font-semibold rounded-xl shadow-md"
               >
                 {isCreating ? (
                   <>

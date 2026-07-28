@@ -117,10 +117,14 @@ export function DraftsSidebar({ activeId }: Props) {
                       {d.kind}
                     </Badge>
                     <Badge
-                      variant={d.status === "published" ? "default" : "secondary"}
+                      variant={
+                        d.status === "imported" || d.status === "published"
+                          ? "default"
+                          : "secondary"
+                      }
                       className="text-[10px] px-1 py-0"
                     >
-                      {d.status}
+                      {d.status === "imported" ? "in publisher" : d.status}
                     </Badge>
                   </div>
                 </div>

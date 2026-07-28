@@ -42,8 +42,9 @@ export interface AiStudioDraft {
   target_llm: string | null;
   thumbnail_path: string | null;
   messages: ChatMsg[];
-  status: "draft" | "published" | "archived";
+  status: "draft" | "imported" | "published" | "archived";
   published_prompt_id: string | null;
+  published_resource_id: string | null;
   created_at: string;
   updated_at: string;
 }

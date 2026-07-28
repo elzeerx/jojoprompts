@@ -78,11 +78,7 @@ export default function ExplorePage({
   );
 
   const ownedIds = useMemo(() => {
-    const s = new Set<string>();
-    (library?.entitlements ?? []).forEach((e) => {
-      if (e.scope === "resource" && e.resource_id) s.add(e.resource_id);
-    });
-    return s;
+    return new Set(library?.owned_resource_ids ?? []);
   }, [library]);
 
   const {
@@ -116,12 +112,17 @@ export default function ExplorePage({
   const patch = useCallback(
     (p: Partial<ExploreFilters>) => {
       const next = new URLSearchParams(params);
-      if (p.search !== undefined) p.search ? next.set("q", p.search) : next.delete("q");
+      if (p.search !== undefined) {
+        if (p.search) next.set("q", p.search);
+        else next.delete("q");
+      }
       if (p.sortBy) next.set("sort", p.sortBy);
       if (p.priceMode) next.set("price", p.priceMode);
       if (p.effort) next.set("effort", p.effort);
-      if (p.platforms)
-        p.platforms.length ? next.set("p", p.platforms.join(",")) : next.delete("p");
+      if (p.platforms) {
+        if (p.platforms.length) next.set("p", p.platforms.join(","));
+        else next.delete("p");
+      }
       // Any filter/sort/search change resets to page 1 (no orphan cursors).
       next.delete("page");
       setParams(next, { replace: true });

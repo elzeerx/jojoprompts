@@ -1,5 +1,5 @@
 /**
- * Pure helpers for selecting/gating displayed protected legacy content.
+ * Pure helpers for selecting and gating protected version content.
  * Extracted for unit testing. NO React or Supabase imports here.
  */
 
@@ -33,19 +33,27 @@ export function pickProtectedText(
 }
 
 /**
- * Fail-closed gate: only fetch/render protected content for a signed-in
- * user who owns a resource whose legacy prompt id is present. Any missing
- * signal collapses to false.
+ * Fail-closed gate: only fetch protected text delivery for a signed-in owner
+ * and a resource type that can carry protected inline content. Package-only
+ * skills/automations are identified by the RPC and use signed downloads;
+ * bundles have no standalone protected body.
  */
 export function shouldRevealProtectedContent(params: {
   hasUser: boolean;
   owned: boolean;
-  legacyPromptId: string | null | undefined;
+  resourceType: string | null | undefined;
 }): boolean {
+  const inlineTypes = new Set([
+    "prompt",
+    "prompt_pack",
+    "image_style",
+    "automation",
+    "skill",
+  ]);
   return (
     params.hasUser === true &&
     params.owned === true &&
-    typeof params.legacyPromptId === "string" &&
-    params.legacyPromptId.length > 0
+    typeof params.resourceType === "string" &&
+    inlineTypes.has(params.resourceType)
   );
 }
