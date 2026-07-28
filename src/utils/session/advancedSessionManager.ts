@@ -297,15 +297,9 @@ export class AdvancedSessionManager {
 
       // Log bulk session termination
       if (terminatedCount > 0) {
-        await supabase.from('security_logs').insert({
-          user_id: userId,
-          action: 'bulk_session_termination',
-          details: { 
-            terminated_count: terminatedCount,
-            kept_session: currentSessionId 
-          },
-          severity: 'info',
-          event_category: 'session_management'
+        // Pre-launch hardening: no client-role DB write into security_logs.
+        logger.info('bulk_session_termination', {
+          userId, terminated_count: terminatedCount, kept_session: currentSessionId,
         });
       }
 
