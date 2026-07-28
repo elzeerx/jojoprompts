@@ -36,7 +36,7 @@ export function V2Footer() {
     { to: "/explore", label: lang === "ar" ? "المتجر" : "All resources" },
     { to: "/skills", label: lang === "ar" ? "المهارات" : "Skills" },
     { to: "/automations", label: lang === "ar" ? "الأتمتة" : "Automations" },
-    { to: "/prompts-catalog", label: lang === "ar" ? "البرومبتات" : "Prompts" },
+    { to: "/prompts", label: lang === "ar" ? "البرومبتات" : "Prompts" },
     { to: "/image-styles", label: lang === "ar" ? "أنماط الصور" : "Image styles" },
     { to: "/bundles", label: lang === "ar" ? "الحزم" : "Bundles" },
     { to: "/how-it-works", label: lang === "ar" ? "كيف يعمل" : "How it works" },

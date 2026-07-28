@@ -34,7 +34,7 @@ const EXPLORE_ITEMS: NavItem[] = [
   { to: "/explore", label: { en: "All resources", ar: "كل الموارد" } },
   { to: "/skills", label: { en: "Skills", ar: "مهارات" } },
   { to: "/automations", label: { en: "Automations", ar: "أتمتة" } },
-  { to: "/prompts-catalog", label: { en: "Prompts", ar: "برومبتات" } },
+  { to: "/prompts", label: { en: "Prompts", ar: "برومبتات" } },
   { to: "/image-styles", label: { en: "Image Styles", ar: "أنماط الصور" } },
   { to: "/bundles", label: { en: "Bundles", ar: "حزم" } },
 ];
