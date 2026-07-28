@@ -127,6 +127,25 @@ export interface AdminResourceVersionScan {
   created_at: string;
 }
 
+/**
+ * Coverage-aware effective scan state derived server-side from
+ * `v2_internal_effective_scan_state`. Single source of truth shared by the
+ * download authorization path, public trust badges, admin scan queue, and the
+ * ScanDetailSheet Queue guard. `null` when the server did not include the key
+ * (older responses) — treat as fail-closed on the client.
+ */
+export interface AdminResourceVersionEffectiveScan {
+  has_files: boolean;
+  latest_scan_id: string | null;
+  stored_status: ScanState | null;
+  effective_status: ScanState | null;
+  coverage_valid: boolean;
+  current_file_count: number;
+  scanned_file_count: number;
+  latest_created_at: string | null;
+  latest_scanned_at: string | null;
+}
+
 export interface AdminResourceVersionDetail {
   version: {
     version_id: string;
@@ -149,6 +168,7 @@ export interface AdminResourceVersionDetail {
   };
   files: AdminResourceVersionFile[];
   scans: AdminResourceVersionScan[];
+  effective_scan: AdminResourceVersionEffectiveScan | null;
 }
 
 export function useAdminResourceVersionDetail(versionId: string | null) {
