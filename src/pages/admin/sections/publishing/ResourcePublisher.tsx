@@ -831,7 +831,7 @@ function ProductEditor({ value, onChange, defaultSku }: { value: ProductRow[]; o
             <span className="whitespace-nowrap text-[11px] text-muted-foreground">
               = {(parseInt(row.price_fils || "0", 10) / 1000).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })} KWD
             </span>
-            <Button size="sm" variant="ghost" className="min-h-[40px] text-red-700"
+            <Button size="sm" variant="ghost" aria-label="Remove product" className="min-h-[44px] min-w-[44px] text-red-700"
               onClick={() => onChange(value.filter((_, i) => i !== idx))}>×</Button>
           </div>
         </div>

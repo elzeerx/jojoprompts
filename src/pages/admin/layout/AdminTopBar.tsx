@@ -54,7 +54,11 @@ export function AdminTopBar({ onOpenCommandPalette }: AdminTopBarProps) {
       <SidebarTrigger className="text-muted-foreground hover:text-dark-base" />
       <div className="h-5 w-px bg-gray-200" />
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground min-w-0 flex-1" aria-label="Breadcrumb">
-        <Link to="/admin" className="hover:text-dark-base transition-colors">
+        {/* Mobile enforces a 44x44 tap target on the breadcrumb link; md+ keeps compact inline density. */}
+        <Link
+          to="/admin"
+          className="inline-flex items-center min-h-[44px] md:min-h-0 px-2 md:px-0 -mx-2 md:mx-0 rounded hover:text-dark-base transition-colors touch-manipulation"
+        >
           Admin
         </Link>
         {current && current.to !== "/admin" && (
