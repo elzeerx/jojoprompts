@@ -350,16 +350,18 @@ describe("decideQueueAllowed — stale-clean must be re-queuable", () => {
 });
 
 // -----------------------------------------------------------------------------
-// Static SQL contract test — asserts the draft migration establishes the
-// invariants the runtime tests model. Draft path is source-only; the migration
-// has not been applied.
+// Static SQL contract test — asserts the PROMOTED forward-only migration
+// establishes the invariants the runtime tests model. Targets the actual
+// migration file (source of truth); the docs/security/drafts/ copy is kept as
+// an unchanged historical review artifact.
 // -----------------------------------------------------------------------------
-describe("draft migration — fail-closed SQL contract", () => {
+describe("promoted migration — fail-closed SQL contract", () => {
   const path = resolve(
     HERE,
-    "../../../../docs/security/drafts/20260728130000_package_scan_fail_closed_effective_state.sql",
+    "../../../../supabase/migrations/20260728143000_package_scan_fail_closed_effective_state.sql",
   );
   const sql = readFileSync(path, "utf8");
+
 
   it("defines v2_internal_effective_scan_state and revokes public execute", () => {
     expect(sql).toMatch(
