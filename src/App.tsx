@@ -69,8 +69,10 @@ const createGuardedRoute = (route: typeof routes[0]) => {
  * legacy URLs to avoid open-redirect / parameter-smuggling risks.
  */
 const LEGACY_REDIRECTS: ReadonlyArray<readonly [string, string]> = [
-  ["prompts", "/prompts-catalog"],
-  ["prompts/chatgpt", "/prompts-catalog?platform=chatgpt"],
+  // /prompts-catalog is the legacy compatibility path; /prompts is
+  // canonical (see routes.ts). PromptsCatalogRedirect below preserves
+  // the incoming ?query and #hash so filters/state survive the hop.
+  ["prompts/chatgpt", "/prompts?platform=chatgpt"],
   ["prompts/midjourney", "/image-styles"],
   ["prompts/workflow", "/automations"],
   ["prompts/gpts-builder", "/skills"],
@@ -87,6 +89,18 @@ const LEGACY_REDIRECTS: ReadonlyArray<readonly [string, string]> = [
   ["search", "/explore"],
   ["demo/enhanced-prompt", "/explore"],
 ];
+
+/**
+ * /prompts-catalog → /prompts, preserving query string and hash so users
+ * (and bookmarks/back-navigations) keep filters like ?platform=chatgpt.
+ */
+function PromptsCatalogRedirect() {
+  if (typeof window === "undefined") {
+    return <Navigate to="/prompts" replace />;
+  }
+  const { search, hash } = window.location;
+  return <Navigate to={`/prompts${search}${hash}`} replace />;
+}
 
 function App() {
   return (
