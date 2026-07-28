@@ -103,9 +103,21 @@ export const ALREADY_410_SLUGS = [
 ] as const;
 
 /**
- * Bounded retirement recommendation for THIS audit. Exactly 23 slugs
- * (11 obsolete payment/debug + 12 resolved from the previous
- * investigate set after full route-graph analysis). Not yet applied.
+ * Bounded retirement recommendation for THIS audit. Exactly 24 slugs
+ * (11 obsolete payment/debug + 12 route-graph-resolved + admin-package-upload,
+ * which was migrated to `v2-admin-upload-resource-file` in a prior pass and
+ * now has zero active callers).
+ *
+ * Application state (source-only, NOT deployed):
+ *   - 17 of these 24 have been replaced in-repo with a minimal HTTP 410
+ *     retirement stub — see `RETIRED_STUB_SLUGS` below.
+ *   - 7 remain live in source because active src callers still invoke them
+ *     via `supabase.functions.invoke` — see `RETIREMENT_BLOCKERS` below.
+ *     Stubbing those would break reachable UI; caller neutralisation is
+ *     required first.
+ *
+ * No Edge Function has been deployed, deleted, or published as part of
+ * this pass. Runtime behavior on Supabase is unchanged.
  */
 export const RETIREMENT_SLUGS = [
   // 11 obsolete-payment / debug retirements
@@ -134,7 +146,64 @@ export const RETIREMENT_SLUGS = [
   "get-user-insights",
   "auto-generate-prompt",
   "admin-users-v2",
+  // Migrated away from in a prior pass; PackageUploader now targets
+  // v2-admin-upload-resource-file exclusively.
+  "admin-package-upload",
 ] as const;
+
+/**
+ * Source-only 410 stubs written by this pass. Each corresponding
+ * `supabase/functions/<slug>/index.ts` is a minimal reversible retirement
+ * stub with no imports, env reads, body parsing, external I/O, database
+ * calls, secrets, or logging. NOT deployed.
+ */
+export const RETIRED_STUB_SLUGS = [
+  "debug-environment",
+  "get-paypal-client-id",
+  "process-paypal-payment",
+  "verify-paypal-payment",
+  "auto-capture-paypal",
+  "recover-orphaned-payments",
+  "get-transaction-by-order",
+  "send-purchase-confirmation",
+  "scheduled-payment-cleanup",
+  "process-upayments-payment",
+  "upayments-webhook",
+  "resend-confirmation-alternative",
+  "generate-magic-link",
+  "get-user-insights",
+  "auto-generate-prompt",
+  "admin-users-v2",
+  "admin-package-upload",
+] as const;
+
+/**
+ * Slugs in `RETIREMENT_SLUGS` NOT yet stubbed because active src callers
+ * still invoke them via `supabase.functions.invoke`. Recorded so future
+ * passes can neutralise the callers before stubbing.
+ */
+export const RETIREMENT_BLOCKERS = [
+  "create-subscription",              // src/hooks/payment/helpers/subscriptionActivator.ts
+  "cancel-subscription",              // src/pages/admin/components/users/hooks/useUserService.ts
+  "validate-file-upload",             // src/hooks/useSecureFileUpload.ts
+  "get-admin-transactions",           // src/pages/admin/components/purchases/hooks/usePurchaseHistory.ts
+  "get-users-without-plans",          // src/hooks/useUsersWithoutPlans.ts
+  "send-plan-reminder",               // src/hooks/useMarketingEmails.ts
+  "send-bulk-plan-reminders",         // src/hooks/useMarketingEmails.ts
+] as const;
+
+/**
+ * Unambiguous slug -> replacement mappings surfaced in the stub JSON body.
+ * Only these five carry a `replacement` field.
+ */
+export const STUB_REPLACEMENTS: Readonly<Record<string, string>> = {
+  "process-upayments-payment": "v2-upayments-checkout",
+  "upayments-webhook": "v2-upayments-webhook",
+  "validate-file-upload": "v2-admin-upload-resource-file",
+  "auto-generate-prompt": "ai-studio-chat",
+  "resend-confirmation-alternative": "supabase.auth",
+};
+
 
 const R = (name: string): Pick<EdgeFunctionAuditEntry,
   "classification" | "disposition" | "recommendedRetirementAppliedLive"> => ({
@@ -900,20 +969,16 @@ export const EDGE_FUNCTION_AUDIT: readonly EdgeFunctionAuditEntry[] = [
     name: "admin-package-upload",
     verifyJwt: false,
     authMechanism: "verifyAdmin_shared",
-    callers: [
-      "src/pages/admin/sections/publishing/PackageUploader.tsx:133",
-      "src/pages/admin/sections/publishing/PackageUploader.tsx:160",
-    ],
+    callers: [],
     outbound: ["storage"],
-    purpose: "V1 admin package upload (still used by ResourcePublisher).",
+    purpose: "V1 admin package upload (migrated to v2-admin-upload-resource-file).",
     v2Replacement: "v2-admin-upload-resource-file",
-    classification: "required_shared_account_auth",
-    disposition: "harden",
-    recommendedRetirementAppliedLive: false,
+    ...R("admin-package-upload"),
     already410Live: false,
     evidence:
-      "PackageUploader is imported by ResourcePublisher, which IS wired into adminSectionElements.publishingNew/Edit/NewVersion. Active importer + reachable route => do NOT retire until PackageUploader migrates to v2-admin-upload-resource-file.",
+      "PackageUploader.tsx now invokes v2-admin-upload-resource-file exclusively (see line 154). Zero remaining src callers of admin-package-upload; safe to retire in source. Live deployment unchanged.",
   },
+
   {
     name: "v2-upayments-checkout",
     verifyJwt: false,

@@ -21,8 +21,20 @@ no migrations, no publish. Companion inventory:
   retirement state, NOT unapplied recommendations.
 - **Bounded retirement set (recommended `retire_to_410`, NOT applied
   by this audit — `recommendedRetirementAppliedLive: false`):**
-  **23 slugs** (11 obsolete payment/debug + 12 resolved from the prior
-  investigate set via full route-graph trace). See §Retirement set.
+  **24 slugs** (11 obsolete payment/debug + 12 resolved via full
+  route-graph trace + `admin-package-upload`, which the prior pass
+  migrated away from on the client and now has zero src callers).
+  See §Retirement set.
+- **Source-only stub application (this pass):** **17 of 24** slugs
+  have had their `supabase/functions/<slug>/index.ts` replaced with a
+  minimal reversible HTTP 410 retirement stub. **7 slugs** remain
+  live in source because active `supabase.functions.invoke` callers
+  still exist and must be neutralised first: `create-subscription`,
+  `cancel-subscription`, `validate-file-upload`,
+  `get-admin-transactions`, `get-users-without-plans`,
+  `send-plan-reminder`, `send-bulk-plan-reminders`.
+  **These stubs are SOURCE ONLY. Nothing has been deployed, deleted,
+  or published; live Supabase behavior is unchanged.**
 - **Hardening set:** 8 slugs — active callers but `verify_jwt=false`
   and/or in-code auth that should be tightened.
 - **Unknown / investigate remaining:** **0**. All 13 previously
@@ -32,9 +44,11 @@ no migrations, no publish. Companion inventory:
   `false` in this pass; the latter records the pre-existing 410 state
   of the 10 stub slugs.
 
-Rollback principle: any retirement (410 stub) is restored by reverting
-the stub commit and redeploying the prior function source. Nothing in
-this pass is destructive at the platform level.
+Rollback principle: any source-only 410 stub is restored by reverting
+the stub commit. Live deployment is untouched and remains the prior
+function version until an explicit deploy happens.
+
+
 
 ## Methodology & limitations
 
