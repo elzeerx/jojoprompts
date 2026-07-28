@@ -471,26 +471,28 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_target_version uuid;
-  v_published timestamptz;
+  v_old_published timestamptz;
+  v_new_published timestamptz;
 BEGIN
-  IF TG_OP = 'DELETE' THEN
-    v_target_version := OLD.resource_version_id;
-  ELSE
-    v_target_version := NEW.resource_version_id;
-    IF TG_OP = 'UPDATE' AND OLD.resource_version_id IS DISTINCT FROM NEW.resource_version_id THEN
-      SELECT published_at INTO v_published FROM public.resource_versions
-       WHERE id = OLD.resource_version_id;
-      IF v_published IS NOT NULL THEN
-        RAISE EXCEPTION 'published_version_immutable' USING ERRCODE = '42501';
-      END IF;
+  -- INSERT: only NEW exists — reject if NEW's version is published.
+  -- DELETE: only OLD exists — reject if OLD's version is published.
+  -- UPDATE: BOTH OLD and NEW must be checked so a file cannot be moved into
+  --         a published version, out of a published version, or mutated in
+  --         place under a published version.
+  IF TG_OP IN ('UPDATE', 'DELETE') THEN
+    SELECT published_at INTO v_old_published FROM public.resource_versions
+     WHERE id = OLD.resource_version_id;
+    IF v_old_published IS NOT NULL THEN
+      RAISE EXCEPTION 'published_version_immutable' USING ERRCODE = '42501';
     END IF;
   END IF;
 
-  SELECT published_at INTO v_published FROM public.resource_versions
-   WHERE id = v_target_version;
-  IF v_published IS NOT NULL THEN
-    RAISE EXCEPTION 'published_version_immutable' USING ERRCODE = '42501';
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN
+    SELECT published_at INTO v_new_published FROM public.resource_versions
+     WHERE id = NEW.resource_version_id;
+    IF v_new_published IS NOT NULL THEN
+      RAISE EXCEPTION 'published_version_immutable' USING ERRCODE = '42501';
+    END IF;
   END IF;
 
   IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
