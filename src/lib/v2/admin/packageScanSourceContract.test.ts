@@ -92,13 +92,16 @@ describe("package_scan_items column contract (source-wide)", () => {
 
   it("no Supabase-JS query on package_scan_items uses scan_id in src/ either", () => {
     const files = walkTsFiles(resolve(REPO_ROOT, "src"));
+    const selfPath = new URL(import.meta.url).pathname;
     const offenders: string[] = [];
     for (const f of files) {
+      if (f === selfPath) continue; // this file inspects the forbidden pattern
       const txt = readFileSync(f, "utf8");
       if (FORBIDDEN_SCAN_ID.test(txt)) offenders.push(f.replace(REPO_ROOT + "/", ""));
     }
     expect(offenders).toEqual([]);
   });
+
 });
 
 // ---------- 2) control-plane contract ---------------------------------------
