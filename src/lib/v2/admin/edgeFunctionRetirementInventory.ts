@@ -109,12 +109,17 @@ export const ALREADY_410_SLUGS = [
  * now has zero active callers).
  *
  * Application state (source-only, NOT deployed):
- *   - 17 of these 24 have been replaced in-repo with a minimal HTTP 410
+ *   - ALL 24 slugs have been replaced in-repo with a minimal HTTP 410
  *     retirement stub — see `RETIRED_STUB_SLUGS` below.
- *   - 7 remain live in source because active src callers still invoke them
- *     via `supabase.functions.invoke` — see `RETIREMENT_BLOCKERS` below.
- *     Stubbing those would break reachable UI; caller neutralisation is
- *     required first.
+ *   - Zero blockers remain. The 7 slugs previously listed as
+ *     blockers (create-subscription, cancel-subscription,
+ *     validate-file-upload, get-admin-transactions,
+ *     get-users-without-plans, send-plan-reminder,
+ *     send-bulk-plan-reminders) were proven unreachable from the
+ *     Admin V2 / public route roots via full route-graph analysis
+ *     (see docs/security/EDGE_FUNCTION_AUDIT_2026-07-28.md, "Route
+ *     reachability proof — 7 retirement blockers"). Their dead
+ *     caller modules were neutralized in-place before stubbing.
  *
  * No Edge Function has been deployed, deleted, or published as part of
  * this pass. Runtime behavior on Supabase is unchanged.
@@ -152,7 +157,8 @@ export const RETIREMENT_SLUGS = [
 ] as const;
 
 /**
- * Source-only 410 stubs written by this pass. Each corresponding
+ * Source-only 410 stubs written by the retirement passes (combined
+ * across 2026-07-28 phases). Each corresponding
  * `supabase/functions/<slug>/index.ts` is a minimal reversible retirement
  * stub with no imports, env reads, body parsing, external I/O, database
  * calls, secrets, or logging. NOT deployed.
@@ -175,22 +181,25 @@ export const RETIRED_STUB_SLUGS = [
   "auto-generate-prompt",
   "admin-users-v2",
   "admin-package-upload",
+  // Added in the route-graph-refinement pass (2026-07-28) after
+  // proving the 7 caller modules are unreachable from active route
+  // roots and neutralizing their dead invoke calls in-place.
+  "create-subscription",
+  "cancel-subscription",
+  "validate-file-upload",
+  "get-admin-transactions",
+  "get-users-without-plans",
+  "send-plan-reminder",
+  "send-bulk-plan-reminders",
 ] as const;
 
 /**
- * Slugs in `RETIREMENT_SLUGS` NOT yet stubbed because active src callers
- * still invoke them via `supabase.functions.invoke`. Recorded so future
- * passes can neutralise the callers before stubbing.
+ * Slugs in `RETIREMENT_SLUGS` NOT yet stubbed. After the 2026-07-28
+ * route-graph-refinement pass this list is empty — every retirement
+ * recommendation is now backed by a source-only 410 stub.
  */
-export const RETIREMENT_BLOCKERS = [
-  "create-subscription",              // src/hooks/payment/helpers/subscriptionActivator.ts
-  "cancel-subscription",              // src/pages/admin/components/users/hooks/useUserService.ts
-  "validate-file-upload",             // src/hooks/useSecureFileUpload.ts
-  "get-admin-transactions",           // src/pages/admin/components/purchases/hooks/usePurchaseHistory.ts
-  "get-users-without-plans",          // src/hooks/useUsersWithoutPlans.ts
-  "send-plan-reminder",               // src/hooks/useMarketingEmails.ts
-  "send-bulk-plan-reminders",         // src/hooks/useMarketingEmails.ts
-] as const;
+export const RETIREMENT_BLOCKERS = [] as const;
+
 
 /**
  * Unambiguous slug -> replacement mappings surfaced in the stub JSON body.
