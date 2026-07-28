@@ -22,7 +22,8 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-10 px-4 py-2 min-h-[44px]", // Ensured min-height
-        sm: "h-9 px-3 min-h-[36px]",
+        // Mobile enforces 44px touch target; md+ restores compact 36px density.
+        sm: "h-9 px-3 min-h-[44px] md:min-h-[36px]",
         lg: "h-11 px-8 min-h-[48px]", // Larger touch target for mobile
         icon: "h-10 w-10 min-h-[44px] min-w-[44px]", // Square touch target
       },
