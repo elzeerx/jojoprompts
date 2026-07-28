@@ -70,7 +70,7 @@ export default function UsersV2() {
           Admin activity is recorded in{" "}
           <a
             href="/admin/trust/admin-activity"
-            className="underline underline-offset-2 hover:text-dark-base"
+            className="-mx-1 inline-flex min-h-[44px] items-center px-1 underline underline-offset-2 hover:text-dark-base sm:mx-0 sm:min-h-0 sm:px-0"
           >
             Admin Activity
           </a>

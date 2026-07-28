@@ -5,12 +5,10 @@
  *  - no duplicate User Activity Log tab (Admin Activity is canonical)
  */
 import { describe, it, expect } from "bun:test";
-
-declare const require: (m: string) => any;
+import { readFileSync } from "node:fs";
 
 function read(rel: string): string {
-  const fs = require("fs") as { readFileSync(p: string, enc: string): string };
-  return fs.readFileSync(rel, "utf8");
+  return readFileSync(rel, "utf8");
 }
 
 function stripComments(src: string): string {
@@ -63,6 +61,11 @@ describe("Users V2 route contract", () => {
     expect(/Resend/i.test(usersTable)).toBe(true);
     expect(/min-h-\[44px\]/.test(usersTable)).toBe(true);
     expect(/min-h-\[44px\]/.test(usersPage)).toBe(true);
+    expect(
+      /href="\/admin\/trust\/admin-activity"[\s\S]{0,180}min-h-\[44px\]/.test(
+        usersPage,
+      ),
+    ).toBe(true);
   });
 
   it("routes /admin/users to the lean V2 page and no longer imports legacy shells", () => {
