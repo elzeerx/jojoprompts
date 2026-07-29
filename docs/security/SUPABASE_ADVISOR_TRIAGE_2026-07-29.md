@@ -29,6 +29,13 @@ Performance advisors:
 
 These counts are a drift baseline, not a blanket pass/fail result.
 
+The security and performance advisors were refreshed at
+`2026-07-29T13:56Z`. Counts and finding categories were unchanged, and the
+refresh still reported zero error-level security findings. Production
+migration history also remained unchanged at
+`20260728175807_harden_legacy_access_helper_identity_binding`; none of the four
+frozen V2 release migrations had been applied.
+
 ## Security disposition
 
 ### RLS enabled with no policy — accepted fail-closed service tables
@@ -77,7 +84,7 @@ Customer-owned tables and direct Admin V2 queries require the web-role grant.
 Legacy/internal tables remain discoverable in the API schema and are a future
 surface-reduction opportunity.
 
-Before launch, rerun the advisor after the three pending migrations and
+Before launch, rerun the advisor after the four pending migrations and
 execute customer/admin negative-access probes for orders, entitlements,
 payment events, refunds, scans, activity/security logs, profiles/roles,
 AI drafts, and private version content. Any returned unauthorized row is a

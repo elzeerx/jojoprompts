@@ -45,8 +45,30 @@ bun run verify:v2
 ```
 
 Latest local result on 2026-07-29: TypeScript and scoped V2 lint passed, all
-927 tests passed, and the production build completed successfully. The gate
+929 tests passed, and the production build completed successfully. The gate
 must pass again from a clean dependency install immediately before sync.
+
+## Security review closure
+
+- Codex Security diff scan `95a2265c-60b9-48bd-ab3c-7ae4c02d00dc`
+  reviewed all 85 changed files between the current Lovable commit and the
+  frozen V2 source.
+- The scan found one medium authorization issue and one low metadata-exposure
+  issue:
+  - Legacy `jadmin` users could bypass V2 protected-content entitlements.
+  - Public readers could see draft version metadata beneath a published
+    resource.
+- Both findings are corrected in commit
+  `48978150b042bf33c6e0ae7d5660fccc63768f18` and migration
+  `20260729163600_close_v2_security_review_findings.sql`.
+- Focused authorization suites passed 88/88 tests, the full V2 gate passed
+  929/929 tests, and a real PostgreSQL 16 rehearsal confirmed:
+  - Full admins retain authorized content access.
+  - Unentitled `jadmin` and customer identities are denied.
+  - Entitled customers retain version-pinned access.
+  - Anonymous readers see only the explicit latest published version.
+  - Archived owners see the published version but not its drafts.
+  - A published-version pointer with a null `published_at` fails closed.
 
 ## Pending database migrations
 
@@ -63,6 +85,11 @@ Apply in timestamp order only:
 3. `20260728214500_fix_active_v2_rpc_schema_drift.sql`
    - Aligns active library, order, entitlement, free-acquisition, metrics,
      activity, and publishing RPC output with the current V2 schema.
+4. `20260729163600_close_v2_security_review_findings.sql`
+   - Removes the legacy `jadmin` bypass from protected V2 resource content.
+   - Restricts public and archived-owner version metadata to the explicit
+     latest published version.
+   - Includes migration-time assertions for both authorization invariants.
 
 ### Migration preflight
 
@@ -70,10 +97,14 @@ Apply in timestamp order only:
 - Record counts and sums for users, resources, versions, files, products,
   orders, order items, payment events, refunds, entitlements, lifetime-credit
   entries, and historical transactions.
-- Run the same migration chain against a fresh isolated database.
+- Run the pending migration chain against a current-production-schema
+  staging clone or restore snapshot. A focused PostgreSQL 16 rehearsal of the
+  fourth migration has passed. A full from-zero local CLI bootstrap is not
+  accepted as release evidence until the historical 2024 storage migration's
+  removed `storage.create_bucket()` helper is modernized.
 - Run `supabase db lint` with no errors.
 - Record the current production migration list and verify that none of the
-  three timestamps is already applied under a different name.
+  four timestamps is already applied under a different name.
 
 ### Migration verification
 
@@ -81,6 +112,9 @@ Apply in timestamp order only:
 - Confirm public resource rows expose no reusable prompt/skill body.
 - Confirm private version content has no authenticated/anonymous grants.
 - Confirm admin content reads require an authorized role.
+- Confirm an unentitled `jadmin` cannot read reusable V2 content.
+- Confirm anonymous and ordinary authenticated readers see only the explicit
+  latest published version, never draft or superseded version metadata.
 - Confirm ownership checks pin to the purchased/current eligible major
   version and revoked/refunded access fails.
 - Exercise each replaced RPC with anonymous, customer, and admin identities.
@@ -171,7 +205,7 @@ workspace.
   launch-lock change with the main V2 sync.
 - Edge Functions: record deployed version IDs before replacement; rollback by
   redeploying the immediately prior reviewed source.
-- Database: the three migrations are forward-only. Use the preflight restore
+- Database: the four migrations are forward-only. Use the preflight restore
   point for catastrophic rollback; prefer a reviewed corrective migration for
   non-destructive schema/RPC defects.
 - Payments: keep new checkout unavailable during rollback. Never point new
@@ -188,7 +222,7 @@ Coming Soon may be disabled only when all items below have evidence:
 - Supabase security/performance advisors are re-run and diffed against
   `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md`.
 - Backup and restore evidence exists.
-- All three migrations are applied and reconciled.
+- All four migrations are applied and reconciled.
 - Exact Edge Function bundle is deployed and fetched back.
 - UPayments sandbox success/failure/cancel/refund/retry cases pass.
 - Cloudmersive benign/malicious/unavailable cases pass.

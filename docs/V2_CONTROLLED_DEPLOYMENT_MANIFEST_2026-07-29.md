@@ -13,13 +13,15 @@ deployment and stability checks.
 
 ## Release source
 
-- Reviewed local commit: `5f92502ebbb302f44111e2c746bb40f1fad3a709`
+- Reviewed runtime commit: `48978150b042bf33c6e0ae7d5660fccc63768f18`
 - Current Lovable commit: `8d1f2206f533cdc491224ab36d2157b9b045969e`
-- Relationship: the reviewed release is four commits ahead of Lovable.
+- Relationship: the reviewed runtime release is six commits ahead of Lovable.
+- Documentation-only closeout commits after the reviewed runtime commit are
+  not part of the executable deployment payload.
 - Canonical gate on the reviewed commit:
   - TypeScript: passed.
   - Scoped V2 lint: passed.
-  - Tests: 927 passed, 0 failed.
+  - Tests: 929 passed, 0 failed.
   - Production build: passed.
 
 Commit sequence to sync:
@@ -32,6 +34,23 @@ Commit sequence to sync:
    `docs: record Supabase release advisor triage`
 4. `5f92502ebbb302f44111e2c746bb40f1fad3a709`
    `feat: close V2 requirement coverage gaps`
+5. `d27e8ca2bf17a57f42ab3697da165a2a6e327e73`
+   `docs: freeze V2 controlled deployment manifest`
+6. `48978150b042bf33c6e0ae7d5660fccc63768f18`
+   `fix: close V2 authorization review findings`
+
+## Security review closure
+
+- Formal diff scan ID:
+  `95a2265c-60b9-48bd-ab3c-7ae4c02d00dc`.
+- Coverage: 85/85 changed files reviewed between the Lovable baseline and the
+  pre-fix V2 release.
+- Findings: one medium legacy-role entitlement bypass and one low unpublished
+  version-metadata exposure.
+- Corrective source: commit
+  `48978150b042bf33c6e0ae7d5660fccc63768f18`.
+- Verification: 88/88 focused authorization tests, 929/929 full source tests,
+  and a real PostgreSQL 16 policy/function rehearsal passed.
 
 ## Database migration payload
 
@@ -43,10 +62,11 @@ point and the reconciliation baseline.
 | 1 | `20260728152000_admin_receipt_resend_requests.sql` | `c8ee2ab9490d96c7464ea21625fa2687b1b85d39f55f83f760b0124658ee770b` | 631 | 23,637 |
 | 2 | `20260728185445_secure_versioned_resource_content.sql` | `7c04d6ef6276c9a6f948f2d91a18f83afa58ab8ac23d8e279ff2527759a92a10` | 1,528 | 44,248 |
 | 3 | `20260728214500_fix_active_v2_rpc_schema_drift.sql` | `a86a6b121bf30357edf75dfc8582815f226e448b3f7323e0d59b9104ec8704a7` | 1,160 | 31,857 |
+| 4 | `20260729163600_close_v2_security_review_findings.sql` | `2e250d3c948be898bdf12b498025a5d598c3f4be87744e486a5e27fae14fb45d` | 182 | 5,422 |
 
 Production migration history currently ends at
-`20260728175807_harden_legacy_access_helper_identity_binding`. None of the
-three timestamps above is recorded in production.
+`20260728175807_harden_legacy_access_helper_identity_binding`. None of the four
+timestamps above is recorded in production.
 
 ## Edge Function delta and rollback versions
 
@@ -65,7 +85,7 @@ can be reconstructed from version metadata. Before replacing a function,
 fetch and retain its full deployed source bundle.
 
 The following V2 functions are already live and have no source delta in the
-four-commit release range, so they are verification targets rather than
+six-commit release range, so they are verification targets rather than
 automatic redeployment targets:
 
 - `resource-download`
@@ -85,6 +105,10 @@ pass the resend/reconciliation test matrix.
 ## Read-only production baseline
 
 Captured at `2026-07-28T22:09:13.485Z` (2026-07-29 Kuwait time):
+
+The full aggregate was refreshed at `2026-07-29T13:56Z` and every value below
+was unchanged. Migration history and both advisor inventories were also
+unchanged at that refresh.
 
 | Measure | Value |
 |---|---:|
@@ -116,8 +140,8 @@ changes must be explained by the migration or by activity during the window.
 3. Re-run the read-only baseline and record current migration/function
    versions.
 4. Re-run `bun run verify:v2` from the exact reviewed source.
-5. Sync the four commits to Lovable while the launch lock remains on.
-6. Apply the three migrations in the frozen order and verify each migration
+5. Sync the six commits to Lovable while the launch lock remains on.
+6. Apply the four migrations in the frozen order and verify each migration
    history entry before proceeding.
 7. Fetch and retain the current source for each function in the mutation set.
 8. Deploy the four changed functions with the frozen `verify_jwt` settings.
@@ -142,6 +166,8 @@ Stop the rollout before the next mutation if any of these occur:
 - A deployed function cannot be fetched back or differs from reviewed source.
 - Admin authorization, customer isolation, ownership, or signed-download
   checks fail.
+- An unentitled `jadmin` can read protected V2 content, or any public/ordinary
+  authenticated identity can read draft or superseded version metadata.
 - UPayments amount, currency, customer, status, idempotency, or refund
   reconciliation fails.
 - The post-deployment baseline shows an unexplained loss of users, customer

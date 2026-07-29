@@ -24,7 +24,7 @@ evidence also passes.
 |---|---|---|
 | Public launch lock | Proven locally | `src/config/siteMode.ts`; `PUBLIC_LAUNCH_LOCK=true` |
 | Local frontend commit on Lovable | Pending controlled deployment | Local branch is ahead of `origin/jojodev2`; exact sync is a controlled write |
-| Database schema | Pending controlled deployment | Production latest migration is `20260728175807`; three local migrations remain |
+| Database schema | Pending controlled deployment | Production latest migration is `20260728175807`; four local migrations remain |
 | Edge Function bundle | Pending controlled deployment | Exact bundle and checks are listed in `docs/V2_RELEASE_READINESS.md` |
 | Admin/customer rendered behavior | Pending rendered QA | Must run against the synced `id-preview--…lovable.app` build |
 | Public release | Not authorized | Coming Soon remains enabled; unlock requires separate approval |
@@ -160,7 +160,7 @@ evidence also passes.
 | Requirement | Status | Evidence |
 |---|---|---|
 | All named V2 core entities | Proven locally and in production data | foundation migration and production schema |
-| RLS/admin/customer permissions | Proven locally; post-migration probes pending | policy migrations and security contracts |
+| RLS/admin/customer permissions | Proven locally; post-migration probes pending | security scan `95a2265c-60b9-48bd-ab3c-7ae4c02d00dc`; corrective commit `48978150`; 88/88 focused authorization tests; PostgreSQL 16 policy/function rehearsal |
 | Public catalog excludes reusable paid content | Proven locally; post-migration query pending | private version-content migration |
 | Service-only tables fail closed | Proven in production data | RLS/no-policy tables documented in advisor triage |
 | Legacy lifetime and collection rights preserved | Proven in production data | one `v2_legacy_migration_executed` activity event; entitlement/credit rows exist |
@@ -184,7 +184,8 @@ snapshot, not launch acceptance by themselves.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 927 tests, and production build passed |
+| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 929 tests, and production build passed |
+| Formal V2 security diff review | Proven locally | 85/85 changed files reviewed; both findings fixed in `48978150`; focused and real-database authorization checks passed |
 | Fresh dependency/security review | Proven locally | `docs/security/DEPENDENCY_RISK_REGISTER.md` |
 | Supabase advisor triage | Proven for current production state | `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md` |
 | Desktop/mobile English/Arabic rendered QA | Pending rendered QA | required matrix in `docs/V2_RELEASE_READINESS.md` |
@@ -207,7 +208,7 @@ snapshot, not launch acceptance by themselves.
 2. Obtain explicit approval for the controlled deployment pass.
 3. Capture the production restore point and reconciliation baseline.
 4. Sync the exact frontend commit to Lovable.
-5. Apply the three pending migrations in timestamp order.
+5. Apply the four pending migrations in timestamp order.
 6. Deploy and fetch-verify the reviewed Edge Function bundle.
 7. Run the complete role/payment/refund/download/scan matrix.
 8. Run desktop/mobile English/Arabic rendered QA in the Lovable preview.
