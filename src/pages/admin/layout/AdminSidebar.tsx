@@ -60,7 +60,7 @@ export function AdminSidebar() {
                         tooltip={item.label}
                         disabled={item.disabled}
                         className={cn(
-                          "data-[active=true]:bg-warm-gold/10 data-[active=true]:text-warm-gold data-[active=true]:font-medium",
+                          "min-h-11 data-[active=true]:bg-warm-gold/10 data-[active=true]:text-warm-gold data-[active=true]:font-medium",
                           item.disabled && "opacity-50 cursor-not-allowed"
                         )}
                       >
