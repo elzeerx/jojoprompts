@@ -1,15 +1,16 @@
 # Admin Order-Receipt Resend — Architecture
 
-**Status:** implemented and reviewed in source; migration and Edge Function are
-awaiting explicit apply/deploy approval. `ADMIN_RECEIPT_RESEND_ENABLED` remains
-`false`, so preview/admin clients cannot query or invoke the backend contract
-before it exists.
+**Status:** activated after the controlled deployment gate on 2026-07-29.
+The migration is applied; the admin resend, UPayments webhook, and UPayments
+status bundles match reviewed source byte-for-byte; table/RLS/RPC boundaries
+passed live checks; and an unauthenticated probe returned 401 without creating
+a request. `ADMIN_RECEIPT_RESEND_ENABLED=true`.
 
-Backend activation must also redeploy `v2-upayments-webhook` and
+The activation gate also verified `v2-upayments-webhook` and
 `v2-upayments-status`, because Supabase bundles their imported shared receipt
-module into each function version. Their currently deployed bundles still use
-the pre-idempotency SDK path; deploying only the new admin function would not
-fix original post-purchase receipt retries.
+module into each function version. Their deployed source matches the reviewed
+direct-REST idempotency implementation, including the real
+`Idempotency-Key` header.
 
 Superseded the previous "blocker" note. The unsafe design that would have
 tried to re-open the original `v2_order_receipt_deliveries` row is

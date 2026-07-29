@@ -4,11 +4,12 @@
  */
 
 /**
- * Keep the new audited admin receipt-resend UI fail-closed until its
- * forward-only migration and Edge Function have both been deployed and
- * runtime-tested. Flip only after the backend activation gate passes.
+ * The audited backend activation gate passed on 2026-07-29:
+ * migration/tables/RLS/RPC grants are live, the admin/webhook/status Edge
+ * bundles match reviewed source, and an unauthenticated probe failed closed.
+ * Every actual resend remains admin-only and confirmation-gated.
  */
-export const ADMIN_RECEIPT_RESEND_ENABLED = false;
+export const ADMIN_RECEIPT_RESEND_ENABLED = true;
 
 export const V2_RESOURCE_TYPES = [
   "skill",

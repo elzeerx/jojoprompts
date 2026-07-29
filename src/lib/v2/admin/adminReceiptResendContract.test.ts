@@ -400,10 +400,10 @@ describe("receiptResend / UI hook", () => {
     expect(src.includes(".rpc(")).toBe(false);
   });
 
-  it("stays fail-closed until the migration and function pass runtime QA", async () => {
+  it("activates only after the migration and functions pass runtime QA", async () => {
     const flags = await bunGlobal.file(V2_FLAGS).text();
     const hook = await bunGlobal.file(HOOK).text();
-    expect(flags.includes("export const ADMIN_RECEIPT_RESEND_ENABLED = false")).toBe(true);
+    expect(flags.includes("export const ADMIN_RECEIPT_RESEND_ENABLED = true")).toBe(true);
     expect(hook.includes("!!orderId && ADMIN_RECEIPT_RESEND_ENABLED")).toBe(true);
     expect(hook.includes('throw new Error("feature_unavailable")')).toBe(true);
   });
