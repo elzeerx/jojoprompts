@@ -74,7 +74,7 @@ export default function EntitlementsPage() {
         <form className="flex flex-1 items-center gap-2" onSubmit={(e) => { e.preventDefault(); updateParam("q", searchInput.trim() || null); }}>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search email or resource title" className="pl-9 min-h-[44px]" />
+            <Input aria-label="Search entitlements" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search email or resource title" className="pl-9 min-h-[44px]" />
           </div>
           <Button type="submit" className="min-h-[44px]">{bi("search")}</Button>
         </form>

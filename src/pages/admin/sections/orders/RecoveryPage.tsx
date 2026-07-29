@@ -527,6 +527,7 @@ function OrderReconciliationPanel() {
       <CardContent className="space-y-3">
         <div className="flex flex-col sm:flex-row gap-2">
           <Input
+            aria-label="Find order to reconcile"
             placeholder="Order UUID or order number"
             value={input}
             onChange={(e) => setInput(e.target.value)}

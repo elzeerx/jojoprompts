@@ -994,12 +994,17 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
               onChange={(v) => patch({ platform_compatibility: v })}
             />
             <div className="mt-3">
-              <Label>Version</Label>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Input value={form.version} onChange={(e) => patch({ version: e.target.value })} className="min-h-[44px]" placeholder="1.0.0" />
+                <Field label="Version">
+                  <Input value={form.version} onChange={(e) => patch({ version: e.target.value })} className="min-h-[44px]" placeholder="1.0.0" />
+                </Field>
                 <div className="hidden sm:block" aria-hidden />
-                <Textarea value={form.changelog_en} onChange={(e) => patch({ changelog_en: e.target.value })} rows={2} placeholder="Changelog (EN)" />
-                <Textarea value={form.changelog_ar} onChange={(e) => patch({ changelog_ar: e.target.value })} rows={2} placeholder="سجل التغييرات (AR)" className="text-right" dir="rtl" />
+                <Field label="Changelog (EN)">
+                  <Textarea value={form.changelog_en} onChange={(e) => patch({ changelog_en: e.target.value })} rows={2} placeholder="Changelog (EN)" />
+                </Field>
+                <Field label="Changelog (AR)" dir="rtl">
+                  <Textarea value={form.changelog_ar} onChange={(e) => patch({ changelog_ar: e.target.value })} rows={2} placeholder="سجل التغييرات (AR)" className="text-right" dir="rtl" />
+                </Field>
               </div>
               {mode === "new-version" ? (
                 <p className="mt-2 text-xs text-warm-gold">A new resource_versions row will be created and marked current; prior versions and files are preserved.</p>
@@ -1101,9 +1106,10 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
             <ProductEditor value={form.products} onChange={(v) => patch({ products: v })} defaultSku={form.slug} />
             {form.type === "bundle" ? (
               <div className="mt-3 border-t pt-3">
-                <Label>Bundle items (resource IDs)</Label>
-                <Textarea rows={3} placeholder="One UUID per line" value={form.bundle_items.join("\n")}
-                  onChange={(e) => patch({ bundle_items: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} />
+                <Field label="Bundle items (resource IDs)">
+                  <Textarea rows={3} placeholder="One UUID per line" value={form.bundle_items.join("\n")}
+                    onChange={(e) => patch({ bundle_items: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} />
+                </Field>
               </div>
             ) : null}
           </AccordionContent>
@@ -1214,7 +1220,7 @@ function PlatformEditor({ platforms, value, onChange }: {
               <SelectItem value="generic">Generic / manual</SelectItem>
             </SelectContent>
           </Select>
-          <Input placeholder="Min version" className="min-h-[44px]"
+          <Input placeholder="Min version" aria-label={`Platform ${idx + 1} minimum version`} className="min-h-[44px]"
             value={row.min_version}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, min_version: e.target.value }; onChange(next); }} />
           <div className="flex items-center gap-2 sm:col-span-3">
@@ -1226,10 +1232,10 @@ function PlatformEditor({ platforms, value, onChange }: {
             <Button size="sm" variant="ghost" className="min-h-[44px] text-red-700"
               onClick={() => onChange(value.filter((_, i) => i !== idx))}>Remove</Button>
           </div>
-          <Input placeholder="Notes (EN)" className="min-h-[44px] sm:col-span-3"
+          <Input placeholder="Notes (EN)" aria-label={`Platform ${idx + 1} notes in English`} className="min-h-[44px] sm:col-span-3"
             value={row.notes_en}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, notes_en: e.target.value }; onChange(next); }} />
-          <Input placeholder="ملاحظات المنصة (AR)" className="min-h-[44px] text-right sm:col-span-3"
+          <Input placeholder="ملاحظات المنصة (AR)" aria-label={`Platform ${idx + 1} notes in Arabic`} className="min-h-[44px] text-right sm:col-span-3"
             dir="rtl"
             value={row.notes_ar}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, notes_ar: e.target.value }; onChange(next); }} />
@@ -1262,7 +1268,7 @@ function GuideEditor({ platforms, value, onChange }: {
                 <SelectItem value="generic">Generic</SelectItem>
               </SelectContent>
             </Select>
-            <Input placeholder="Estimated minutes" className="min-h-[44px]"
+            <Input placeholder="Estimated minutes" aria-label={`Guide ${idx + 1} estimated minutes`} className="min-h-[44px]"
               value={row.estimated_minutes}
               onChange={(e) => { const next = [...value]; next[idx] = { ...row, estimated_minutes: e.target.value.replace(/\D/g, "") }; onChange(next); }} />
             <Button size="sm" variant="ghost" className="min-h-[44px] text-red-700"
@@ -1272,14 +1278,14 @@ function GuideEditor({ platforms, value, onChange }: {
             {row.steps.map((s, si) => (
               <div key={si} className="grid grid-cols-1 gap-3 rounded-md bg-muted/30 p-3 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Input placeholder={`Step ${si + 1} title (EN)`} className="min-h-[44px]"
+                  <Input placeholder={`Step ${si + 1} title (EN)`} aria-label={`Guide ${idx + 1} step ${si + 1} title in English`} className="min-h-[44px]"
                   value={s.title_en}
                   onChange={(e) => {
                     const next = [...value];
                     const steps = [...row.steps]; steps[si] = { ...s, title_en: e.target.value };
                     next[idx] = { ...row, steps }; onChange(next);
                   }} />
-                  <Textarea placeholder="Instructions (EN)" rows={3}
+                  <Textarea placeholder="Instructions (EN)" aria-label={`Guide ${idx + 1} step ${si + 1} instructions in English`} rows={3}
                   value={s.body_en}
                   onChange={(e) => {
                     const next = [...value];
@@ -1288,14 +1294,14 @@ function GuideEditor({ platforms, value, onChange }: {
                   }} />
                 </div>
                 <div className="space-y-2" dir="rtl">
-                  <Input placeholder={`عنوان الخطوة ${si + 1} (AR)`} className="min-h-[44px] text-right"
+                  <Input placeholder={`عنوان الخطوة ${si + 1} (AR)`} aria-label={`Guide ${idx + 1} step ${si + 1} title in Arabic`} className="min-h-[44px] text-right"
                     value={s.title_ar}
                     onChange={(e) => {
                       const next = [...value];
                       const steps = [...row.steps]; steps[si] = { ...s, title_ar: e.target.value };
                       next[idx] = { ...row, steps }; onChange(next);
                     }} />
-                  <Textarea placeholder="التعليمات (AR)" className="text-right" rows={3}
+                  <Textarea placeholder="التعليمات (AR)" aria-label={`Guide ${idx + 1} step ${si + 1} instructions in Arabic`} className="text-right" rows={3}
                     value={s.body_ar}
                     onChange={(e) => {
                       const next = [...value];
@@ -1336,13 +1342,13 @@ function PermissionEditor({ value, onChange }: { value: PermRow[]; onChange: (v:
             <SelectTrigger className="min-h-[44px]" aria-label="Permission kind"><SelectValue /></SelectTrigger>
             <SelectContent>{kinds.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
           </Select>
-          <Input placeholder="Key" className="min-h-[44px] sm:col-span-2"
+          <Input placeholder="Key" aria-label={`Permission ${idx + 1} key`} className="min-h-[44px] sm:col-span-2"
             value={row.key}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, key: e.target.value }; onChange(next); }} />
-          <Input placeholder="Label (EN)" className="min-h-[44px]"
+          <Input placeholder="Label (EN)" aria-label={`Permission ${idx + 1} label in English`} className="min-h-[44px]"
             value={row.label_en}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, label_en: e.target.value }; onChange(next); }} />
-          <Input placeholder="التسمية (AR)" className="min-h-[44px] text-right"
+          <Input placeholder="التسمية (AR)" aria-label={`Permission ${idx + 1} label in Arabic`} className="min-h-[44px] text-right"
             dir="rtl"
             value={row.label_ar}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, label_ar: e.target.value }; onChange(next); }} />
@@ -1369,7 +1375,7 @@ function ProductEditor({ value, onChange, defaultSku }: { value: ProductRow[]; o
     <div className="space-y-2">
       {value.map((row, idx) => (
         <div key={idx} className="grid grid-cols-1 gap-2 rounded border border-gray-200 p-2 sm:grid-cols-6">
-          <Input placeholder="SKU" className="min-h-[44px]"
+          <Input placeholder="SKU" aria-label={`Product ${idx + 1} SKU`} className="min-h-[44px]"
             value={row.sku}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, sku: e.target.value }; onChange(next); }} />
           <Select value={row.product_type} onValueChange={(v) => { const next = [...value]; next[idx] = { ...row, product_type: v as ProductType }; onChange(next); }}>
@@ -1381,15 +1387,15 @@ function ProductEditor({ value, onChange, defaultSku }: { value: ProductRow[]; o
               {/* per-resource lifetime intentionally excluded */}
             </SelectContent>
           </Select>
-          <Input placeholder="Title (EN)" className="min-h-[44px]"
+          <Input placeholder="Title (EN)" aria-label={`Product ${idx + 1} title in English`} className="min-h-[44px]"
             value={row.title_en}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, title_en: e.target.value }; onChange(next); }} />
-          <Input placeholder="العنوان (AR)" className="min-h-[44px] text-right"
+          <Input placeholder="العنوان (AR)" aria-label={`Product ${idx + 1} title in Arabic`} className="min-h-[44px] text-right"
             dir="rtl"
             value={row.title_ar}
             onChange={(e) => { const next = [...value]; next[idx] = { ...row, title_ar: e.target.value }; onChange(next); }} />
           <div className="flex items-center gap-2 sm:col-span-2">
-            <Input inputMode="numeric" placeholder="Price (fils)" className="min-h-[44px]"
+            <Input inputMode="numeric" placeholder="Price (fils)" aria-label={`Product ${idx + 1} price in fils`} className="min-h-[44px]"
               value={row.price_fils}
               onChange={(e) => { const next = [...value]; next[idx] = { ...row, price_fils: e.target.value.replace(/\D/g, "") }; onChange(next); }} />
             <span className="whitespace-nowrap text-[11px] text-muted-foreground">

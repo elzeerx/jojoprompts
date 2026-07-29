@@ -55,4 +55,23 @@ describe("unified publisher bilingual contract", () => {
       "Uninstall guidance (EN) is required for skills and automations.",
     );
   });
+
+  it("gives version and dynamic publisher controls stable accessible names", () => {
+    for (const name of [
+      '<Field label="Version">',
+      '<Field label="Changelog (EN)">',
+      '<Field label="Changelog (AR)"',
+      "minimum version`}",
+      "notes in English`}",
+      "notes in Arabic`}",
+      "estimated minutes`}",
+      "instructions in English`}",
+      "instructions in Arabic`}",
+      "Permission ${idx + 1} key",
+      "Product ${idx + 1} SKU",
+      "Product ${idx + 1} price in fils",
+    ]) {
+      expect(publisher).toContain(name);
+    }
+  });
 });

@@ -87,6 +87,13 @@ describe("shared primitive mobile touch-target contract", () => {
     expect(src.includes("tabIndex={-1}")).toBe(true);
   });
 
+  it("Admin shell exposes one main landmark instead of nesting main elements", () => {
+    const layout = read("src/pages/admin/layout/AdminLayout.tsx");
+    const sidebar = read("src/components/ui/sidebar.tsx");
+    expect((layout.match(/<main[\s>]/g) ?? []).length).toBe(0);
+    expect((sidebar.match(/<main[\s>]/g) ?? []).length).toBe(1);
+  });
+
   it("ResourcePublisher remove product button is 44x44 on mobile", () => {
     const src = read("src/pages/admin/sections/publishing/ResourcePublisher.tsx");
     expect(

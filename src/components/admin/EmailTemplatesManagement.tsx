@@ -205,6 +205,7 @@ export function EmailTemplatesManagement() {
             </p>
           </div>
           <Input
+            aria-label="Search legacy email templates"
             placeholder="Search by slug, name, type"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

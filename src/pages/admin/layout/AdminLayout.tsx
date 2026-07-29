@@ -49,7 +49,7 @@ export default function AdminLayout() {
         <AdminSidebar />
         <SidebarInset className="flex-1 flex flex-col min-w-0">
           <AdminTopBar onOpenCommandPalette={() => setPaletteOpen(true)} />
-          <main
+          <div
             id="admin-main-content"
             tabIndex={-1}
             className="flex-1 p-3 sm:p-5 lg:p-6"
@@ -59,7 +59,7 @@ export default function AdminLayout() {
                 <Outlet />
               </div>
             </div>
-          </main>
+          </div>
         </SidebarInset>
         <AdminCommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       </div>
