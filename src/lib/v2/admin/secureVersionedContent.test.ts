@@ -6,6 +6,12 @@ const read = (path: string) => readFileSync(path, "utf8");
 const migration = read(
   "supabase/migrations/20260728185445_secure_versioned_resource_content.sql",
 );
+const securityReviewFix = read(
+  "supabase/migrations/20260729163600_close_v2_security_review_findings.sql",
+);
+const foundationMigration = read(
+  "supabase/migrations/20260722200346_50f9cfd4-21d8-4658-a0f2-53cf981920df.sql",
+);
 const lifecycleMigration = read(
   "supabase/migrations/20260727073236_01e70ade-6266-49d3-9ad0-7983f7f459c1.sql",
 );
@@ -98,6 +104,44 @@ describe("secure versioned resource content", () => {
       "'owned_resource_ids', to_jsonb(v_owned_resource_ids)",
     );
     expect(libraryState).toContain("owned_resource_ids: string[]");
+  });
+
+  it("does not let the legacy jadmin role bypass V2 entitlements", () => {
+    const adminBypass = securityReviewFix.match(
+      /IF public\.has_role\(p_user_id, 'admin'::public\.app_role\) THEN\s+RETURN v_latest_published;/,
+    );
+
+    expect(adminBypass).not.toBeNull();
+    expect(securityReviewFix).not.toContain(
+      "public.has_role(p_user_id, 'jadmin'::public.app_role)",
+    );
+    expect(securityReviewFix).toContain(
+      "legacy_jadmin_v2_entitlement_bypass_present",
+    );
+  });
+
+  it("only exposes the explicit published version row to non-admin readers", () => {
+    expect(securityReviewFix).toContain(
+      'DROP POLICY IF EXISTS\n  "resource_versions_public_read_when_parent_published"',
+    );
+    expect(securityReviewFix).toMatch(
+      /published_at IS NOT NULL[\s\S]+r\.latest_published_version_id = resource_versions\.id/,
+    );
+    expect(securityReviewFix).toContain(
+      '"resource_versions_owner_read_archived"',
+    );
+    expect(securityReviewFix).toContain(
+      "public_resource_version_policy_not_pinned",
+    );
+    expect(securityReviewFix).toContain(
+      "archived_owner_resource_version_policy_not_pinned",
+    );
+    expect(foundationMigration).toContain(
+      '"resource_versions_admin_all"',
+    );
+    expect(securityReviewFix).not.toContain(
+      'DROP POLICY IF EXISTS\n  "resource_versions_admin_all"',
+    );
   });
 
   it("uses authoritative ownership and the real bundle membership key in cart checks", () => {
