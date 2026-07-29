@@ -122,25 +122,13 @@ Apply in timestamp order only:
 
 ## Edge Function deployment bundle
 
-Deploy reviewed source only after the migrations it depends on:
+Deploy only the four functions with a reviewed source delta, after the
+migrations they depend on:
 
 ### Identity/admin
 
 - `get-all-users`
 - `admin-bulk-confirm-users`
-
-### Resource delivery
-
-- `resource-download`
-
-### Receipt delivery
-
-- `v2-upayments-webhook`
-- `v2-upayments-status`
-- `v2-admin-resend-order-receipt`
-
-The webhook and status functions must be redeployed because their shared
-receipt module is bundled into each deployed function version.
 
 ### Auth/legacy cleanup
 
@@ -149,10 +137,27 @@ receipt module is bundled into each deployed function version.
 - `enhance-prompt` — preserves its guarded compatibility helper and adds a
   POST-only method contract.
 
+### Verification-only live targets
+
+The following functions are already live and have no source delta in the
+frozen runtime release. Do not redeploy them merely to refresh a version
+number:
+
+- `resource-download`
+- `v2-upayments-checkout`
+- `v2-upayments-refund`
+- `v2-upayments-status`
+- `v2-upayments-webhook`
+- `v2-admin-resend-order-receipt`
+- `v2-admin-upload-resource-file`
+- `v2-admin-package-scan-control`
+- `v2-package-scan-worker`
+
 ### Function verification
 
-- Fetch each deployed source or source hash and compare it to the reviewed
-  local commit.
+- Fetch each changed deployed source or source hash and compare it to the
+  reviewed local commit. Verify the unchanged live targets through their
+  contract probes and recorded live versions.
 - Confirm `magic-login` returns the exact 410 JSON contract.
 - Confirm admin functions reject missing/customer bearer tokens.
 - Confirm resource download rejects missing, expired, refunded, revoked,
