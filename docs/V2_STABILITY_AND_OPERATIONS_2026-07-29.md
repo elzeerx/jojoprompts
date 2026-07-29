@@ -2,24 +2,27 @@
 
 ## Locked window
 
-- Start: 2026-07-29 17:29 UTC / 20:29 Asia/Kuwait.
-- Earliest close: 2026-07-30 17:29 UTC / 20:29 Asia/Kuwait.
+- Start: 2026-07-29 17:39 UTC / 20:39 Asia/Kuwait.
+- Earliest close: 2026-07-30 17:39 UTC / 20:39 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
-- Lovable baseline: `ee2edd2d`.
+- Lovable baseline: `082505f2`.
 
 Any runtime source, migration, Edge Function, payment configuration, scanner
 configuration, or launch-lock change restarts the window. Documentation and
 test-only commits that do not alter the production bundle do not restart it.
 
-The previous window that began at 17:06 UTC was superseded by the reviewed
-privacy-safe field-performance monitoring runtime, database, and Edge Function
-change. Lovable reported `ee2edd2d` ready at 2026-07-29 17:25:54 UTC; the
-conservative full 24-hour clock starts after controlled rendered and production
-lock verification completed at 17:29 UTC.
+The previous field-monitoring window was superseded by the reviewed
+admin receipt-resend frontend activation. Lovable reported `082505f2` ready at
+2026-07-29 17:35:54 UTC; the conservative full 24-hour clock starts after its
+desktop/mobile confirmation QA and production lock verification completed at
+17:39 UTC.
 
 ## Initial observation
 
-- Lovable reports project ready at `ee2edd2d`.
+- Lovable reports project ready at `082505f2`.
+- Admin receipt resend is enabled for the eligible paid order. The bilingual
+  confirmation dialog passed desktop and 390x844 QA and was cancelled before
+  submission; production still has zero resend requests/payloads.
 - The identity-free `v2-web-vitals` endpoint accepted a preview-only
   LCP/INP/CLS batch, derived environment/device/rating correctly, rejected a
   spoofed origin with 403, rejected a query-bearing path with 400, and the

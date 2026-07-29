@@ -6,181 +6,163 @@ Production project: `fxkqgjakbyrxkmevkglv`
 
 Lovable project: `766f3370-d38c-42e5-8566-5e4946986dd2`
 
-This document freezes the reviewed release inputs and rollback references. It
-does not authorize a production mutation or the public launch. Coming Soon and
-`PUBLIC_LAUNCH_LOCK=true` remain mandatory throughout the controlled
-deployment and stability checks.
+This is the post-deployment manifest for the approved controlled V2 pass. It
+records the exact current frontend head, applied migrations, deployed function
+versions, reconciliation evidence, and rollback posture. It does **not**
+authorize public launch. `PUBLIC_LAUNCH_LOCK=true`, Coming Soon, and
+`noindex,nofollow` remain mandatory until a separate launch approval.
 
 ## Release source
 
-- Reviewed runtime commit: `48978150b042bf33c6e0ae7d5660fccc63768f18`
-- Current Lovable commit: `8d1f2206f533cdc491224ab36d2157b9b045969e`
-- Relationship: the reviewed runtime release is six commits ahead of Lovable.
-- Documentation-only closeout commits after the reviewed runtime commit are
-  not part of the executable deployment payload.
-- Canonical gate on the reviewed commit:
+- Executable release head: `082505f23767ba310fef573508cb0eabe0eb0900`
+  (`feat: activate audited admin receipt resend`).
+- Field-monitoring runtime ancestor: `ee2edd2d`.
+- Lovable reported `082505f23767ba310fef573508cb0eabe0eb0900`
+  ready at 2026-07-29 17:35:54 UTC.
+- Canonical gate at the executable release head:
   - TypeScript: passed.
-  - Scoped V2 lint: passed.
-  - Tests: 929 passed, 0 failed.
+  - Scoped V2/admin lint: passed.
+  - Tests: 961 passed, 0 failed.
   - Production build: passed.
-
-Commit sequence to sync:
-
-1. `e8f161217da715e730e18dc402fc9d1f09bf39a6`
-   `feat: complete V2 resource security and admin hardening`
-2. `582bc596eda094e0b6ccb6137db84b31a6c039cf`
-   `chore: close V2 admin release readiness gaps`
-3. `96ac3fe9ff9d9be1bb2957ece156b092debbc0df`
-   `docs: record Supabase release advisor triage`
-4. `5f92502ebbb302f44111e2c746bb40f1fad3a709`
-   `feat: close V2 requirement coverage gaps`
-5. `d27e8ca2bf17a57f42ab3697da165a2a6e327e73`
-   `docs: freeze V2 controlled deployment manifest`
-6. `48978150b042bf33c6e0ae7d5660fccc63768f18`
-   `fix: close V2 authorization review findings`
+- The production route `https://jojoprompts.com/explore` was rechecked after
+  sync and still rendered Coming Soon.
 
 ## Security review closure
 
 - Formal diff scan ID:
   `95a2265c-60b9-48bd-ab3c-7ae4c02d00dc`.
-- Coverage: 85/85 changed files reviewed between the Lovable baseline and the
-  pre-fix V2 release.
+- Coverage: 85/85 changed files reviewed between the original Lovable
+  baseline and the pre-fix V2 release.
 - Findings: one medium legacy-role entitlement bypass and one low unpublished
   version-metadata exposure.
-- Corrective source: commit
-  `48978150b042bf33c6e0ae7d5660fccc63768f18`.
-- Verification: 88/88 focused authorization tests, 929/929 full source tests,
-  and a real PostgreSQL 16 policy/function rehearsal passed.
+- Corrective source: `48978150b042bf33c6e0ae7d5660fccc63768f18`.
+- Corrective database payload:
+  `20260729163600_close_v2_security_review_findings.sql`.
+- Verification: 88/88 focused authorization tests, the complete canonical
+  gate, a real PostgreSQL 16 rehearsal, and controlled production role probes.
 
-## Database migration payload
+## Applied database payload
 
-Apply only in timestamp order after recording a recoverable production restore
-point and the reconciliation baseline.
+All seven controlled migrations are recorded in production. The table keeps
+the local reviewed filename and payload checksum; Supabase assigned production
+versions to API-applied migrations as shown.
 
-| Order | Migration | SHA-256 | Lines | Bytes |
-|---:|---|---|---:|---:|
-| 1 | `20260728152000_admin_receipt_resend_requests.sql` | `c8ee2ab9490d96c7464ea21625fa2687b1b85d39f55f83f760b0124658ee770b` | 631 | 23,637 |
-| 2 | `20260728185445_secure_versioned_resource_content.sql` | `7c04d6ef6276c9a6f948f2d91a18f83afa58ab8ac23d8e279ff2527759a92a10` | 1,528 | 44,248 |
-| 3 | `20260728214500_fix_active_v2_rpc_schema_drift.sql` | `a86a6b121bf30357edf75dfc8582815f226e448b3f7323e0d59b9104ec8704a7` | 1,160 | 31,857 |
-| 4 | `20260729163600_close_v2_security_review_findings.sql` | `2e250d3c948be898bdf12b498025a5d598c3f4be87744e486a5e27fae14fb45d` | 182 | 5,422 |
+| Order | Local migration | Production version/name | SHA-256 | Lines | Bytes |
+|---:|---|---|---|---:|---:|
+| 1 | `20260728152000_admin_receipt_resend_requests.sql` | `20260729154853` / `20260728152000_admin_receipt_resend_requests` | `c8ee2ab9490d96c7464ea21625fa2687b1b85d39f55f83f760b0124658ee770b` | 631 | 23,637 |
+| 2 | `20260728185445_secure_versioned_resource_content.sql` | `20260729154917` / `20260728185445_secure_versioned_resource_content` | `7c04d6ef6276c9a6f948f2d91a18f83afa58ab8ac23d8e279ff2527759a92a10` | 1,528 | 44,248 |
+| 3 | `20260728214500_fix_active_v2_rpc_schema_drift.sql` | `20260729154938` / `20260728214500_fix_active_v2_rpc_schema_drift` | `a86a6b121bf30357edf75dfc8582815f226e448b3f7323e0d59b9104ec8704a7` | 1,160 | 31,857 |
+| 4 | `20260729163600_close_v2_security_review_findings.sql` | `20260729154958` / `20260729163600_close_v2_security_review_findings` | `2e250d3c948be898bdf12b498025a5d598c3f4be87744e486a5e27fae14fb45d` | 182 | 5,422 |
+| 5 | `20260729171000_reconcile_missing_auth_profiles.sql` | `20260729163554` / `reconcile_missing_auth_profiles` | `909312ba3342aeaab28ff8b5e30478c4c6c0fe430dfd6fbcaf1e3b3e79c8ee3c` | 146 | 3,312 |
+| 6 | `20260729171438_v2_web_vitals_rum.sql` | `20260729172145` / `v2_web_vitals_rum` | `2ac3588f2996b4a3299a831888c133a658ec898ca57b127eab601fae93d2710d` | 177 | 5,565 |
+| 7 | `20260729172438_v2_web_vitals_explicit_deny_policy.sql` | `20260729172506` / `v2_web_vitals_explicit_deny_policy` | `c5028ebb72907e906da8a0dd45a45ef6f2f3fdca758808a2342443a560e7f651` | 10 | 392 |
 
-Production migration history currently ends at
-`20260728175807_harden_legacy_access_helper_identity_binding`. None of the four
-timestamps above is recorded in production.
+The migrations are forward-only. Prefer a reviewed corrective migration for a
+non-destructive defect. Use the restricted pre-deployment restore point only
+for a catastrophic rollback.
 
-## Edge Function delta and rollback versions
+## Deployed Edge Functions
 
-Only functions with a reviewed source delta from the current Lovable release
-belong in the deployment mutation set.
+Current live versions were refreshed from Supabase after the controlled pass:
 
-| Function | `verify_jwt` | Current live version | Local deterministic bundle hash | Required outcome |
+| Function | `verify_jwt` | Live version | Supabase bundle SHA-256 | Disposition |
 |---|---:|---:|---|---|
-| `get-all-users` | `true` | 607 | `bb53bf89eb6a8e9889d2468c84a8fb541aa892ed915e84380576f2f3c7557da5` | Deploy hardened admin/user handlers |
-| `admin-bulk-confirm-users` | `true` | 85 | `7b1b180055fe56a26bddce16c4486d593c81b7ba28814b33168c8331bbbb0a3f` | Deploy hardened bulk confirmation |
-| `enhance-prompt` | `false` | 249 | `3cc018dd981244279b45a698bdcec5674c157c286a805c571a0fa4d8d8a78ffb` | Preserve body authentication and add strict method handling |
-| `magic-login` | `false` | 195 | `eb9d586fd5328558b6ac363ff333339e22c83808706e21a2fc2a283b4aa478ac` | Replace legacy privileged login flow with the reviewed HTTP 410 retirement stub |
+| `get-all-users` | `true` | 609 | `1c9cf303a31a9e93834d0145b6629cca46d704f0ee485dd50d011a2336e68169` | Hardened source deployed and fetched back |
+| `admin-bulk-confirm-users` | `true` | 87 | `1ed4ba7a4abb600c6027a03cec9549ff6b7db0a9c27b78febf58c48d717fb848` | Hardened source deployed and fetched back |
+| `enhance-prompt` | `false` | 251 | `f14092906cf529ed8a2afdab239f46a8503f986b55624bea89972a57e1415ee3` | POST/body-auth contract deployed and fetched back |
+| `magic-login` | `false` | 197 | `962556820ef57f216877558d76bbfc227855bbc119f7ce9844bce4245da10e23` | Reviewed HTTP 410 retirement stub deployed |
+| `v2-web-vitals` | `false` | 2 | `569e5bc5d528776b762fad41478e23891c76e7f68b5d812059b0ff5d8ff8bdba` | Origin-bound identity-free RUM endpoint deployed |
 
-The live version numbers above are rollback references, not proof that source
-can be reconstructed from version metadata. Before replacing a function,
-fetch and retain its full deployed source bundle.
+Payment/receipt functions that were not unnecessarily redeployed were fetched
+and compared to reviewed local source during activation:
 
-The following V2 functions are already live and have no source delta in the
-six-commit release range, so they are verification targets rather than
-automatic redeployment targets:
+| Function | `verify_jwt` | Live version | Verification |
+|---|---:|---:|---|
+| `v2-upayments-webhook` | `false` | 52 | Exact reviewed source, including direct REST `Idempotency-Key` |
+| `v2-upayments-status` | `false` | 51 | Exact reviewed source, including receipt reconciliation |
+| `v2-admin-resend-order-receipt` | `true` | 3 | Exact reviewed admin-only state machine and confirmation contract |
 
-- `resource-download`
-- `v2-upayments-checkout`
-- `v2-upayments-refund`
-- `v2-upayments-status`
-- `v2-upayments-webhook`
-- `v2-admin-resend-order-receipt`
-- `v2-admin-upload-resource-file`
-- `v2-admin-package-scan-control`
-- `v2-package-scan-worker`
+Other checkout, refund, download, upload, and scan targets were contract-probed
+without version-only redeployment. Their live versions remain recoverable from
+the Supabase function inventory and the restricted deployment backup.
 
-The receipt-resend UI must remain gated by
-`ADMIN_RECEIPT_RESEND_ENABLED=false` until migration 1 and its live function
-pass the resend/reconciliation test matrix.
+## Reconciled production state
 
-## Read-only production baseline
-
-Captured at `2026-07-28T22:09:13.485Z` (2026-07-29 Kuwait time):
-
-The full aggregate was refreshed at `2026-07-29T13:56Z` and every value below
-was unchanged. Migration history and both advisor inventories were also
-unchanged at that refresh.
+The post-migration and post-activation checks contain no customer-identifying
+values:
 
 | Measure | Value |
 |---|---:|
-| Auth users | 247 |
-| Resources / versions / files | 66 / 66 / 1 |
+| Auth users / profiles | 247 / 247 |
+| Missing/orphan profile or role rows | 0 |
+| Resources / published resources | 66 / 65 |
+| Resource versions / files | 66 / 1 |
 | Products | 66 |
-| Orders | 3 |
-| Order status | 1 paid, 2 failed |
+| Orders | 3 (1 paid, 2 failed) |
 | Paid order value | 900 fils |
 | Order items / payment events | 3 / 11 |
-| Refunds | 1 failed |
-| Completed refund value | 0 fils |
+| Refunds | 1 failed sandbox refund, 0 processed fils |
 | Entitlements / active entitlements | 117 / 117 |
-| Lifetime-credit entries | 57 |
-| Lifetime-credit net | 1,138,170 fils |
-| Legacy transactions / completed | 180 / 102 |
-| Legacy completed value | USD 4,035.80 |
-| Package scans | 1 |
+| Lifetime-credit entries / net | 57 / 1,138,170 fils |
+| Package scans | 1 clean |
+| Receipt resend requests / payloads | 0 / 0 |
+| Active or ambiguous receipt resends | 0 |
 
-No customer-identifying values are included. Re-run the same aggregate
-immediately before and after migration and compare every value. Expected
-changes must be explained by the migration or by activity during the window.
+The receipt confirmation dialog was opened in the synced preview and cancelled;
+no email was sent and no resend request or provider payload was created.
 
-## Controlled order of operations
+## Controlled QA outcome
 
-1. Confirm explicit deployment approval; do not treat approval as launch
-   approval.
-2. Record a recoverable production restore point.
-3. Re-run the read-only baseline and record current migration/function
-   versions.
-4. Re-run `bun run verify:v2` from the exact reviewed source.
-5. Sync the six commits to Lovable while the launch lock remains on.
-6. Apply the four migrations in the frozen order and verify each migration
-   history entry before proceeding.
-7. Fetch and retain the current source for each function in the mutation set.
-8. Deploy the four changed functions with the frozen `verify_jwt` settings.
-9. Fetch the deployed sources back and compare them with the local bundles.
-10. Run database, role, payment, refund, receipt, download, and scan probes.
-11. Run Lovable Preview QA for admin, customer, anonymous, and
-    insufficient-role users on desktop/mobile and English/Arabic.
-12. Re-run Supabase security/performance advisors and reconcile the baseline.
-13. Keep Coming Soon enabled for the stability window.
-14. Perform the final evidence audit.
-15. Request a separate explicit approval for the single launch-lock change.
+- Desktop and 390×844 mobile preview checks passed for the receipt action.
+- The resend action is enabled only for the eligible paid order.
+- The bilingual confirmation dialog explains the immutable recipient/items/
+  amount boundary and requires an auditable reason.
+- The confirmation was cancelled before submission.
+- The tested mobile action is 44px high. The only 1px document-width artifact
+  came from the deliberately screen-reader-only skip link, not visible layout.
+- Production still renders Coming Soon.
+- `ADMIN_RECEIPT_RESEND_ENABLED=true` is now part of the reviewed runtime.
+- `PUBLIC_LAUNCH_LOCK=true` remains unchanged.
 
-## Stop conditions
+## Stability window
 
-Stop the rollout before the next mutation if any of these occur:
+The frontend activation is a runtime change and supersedes the earlier
+field-monitoring window. The conservative restarted window is:
 
-- A migration checksum differs from this manifest.
-- Migration history is unexpected or a timestamp already exists under another
-  payload.
-- A backup/restore point cannot be confirmed.
-- Any migration reports an error or post-migration contract probe fails.
-- A deployed function cannot be fetched back or differs from reviewed source.
-- Admin authorization, customer isolation, ownership, or signed-download
-  checks fail.
-- An unentitled `jadmin` can read protected V2 content, or any public/ordinary
-  authenticated identity can read draft or superseded version metadata.
-- UPayments amount, currency, customer, status, idempotency, or refund
-  reconciliation fails.
-- The post-deployment baseline shows an unexplained loss of users, customer
-  rights, orders, financial records, files, or historical transactions.
-- Coming Soon or the launch lock becomes disabled before final approval.
+- Start: 2026-07-29 17:39 UTC / 20:39 Asia/Kuwait.
+- Earliest close: 2026-07-30 17:39 UTC / 20:39 Asia/Kuwait.
+- Baseline: `082505f23767ba310fef573508cb0eabe0eb0900`.
 
-## Platform-change review
+Any further runtime source, migration, Edge Function, payment/scanner
+configuration, or launch-lock change restarts the window. Documentation-only
+and test-description-only commits do not.
 
-The current Supabase changelog review identified two relevant upcoming
-behaviors:
+## Rollback references and containment order
 
-- Explicit Postgres extension version pinning is deprecated from 2026-08-05.
-  The release migrations contain no extension version pins.
-- Public tables may no longer be automatically exposed to the Data API.
-  The release migrations use explicit grants and RLS for browser-facing
-  objects; service-only payload/content objects remain unexposed.
+1. Keep or restore Coming Soon; do not change the launch lock during
+   containment.
+2. Disable new UPayments checkout before altering any historical state.
+3. Revert the frontend to the immediately prior reviewed runtime
+   `ee2edd2d` if the receipt UI itself is defective.
+4. For Edge Functions, redeploy the immediately prior captured reviewed source.
+5. For database defects, prefer a corrective forward migration; use the
+   restricted restore point only for catastrophic loss.
+6. Never delete or rewrite historical transactions, entitlements, access
+   dates, original currencies, receipt events, or refund records.
+
+Restricted backup reference:
+
+`/Users/elzeer/Documents/Codex/jojoprompts-v2-release-backup-20260729`
+
+## Remaining stop conditions
+
+Do not authorize public launch if any of the following remains:
+
+- The restarted 24-hour stability window is incomplete.
+- A new unexplained 5xx, repeated database error, entitlement drift, or payment
+  reconciliation error remains open.
+- Dependency/advisor review reveals an unaccepted critical or high risk.
+- Monitoring, support, rollback-decision, or rollback-executor ownership is
+  unconfirmed.
+- Production Coming Soon or `PUBLIC_LAUNCH_LOCK=true` changes before the
+  separate public-launch approval.

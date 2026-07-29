@@ -4,14 +4,16 @@ Last reviewed: 2026-07-29
 
 ## Current audit state
 
-- Registry-backed audits were refreshed on 2026-07-29 after the final local
-  V2 verification. Counts and package paths were unchanged.
+- Registry-backed audits were refreshed on 2026-07-29 after receipt-resend
+  activation head `082505f2`. Counts and package paths were unchanged.
 - `npm audit --omit=dev`: 0 critical, 2 high package nodes, 0 moderate,
   0 low. Both nodes (`react-router` and direct `react-router-dom`) represent
   one underlying advisory, GHSA-qwww-vcr4-c8h2.
 - Full `npm audit`: 0 critical, 9 high, 3 moderate, 1 low.
 - `react-router-dom` is pinned exactly to `7.18.1` so a future install cannot
   silently move the release candidate to an unreviewed router build.
+- The registry still reports `7.18.2` as latest stable; it remains in the
+  advisory range. No stable `8.3.0` package is available.
 - `@lovable.dev/mcp-js` and all lint/build packages remain
   `devDependencies`; they are not part of a production-only frontend install.
 
@@ -26,6 +28,9 @@ The upstream advisory explicitly states that an application is affected only
 when it uses the unstable RSC APIs. JojoPrompts is a client-rendered Vite SPA:
 
 - It does not import `react-router/rsc`.
+- A fresh source scan also found no `react-router-dom/server`,
+  `createStaticRouter`, `createRequestHandler`, `useActionData`, `useFetcher`,
+  or `ScrollRestoration` path.
 - It has no React Router server runtime, RSC routes, server actions, framework
   action handlers, SSR hydration payloads, or `ScrollRestoration`.
 - Commerce and admin mutations call authenticated Supabase RPCs/Edge

@@ -2,10 +2,11 @@
 
 Project: `fxkqgjakbyrxkmevkglv`
 
-This is a read-only production-state review. No DDL, data mutation, function
-deployment, or website publication was performed.
+The initial section is the read-only pre-deployment snapshot; the final
+section records the later read-only refresh after the separately approved
+controlled deployment. This document does not authorize website publication.
 
-## Snapshot
+## Initial pre-deployment snapshot
 
 Security advisors:
 
@@ -84,11 +85,11 @@ Customer-owned tables and direct Admin V2 queries require the web-role grant.
 Legacy/internal tables remain discoverable in the API schema and are a future
 surface-reduction opportunity.
 
-Before launch, rerun the advisor after the four pending migrations and
-execute customer/admin negative-access probes for orders, entitlements,
+The controlled deployment reran the advisor after the release migrations and
+executed customer/admin negative-access probes for orders, entitlements,
 payment events, refunds, scans, activity/security logs, profiles/roles,
-AI drafts, and private version content. Any returned unauthorized row is a
-release blocker; schema discoverability alone is not.
+AI drafts, and private version content. No unauthorized row was returned.
+Schema discoverability alone is not treated as a bypass.
 
 Reference:
 https://supabase.com/docs/guides/database/database-linter?lint=0027_pg_graphql_authenticated_table_exposed
@@ -172,21 +173,26 @@ without workload evidence. After launch stability:
    semantics.
 5. Recheck advisor counts and query plans.
 
-## Pre-launch advisor gate
+## Controlled advisor gate
 
-After applying the pending migrations:
+Completed after applying the controlled migrations:
 
-1. Run both advisor types again.
-2. Diff counts and object names against this snapshot.
-3. Require zero error-level security findings.
-4. Prove public catalog columns and private version content boundaries.
-5. Run anonymous/customer/admin negative-access probes.
-6. Document any new warning or changed disposition before disabling Coming
+1. Ran both advisor types again.
+2. Diffed counts and object names against the initial snapshot.
+3. Confirmed zero error-level security findings.
+4. Proved public catalog columns and private version content boundaries.
+5. Ran anonymous/customer/admin negative-access probes.
+6. Documented every new warning and disposition below. Repeat this gate before disabling Coming
    Soon.
 
 ## Post-deployment refresh
 
 Refreshed after the controlled V2 deployment on 2026-07-29.
+
+The inventories were fetched again after frontend receipt-resend activation.
+There was no intervening DDL: security still has zero error-level findings and
+the reviewed warning/informational objects and performance dispositions are
+unchanged.
 
 Security advisors:
 

@@ -23,7 +23,7 @@ evidence also passes.
 | Gate | Status | Evidence |
 |---|---|---|
 | Public launch lock | Proven locally | `src/config/siteMode.ts`; `PUBLIC_LAUNCH_LOCK=true` |
-| Local frontend commit on Lovable | Proven at controlled head | Lovable reports `ee2edd2d` ready |
+| Local frontend commit on Lovable | Proven at controlled head | Lovable reports `082505f2` ready |
 | Database schema | Proven after controlled deployment | Seven release/reconciliation/telemetry migrations applied and totals reconciled |
 | Edge Function bundle | Proven after controlled deployment | Five changed functions deployed; unchanged V2 targets contract-probed |
 | Admin/customer rendered behavior | Proven against locked preview | Desktop/mobile English/Arabic route sweeps, post-performance Explore smoke, and responsive Core Web Vitals panel QA |
@@ -41,7 +41,7 @@ evidence also passes.
 | Individual and cart purchases | Proven locally | `CartPage.tsx`; `V2CheckoutPage.tsx`; `v2_create_order`; UPayments functions |
 | No purchase of already-owned resources | Proven locally | authoritative cart/order RPCs; `CartSanitizer.tsx`; library/commerce contract tests |
 | Free acquisitions create permanent entitlements | Proven locally | `grant_free_acquisition`; `useFreeAcquisition.ts`; acquisition contracts |
-| Individual purchase update rights are version-aware | Proven locally; runtime pending | `resource_versions`, `version_major`, `authorize_resource_download`; secure-version contracts |
+| Individual purchase update rights are version-aware | Proven after controlled deployment | `resource_versions`, `version_major`, `authorize_resource_download`; secure-version probes |
 | Lifetime includes current/future Jojo-owned resources only | Proven locally | library-scope entitlement checks; public copy and legal/FAQ contracts |
 | Creators, commissions, KYC, and payouts excluded | Proven in production data | no creator/commission/payout/KYC/earnings tables; resource writes remain admin-only |
 | Future-compatible `owner_id` without creator access | Proven locally and in production data | `resources.owner_id`; the one non-null production owner has an admin role |
@@ -51,13 +51,13 @@ evidence also passes.
 | Requirement | Status | Evidence |
 |---|---|---|
 | Locked suggested price table | Proven locally | `src/config/v2Pricing.ts`; publisher `TYPE_PRICE_HINT` and defaults |
-| Admin-editable authoritative prices | Proven locally; runtime pending | `ResourcePublisher.tsx`; server draft/order RPCs |
+| Admin-editable authoritative prices | Proven in synced preview and deployed RPCs | `ResourcePublisher.tsx`; server draft/order RPCs; controlled publisher QA |
 | Eligible settled purchases add actual paid value | Proven locally | settlement allocation and `lifetime_credit_entries` migrations |
 | Remaining lifetime balance shown | Proven locally | `LifetimeProgress.tsx`; `LifetimeUpgradeCard.tsx`; account/library/detail surfaces |
 | Threshold crossing auto-grants lifetime | Proven locally | settlement RPC locks and `lifetime_threshold` entitlement creation |
 | Direct lifetime checkout grants same library scope | Proven locally | order/settlement functions and entitlement contracts |
 | Discounts count actual paid value | Proven locally | server-authoritative order totals and credit allocation |
-| Refunds reverse credit and threshold-derived lifetime | Proven locally; runtime refund QA pending | refund RPCs, allocation ceilings, entitlement revocation, recovery/reconciliation UI |
+| Refunds reverse credit and threshold-derived lifetime | Accepted mixed live/deterministic matrix | Refund submission reached UPayments; sandbox returned `work_in_production_only`; deterministic reversal/allocation contracts passed without revoking rights on failure |
 | Individually owned items remain unless refunded | Proven locally | order-item entitlement provenance and refund-item allocation |
 | Grant reason provenance | Proven locally | `v2_grant_reason` and entitlement schemas/RPCs |
 
@@ -70,15 +70,15 @@ evidence also passes.
 | Public resource details | Proven locally | `/resources/:slug`; `ResourceDetailPage.tsx` |
 | Search, filter, sort, pagination/load-more | Proven locally | `ExploreFiltersBar.tsx`; `useInfiniteExploreResources.ts`; URL state |
 | Desktop sticky filters | Proven locally | sticky responsive filter bar |
-| Mobile filter bottom sheet | Proven locally; rendered QA pending | mobile Drawer implementation |
-| Preserved scroll position and quick preview | Proven locally; rendered QA pending | `scrollCache`; `QuickPreviewSheet.tsx` |
+| Mobile filter bottom sheet | Proven in synced mobile preview | mobile Drawer implementation and 390×844 route QA |
+| Preserved scroll position and quick preview | Proven in synced preview | `scrollCache`; `QuickPreviewSheet.tsx`; controlled Explore interaction QA |
 | Structured skill/automation cards | Proven locally | `SkillResourceCard.tsx` |
 | Two-column mobile masonry for visual resources | Proven locally and rendered | `ExploreCatalogContent.tsx`; `VisualResourceCard.tsx`; masonry contract and 390x844 QA |
-| No hover-only controls | Proven locally; rendered QA pending | mobile-visible actions and focus-visible paths |
-| 44px minimum touch targets | Proven locally; rendered QA pending | V2 component classes and touch-target contracts |
-| Arabic RTL content/control order | Proven locally; rendered QA pending | language-aware `dir`; RTL fields; bilingual publisher/detail contracts |
-| Canonical URLs, metadata, structured data, share previews | Proven locally; rendered QA pending | `SeoHead.tsx` and SEO contracts |
-| Legacy prompt URL compatibility | Proven locally; rendered QA pending | redirects in `App.tsx` and public-shell contracts |
+| No hover-only controls | Proven in synced desktop/mobile preview | mobile-visible actions, focus-visible paths, and route QA |
+| 44px minimum touch targets | Proven in synced mobile preview | V2 contracts plus measured public/admin/receipt targets |
+| Arabic RTL content/control order | Proven in synced preview | language-aware `dir`; bilingual publisher/detail and RTL route QA |
+| Canonical URLs, metadata, structured data, share previews | Proven in synced preview and contracts | `SeoHead.tsx`, SEO contracts, and controlled route inspection |
+| Legacy prompt URL compatibility | Proven in synced preview and contracts | redirects in `App.tsx`; public-shell and controlled route checks |
 
 ## 4. Resource cards and details
 
@@ -87,10 +87,10 @@ evidence also passes.
 | Title, outcome, type, platforms, effort | Proven locally | skill/visual cards and explore result shape |
 | Version, update date, trust state | Proven locally | card metadata helpers/contracts |
 | Free, price, Owned, Included with Lifetime | Proven locally | ownership label precedence and card contracts |
-| View/Get/Add-to-cart actions | Proven locally; rendered interaction pending | card buttons and acquisition/cart hooks |
+| View/Get/Add-to-cart actions | Proven in synced preview and contracts | card buttons, acquisition/cart hooks, and controlled interaction QA |
 | Skill overview, examples, limitations, uninstall, support, updates | Proven locally | detail page plus newly exposed bilingual publisher fields |
 | Platform-specific installation | Proven locally | installation guide schema, bilingual editor, and localized renderer |
-| Files, size, checksum, version | Proven locally; authorized runtime pending | detail downloads and signed-download service |
+| Files, size, checksum, version | Proven after controlled deployment | detail downloads, immutable metadata, and entitlement-checked signed-download probes |
 | Permissions, dependencies, services, secrets | Proven locally | permission kinds and bilingual detail/editor |
 | License terms and update rights | Proven locally | license schema, bilingual editor, detail copy |
 | Individual and lifetime alternatives | Proven locally | resource detail purchase/lifetime cards |
@@ -99,29 +99,29 @@ evidence also passes.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Permanent owned-resource library | Proven locally; role QA pending | `LibraryPage.tsx`; library RPC/contracts |
+| Permanent owned-resource library | Proven in synced preview and role probes | `LibraryPage.tsx`; library RPC/contracts; customer/admin/insufficient-role QA |
 | Lifetime-included resources | Proven locally | library-scope entitlement resolution |
-| Versions, files, receipts, licenses, guides, updates | Proven locally; runtime QA pending | library/order/detail surfaces |
+| Versions, files, receipts, licenses, guides, updates | Proven in synced preview and deployed services | library/order/detail surfaces and controlled role QA |
 | Private package storage | Proven in production data | `resource-packages` bucket is private with 25 MiB limit |
-| Entitlement-checked signed URLs | Proven locally; deployed runtime pending | `resource-download/index.ts`; 60-second signed URL; authorization RPC |
-| Unauthorized/expired/refunded/revoked/version-mismatched denial | Proven locally; runtime negative probes pending | authorization SQL and secure-version tests |
-| Published files/versions are immutable | Proven locally; runtime pending | version content migration and publisher/package contracts |
+| Entitlement-checked signed URLs | Proven after controlled deployment | `resource-download/index.ts`; 60-second signed URL; authorization RPC and live denial probes |
+| Unauthorized/expired/refunded/revoked/version-mismatched denial | Proven after controlled deployment | authorization SQL, secure-version tests, and controlled negative probes |
+| Published files/versions are immutable | Proven after controlled deployment | applied private-content migration plus publisher/package probes |
 
 ## 6. Admin V2 structure and friction removal
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Dedicated admin shell without public chrome | Proven locally; rendered QA pending | `/admin` nested shell in `App.tsx` |
+| Dedicated admin shell without public chrome | Proven in synced preview | `/admin` nested shell and controlled desktop/mobile route QA |
 | Target navigation groups/routes | Proven locally | `adminNavConfig.ts`; `adminSectionElements.tsx` |
-| Attention Required queues | Proven locally; runtime data pending | `OverviewV2.tsx`; metrics RPC |
-| Server-defined KWD metrics and periods | Proven locally; runtime data pending | overview metrics SQL/UI/contracts |
-| Operations table, filters, saved views, pagination | Proven locally; rendered QA pending | `CatalogTable.tsx` |
-| Bulk lifecycle actions and optional card view | Proven locally; rendered QA pending | catalog lifecycle helpers and table/card modes |
-| Unified eight-stage resource publisher | Proven locally; rendered QA pending | `ResourcePublisher.tsx` |
+| Attention Required queues | Proven in synced preview and deployed metrics | `OverviewV2.tsx`; metrics RPC; controlled admin QA |
+| Server-defined KWD metrics and periods | Proven in synced preview and deployed metrics | overview metrics SQL/UI/contracts |
+| Operations table, filters, saved views, pagination | Proven in synced preview | `CatalogTable.tsx` and controlled admin QA |
+| Bulk lifecycle actions and optional card view | Proven in synced preview and contracts | catalog lifecycle helpers, table/card modes, controlled QA |
+| Unified eight-stage resource publisher | Proven in synced preview and contracts | `ResourcePublisher.tsx`; controlled create/validate/review lifecycle QA |
 | Bilingual metadata and delivery fields | Proven locally | publisher round-trips Arabic changelogs, platform notes, guides, permissions, licenses, products, and public detail copy |
-| AI Studio and JSON importer handoff | Proven locally; rendered QA pending | import routes and contract tests |
+| AI Studio and JSON importer handoff | Proven in synced preview and contracts | import routes, controlled admin QA, and contract tests |
 | Untouched AI Studio sessions do not persist resources | Proven locally | deferred draft/resource creation contracts |
-| Draft, review, publish, version, archive, restore, activity | Proven locally; end-to-end QA pending | lifecycle RPCs, queues, catalog, versions, audit routes |
+| Draft, review, publish, version, archive, restore, activity | Proven after controlled deployment | lifecycle RPCs, queues, catalog, versions, activity routes, and controlled QA |
 | No active subscription/plan controls | Proven locally | V2 admin route registry; Users/Communications/Taxonomy contracts |
 | No active permanent category/user/resource deletion | Proven locally | Users V2, taxonomy deactivation, catalog archive/restore |
 | AI Studio drafts are archive/restore, not hard delete | Proven locally | `DraftsSidebar.tsx` and AI Studio contract |
@@ -132,28 +132,28 @@ evidence also passes.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Server-authoritative order creation | Proven locally; deployed runtime pending | order RPC and `v2-upayments-checkout` |
-| UPayments is the only active V2 gateway | Proven locally; sandbox matrix pending | V2 routes/functions; PayPal handlers retired/read-only |
+| Server-authoritative order creation | Proven after controlled deployment | order RPC, `v2-upayments-checkout`, and captured 0.900 KWD sandbox order |
+| UPayments is the only active V2 gateway | Proven in deployed V2 and sandbox matrix | V2 routes/functions; PayPal handlers retired/read-only |
 | Immutable payment events before state changes | Proven locally | payment attempt/event schema and functions |
-| Customer, order, amount, currency, status reconciliation | Proven locally; negative runtime probes pending | UPayments shared validation and settlement RPC |
-| Idempotent duplicate/delayed callbacks | Proven locally; sandbox retry pending | unique keys, advisory locks, function tests |
-| Individual, cart, lifetime, remaining-balance checkout | Proven locally; sandbox matrix pending | checkout/order functions and pages |
-| Failed-payment recovery | Proven locally; rendered/runtime pending | cancel/return pages and admin Recovery queue |
-| Refund request/provider/status/reversal | Proven locally; sandbox refund status pending | refund function/RPC/UI |
-| Receipt delivery and admin resend | Proven locally but deliberately disabled | `ADMIN_RECEIPT_RESEND_ENABLED=false` until migration/function verification |
+| Customer, order, amount, currency, status reconciliation | Proven through live/deterministic matrix | UPayments shared validation, settlement RPC, provider recheck, and mismatch rejection contracts |
+| Idempotent duplicate/delayed callbacks | Proven through deployed source and deterministic matrix | unique keys, advisory locks, fetched webhook/status bundles, and retry tests |
+| Individual, cart, lifetime, remaining-balance checkout | Proven through deployed services and matrix | checkout/order functions, pages, captured individual payment, and deterministic product-mode contracts |
+| Failed-payment recovery | Proven in synced preview and live failed attempts | cancel/return pages, status recovery, and Admin Recovery queue |
+| Refund request/provider/status/reversal | Accepted mixed live/deterministic matrix | real sandbox submission returned production-only 422 without rights loss; reversal contracts pass |
+| Receipt delivery and admin resend | Activated after controlled gate | exact webhook/status/admin bundles verified; admin-only confirmation UI enabled at `082505f2`; no email sent during QA |
 | Historical PayPal read-only | Proven locally | account/order legacy history plus retired handlers |
-| Double-question-mark callback normalization | Proven locally; live regression pending | callback parser and return routes |
+| Double-question-mark callback normalization | Proven in live callback and regression contracts | callback parser, normalized return route, and captured payment recovery |
 
 ## 8. Trust, scans, communications, settings, and roles
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Package validation and fail-closed effective state | Proven locally; deployed runtime pending | upload/scan functions and scan contracts |
-| Cloudmersive clean/malicious/unavailable outcomes | Proven locally; final sandbox matrix pending | provider adapter/tests and Trust queue |
-| Reports and package scan operations | Proven locally; rendered QA pending | Trust routes and details |
-| Transactional templates and delivery health | Proven locally; runtime pending | canonical communication routes/contracts |
-| Payments, email, storage, integrations, roles settings | Proven locally; rendered QA pending | dedicated settings pages and settings contracts |
-| Admin activity and security events | Proven locally; role/runtime pending | audit/security dashboards and hardened RPCs |
+| Package validation and fail-closed effective state | Proven after controlled deployment | upload/scan functions, live benign scan, and fail-closed contracts |
+| Cloudmersive clean/malicious/unavailable outcomes | Accepted mixed live/deterministic matrix | live clean result plus malicious/contradictory/unavailable/retry-exhaustion provider contracts |
+| Reports and package scan operations | Proven in synced preview | Trust routes, scan details, and controlled admin QA |
+| Transactional templates and delivery health | Proven in synced preview and contracts | canonical communication routes/contracts and controlled admin QA |
+| Payments, email, storage, integrations, roles settings | Proven in synced preview | dedicated settings pages and controlled desktop/mobile QA |
+| Admin activity and security events | Proven in synced preview and role probes | audit/security dashboards, hardened RPCs, and controlled admin/denial QA |
 
 ## 9. Data, authorization, and migration
 
@@ -206,7 +206,7 @@ snapshot, not launch acceptance by themselves.
 ## Remaining critical path
 
 1. Keep Coming Soon enabled through the restarted 24-hour stability window
-   ending no earlier than 2026-07-30 17:29 UTC.
+   ending no earlier than 2026-07-30 17:39 UTC.
 2. Confirm the named monitoring, support, rollback-decision, and technical
    rollback owners.
 3. Run the close-out log, reconciliation, dependency, advisor, and canonical

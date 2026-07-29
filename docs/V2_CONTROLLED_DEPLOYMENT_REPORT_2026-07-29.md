@@ -12,6 +12,7 @@ Release-candidate source:
 - Post-deployment Auth reconciliation head synced to Lovable: `a3cc49bc`
 - Performance/mobile-card runtime head synced to Lovable: `797fc7cf`
 - Field-performance monitoring head synced to Lovable: `ee2edd2d`
+- Receipt-resend activation head synced to Lovable: `082505f2`
 - Production launch lock: `PUBLIC_LAUNCH_LOCK = true`
 - Production HTML: `JojoPrompts — Coming soon`, `noindex,nofollow`
 
@@ -75,6 +76,15 @@ Unchanged checkout, status, webhook, refund, receipt, download, upload, and
 scan functions were contract-probed without unnecessary redeployment.
 Authentication, method, retired-410, and fail-closed probes behaved as
 expected.
+
+Before activating receipt resend, the live `v2-upayments-webhook` version 52,
+`v2-upayments-status` version 51, and
+`v2-admin-resend-order-receipt` version 3 bundles were fetched and matched to
+the reviewed source, including the direct REST `Idempotency-Key` header. The
+receipt tables, RLS, and seven service-only mutation RPC grants passed
+production checks. The synced admin action then passed desktop and 390x844
+mobile QA. Its confirmation dialog was opened and cancelled; no email, resend
+request, or provider payload was created.
 
 ## Rendered QA
 
@@ -178,11 +188,11 @@ See `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md`.
 ## Initial stability observation
 
 The reviewed performance/mobile-card runtime commit restarted the 24-hour
-production-locked stability window, then the field-monitoring runtime,
-migrations, and Edge Function restarted it again. The current conservative
-window starts from Lovable head `ee2edd2d` after controlled QA at
-2026-07-29 17:29 UTC (20:29 Asia/Kuwait) and ends no earlier than
-2026-07-30 17:29 UTC.
+production-locked stability window, then field monitoring restarted it, and
+the final audited receipt-resend frontend activation restarted it once more.
+The current conservative window starts from Lovable head `082505f2` after
+controlled QA at 2026-07-29 17:39 UTC (20:39 Asia/Kuwait) and ends no earlier
+than 2026-07-30 17:39 UTC.
 
 The first log review found:
 
