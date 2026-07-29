@@ -128,3 +128,6 @@ verify_jwt = true
 
 [functions.v2-admin-roles-settings-status]
 verify_jwt = true
+
+[functions.v2-web-vitals]
+verify_jwt = false

@@ -5,6 +5,7 @@ import App from './App.tsx'
 import './index.css'
 import { SecurityHeaders } from './utils/security/securityHeaders'
 import { createLogger } from './utils/logging'
+import { startWebVitalsMonitoring } from './lib/v2/webVitals'
 
 const logger = createLogger('main');
 
@@ -20,3 +21,5 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </HelmetProvider>
 );
+
+startWebVitalsMonitoring();

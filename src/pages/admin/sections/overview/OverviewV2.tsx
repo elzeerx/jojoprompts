@@ -24,6 +24,7 @@ import {
   formatDownloadsTile,
   formatDeliveryFailuresTile,
 } from "@/lib/v2/admin/overviewKpiFormat";
+import { WebVitalsPanel } from "./WebVitalsPanel";
 
 function formatKWD(fils: number | null | undefined): string {
   if (fils == null) return "—";
@@ -279,6 +280,8 @@ export default function OverviewV2() {
           ))}
         </div>
       </section>
+
+      <WebVitalsPanel />
     </div>
   );
 }

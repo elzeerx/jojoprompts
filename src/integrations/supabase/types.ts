@@ -4654,6 +4654,10 @@ export type Database = {
       }
       export_user_data: { Args: { target_user_id: string }; Returns: Json }
       get_admin_v2_overview: { Args: { p_period_days?: number }; Returns: Json }
+      get_admin_v2_web_vitals: {
+        Args: { p_environment?: string; p_period_days?: number }
+        Returns: Json
+      }
       get_my_downloadable_files: {
         Args: { p_resource_id?: string }
         Returns: {

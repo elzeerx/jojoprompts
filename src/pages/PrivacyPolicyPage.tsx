@@ -38,7 +38,7 @@ function privacyCopy(lang: "en" | "ar"): {
       seoDescription:
         "كيف يجمع JojoPrompts بيانات الحساب والطلبات والدفع والتنزيل والدعم ويستخدمها ويحميها في تجربة V2.",
       title: "سياسة الخصوصية",
-      updatedLabel: "آخر تحديث: 28 يوليو 2026",
+      updatedLabel: "آخر تحديث: 29 يوليو 2026",
       intro:
         "توضح هذه السياسة كيفية تعامل JojoPrompts مع المعلومات عند تصفّح الموقع أو إنشاء حساب أو الحصول على مورد أو الدفع أو التنزيل أو التواصل مع الدعم. لا تتضمن V2.0 رفع موارد من المبدعين أو ملفات عملاء إلى السوق.",
       sections: [
@@ -51,6 +51,7 @@ function privacyCopy(lang: "en" | "ar"): {
             "سجل التنزيل والإصدار والترخيص عندما يكون ضرورياً لتسليم المورد وحماية الاستحقاق.",
             "رسائل الدعم وبيانات الاتصال التي ترسلها طوعاً.",
             "بيانات تشغيل وأمان محدودة مثل نوع المتصفح والصفحات وأحداث الخطأ ومحاولات الدخول أو حدود المعدل وعناوين الشبكة عند الحاجة للحماية.",
+            "قياسات أداء مجهولة مثل LCP وINP وCLS، ومسار الصفحة من دون الاستعلام أو الجزء المرجعي، وفئة الجهاز، ووقت القياس.",
           ],
         },
         {
@@ -94,10 +95,17 @@ function privacyCopy(lang: "en" | "ar"): {
           ],
         },
         {
+          title: "قياس الأداء الميداني",
+          paragraphs: [
+            "نقيس مؤشرات أداء الويب الأساسية LCP وINP وCLS لمعرفة سرعة الصفحات واستجابتها وثبات تخطيطها على الهاتف وسطح المكتب. لا تتضمن هذه القياسات اسم المستخدم أو البريد الإلكتروني أو معرّف الحساب أو عنوان IP مخزّناً أو وكيل المتصفح أو ملفات تعريف الارتباط أو نص الاستعلام أو محددات عناصر الصفحة.",
+            "نستخدم النتائج المجمعة عند النسبة المئوية 75 لتحسين الأداء. نحتفظ بعينات الأداء المجهولة مدة لا تتجاوز 90 يوماً، ونحترم إشارة عدم التتبع في المتصفح عند توفرها.",
+          ],
+        },
+        {
           title: "الاحتفاظ والحذف",
           paragraphs: [
             "نحتفظ ببيانات الحساب والطلب والدفع والاستحقاق والإيصال للمدة اللازمة لتقديم الوصول الدائم، حل النزاعات، منع الاحتيال، والوفاء بالمتطلبات القانونية والمحاسبية.",
-            "قد تُحذف سجلات التشغيل والأمان أو تُجمّع بعد انتهاء الحاجة. طلب حذف الحساب لا يعني بالضرورة حذف السجلات التي يجب الاحتفاظ بها قانوناً، وقد يؤدي إلى فقدان القدرة على الوصول إلى المشتريات المرتبطة بالحساب بعد التحقق من الطلب.",
+            "نحتفظ بعينات مؤشرات أداء الويب الأساسية المجهولة مدة لا تتجاوز 90 يوماً. وقد تُحذف سجلات التشغيل والأمان الأخرى أو تُجمّع بعد انتهاء الحاجة. طلب حذف الحساب لا يعني بالضرورة حذف السجلات التي يجب الاحتفاظ بها قانوناً، وقد يؤدي إلى فقدان القدرة على الوصول إلى المشتريات المرتبطة بالحساب بعد التحقق من الطلب.",
           ],
         },
         {
@@ -133,7 +141,7 @@ function privacyCopy(lang: "en" | "ar"): {
     seoDescription:
       "How JojoPrompts collects, uses, and protects account, order, payment, download, and support data in V2.",
     title: "Privacy policy",
-    updatedLabel: "Last updated: 28 July 2026",
+    updatedLabel: "Last updated: 29 July 2026",
     intro:
       "This policy explains how JojoPrompts handles information when you browse, create an account, acquire a resource, pay, download, or contact support. V2.0 does not include creator marketplace uploads or customer-submitted resource packages.",
     sections: [
@@ -146,6 +154,7 @@ function privacyCopy(lang: "en" | "ar"): {
           "Download, version, and license records when needed to deliver a resource and protect entitlement access.",
           "Support messages and contact information you submit voluntarily.",
           "Limited operational and security data such as browser type, pages, errors, sign-in or rate-limit events, and network identifiers when needed for protection.",
+          "Anonymous performance measurements such as LCP, INP, CLS, pathname without query or fragment, device class, and measurement time.",
         ],
       },
       {
@@ -189,10 +198,17 @@ function privacyCopy(lang: "en" | "ar"): {
         ],
       },
       {
+        title: "Field performance measurement",
+        paragraphs: [
+          "We measure the Core Web Vitals LCP, INP, and CLS to understand page loading, responsiveness, and visual stability on mobile and desktop. These samples do not include a name, email, account identifier, stored IP address, user agent, cookies, query string, or DOM element attribution.",
+          "We use aggregated 75th-percentile results to improve performance. Anonymous performance samples are retained for no longer than 90 days, and we honor the browser Do Not Track signal when it is available.",
+        ],
+      },
+      {
         title: "Retention and deletion",
         paragraphs: [
           "We retain account, order, payment, entitlement, and receipt records as needed to provide permanent access, resolve disputes, prevent fraud, and meet legal and accounting requirements.",
-          "Operational and security logs may be deleted or aggregated when no longer needed. Account deletion does not necessarily remove records we must retain by law and may affect access to purchases after the request is verified.",
+          "Anonymous Core Web Vitals samples are retained for no longer than 90 days. Other operational and security logs may be deleted or aggregated when no longer needed. Account deletion does not necessarily remove records we must retain by law and may affect access to purchases after the request is verified.",
         ],
       },
       {
