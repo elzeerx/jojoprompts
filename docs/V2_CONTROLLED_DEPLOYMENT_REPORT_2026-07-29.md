@@ -10,6 +10,7 @@ Release-candidate source:
 
 - Controlled-deployment head: `54db8e18`
 - Post-deployment Auth reconciliation head synced to Lovable: `a3cc49bc`
+- Performance/mobile-card runtime head synced to Lovable: `797fc7cf`
 - Production launch lock: `PUBLIC_LAUNCH_LOCK = true`
 - Production HTML: `JojoPrompts — Coming soon`, `noindex,nofollow`
 
@@ -83,11 +84,33 @@ Local verification:
 - TypeScript: pass
 - Scoped V2/admin lint: pass
 - Tests: 929 pass / 0 fail at controlled deployment
-- Post-deployment release gate: 948 tests pass / 0 fail
+- Final performance release gate: 950 tests pass / 0 fail
 - Production build: pass
 
 The canonical full gate passed after the release-matrix tests and evidence
 documents were added.
+
+## Performance and final Explore QA
+
+The Explore route now renders a lightweight heading/SEO shell before loading
+catalog data, cards, filters, and lifetime state. Production HTML no longer
+requests the unused GPT Engineer editor helper, and the regular Forma brand
+font is preloaded. A mobile visual-card positioning defect found during final
+QA was corrected so the title/price gradient no longer covers version, update,
+and trust metadata.
+
+Final local Lighthouse lab evidence:
+
+- Mobile: score 79, FCP 2.43s, LCP 4.81s, CLS 0.00014, TBT 10ms.
+- Desktop: score 99, FCP 0.51s, LCP 0.95s, CLS 0.00004, TBT 0ms.
+
+Mobile lab LCP remains above the locked target, and lab TBT does not prove
+field p75 INP. This is recorded as a launch-ramp monitoring gate rather than a
+false pass. See `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md`.
+
+Lovable reported `797fc7cf` ready at 2026-07-29 17:06:17 UTC. The synced
+desktop and 390x844 mobile Explore route then passed Arabic RTL, catalog,
+quick-preview, card-legibility, and console-health checks.
 
 ## Security and advisor refresh
 
@@ -130,9 +153,10 @@ See `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md`.
 
 ## Initial stability observation
 
-The 24-hour production-locked stability window starts from the reconciled
-Lovable head at 2026-07-29 16:36 UTC (19:36 Asia/Kuwait) and ends no earlier
-than 2026-07-30 16:36 UTC.
+The reviewed performance/mobile-card runtime commit restarted the 24-hour
+production-locked stability window. It starts from Lovable head `797fc7cf` at
+2026-07-29 17:06 UTC (20:06 Asia/Kuwait) and ends no earlier than
+2026-07-30 17:06 UTC.
 
 The first log review found:
 
@@ -171,6 +195,8 @@ accepted:
    if none exists.
 2. Complete the 24-hour production-locked stability window and confirm named
    monitoring, support, and rollback owners.
-3. Obtain a separate explicit approval for the single launch-lock change.
+3. Enable field Core Web Vitals monitoring for the launch ramp and stop/rollback
+   if p75 LCP, INP, or CLS remains outside the locked targets.
+4. Obtain a separate explicit approval for the single launch-lock change.
 
 No public launch action was performed in this deployment pass.

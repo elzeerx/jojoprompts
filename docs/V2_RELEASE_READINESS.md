@@ -15,11 +15,12 @@ production baseline, deployment order, and stop conditions are frozen in
 - Supabase project: `fxkqgjakbyrxkmevkglv`
 - Lovable project: `766f3370-d38c-42e5-8566-5e4946986dd2`
 - Production launch lock: **ON**
-- Admin/customer runtime sync: **complete through `a3cc49bc`**
-- Post-deployment test/evidence sync: **complete; no runtime bundle delta**
+- Admin/customer runtime sync: **complete through `797fc7cf`**
+- Performance/mobile-card runtime sync: **complete**
 - Production migration apply: **complete and reconciled**
 - Edge Function deployment: **complete and fetched back**
-- Final rendered Lovable QA: **desktop/mobile English/Arabic pass completed**
+- Final rendered Lovable QA: **desktop/mobile English/Arabic pass completed;
+  post-performance Explore smoke pass completed**
 
 `PUBLIC_LAUNCH_LOCK` must remain `true` through migration, function, frontend,
 and production-locked smoke verification. Disabling Coming Soon is a separate
@@ -62,8 +63,10 @@ The controlled deployment reran the gate successfully (929/929 tests and a
 production build). A post-QA admin-sidebar touch-target regression test also
 passes at the synced release-candidate head.
 
-The post-deployment provider/profile release gate also passes: TypeScript,
-scoped lint, 948/948 tests, and the production build completed successfully.
+The final performance/provider/profile release gate also passes: TypeScript,
+scoped lint, 950/950 tests, and the production build completed successfully.
+Lighthouse and synced-preview evidence is recorded in
+`docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md`.
 
 ## Security review closure
 
@@ -258,8 +261,10 @@ Coming Soon may be disabled only when all items below have evidence:
   retry-exhaustion behavior is covered by deterministic tests against the
   deployed shared decision helpers.
 - Lovable desktop/mobile English/Arabic QA passes.
-- Production remains stable under the launch lock through the 24-hour window
-  ending no earlier than 2026-07-30 16:36 UTC.
+- Production remains stable under the launch lock through the restarted
+  24-hour window ending no earlier than 2026-07-30 17:06 UTC.
+- Field p75 LCP, INP, and CLS monitoring is enabled for the launch ramp, with
+  stop/rollback thresholds matching the locked targets.
 - Monitoring, support, and rollback owners are confirmed.
 - A separate explicit approval is given to set `PUBLIC_LAUNCH_LOCK=false`
   and publish that single launch change.

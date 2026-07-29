@@ -23,10 +23,10 @@ evidence also passes.
 | Gate | Status | Evidence |
 |---|---|---|
 | Public launch lock | Proven locally | `src/config/siteMode.ts`; `PUBLIC_LAUNCH_LOCK=true` |
-| Local frontend commit on Lovable | Pending controlled deployment | Local branch is ahead of `origin/jojodev2`; exact sync is a controlled write |
-| Database schema | Pending controlled deployment | Production latest migration is `20260728175807`; four local migrations remain |
-| Edge Function bundle | Pending controlled deployment | Exact bundle and checks are listed in `docs/V2_RELEASE_READINESS.md` |
-| Admin/customer rendered behavior | Pending rendered QA | Must run against the synced `id-preview--…lovable.app` build |
+| Local frontend commit on Lovable | Proven at controlled head | Lovable reports `797fc7cf` ready |
+| Database schema | Proven after controlled deployment | Five release/reconciliation migrations applied and totals reconciled |
+| Edge Function bundle | Proven after controlled deployment | Four changed functions fetched back; unchanged V2 targets contract-probed |
+| Admin/customer rendered behavior | Proven against locked preview | Desktop/mobile English/Arabic route sweeps plus post-performance Explore smoke |
 | Public release | Not authorized | Coming Soon remains enabled; unlock requires separate approval |
 
 ## 1. Locked scope and commercial model
@@ -73,7 +73,7 @@ evidence also passes.
 | Mobile filter bottom sheet | Proven locally; rendered QA pending | mobile Drawer implementation |
 | Preserved scroll position and quick preview | Proven locally; rendered QA pending | `scrollCache`; `QuickPreviewSheet.tsx` |
 | Structured skill/automation cards | Proven locally | `SkillResourceCard.tsx` |
-| Two-column mobile masonry for visual resources | Proven locally; rendered QA pending | `ExplorePage.tsx`; `VisualResourceCard.tsx`; masonry contract |
+| Two-column mobile masonry for visual resources | Proven locally and rendered | `ExploreCatalogContent.tsx`; `VisualResourceCard.tsx`; masonry contract and 390x844 QA |
 | No hover-only controls | Proven locally; rendered QA pending | mobile-visible actions and focus-visible paths |
 | 44px minimum touch targets | Proven locally; rendered QA pending | V2 component classes and touch-target contracts |
 | Arabic RTL content/control order | Proven locally; rendered QA pending | language-aware `dir`; RTL fields; bilingual publisher/detail contracts |
@@ -184,7 +184,7 @@ snapshot, not launch acceptance by themselves.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 948 tests, and production build passed |
+| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 950 tests, and production build passed |
 | Formal V2 security diff review | Proven locally | 85/85 changed files reviewed; both findings fixed in `48978150`; focused and real-database authorization checks passed |
 | Fresh dependency/security review | Proven locally | `docs/security/DEPENDENCY_RISK_REGISTER.md` |
 | Supabase advisor triage | Proven for current production state | `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md` |
@@ -192,7 +192,7 @@ snapshot, not launch acceptance by themselves.
 | Anonymous/customer/admin/insufficient-role QA | Proven through rendered and contract checks | controlled deployment report and authorization suites |
 | UPayments success/failure/cancel/retry/mismatch/refund | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
 | Cloudmersive clean/malicious/unavailable | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
-| Core Web Vitals targets | Pending deployed measurement | p75 LCP <2.5s, INP <200ms, CLS <0.1 |
+| Core Web Vitals targets | Lab evidence recorded; field p75 pending launch traffic | Mobile lab: FCP 2.43s, LCP 4.81s, CLS 0.00014, TBT 10ms; desktop score 99; see `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md` |
 | Backup and rollback evidence | Proven in controlled deployment | restricted pre-deployment backup and deployment report |
 | Stability monitoring and named owners | Pending 24-hour close-out | `docs/V2_STABILITY_AND_OPERATIONS_2026-07-29.md` |
 | Separate launch approval | Not authorized | required before `PUBLIC_LAUNCH_LOCK=false` |
@@ -205,10 +205,13 @@ snapshot, not launch acceptance by themselves.
 
 ## Remaining critical path
 
-1. Keep Coming Soon enabled through the 24-hour stability window.
+1. Keep Coming Soon enabled through the restarted 24-hour stability window
+   ending no earlier than 2026-07-30 17:06 UTC.
 2. Confirm the named monitoring, support, rollback-decision, and technical
    rollback owners.
 3. Run the close-out log, reconciliation, dependency, advisor, and canonical
    build/test checks.
 4. Perform the final evidence audit.
-5. Request a separate approval to unlock and publish.
+5. Enable field Core Web Vitals monitoring for the launch ramp and enforce the
+   documented stop/rollback thresholds.
+6. Request a separate approval to unlock and publish.

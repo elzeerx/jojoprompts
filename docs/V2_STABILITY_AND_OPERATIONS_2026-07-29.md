@@ -2,18 +2,29 @@
 
 ## Locked window
 
-- Start: 2026-07-29 16:36 UTC / 19:36 Asia/Kuwait.
-- Earliest close: 2026-07-30 16:36 UTC / 19:36 Asia/Kuwait.
+- Start: 2026-07-29 17:06 UTC / 20:06 Asia/Kuwait.
+- Earliest close: 2026-07-30 17:06 UTC / 20:06 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
-- Lovable baseline: `a3cc49bc`.
+- Lovable baseline: `797fc7cf`.
 
 Any runtime source, migration, Edge Function, payment configuration, scanner
 configuration, or launch-lock change restarts the window. Documentation and
 test-only commits that do not alter the production bundle do not restart it.
 
+The previous window that began at 16:36 UTC was superseded by the reviewed
+Explore performance and mobile-card runtime change. Lovable reported the new
+head ready at 2026-07-29 17:06:17 UTC, so the full 24-hour clock restarted.
+
 ## Initial observation
 
-- Lovable reports project ready at `a3cc49bc`.
+- Lovable reports project ready at `797fc7cf`.
+- Synced desktop and 390x844 mobile Explore smoke checks passed in Arabic RTL,
+  including catalog hydration and quick preview, with no console warnings or
+  errors.
+- The canonical local gate passes: typecheck, scoped lint, 950/950 tests, and
+  production build.
+- Performance evidence and the remaining field-data limitation are recorded in
+  `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md`.
 - Edge Function sample: 100 events; no 5xx responses.
 - Auth and Storage samples: no error-severity events.
 - Postgres sample: no error-severity event after 2026-07-29 16:25:03 UTC.
