@@ -72,6 +72,13 @@ describe("shared primitive mobile touch-target contract", () => {
     ).toBe(true);
   });
 
+  it("Admin sidebar navigation links reserve 44px height", () => {
+    const src = read("src/pages/admin/layout/AdminSidebar.tsx");
+    expect(
+      /className=\{cn\([\s\S]*?"min-h-11 data-\[active=true\]/.test(src),
+    ).toBe(true);
+  });
+
   it("Admin shell provides a keyboard skip link to the focusable main region", () => {
     const src = read("src/pages/admin/layout/AdminLayout.tsx");
     expect(src.includes('href="#admin-main-content"')).toBe(true);
