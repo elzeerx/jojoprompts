@@ -15,14 +15,15 @@ production baseline, deployment order, and stop conditions are frozen in
 - Supabase project: `fxkqgjakbyrxkmevkglv`
 - Lovable project: `766f3370-d38c-42e5-8566-5e4946986dd2`
 - Production launch lock: **ON**
-- Admin/customer runtime sync: **complete through `082505f2`**
+- Admin/customer runtime sync: **complete through `d397c76f`**
 - Performance/mobile-card runtime sync: **complete**
 - Privacy-safe field performance monitoring: **deployed and preview-verified**
 - Audited admin receipt resend: **activated and preview-verified; no QA email sent**
 - Production migration apply: **complete and reconciled**
 - Edge Function deployment: **complete and fetched back**
 - Final rendered Lovable QA: **desktop/mobile English/Arabic pass completed;
-  post-performance Explore smoke pass completed**
+  post-performance Explore and post-accessibility Admin V2 smoke passes
+  completed**
 - Controlled deployment approval: **received in the Codex task on 2026-07-29;
   this is not public-launch approval**
 
@@ -71,6 +72,12 @@ The final performance/provider/profile release gate also passes: TypeScript,
 scoped lint, 961/961 tests, and the production build completed successfully.
 Lighthouse and synced-preview evidence is recorded in
 `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md`.
+
+The post-deployment accessibility runtime gate also passes at `d397c76f`:
+TypeScript, scoped lint, 970/970 tests, and the production build completed
+successfully. The synced preview exposes one Admin V2 `main` landmark, no
+nested `main`, named publisher and commerce controls, and no horizontal
+overflow on the rechecked routes.
 
 ## Security review closure
 
@@ -282,7 +289,8 @@ Coming Soon may be disabled only when all items below have evidence:
 - The bilingual Terms, Privacy, refund, lifetime-credit, and standard Jojo
   license wording receives the required owner/legal acceptance.
 - Production remains stable under the launch lock through the restarted
-  24-hour window ending no earlier than 2026-07-30 17:39 UTC.
+  24-hour window ending no earlier than 2026-07-30 19:02 UTC
+  (22:02 Asia/Kuwait).
 - Field p75 LCP, INP, and CLS monitoring is enabled for the launch ramp, with
   stop/rollback thresholds matching the locked targets.
 - Monitoring, support, and rollback owners are confirmed.

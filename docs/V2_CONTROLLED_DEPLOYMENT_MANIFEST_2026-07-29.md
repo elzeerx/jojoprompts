@@ -17,18 +17,19 @@ on 2026-07-29. That approval does not cover the launch-lock change.
 
 ## Release source
 
-- Executable release head: `082505f23767ba310fef573508cb0eabe0eb0900`
-  (`feat: activate audited admin receipt resend`).
+- Executable release head: `d397c76faa1abdd439c92976112fef89af33e912`
+  (`fix: improve Admin V2 accessibility semantics`).
+- Receipt-resend runtime ancestor: `082505f2`.
 - Field-monitoring runtime ancestor: `ee2edd2d`.
-- Lovable reported `082505f23767ba310fef573508cb0eabe0eb0900`
-  ready at 2026-07-29 17:35:54 UTC.
+- Lovable reported `d397c76faa1abdd439c92976112fef89af33e912`
+  ready at 2026-07-29 18:29:39 UTC.
 - Canonical gate at the executable release head:
   - TypeScript: passed.
   - Scoped V2/admin lint: passed.
-  - Tests: 961 passed, 0 failed.
+  - Tests: 970 passed, 0 failed.
   - Production build: passed.
 - The production route `https://jojoprompts.com/explore` was rechecked after
-  sync and still rendered Coming Soon.
+  sync and still rendered Coming Soon with `noindex,nofollow`.
 
 ## Security review closure
 
@@ -126,15 +127,19 @@ no email was sent and no resend request or provider payload was created.
 - Production still renders Coming Soon.
 - `ADMIN_RECEIPT_RESEND_ENABLED=true` is now part of the reviewed runtime.
 - `PUBLIC_LAUNCH_LOCK=true` remains unchanged.
+- The final Admin V2 semantic sweep found and corrected a nested `main`
+  landmark plus placeholder-only publisher/commerce controls. At
+  `d397c76f`, the rechecked admin routes expose one `main`, no nested `main`,
+  named primary controls, and no page-level horizontal overflow.
 
 ## Stability window
 
-The frontend activation is a runtime change and supersedes the earlier
-field-monitoring window. The conservative restarted window is:
+The accessibility correction is a runtime change and supersedes the earlier
+receipt-activation window. The conservative restarted window is:
 
-- Start: 2026-07-29 17:39 UTC / 20:39 Asia/Kuwait.
-- Earliest close: 2026-07-30 17:39 UTC / 20:39 Asia/Kuwait.
-- Baseline: `082505f23767ba310fef573508cb0eabe0eb0900`.
+- Start: 2026-07-29 19:02 UTC / 22:02 Asia/Kuwait.
+- Earliest close: 2026-07-30 19:02 UTC / 22:02 Asia/Kuwait.
+- Baseline: `d397c76faa1abdd439c92976112fef89af33e912`.
 
 Any further runtime source, migration, Edge Function, payment/scanner
 configuration, or launch-lock change restarts the window. Documentation-only
@@ -146,7 +151,7 @@ and test-description-only commits do not.
    containment.
 2. Disable new UPayments checkout before altering any historical state.
 3. Revert the frontend to the immediately prior reviewed runtime
-   `ee2edd2d` if the receipt UI itself is defective.
+   `082505f2` if the accessibility runtime itself is defective.
 4. For Edge Functions, redeploy the immediately prior captured reviewed source.
 5. For database defects, prefer a corrective forward migration; use the
    restricted restore point only for catastrophic loss.

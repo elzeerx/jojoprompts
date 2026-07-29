@@ -2,24 +2,28 @@
 
 ## Locked window
 
-- Start: 2026-07-29 17:39 UTC / 20:39 Asia/Kuwait.
-- Earliest close: 2026-07-30 17:39 UTC / 20:39 Asia/Kuwait.
+- Start: 2026-07-29 19:02 UTC / 22:02 Asia/Kuwait.
+- Earliest close: 2026-07-30 19:02 UTC / 22:02 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
-- Lovable baseline: `082505f2`.
+- Lovable baseline: `d397c76f`.
 
 Any runtime source, migration, Edge Function, payment configuration, scanner
 configuration, or launch-lock change restarts the window. Documentation and
 test-only commits that do not alter the production bundle do not restart it.
 
-The previous field-monitoring window was superseded by the reviewed
-admin receipt-resend frontend activation. Lovable reported `082505f2` ready at
-2026-07-29 17:35:54 UTC; the conservative full 24-hour clock starts after its
-desktop/mobile confirmation QA and production lock verification completed at
-17:39 UTC.
+The previous receipt-activation window was superseded by the reviewed Admin V2
+accessibility runtime. Lovable reported `d397c76f` ready at
+2026-07-29 18:29:39 UTC; the conservative full 24-hour clock starts after its
+rendered semantic QA and production-lock verification completed at
+19:02 UTC.
 
 ## Initial observation
 
-- Lovable reports project ready at `082505f2`.
+- Lovable reports project ready at `d397c76f`.
+- The synced Admin Overview, Publisher, Orders, Payment Events, Entitlements,
+  Refunds, Recovery, Discounts, and Transactional Templates routes expose one
+  `main`, no nested `main`, named primary controls, and no page-level
+  horizontal overflow.
 - Admin receipt resend is enabled for the eligible paid order. The bilingual
   confirmation dialog passed desktop and 390x844 QA and was cancelled before
   submission; production still has zero resend requests/payloads.
@@ -33,7 +37,7 @@ desktop/mobile confirmation QA and production lock verification completed at
 - Synced desktop and 390x844 mobile Explore smoke checks passed in Arabic RTL,
   including catalog hydration and quick preview, with no console warnings or
   errors.
-- The canonical local gate passes: typecheck, scoped lint, 961/961 tests, and
+- The canonical local gate passes: typecheck, scoped lint, 970/970 tests, and
   production build.
 - Performance evidence and the remaining field-data limitation are recorded in
   `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md`.

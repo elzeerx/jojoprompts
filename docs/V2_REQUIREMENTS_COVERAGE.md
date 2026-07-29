@@ -23,7 +23,7 @@ evidence also passes.
 | Gate | Status | Evidence |
 |---|---|---|
 | Public launch lock | Proven locally | `src/config/siteMode.ts`; `PUBLIC_LAUNCH_LOCK=true` |
-| Local frontend commit on Lovable | Proven at controlled head | Lovable reports `082505f2` ready |
+| Local frontend commit on Lovable | Proven at controlled head | Lovable reports `d397c76f` ready |
 | Database schema | Proven after controlled deployment | Seven release/reconciliation/telemetry migrations applied and totals reconciled |
 | Edge Function bundle | Proven after controlled deployment | Five changed functions deployed; unchanged V2 targets contract-probed |
 | Admin/customer rendered behavior | Proven against locked preview | Desktop/mobile English/Arabic route sweeps, post-performance Explore smoke, and responsive Core Web Vitals panel QA |
@@ -112,13 +112,13 @@ evidence also passes.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Dedicated admin shell without public chrome | Proven in synced preview | `/admin` nested shell and controlled desktop/mobile route QA |
+| Dedicated admin shell without public chrome | Proven in synced preview | `/admin` shell and controlled desktop/mobile route QA; `d397c76f` renders one non-nested `main` landmark |
 | Target navigation groups/routes | Proven locally | `adminNavConfig.ts`; `adminSectionElements.tsx` |
 | Attention Required queues | Proven in synced preview and deployed metrics | `OverviewV2.tsx`; metrics RPC; controlled admin QA |
 | Server-defined KWD metrics and periods | Proven in synced preview and deployed metrics | overview metrics SQL/UI/contracts |
 | Operations table, filters, saved views, pagination | Proven in synced preview | `CatalogTable.tsx` and controlled admin QA |
 | Bulk lifecycle actions and optional card view | Proven in synced preview and contracts | catalog lifecycle helpers, table/card modes, controlled QA |
-| Unified eight-stage resource publisher | Proven in synced preview and contracts | `ResourcePublisher.tsx`; controlled create/validate/review lifecycle QA |
+| Unified eight-stage resource publisher | Proven in synced preview and contracts | `ResourcePublisher.tsx`; controlled create/validate/review lifecycle QA; dynamic/version fields expose stable accessible names at `d397c76f` |
 | Bilingual metadata and delivery fields | Proven locally | publisher round-trips Arabic changelogs, platform notes, guides, permissions, licenses, products, and public detail copy |
 | AI Studio and JSON importer handoff | Proven in synced preview and contracts | import routes, controlled admin QA, and contract tests |
 | Untouched AI Studio sessions do not persist resources | Proven locally | deferred draft/resource creation contracts |
@@ -185,7 +185,7 @@ snapshot, not launch acceptance by themselves.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 961 tests, and production build passed |
+| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 970 tests, and production build passed at `d397c76f` |
 | Formal V2 security diff review | Proven locally | 85/85 changed files reviewed; both findings fixed in `48978150`; focused and real-database authorization checks passed |
 | Fresh dependency/security review | Proven locally | `docs/security/DEPENDENCY_RISK_REGISTER.md` |
 | Supabase advisor triage | Proven for current production state | `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md` |
@@ -193,7 +193,7 @@ snapshot, not launch acceptance by themselves.
 | Anonymous/customer/admin/insufficient-role QA | Proven through rendered and contract checks | controlled deployment report and authorization suites |
 | UPayments success/failure/cancel/retry/mismatch/refund | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
 | Cloudmersive clean/malicious/unavailable | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
-| Accessibility and assistive technology | Partial evidence; final acceptance pending | Semantic rendered snapshots expose named landmarks/controls and the admin skip link; touch-target, viewport, focus, RTL, and reduced-motion contracts pass; final zoom/reduced-motion/assistive-technology acceptance must be recorded |
+| Accessibility and assistive technology | Partial evidence; final acceptance pending | Synced `d397c76f` semantic snapshots expose one non-nested admin `main`, named publisher/commerce controls, and the admin skip link; touch-target, viewport, focus, RTL, and reduced-motion contracts pass; final zoom/reduced-motion/assistive-technology acceptance must be recorded |
 | Bilingual legal and standard Jojo license wording | Drafted and contract-tested; owner/legal acceptance pending | `TermsOfServicePage.tsx`, `PrivacyPolicyPage.tsx`, `FAQPage.tsx`, and public-info contracts |
 | Core Web Vitals targets | Monitoring deployed; production p75 pending launch traffic | Mobile lab: FCP 2.43s, LCP 4.81s, CLS 0.00014, TBT 10ms; privacy-safe RUM and admin p75 panel deployed; see `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md` |
 | Backup and rollback evidence | Proven in controlled deployment | restricted pre-deployment backup and deployment report |
@@ -209,7 +209,8 @@ snapshot, not launch acceptance by themselves.
 ## Remaining critical path
 
 1. Keep Coming Soon enabled through the restarted 24-hour stability window
-   ending no earlier than 2026-07-30 17:39 UTC.
+   ending no earlier than 2026-07-30 19:02 UTC
+   (22:02 Asia/Kuwait).
 2. Confirm the named monitoring, support, rollback-decision, and technical
    rollback owners.
 3. Record owner/legal acceptance for the bilingual Terms, Privacy, refund,

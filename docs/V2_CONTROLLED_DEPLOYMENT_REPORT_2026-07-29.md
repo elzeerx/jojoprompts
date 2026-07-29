@@ -18,6 +18,7 @@ Release-candidate source:
 - Performance/mobile-card runtime head synced to Lovable: `797fc7cf`
 - Field-performance monitoring head synced to Lovable: `ee2edd2d`
 - Receipt-resend activation head synced to Lovable: `082505f2`
+- Admin accessibility runtime head synced to Lovable: `d397c76f`
 - Production launch lock: `PUBLIC_LAUNCH_LOCK = true`
 - Production HTML: `JojoPrompts — Coming soon`, `noindex,nofollow`
 
@@ -109,6 +110,13 @@ Validated against the locked Lovable preview:
 - The Core Web Vitals admin panel passed desktop and 390x844 responsive QA,
   including production/preview separation and honest insufficient-sample
   states.
+- A final semantic sweep found that `SidebarInset` and `AdminLayout` both
+  rendered `main`, and found placeholder-only publisher/commerce controls.
+  Runtime `d397c76f` removes the nested landmark and gives the affected
+  controls stable accessible names. The synced Admin Overview, Publisher,
+  Orders, Payment Events, Entitlements, Refunds, Recovery, Discounts, and
+  Transactional Templates routes now expose one `main`, no nested `main`, no
+  unnamed primary controls, and no page-level horizontal overflow.
 
 Local verification:
 
@@ -116,6 +124,7 @@ Local verification:
 - Scoped V2/admin lint: pass
 - Tests: 929 pass / 0 fail at controlled deployment
 - Final performance and field-monitoring release gate: 961 tests pass / 0 fail
+- Final accessibility runtime gate: 970 tests pass / 0 fail
 - Production build: pass
 
 The canonical full gate passed after the release-matrix tests and evidence
@@ -195,9 +204,11 @@ See `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md`.
 The reviewed performance/mobile-card runtime commit restarted the 24-hour
 production-locked stability window, then field monitoring restarted it, and
 the final audited receipt-resend frontend activation restarted it once more.
-The current conservative window starts from Lovable head `082505f2` after
-controlled QA at 2026-07-29 17:39 UTC (20:39 Asia/Kuwait) and ends no earlier
-than 2026-07-30 17:39 UTC.
+The Admin V2 accessibility runtime then restarted it again. The current
+conservative window starts from Lovable head `d397c76f` after rendered QA and
+production-lock verification at 2026-07-29 19:02 UTC
+(22:02 Asia/Kuwait) and ends no earlier than 2026-07-30 19:02 UTC
+(22:02 Asia/Kuwait).
 
 The first log review found:
 
