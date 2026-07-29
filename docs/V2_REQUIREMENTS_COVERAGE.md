@@ -160,13 +160,13 @@ evidence also passes.
 | Requirement | Status | Evidence |
 |---|---|---|
 | All named V2 core entities | Proven locally and in production data | foundation migration and production schema |
-| RLS/admin/customer permissions | Proven locally; post-migration probes pending | security scan `95a2265c-60b9-48bd-ab3c-7ae4c02d00dc`; corrective commit `48978150`; 88/88 focused authorization tests; PostgreSQL 16 policy/function rehearsal |
-| Public catalog excludes reusable paid content | Proven locally; post-migration query pending | private version-content migration |
+| RLS/admin/customer permissions | Proven locally and deployed | security scan `95a2265c-60b9-48bd-ab3c-7ae4c02d00dc`; corrective commit `48978150`; 88/88 focused authorization tests; PostgreSQL 16 policy/function rehearsal; production migration/probes |
+| Public catalog excludes reusable paid content | Proven locally and deployed | private version-content migration and production probes |
 | Service-only tables fail closed | Proven in production data | RLS/no-policy tables documented in advisor triage |
 | Legacy lifetime and collection rights preserved | Proven in production data | one `v2_legacy_migration_executed` activity event; entitlement/credit rows exist |
 | PayPal conversion policy and 30,000-fils cap | Proven locally and migrated | deterministic 307.55 fils/USD policy and legacy executor |
-| Historical records remain intact | Proven by migration design; final reconciliation pending | additive entitlement/credit migration; no destructive transaction rewrite |
-| Migration totals reconcile | Pending final deployment reconciliation | rerun before/after counts and hashes after the remaining migrations |
+| Historical records remain intact | Proven by migration design and reconciliation | additive entitlement/credit migration; no destructive transaction rewrite |
+| Migration totals reconcile | Proven after controlled deployment | 247 Auth users/profiles; 0 profile/role gaps; 3 orders; 11 payment events; 117 entitlements; 57 lifetime-credit entries |
 
 Production aggregate snapshot at audit time:
 
@@ -184,16 +184,17 @@ snapshot, not launch acceptance by themselves.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 929 tests, and production build passed |
+| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 948 tests, and production build passed |
 | Formal V2 security diff review | Proven locally | 85/85 changed files reviewed; both findings fixed in `48978150`; focused and real-database authorization checks passed |
 | Fresh dependency/security review | Proven locally | `docs/security/DEPENDENCY_RISK_REGISTER.md` |
 | Supabase advisor triage | Proven for current production state | `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md` |
-| Desktop/mobile English/Arabic rendered QA | Pending rendered QA | required matrix in `docs/V2_RELEASE_READINESS.md` |
-| Anonymous/customer/admin/insufficient-role QA | Pending rendered QA | required matrix in release readiness |
-| UPayments success/failure/cancel/retry/mismatch/refund | Pending final sandbox matrix | required before unlock |
-| Cloudmersive clean/malicious/unavailable | Pending final provider matrix | required before unlock |
+| Desktop/mobile English/Arabic rendered QA | Proven against locked Lovable preview | route sweep and mobile/RTL evidence in `docs/V2_CONTROLLED_DEPLOYMENT_REPORT_2026-07-29.md` |
+| Anonymous/customer/admin/insufficient-role QA | Proven through rendered and contract checks | controlled deployment report and authorization suites |
+| UPayments success/failure/cancel/retry/mismatch/refund | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
+| Cloudmersive clean/malicious/unavailable | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
 | Core Web Vitals targets | Pending deployed measurement | p75 LCP <2.5s, INP <200ms, CLS <0.1 |
-| Backup, rollback, monitoring, owners | Pending controlled deployment | release readiness checklist |
+| Backup and rollback evidence | Proven in controlled deployment | restricted pre-deployment backup and deployment report |
+| Stability monitoring and named owners | Pending 24-hour close-out | `docs/V2_STABILITY_AND_OPERATIONS_2026-07-29.md` |
 | Separate launch approval | Not authorized | required before `PUBLIC_LAUNCH_LOCK=false` |
 
 ## Deferred by locked scope
@@ -204,14 +205,10 @@ snapshot, not launch acceptance by themselves.
 
 ## Remaining critical path
 
-1. Commit only the reviewed V2 closeout files.
-2. Obtain explicit approval for the controlled deployment pass.
-3. Capture the production restore point and reconciliation baseline.
-4. Sync the exact frontend commit to Lovable.
-5. Apply the four pending migrations in timestamp order.
-6. Deploy and fetch-verify the reviewed Edge Function bundle.
-7. Run the complete role/payment/refund/download/scan matrix.
-8. Run desktop/mobile English/Arabic rendered QA in the Lovable preview.
-9. Keep Coming Soon enabled through the stability window.
-10. Perform a final evidence audit.
-11. Request a separate approval to unlock and publish.
+1. Keep Coming Soon enabled through the 24-hour stability window.
+2. Confirm the named monitoring, support, rollback-decision, and technical
+   rollback owners.
+3. Run the close-out log, reconciliation, dependency, advisor, and canonical
+   build/test checks.
+4. Perform the final evidence audit.
+5. Request a separate approval to unlock and publish.

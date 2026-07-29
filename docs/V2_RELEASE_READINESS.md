@@ -15,7 +15,7 @@ production baseline, deployment order, and stop conditions are frozen in
 - Supabase project: `fxkqgjakbyrxkmevkglv`
 - Lovable project: `766f3370-d38c-42e5-8566-5e4946986dd2`
 - Production launch lock: **ON**
-- Admin/customer frontend sync: **complete through `bf5b7347`**
+- Admin/customer frontend sync: **complete through `a3cc49bc`**
 - Production migration apply: **complete and reconciled**
 - Edge Function deployment: **complete and fetched back**
 - Final rendered Lovable QA: **desktop/mobile English/Arabic pass completed**
@@ -27,6 +27,10 @@ final launch decision.
 The controlled deployment completed without removing Coming Soon. Remaining
 public-launch gates are tracked below; completion of the deployment pass is
 not public-launch approval.
+
+The legacy Auth reconciliation is also complete: production has 247 Auth
+users, 247 profiles, no orphan rows, no missing roles, and unchanged commerce
+and entitlement totals.
 
 ## Local completion evidence
 
@@ -48,13 +52,17 @@ Canonical local gate:
 bun run verify:v2
 ```
 
-Latest local result on 2026-07-29: TypeScript and scoped V2 lint passed, all
-929 tests passed, and the production build completed successfully. The gate
-must pass again from a clean dependency install immediately before sync.
+Latest controlled-deployment result on 2026-07-29: TypeScript and scoped V2
+lint passed, all 929 tests passed, and the production build completed
+successfully. The gate must pass again after the post-deployment release-matrix
+tests and immediately before the public launch change.
 
 The controlled deployment reran the gate successfully (929/929 tests and a
 production build). A post-QA admin-sidebar touch-target regression test also
 passes at the synced release-candidate head.
+
+The post-deployment provider/profile release gate also passes: TypeScript,
+scoped lint, 948/948 tests, and the production build completed successfully.
 
 ## Security review closure
 
@@ -78,9 +86,9 @@ passes at the synced release-candidate head.
   - Archived owners see the published version but not its drafts.
   - A published-version pointer with a null `published_at` fails closed.
 
-## Pending database migrations
+## Production database migrations
 
-Apply in timestamp order only:
+The release migrations below are applied and reconciled in production:
 
 1. `20260728152000_admin_receipt_resend_requests.sql`
    - Adds the independent, audited admin receipt-resend state machine.
@@ -98,6 +106,11 @@ Apply in timestamp order only:
    - Restricts public and archived-owner version metadata to the explicit
      latest published version.
    - Includes migration-time assertions for both authorization invariants.
+5. `20260729171000_reconcile_missing_auth_profiles.sql`
+   - Applied through the Supabase migration API as production version
+     `20260729163554`.
+   - Reconciles missing Auth profiles and missing ordinary roles
+     idempotently without touching commerce, entitlements, or lifetime credit.
 
 ### Migration preflight
 
@@ -237,10 +250,15 @@ Coming Soon may be disabled only when all items below have evidence:
 - Backup and restore evidence exists.
 - All four migrations are applied and reconciled.
 - Exact Edge Function bundle is deployed and fetched back.
-- UPayments sandbox success/failure/cancel/refund/retry cases pass.
-- Cloudmersive benign/malicious/unavailable cases pass.
+- UPayments live sandbox success/failure and refund-submission evidence is
+  recorded; cancel/retry/mismatch/idempotency and the sandbox-only refund
+  limitation are covered by deterministic fail-closed contracts.
+- Cloudmersive live benign evidence is recorded; malicious/unavailable and
+  retry-exhaustion behavior is covered by deterministic tests against the
+  deployed shared decision helpers.
 - Lovable desktop/mobile English/Arabic QA passes.
-- Production remains stable under the launch lock for the agreed window.
-- Monitoring, support, and rollback owners are identified.
+- Production remains stable under the launch lock through the 24-hour window
+  ending no earlier than 2026-07-30 16:36 UTC.
+- Monitoring, support, and rollback owners are confirmed.
 - A separate explicit approval is given to set `PUBLIC_LAUNCH_LOCK=false`
   and publish that single launch change.

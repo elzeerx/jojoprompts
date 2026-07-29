@@ -8,23 +8,32 @@ launch approval.
 
 Release-candidate source:
 
-- Git/Lovable head: `bf5b73473b204657b21109adb81d32db7c488c48`
+- Controlled-deployment head: `54db8e18`
+- Post-deployment Auth reconciliation head synced to Lovable: `a3cc49bc`
 - Production launch lock: `PUBLIC_LAUNCH_LOCK = true`
 - Production HTML: `JojoPrompts — Coming soon`, `noindex,nofollow`
 
 ## Applied database migrations
 
-The four reviewed migrations were applied in order and recorded in production:
+The four reviewed release migrations were applied in order and recorded in
+production:
 
 1. `20260728152000_admin_receipt_resend_requests`
 2. `20260728185445_secure_versioned_resource_content`
 3. `20260728214500_fix_active_v2_rpc_schema_drift`
 4. `20260729163600_close_v2_security_review_findings`
 
+The post-deployment Auth reconciliation was then applied as the reviewed,
+idempotent migration `reconcile_missing_auth_profiles`, recorded in production
+as version `20260729163554`. It inserted only missing profile rows, preserved
+existing roles, granted the ordinary `user` role only where no role existed,
+and did not touch commerce or entitlements.
+
 Post-migration reconciliation:
 
 - Auth users: 247
-- Profiles: 243
+- Profiles: 247
+- Auth without profile / profile without Auth / profile without role: 0 / 0 / 0
 - Resources / published resources: 66 / 65
 - Resource versions / files: 66 / 1
 - Products: 66
@@ -35,7 +44,9 @@ Post-migration reconciliation:
 - Lifetime credit: 57 entries / 1,138,170 net fils
 - Package scans: 1 total / 1 clean
 
-The financial and catalog totals match the pre-deployment baseline.
+The financial and catalog totals match the pre-deployment baseline. The Auth
+reconciliation left orders (3), payment events (11), entitlements (117), and
+lifetime-credit entries (57) unchanged.
 
 ## Edge Functions
 
@@ -71,8 +82,12 @@ Local verification:
 
 - TypeScript: pass
 - Scoped V2/admin lint: pass
-- Tests: 929 pass / 0 fail
+- Tests: 929 pass / 0 fail at controlled deployment
+- Post-deployment release gate: 948 tests pass / 0 fail
 - Production build: pass
+
+The canonical full gate passed after the release-matrix tests and evidence
+documents were added.
 
 ## Security and advisor refresh
 
@@ -85,6 +100,54 @@ Local verification:
   from the new release-table indexes/foreign keys.
 
 See `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md` for the disposition.
+
+## Provider release matrix
+
+Provider evidence is closed using the strongest safe evidence each sandbox can
+produce:
+
+- UPayments live sandbox: one captured 0.900 KWD payment, failed payment
+  attempts, status recovery, and a real refund submission.
+- UPayments refund limitation: the sandbox returned HTTP 422 with
+  `work_in_production_only`. The application recorded a failed refund attempt
+  without revoking ownership or lifetime credit. A processed sandbox refund is
+  impossible by provider contract.
+- UPayments deterministic gate: exact status allowlists, cancelled-state
+  handling, provider re-verification, amount/currency/identifier mismatch
+  rejection, deterministic event IDs, database uniqueness, and non-mutating
+  pending/unknown refund behavior are part of the canonical Bun suite.
+- Cloudmersive live sandbox: the uploaded benign package completed with a clean
+  scan.
+- Cloudmersive deterministic gate: malicious/EICAR-equivalent responses,
+  contradictory provider signals, blocked risks, malformed responses,
+  unavailable/transient HTTP states, missing secrets, retry exhaustion, and
+  aggregate publication blocking are part of the canonical Bun suite.
+
+We did not deliberately upload malware to production storage or induce a real
+provider outage. Those scenarios are covered by dependency-free fail-closed
+tests against the same shared decision helpers used by the deployed worker.
+See `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md`.
+
+## Initial stability observation
+
+The 24-hour production-locked stability window starts from the reconciled
+Lovable head at 2026-07-29 16:36 UTC (19:36 Asia/Kuwait) and ends no earlier
+than 2026-07-30 16:36 UTC.
+
+The first log review found:
+
+- Edge Functions: 100 sampled events, 0 responses at 5xx; the observed 4xx/410
+  responses were expected negative/retirement probes.
+- Auth and Storage: 0 error-severity events in the returned samples.
+- Postgres: no error-severity event after 2026-07-29 16:25:03 UTC. Earlier
+  errors map to controlled schema/permission/enum probes and predate the
+  reconciled Lovable head.
+- Current integrity: 247 Auth users, 247 profiles, zero profile/role gaps,
+  3 orders, 11 payment events, 117 entitlements, 57 lifetime-credit entries,
+  and 1 package scan.
+
+The close-out check and owner confirmation are tracked in
+`docs/V2_STABILITY_AND_OPERATIONS_2026-07-29.md`.
 
 ## Backup and rollback evidence
 
@@ -103,19 +166,11 @@ catastrophic rollback.
 Do not remove Coming Soon until all of the following are resolved or explicitly
 accepted:
 
-1. Reconcile four older, confirmed Auth users that have no matching
-   `public.profiles` row. No existing profile is orphaned and none of the four
-   accounts currently has a V2 entitlement.
-2. Reconfirm the dependency audit immediately before launch and check for a
+1. Reconfirm the dependency audit immediately before launch and check for a
    stable patched React Router release; keep the documented non-RSC exception
    if none exists.
-3. Complete the agreed production-locked stability window and assign named
+2. Complete the 24-hour production-locked stability window and confirm named
    monitoring, support, and rollback owners.
-4. Record final live-provider evidence for the agreed UPayments
-   success/failure/cancel/retry/refund matrix and Cloudmersive
-   benign/malicious/unavailable matrix, or explicitly accept the tested
-   fail-closed coverage where a sandbox cannot produce a provider-success
-   state.
-5. Obtain a separate explicit approval for the single launch-lock change.
+3. Obtain a separate explicit approval for the single launch-lock change.
 
 No public launch action was performed in this deployment pass.
