@@ -53,7 +53,7 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
       {/* Card link — no nested interactive markup inside. Overlays are siblings. */}
       <Link
         to={`/resources/${r.slug}`}
-        className="block overflow-hidden rounded-2xl border border-border/60 bg-muted focus-visible:ring-2 focus-visible:ring-warm-gold"
+        className="relative block overflow-hidden rounded-2xl border border-border/60 bg-muted focus-visible:ring-2 focus-visible:ring-warm-gold"
         aria-label={title ?? undefined}
       >
         <div className={`${heroAspect} w-full bg-gradient-to-br from-muted to-muted/50`}>
