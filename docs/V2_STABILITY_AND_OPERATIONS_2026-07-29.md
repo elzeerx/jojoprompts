@@ -2,26 +2,35 @@
 
 ## Locked window
 
-- Start: 2026-07-29 17:06 UTC / 20:06 Asia/Kuwait.
-- Earliest close: 2026-07-30 17:06 UTC / 20:06 Asia/Kuwait.
+- Start: 2026-07-29 17:29 UTC / 20:29 Asia/Kuwait.
+- Earliest close: 2026-07-30 17:29 UTC / 20:29 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
-- Lovable baseline: `797fc7cf`.
+- Lovable baseline: `ee2edd2d`.
 
 Any runtime source, migration, Edge Function, payment configuration, scanner
 configuration, or launch-lock change restarts the window. Documentation and
 test-only commits that do not alter the production bundle do not restart it.
 
-The previous window that began at 16:36 UTC was superseded by the reviewed
-Explore performance and mobile-card runtime change. Lovable reported the new
-head ready at 2026-07-29 17:06:17 UTC, so the full 24-hour clock restarted.
+The previous window that began at 17:06 UTC was superseded by the reviewed
+privacy-safe field-performance monitoring runtime, database, and Edge Function
+change. Lovable reported `ee2edd2d` ready at 2026-07-29 17:25:54 UTC; the
+conservative full 24-hour clock starts after controlled rendered and production
+lock verification completed at 17:29 UTC.
 
 ## Initial observation
 
-- Lovable reports project ready at `797fc7cf`.
+- Lovable reports project ready at `ee2edd2d`.
+- The identity-free `v2-web-vitals` endpoint accepted a preview-only
+  LCP/INP/CLS batch, derived environment/device/rating correctly, rejected a
+  spoofed origin with 403, rejected a query-bearing path with 400, and the
+  three synthetic samples were removed.
+- The Admin Overview Core Web Vitals panel passed desktop and 390x844 mobile
+  QA, has no horizontal overflow, and returns an honest “Collecting data”
+  state below 75 samples. Production and preview data are separated.
 - Synced desktop and 390x844 mobile Explore smoke checks passed in Arabic RTL,
   including catalog hydration and quick preview, with no console warnings or
   errors.
-- The canonical local gate passes: typecheck, scoped lint, 950/950 tests, and
+- The canonical local gate passes: typecheck, scoped lint, 961/961 tests, and
   production build.
 - Performance evidence and the remaining field-data limitation are recorded in
   `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md`.
@@ -47,7 +56,9 @@ At or after the earliest close:
 6. Re-run `bun run verify:v2`.
 7. Re-run production and full dependency audits.
 8. Re-run Supabase security/performance advisors and diff the baseline.
-9. Record the final monitoring, support, and rollback owners below.
+9. Confirm the field-performance endpoint, admin aggregation RPC, retention,
+   and production/preview separation remain healthy.
+10. Record the final monitoring, support, and rollback owners below.
 
 ## Owner confirmation
 

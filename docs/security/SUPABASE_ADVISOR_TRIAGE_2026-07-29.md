@@ -190,7 +190,7 @@ Refreshed after the controlled V2 deployment on 2026-07-29.
 
 Security advisors:
 
-- 183 total: 178 warnings, 5 informational, 0 errors.
+- 184 total: 179 warnings, 5 informational, 0 errors.
 - The four-finding increase is fully explained by the reviewed release
   migrations:
   - Informational: `private.resource_version_contents` and
@@ -207,16 +207,27 @@ Security advisors:
     probes failed closed.
 - Anonymous catalog visibility, anonymous executable helper count, and the
   `pg_net` disposition are unchanged.
+- The field-monitoring addition contributes one authenticated-executable
+  `SECURITY DEFINER` warning for `get_admin_v2_web_vitals(integer,text)`.
+  Execute is revoked from anonymous users; authenticated callers still must
+  pass the internal `has_role(auth.uid(), 'admin')` check. Direct
+  anonymous/authenticated table grants are revoked, and the sample table has
+  an explicit restrictive deny policy. The telemetry table has no remaining
+  security-advisor notice.
 
 Performance advisors:
 
-- 376 total: 284 warnings and 92 informational.
+- 377 total: 284 warnings and 93 informational.
 - Warning count is unchanged.
 - The eight informational additions are five unindexed-foreign-key notices
   and three unused-index notices introduced by the new release tables.
   Immediately dropping or adding indexes without production workload evidence
   would add more release risk than it removes; retain the existing
   post-stability performance disposition.
+- The single additional informational notice is the new
+  `web_vital_samples_dashboard_idx` being unused before public traffic exists.
+  It directly supports the environment/metric/device/time p75 query and should
+  be retained through the launch ramp.
 
 Post-deployment authorization and integrity probes confirmed:
 

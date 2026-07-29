@@ -20,8 +20,9 @@ preview was separately checked after sync on desktop and at 390x844.
 - Anchor the visual-card title/price gradient to the image link so it no longer
   overlaps the version, update-date, and trust footer on mobile.
 
-The final runtime change is commit `797fc7cf`, synced by Lovable at
-2026-07-29 17:06:17 UTC.
+The Explore optimization is commit `797fc7cf`, synced by Lovable at
+2026-07-29 17:06:17 UTC. Privacy-safe field monitoring was added in
+`ee2edd2d`, which Lovable reported ready at 2026-07-29 17:25:54 UTC.
 
 ## Lab comparison
 
@@ -47,8 +48,28 @@ mobile lab LCP below 2.5 seconds.
 
 The locked target remains field p75 LCP `<2.5s`, INP `<200ms`, and CLS `<0.1`.
 Because the public site is intentionally locked, production field data for V2
-does not exist yet. At launch, enable real-user monitoring for the public V2
-routes and treat an out-of-target p75 trend as a ramp stop/rollback condition.
+does not exist yet. Real-user monitoring is now deployed and will begin
+collecting production samples automatically only after the launch lock is
+removed. Treat an out-of-target p75 trend as a ramp stop/rollback condition.
+
+## Field monitoring implementation
+
+- Lazily loads the official `web-vitals` library after rendering.
+- Collects only LCP, INP, CLS, pathname without query/fragment, device class,
+  navigation type, and a navigation-scoped deduplication identifier.
+- Does not retain account identity, email, IP address, user agent, cookie,
+  query string, or DOM attribution.
+- Separates production, private preview, and development samples.
+- Stores samples behind RLS, revoked browser grants, and an explicit
+  restrictive deny policy; ingestion is service-role-only.
+- Retains anonymous samples for no longer than 90 days.
+- Shows p75 by mobile/desktop in Admin Overview and does not grade a result
+  until at least 75 samples exist for the metric/device pair.
+- Canonical targets remain LCP ≤2,500ms, INP ≤200ms, and CLS ≤0.100.
+
+The deployed endpoint accepted a controlled three-metric preview batch,
+rejected a spoofed origin and a query-bearing route, and the synthetic rows
+were removed after verification.
 
 ## Rendered QA
 
@@ -60,3 +81,8 @@ After Lovable synced `797fc7cf`, `/explore` was checked on desktop and 390x844:
 - Quick preview opened the selected resource without navigation.
 - Visual-card metadata no longer overlaps the title/price gradient.
 - No browser console warnings or errors were returned.
+
+After Lovable synced `ee2edd2d`, Admin Overview was checked on desktop and
+390x844. The Core Web Vitals panel, production/preview control, responsive
+cards, zero-sample honesty, and no-horizontal-overflow contract passed with no
+browser warnings or errors. Production `/explore` still rendered Coming Soon.

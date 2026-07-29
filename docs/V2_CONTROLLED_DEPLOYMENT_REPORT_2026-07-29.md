@@ -11,6 +11,7 @@ Release-candidate source:
 - Controlled-deployment head: `54db8e18`
 - Post-deployment Auth reconciliation head synced to Lovable: `a3cc49bc`
 - Performance/mobile-card runtime head synced to Lovable: `797fc7cf`
+- Field-performance monitoring head synced to Lovable: `ee2edd2d`
 - Production launch lock: `PUBLIC_LAUNCH_LOCK = true`
 - Production HTML: `JojoPrompts — Coming soon`, `noindex,nofollow`
 
@@ -29,6 +30,17 @@ idempotent migration `reconcile_missing_auth_profiles`, recorded in production
 as version `20260729163554`. It inserted only missing profile rows, preserved
 existing roles, granted the ordinary `user` role only where no role existed,
 and did not touch commerce or entitlements.
+
+Two additive field-performance migrations were then applied after the fifth,
+Auth-reconciliation migration:
+
+- `v2_web_vitals_rum`
+- `v2_web_vitals_explicit_deny_policy`
+
+They add an identity-free Core Web Vitals sample store, admin-only p75
+aggregation, 90-day retention, revoked browser grants, RLS, and an explicit
+restrictive deny policy. They do not change accounts, catalog, orders,
+payments, refunds, entitlements, or lifetime credit.
 
 Post-migration reconciliation:
 
@@ -57,6 +69,7 @@ Reviewed changed functions were deployed and fetched back byte-for-byte:
 - `admin-bulk-confirm-users`
 - `enhance-prompt`
 - `magic-login`
+- `v2-web-vitals`
 
 Unchanged checkout, status, webhook, refund, receipt, download, upload, and
 scan functions were contract-probed without unnecessary redeployment.
@@ -78,13 +91,16 @@ Validated against the locked Lovable preview:
   admin-sidebar target discovered during QA was corrected and locked by a
   regression test at the release-candidate head.
 - No browser console errors were observed during the route sweep.
+- The Core Web Vitals admin panel passed desktop and 390x844 responsive QA,
+  including production/preview separation and honest insufficient-sample
+  states.
 
 Local verification:
 
 - TypeScript: pass
 - Scoped V2/admin lint: pass
 - Tests: 929 pass / 0 fail at controlled deployment
-- Final performance release gate: 950 tests pass / 0 fail
+- Final performance and field-monitoring release gate: 961 tests pass / 0 fail
 - Production build: pass
 
 The canonical full gate passed after the release-matrix tests and evidence
@@ -112,10 +128,18 @@ Lovable reported `797fc7cf` ready at 2026-07-29 17:06:17 UTC. The synced
 desktop and 390x844 mobile Explore route then passed Arabic RTL, catalog,
 quick-preview, card-legibility, and console-health checks.
 
+Privacy-safe field monitoring was then deployed in `ee2edd2d`, which Lovable
+reported ready at 2026-07-29 17:25:54 UTC. The endpoint accepted a controlled
+preview-only LCP/INP/CLS batch, derived ratings/device/environment correctly,
+rejected a spoofed origin with 403, rejected a query-bearing route with 400,
+and the three synthetic samples were removed. Admin Overview passed desktop
+and 390x844 QA with no horizontal overflow or console errors. Production
+`/explore` continued to render Coming Soon.
+
 ## Security and advisor refresh
 
-- Security: 183 total, 178 warnings, 5 informational, 0 errors.
-- Performance: 376 total, 284 warnings, 92 informational.
+- Security: 184 total, 179 warnings, 5 informational, 0 errors.
+- Performance: 377 total, 284 warnings, 93 informational.
 - New security notices are the reviewed fail-closed private/receipt stores,
   scoped receipt-request visibility, and the principal-bound entitlement
   content RPC.
@@ -154,9 +178,11 @@ See `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md`.
 ## Initial stability observation
 
 The reviewed performance/mobile-card runtime commit restarted the 24-hour
-production-locked stability window. It starts from Lovable head `797fc7cf` at
-2026-07-29 17:06 UTC (20:06 Asia/Kuwait) and ends no earlier than
-2026-07-30 17:06 UTC.
+production-locked stability window, then the field-monitoring runtime,
+migrations, and Edge Function restarted it again. The current conservative
+window starts from Lovable head `ee2edd2d` after controlled QA at
+2026-07-29 17:29 UTC (20:29 Asia/Kuwait) and ends no earlier than
+2026-07-30 17:29 UTC.
 
 The first log review found:
 
@@ -195,8 +221,8 @@ accepted:
    if none exists.
 2. Complete the 24-hour production-locked stability window and confirm named
    monitoring, support, and rollback owners.
-3. Enable field Core Web Vitals monitoring for the launch ramp and stop/rollback
-   if p75 LCP, INP, or CLS remains outside the locked targets.
+3. Use the deployed field Core Web Vitals monitoring for the launch ramp and
+   stop/rollback if p75 LCP, INP, or CLS remains outside the locked targets.
 4. Obtain a separate explicit approval for the single launch-lock change.
 
 No public launch action was performed in this deployment pass.
