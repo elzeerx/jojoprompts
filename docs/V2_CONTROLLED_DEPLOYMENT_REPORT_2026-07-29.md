@@ -196,12 +196,14 @@ than 2026-07-30 17:39 UTC.
 
 The first log review found:
 
-- Edge Functions: 100 sampled events, 0 responses at 5xx; the observed 4xx/410
-  responses were expected negative/retirement probes.
+- Edge Functions: 91 returned events, 0 responses at 5xx.
 - Auth and Storage: 0 error-severity events in the returned samples.
-- Postgres: no error-severity event after 2026-07-29 16:25:03 UTC. Earlier
-  errors map to controlled schema/permission/enum probes and predate the
-  reconciled Lovable head.
+- Postgres: two recent fail-closed `security_logs` permission denials. The
+  table intentionally has no anonymous grant, its authenticated admin read is
+  RLS-protected, and the synced Security Events page subsequently loaded
+  successfully without exposing unauthorized data. Recurrence remains a
+  stability close-out watch item. Earlier schema/permission/enum errors map to
+  controlled negative probes.
 - Current integrity: 247 Auth users, 247 profiles, zero profile/role gaps,
   3 orders, 11 payment events, 117 entitlements, 57 lifetime-credit entries,
   and 1 package scan.

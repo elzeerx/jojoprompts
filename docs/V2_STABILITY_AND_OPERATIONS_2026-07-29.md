@@ -37,11 +37,20 @@ desktop/mobile confirmation QA and production lock verification completed at
   production build.
 - Performance evidence and the remaining field-data limitation are recorded in
   `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md`.
-- Edge Function sample: 100 events; no 5xx responses.
-- Auth and Storage samples: no error-severity events.
-- Postgres sample: no error-severity event after 2026-07-29 16:25:03 UTC.
-  Earlier entries correspond to controlled negative probes and predate the
-  reconciled Lovable baseline.
+- Post-activation samples: Edge Functions had 91 returned events with no 5xx;
+  Auth and Storage had no error-severity events.
+- Postgres contained two fail-closed `permission denied for table
+  security_logs` entries at 17:28:39 and 17:37:46 UTC. The table has no
+  anonymous grant, the authenticated admin grant remains RLS-protected, the
+  synced Security Events page subsequently loaded successfully, and no
+  unauthorized data was returned. Treat recurrence as a close-out
+  investigation item rather than weakening the table boundary.
+- Earlier schema, enum, and permission errors correspond to controlled
+  negative probes and predate the receipt-activation baseline.
+- Dependency refresh: production audit remains one non-reachable RSC-only
+  React Router advisory represented by two high package nodes; full audit
+  remains 0 critical, 9 high, 3 moderate, and 1 low. No stable patched router
+  release exists, and the source still contains no RSC/server/action path.
 - Database integrity: 247 Auth users, 247 profiles, no missing/orphan
   profile/role rows, 3 orders, 11 payment events, 117 entitlements, 57
   lifetime-credit entries, and 1 package scan.
