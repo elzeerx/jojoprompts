@@ -6,6 +6,11 @@ The approved controlled V2 deployment pass completed while the production
 launch lock remained enabled. This report is deployment evidence, not public
 launch approval.
 
+The project owner reconfirmed approval for the controlled V2 deployment pass
+in the Codex task on 2026-07-29. That approval covers the locked deployment and
+verification work recorded here; it does not authorize changing
+`PUBLIC_LAUNCH_LOCK`.
+
 Release-candidate source:
 
 - Controlled-deployment head: `54db8e18`
@@ -196,14 +201,15 @@ than 2026-07-30 17:39 UTC.
 
 The first log review found:
 
-- Edge Functions: 91 returned events, 0 responses at 5xx.
+- Edge Functions: 92 returned events, 0 responses at 5xx.
 - Auth and Storage: 0 error-severity events in the returned samples.
-- Postgres: two recent fail-closed `security_logs` permission denials. The
+- Postgres: three recent fail-closed `security_logs` permission denials. The
   table intentionally has no anonymous grant, its authenticated admin read is
   RLS-protected, and the synced Security Events page subsequently loaded
-  successfully without exposing unauthorized data. Recurrence remains a
-  stability close-out watch item. Earlier schema/permission/enum errors map to
-  controlled negative probes.
+  successfully without exposing unauthorized data. Controlled `/admin` and
+  Security Events reloads produced no further database error. Recurrence
+  remains a stability close-out watch item. Earlier schema/permission/enum
+  errors map to controlled negative probes.
 - Current integrity: 247 Auth users, 247 profiles, zero profile/role gaps,
   3 orders, 11 payment events, 117 entitlements, 57 lifetime-credit entries,
   and 1 package scan.
@@ -233,8 +239,12 @@ accepted:
    if none exists.
 2. Complete the 24-hour production-locked stability window and confirm named
    monitoring, support, and rollback owners.
-3. Use the deployed field Core Web Vitals monitoring for the launch ramp and
+3. Record owner/legal acceptance of the bilingual Terms, Privacy, refund,
+   lifetime-credit, and standard Jojo license wording.
+4. Record final zoom, reduced-motion, and assistive-technology acceptance in
+   addition to the completed responsive, landmark, label, and touch-target QA.
+5. Use the deployed field Core Web Vitals monitoring for the launch ramp and
    stop/rollback if p75 LCP, INP, or CLS remains outside the locked targets.
-4. Obtain a separate explicit approval for the single launch-lock change.
+6. Obtain a separate explicit approval for the single launch-lock change.
 
 No public launch action was performed in this deployment pass.

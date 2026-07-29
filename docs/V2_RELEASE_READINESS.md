@@ -23,6 +23,8 @@ production baseline, deployment order, and stop conditions are frozen in
 - Edge Function deployment: **complete and fetched back**
 - Final rendered Lovable QA: **desktop/mobile English/Arabic pass completed;
   post-performance Explore smoke pass completed**
+- Controlled deployment approval: **received in the Codex task on 2026-07-29;
+  this is not public-launch approval**
 
 `PUBLIC_LAUNCH_LOCK` must remain `true` through migration, function, frontend,
 and production-locked smoke verification. Disabling Coming Soon is a separate
@@ -275,6 +277,10 @@ Coming Soon may be disabled only when all items below have evidence:
   retry-exhaustion behavior is covered by deterministic tests against the
   deployed shared decision helpers.
 - Lovable desktop/mobile English/Arabic QA passes.
+- Keyboard/focus/landmark checks pass and the final zoom, reduced-motion, and
+  assistive-technology acceptance is recorded.
+- The bilingual Terms, Privacy, refund, lifetime-credit, and standard Jojo
+  license wording receives the required owner/legal acceptance.
 - Production remains stable under the launch lock through the restarted
   24-hour window ending no earlier than 2026-07-30 17:39 UTC.
 - Field p75 LCP, INP, and CLS monitoring is enabled for the launch ramp, with

@@ -37,13 +37,15 @@ desktop/mobile confirmation QA and production lock verification completed at
   production build.
 - Performance evidence and the remaining field-data limitation are recorded in
   `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md`.
-- Post-activation samples: Edge Functions had 91 returned events with no 5xx;
+- Post-activation samples: Edge Functions had 92 returned events with no 5xx;
   Auth and Storage had no error-severity events.
-- Postgres contained two fail-closed `permission denied for table
-  security_logs` entries at 17:28:39 and 17:37:46 UTC. The table has no
+- Postgres contained three fail-closed `permission denied for table
+  security_logs` entries at 17:28:39, 17:37:46, and 17:55:45 UTC. The table has no
   anonymous grant, the authenticated admin grant remains RLS-protected, the
   synced Security Events page subsequently loaded successfully, and no
-  unauthorized data was returned. Treat recurrence as a close-out
+  unauthorized data was returned. A controlled `/admin` reload at 18:00:36 UTC
+  and a direct authorized Security Events load at 18:03:53 UTC did not produce
+  another database error. Treat any further recurrence as a close-out
   investigation item rather than weakening the table boundary.
 - Earlier schema, enum, and permission errors correspond to controlled
   negative probes and predate the receipt-activation baseline.

@@ -12,6 +12,9 @@ versions, reconciliation evidence, and rollback posture. It does **not**
 authorize public launch. `PUBLIC_LAUNCH_LOCK=true`, Coming Soon, and
 `noindex,nofollow` remain mandatory until a separate launch approval.
 
+The project owner reconfirmed the controlled-pass approval in the Codex task
+on 2026-07-29. That approval does not cover the launch-lock change.
+
 ## Release source
 
 - Executable release head: `082505f23767ba310fef573508cb0eabe0eb0900`
@@ -162,6 +165,10 @@ Do not authorize public launch if any of the following remains:
 - A new unexplained 5xx, repeated database error, entitlement drift, or payment
   reconciliation error remains open.
 - Dependency/advisor review reveals an unaccepted critical or high risk.
+- Required owner/legal acceptance of the bilingual legal and standard-license
+  wording is not recorded.
+- Final zoom, reduced-motion, and assistive-technology acceptance is not
+  recorded.
 - Monitoring, support, rollback-decision, or rollback-executor ownership is
   unconfirmed.
 - Production Coming Soon or `PUBLIC_LAUNCH_LOCK=true` changes before the

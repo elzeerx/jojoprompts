@@ -27,6 +27,7 @@ evidence also passes.
 | Database schema | Proven after controlled deployment | Seven release/reconciliation/telemetry migrations applied and totals reconciled |
 | Edge Function bundle | Proven after controlled deployment | Five changed functions deployed; unchanged V2 targets contract-probed |
 | Admin/customer rendered behavior | Proven against locked preview | Desktop/mobile English/Arabic route sweeps, post-performance Explore smoke, and responsive Core Web Vitals panel QA |
+| Controlled deployment approval | Approved | Project owner approved the controlled pass in the Codex task on 2026-07-29; this does not authorize public launch |
 | Public release | Not authorized | Coming Soon remains enabled; unlock requires separate approval |
 
 ## 1. Locked scope and commercial model
@@ -192,6 +193,8 @@ snapshot, not launch acceptance by themselves.
 | Anonymous/customer/admin/insufficient-role QA | Proven through rendered and contract checks | controlled deployment report and authorization suites |
 | UPayments success/failure/cancel/retry/mismatch/refund | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
 | Cloudmersive clean/malicious/unavailable | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
+| Accessibility and assistive technology | Partial evidence; final acceptance pending | Semantic rendered snapshots expose named landmarks/controls and the admin skip link; touch-target, viewport, focus, RTL, and reduced-motion contracts pass; final zoom/reduced-motion/assistive-technology acceptance must be recorded |
+| Bilingual legal and standard Jojo license wording | Drafted and contract-tested; owner/legal acceptance pending | `TermsOfServicePage.tsx`, `PrivacyPolicyPage.tsx`, `FAQPage.tsx`, and public-info contracts |
 | Core Web Vitals targets | Monitoring deployed; production p75 pending launch traffic | Mobile lab: FCP 2.43s, LCP 4.81s, CLS 0.00014, TBT 10ms; privacy-safe RUM and admin p75 panel deployed; see `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md` |
 | Backup and rollback evidence | Proven in controlled deployment | restricted pre-deployment backup and deployment report |
 | Stability monitoring and named owners | Pending 24-hour close-out | `docs/V2_STABILITY_AND_OPERATIONS_2026-07-29.md` |
@@ -209,9 +212,12 @@ snapshot, not launch acceptance by themselves.
    ending no earlier than 2026-07-30 17:39 UTC.
 2. Confirm the named monitoring, support, rollback-decision, and technical
    rollback owners.
-3. Run the close-out log, reconciliation, dependency, advisor, and canonical
+3. Record owner/legal acceptance for the bilingual Terms, Privacy, refund,
+   lifetime-credit, and standard Jojo license wording.
+4. Record the final zoom, reduced-motion, and assistive-technology acceptance.
+5. Run the close-out log, reconciliation, dependency, advisor, and canonical
    build/test checks.
-4. Perform the final evidence audit.
-5. Use the deployed field Core Web Vitals monitoring during the launch ramp
+6. Perform the final evidence audit.
+7. Use the deployed field Core Web Vitals monitoring during the launch ramp
    and enforce the documented stop/rollback thresholds.
-6. Request a separate approval to unlock and publish.
+8. Request a separate approval to unlock and publish.
