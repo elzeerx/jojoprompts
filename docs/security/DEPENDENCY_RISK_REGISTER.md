@@ -4,6 +4,8 @@ Last reviewed: 2026-07-29
 
 ## Current audit state
 
+- Registry-backed audits were refreshed on 2026-07-29 after the final local
+  V2 verification. Counts and package paths were unchanged.
 - `npm audit --omit=dev`: 0 critical, 2 high package nodes, 0 moderate,
   0 low. Both nodes (`react-router` and direct `react-router-dom`) represent
   one underlying advisory, GHSA-qwww-vcr4-c8h2.
@@ -43,10 +45,11 @@ then reverted: 7.11.0 reintroduced multiple older advisories covering normal
 SPA navigation, open redirects/XSS, route-matching denial of service, SSR,
 and RSC code. Keeping 7.18.1 has the smaller and non-reachable exposure.
 
-The upstream patched React Router release is listed as 8.3.0, but
-`react-router-dom@8.3.0` was not published in the npm registry at review time.
-Do not force an unpublished, nightly, experimental, or git dependency into
-the release.
+The upstream patched React Router release is listed as 8.3.0. The npm registry
+currently reports `react-router-dom@7.18.2` as the latest stable release, and
+it remains inside the advisory's affected range. `react-router-dom@8.3.0` was
+not published at refresh time. Do not force an unpublished, nightly,
+experimental, or git dependency into the release.
 
 ## Development-only findings
 
