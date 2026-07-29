@@ -15,14 +15,18 @@ production baseline, deployment order, and stop conditions are frozen in
 - Supabase project: `fxkqgjakbyrxkmevkglv`
 - Lovable project: `766f3370-d38c-42e5-8566-5e4946986dd2`
 - Production launch lock: **ON**
-- Admin/customer frontend sync: **pending explicit approval**
-- Production migration apply: **pending explicit approval**
-- Edge Function deployment: **pending explicit approval**
-- Final rendered Lovable QA: **pending frontend sync**
+- Admin/customer frontend sync: **complete through `bf5b7347`**
+- Production migration apply: **complete and reconciled**
+- Edge Function deployment: **complete and fetched back**
+- Final rendered Lovable QA: **desktop/mobile English/Arabic pass completed**
 
 `PUBLIC_LAUNCH_LOCK` must remain `true` through migration, function, frontend,
 and production-locked smoke verification. Disabling Coming Soon is a separate
 final launch decision.
+
+The controlled deployment completed without removing Coming Soon. Remaining
+public-launch gates are tracked below; completion of the deployment pass is
+not public-launch approval.
 
 ## Local completion evidence
 
@@ -47,6 +51,10 @@ bun run verify:v2
 Latest local result on 2026-07-29: TypeScript and scoped V2 lint passed, all
 929 tests passed, and the production build completed successfully. The gate
 must pass again from a clean dependency install immediately before sync.
+
+The controlled deployment reran the gate successfully (929/929 tests and a
+production build). A post-QA admin-sidebar touch-target regression test also
+passes at the synced release-candidate head.
 
 ## Security review closure
 

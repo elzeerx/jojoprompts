@@ -183,3 +183,51 @@ After applying the pending migrations:
 5. Run anonymous/customer/admin negative-access probes.
 6. Document any new warning or changed disposition before disabling Coming
    Soon.
+
+## Post-deployment refresh
+
+Refreshed after the controlled V2 deployment on 2026-07-29.
+
+Security advisors:
+
+- 183 total: 178 warnings, 5 informational, 0 errors.
+- The four-finding increase is fully explained by the reviewed release
+  migrations:
+  - Informational: `private.resource_version_contents` and
+    `public.v2_order_receipt_resend_payloads` have RLS enabled with no policy.
+    Both are intentionally fail-closed service/private stores.
+  - Warning: `public.v2_order_receipt_resend_requests` is visible to the
+    authenticated API role. Its RLS policies restrict rows to the requesting
+    customer or an authorized admin; direct negative-access probes passed.
+  - Warning: the entitlement-checked
+    `v2_get_entitled_resource_content(uuid)` RPC is executable by authenticated
+    users. The function binds the actor to `auth.uid()`, requires a current
+    entitlement (or full admin preview), and explicitly denies legacy
+    `jadmin` bypasses. Anonymous, unentitled-customer, and unentitled-`jadmin`
+    probes failed closed.
+- Anonymous catalog visibility, anonymous executable helper count, and the
+  `pg_net` disposition are unchanged.
+
+Performance advisors:
+
+- 376 total: 284 warnings and 92 informational.
+- Warning count is unchanged.
+- The eight informational additions are five unindexed-foreign-key notices
+  and three unused-index notices introduced by the new release tables.
+  Immediately dropping or adding indexes without production workload evidence
+  would add more release risk than it removes; retain the existing
+  post-stability performance disposition.
+
+Post-deployment authorization and integrity probes confirmed:
+
+- No anonymous/authenticated direct read of private version content or receipt
+  payloads.
+- Public version metadata is pinned to the explicit latest published version.
+- No unauthorized customer/admin rows were returned by the reviewed V2
+  boundaries.
+- No orphaned commerce/resource rows, duplicate external payment events,
+  order-total mismatches, paid-allocation overflow, missing file integrity, or
+  published-version pointer mismatches were found.
+
+These advisor deltas are accepted for the locked release candidate. They do
+not authorize disabling Coming Soon.
