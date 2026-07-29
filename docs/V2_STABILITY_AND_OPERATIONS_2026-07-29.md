@@ -7,9 +7,9 @@
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
 - Lovable baseline: `a3cc49bc`.
 
-Any source, migration, Edge Function, payment configuration, scanner
-configuration, or launch-lock change restarts the window unless it is a
-document-only release record.
+Any runtime source, migration, Edge Function, payment configuration, scanner
+configuration, or launch-lock change restarts the window. Documentation and
+test-only commits that do not alter the production bundle do not restart it.
 
 ## Initial observation
 

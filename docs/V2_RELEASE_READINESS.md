@@ -15,7 +15,8 @@ production baseline, deployment order, and stop conditions are frozen in
 - Supabase project: `fxkqgjakbyrxkmevkglv`
 - Lovable project: `766f3370-d38c-42e5-8566-5e4946986dd2`
 - Production launch lock: **ON**
-- Admin/customer frontend sync: **complete through `a3cc49bc`**
+- Admin/customer runtime sync: **complete through `a3cc49bc`**
+- Post-deployment test/evidence sync: **complete; no runtime bundle delta**
 - Production migration apply: **complete and reconciled**
 - Edge Function deployment: **complete and fetched back**
 - Final rendered Lovable QA: **desktop/mobile English/Arabic pass completed**
