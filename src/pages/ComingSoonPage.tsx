@@ -3,7 +3,8 @@ import { useEffect } from "react";
 /**
  * Coming Soon — Public Launch Lock page.
  * No CTAs, no navigation, no forms. Bilingual EN + AR editorial layout.
- * Rendered whenever PUBLIC_LAUNCH_LOCK is true, for every non-admin route.
+ * Rendered whenever PUBLIC_LAUNCH_LOCK is true, before any route or auth
+ * provider mounts.
  */
 export default function ComingSoonPage() {
   useEffect(() => {

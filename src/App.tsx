@@ -26,8 +26,6 @@ import { isLaunchLocked } from "./config/siteMode";
 const AdminLayout = lazy(() => import("./pages/admin/layout/AdminLayout"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const ComingSoonPage = lazy(() => import("./pages/ComingSoonPage"));
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 const queryClient = new QueryClient();
 
@@ -121,7 +119,28 @@ function LegacyAiStudioDraftRedirect() {
   return <Navigate to={destination} replace />;
 }
 
+function LockedApp() {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<SuspenseLoader />}>
+        <ComingSoonPage />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+
 function App() {
+  /* The production lock is absolute and intentionally returns before
+     QueryClient, BrowserRouter, LanguageProvider, AuthProvider, OAuth, admin,
+     or any public/customer route mounts. This keeps the locked site inert:
+     no login/reset form, no existing-session refresh, no catalog/profile
+     queries, and no customer or admin navigation. The exact private Lovable
+     preview host is exempt in isLaunchLocked(), preserving the working QA
+     surface. */
+  if (isLaunchLocked()) {
+    return <LockedApp />;
+  }
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -138,17 +157,17 @@ function App() {
                   <Suspense fallback={<SuspenseLoader />}>
                     <Routes>
                       {/* MCP OAuth consent — standalone, outside any chrome */}
-                        <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+                      <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
 
-                        {/* Admin — dedicated shell, no customer chrome */}
-                        <Route
-                          path="/admin"
-                          element={
-                            <AdminGuard fallbackRoute="/">
-                              <AdminLayout />
-                            </AdminGuard>
-                          }
-                        >
+                      {/* Admin — dedicated shell, no customer chrome */}
+                      <Route
+                        path="/admin"
+                        element={
+                          <AdminGuard fallbackRoute="/">
+                            <AdminLayout />
+                          </AdminGuard>
+                        }
+                      >
                           <Route index element={adminSectionElements.overview} />
 
                           {/* Catalog */}
@@ -218,50 +237,36 @@ function App() {
                           <Route path="emails/marketing" element={<Navigate to="/admin/communications/templates" replace />} />
                           <Route path="security" element={<Navigate to="/admin/trust/security-events" replace />} />
                           <Route path="audit" element={<Navigate to="/admin/trust/admin-activity" replace />} />
-                        </Route>
+                      </Route>
 
-                        {isLaunchLocked() ? (
-                          <>
-                            {/* Admin-only sign-in surface remains reachable so
-                                admins can authenticate into /admin/**. Signup
-                                UI is stripped from LoginForm while locked. */}
-                            <Route path="/login" element={<LoginPage />} />
-                            <Route path="/reset-password" element={<ResetPasswordPage />} />
-                            {/* Everything else — including /signup, /library,
-                                /checkout, /pricing, resource deep links, and
-                                legacy prompt routes — is Coming Soon. */}
-                            <Route path="*" element={<ComingSoonPage />} />
-                          </>
-                        ) : (
-                          /* Canonical V2 public shell wraps every customer/
-                             public/auth/legal/info route AND the 404 wildcard.
-                             No legacy layout, no legacy Header/Footer,
-                             no admin FloatingAddPromptButton on any customer
-                             surface. */
-                          <Route element={<V2Layout />}>
-                            {routes.map((route) => (
-                              <Route
-                                key={route.path}
-                                path={route.path}
-                                element={createGuardedRoute(route)}
-                                index={route.index}
-                              />
-                            ))}
+                      {/* Canonical V2 public shell wraps every customer/
+                          public/auth/legal/info route AND the 404 wildcard.
+                          No legacy layout, no legacy Header/Footer,
+                          no admin FloatingAddPromptButton on any customer
+                          surface. */}
+                      <Route element={<V2Layout />}>
+                        {routes.map((route) => (
+                          <Route
+                            key={route.path}
+                            path={route.path}
+                            element={createGuardedRoute(route)}
+                            index={route.index}
+                          />
+                        ))}
 
-                            <Route
-                              path="prompts-catalog"
-                              element={<PromptsCatalogRedirect />}
-                            />
+                        <Route
+                          path="prompts-catalog"
+                          element={<PromptsCatalogRedirect />}
+                        />
 
-                            {LEGACY_REDIRECTS.map(([from, to]) => (
-                              <Route
-                                key={`redirect:${from}`}
-                                path={from}
-                                element={<Navigate to={to} replace />}
-                              />
-                            ))}
-                          </Route>
-                        )}
+                        {LEGACY_REDIRECTS.map(([from, to]) => (
+                          <Route
+                            key={`redirect:${from}`}
+                            path={from}
+                            element={<Navigate to={to} replace />}
+                          />
+                        ))}
+                      </Route>
                     </Routes>
                   </Suspense>
                   <Toaster />
