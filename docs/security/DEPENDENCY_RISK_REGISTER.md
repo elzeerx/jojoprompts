@@ -5,8 +5,8 @@ Last reviewed: 2026-07-30
 ## Current audit state
 
 - Registry-backed audits were refreshed again on 2026-07-30 during the
-  controlled deployment pass against locked runtime head `d397c76f`. Counts
-  and package paths were unchanged.
+  stability close-out and checked against locked runtime head `6f6d1c90`.
+  Counts and package paths were unchanged.
 - `npm audit --omit=dev`: 0 critical, 2 high package nodes, 0 moderate,
   0 low. Both nodes (`react-router` and direct `react-router-dom`) represent
   one underlying advisory, GHSA-qwww-vcr4-c8h2.

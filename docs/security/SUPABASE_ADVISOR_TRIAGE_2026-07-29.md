@@ -248,3 +248,19 @@ Post-deployment authorization and integrity probes confirmed:
 
 These advisor deltas are accepted for the locked release candidate. They do
 not authorize disabling Coming Soon.
+
+## Stability close-out refresh — 2026-07-30
+
+The advisors were rerun after the original 24-hour gate elapsed and before the
+absolute production-lock correction was published.
+
+- Security remains 184 total: 179 warnings, 5 informational, 0 errors. Object
+  categories and the reviewed dispositions above are unchanged.
+- Performance is 374 total: 284 warnings and 90 informational. Warning count
+  and object categories are unchanged. Three prior `unused_index`
+  informational notices are absent from the refreshed workload snapshot; this
+  is positive statistics drift, not DDL or a policy/index change.
+
+The corrective frontend commit contains no database migration or Edge
+Function change. The advisor result remains the applicable baseline for the
+new locked window and does not authorize public launch.

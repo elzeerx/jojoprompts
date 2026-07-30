@@ -15,7 +15,7 @@ production baseline, deployment order, and stop conditions are frozen in
 - Supabase project: `fxkqgjakbyrxkmevkglv`
 - Lovable project: `766f3370-d38c-42e5-8566-5e4946986dd2`
 - Production launch lock: **ON**
-- Admin/customer runtime sync: **complete through `d397c76f`**
+- Admin/customer runtime sync: **complete through `6f6d1c90`**
 - Performance/mobile-card runtime sync: **complete**
 - Privacy-safe field performance monitoring: **deployed and preview-verified**
 - Audited admin receipt resend: **activated and preview-verified; no QA email sent**
@@ -78,6 +78,11 @@ TypeScript, scoped lint, 970/970 tests, and the production build completed
 successfully. The synced preview exposes one Admin V2 `main` landmark, no
 nested `main`, named publisher and commerce controls, and no horizontal
 overflow on the rechecked routes.
+
+The absolute production-lock corrective gate passes at `6f6d1c90`: TypeScript,
+scoped lint, 973/973 tests, and production build completed successfully.
+Production `/`, login, reset, admin, signup, Explore, Pricing, and OAuth
+consent paths all render the inert Coming Soon document while locked.
 
 ## Security review closure
 
@@ -291,8 +296,8 @@ Coming Soon may be disabled only when all items below have evidence:
   license wording receives the required owner/legal acceptance recorded in
   `docs/V2_OWNER_LEGAL_ACCEPTANCE_CHECKLIST_2026-07-30.md`.
 - Production remains stable under the launch lock through the restarted
-  24-hour window ending no earlier than 2026-07-30 19:02 UTC
-  (22:02 Asia/Kuwait).
+  24-hour window ending no earlier than 2026-07-31 19:20 UTC
+  (22:20 Asia/Kuwait).
 - Field p75 LCP, INP, and CLS monitoring is enabled for the launch ramp, with
   stop/rollback thresholds matching the locked targets.
 - Monitoring, support, and rollback owners are confirmed.

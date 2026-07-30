@@ -23,7 +23,7 @@ evidence also passes.
 | Gate | Status | Evidence |
 |---|---|---|
 | Public launch lock | Proven locally | `src/config/siteMode.ts`; `PUBLIC_LAUNCH_LOCK=true` |
-| Local frontend commit on Lovable | Proven at controlled head | Lovable reports `d397c76f` ready |
+| Local frontend commit on Lovable | Proven at controlled head | Lovable synchronized and published locked head `6f6d1c90` |
 | Database schema | Proven after controlled deployment | Seven release/reconciliation/telemetry migrations applied and totals reconciled |
 | Edge Function bundle | Proven after controlled deployment | Five changed functions deployed; unchanged V2 targets contract-probed |
 | Admin/customer rendered behavior | Proven against locked preview | Desktop/mobile English/Arabic route sweeps, post-performance Explore smoke, and responsive Core Web Vitals panel QA |
@@ -185,7 +185,7 @@ snapshot, not launch acceptance by themselves.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 970 tests, and production build passed at `d397c76f` |
+| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-30 | `bun run verify:v2`: typecheck, lint, 973 tests, and production build passed at `6f6d1c90` |
 | Formal V2 security diff review | Proven locally | 85/85 changed files reviewed; both findings fixed in `48978150`; focused and real-database authorization checks passed |
 | Fresh dependency/security review | Refreshed on 2026-07-30; reviewed exception unchanged | Production: 0 critical, 2 high package nodes for one non-reachable RSC-only advisory; full: 0 critical, 9 high, 3 moderate, 1 low; `docs/security/DEPENDENCY_RISK_REGISTER.md` |
 | Supabase advisor triage | Proven for current production state | `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md` |
@@ -209,8 +209,8 @@ snapshot, not launch acceptance by themselves.
 ## Remaining critical path
 
 1. Keep Coming Soon enabled through the restarted 24-hour stability window
-   ending no earlier than 2026-07-30 19:02 UTC
-   (22:02 Asia/Kuwait).
+   ending no earlier than 2026-07-31 19:20 UTC
+   (22:20 Asia/Kuwait).
 2. Confirm the named monitoring, support, rollback-decision, and technical
    rollback owners.
 3. Record owner/legal acceptance for the bilingual Terms, Privacy, refund,

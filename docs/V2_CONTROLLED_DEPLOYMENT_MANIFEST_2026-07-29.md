@@ -17,19 +17,22 @@ on 2026-07-29. That approval does not cover the launch-lock change.
 
 ## Release source
 
-- Executable release head: `d397c76faa1abdd439c92976112fef89af33e912`
-  (`fix: improve Admin V2 accessibility semantics`).
+- Executable release head: `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`
+  (`fix: enforce absolute production launch lock`).
+- Admin accessibility runtime ancestor: `d397c76f`.
 - Receipt-resend runtime ancestor: `082505f2`.
 - Field-monitoring runtime ancestor: `ee2edd2d`.
-- Lovable reported `d397c76faa1abdd439c92976112fef89af33e912`
-  ready at 2026-07-29 18:29:39 UTC.
+- Lovable synchronized `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`
+  at 2026-07-30 19:18:09 UTC and published the locked build at 19:18:33 UTC.
 - Canonical gate at the executable release head:
   - TypeScript: passed.
   - Scoped V2/admin lint: passed.
-  - Tests: 970 passed, 0 failed.
+  - Tests: 973 passed, 0 failed.
   - Production build: passed.
-- The production route `https://jojoprompts.com/explore` was rechecked after
-  sync and still rendered Coming Soon with `noindex,nofollow`.
+- The production routes `/`, `/login`, `/reset-password`, `/admin`, `/signup`,
+  `/explore`, `/pricing`, and `/.lovable/oauth/consent` were rechecked after
+  sync. Each rendered Coming Soon with `noindex,nofollow` and zero forms,
+  inputs, buttons, or links.
 
 ## Security review closure
 
@@ -132,14 +135,14 @@ no email was sent and no resend request or provider payload was created.
   `d397c76f`, the rechecked admin routes expose one `main`, no nested `main`,
   named primary controls, and no page-level horizontal overflow.
 
-## Stability window
+## Current stability window
 
-The accessibility correction is a runtime change and supersedes the earlier
-receipt-activation window. The conservative restarted window is:
+The absolute-lock correction is a runtime change and supersedes the elapsed
+accessibility window. The conservative restarted window is:
 
-- Start: 2026-07-29 19:02 UTC / 22:02 Asia/Kuwait.
-- Earliest close: 2026-07-30 19:02 UTC / 22:02 Asia/Kuwait.
-- Baseline: `d397c76faa1abdd439c92976112fef89af33e912`.
+- Start: 2026-07-30 19:20 UTC / 22:20 Asia/Kuwait.
+- Earliest close: 2026-07-31 19:20 UTC / 22:20 Asia/Kuwait.
+- Baseline: `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`.
 
 Any further runtime source, migration, Edge Function, payment/scanner
 configuration, or launch-lock change restarts the window. Documentation-only
@@ -150,8 +153,8 @@ and test-description-only commits do not.
 1. Keep or restore Coming Soon; do not change the launch lock during
    containment.
 2. Disable new UPayments checkout before altering any historical state.
-3. Revert the frontend to the immediately prior reviewed runtime
-   `082505f2` if the accessibility runtime itself is defective.
+3. Do not revert production to `d397c76f`, which exposed login/admin routing
+   while locked. Redeploy `6f6d1c90` or a reviewed static-lock correction.
 4. For Edge Functions, redeploy the immediately prior captured reviewed source.
 5. For database defects, prefer a corrective forward migration; use the
    restricted restore point only for catastrophic loss.

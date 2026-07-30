@@ -1,6 +1,17 @@
 # JojoPrompts V2 Stability and Operations Gate — 2026-07-29
 
-## Locked window
+## Current corrective locked window
+
+- Start: 2026-07-30 19:20 UTC / 22:20 Asia/Kuwait.
+- Earliest close: 2026-07-31 19:20 UTC / 22:20 Asia/Kuwait.
+- Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
+- Lovable baseline: `6f6d1c90`.
+
+Lovable synchronized `6f6d1c90` at 19:18:09 UTC, published the still-locked
+build at 19:18:33 UTC, and the production route sweep completed at 19:19:52
+UTC. The conservative clock therefore starts at 19:20 UTC.
+
+## Superseded locked window
 
 - Start: 2026-07-29 19:02 UTC / 22:02 Asia/Kuwait.
 - Earliest close: 2026-07-30 19:02 UTC / 22:02 Asia/Kuwait.
@@ -64,6 +75,45 @@ rendered semantic QA and production-lock verification completed at
 - Database integrity: 247 Auth users, 247 profiles, no missing/orphan
   profile/role rows, 3 orders, 11 payment events, 117 entitlements, 57
   lifetime-credit entries, and 1 package scan.
+
+## 2026-07-30 close-out result
+
+The previous window fully elapsed, but it did **not** close successfully. Live
+production verification found that `/login` still mounted the real sign-in
+form and `/admin` redirected to it while Coming Soon was enabled. The source
+lock was inside the routed/authenticated provider tree, so `AuthProvider`
+could refresh an existing session before the wildcard Coming Soon route
+rendered.
+
+This finding also explains the 18:26 UTC production Auth activity and the
+adjacent fail-closed `permission denied for table prompts` and
+`permission denied for table user_roles` Postgres entries. No unauthorized
+data was returned and no entitlement or commerce state changed, but the
+surface violated the absolute launch-lock contract.
+
+Corrective runtime `6f6d1c90` returns the inert locked app before
+`QueryClientProvider`, `BrowserRouter`, `LanguageProvider`, `AuthProvider`,
+OAuth, admin, or customer/public routes mount. After deployment, `/`,
+`/login`, `/reset-password`, `/admin`, `/signup`, `/explore`, `/pricing`, and
+`/.lovable/oauth/consent` all rendered the same Coming Soon document with
+`noindex,nofollow` and zero forms, inputs, buttons, or links. No new Auth,
+Storage, Edge Function, or Postgres event appeared during that production
+sweep; the latest returned database errors still predated the corrective
+deployment.
+
+The refreshed reconciliation remained unchanged: 247 Auth users/profiles,
+zero profile/role gaps, 3 orders, 11 payment events, 1 failed sandbox refund,
+117 active entitlements, 57 lifetime-credit entries, and 1 clean package scan.
+Security advisors remain 184 total (179 warning, 5 informational, 0 error).
+Performance advisors are 374 total (284 warning, 90 informational); the three
+fewer informational unused-index notices are workload-stat drift, not a schema
+or warning-count change. Production/full dependency audits remain 0 critical,
+2 high / 0 critical, 9 high, 3 moderate, 1 low respectively, with the same
+non-reachable React Router RSC-only exception. The canonical gate at
+`6f6d1c90` passed typecheck, scoped lint, 973 tests, and production build.
+
+Because the correction changes production runtime behavior, it restarts the
+full 24-hour window above.
 
 ## Close-out checks
 
