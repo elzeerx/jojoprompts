@@ -285,9 +285,11 @@ Coming Soon may be disabled only when all items below have evidence:
   deployed shared decision helpers.
 - Lovable desktop/mobile English/Arabic QA passes.
 - Keyboard/focus/landmark checks pass and the final zoom, reduced-motion, and
-  assistive-technology acceptance is recorded.
+  assistive-technology acceptance is recorded in
+  `docs/V2_ACCESSIBILITY_ACCEPTANCE_2026-07-30.md`.
 - The bilingual Terms, Privacy, refund, lifetime-credit, and standard Jojo
-  license wording receives the required owner/legal acceptance.
+  license wording receives the required owner/legal acceptance recorded in
+  `docs/V2_OWNER_LEGAL_ACCEPTANCE_CHECKLIST_2026-07-30.md`.
 - Production remains stable under the launch lock through the restarted
   24-hour window ending no earlier than 2026-07-30 19:02 UTC
   (22:02 Asia/Kuwait).

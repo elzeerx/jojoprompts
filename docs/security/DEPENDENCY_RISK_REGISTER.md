@@ -1,11 +1,12 @@
 # Dependency Risk Register
 
-Last reviewed: 2026-07-29
+Last reviewed: 2026-07-30
 
 ## Current audit state
 
-- Registry-backed audits were refreshed on 2026-07-29 after receipt-resend
-  activation head `082505f2`. Counts and package paths were unchanged.
+- Registry-backed audits were refreshed again on 2026-07-30 during the
+  controlled deployment pass against locked runtime head `d397c76f`. Counts
+  and package paths were unchanged.
 - `npm audit --omit=dev`: 0 critical, 2 high package nodes, 0 moderate,
   0 low. Both nodes (`react-router` and direct `react-router-dom`) represent
   one underlying advisory, GHSA-qwww-vcr4-c8h2.
@@ -14,6 +15,9 @@ Last reviewed: 2026-07-29
   silently move the release candidate to an unreviewed router build.
 - The registry still reports `7.18.2` as latest stable; it remains in the
   advisory range. No stable `8.3.0` package is available.
+- A fresh non-test source scan still finds no `react-router/rsc`,
+  `react-router-dom/server`, `createStaticRouter`, `createRequestHandler`,
+  `useActionData`, `useFetcher`, or `ScrollRestoration` path.
 - `@lovable.dev/mcp-js` and all lint/build packages remain
   `devDependencies`; they are not part of a production-only frontend install.
 

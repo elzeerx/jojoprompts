@@ -172,9 +172,10 @@ Do not authorize public launch if any of the following remains:
 - Dependency/advisor review reveals an unaccepted critical or high risk.
 - Required owner/legal acceptance of the bilingual legal and standard-license
   wording is not recorded.
-- Final zoom, reduced-motion, and assistive-technology acceptance is not
-  recorded.
 - Monitoring, support, rollback-decision, or rollback-executor ownership is
   unconfirmed.
 - Production Coming Soon or `PUBLIC_LAUNCH_LOCK=true` changes before the
   separate public-launch approval.
+
+The final technical accessibility acceptance passed on 2026-07-30 and is
+recorded in `docs/V2_ACCESSIBILITY_ACCEPTANCE_2026-07-30.md`.

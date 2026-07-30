@@ -187,14 +187,14 @@ snapshot, not launch acceptance by themselves.
 |---|---|---|
 | TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-07-29 | `bun run verify:v2`: typecheck, lint, 970 tests, and production build passed at `d397c76f` |
 | Formal V2 security diff review | Proven locally | 85/85 changed files reviewed; both findings fixed in `48978150`; focused and real-database authorization checks passed |
-| Fresh dependency/security review | Proven locally | `docs/security/DEPENDENCY_RISK_REGISTER.md` |
+| Fresh dependency/security review | Refreshed on 2026-07-30; reviewed exception unchanged | Production: 0 critical, 2 high package nodes for one non-reachable RSC-only advisory; full: 0 critical, 9 high, 3 moderate, 1 low; `docs/security/DEPENDENCY_RISK_REGISTER.md` |
 | Supabase advisor triage | Proven for current production state | `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md` |
 | Desktop/mobile English/Arabic rendered QA | Proven against locked Lovable preview | route sweep and mobile/RTL evidence in `docs/V2_CONTROLLED_DEPLOYMENT_REPORT_2026-07-29.md` |
 | Anonymous/customer/admin/insufficient-role QA | Proven through rendered and contract checks | controlled deployment report and authorization suites |
 | UPayments success/failure/cancel/retry/mismatch/refund | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
 | Cloudmersive clean/malicious/unavailable | Accepted mixed live/deterministic matrix | `docs/V2_PROVIDER_RELEASE_MATRIX_2026-07-29.md` |
-| Accessibility and assistive technology | Partial evidence; final acceptance pending | Synced `d397c76f` semantic snapshots expose one non-nested admin `main`, named publisher/commerce controls, and the admin skip link; touch-target, viewport, focus, RTL, and reduced-motion contracts pass; final zoom/reduced-motion/assistive-technology acceptance must be recorded |
-| Bilingual legal and standard Jojo license wording | Drafted and contract-tested; owner/legal acceptance pending | `TermsOfServicePage.tsx`, `PrivacyPolicyPage.tsx`, `FAQPage.tsx`, and public-info contracts |
+| Accessibility and assistive technology | Technical acceptance passed on 2026-07-30 | Synced `d397c76f` passed 200% English/Arabic zoom and reflow, reduced-motion emulation, keyboard focus, landmark, accessible-name, responsive, and RTL checks; see `docs/V2_ACCESSIBILITY_ACCEPTANCE_2026-07-30.md` |
+| Bilingual legal and standard Jojo license wording | Technical consistency passed; owner/legal acceptance pending | Active Terms, Privacy, FAQ, Pricing, and route contracts passed 35/35 focused checks; sign-off checklist: `docs/V2_OWNER_LEGAL_ACCEPTANCE_CHECKLIST_2026-07-30.md` |
 | Core Web Vitals targets | Monitoring deployed; production p75 pending launch traffic | Mobile lab: FCP 2.43s, LCP 4.81s, CLS 0.00014, TBT 10ms; privacy-safe RUM and admin p75 panel deployed; see `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md` |
 | Backup and rollback evidence | Proven in controlled deployment | restricted pre-deployment backup and deployment report |
 | Stability monitoring and named owners | Pending 24-hour close-out | `docs/V2_STABILITY_AND_OPERATIONS_2026-07-29.md` |
@@ -215,10 +215,9 @@ snapshot, not launch acceptance by themselves.
    rollback owners.
 3. Record owner/legal acceptance for the bilingual Terms, Privacy, refund,
    lifetime-credit, and standard Jojo license wording.
-4. Record the final zoom, reduced-motion, and assistive-technology acceptance.
-5. Run the close-out log, reconciliation, dependency, advisor, and canonical
+4. Run the close-out log, reconciliation, dependency, advisor, and canonical
    build/test checks.
-6. Perform the final evidence audit.
-7. Use the deployed field Core Web Vitals monitoring during the launch ramp
+5. Perform the final evidence audit.
+6. Use the deployed field Core Web Vitals monitoring during the launch ramp
    and enforce the documented stop/rollback thresholds.
-8. Request a separate approval to unlock and publish.
+7. Request a separate approval to unlock and publish.

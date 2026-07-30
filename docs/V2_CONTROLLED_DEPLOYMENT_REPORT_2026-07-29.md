@@ -252,10 +252,13 @@ accepted:
    monitoring, support, and rollback owners.
 3. Record owner/legal acceptance of the bilingual Terms, Privacy, refund,
    lifetime-credit, and standard Jojo license wording.
-4. Record final zoom, reduced-motion, and assistive-technology acceptance in
-   addition to the completed responsive, landmark, label, and touch-target QA.
-5. Use the deployed field Core Web Vitals monitoring for the launch ramp and
+4. Use the deployed field Core Web Vitals monitoring for the launch ramp and
    stop/rollback if p75 LCP, INP, or CLS remains outside the locked targets.
-6. Obtain a separate explicit approval for the single launch-lock change.
+5. Obtain a separate explicit approval for the single launch-lock change.
+
+Final 200% zoom, reduced-motion, keyboard-focus, landmark, accessible-name,
+responsive-reflow, and Arabic RTL acceptance passed against synced runtime
+`d397c76f` on 2026-07-30. See
+`docs/V2_ACCESSIBILITY_ACCEPTANCE_2026-07-30.md`.
 
 No public launch action was performed in this deployment pass.

@@ -37,6 +37,10 @@ rendered semantic QA and production-lock verification completed at
 - Synced desktop and 390x844 mobile Explore smoke checks passed in Arabic RTL,
   including catalog hydration and quick preview, with no console warnings or
   errors.
+- Final technical accessibility acceptance passed at 200% browser zoom in
+  English and Arabic, under reduced-motion emulation, and through keyboard,
+  focus, landmark, accessible-name, reflow, and RTL checks. See
+  `docs/V2_ACCESSIBILITY_ACCEPTANCE_2026-07-30.md`.
 - The canonical local gate passes: typecheck, scoped lint, 970/970 tests, and
   production build.
 - Performance evidence and the remaining field-data limitation are recorded in
