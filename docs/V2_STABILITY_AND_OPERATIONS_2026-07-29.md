@@ -2,14 +2,34 @@
 
 ## Current corrective locked window
 
-- Start: 2026-07-30 19:20 UTC / 22:20 Asia/Kuwait.
-- Earliest close: 2026-07-31 19:20 UTC / 22:20 Asia/Kuwait.
+- Start: 2026-07-31 23:33 UTC / 2026-08-01 02:33 Asia/Kuwait.
+- Earliest close: 2026-08-01 23:33 UTC / 2026-08-02 02:33 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
-- Lovable baseline: `6f6d1c90`.
+- Lovable baseline: `3da31a69`.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
 
-Lovable synchronized `6f6d1c90` at 19:18:09 UTC, published the still-locked
-build at 19:18:33 UTC, and the production route sweep completed at 19:19:52
-UTC. The conservative clock therefore starts at 19:20 UTC.
+Lovable synchronized `3da31a69` and published the still-locked build at
+approximately 23:29 UTC on 2026-07-31. The production route sweep and immediate
+post-deployment reconciliation, logs, advisor, dependency, and canonical-gate
+checks completed before the conservative 23:33 UTC clock start.
+
+The release reduces the admin sidebar from 31 operational destinations to six
+workspaces: Overview, Content, Commerce, People, Operations, and Settings.
+Category browsing is consolidated under `/explore?type=...`; old public and
+admin bookmarks remain supported through bounded compatibility redirects.
+The synchronized preview passed all workspace and redirect checks. Production
+`/`, `/admin`, `/explore`, and `/login` still render only Coming Soon with
+`noindex,nofollow` and no interactive controls.
+
+Immediate baseline results: 247 Auth users and profiles with zero gaps, 3
+orders, 11 payment events, 117 active entitlements, 57 lifetime-credit entries,
+and 1 package scan. The last-20-minute log sample contained no Edge Function
+5xx, fatal, or panic event and no Storage or Postgres error event. Security
+advisors remain 184 total (179 warning, 5 informational); performance advisors
+remain 374 total (284 warning, 90 informational). Production/full npm audits
+remain 0 critical with 2 high / 3 high, 3 moderate, and 1 low respectively.
+The canonical gate passed TypeScript, scoped lint, 977 tests, and the production
+build.
 
 ## Superseded locked window
 

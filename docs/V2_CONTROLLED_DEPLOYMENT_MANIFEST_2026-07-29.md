@@ -17,17 +17,19 @@ on 2026-07-29. That approval does not cover the launch-lock change.
 
 ## Release source
 
-- Executable release head: `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`
-  (`fix: enforce absolute production launch lock`).
+- Executable release head: `3da31a69389e8d239efa01cafe4992a7a2376355`
+  (`refactor: consolidate V2 public and admin routes`).
+- Absolute production-lock runtime ancestor: `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`.
 - Admin accessibility runtime ancestor: `d397c76f`.
 - Receipt-resend runtime ancestor: `082505f2`.
 - Field-monitoring runtime ancestor: `ee2edd2d`.
-- Lovable synchronized `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`
-  at 2026-07-30 19:18:09 UTC and published the locked build at 19:18:33 UTC.
+- Lovable synchronized `3da31a69389e8d239efa01cafe4992a7a2376355`
+  on 2026-07-31 and published the still-locked build at approximately
+  23:29 UTC.
 - Canonical gate at the executable release head:
   - TypeScript: passed.
   - Scoped V2/admin lint: passed.
-  - Tests: 973 passed, 0 failed.
+  - Tests: 977 passed, 0 failed.
   - Production build: passed.
 - The production routes `/`, `/login`, `/reset-password`, `/admin`, `/signup`,
   `/explore`, `/pricing`, and `/.lovable/oauth/consent` were rechecked after
@@ -79,6 +81,7 @@ Current live versions were refreshed from Supabase after the controlled pass:
 | `enhance-prompt` | `false` | 251 | `f14092906cf529ed8a2afdab239f46a8503f986b55624bea89972a57e1415ee3` | POST/body-auth contract deployed and fetched back |
 | `magic-login` | `false` | 197 | `962556820ef57f216877558d76bbfc227855bbc119f7ce9844bce4245da10e23` | Reviewed HTTP 410 retirement stub deployed |
 | `v2-web-vitals` | `false` | 2 | `569e5bc5d528776b762fad41478e23891c76e7f68b5d812059b0ff5d8ff8bdba` | Origin-bound identity-free RUM endpoint deployed |
+| `v2-admin-integrations-settings-status` | `true` | 14 | Route-only response update | Admin specialist links now target the consolidated workspaces; deployed and fetched back |
 
 Payment/receipt functions that were not unnecessarily redeployed were fetched
 and compared to reviewed local source during activation:
@@ -137,12 +140,23 @@ no email was sent and no resend request or provider payload was created.
 
 ## Current stability window
 
-The absolute-lock correction is a runtime change and supersedes the elapsed
-accessibility window. The conservative restarted window is:
+The route-consolidation release and matching admin integration-status Edge
+Function are runtime changes and supersede the prior elapsed window. The
+conservative restarted window is:
 
-- Start: 2026-07-30 19:20 UTC / 22:20 Asia/Kuwait.
-- Earliest close: 2026-07-31 19:20 UTC / 22:20 Asia/Kuwait.
-- Baseline: `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`.
+- Start: 2026-07-31 23:33 UTC / 2026-08-01 02:33 Asia/Kuwait.
+- Earliest close: 2026-08-01 23:33 UTC / 2026-08-02 02:33 Asia/Kuwait.
+- Baseline: `3da31a69389e8d239efa01cafe4992a7a2376355` plus
+  `v2-admin-integrations-settings-status` version 14.
+
+The synchronized preview passed the consolidated public-route, six-workspace
+admin-navigation, and legacy-bookmark redirect checks. The production sweep of
+`/`, `/admin`, `/explore`, and `/login` returned only Coming Soon with
+`noindex,nofollow` and zero forms, inputs, buttons, or links. The immediate
+post-deployment baseline had no recent Edge Function 5xx or fatal/panic log,
+no recent Storage or Postgres error event, unchanged identity/commerce/
+entitlement reconciliation, unchanged advisor counts, and zero critical npm
+advisories.
 
 Any further runtime source, migration, Edge Function, payment/scanner
 configuration, or launch-lock change restarts the window. Documentation-only
