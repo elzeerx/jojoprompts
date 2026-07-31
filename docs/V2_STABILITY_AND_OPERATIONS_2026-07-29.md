@@ -136,10 +136,14 @@ At or after the earliest close:
 
 These roles must be filled by named people before public launch:
 
-- Monitoring owner: **pending confirmation**
-- Customer-support owner: **pending confirmation**
-- Rollback decision owner: **pending confirmation**
-- Technical rollback executor: **pending confirmation**
+- Monitoring owner: **Nawaf Alsuwaiyed**
+- Customer-support owner: **Nawaf Alsuwaiyed**
+- Rollback decision owner: **Nawaf Alsuwaiyed**
+- Technical rollback executor: **Nawaf Alsuwaiyed**
+
+Owner confirmation recorded on 2026-08-01. One person intentionally holds all
+four operational roles for the V2.0 launch; this does not replace the separate
+business-owner/legal acceptance or public-launch approval.
 
 The monitoring owner watches payment reconciliation, failed receipt delivery,
 scan failures, error logs, and entitlement anomalies. The support owner handles
@@ -157,7 +161,7 @@ Do not launch when any of the following is true:
 - A non-clean or stale package can be downloaded.
 - The canonical build/test gate fails.
 - Dependency or advisor review reveals an unaccepted critical/high risk.
-- Any operational owner is unconfirmed.
+- The confirmed operational owner is unavailable for the launch window.
 
 ## Rollback posture
 

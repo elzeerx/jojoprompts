@@ -197,7 +197,7 @@ snapshot, not launch acceptance by themselves.
 | Bilingual legal and standard Jojo license wording | Technical consistency passed; owner/legal acceptance pending | Active Terms, Privacy, FAQ, Pricing, and route contracts passed 35/35 focused checks; sign-off checklist: `docs/V2_OWNER_LEGAL_ACCEPTANCE_CHECKLIST_2026-07-30.md` |
 | Core Web Vitals targets | Monitoring deployed; production p75 pending launch traffic | Mobile lab: FCP 2.43s, LCP 4.81s, CLS 0.00014, TBT 10ms; privacy-safe RUM and admin p75 panel deployed; see `docs/V2_PERFORMANCE_EVIDENCE_2026-07-29.md` |
 | Backup and rollback evidence | Proven in controlled deployment | restricted pre-deployment backup and deployment report |
-| Stability monitoring and named owners | Pending 24-hour close-out | `docs/V2_STABILITY_AND_OPERATIONS_2026-07-29.md` |
+| Stability monitoring and named owners | Operational owner confirmed; technical close-out current | Nawaf Alsuwaiyed holds monitoring, support, rollback-decision, and technical rollback roles; `docs/V2_STABILITY_AND_OPERATIONS_2026-07-29.md` |
 | Separate launch approval | Not authorized | required before `PUBLIC_LAUNCH_LOCK=false` |
 
 ## Deferred by locked scope

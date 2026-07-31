@@ -175,8 +175,7 @@ Do not authorize public launch if any of the following remains:
 - Dependency/advisor review reveals an unaccepted critical or high risk.
 - Required owner/legal acceptance of the bilingual legal and standard-license
   wording is not recorded.
-- Monitoring, support, rollback-decision, or rollback-executor ownership is
-  unconfirmed.
+- The confirmed operational owner is unavailable for the launch window.
 - Production Coming Soon or `PUBLIC_LAUNCH_LOCK=true` changes before the
   separate public-launch approval.
 
