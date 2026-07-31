@@ -157,7 +157,7 @@ export default function JsonResourceImporter() {
         <ol className="flex flex-wrap items-center gap-1.5">
           <li>
             <Link
-              to="/admin/publishing/imports"
+              to="/admin/content?tab=imports"
               data-json-back-to-imports
               aria-label="Back to Imports / العودة إلى الاستيراد"
               className="inline-flex min-h-[44px] min-w-[44px] items-center rounded-md px-2 py-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -187,7 +187,7 @@ export default function JsonResourceImporter() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" className="min-h-[44px]">
-            <Link to="/admin/publishing/imports/ai-studio">
+            <Link to="/admin/content/imports/ai-studio">
               <Sparkles className="me-1.5 h-4 w-4" /> AI Studio
             </Link>
           </Button>

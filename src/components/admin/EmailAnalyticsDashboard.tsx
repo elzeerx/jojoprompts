@@ -437,7 +437,7 @@ export function EmailAnalyticsDashboard() {
                           const label = 'V2 Order Receipt';
                           return orderId ? (
                             <a
-                              href={`/admin/orders?order=${orderId}`}
+                              href={`/admin/commerce?tab=orders&order=${orderId}`}
                               className="text-primary underline-offset-2 hover:underline"
                               title={meta?.order_number ?? orderId}
                             >

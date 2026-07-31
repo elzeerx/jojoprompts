@@ -38,7 +38,7 @@ describe("ResourcePublisher — resource editor select", () => {
   it("defines the canonical select and edit URL builder", () => {
     expect(src.includes("const RESOURCE_EDITOR_SELECT")).toBe(true);
     expect(src.includes("function buildResourceEditUrl")).toBe(true);
-    expect(src.includes("/admin/publishing/resources/${resourceId}/edit")).toBe(true);
+    expect(src.includes("/admin/content/resources/${resourceId}/edit")).toBe(true);
   });
 
   it("still embeds the resource's own products so bundle items can be loaded via product ids", () => {
@@ -53,8 +53,8 @@ describe("ResourcePublisher — resource editor select", () => {
   });
 
   it("catalog edit URL uses the same path shape the router accepts", () => {
-    const path = `/admin/publishing/resources/${UUID}/edit`;
-    expect(path.startsWith("/admin/publishing/resources/")).toBe(true);
+    const path = `/admin/content/resources/${UUID}/edit`;
+    expect(path.startsWith("/admin/content/resources/")).toBe(true);
     expect(path.endsWith("/edit")).toBe(true);
   });
 

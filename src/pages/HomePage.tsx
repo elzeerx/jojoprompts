@@ -87,11 +87,11 @@ export default function HomePage() {
           </p>
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { to: "/skills", icon: Wand2, label: t.catSkills, desc: t.catSkillsDesc },
-              { to: "/automations", icon: Workflow, label: t.catAutomations, desc: t.catAutomationsDesc },
-              { to: "/prompts", icon: Sparkles, label: t.catPrompts, desc: t.catPromptsDesc },
-              { to: "/image-styles", icon: ImageIcon, label: t.catImageStyles, desc: t.catImageStylesDesc },
-              { to: "/bundles", icon: Package, label: t.catBundles, desc: t.catBundlesDesc },
+              { to: "/explore?type=skill", icon: Wand2, label: t.catSkills, desc: t.catSkillsDesc },
+              { to: "/explore?type=automation", icon: Workflow, label: t.catAutomations, desc: t.catAutomationsDesc },
+              { to: "/explore?type=prompt", icon: Sparkles, label: t.catPrompts, desc: t.catPromptsDesc },
+              { to: "/explore?type=image_style", icon: ImageIcon, label: t.catImageStyles, desc: t.catImageStylesDesc },
+              { to: "/explore?type=bundle", icon: Package, label: t.catBundles, desc: t.catBundlesDesc },
               { to: "/explore", icon: Search, label: t.catExplore, desc: t.catExploreDesc },
             ].map((c) => (
               <Link

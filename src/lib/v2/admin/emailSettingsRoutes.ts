@@ -8,12 +8,12 @@ export const EMAIL_NAV_LINKS: readonly {
   description: string;
 }[] = [
   {
-    to: "/admin/communications/templates",
+    to: "/admin/operations?tab=templates",
     label: "Transactional templates",
     description: "Edit template content and toggle active state",
   },
   {
-    to: "/admin/communications/delivery",
+    to: "/admin/operations?tab=delivery",
     label: "Delivery health",
     description: "Detailed delivery analytics and per-message logs",
   },

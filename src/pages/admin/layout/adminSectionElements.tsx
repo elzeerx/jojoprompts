@@ -124,4 +124,9 @@ export const adminSectionElements = {
   settingsStorage: wrap(<StorageSettingsPage />),
   settingsIntegrations: wrap(<IntegrationsPage />),
   settingsRoles: wrap(<RolesPage />),
+
+  // Dynamic tools rendered inside the consolidated Content workspace.
+  publishingEditFor: (resourceId: string) => wrap(<ResourcePublisher mode="edit" resourceIdOverride={resourceId} />),
+  publishingNewVersionFor: (resourceId: string) => wrap(<ResourcePublisher mode="new-version" resourceIdOverride={resourceId} />),
+  publishingImportsAiStudioFor: (draftId?: string) => wrap(<AiStudioPage draftIdOverride={draftId} />),
 };

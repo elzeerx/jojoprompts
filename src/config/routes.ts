@@ -31,16 +31,9 @@ const FAQPage = lazy(() => import("@/pages/FAQPage"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
 const TermsOfServicePage = lazy(() => import("@/pages/TermsOfServicePage"));
 
-const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
-
 // V2 root + discovery + resource detail + library
 const Index = lazy(() => import("@/pages/Index"));
 const V2ExplorePage = lazy(() => import("@/pages/v2/ExplorePage"));
-const V2SkillsPage = lazy(() => import("@/pages/v2/SkillsPage"));
-const V2AutomationsPage = lazy(() => import("@/pages/v2/AutomationsPage"));
-const V2PromptsCatalogPage = lazy(() => import("@/pages/v2/PromptsCatalogPage"));
-const V2ImageStylesPage = lazy(() => import("@/pages/v2/ImageStylesPage"));
-const V2BundlesPage = lazy(() => import("@/pages/v2/BundlesPage"));
 const V2ResourceDetailPage = lazy(() => import("@/pages/v2/ResourceDetailPage"));
 const V2LibraryPage = lazy(() => import("@/pages/v2/LibraryPage"));
 const V2HowItWorksPage = lazy(() => import("@/pages/v2/HowItWorksPage"));
@@ -93,11 +86,6 @@ export const routes: RouteConfig[] = [
 
   // V2 discovery + resource detail + library
   { path: "explore", component: V2ExplorePage, protection: "public" },
-  { path: "skills", component: V2SkillsPage, protection: "public" },
-  { path: "automations", component: V2AutomationsPage, protection: "public" },
-  { path: "prompts", component: V2PromptsCatalogPage, protection: "public" },
-  { path: "image-styles", component: V2ImageStylesPage, protection: "public" },
-  { path: "bundles", component: V2BundlesPage, protection: "public" },
   { path: "resources/:slug", component: V2ResourceDetailPage, protection: "public" },
   { path: "library", component: V2LibraryPage, protection: "public" },
   { path: "how-it-works", component: V2HowItWorksPage, protection: "public" },
@@ -112,9 +100,6 @@ export const routes: RouteConfig[] = [
   { path: "checkout/cancel/:orderId", component: V2CheckoutCancelPage, protection: "public" },
   { path: "orders", component: V2OrdersPage, protection: "auth" },
   { path: "account", component: V2AccountPage, protection: "auth" },
-
-  // 404 catch-all — rendered inside V2Layout when unlocked (see App.tsx).
-  { path: "*", component: NotFoundPage, protection: "public" },
 ];
 
 export function getRoutesByProtection(protection: RouteProtection): RouteConfig[] {

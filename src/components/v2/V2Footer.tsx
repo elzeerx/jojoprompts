@@ -34,11 +34,11 @@ export function V2Footer() {
 
   const exploreLinks: Array<{ to: string; label: string }> = [
     { to: "/explore", label: lang === "ar" ? "المتجر" : "All resources" },
-    { to: "/skills", label: lang === "ar" ? "المهارات" : "Skills" },
-    { to: "/automations", label: lang === "ar" ? "الأتمتة" : "Automations" },
-    { to: "/prompts", label: lang === "ar" ? "البرومبتات" : "Prompts" },
-    { to: "/image-styles", label: lang === "ar" ? "أنماط الصور" : "Image styles" },
-    { to: "/bundles", label: lang === "ar" ? "الحزم" : "Bundles" },
+    { to: "/explore?type=skill", label: lang === "ar" ? "المهارات" : "Skills" },
+    { to: "/explore?type=automation", label: lang === "ar" ? "الأتمتة" : "Automations" },
+    { to: "/explore?type=prompt", label: lang === "ar" ? "البرومبتات" : "Prompts" },
+    { to: "/explore?type=image_style", label: lang === "ar" ? "أنماط الصور" : "Image styles" },
+    { to: "/explore?type=bundle", label: lang === "ar" ? "الحزم" : "Bundles" },
     { to: "/how-it-works", label: lang === "ar" ? "كيف يعمل" : "How it works" },
     { to: "/pricing", label: lang === "ar" ? "الأسعار" : "Pricing" },
   ];

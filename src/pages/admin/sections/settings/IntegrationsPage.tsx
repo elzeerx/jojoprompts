@@ -338,10 +338,10 @@ export default function IntegrationsPage() {
         <CardContent>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {[
-              { to: "/admin/settings/payments", label: "Payment settings" },
-              { to: "/admin/settings/email", label: "Email settings" },
-              { to: "/admin/settings/storage", label: "Storage settings" },
-              { to: "/admin/trust/scans", label: "Package scans" },
+              { to: "/admin/settings?tab=payments", label: "Payment settings" },
+              { to: "/admin/settings?tab=email", label: "Email settings" },
+              { to: "/admin/settings?tab=storage", label: "Storage settings" },
+              { to: "/admin/operations?tab=scans", label: "Package scans" },
             ].map((l) => (
               <Button
                 key={l.to}

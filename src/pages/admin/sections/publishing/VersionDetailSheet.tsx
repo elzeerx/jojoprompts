@@ -86,7 +86,7 @@ export default function VersionDetailSheet({ versionId, onOpenChange }: Props) {
               )}
               <div className="text-xs text-muted-foreground">
                 <Link
-                  to={`/admin/catalog?q=${encodeURIComponent(v.slug)}`}
+                  to={`/admin/content?q=${encodeURIComponent(v.slug)}`}
                   className="underline underline-offset-2"
                 >
                   {v.slug}

@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/useTranslation";
 import { V2_COPY } from "@/config/v2Flags";
@@ -13,11 +13,11 @@ interface NavItem {
 
 const CATEGORY_LINKS: NavItem[] = [
   { to: "/explore", label: V2_COPY.nav.explore, end: true },
-  { to: "/skills", label: V2_COPY.nav.skills },
-  { to: "/automations", label: V2_COPY.nav.automations },
-  { to: "/prompts", label: V2_COPY.nav.prompts },
-  { to: "/image-styles", label: V2_COPY.nav.imageStyles },
-  { to: "/bundles", label: V2_COPY.nav.bundles },
+  { to: "/explore?type=skill", label: V2_COPY.nav.skills },
+  { to: "/explore?type=automation", label: V2_COPY.nav.automations },
+  { to: "/explore?type=prompt", label: V2_COPY.nav.prompts },
+  { to: "/explore?type=image_style", label: V2_COPY.nav.imageStyles },
+  { to: "/explore?type=bundle", label: V2_COPY.nav.bundles },
 ];
 
 const SECONDARY_LINKS: NavItem[] = [
@@ -28,6 +28,7 @@ const SECONDARY_LINKS: NavItem[] = [
 
 export function V2SubNav({ authed }: { authed: boolean }) {
   const { language, isRTL } = useTranslation();
+  const location = useLocation();
   const items = [
     ...CATEGORY_LINKS,
     ...SECONDARY_LINKS.filter((l) => !l.auth || authed),
@@ -39,23 +40,26 @@ export function V2SubNav({ authed }: { authed: boolean }) {
       aria-label="V2 catalog navigation"
     >
       <div className="container mx-auto flex items-center gap-1 overflow-x-auto px-3 py-2">
-        {items.map((l) => (
-          <NavLink
+        {items.map((l) => {
+          const [path, query = ""] = l.to.split("?");
+          const expectedType = new URLSearchParams(query).get("type");
+          const currentType = new URLSearchParams(location.search).get("type");
+          const isActive = location.pathname === path && (path !== "/explore" || expectedType === currentType);
+          return (
+          <Link
             key={l.to}
             to={l.to}
-            end={l.end}
-            className={({ isActive }) =>
-              cn(
+            aria-current={isActive ? "page" : undefined}
+            className={cn(
                 "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors min-h-[44px] flex items-center",
                 isActive
                   ? "bg-warm-gold text-dark-base"
                   : "text-muted-foreground hover:bg-muted",
-              )
-            }
+              )}
           >
             {l.label[language as "en" | "ar"] ?? l.label.en}
-          </NavLink>
-        ))}
+          </Link>
+        )})}
         <div className="ms-auto shrink-0">
           <CartIconButton />
         </div>
@@ -63,4 +67,3 @@ export function V2SubNav({ authed }: { authed: boolean }) {
     </nav>
   );
 }
-

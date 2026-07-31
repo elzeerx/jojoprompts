@@ -1,16 +1,15 @@
 # Dependency Risk Register
 
-Last reviewed: 2026-07-30
+Last reviewed: 2026-08-01
 
 ## Current audit state
 
-- Registry-backed audits were refreshed again on 2026-07-30 during the
-  stability close-out and checked against locked runtime head `6f6d1c90`.
-  Counts and package paths were unchanged.
+- Registry-backed audits were refreshed again on 2026-08-01 during the
+  Admin V2 workspace-consolidation deployment pass.
 - `npm audit --omit=dev`: 0 critical, 2 high package nodes, 0 moderate,
   0 low. Both nodes (`react-router` and direct `react-router-dom`) represent
   one underlying advisory, GHSA-qwww-vcr4-c8h2.
-- Full `npm audit`: 0 critical, 9 high, 3 moderate, 1 low.
+- Full `npm audit`: 0 critical, 3 high, 3 moderate, 1 low.
 - `react-router-dom` is pinned exactly to `7.18.1` so a future install cannot
   silently move the release candidate to an unreviewed router build.
 - The registry still reports `7.18.2` as latest stable; it remains in the
@@ -64,8 +63,8 @@ experimental, or git dependency into the release.
 
 The full audit adds:
 
-- High: ESLint/minimatch/brace-expansion and Tailwind/Sucrase/glob dependency
-  chains. These run only in trusted local/CI build workflows.
+- High: ESLint's nested `brace-expansion` dependency chain. It runs only in
+  trusted local/CI lint workflows; production-only audit excludes it.
 - Moderate: `@lovable.dev/mcp-js` →
   `@modelcontextprotocol/sdk` → `@hono/node-server` Windows-only static-file
   traversal. The generated MCP endpoint runs on Supabase's Deno Edge runtime,

@@ -309,7 +309,7 @@ export default function PaymentsPage() {
                 { key: "processed_item_unrevoked_entitlement", label: "Unrevoked entitlement" },
                 { key: "threshold_lifetime_below_credit", label: "Lifetime below credit" },
               ].map((r) => {
-                const to = PAYMENTS_RECON_LINKS[r.key] ?? "/admin/orders";
+                const to = PAYMENTS_RECON_LINKS[r.key] ?? "/admin/commerce?tab=orders";
                 const v = (reconQ.data as unknown as Record<string, number>)[r.key] ?? 0;
                 const ok = v === 0;
                 return (

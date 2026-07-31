@@ -23,6 +23,7 @@ const V2LAYOUT: string = read(resolve(SRC, "components/v2/V2Layout.tsx"));
 const ROOT_LAYOUT_PATH = resolve(SRC, "components/layout/root-layout.tsx");
 const ROUTES_SRC: string = read(resolve(SRC, "config/routes.ts"));
 const NOT_FOUND: string = read(resolve(SRC, "pages/NotFoundPage.tsx"));
+const PUBLIC_RESOLVER: string = read(resolve(SRC, "components/v2/PublicRouteResolver.tsx"));
 
 describe("V2 public shell — customer chrome is exclusively V2Layout", () => {
   it("App.tsx no longer keeps a V2_PATHS allowlist or falls back to RootLayout", () => {
@@ -44,13 +45,14 @@ describe("V2 public shell — customer chrome is exclusively V2Layout", () => {
   });
 
   it("wildcard `*` catch-all is nested inside V2Layout when unlocked", () => {
-    // Verify the V2Layout branch is defined and that the shared `routes`
-    // config supplies the wildcard route through it.
+    // Verify the V2Layout branch contains both canonical routes and the
+    // centralized compatibility/not-found resolver.
     const v2Block =
       /<Route element=\{<V2Layout \/>\}>[\s\S]*?<\/Route>/m.exec(APP);
     expect(v2Block === null).toBe(false);
     expect((v2Block?.[0] ?? "").includes("routes.map(")).toBe(true);
-    expect(/path:\s*"\*"/.test(ROUTES_SRC)).toBe(true);
+    expect((v2Block?.[0] ?? "").includes('path="*"')).toBe(true);
+    expect((v2Block?.[0] ?? "").includes("<PublicRouteResolver />")).toBe(true);
   });
 
 
@@ -156,30 +158,27 @@ describe("V2 route table — no premium/subscription/legacy customer surfaces", 
 
 describe("Legacy V1 → V2 redirects resolve to fixed V2 destinations", () => {
   const EXPECTED: Record<string, string> = {
-    "prompts/chatgpt": "/prompts?platform=chatgpt",
-    "prompts/midjourney": "/image-styles",
-    "prompts/workflow": "/automations",
-    "prompts/gpts-builder": "/skills",
-    favorites: "/library",
-    "payment-dashboard": "/orders",
-    dashboard: "/account",
-    "dashboard/subscription": "/account",
-    "payment-success": "/orders",
-    "payment-failed": "/orders",
-    "payment-recovery": "/orders",
-    "dashboard/prompter": "/explore",
-    prompter: "/explore",
-    examples: "/explore",
-    search: "/explore",
-    "demo/enhanced-prompt": "/explore",
+    "/prompts/chatgpt": "/explore?type=prompt&p=chatgpt",
+    "/prompts/midjourney": "/explore?type=image_style",
+    "/prompts/workflow": "/explore?type=automation",
+    "/prompts/gpts-builder": "/explore?type=skill",
+    "/favorites": "/library",
+    "/payment-dashboard": "/orders",
+    "/dashboard": "/account",
+    "/dashboard/subscription": "/account",
+    "/payment-success": "/orders",
+    "/payment-failed": "/orders",
+    "/payment-recovery": "/orders",
+    "/dashboard/prompter": "/explore",
+    "/prompter": "/explore",
+    "/examples": "/explore",
+    "/search": "/explore",
+    "/demo/enhanced-prompt": "/explore",
   };
 
-  it("App.tsx declares each expected redirect with a fixed destination", () => {
+  it("the public resolver declares each redirect with a fixed destination", () => {
     for (const [from, to] of Object.entries(EXPECTED)) {
-      const line = new RegExp(
-        `\\[\\s*["']${from.replace(/[/-]/g, "\\$&")}["']\\s*,\\s*["']${to.replace(/[/?=]/g, "\\$&")}["']\\s*\\]`,
-      );
-      expect({ from, to, present: line.test(APP) }).toEqual({
+      expect({ from, to, present: PUBLIC_RESOLVER.includes(`"${from}": "${to}"`) }).toEqual({
         from,
         to,
         present: true,
@@ -188,9 +187,7 @@ describe("Legacy V1 → V2 redirects resolve to fixed V2 destinations", () => {
   });
 
   it("redirect destinations exist in the canonical routes table (no loops)", () => {
-    const destinations = new Set(
-      Object.values(EXPECTED).map((d) => d.replace(/\?.*$/, "").replace(/^\//, "")),
-    );
+    const destinations = new Set(Object.values(EXPECTED).map((d) => d.replace(/\?.*$/, "").replace(/^\//, "")));
     const paths = new Set<string>();
     const rx = /path:\s*["']([^"']+)["']/g;
     let m: RegExpExecArray | null;
@@ -215,14 +212,11 @@ describe("Legacy V1 → V2 redirects resolve to fixed V2 destinations", () => {
     }
   });
 
-  it("/prompts is the canonical route and /prompts-catalog is a legacy compatibility redirect", () => {
-    // /prompts must appear in routes.ts (canonical)
-    expect(/path:\s*["']prompts["']/.test(ROUTES_SRC)).toBe(true);
-    // /prompts-catalog must NOT appear in routes.ts as an active route
+  it("category aliases and /prompts-catalog resolve into the canonical Explore page", () => {
+    expect(/path:\s*["']prompts["']/.test(ROUTES_SRC)).toBe(false);
     expect(/path:\s*["']prompts-catalog["']/.test(ROUTES_SRC)).toBe(false);
-    // App.tsx must expose the redirect wrapper
-    expect(/path=["']prompts-catalog["']/.test(APP)).toBe(true);
-    expect(/PromptsCatalogRedirect/.test(APP)).toBe(true);
+    expect(PUBLIC_RESOLVER).toContain('pathname === "/prompts-catalog"');
+    expect(PUBLIC_RESOLVER).toContain('next.set("type", "prompt")');
   });
 });
 
@@ -402,5 +396,4 @@ describe("Admin overview payment semantics — cross-window final definition", (
     expect(perOrder.has("D")).toBe(false);
   });
 });
-
 

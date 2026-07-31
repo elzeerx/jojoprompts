@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { SeoHead } from "@/components/v2/SeoHead";
-import { V2_COPY, type V2ResourceType } from "@/config/v2Flags";
+import { isV2ResourceType, V2_COPY, type V2ResourceType } from "@/config/v2Flags";
 import { useTranslation } from "@/hooks/useTranslation";
 
 type Bilingual = { en: string; ar: string };
@@ -68,7 +68,22 @@ export default function ExplorePage({
     setEmptyCatalog(empty);
   }, []);
 
-  const fallbackH1 = V2_COPY.nav.explore[lang];
+  const queryType = new URLSearchParams(location.search).get("type");
+  const activeType = fixedType ?? (isV2ResourceType(queryType) ? queryType : undefined);
+  const typeLabelKey = activeType === "image_style"
+    ? "imageStyles"
+    : activeType === "prompt_pack"
+      ? "promptPacks"
+      : activeType === "automation"
+        ? "automations"
+        : activeType === "bundle"
+          ? "bundles"
+          : activeType === "prompt"
+            ? "prompts"
+            : activeType === "skill"
+              ? "skills"
+              : "explore";
+  const fallbackH1 = V2_COPY.nav[typeLabelKey][lang];
   const pageTitle = resolveTitle(title, lang, fallbackH1);
   const resolvedTitle = seoTitle
     ? `${seoTitle[lang]} · JojoPrompts`

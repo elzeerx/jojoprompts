@@ -53,7 +53,7 @@ describe("Users V2 route contract", () => {
   it("does not embed a duplicate User Activity Log tab", () => {
     expect(absent(/UserActivityLog/, combined)).toBe(true);
     expect(absent(/Activity Log/, combined)).toBe(true);
-    expect(usersPage.includes("/admin/trust/admin-activity")).toBe(true);
+    expect(usersPage.includes("/admin/operations?tab=admin-activity")).toBe(true);
   });
 
   it("keeps essential People actions and 44px touch targets", () => {
@@ -65,7 +65,7 @@ describe("Users V2 route contract", () => {
     expect(/min-h-\[44px\]/.test(usersTable)).toBe(true);
     expect(/min-h-\[44px\]/.test(usersPage)).toBe(true);
     expect(
-      /href="\/admin\/trust\/admin-activity"[\s\S]{0,180}min-h-\[44px\]/.test(
+      /href="\/admin\/operations\?tab=admin-activity"[\s\S]{0,180}min-h-\[44px\]/.test(
         usersPage,
       ),
     ).toBe(true);

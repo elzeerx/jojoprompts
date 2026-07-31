@@ -276,12 +276,12 @@ export default function RecoveryPage() {
                     )}
                     {r.order_id && (
                       <Button size="sm" variant="ghost" className="min-h-[44px]" asChild>
-                        <Link to={`/admin/orders?order=${r.order_id}`}>Open order</Link>
+                        <Link to={`/admin/commerce?tab=orders&order=${r.order_id}`}>Open order</Link>
                       </Button>
                     )}
                     {r.refund_id && (
                       <Button size="sm" variant="ghost" className="min-h-[44px]" asChild>
-                        <Link to={`/admin/orders/refunds?refund=${r.refund_id}`}>Open refund</Link>
+                        <Link to={`/admin/commerce?tab=refunds&refund=${r.refund_id}`}>Open refund</Link>
                       </Button>
                     )}
                   </div>
@@ -344,14 +344,14 @@ export default function RecoveryPage() {
                         )}
                         {r.order_id && (
                           <Button size="sm" variant="ghost" className="min-h-[44px]" asChild>
-                            <Link to={`/admin/orders?order=${r.order_id}`}>
+                            <Link to={`/admin/commerce?tab=orders&order=${r.order_id}`}>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
                           </Button>
                         )}
                         {r.refund_id && (
                           <Button size="sm" variant="ghost" className="min-h-[44px]" asChild>
-                            <Link to={`/admin/orders/refunds?refund=${r.refund_id}`}>Refund</Link>
+                            <Link to={`/admin/commerce?tab=refunds&refund=${r.refund_id}`}>Refund</Link>
                           </Button>
                         )}
                       </div>

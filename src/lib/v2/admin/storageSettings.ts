@@ -316,12 +316,12 @@ export const STORAGE_NAV_LINKS: readonly {
   to: string; label: string; description: string;
 }[] = [
   {
-    to: "/admin/publishing/versions",
+    to: "/admin/content?tab=versions",
     label: "Versions registry",
     description: "Browse resource versions and their package files",
   },
   {
-    to: "/admin/trust/scans",
+    to: "/admin/operations?tab=scans",
     label: "Package scans",
     description: "Review scanner queue, history, and results",
   },

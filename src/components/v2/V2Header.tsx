@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, User, LogOut, Settings, LibraryBig, Receipt, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -32,11 +32,11 @@ const PRIMARY_NAV: NavItem[] = [
 
 const EXPLORE_ITEMS: NavItem[] = [
   { to: "/explore", label: { en: "All resources", ar: "كل الموارد" } },
-  { to: "/skills", label: { en: "Skills", ar: "مهارات" } },
-  { to: "/automations", label: { en: "Automations", ar: "أتمتة" } },
-  { to: "/prompts", label: { en: "Prompts", ar: "برومبتات" } },
-  { to: "/image-styles", label: { en: "Image Styles", ar: "أنماط الصور" } },
-  { to: "/bundles", label: { en: "Bundles", ar: "حزم" } },
+  { to: "/explore?type=skill", label: { en: "Skills", ar: "مهارات" } },
+  { to: "/explore?type=automation", label: { en: "Automations", ar: "أتمتة" } },
+  { to: "/explore?type=prompt", label: { en: "Prompts", ar: "برومبتات" } },
+  { to: "/explore?type=image_style", label: { en: "Image Styles", ar: "أنماط الصور" } },
+  { to: "/explore?type=bundle", label: { en: "Bundles", ar: "حزم" } },
 ];
 
 export function V2Header() {
@@ -44,6 +44,7 @@ export function V2Header() {
   const { language, isRTL } = useTranslation();
   const lang: "en" | "ar" = language === "ar" ? "ar" : "en";
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { user, isAdmin, signOut } = useAuth();
 
@@ -215,25 +216,28 @@ export function V2Header() {
           className="lg:hidden border-t border-border/60 bg-background/95 backdrop-blur"
         >
           <ul className="container mx-auto flex flex-col gap-1 px-3 py-2">
-            {mobileItems.map((item) => (
+            {mobileItems.map((item) => {
+              const [path, query = ""] = item.to.split("?");
+              const expectedType = new URLSearchParams(query).get("type");
+              const currentType = new URLSearchParams(location.search).get("type");
+              const isActive = location.pathname === path && (path !== "/explore" || expectedType === currentType);
+              return (
               <li key={item.to}>
-                <NavLink
+                <Link
                   to={item.to}
-                  end={item.end}
                   onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
                       "flex items-center rounded-lg px-3 py-3 text-sm font-medium min-h-[44px]",
                       isActive
                         ? "bg-warm-gold text-dark-base"
                         : "text-foreground hover:bg-muted",
-                    )
-                  }
+                    )}
                 >
                   {item.label[lang]}
-                </NavLink>
+                </Link>
               </li>
-            ))}
+            )})}
           </ul>
         </nav>
       )}

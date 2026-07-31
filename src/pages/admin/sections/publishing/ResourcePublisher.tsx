@@ -231,7 +231,7 @@ const RESOURCE_EDITOR_SELECT =
   "id, slug, type, lifecycle, latest_published_version_id, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar,published_at), products(id,sku,product_type,title_en,title_ar,price_fils,is_active)";
 
 function buildResourceEditUrl(resourceId: string): string {
-  return `/admin/publishing/resources/${resourceId}/edit`;
+  return `/admin/content/resources/${resourceId}/edit`;
 }
 
 function parseGuideSteps(value: unknown): Array<{ title: string; body: string }> {
@@ -298,14 +298,17 @@ async function fetchPlatforms(): Promise<{ slug: string; name: string }[]> {
   }));
 }
 
-interface PublisherProps { mode: "new" | "edit" | "new-version" }
+interface PublisherProps {
+  mode: "new" | "edit" | "new-version";
+  resourceIdOverride?: string;
+}
 
-export default function ResourcePublisher({ mode }: PublisherProps) {
+export default function ResourcePublisher({ mode, resourceIdOverride }: PublisherProps) {
   const params = useParams<{ resourceId?: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const resourceId = params.resourceId;
+  const resourceId = resourceIdOverride ?? params.resourceId;
   const aiStudioImport = useMemo(
     () =>
       mode === "new"
@@ -715,7 +718,7 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
           <pre className="max-w-full overflow-x-auto rounded bg-muted p-2 text-xs">{msg}</pre>
         )}
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate("/admin/catalog")}>Back to Catalog</Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/admin/content")}>Back to Catalog</Button>
           <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ["admin","v2","publisher","resource", resourceId] })}>Retry</Button>
         </div>
       </div>
@@ -732,7 +735,7 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
           The resource <code className="rounded bg-muted px-1 py-0.5 text-xs">{resourceId}</code> does not exist
           or you do not have access to it. It may have been archived or the link may be wrong.
         </p>
-        <Button variant="outline" size="sm" onClick={() => navigate("/admin/catalog")}>
+        <Button variant="outline" size="sm" onClick={() => navigate("/admin/content")}>
           Back to Catalog
         </Button>
       </div>
@@ -812,10 +815,10 @@ export default function ResourcePublisher({ mode }: PublisherProps) {
                 <Label>Source</Label>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild variant="outline" size="sm" className="min-h-[44px]">
-                    <Link to="/admin/publishing/imports/json"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> JSON Importer</Link>
+                    <Link to="/admin/content/imports/json"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> JSON Importer</Link>
                   </Button>
                   <Button asChild variant="outline" size="sm" className="min-h-[44px]">
-                    <Link to="/admin/publishing/imports/ai-studio"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> AI Studio</Link>
+                    <Link to="/admin/content/imports/ai-studio"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> AI Studio</Link>
                   </Button>
                 </div>
               </div>

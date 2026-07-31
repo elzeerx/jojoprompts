@@ -57,7 +57,7 @@ describe("Admin Users loading contract", () => {
     expect(usersPageSource).toContain(
       'className="-mx-1 inline-flex min-h-[44px] items-center px-1 underline underline-offset-2 hover:text-dark-base sm:mx-0 sm:min-h-0 sm:px-0"',
     );
-    expect(usersPageSource).toContain('href="/admin/trust/admin-activity"');
+    expect(usersPageSource).toContain('href="/admin/operations?tab=admin-activity"');
     expect(usersPageSource).toContain("Admin Activity");
   });
 });

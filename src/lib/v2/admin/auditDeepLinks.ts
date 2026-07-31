@@ -11,23 +11,23 @@ export function resolveEntityLink(
   const id = String(entityId);
   switch (entityType) {
     case "report":
-      return `/admin/trust/reports?open=${encodeURIComponent(id)}`;
+      return `/admin/operations?tab=reports&open=${encodeURIComponent(id)}`;
     case "order":
-      return `/admin/orders?open=${encodeURIComponent(id)}`;
+      return `/admin/commerce?tab=orders&open=${encodeURIComponent(id)}`;
     case "refund":
-      return `/admin/orders/refunds?open=${encodeURIComponent(id)}`;
+      return `/admin/commerce?tab=refunds&open=${encodeURIComponent(id)}`;
     case "discount":
     case "discount_code":
-      return `/admin/orders/discounts?open=${encodeURIComponent(id)}`;
+      return `/admin/commerce?tab=discounts&open=${encodeURIComponent(id)}`;
     case "resource":
-      return `/admin/publishing/versions?resource=${encodeURIComponent(id)}`;
+      return `/admin/content?tab=versions&resource=${encodeURIComponent(id)}`;
     case "resource_version":
-      return `/admin/publishing/versions?version=${encodeURIComponent(id)}`;
+      return `/admin/content?tab=versions&version=${encodeURIComponent(id)}`;
     case "package_scan":
-      return `/admin/trust/scans?open=${encodeURIComponent(id)}`;
+      return `/admin/operations?tab=scans&open=${encodeURIComponent(id)}`;
     case "user":
     case "profile":
-      return `/admin/users?open=${encodeURIComponent(id)}`;
+      return `/admin/people?tab=users&open=${encodeURIComponent(id)}`;
     default:
       return null;
   }

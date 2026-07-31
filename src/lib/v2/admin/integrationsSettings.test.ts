@@ -27,27 +27,27 @@ function makePayload(overrides?: {
       {
         id: "upayments", purpose: "payments",
         enabled: o.upEnabled, configured: o.upConfigured,
-        environment: o.upEnv, specialist_route: "/admin/settings/payments",
+        environment: o.upEnv, specialist_route: "/admin/settings?tab=payments",
       },
       {
         id: "resend", purpose: "transactional_email",
         configured: o.resendConfigured,
         sender_address: "info@jojoprompts.com",
         domain: "jojoprompts.com",
-        specialist_route: "/admin/settings/email",
+        specialist_route: "/admin/settings?tab=email",
       },
       {
         id: "cloudmersive", purpose: "package_scanning",
         configured: o.cmsApi && o.cmsWorker,
         api_key_configured: o.cmsApi,
         worker_secret_configured: o.cmsWorker,
-        specialist_route: "/admin/trust/scans",
+        specialist_route: "/admin/operations?tab=scans",
       },
       {
         id: "lovable_ai", purpose: "ai_studio",
         configured: o.lovable,
         application_services: ["ai-studio-chat", "ai-studio-image"],
-        specialist_route: "/admin/publishing/new",
+        specialist_route: "/admin/content/new",
       },
       {
         id: "jojoprompts_mcp", purpose: "mcp_access",

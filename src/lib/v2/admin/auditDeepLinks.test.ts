@@ -24,21 +24,21 @@ describe("resolveEntityLink", () => {
     expect(resolveEntityLink("", "")).toBeNull();
   });
   it("resolves known entity types to admin routes", () => {
-    expect(resolveEntityLink("report", "r1")).toBe("/admin/trust/reports?open=r1");
-    expect(resolveEntityLink("order", "o1")).toBe("/admin/orders?open=o1");
-    expect(resolveEntityLink("refund", "rf1")).toBe("/admin/orders/refunds?open=rf1");
-    expect(resolveEntityLink("discount", "d1")).toBe("/admin/orders/discounts?open=d1");
-    expect(resolveEntityLink("discount_code", "d2")).toBe("/admin/orders/discounts?open=d2");
-    expect(resolveEntityLink("resource", "res1")).toBe("/admin/publishing/versions?resource=res1");
-    expect(resolveEntityLink("resource_version", "v1")).toBe("/admin/publishing/versions?version=v1");
-    expect(resolveEntityLink("package_scan", "s1")).toBe("/admin/trust/scans?open=s1");
-    expect(resolveEntityLink("user", "u1")).toBe("/admin/users?open=u1");
+    expect(resolveEntityLink("report", "r1")).toBe("/admin/operations?tab=reports&open=r1");
+    expect(resolveEntityLink("order", "o1")).toBe("/admin/commerce?tab=orders&open=o1");
+    expect(resolveEntityLink("refund", "rf1")).toBe("/admin/commerce?tab=refunds&open=rf1");
+    expect(resolveEntityLink("discount", "d1")).toBe("/admin/commerce?tab=discounts&open=d1");
+    expect(resolveEntityLink("discount_code", "d2")).toBe("/admin/commerce?tab=discounts&open=d2");
+    expect(resolveEntityLink("resource", "res1")).toBe("/admin/content?tab=versions&resource=res1");
+    expect(resolveEntityLink("resource_version", "v1")).toBe("/admin/content?tab=versions&version=v1");
+    expect(resolveEntityLink("package_scan", "s1")).toBe("/admin/operations?tab=scans&open=s1");
+    expect(resolveEntityLink("user", "u1")).toBe("/admin/people?tab=users&open=u1");
   });
   it("returns null for unknown types", () => {
     expect(resolveEntityLink("mystery", "x")).toBeNull();
   });
   it("uri-encodes ids with special chars", () => {
-    expect(resolveEntityLink("order", "a b")).toBe("/admin/orders?open=a%20b");
+    expect(resolveEntityLink("order", "a b")).toBe("/admin/commerce?tab=orders&open=a%20b");
   });
 });
 

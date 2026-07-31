@@ -7,23 +7,23 @@ export const PAYMENTS_NAV_LINKS: readonly {
   label: string;
   description: string;
 }[] = [
-  { to: "/admin/orders", label: "Orders", description: "Order-level detail & receipts" },
-  { to: "/admin/orders/payment-events", label: "Payment events", description: "Provider event stream" },
-  { to: "/admin/orders/entitlements", label: "Entitlements", description: "Granted entitlements" },
-  { to: "/admin/orders/refunds", label: "Refunds", description: "Refund requests & processing" },
-  { to: "/admin/orders/recovery", label: "Recovery queue", description: "Stalled/unsettled orders" },
-  { to: "/admin/orders/discounts", label: "Discounts", description: "One-time payment discount codes" },
+  { to: "/admin/commerce?tab=orders", label: "Orders", description: "Order-level detail & receipts" },
+  { to: "/admin/commerce?tab=payment-events", label: "Payment events", description: "Provider event stream" },
+  { to: "/admin/commerce?tab=entitlements", label: "Entitlements", description: "Granted entitlements" },
+  { to: "/admin/commerce?tab=refunds", label: "Refunds", description: "Refund requests & processing" },
+  { to: "/admin/commerce?tab=recovery", label: "Recovery queue", description: "Stalled/unsettled orders" },
+  { to: "/admin/commerce?tab=discounts", label: "Discounts", description: "One-time payment discount codes" },
 ];
 
 export const PAYMENTS_RECON_LINKS: Readonly<Record<string, string>> = {
-  mismatches: "/admin/orders/payment-events",
-  pending_past_due: "/admin/orders/recovery",
-  paid_without_entitlement: "/admin/orders",
-  credit_inconsistent: "/admin/orders/entitlements",
-  duplicate_event_risk: "/admin/orders/payment-events",
-  refund_alloc_over_item: "/admin/orders/refunds",
-  refund_alloc_over_order: "/admin/orders/refunds",
-  processed_missing_credit: "/admin/orders/refunds",
-  processed_item_unrevoked_entitlement: "/admin/orders/refunds",
-  threshold_lifetime_below_credit: "/admin/orders/entitlements",
+  mismatches: "/admin/commerce?tab=payment-events",
+  pending_past_due: "/admin/commerce?tab=recovery",
+  paid_without_entitlement: "/admin/commerce?tab=orders",
+  credit_inconsistent: "/admin/commerce?tab=entitlements",
+  duplicate_event_risk: "/admin/commerce?tab=payment-events",
+  refund_alloc_over_item: "/admin/commerce?tab=refunds",
+  refund_alloc_over_order: "/admin/commerce?tab=refunds",
+  processed_missing_credit: "/admin/commerce?tab=refunds",
+  processed_item_unrevoked_entitlement: "/admin/commerce?tab=refunds",
+  threshold_lifetime_below_credit: "/admin/commerce?tab=entitlements",
 };

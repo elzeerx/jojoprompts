@@ -21,14 +21,18 @@ export const V2_RESOURCE_TYPES = [
 ] as const;
 export type V2ResourceType = (typeof V2_RESOURCE_TYPES)[number];
 
+export function isV2ResourceType(value: string | null | undefined): value is V2ResourceType {
+  return typeof value === "string" && (V2_RESOURCE_TYPES as readonly string[]).includes(value);
+}
+
 /** Route each resource type routes to on the V2 catalog. */
 export const V2_TYPE_ROUTE: Record<V2ResourceType, string> = {
-  skill: "/skills",
-  automation: "/automations",
-  prompt: "/prompts",
-  prompt_pack: "/prompts",
-  image_style: "/image-styles",
-  bundle: "/bundles",
+  skill: "/explore?type=skill",
+  automation: "/explore?type=automation",
+  prompt: "/explore?type=prompt",
+  prompt_pack: "/explore?type=prompt_pack",
+  image_style: "/explore?type=image_style",
+  bundle: "/explore?type=bundle",
 };
 
 /**
@@ -38,9 +42,9 @@ export const V2_TYPE_ROUTE: Record<V2ResourceType, string> = {
  */
 export const V2_CUTOVER_ROUTES = {
   /** Where the V2 Prompts catalog lives today (compatibility). */
-  currentV2Prompts: "/prompts",
+  currentV2Prompts: "/explore?type=prompt",
   /** Post-cutover public path for V2 Prompts. */
-  futureV2Prompts: "/prompts",
+  futureV2Prompts: "/explore?type=prompt",
   /** Post-cutover public path for the legacy prompts app. */
   futureLegacyPrompts: "/legacy/prompts",
 } as const;
@@ -118,6 +122,8 @@ export const V2_COPY = {
       ar: "ابحث في البرومبتات، المهارات، الأتمتة، الأنماط، الحزم…",
     },
     filters: { en: "Filters", ar: "الفلاتر" },
+    type: { en: "Resource type", ar: "نوع المورد" },
+    typeAll: { en: "All resources", ar: "كل الموارد" },
     apply: { en: "Apply", ar: "تطبيق" },
     reset: { en: "Reset", ar: "إعادة" },
     price: { en: "Price", ar: "السعر" },

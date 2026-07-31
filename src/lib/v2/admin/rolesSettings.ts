@@ -322,17 +322,17 @@ export const ROLES_NAV_LINKS: readonly {
 }[] = [
   {
     label: "Users",
-    to: "/admin/users",
+    to: "/admin/people?tab=users",
     description: "Assign roles and manage individual accounts.",
   },
   {
     label: "Admin activity log",
-    to: "/admin/trust/admin-activity",
+    to: "/admin/operations?tab=admin-activity",
     description: "Audit trail of administrator actions.",
   },
   {
     label: "Security events",
-    to: "/admin/trust/security-events",
+    to: "/admin/operations?tab=security-events",
     description: "Suspicious authentication and access events.",
   },
 ];

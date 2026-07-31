@@ -42,8 +42,9 @@ const LLM_OPTIONS = [
   { value: "generic", label: "Generic" },
 ];
 
-export default function AiStudioPage() {
-  const { draftId } = useParams<{ draftId?: string }>();
+export default function AiStudioPage({ draftIdOverride }: { draftIdOverride?: string }) {
+  const { draftId: routeDraftId } = useParams<{ draftId?: string }>();
+  const draftId = draftIdOverride ?? routeDraftId;
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -204,7 +205,7 @@ export default function AiStudioPage() {
               size="sm"
               onClick={() =>
                 navigate(
-                  `/admin/publishing/resources/${importedResourceId}/edit`,
+                  `/admin/content/resources/${importedResourceId}/edit`,
                 )
               }
             >

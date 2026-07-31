@@ -176,7 +176,7 @@ export default function RolesPage() {
                 </span>
               </div>
               <Button asChild variant="outline" size="sm" className="min-h-[44px] shrink-0">
-                <Link to="/admin/users">Open Users</Link>
+                <Link to="/admin/people?tab=users">Open Users</Link>
               </Button>
             </div>
           ) : null}
@@ -282,7 +282,7 @@ export default function RolesPage() {
               <div className="font-medium">Role changes are intentionally unavailable here.</div>
               <div className="mt-1">
                 Assignments and revocations are performed one account at a time
-                from <Link to="/admin/users" className="underline">People → Users</Link>.
+                from <Link to="/admin/people?tab=users" className="underline">People → Users</Link>.
                 Bulk mutation from this page is disabled until a lockout-safe,
                 fully audited workflow lands and the legacy <code>jadmin</code>
                 {" "}and prompter admin helpers are harmonized with the Admin V2

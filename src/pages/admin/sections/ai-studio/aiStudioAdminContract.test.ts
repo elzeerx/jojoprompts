@@ -24,21 +24,16 @@ const draftHookSource = readFileSync(
 );
 
 describe("AI Studio Admin V2 contract", () => {
-  it("uses only the canonical nested publishing route for draft navigation", () => {
+  it("uses only the canonical Content workspace route for draft navigation", () => {
     expect(routesSource).toContain(
-      '"/admin/publishing/imports/ai-studio"',
+      '"/admin/content/imports/ai-studio"',
     );
     expect(pageSource).not.toContain('`/admin/ai-studio/');
     expect(sidebarSource).not.toContain('`/admin/ai-studio/');
     expect(pageSource).toContain("AI_STUDIO_BASE_ROUTE");
     expect(sidebarSource).toContain("AI_STUDIO_BASE_ROUTE");
-    expect(appSource).toContain("function LegacyAiStudioDraftRedirect()");
-    expect(appSource).toContain(
-      "/admin/publishing/imports/ai-studio/${encodeURIComponent(draftId)}",
-    );
-    expect(appSource).toContain(
-      '<Route path="ai-studio/:draftId" element={<LegacyAiStudioDraftRedirect />} />',
-    );
+    expect(appSource).toContain('<Route path="content/*" element={<AdminWorkspacePage workspace="content" />} />');
+    expect(appSource).toContain('<Route path="*" element={<AdminCompatibilityResolver />} />');
   });
 
   it("exposes exactly one H1 in both empty and active-draft states", () => {
@@ -91,7 +86,7 @@ describe("AI Studio Admin V2 contract", () => {
 
   it("hands assets to the unified publisher without mutating legacy prompts", () => {
     expect(publishDialogSource).toContain(
-      'navigate("/admin/publishing/new"',
+      'navigate("/admin/content/new"',
     );
     expect(publishDialogSource).toContain("buildAiStudioPublisherHandoff");
     expect(publishDialogSource).not.toContain('.from("prompts")');
@@ -99,7 +94,7 @@ describe("AI Studio Admin V2 contract", () => {
     expect(draftHookSource).not.toContain("unpublish");
     expect(pageSource).toContain("Sent to publisher");
     expect(pageSource).toContain(
-      "/admin/publishing/resources/${importedResourceId}/edit",
+      "/admin/content/resources/${importedResourceId}/edit",
     );
   });
 });

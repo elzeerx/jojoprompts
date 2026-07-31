@@ -17,7 +17,7 @@ const { readFileSync } = require("fs");
 
 import { IMPORTS_HUB_CARDS } from "@/pages/admin/sections/publishing/ImportsHub";
 
-const APP = readFileSync("src/App.tsx", "utf8") as string;
+const WORKSPACE = readFileSync("src/pages/admin/layout/AdminWorkspacePage.tsx", "utf8") as string;
 const ELEMENTS = readFileSync(
   "src/pages/admin/layout/adminSectionElements.tsx",
   "utf8",
@@ -41,19 +41,11 @@ describe("Admin V2 Imports Hub — route wiring", () => {
     );
   });
 
-  it("all four import routes are registered in App.tsx", () => {
-    expect(APP).toMatch(
-      /path="publishing\/imports"\s+element=\{adminSectionElements\.publishingImports\}/,
-    );
-    expect(APP).toMatch(
-      /path="publishing\/imports\/legacy"\s+element=\{adminSectionElements\.publishingImportsLegacy\}/,
-    );
-    expect(APP).toMatch(
-      /path="publishing\/imports\/json"\s+element=\{adminSectionElements\.publishingImportsJson\}/,
-    );
-    expect(APP).toMatch(
-      /path="publishing\/imports\/ai-studio"\s+element=\{adminSectionElements\.publishingImportsAiStudio\}/,
-    );
+  it("all import tools are routed inside the Content workspace", () => {
+    expect(WORKSPACE).toContain('{ id: "imports", label: "Imports", element: adminSectionElements.publishingImports }');
+    expect(WORKSPACE).toContain('splat === "imports/legacy"');
+    expect(WORKSPACE).toContain('splat === "imports/json"');
+    expect(WORKSPACE).toContain('splat === "imports/ai-studio"');
   });
 });
 
@@ -61,9 +53,9 @@ describe("Admin V2 Imports Hub — card contract", () => {
   it("exposes exactly three cards with the required destinations", () => {
     const dests = IMPORTS_HUB_CARDS.map((c) => c.to).sort();
     expect(dests).toEqual([
-      "/admin/publishing/imports/ai-studio",
-      "/admin/publishing/imports/json",
-      "/admin/publishing/imports/legacy",
+      "/admin/content/imports/ai-studio",
+      "/admin/content/imports/json",
+      "/admin/content/imports/legacy",
     ]);
   });
 
@@ -162,7 +154,7 @@ describe("Admin V2 Imports — legacy verification page preserved", () => {
   it("legacy page renders a breadcrumb back to Imports", () => {
     expect(LEGACY).toMatch(/aria-label="Breadcrumb"/);
     expect(LEGACY).toMatch(
-      /to="\/admin\/publishing\/imports"[\s\S]{0,400}Imports/,
+      /to="\/admin\/content\?tab=imports"[\s\S]{0,400}Imports/,
     );
     expect(LEGACY).toMatch(/aria-current="page"[\s\S]{0,120}Legacy migration verification/);
   });

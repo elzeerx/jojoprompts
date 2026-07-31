@@ -108,12 +108,12 @@ describe("stripStatusFields", () => {
 describe("PAYMENTS_NAV_LINKS canonical routes", () => {
   it("uses canonical Admin V2 order routes only", () => {
     const map = Object.fromEntries(PAYMENTS_NAV_LINKS.map((n) => [n.label, n.to]));
-    expect(map["Orders"]).toBe("/admin/orders");
-    expect(map["Payment events"]).toBe("/admin/orders/payment-events");
-    expect(map["Entitlements"]).toBe("/admin/orders/entitlements");
-    expect(map["Refunds"]).toBe("/admin/orders/refunds");
-    expect(map["Recovery queue"]).toBe("/admin/orders/recovery");
-    expect(map["Discounts"]).toBe("/admin/orders/discounts");
+    expect(map["Orders"]).toBe("/admin/commerce?tab=orders");
+    expect(map["Payment events"]).toBe("/admin/commerce?tab=payment-events");
+    expect(map["Entitlements"]).toBe("/admin/commerce?tab=entitlements");
+    expect(map["Refunds"]).toBe("/admin/commerce?tab=refunds");
+    expect(map["Recovery queue"]).toBe("/admin/commerce?tab=recovery");
+    expect(map["Discounts"]).toBe("/admin/commerce?tab=discounts");
   });
   it("contains no legacy non-canonical routes", () => {
     const forbidden = new Set(["/admin/payment-events", "/admin/refunds", "/admin/entitlements", "/admin/discounts"]);
@@ -125,16 +125,16 @@ describe("PAYMENTS_NAV_LINKS canonical routes", () => {
     }
   });
   it("reconciliation link map targets canonical routes", () => {
-    expect(PAYMENTS_RECON_LINKS.mismatches).toBe("/admin/orders/payment-events");
-    expect(PAYMENTS_RECON_LINKS.duplicate_event_risk).toBe("/admin/orders/payment-events");
-    expect(PAYMENTS_RECON_LINKS.credit_inconsistent).toBe("/admin/orders/entitlements");
-    expect(PAYMENTS_RECON_LINKS.threshold_lifetime_below_credit).toBe("/admin/orders/entitlements");
-    expect(PAYMENTS_RECON_LINKS.refund_alloc_over_item).toBe("/admin/orders/refunds");
-    expect(PAYMENTS_RECON_LINKS.refund_alloc_over_order).toBe("/admin/orders/refunds");
-    expect(PAYMENTS_RECON_LINKS.processed_missing_credit).toBe("/admin/orders/refunds");
-    expect(PAYMENTS_RECON_LINKS.processed_item_unrevoked_entitlement).toBe("/admin/orders/refunds");
-    expect(PAYMENTS_RECON_LINKS.pending_past_due).toBe("/admin/orders/recovery");
-    expect(PAYMENTS_RECON_LINKS.paid_without_entitlement).toBe("/admin/orders");
+    expect(PAYMENTS_RECON_LINKS.mismatches).toBe("/admin/commerce?tab=payment-events");
+    expect(PAYMENTS_RECON_LINKS.duplicate_event_risk).toBe("/admin/commerce?tab=payment-events");
+    expect(PAYMENTS_RECON_LINKS.credit_inconsistent).toBe("/admin/commerce?tab=entitlements");
+    expect(PAYMENTS_RECON_LINKS.threshold_lifetime_below_credit).toBe("/admin/commerce?tab=entitlements");
+    expect(PAYMENTS_RECON_LINKS.refund_alloc_over_item).toBe("/admin/commerce?tab=refunds");
+    expect(PAYMENTS_RECON_LINKS.refund_alloc_over_order).toBe("/admin/commerce?tab=refunds");
+    expect(PAYMENTS_RECON_LINKS.processed_missing_credit).toBe("/admin/commerce?tab=refunds");
+    expect(PAYMENTS_RECON_LINKS.processed_item_unrevoked_entitlement).toBe("/admin/commerce?tab=refunds");
+    expect(PAYMENTS_RECON_LINKS.pending_past_due).toBe("/admin/commerce?tab=recovery");
+    expect(PAYMENTS_RECON_LINKS.paid_without_entitlement).toBe("/admin/commerce?tab=orders");
   });
 });
 

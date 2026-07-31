@@ -25,21 +25,20 @@ const ELEMENTS = readFileSync(
   "src/pages/admin/layout/adminSectionElements.tsx",
   "utf8",
 ) as string;
-const APP = readFileSync("src/App.tsx", "utf8") as string;
+const WORKSPACE = readFileSync("src/pages/admin/layout/AdminWorkspacePage.tsx", "utf8") as string;
 const LEGACY = readFileSync(
   "src/pages/admin/sections/publishing/LegacyMigrationPreview.tsx",
   "utf8",
 ) as string;
 
 describe("V2 Resource JSON Importer — route wiring", () => {
-  it("route /admin/publishing/imports/json is wired to JsonResourceImporter", () => {
+  it("the Content imports/json tool is wired to JsonResourceImporter", () => {
     expect(ELEMENTS).toMatch(/JsonResourceImporter\s*=\s*lazy\(/);
     expect(ELEMENTS).toMatch(
       /publishingImportsJson:\s*wrap\(<JsonResourceImporter\s*\/>\)/,
     );
-    expect(APP).toMatch(
-      /path="publishing\/imports\/json"\s+element=\{adminSectionElements\.publishingImportsJson\}/,
-    );
+    expect(WORKSPACE).toContain('splat === "imports/json"');
+    expect(WORKSPACE).toContain("adminSectionElements.publishingImportsJson");
   });
 
   it("no reference remains to the legacy JsonPromptImporter surface in the active element map", () => {
@@ -61,7 +60,7 @@ describe("V2 Resource JSON Importer — page contract", () => {
 
   it("exposes an explicit Back to Imports action", () => {
     expect(IMPORTER).toMatch(/data-json-back-to-imports/);
-    expect(IMPORTER).toMatch(/to="\/admin\/publishing\/imports"/);
+    expect(IMPORTER).toMatch(/to="\/admin\/content\?tab=imports"/);
     expect(IMPORTER).toMatch(/Back to Imports/);
   });
 

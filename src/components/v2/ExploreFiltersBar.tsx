@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
@@ -24,6 +23,15 @@ interface Props {
   onReset: () => void;
 }
 
+const RESOURCE_TYPE_OPTIONS = [
+  { value: "skill", labelKey: "skills" },
+  { value: "automation", labelKey: "automations" },
+  { value: "prompt", labelKey: "prompts" },
+  { value: "prompt_pack", labelKey: "promptPacks" },
+  { value: "image_style", labelKey: "imageStyles" },
+  { value: "bundle", labelKey: "bundles" },
+] as const;
+
 export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
@@ -41,12 +49,34 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
   };
 
   const activeCount =
+    (filters.type && filters.type !== "all" ? 1 : 0) +
     (filters.platforms?.length ?? 0) +
     (filters.priceMode && filters.priceMode !== "all" ? 1 : 0) +
     (filters.effort && filters.effort !== "all" ? 1 : 0);
 
   const controls = (
     <div className="space-y-4">
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          {V2_COPY.filters.type[lang]}
+        </label>
+        <Select
+          value={filters.type ?? "all"}
+          onValueChange={(value) => onChange({ type: value as ExploreFilters["type"] })}
+        >
+          <SelectTrigger className="w-full min-h-[44px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{V2_COPY.filters.typeAll[lang]}</SelectItem>
+            {RESOURCE_TYPE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {V2_COPY.nav[option.labelKey][lang]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">
           {V2_COPY.filters.price[lang]}
@@ -150,6 +180,22 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
         </div>
         {/* Desktop inline controls */}
         <div className="hidden md:flex md:items-center md:gap-2">
+          <Select
+            value={filters.type ?? "all"}
+            onValueChange={(value) => onChange({ type: value as ExploreFilters["type"] })}
+          >
+            <SelectTrigger className="min-h-[44px] w-[170px]" aria-label={V2_COPY.filters.type[lang]}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{V2_COPY.filters.typeAll[lang]}</SelectItem>
+              {RESOURCE_TYPE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {V2_COPY.nav[option.labelKey][lang]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select
             value={filters.sortBy ?? "newest"}
             onValueChange={(v) => onChange({ sortBy: v as ExploreFilters["sortBy"] })}

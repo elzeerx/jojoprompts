@@ -16,7 +16,7 @@ import { QuickPreviewSheet } from "@/components/v2/QuickPreviewSheet";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
-import { V2_COPY, type V2ResourceType } from "@/config/v2Flags";
+import { isV2ResourceType, V2_COPY, type V2ResourceType } from "@/config/v2Flags";
 import { useTranslation } from "@/hooks/useTranslation";
 
 type Bilingual = { en: string; ar: string };
@@ -67,10 +67,11 @@ export default function ExploreCatalogContent({
   const scrollKey =
     location.pathname + (params.get("q") ?? "") + (params.get("type") ?? "");
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const requestedType = params.get("type");
 
   const filters: ExploreFilters = useMemo(
     () => ({
-      type: fixedType ?? ((params.get("type") as ExploreFilters["type"]) || "all"),
+      type: fixedType ?? (isV2ResourceType(requestedType) ? requestedType : "all"),
       platforms:
         (params.get("p")?.split(",").filter(Boolean) as ExploreFilters["platforms"]) ?? [],
       priceMode: (params.get("price") as ExploreFilters["priceMode"]) || "all",
@@ -78,7 +79,7 @@ export default function ExploreCatalogContent({
       search: params.get("q") ?? "",
       sortBy: (params.get("sort") as ExploreFilters["sortBy"]) || "newest",
     }),
-    [params, fixedType],
+    [params, fixedType, requestedType],
   );
 
   const ownedIds = useMemo(() => {
@@ -120,6 +121,10 @@ export default function ExploreCatalogContent({
         if (p.search) next.set("q", p.search);
         else next.delete("q");
       }
+      if (p.type !== undefined) {
+        if (p.type && p.type !== "all") next.set("type", p.type);
+        else next.delete("type");
+      }
       if (p.sortBy) next.set("sort", p.sortBy);
       if (p.priceMode) next.set("price", p.priceMode);
       if (p.effort) next.set("effort", p.effort);
@@ -136,7 +141,8 @@ export default function ExploreCatalogContent({
 
   const reset = useCallback(() => {
     const next = new URLSearchParams();
-    if (params.get("type")) next.set("type", params.get("type")!);
+    const type = params.get("type");
+    if (isV2ResourceType(type)) next.set("type", type);
     setParams(next, { replace: true });
   }, [params, setParams]);
 

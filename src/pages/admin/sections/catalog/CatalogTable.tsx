@@ -447,7 +447,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
         </div>
         <div className="flex gap-2">
           <Button asChild size="sm" className="min-h-[44px] bg-warm-gold text-dark-base hover:bg-warm-gold/90">
-            <Link to="/admin/publishing/new">New Resource</Link>
+            <Link to="/admin/content/new">New Resource</Link>
           </Button>
         </div>
       </header>
@@ -675,8 +675,8 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild><Link to={`/resources/${r.slug}`}><ExternalLink className="me-2 h-3.5 w-3.5" /> View public</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link to={`/admin/publishing/resources/${r.id}/edit`}><Pencil className="me-2 h-3.5 w-3.5" /> Edit</Link></DropdownMenuItem>
-                        <DropdownMenuItem asChild><Link to={`/admin/publishing/resources/${r.id}/versions/new`}><GitBranch className="me-2 h-3.5 w-3.5" /> New version</Link></DropdownMenuItem>
+                        <DropdownMenuItem asChild><Link to={`/admin/content/resources/${r.id}/edit`}><Pencil className="me-2 h-3.5 w-3.5" /> Edit</Link></DropdownMenuItem>
+                        <DropdownMenuItem asChild><Link to={`/admin/content/resources/${r.id}/versions/new`}><GitBranch className="me-2 h-3.5 w-3.5" /> New version</Link></DropdownMenuItem>
                         {isTransitionAllowed(r.lifecycle, "review") ? (
                           <DropdownMenuItem onSelect={() => mutate.mutate({ ids: [r.id], action: "review" })}>
                             <ClipboardCheck className="me-2 h-3.5 w-3.5" /> Submit for review
@@ -698,7 +698,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
                             <ArchiveRestore className="me-2 h-3.5 w-3.5" /> Restore to draft
                           </DropdownMenuItem>
                         ) : null}
-                        <DropdownMenuItem asChild><Link to={`/admin/trust/admin-activity?target=${r.id}`}><ClipboardCheck className="me-2 h-3.5 w-3.5" /> Activity</Link></DropdownMenuItem>
+                        <DropdownMenuItem asChild><Link to={`/admin/operations?tab=admin-activity&target=${r.id}`}><ClipboardCheck className="me-2 h-3.5 w-3.5" /> Activity</Link></DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>
@@ -724,7 +724,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button asChild size="sm" variant="outline" className="min-h-[44px]">
-                      <Link to={`/admin/publishing/resources/${r.id}/edit`}><Pencil className="me-1 h-3.5 w-3.5" /> Edit</Link>
+                      <Link to={`/admin/content/resources/${r.id}/edit`}><Pencil className="me-1 h-3.5 w-3.5" /> Edit</Link>
                     </Button>
                     <Button asChild size="sm" variant="outline" className="min-h-[44px]">
                       <Link to={`/resources/${r.slug}`}><ExternalLink className="me-1 h-3.5 w-3.5" /> View</Link>
@@ -834,7 +834,7 @@ export function CatalogTable({ lockedType, includeTypes, title, subtitle }: Prop
           <DialogFooter>
             <Button variant="outline" onClick={() => setPublishResult(null)}>Close</Button>
             {publishResult ? (
-              <Button asChild><Link to={`/admin/publishing/resources/${publishResult.resourceId}/edit`}>Open publisher</Link></Button>
+              <Button asChild><Link to={`/admin/content/resources/${publishResult.resourceId}/edit`}>Open publisher</Link></Button>
             ) : null}
           </DialogFooter>
         </DialogContent>

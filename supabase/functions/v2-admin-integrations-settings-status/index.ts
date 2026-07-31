@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       enabled: upEnabled,
       configured: upConfigured,
       environment: upEnvironment,
-      specialist_route: "/admin/settings/payments" as const,
+      specialist_route: "/admin/settings?tab=payments" as const,
     },
     {
       id: "resend" as const,
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       configured: resendConfigured,
       sender_address: "info@jojoprompts.com" as const,
       domain: "jojoprompts.com" as const,
-      specialist_route: "/admin/settings/email" as const,
+      specialist_route: "/admin/settings?tab=email" as const,
     },
     {
       id: "cloudmersive" as const,
@@ -77,14 +77,14 @@ Deno.serve(async (req) => {
       configured: cmsConfigured,
       api_key_configured: cmsApiKeyConfigured,
       worker_secret_configured: cmsWorkerSecretConfigured,
-      specialist_route: "/admin/trust/scans" as const,
+      specialist_route: "/admin/operations?tab=scans" as const,
     },
     {
       id: "lovable_ai" as const,
       purpose: "ai_studio" as const,
       configured: lovableConfigured,
       application_services: ["ai-studio-chat", "ai-studio-image"] as const,
-      specialist_route: "/admin/publishing/new" as const,
+      specialist_route: "/admin/content/new" as const,
     },
     {
       id: "jojoprompts_mcp" as const,

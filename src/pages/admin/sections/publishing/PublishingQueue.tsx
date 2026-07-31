@@ -386,7 +386,7 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
         <div className="flex flex-wrap items-center gap-2">
           {viewBtn}
           <Button asChild size="sm" variant="outline" className="min-h-[44px]">
-            <Link to={`/admin/publishing/resources/${r.id}/edit`}>
+            <Link to={`/admin/content/resources/${r.id}/edit`}>
               <Pencil className="mr-1 h-4 w-4" /> Continue editing
             </Link>
           </Button>
@@ -433,7 +433,7 @@ export function PublishingQueue({ mode, title, subtitle }: Props) {
           <ArrowLeftCircle className="mr-1 h-4 w-4" /> Return to draft
         </Button>
         <Button asChild size="sm" variant="ghost" className="min-h-[44px]">
-          <Link to={`/admin/publishing/resources/${r.id}/edit`}>
+          <Link to={`/admin/content/resources/${r.id}/edit`}>
             <Pencil className="mr-1 h-4 w-4" /> Review edits
           </Link>
         </Button>

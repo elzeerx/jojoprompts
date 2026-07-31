@@ -81,17 +81,17 @@ export default function OverviewV2() {
   const recoveryCounts = useAdminRecoveryCounts();
 
   const attention = [
-    { key: "drafts", label: "Drafts", to: "/admin/publishing/drafts", icon: FileEdit, value: data?.attention.drafts },
-    { key: "review", label: "Awaiting review", to: "/admin/publishing/review", icon: ClipboardCheck, value: data?.attention.review },
-    { key: "scans", label: "Scans need action", to: "/admin/trust/scans", icon: ShieldCheck, value: data?.attention.scans },
-    { key: "failed_payments", label: "Failed payments", to: "/admin/orders?status=failed", icon: ShoppingBag, value: data?.attention.failed_payments },
-    { key: "pending_refunds", label: "Pending refunds", to: "/admin/orders/refunds?status=pending", icon: RotateCcw, value: data?.attention.pending_refunds },
-    { key: "recovery", label: "Recovery queue", to: "/admin/orders/recovery", icon: ShieldAlert, value: recoveryCounts.data?.total },
-    { key: "open_reports", label: "Open reports", to: "/admin/trust/reports", icon: Flag, value: data?.attention.open_reports },
+    { key: "drafts", label: "Drafts", to: "/admin/content?tab=drafts", icon: FileEdit, value: data?.attention.drafts },
+    { key: "review", label: "Awaiting review", to: "/admin/content?tab=review", icon: ClipboardCheck, value: data?.attention.review },
+    { key: "scans", label: "Scans need action", to: "/admin/operations?tab=scans", icon: ShieldCheck, value: data?.attention.scans },
+    { key: "failed_payments", label: "Failed payments", to: "/admin/commerce?tab=orders&status=failed", icon: ShoppingBag, value: data?.attention.failed_payments },
+    { key: "pending_refunds", label: "Pending refunds", to: "/admin/commerce?tab=refunds&status=pending", icon: RotateCcw, value: data?.attention.pending_refunds },
+    { key: "recovery", label: "Recovery queue", to: "/admin/commerce?tab=recovery", icon: ShieldAlert, value: recoveryCounts.data?.total },
+    { key: "open_reports", label: "Open reports", to: "/admin/operations?tab=reports", icon: Flag, value: data?.attention.open_reports },
     {
       key: "delivery_failures",
       label: "Delivery failures",
-      to: "/admin/communications/delivery",
+      to: "/admin/operations?tab=delivery",
       icon: Mail,
       value: data?.delivery_failures?.available ? (data?.delivery_failures?.count ?? 0) : undefined,
     },
@@ -156,25 +156,25 @@ export default function OverviewV2() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline" className="min-h-[44px]">
-            <Link to="/admin/publishing/new">
+            <Link to="/admin/content/new">
               <Package className="mr-1.5 h-3.5 w-3.5" aria-hidden />
               New Resource
             </Link>
           </Button>
           <Button asChild size="sm" variant="outline" className="min-h-[44px]">
-            <Link to="/admin/publishing/imports">
+            <Link to="/admin/content?tab=imports">
               <ExternalLink className="mr-1.5 h-3.5 w-3.5" aria-hidden />
               Import
             </Link>
           </Button>
           <Button asChild size="sm" variant="outline" className="min-h-[44px]">
-            <Link to="/admin/publishing/review">
+            <Link to="/admin/content?tab=review">
               <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" aria-hidden />
               Review Queue
             </Link>
           </Button>
           <Button asChild size="sm" variant="outline" className="min-h-[44px]">
-            <Link to="/admin/orders/payment-events">
+            <Link to="/admin/commerce?tab=payment-events">
               <Wallet className="mr-1.5 h-3.5 w-3.5" aria-hidden />
               Reconcile Payments
             </Link>

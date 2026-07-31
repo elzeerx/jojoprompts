@@ -423,7 +423,7 @@ export default function LegacyMigrationPreview() {
           <ol className="flex flex-wrap items-center gap-1.5">
             <li>
               <Link
-                to="/admin/publishing/imports"
+                to="/admin/content?tab=imports"
                 className="inline-flex min-h-[44px] items-center rounded-md px-2 py-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ChevronLeft className="me-1 h-4 w-4 rtl:rotate-180" aria-hidden="true" />
@@ -450,7 +450,7 @@ export default function LegacyMigrationPreview() {
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="outline" className="min-h-[44px] min-w-[44px]">
               <Link
-                to="/admin/publishing/imports"
+                to="/admin/content?tab=imports"
                 data-legacy-back-to-imports
                 aria-label="Back to Imports / العودة إلى الاستيراد"
               >
@@ -459,10 +459,10 @@ export default function LegacyMigrationPreview() {
               </Link>
             </Button>
             <Button asChild variant="outline" className="min-h-[44px]">
-              <Link to="/admin/publishing/imports/json"><FileJson className="me-1.5 h-4 w-4" /> JSON Importer</Link>
+              <Link to="/admin/content/imports/json"><FileJson className="me-1.5 h-4 w-4" /> JSON Importer</Link>
             </Button>
             <Button asChild variant="outline" className="min-h-[44px]">
-              <Link to="/admin/publishing/imports/ai-studio"><Sparkles className="me-1.5 h-4 w-4" /> AI Studio</Link>
+              <Link to="/admin/content/imports/ai-studio"><Sparkles className="me-1.5 h-4 w-4" /> AI Studio</Link>
             </Button>
             <Button
               variant="outline"
@@ -911,10 +911,10 @@ export default function LegacyMigrationPreview() {
             </ul>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Button asChild variant="ghost" size="sm">
-                <Link to="/admin/publishing/imports/json"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> Legacy JSON Importer</Link>
+                <Link to="/admin/content/imports/json"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> Legacy JSON Importer</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/admin/publishing/imports/ai-studio"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> AI Studio</Link>
+                <Link to="/admin/content/imports/ai-studio"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> AI Studio</Link>
               </Button>
             </div>
           </CardContent>

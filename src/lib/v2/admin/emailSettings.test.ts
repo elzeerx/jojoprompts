@@ -121,14 +121,14 @@ describe("emailSettings.stripStatusFields", () => {
 });
 
 describe("emailSettingsRoutes.EMAIL_NAV_LINKS", () => {
-  it("uses canonical /admin/communications routes only", () => {
+  it("uses canonical Operations workspace routes only", () => {
     const targets = EMAIL_NAV_LINKS.map((l) => l.to);
     expect(targets).toEqual([
-      "/admin/communications/templates",
-      "/admin/communications/delivery",
+      "/admin/operations?tab=templates",
+      "/admin/operations?tab=delivery",
     ]);
     for (const t of targets) {
-      expect(t.startsWith("/admin/communications/")).toBe(true);
+      expect(t.startsWith("/admin/operations?tab=")).toBe(true);
     }
   });
 });

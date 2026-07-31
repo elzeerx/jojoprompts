@@ -72,7 +72,7 @@ export type UPaymentsIntegration = {
   enabled: boolean;
   configured: boolean;
   environment: "sandbox" | "production" | "not_configured";
-  specialist_route: "/admin/settings/payments";
+  specialist_route: "/admin/settings?tab=payments";
 };
 
 export type ResendIntegration = {
@@ -81,7 +81,7 @@ export type ResendIntegration = {
   configured: boolean;
   sender_address: "info@jojoprompts.com";
   domain: "jojoprompts.com";
-  specialist_route: "/admin/settings/email";
+  specialist_route: "/admin/settings?tab=email";
 };
 
 export type CloudmersiveIntegration = {
@@ -90,7 +90,7 @@ export type CloudmersiveIntegration = {
   configured: boolean;
   api_key_configured: boolean;
   worker_secret_configured: boolean;
-  specialist_route: "/admin/trust/scans";
+  specialist_route: "/admin/operations?tab=scans";
 };
 
 export type LovableAiIntegration = {
@@ -98,7 +98,7 @@ export type LovableAiIntegration = {
   purpose: "ai_studio";
   configured: boolean;
   application_services: readonly ["ai-studio-chat", "ai-studio-image"];
-  specialist_route: "/admin/publishing/new";
+  specialist_route: "/admin/content/new";
 };
 
 export type McpIntegration = {
@@ -150,7 +150,7 @@ function normalizeUpayments(v: unknown): UPaymentsIntegration | null {
   if (!isBool(o.enabled) || !isBool(o.configured)) return null;
   if (o.environment !== "sandbox" && o.environment !== "production" &&
       o.environment !== "not_configured") return null;
-  if (o.specialist_route !== "/admin/settings/payments") return null;
+  if (o.specialist_route !== "/admin/settings?tab=payments") return null;
   // Readiness consistency:
   // - configured=true requires enabled=true AND env in {sandbox, production}.
   // - enabled=false forbids configured=true.
@@ -167,7 +167,7 @@ function normalizeUpayments(v: unknown): UPaymentsIntegration | null {
     id: "upayments", purpose: "payments",
     enabled: o.enabled, configured: o.configured,
     environment: o.environment,
-    specialist_route: "/admin/settings/payments",
+    specialist_route: "/admin/settings?tab=payments",
   };
 }
 
@@ -183,13 +183,13 @@ function normalizeResend(v: unknown): ResendIntegration | null {
   if (!isBool(o.configured)) return null;
   if (o.sender_address !== "info@jojoprompts.com") return null;
   if (o.domain !== "jojoprompts.com") return null;
-  if (o.specialist_route !== "/admin/settings/email") return null;
+  if (o.specialist_route !== "/admin/settings?tab=email") return null;
   return {
     id: "resend", purpose: "transactional_email",
     configured: o.configured,
     sender_address: "info@jojoprompts.com",
     domain: "jojoprompts.com",
-    specialist_route: "/admin/settings/email",
+    specialist_route: "/admin/settings?tab=email",
   };
 }
 
@@ -206,7 +206,7 @@ function normalizeCloudmersive(v: unknown): CloudmersiveIntegration | null {
   if (!isBool(o.configured)) return null;
   if (!isBool(o.api_key_configured)) return null;
   if (!isBool(o.worker_secret_configured)) return null;
-  if (o.specialist_route !== "/admin/trust/scans") return null;
+  if (o.specialist_route !== "/admin/operations?tab=scans") return null;
   // Consistency: configured only when both sub-booleans are true.
   if (o.configured !== (o.api_key_configured && o.worker_secret_configured)) {
     return null;
@@ -216,7 +216,7 @@ function normalizeCloudmersive(v: unknown): CloudmersiveIntegration | null {
     configured: o.configured,
     api_key_configured: o.api_key_configured,
     worker_secret_configured: o.worker_secret_configured,
-    specialist_route: "/admin/trust/scans",
+    specialist_route: "/admin/operations?tab=scans",
   };
 }
 
@@ -230,7 +230,7 @@ function normalizeLovable(v: unknown): LovableAiIntegration | null {
   if (o.id !== "lovable_ai") return null;
   if (o.purpose !== "ai_studio") return null;
   if (!isBool(o.configured)) return null;
-  if (o.specialist_route !== "/admin/publishing/new") return null;
+  if (o.specialist_route !== "/admin/content/new") return null;
   const svc = o.application_services;
   if (!Array.isArray(svc) || svc.length !== 2) return null;
   if (svc[0] !== "ai-studio-chat" || svc[1] !== "ai-studio-image") return null;
@@ -238,7 +238,7 @@ function normalizeLovable(v: unknown): LovableAiIntegration | null {
     id: "lovable_ai", purpose: "ai_studio",
     configured: o.configured,
     application_services: ["ai-studio-chat", "ai-studio-image"],
-    specialist_route: "/admin/publishing/new",
+    specialist_route: "/admin/content/new",
   };
 }
 
