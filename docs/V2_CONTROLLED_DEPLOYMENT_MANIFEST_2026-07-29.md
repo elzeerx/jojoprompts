@@ -67,6 +67,7 @@ versions to API-applied migrations as shown.
 | 5 | `20260729171000_reconcile_missing_auth_profiles.sql` | `20260729163554` / `reconcile_missing_auth_profiles` | `909312ba3342aeaab28ff8b5e30478c4c6c0fe430dfd6fbcaf1e3b3e79c8ee3c` | 146 | 3,312 |
 | 6 | `20260729171438_v2_web_vitals_rum.sql` | `20260729172145` / `v2_web_vitals_rum` | `2ac3588f2996b4a3299a831888c133a658ec898ca57b127eab601fae93d2710d` | 177 | 5,565 |
 | 7 | `20260729172438_v2_web_vitals_explicit_deny_policy.sql` | `20260729172506` / `v2_web_vitals_explicit_deny_policy` | `c5028ebb72907e906da8a0dd45a45ef6f2f3fdca758808a2342443a560e7f651` | 10 | 392 |
+| 8 | `20260801165606_harden_legacy_transaction_and_discount_writes.sql` | `20260801170134` / `harden_legacy_transaction_and_discount_writes` | `5fe4e04440d3b9b539d0851bb675c91856660acabac482882a5bcddfc8f67fdc` | 40 | 1,709 |
 
 The migrations are forward-only. Prefer a reviewed corrective migration for a
 non-destructive defect. Use the restricted pre-deployment restore point only
