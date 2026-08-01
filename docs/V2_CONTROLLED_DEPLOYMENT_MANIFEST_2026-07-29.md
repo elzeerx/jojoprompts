@@ -17,20 +17,21 @@ on 2026-07-29. That approval does not cover the launch-lock change.
 
 ## Release source
 
-- Executable release head: `c493c1bd227d3af1f2bd3c93793d38bef7a38a3a`
-  (`fix(v2): restore legacy prompt images`).
+- Executable release head: `50c841bb57a02ab81c68984f515a5cc86df10566`
+  (`fix(v2): label catalog filter dialogs`).
+- Legacy-image runtime ancestor: `c493c1bd227d3af1f2bd3c93793d38bef7a38a3a`.
 - Route-consolidation runtime ancestor: `3da31a69389e8d239efa01cafe4992a7a2376355`.
 - Absolute production-lock runtime ancestor: `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`.
 - Admin accessibility runtime ancestor: `d397c76f`.
 - Receipt-resend runtime ancestor: `082505f2`.
 - Field-monitoring runtime ancestor: `ee2edd2d`.
-- Lovable synchronized `c493c1bd227d3af1f2bd3c93793d38bef7a38a3a`
+- Lovable synchronized `50c841bb57a02ab81c68984f515a5cc86df10566`
   on 2026-08-01 and published the still-locked build at approximately
-  10:51 UTC (deployment `e7ca7951-c728-4c27-beed-c0ed7ad35ade`).
+  11:20 UTC (deployment `731cb6e0-5f6c-4b5c-b625-81e6f6ec4a79`).
 - Canonical gate at the executable release head:
   - TypeScript: passed.
   - Scoped V2/admin lint: passed.
-  - Tests: 981 passed, 0 failed.
+  - Tests: 982 passed, 0 failed.
   - Production build: passed.
 - The production routes `/`, `/login`, `/reset-password`, `/admin`, `/signup`,
   `/explore`, `/pricing`, and `/.lovable/oauth/consent` were rechecked after
@@ -144,23 +145,30 @@ no email was sent and no resend request or provider payload was created.
   image, all three percent-encoded legacy filenames loaded, and the default
   prompt image resolved from `default-prompt-images`; browser errors/warnings
   remained empty.
+- Explore search and filters now remain in normal document flow instead of
+  covering catalog cards. Hosted desktop and 390x844 RTL checks reported zero
+  card/filter overlap and no horizontal overflow after scrolling. The mobile
+  filter drawer also exposes a semantic title and description; open/close QA
+  completed with an empty error/warning console.
 
 ## Current stability window
 
-The private legacy-image resolver is a frontend runtime change and supersedes
-the route-consolidation window. The conservative restarted window is:
+The catalog filter-flow and dialog-accessibility correction is a frontend
+runtime change and supersedes the legacy-image window. The conservative
+restarted window is:
 
-- Start: 2026-08-01 10:53 UTC / 2026-08-01 13:53 Asia/Kuwait.
-- Earliest close: 2026-08-02 10:53 UTC / 2026-08-02 13:53 Asia/Kuwait.
-- Baseline: `c493c1bd227d3af1f2bd3c93793d38bef7a38a3a` plus
+- Start: 2026-08-01 11:22 UTC / 2026-08-01 14:22 Asia/Kuwait.
+- Earliest close: 2026-08-02 11:22 UTC / 2026-08-02 14:22 Asia/Kuwait.
+- Baseline: `50c841bb57a02ab81c68984f515a5cc86df10566` plus
   `v2-admin-integrations-settings-status` version 14.
 
 The synchronized preview passed the consolidated public-route, six-workspace
-admin-navigation, legacy-bookmark redirect, and migrated-image checks. The production sweep of
+admin-navigation, legacy-bookmark redirect, migrated-image, and filter-flow
+checks. The production sweep of
 `/`, `/admin`, `/explore`, and `/login` returned only Coming Soon with
 `noindex,nofollow` and zero forms, inputs, buttons, or links. The immediate
 artifact comparison showed production and preview both serving
-`index-rxuVtpy3.js`. The pre-change reconciliation/advisor/dependency baseline
+`index-D1yCI-OC.js`. The pre-change reconciliation/advisor/dependency baseline
 remains the comparison point for the new close-out; it must be refreshed after
 this full window elapses.
 

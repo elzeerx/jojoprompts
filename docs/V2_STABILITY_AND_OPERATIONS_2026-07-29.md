@@ -2,25 +2,35 @@
 
 ## Current corrective locked window
 
+- Start: 2026-08-01 11:22 UTC / 2026-08-01 14:22 Asia/Kuwait.
+- Earliest close: 2026-08-02 11:22 UTC / 2026-08-02 14:22 Asia/Kuwait.
+- Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
+- Lovable baseline: `50c841bb`.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
+
+Lovable synchronized `50c841bb` and published the still-locked build at
+approximately 11:20 UTC on 2026-08-01. Production and preview served the same
+`index-D1yCI-OC.js` application artifact. The production `/`, `/admin`,
+`/explore`, and `/login` sweep returned only Coming Soon with
+`noindex,nofollow` and zero interactive controls before the conservative
+11:22 UTC clock start.
+
+This release keeps Explore search and filters in normal document flow so they
+scroll away rather than cover catalog cards. Hosted desktop and 390x844 RTL
+checks reported static positioning, zero overlap, and no horizontal overflow.
+The mobile filter drawer opens and closes with an accessible title and
+description and no browser warnings/errors. The canonical gate passed
+TypeScript, scoped lint, 982 tests, and production build.
+
+## Superseded legacy-image window
+
 - Start: 2026-08-01 10:53 UTC / 2026-08-01 13:53 Asia/Kuwait.
 - Earliest close: 2026-08-02 10:53 UTC / 2026-08-02 13:53 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
 - Lovable baseline: `c493c1bd`.
-- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
 
-Lovable synchronized `c493c1bd` and published the still-locked build at
-approximately 10:51 UTC on 2026-08-01. Production and preview served the same
-`index-rxuVtpy3.js` application artifact. The production `/`, `/admin`,
-`/explore`, and `/login` sweep returned only Coming Soon with
-`noindex,nofollow` and zero interactive controls before the conservative
-10:53 UTC clock start.
-
-This release restores migrated legacy prompt images through short-lived signed
-display URLs while keeping `prompt-images` and `default-prompt-images` private.
-The synchronized catalog loaded all 30 visible card images and the quick
-preview image with no browser warning/error. Direct checks also passed for all
-three percent-encoded filenames and the dedicated default prompt image. The
-canonical gate passed TypeScript, scoped lint, 981 tests, and production build.
+The catalog filter-flow runtime correction superseded this window before it
+elapsed. The private signed legacy-image resolver remains in the new baseline.
 
 ## Superseded route-consolidation window
 

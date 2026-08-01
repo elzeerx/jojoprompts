@@ -185,7 +185,7 @@ snapshot, not launch acceptance by themselves.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-08-01 | `bun run verify:v2`: typecheck, lint, 981 tests, and production build passed at `c493c1bd` |
+| TypeScript, scoped V2 lint, all source tests, production build | Proven locally on 2026-08-01 | `bun run verify:v2`: typecheck, lint, 982 tests, and production build passed at `50c841bb` |
 | Formal V2 security diff review | Proven locally | 85/85 changed files reviewed; both findings fixed in `48978150`; focused and real-database authorization checks passed |
 | Fresh dependency/security review | Refreshed on 2026-07-30; reviewed exception unchanged | Production: 0 critical, 2 high package nodes for one non-reachable RSC-only advisory; full: 0 critical, 9 high, 3 moderate, 1 low; `docs/security/DEPENDENCY_RISK_REGISTER.md` |
 | Supabase advisor triage | Proven for current production state | `docs/security/SUPABASE_ADVISOR_TRIAGE_2026-07-29.md` |
@@ -209,8 +209,8 @@ snapshot, not launch acceptance by themselves.
 ## Remaining critical path
 
 1. Keep Coming Soon enabled through the restarted 24-hour stability window
-   ending no earlier than 2026-08-02 10:53 UTC
-   (2026-08-02 13:53 Asia/Kuwait).
+   ending no earlier than 2026-08-02 11:22 UTC
+   (2026-08-02 14:22 Asia/Kuwait).
 2. Confirm the named monitoring, support, rollback-decision, and technical
    rollback owners.
 3. Record owner/legal acceptance for the bilingual Terms, Privacy, refund,
