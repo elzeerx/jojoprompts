@@ -344,15 +344,11 @@ export function useUserService() {
         if (insertError) throw insertError;
       }
       
-      // Record transaction
-      await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          plan_id: planId,
-          amount_usd: planData.price_usd,
-          status: 'completed'
-        });
+      // Legacy plan assignment must NOT fabricate payment history. The
+      // browser-side write into `public.transactions` was retired: V2 grants
+      // and commerce records remain server-authoritative (Edge Functions /
+      // service-role RPCs only). Plan/access assignment above is unchanged.
+
       
       toast({
         title: "Plan assigned",
