@@ -54,7 +54,7 @@ on 2026-07-29. That approval does not cover the launch-lock change.
 
 ## Applied database payload
 
-All seven controlled migrations are recorded in production. The table keeps
+All eight controlled migrations are recorded in production. The table keeps
 the local reviewed filename and payload checksum; Supabase assigned production
 versions to API-applied migrations as shown.
 
