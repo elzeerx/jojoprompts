@@ -29,61 +29,35 @@ export interface PaymentVerificationParams {
 export class PaymentService {
   constructor() {}
 
-  // Transaction management
-  async createTransaction(data: PaymentData): Promise<ApiResponse<any>> {
-    try {
-      const transactionData = {
-        user_id: data.userId,
-        plan_id: data.planId,
-        amount_usd: data.amount,
-        payment_method: data.paymentMethod,
-        paypal_payment_id: data.paymentId,
-        status: 'pending'
-      };
-
-      const { data: result, error } = await supabase
-        .from('transactions')
-        .insert(transactionData as any)
-        .select('*')
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, data: result };
-    } catch (error: any) {
-      return { success: false, error: { message: error.message } };
-    }
+  // Transaction management — RETIRED (browser-side legacy writes).
+  //
+  // `public.transactions` no longer accepts browser writes: RLS + table
+  // privileges restrict `authenticated` to SELECT only. These methods keep
+  // their public signatures but never perform any insert/update/delete.
+  async createTransaction(_data: PaymentData): Promise<ApiResponse<any>> {
+    return {
+      success: false,
+      error: {
+        message:
+          'Direct legacy transaction writes are retired. Transactions are server-authoritative.',
+      },
+    };
   }
 
   async updateTransactionStatus(
-    transactionId: string, 
-    status: string, 
-    metadata?: Record<string, any>
+    _transactionId: string,
+    _status: string,
+    _metadata?: Record<string, any>
   ): Promise<ApiResponse<any>> {
-    try {
-      const updateData: any = { 
-        status,
-        completed_at: status === 'completed' ? new Date().toISOString() : null
-      };
-      
-      if (metadata) {
-        updateData.error_message = metadata.error;
-      }
-
-      const { data, error } = await supabase
-        .from('transactions')
-        .update(updateData)
-        .eq('id', transactionId)
-        .select('*')
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, data };
-    } catch (error: any) {
-      return { success: false, error: { message: error.message } };
-    }
+    return {
+      success: false,
+      error: {
+        message:
+          'Direct legacy transaction status updates are retired. Transactions are server-authoritative.',
+      },
+    };
   }
+
 
   async getTransactionsByUser(userId: string, limit = 10): Promise<ApiResponse<any[]>> {
     try {
