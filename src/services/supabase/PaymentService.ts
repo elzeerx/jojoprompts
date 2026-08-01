@@ -202,25 +202,23 @@ export class PaymentService {
     }
   }
 
+  // RETIRED: `record_discount_usage` is service-role only. Browser clients
+  // can no longer execute it, and `public.discount_code_usage` is read-only
+  // for `authenticated`. Signature preserved; no RPC call is performed.
   async recordDiscountUsage(
-    discountCodeId: string, 
-    userId: string, 
-    paymentHistoryId?: string
+    _discountCodeId: string,
+    _userId: string,
+    _paymentHistoryId?: string
   ): Promise<ApiResponse<boolean>> {
-    try {
-      const { data, error } = await supabase.rpc('record_discount_usage', {
-        discount_code_id_param: discountCodeId,
-        user_id_param: userId,
-        payment_history_id_param: paymentHistoryId
-      });
-
-      if (error) throw error;
-
-      return { success: true, data };
-    } catch (error: any) {
-      return { success: false, error: { message: error.message } };
-    }
+    return {
+      success: false,
+      error: {
+        message:
+          'Direct legacy discount usage writes are retired. Discount redemption is server-authoritative.',
+      },
+    };
   }
+
 
   // PayPal integration methods — RETIRED.
   //
