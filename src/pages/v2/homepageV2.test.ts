@@ -115,12 +115,17 @@ describe("V2 header/footer navigation", () => {
   });
 });
 
-describe("Explore sticky filter overflow contract", () => {
+describe("Explore filter layout contract", () => {
   it("does not use the -mx-4 + px-4 pattern that overflowed the document at 390px", () => {
-    // The failing pattern extended the sticky wrapper 16px past the container.
+    // The failing pattern extended the filter wrapper 16px past the container.
     expect(EXPLORE_FILTERS.includes("-mx-4")).toBe(false);
   });
-  it("bounds the sticky wrapper to its container width", () => {
+  it("bounds the filter wrapper to its container width", () => {
     expect(EXPLORE_FILTERS.includes("w-full max-w-full overflow-x-hidden")).toBe(true);
+  });
+  it("keeps filters in normal flow so catalog cards are never covered", () => {
+    expect(EXPLORE_FILTERS.includes('data-testid="explore-filters"')).toBe(true);
+    expect(EXPLORE_FILTERS.includes('className="sticky')).toBe(false);
+    expect(EXPLORE_FILTERS.includes("top-[8rem]")).toBe(false);
   });
 });

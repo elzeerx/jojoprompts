@@ -163,10 +163,13 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
   );
 
   return (
-    <div className="sticky top-[8rem] lg:top-[8.5rem] z-20 w-full max-w-full overflow-x-hidden space-y-3 border-b border-border/40 bg-background/95 py-3 backdrop-blur">
+    <div
+      data-testid="explore-filters"
+      className="w-full max-w-full overflow-x-hidden space-y-3 border-b border-border/40 bg-background py-3"
+    >
       {/* Wrapper is width-bounded to its container to prevent horizontal
-          document overflow at 390px. Any internal horizontal scrolling must
-          stay inside its own child, not the sticky wrapper. */}
+          document overflow at 390px. Keeping it in normal document flow also
+          prevents filters from covering catalog cards while scrolling. */}
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-0 flex-1">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
