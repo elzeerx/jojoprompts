@@ -117,13 +117,18 @@ describe("browser services never write legacy commerce records", () => {
     "utf8",
   );
 
-  it("PaymentService no longer writes to transactions", () => {
-    expect(/from\(['"]transactions['"]\)/.test(paymentService)).toBe(false);
+  it("PaymentService no longer writes to transactions (reads still allowed)", () => {
+    expect(
+      /from\(['"]transactions['"]\)\s*\.\s*(insert|update|delete|upsert)/.test(
+        paymentService,
+      ),
+    ).toBe(false);
   });
 
-  it("PaymentService no longer calls record_discount_usage", () => {
-    expect(paymentService.includes("record_discount_usage")).toBe(false);
+  it("PaymentService no longer calls the record_discount_usage RPC", () => {
+    expect(/rpc\(['"]record_discount_usage['"]/.test(paymentService)).toBe(false);
   });
+
 
   it("PaymentService preserves the retired method signatures", () => {
     for (const name of [
