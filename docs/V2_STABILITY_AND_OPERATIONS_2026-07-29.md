@@ -2,16 +2,34 @@
 
 ## Current corrective locked window
 
+- Start: 2026-08-01 10:53 UTC / 2026-08-01 13:53 Asia/Kuwait.
+- Earliest close: 2026-08-02 10:53 UTC / 2026-08-02 13:53 Asia/Kuwait.
+- Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
+- Lovable baseline: `c493c1bd`.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
+
+Lovable synchronized `c493c1bd` and published the still-locked build at
+approximately 10:51 UTC on 2026-08-01. Production and preview served the same
+`index-rxuVtpy3.js` application artifact. The production `/`, `/admin`,
+`/explore`, and `/login` sweep returned only Coming Soon with
+`noindex,nofollow` and zero interactive controls before the conservative
+10:53 UTC clock start.
+
+This release restores migrated legacy prompt images through short-lived signed
+display URLs while keeping `prompt-images` and `default-prompt-images` private.
+The synchronized catalog loaded all 30 visible card images and the quick
+preview image with no browser warning/error. Direct checks also passed for all
+three percent-encoded filenames and the dedicated default prompt image. The
+canonical gate passed TypeScript, scoped lint, 981 tests, and production build.
+
+## Superseded route-consolidation window
+
 - Start: 2026-07-31 23:33 UTC / 2026-08-01 02:33 Asia/Kuwait.
 - Earliest close: 2026-08-01 23:33 UTC / 2026-08-02 02:33 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
 - Lovable baseline: `3da31a69`.
-- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
 
-Lovable synchronized `3da31a69` and published the still-locked build at
-approximately 23:29 UTC on 2026-07-31. The production route sweep and immediate
-post-deployment reconciliation, logs, advisor, dependency, and canonical-gate
-checks completed before the conservative 23:33 UTC clock start.
+The legacy-image runtime correction superseded this window before it elapsed.
 
 The release reduces the admin sidebar from 31 operational destinations to six
 workspaces: Overview, Content, Commerce, People, Operations, and Settings.

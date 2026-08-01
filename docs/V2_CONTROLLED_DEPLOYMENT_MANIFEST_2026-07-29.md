@@ -17,19 +17,20 @@ on 2026-07-29. That approval does not cover the launch-lock change.
 
 ## Release source
 
-- Executable release head: `3da31a69389e8d239efa01cafe4992a7a2376355`
-  (`refactor: consolidate V2 public and admin routes`).
+- Executable release head: `c493c1bd227d3af1f2bd3c93793d38bef7a38a3a`
+  (`fix(v2): restore legacy prompt images`).
+- Route-consolidation runtime ancestor: `3da31a69389e8d239efa01cafe4992a7a2376355`.
 - Absolute production-lock runtime ancestor: `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`.
 - Admin accessibility runtime ancestor: `d397c76f`.
 - Receipt-resend runtime ancestor: `082505f2`.
 - Field-monitoring runtime ancestor: `ee2edd2d`.
-- Lovable synchronized `3da31a69389e8d239efa01cafe4992a7a2376355`
-  on 2026-07-31 and published the still-locked build at approximately
-  23:29 UTC.
+- Lovable synchronized `c493c1bd227d3af1f2bd3c93793d38bef7a38a3a`
+  on 2026-08-01 and published the still-locked build at approximately
+  10:51 UTC (deployment `e7ca7951-c728-4c27-beed-c0ed7ad35ade`).
 - Canonical gate at the executable release head:
   - TypeScript: passed.
   - Scoped V2/admin lint: passed.
-  - Tests: 977 passed, 0 failed.
+  - Tests: 981 passed, 0 failed.
   - Production build: passed.
 - The production routes `/`, `/login`, `/reset-password`, `/admin`, `/signup`,
   `/explore`, `/pricing`, and `/.lovable/oauth/consent` were rechecked after
@@ -137,26 +138,31 @@ no email was sent and no resend request or provider payload was created.
   landmark plus placeholder-only publisher/commerce controls. At
   `d397c76f`, the rechecked admin routes expose one `main`, no nested `main`,
   named primary controls, and no page-level horizontal overflow.
+- The V2 image resolver now signs migrated private Storage paths for display
+  without making either legacy image bucket public. The synchronized prompt
+  catalog loaded 30/30 visible card images, quick preview loaded its 900px
+  image, all three percent-encoded legacy filenames loaded, and the default
+  prompt image resolved from `default-prompt-images`; browser errors/warnings
+  remained empty.
 
 ## Current stability window
 
-The route-consolidation release and matching admin integration-status Edge
-Function are runtime changes and supersede the prior elapsed window. The
-conservative restarted window is:
+The private legacy-image resolver is a frontend runtime change and supersedes
+the route-consolidation window. The conservative restarted window is:
 
-- Start: 2026-07-31 23:33 UTC / 2026-08-01 02:33 Asia/Kuwait.
-- Earliest close: 2026-08-01 23:33 UTC / 2026-08-02 02:33 Asia/Kuwait.
-- Baseline: `3da31a69389e8d239efa01cafe4992a7a2376355` plus
+- Start: 2026-08-01 10:53 UTC / 2026-08-01 13:53 Asia/Kuwait.
+- Earliest close: 2026-08-02 10:53 UTC / 2026-08-02 13:53 Asia/Kuwait.
+- Baseline: `c493c1bd227d3af1f2bd3c93793d38bef7a38a3a` plus
   `v2-admin-integrations-settings-status` version 14.
 
 The synchronized preview passed the consolidated public-route, six-workspace
-admin-navigation, and legacy-bookmark redirect checks. The production sweep of
+admin-navigation, legacy-bookmark redirect, and migrated-image checks. The production sweep of
 `/`, `/admin`, `/explore`, and `/login` returned only Coming Soon with
 `noindex,nofollow` and zero forms, inputs, buttons, or links. The immediate
-post-deployment baseline had no recent Edge Function 5xx or fatal/panic log,
-no recent Storage or Postgres error event, unchanged identity/commerce/
-entitlement reconciliation, unchanged advisor counts, and zero critical npm
-advisories.
+artifact comparison showed production and preview both serving
+`index-rxuVtpy3.js`. The pre-change reconciliation/advisor/dependency baseline
+remains the comparison point for the new close-out; it must be refreshed after
+this full window elapses.
 
 Any further runtime source, migration, Edge Function, payment/scanner
 configuration, or launch-lock change restarts the window. Documentation-only
