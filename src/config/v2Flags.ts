@@ -79,9 +79,9 @@ export function effortBucketFor(minutes: number | null | undefined): EffortBucke
 }
 
 /**
- * Only render a hero image when the stored value is a real absolute URL.
- * Private storage paths must go through the resource-download flow, not
- * bare public URL construction.
+ * Return a hero image only when the stored value is already an absolute URL.
+ * Relative private Storage paths are resolved separately through short-lived
+ * signed display URLs; they are never converted into bare public URLs.
  */
 export function safeHeroImageUrl(value: string | null | undefined): string | null {
   if (!value || typeof value !== "string") return null;

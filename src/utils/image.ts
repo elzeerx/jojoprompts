@@ -1,6 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { IMAGE_BUCKET, VIDEO_BUCKET, AUDIO_BUCKET, DEFAULT_IMAGE_BUCKET } from "@/utils/buckets";
 import { createLogger } from './logging';
+import {
+  isDefaultTextPromptImage,
+  normalizeStorageObjectPath,
+  DEFAULT_TEXT_PROMPT_IMAGE,
+} from "@/utils/storageImagePath";
 
 const logger = createLogger('IMAGE_SERVICE');
 
@@ -8,27 +13,29 @@ const logger = createLogger('IMAGE_SERVICE');
 const SUPABASE_URL = "https://fxkqgjakbyrxkmevkglv.supabase.co";
 const BUCKET = IMAGE_BUCKET;
 const DEFAULT_BUCKET = DEFAULT_IMAGE_BUCKET;
-const DEFAULT_TEXT_PROMPT_IMAGE = 'textpromptdefaultimg.jpg';
-
 export async function getPromptImage(pathOrUrl: string | null | undefined, w = 400, q = 80): Promise<string> {
   if (!pathOrUrl) {
     logger.debug('No image path provided, returning placeholder');
     return '/placeholder.svg';
   }
   
-  if (pathOrUrl.startsWith('http')) {
-    logger.debug('Using external URL', { url: pathOrUrl });
-    return pathOrUrl;
+  const trimmedPath = pathOrUrl.trim();
+  if (/^https?:\/\//i.test(trimmedPath)) {
+    logger.debug('Using external image URL');
+    return trimmedPath;
   }
-  
-  // Clean the path to ensure no double encoding happens
-  const cleanPath = pathOrUrl.startsWith('/') ? pathOrUrl.substring(1) : pathOrUrl;
+
+  const cleanPath = normalizeStorageObjectPath(trimmedPath);
+  if (!cleanPath) {
+    logger.warn('Rejected invalid image object path');
+    return '/placeholder.svg';
+  }
   
   logger.debug('Getting image for path', { cleanPath, width: w, quality: q });
   
   try {
     // Get a signed URL for private bucket access
-    const bucket = typeof pathOrUrl === 'string' && pathOrUrl === DEFAULT_TEXT_PROMPT_IMAGE ? DEFAULT_BUCKET : BUCKET;
+    const bucket = isDefaultTextPromptImage(cleanPath) ? DEFAULT_BUCKET : BUCKET;
     
     logger.debug('Using bucket for image', { bucket, cleanPath });
     
@@ -49,7 +56,7 @@ export async function getPromptImage(pathOrUrl: string | null | undefined, w = 4
       return '/placeholder.svg';
     }
     
-    logger.debug('Successfully got signed URL', { cleanPath, signedUrl: data.signedUrl });
+    logger.debug('Successfully got signed image URL', { cleanPath, bucket });
     return data.signedUrl;
   } catch (err) {
     logger.error('Error in getPromptImage', { error: err, cleanPath });

@@ -10,11 +10,12 @@ import { useLibraryState } from "@/hooks/v2/useLibraryState";
 import { useFreeAcquisition } from "@/hooks/v2/useFreeAcquisition";
 import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
 import { useTranslation } from "@/hooks/useTranslation";
-import { formatKwd, safeHeroImageUrl, V2_COPY } from "@/config/v2Flags";
+import { formatKwd, V2_COPY } from "@/config/v2Flags";
 import { ShieldCheck, Loader2, Timer } from "lucide-react";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
 
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useHeroImageUrl } from "@/hooks/v2/useHeroImageUrl";
 
 interface Props {
   slug: string | null;
@@ -51,7 +52,11 @@ export function QuickPreviewSheet({ slug, open, onOpenChange }: Props) {
       ? data.resource.summary_ar
       : data.resource.summary_en
     : null;
-  const heroUrl = safeHeroImageUrl(data?.resource?.hero_image_path ?? null);
+  const { url: heroUrl, isLoading: isHeroLoading } = useHeroImageUrl(
+    data?.resource?.hero_image_path,
+    900,
+    86,
+  );
 
   const handleAcquire = () => {
     if (!data?.resource) return;
@@ -91,6 +96,8 @@ export function QuickPreviewSheet({ slug, open, onOpenChange }: Props) {
                 className="h-40 w-full object-cover"
                 loading="lazy"
               />
+            ) : isHeroLoading ? (
+              <Skeleton className="h-40 w-full rounded-none" />
             ) : (
               <div className="flex h-40 w-full items-center justify-center bg-gradient-to-br from-warm-gold/20 to-muted text-4xl font-bold text-warm-gold">
                 {title?.charAt(0) ?? "?"}

@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Info, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
 import type { ExploreResource } from "@/hooks/v2/useExploreResources";
-import { formatKwd, safeHeroImageUrl, V2_COPY } from "@/config/v2Flags";
+import { formatKwd, V2_COPY } from "@/config/v2Flags";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFreeAcquisition } from "@/hooks/v2/useFreeAcquisition";
@@ -9,6 +9,7 @@ import { useNextLoginPath } from "@/hooks/v2/useNextLoginPath";
 import { AddToCartButton } from "@/components/v2/AddToCartButton";
 import { Button } from "@/components/ui/button";
 import { formatShortDate, ownershipLabel, trustBadge } from "@/components/v2/cardMetadata";
+import { useHeroImageUrl } from "@/hooks/v2/useHeroImageUrl";
 
 interface Props {
   r: ExploreResource;
@@ -25,7 +26,11 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
 
   const title = lang === "ar" && r.title_ar ? r.title_ar : r.title_en;
   const isFree = r.product?.product_type === "free";
-  const heroUrl = safeHeroImageUrl(r.hero_image_path);
+  const { url: heroUrl, isLoading: isHeroLoading } = useHeroImageUrl(
+    r.hero_image_path,
+    640,
+    82,
+  );
 
   const ownership = ownershipLabel(r, lang, formatKwd);
   const priceBadge = ownership.text;
@@ -64,6 +69,8 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
               loading="lazy"
               className="h-full w-full object-cover"
             />
+          ) : isHeroLoading ? (
+            <div className="h-full w-full animate-pulse bg-muted" aria-hidden="true" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-4xl font-bold text-warm-gold/60">
               {title?.charAt(0) ?? "?"}

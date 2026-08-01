@@ -15,7 +15,6 @@ import { InstallationSteps } from "@/components/v2/InstallationSteps";
 import {
   formatKwd,
   LIFETIME_THRESHOLD_FILS,
-  safeHeroImageUrl,
   V2_COPY,
 } from "@/config/v2Flags";
 
@@ -30,6 +29,7 @@ import {
 } from "@/hooks/v2/protectedContentDisplay";
 import { useCopyToClipboard } from "@/hooks/ui/useCopyToClipboard";
 import { withoutAcquisitionInstruction } from "@/lib/v2/resourceCopy";
+import { useHeroImageUrl } from "@/hooks/v2/useHeroImageUrl";
 
 
 type Lang = "en" | "ar";
@@ -60,6 +60,11 @@ export default function ResourceDetailPage() {
   const { language, isRTL } = useTranslation();
   const lang: Lang = language === "ar" ? "ar" : "en";
   const hasLifetimeAccess = !!library?.has_library_access;
+  const { url: heroUrl } = useHeroImageUrl(
+    data?.resource?.hero_image_path,
+    1200,
+    90,
+  );
 
   const individuallyOwned = useMemo(() => {
     if (!data?.resource) return false;
@@ -130,7 +135,6 @@ export default function ResourceDetailPage() {
     : summary;
   const description =
     lang === "ar" && r.description_ar ? r.description_ar : r.description_en;
-  const heroUrl = safeHeroImageUrl(r.hero_image_path);
   const localizedField = (
     valueEn: string | null | undefined,
     valueAr: string | null | undefined,
