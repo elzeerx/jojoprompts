@@ -38,7 +38,7 @@ describe("ResourcePublisher — resource editor select", () => {
   it("defines the canonical select and edit URL builder", () => {
     expect(src.includes("const RESOURCE_EDITOR_SELECT")).toBe(true);
     expect(src.includes("function buildResourceEditUrl")).toBe(true);
-    expect(src.includes("/admin/content/resources/${resourceId}/edit")).toBe(true);
+    expect(src.includes("/admin/content?tool=edit&resourceId=${encodeURIComponent(resourceId)}")).toBe(true);
   });
 
   it("still embeds the resource's own products so bundle items can be loaded via product ids", () => {
@@ -53,9 +53,11 @@ describe("ResourcePublisher — resource editor select", () => {
   });
 
   it("catalog edit URL uses the same path shape the router accepts", () => {
-    const path = `/admin/content/resources/${UUID}/edit`;
-    expect(path.startsWith("/admin/content/resources/")).toBe(true);
-    expect(path.endsWith("/edit")).toBe(true);
+    const path = `/admin/content?tool=edit&resourceId=${encodeURIComponent(UUID)}`;
+    const url = new URL(path, "https://admin.local");
+    expect(url.pathname).toBe("/admin/content");
+    expect(url.searchParams.get("tool")).toBe("edit");
+    expect(url.searchParams.get("resourceId")).toBe(UUID);
   });
 
   it("programmatically associates metadata labels, controls, and validation errors", () => {

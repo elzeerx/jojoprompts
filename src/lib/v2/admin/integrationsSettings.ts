@@ -98,7 +98,7 @@ export type LovableAiIntegration = {
   purpose: "ai_studio";
   configured: boolean;
   application_services: readonly ["ai-studio-chat", "ai-studio-image"];
-  specialist_route: "/admin/content/new";
+  specialist_route: "/admin/content?tool=new";
 };
 
 export type McpIntegration = {
@@ -230,7 +230,7 @@ function normalizeLovable(v: unknown): LovableAiIntegration | null {
   if (o.id !== "lovable_ai") return null;
   if (o.purpose !== "ai_studio") return null;
   if (!isBool(o.configured)) return null;
-  if (o.specialist_route !== "/admin/content/new") return null;
+  if (o.specialist_route !== "/admin/content?tool=new") return null;
   const svc = o.application_services;
   if (!Array.isArray(svc) || svc.length !== 2) return null;
   if (svc[0] !== "ai-studio-chat" || svc[1] !== "ai-studio-image") return null;
@@ -238,7 +238,7 @@ function normalizeLovable(v: unknown): LovableAiIntegration | null {
     id: "lovable_ai", purpose: "ai_studio",
     configured: o.configured,
     application_services: ["ai-studio-chat", "ai-studio-image"],
-    specialist_route: "/admin/content/new",
+    specialist_route: "/admin/content?tool=new",
   };
 }
 

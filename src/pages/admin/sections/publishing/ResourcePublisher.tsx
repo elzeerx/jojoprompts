@@ -231,7 +231,7 @@ const RESOURCE_EDITOR_SELECT =
   "id, slug, type, lifecycle, latest_published_version_id, title_en, title_ar, summary_en, summary_ar, description_en, description_ar, examples_en, examples_ar, limitations_en, limitations_ar, uninstall_en, uninstall_ar, support_en, support_ar, update_info_en, update_info_ar, category, tags, hero_image_path, effort_minutes, current_version_id, platform_compatibility(*), installation_guides(*), resource_permissions(*), licenses(*), current_version:current_version_id(id,version,changelog_en,changelog_ar,published_at), products(id,sku,product_type,title_en,title_ar,price_fils,is_active)";
 
 function buildResourceEditUrl(resourceId: string): string {
-  return `/admin/content/resources/${resourceId}/edit`;
+  return `/admin/content?tool=edit&resourceId=${encodeURIComponent(resourceId)}`;
 }
 
 function parseGuideSteps(value: unknown): Array<{ title: string; body: string }> {
@@ -815,10 +815,10 @@ export default function ResourcePublisher({ mode, resourceIdOverride }: Publishe
                 <Label>Source</Label>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild variant="outline" size="sm" className="min-h-[44px]">
-                    <Link to="/admin/content/imports/json"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> JSON Importer</Link>
+                    <Link to="/admin/content?tool=import-json"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> JSON Importer</Link>
                   </Button>
                   <Button asChild variant="outline" size="sm" className="min-h-[44px]">
-                    <Link to="/admin/content/imports/ai-studio"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> AI Studio</Link>
+                    <Link to="/admin/content?tool=ai-studio"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> AI Studio</Link>
                   </Button>
                 </div>
               </div>

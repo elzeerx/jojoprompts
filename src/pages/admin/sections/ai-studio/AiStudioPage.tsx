@@ -21,7 +21,7 @@ import { AssetPreviewPane } from "./AssetPreviewPane";
 import { DraftsSidebar } from "./DraftsSidebar";
 import { ImagePreviewStream } from "./ImagePreviewStream";
 import { PublishDialog } from "./PublishDialog";
-import { AI_STUDIO_BASE_ROUTE } from "./routes";
+import { aiStudioDraftRoute } from "./routes";
 import type { AiAssetKind } from "./types";
 
 const KIND_OPTIONS: { value: AiAssetKind; label: string }[] = [
@@ -63,7 +63,7 @@ export default function AiStudioPage({ draftIdOverride }: { draftIdOverride?: st
       if (error || !data?.id) {
         throw error ?? new Error("The draft was not created.");
       }
-      navigate(`${AI_STUDIO_BASE_ROUTE}/${data.id}`);
+      navigate(aiStudioDraftRoute(data.id));
     } catch (error) {
       console.error("Failed to create AI Studio draft:", error);
       toast.error("Could not create the draft. Please try again.");
@@ -205,7 +205,7 @@ export default function AiStudioPage({ draftIdOverride }: { draftIdOverride?: st
               size="sm"
               onClick={() =>
                 navigate(
-                  `/admin/content/resources/${importedResourceId}/edit`,
+                  `/admin/content?tool=edit&resourceId=${encodeURIComponent(importedResourceId)}`,
                 )
               }
             >

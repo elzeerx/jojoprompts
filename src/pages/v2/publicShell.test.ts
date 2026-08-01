@@ -7,6 +7,7 @@
  * mount React or hit a database.
  */
 import { describe, it, expect } from "bun:test";
+import { resolveLegacyPublicPath } from "@/components/v2/publicRouteCompatibility";
 
 declare const require: (m: string) => any;
 const { readFileSync, readdirSync, existsSync } = require("fs");
@@ -24,6 +25,7 @@ const ROOT_LAYOUT_PATH = resolve(SRC, "components/layout/root-layout.tsx");
 const ROUTES_SRC: string = read(resolve(SRC, "config/routes.ts"));
 const NOT_FOUND: string = read(resolve(SRC, "pages/NotFoundPage.tsx"));
 const PUBLIC_RESOLVER: string = read(resolve(SRC, "components/v2/PublicRouteResolver.tsx"));
+const PUBLIC_COMPATIBILITY: string = read(resolve(SRC, "components/v2/publicRouteCompatibility.ts"));
 
 describe("V2 public shell — customer chrome is exclusively V2Layout", () => {
   it("App.tsx no longer keeps a V2_PATHS allowlist or falls back to RootLayout", () => {
@@ -178,10 +180,10 @@ describe("Legacy V1 → V2 redirects resolve to fixed V2 destinations", () => {
 
   it("the public resolver declares each redirect with a fixed destination", () => {
     for (const [from, to] of Object.entries(EXPECTED)) {
-      expect({ from, to, present: PUBLIC_RESOLVER.includes(`"${from}": "${to}"`) }).toEqual({
+      expect({ from, to: resolveLegacyPublicPath(from), expected: to }).toEqual({
         from,
         to,
-        present: true,
+        expected: to,
       });
     }
   });
@@ -215,8 +217,10 @@ describe("Legacy V1 → V2 redirects resolve to fixed V2 destinations", () => {
   it("category aliases and /prompts-catalog resolve into the canonical Explore page", () => {
     expect(/path:\s*["']prompts["']/.test(ROUTES_SRC)).toBe(false);
     expect(/path:\s*["']prompts-catalog["']/.test(ROUTES_SRC)).toBe(false);
-    expect(PUBLIC_RESOLVER).toContain('pathname === "/prompts-catalog"');
-    expect(PUBLIC_RESOLVER).toContain('next.set("type", "prompt")');
+    expect(resolveLegacyPublicPath("/prompts-catalog", "?query=hello&platform=chatgpt", "#results")).toBe(
+      "/explore?q=hello&p=chatgpt&type=prompt#results",
+    );
+    expect(PUBLIC_COMPATIBILITY).toContain('next.set("type", "prompt")');
   });
 });
 
@@ -396,4 +400,3 @@ describe("Admin overview payment semantics — cross-window final definition", (
     expect(perOrder.has("D")).toBe(false);
   });
 });
-

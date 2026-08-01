@@ -95,7 +95,7 @@ export function EnhancedHeroSection() {
               </Button>
               
               <Button asChild variant="outline" size="lg" className="order-2 glass-effect border-warm-gold/30 bg-white/10 hover:bg-white/20 text-white px-6 sm:px-8 py-4 sm:py-6 font-semibold text-base sm:text-lg rounded-lg min-h-[44px] touch-manipulation backdrop-blur-sm transition-all duration-300 hover:border-warm-gold/50">
-                <Link to="/examples" className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+                <Link to="/explore" className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
                   <span>{t('enhancedHero.ctaSecondary')}</span>
                   <ArrowRight className={cn("h-4 w-4 sm:h-5 sm:w-5", isRTL && "rotate-180")} />
                 </Link>

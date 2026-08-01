@@ -124,7 +124,7 @@ function App() {
                           {/* Six primary admin workspaces. Operational detail
                               lives in workspace tabs or Content sub-tools so
                               Lovable no longer exposes dozens of faux pages. */}
-                          <Route path="content/*" element={<AdminWorkspacePage workspace="content" />} />
+                          <Route path="content" element={<AdminWorkspacePage workspace="content" />} />
                           <Route path="commerce" element={<AdminWorkspacePage workspace="commerce" />} />
                           <Route path="people" element={<AdminWorkspacePage workspace="people" />} />
                           <Route path="operations" element={<AdminWorkspacePage workspace="operations" />} />

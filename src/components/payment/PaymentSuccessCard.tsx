@@ -92,7 +92,7 @@ export function PaymentSuccessCard({ gateway = 'paypal' }: PaymentSuccessCardPro
               <Link to="/prompts">Browse Prompts Now</Link>
             </Button>
             <Button variant="outline" className="w-full mobile-button-secondary" asChild>
-              <Link to="/dashboard">View My Account</Link>
+              <Link to="/account">View My Account</Link>
             </Button>
           </CardFooter>
         </Card>

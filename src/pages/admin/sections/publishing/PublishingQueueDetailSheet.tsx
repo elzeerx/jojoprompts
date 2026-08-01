@@ -663,7 +663,7 @@ export function PublishingQueueDetailSheet({ open, onOpenChange, row }: Props) {
 
                 <div className="pt-2">
                   <Link
-                    to={`/admin/content/resources/${row.id}/edit`}
+                    to={`/admin/content?tool=edit&resourceId=${encodeURIComponent(row.id)}`}
                     className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-input px-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <ExternalLink className="h-4 w-4" /> Open in editor

@@ -156,7 +156,7 @@ export default function OverviewV2() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline" className="min-h-[44px]">
-            <Link to="/admin/content/new">
+            <Link to="/admin/content?tool=new">
               <Package className="mr-1.5 h-3.5 w-3.5" aria-hidden />
               New Resource
             </Link>

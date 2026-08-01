@@ -459,10 +459,10 @@ export default function LegacyMigrationPreview() {
               </Link>
             </Button>
             <Button asChild variant="outline" className="min-h-[44px]">
-              <Link to="/admin/content/imports/json"><FileJson className="me-1.5 h-4 w-4" /> JSON Importer</Link>
+              <Link to="/admin/content?tool=import-json"><FileJson className="me-1.5 h-4 w-4" /> JSON Importer</Link>
             </Button>
             <Button asChild variant="outline" className="min-h-[44px]">
-              <Link to="/admin/content/imports/ai-studio"><Sparkles className="me-1.5 h-4 w-4" /> AI Studio</Link>
+              <Link to="/admin/content?tool=ai-studio"><Sparkles className="me-1.5 h-4 w-4" /> AI Studio</Link>
             </Button>
             <Button
               variant="outline"
@@ -911,10 +911,10 @@ export default function LegacyMigrationPreview() {
             </ul>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Button asChild variant="ghost" size="sm">
-                <Link to="/admin/content/imports/json"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> Legacy JSON Importer</Link>
+                <Link to="/admin/content?tool=import-json"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> Legacy JSON Importer</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/admin/content/imports/ai-studio"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> AI Studio</Link>
+                <Link to="/admin/content?tool=ai-studio"><ExternalLink className="me-1.5 h-3.5 w-3.5" /> AI Studio</Link>
               </Button>
             </div>
           </CardContent>

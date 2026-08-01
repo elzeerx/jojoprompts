@@ -161,7 +161,7 @@ describe("secure versioned resource content", () => {
 
   it("routes AI Studio through the unified transactional publisher", () => {
     expect(aiPublishDialog).not.toContain('.from("prompts")');
-    expect(aiPublishDialog).toContain('navigate("/admin/content/new"');
+    expect(aiPublishDialog).toContain('navigate("/admin/content?tool=new"');
     expect(publisher).toContain('"save_admin_resource_draft_v2"');
     expect(publisher).toContain("source_ai_studio_draft_id");
     expect(migration).toContain("published_resource_id = v_resource_id");

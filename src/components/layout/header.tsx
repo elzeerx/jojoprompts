@@ -138,7 +138,7 @@ export function Header() {
             isRTL && "flex-row-reverse"
           )}>
             <Link
-              to="/examples"
+              to="/explore"
               className={cn(textColorClass, "transition-colors font-medium text-sm lg:text-base py-2 px-1")}
             >
               {t('nav.examples')}
@@ -194,7 +194,7 @@ export function Header() {
                   forceMount
                 >
                   <DropdownMenuItem
-                    onClick={() => navigate("/dashboard")}
+                    onClick={() => navigate("/account")}
                     className={cn(
                       "hover:bg-white/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
                       isRTL && "flex-row-reverse"
@@ -204,7 +204,7 @@ export function Header() {
                     <span className="text-white/90 font-medium">{t('nav.dashboard')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => navigate("/favorites")}
+                    onClick={() => navigate("/library")}
                     className={cn(
                       "hover:bg-white/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
                       isRTL && "flex-row-reverse"
@@ -215,7 +215,7 @@ export function Header() {
                   </DropdownMenuItem>
                   {isPrompter && (
                     <DropdownMenuItem
-                      onClick={() => navigate("/dashboard/prompter")}
+                      onClick={() => navigate("/explore")}
                       className={cn(
                         "hover:bg-white/10 rounded-md transition-colors cursor-pointer p-3 touch-manipulation",
                         isRTL && "flex-row-reverse"
@@ -299,7 +299,7 @@ export function Header() {
                 <LanguageSwitcher variant="mobile" isLandingPage={isLandingPage} />
               </div>
               <Link
-                to="/examples"
+                to="/explore"
                 className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -333,14 +333,14 @@ export function Header() {
                 <>
                   <div className={cn("border-t mt-2 pt-2", mobileMenuBorderClass)}>
                     <Link
-                      to="/dashboard"
+                      to="/account"
                       className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {t('nav.dashboard')}
                     </Link>
                     <Link
-                      to="/favorites"
+                      to="/library"
                       className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
@@ -348,7 +348,7 @@ export function Header() {
                     </Link>
                      {isPrompter && (
                        <Link
-                         to="/dashboard/prompter"
+                         to="/explore"
                          className={cn("block px-4 py-3 transition-all font-medium touch-manipulation rounded-lg mx-2", mobileMenuItemClass)}
                          onClick={() => setIsMobileMenuOpen(false)}
                        >

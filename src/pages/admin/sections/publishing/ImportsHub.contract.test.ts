@@ -43,9 +43,9 @@ describe("Admin V2 Imports Hub — route wiring", () => {
 
   it("all import tools are routed inside the Content workspace", () => {
     expect(WORKSPACE).toContain('{ id: "imports", label: "Imports", element: adminSectionElements.publishingImports }');
-    expect(WORKSPACE).toContain('splat === "imports/legacy"');
-    expect(WORKSPACE).toContain('splat === "imports/json"');
-    expect(WORKSPACE).toContain('splat === "imports/ai-studio"');
+    expect(WORKSPACE).toContain('tool === "import-legacy"');
+    expect(WORKSPACE).toContain('tool === "import-json"');
+    expect(WORKSPACE).toContain('tool === "ai-studio"');
   });
 });
 
@@ -53,9 +53,9 @@ describe("Admin V2 Imports Hub — card contract", () => {
   it("exposes exactly three cards with the required destinations", () => {
     const dests = IMPORTS_HUB_CARDS.map((c) => c.to).sort();
     expect(dests).toEqual([
-      "/admin/content/imports/ai-studio",
-      "/admin/content/imports/json",
-      "/admin/content/imports/legacy",
+      "/admin/content?tool=ai-studio",
+      "/admin/content?tool=import-json",
+      "/admin/content?tool=import-legacy",
     ]);
   });
 

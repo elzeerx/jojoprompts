@@ -8,7 +8,7 @@ import { Archive, FileText, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AiStudioDraft } from "./types";
-import { AI_STUDIO_BASE_ROUTE } from "./routes";
+import { AI_STUDIO_BASE_ROUTE, aiStudioDraftRoute } from "./routes";
 
 interface Props {
   activeId?: string;
@@ -57,7 +57,7 @@ export function DraftsSidebar({ activeId }: Props) {
       toast.error("Could not create draft", { description: error?.message });
       return;
     }
-    navigate(`${AI_STUDIO_BASE_ROUTE}/${data.id}`);
+    navigate(aiStudioDraftRoute(data.id));
   };
 
   const handleArchive = async (
@@ -110,7 +110,7 @@ export function DraftsSidebar({ activeId }: Props) {
             return (
               <Link
                 key={d.id}
-                to={`${AI_STUDIO_BASE_ROUTE}/${d.id}`}
+                to={aiStudioDraftRoute(d.id)}
                 className={`group flex min-h-[44px] items-start gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent transition-colors ${
                   isActive ? "bg-accent" : ""
                 }`}

@@ -115,7 +115,7 @@ export class SecurityHeaders {
 
   private static disableCache() {
     // Disable cache for sensitive pages
-    const sensitiveRoutes = ['/admin', '/dashboard'];
+    const sensitiveRoutes = ['/admin', '/account'];
     const currentPath = window.location.pathname;
     
     if (sensitiveRoutes.some(route => currentPath.startsWith(route))) {

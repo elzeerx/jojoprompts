@@ -101,7 +101,7 @@ export function PublishDialog({
     }
 
     onOpenChange(false);
-    navigate("/admin/content/new", {
+    navigate("/admin/content?tool=new", {
       state: { aiStudioImport: handoff },
     });
   };

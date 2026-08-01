@@ -187,7 +187,7 @@ export default function JsonResourceImporter() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" className="min-h-[44px]">
-            <Link to="/admin/content/imports/ai-studio">
+            <Link to="/admin/content?tool=ai-studio">
               <Sparkles className="me-1.5 h-4 w-4" /> AI Studio
             </Link>
           </Button>

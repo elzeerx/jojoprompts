@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { adminSectionElements } from "./adminSectionElements";
+import { resolveLegacyAdminPath } from "./adminRouteCompatibility";
 
 type Workspace = "content" | "commerce" | "people" | "operations" | "settings";
 
@@ -58,14 +59,6 @@ const CATALOG_BY_TYPE: Record<string, ReactNode> = {
   bundle: adminSectionElements.catalogBundles,
 };
 
-function safeDecode(value: string): string | null {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return null;
-  }
-}
-
 function WorkspaceTabs({ workspace, tabs, active }: { workspace: Workspace; tabs: WorkspaceTab[]; active: string }) {
   return (
     <nav
@@ -94,34 +87,26 @@ function WorkspaceTabs({ workspace, tabs, active }: { workspace: Workspace; tabs
 }
 
 function ContentWorkspace() {
-  const { "*": splat = "" } = useParams<{ "*": string }>();
   const [params] = useSearchParams();
+  const tool = params.get("tool");
+  const resourceId = params.get("resourceId");
+  const draftId = params.get("draftId");
 
-  if (splat === "new") return adminSectionElements.publishingNew;
-
-  const edit = /^resources\/([^/]+)\/edit$/.exec(splat);
-  if (edit) {
-    const id = safeDecode(edit[1]);
-    return id ? adminSectionElements.publishingEditFor(id) : <Navigate to="/admin/content" replace />;
+  if (tool === "new") return adminSectionElements.publishingNew;
+  if (tool === "edit") {
+    return resourceId
+      ? adminSectionElements.publishingEditFor(resourceId)
+      : <Navigate to="/admin/content" replace />;
   }
-
-  const version = /^resources\/([^/]+)\/versions\/new$/.exec(splat);
-  if (version) {
-    const id = safeDecode(version[1]);
-    return id ? adminSectionElements.publishingNewVersionFor(id) : <Navigate to="/admin/content" replace />;
+  if (tool === "new-version") {
+    return resourceId
+      ? adminSectionElements.publishingNewVersionFor(resourceId)
+      : <Navigate to="/admin/content" replace />;
   }
-
-  if (splat === "imports/json") return adminSectionElements.publishingImportsJson;
-  if (splat === "imports/legacy") return adminSectionElements.publishingImportsLegacy;
-  if (splat === "imports/ai-studio") return adminSectionElements.publishingImportsAiStudioFor();
-
-  const draft = /^imports\/ai-studio\/([^/]+)$/.exec(splat);
-  if (draft) {
-    const id = safeDecode(draft[1]);
-    return id ? adminSectionElements.publishingImportsAiStudioFor(id) : <Navigate to="/admin/content" replace />;
-  }
-
-  if (splat) return <Navigate to="/admin/content" replace />;
+  if (tool === "import-json") return adminSectionElements.publishingImportsJson;
+  if (tool === "import-legacy") return adminSectionElements.publishingImportsLegacy;
+  if (tool === "ai-studio") return adminSectionElements.publishingImportsAiStudioFor(draftId ?? undefined);
+  if (tool) return <Navigate to="/admin/content" replace />;
 
   const requested = params.get("tab") ?? "catalog";
   const active = CONTENT_TABS.some((tab) => tab.id === requested) ? requested : "catalog";
@@ -155,81 +140,20 @@ export function AdminWorkspacePage({ workspace }: { workspace: Workspace }) {
   );
 }
 
-const LEGACY_ADMIN_PATHS: Record<string, string> = {
-  analytics: "/admin",
-  catalog: "/admin/content",
-  "catalog/skills": "/admin/content?type=skill",
-  "catalog/automations": "/admin/content?type=automation",
-  "catalog/prompts": "/admin/content?type=prompt",
-  "catalog/prompt-packs": "/admin/content?type=prompt_pack",
-  "catalog/image-styles": "/admin/content?type=image_style",
-  "catalog/bundles": "/admin/content?type=bundle",
-  "publishing/drafts": "/admin/content?tab=drafts",
-  "publishing/review": "/admin/content?tab=review",
-  "publishing/versions": "/admin/content?tab=versions",
-  "publishing/imports": "/admin/content?tab=imports",
-  "publishing/imports/legacy": "/admin/content/imports/legacy",
-  "publishing/imports/json": "/admin/content/imports/json",
-  "publishing/imports/ai-studio": "/admin/content/imports/ai-studio",
-  "publishing/taxonomy": "/admin/content?tab=taxonomy",
-  orders: "/admin/commerce?tab=orders",
-  "orders/payment-events": "/admin/commerce?tab=payment-events",
-  "orders/entitlements": "/admin/commerce?tab=entitlements",
-  "orders/refunds": "/admin/commerce?tab=refunds",
-  "orders/recovery": "/admin/commerce?tab=recovery",
-  "orders/discounts": "/admin/commerce?tab=discounts",
-  users: "/admin/people?tab=users",
-  "communications/templates": "/admin/operations?tab=templates",
-  "communications/delivery": "/admin/operations?tab=delivery",
-  "trust/reports": "/admin/operations?tab=reports",
-  "trust/scans": "/admin/operations?tab=scans",
-  "trust/admin-activity": "/admin/operations?tab=admin-activity",
-  "trust/security-events": "/admin/operations?tab=security-events",
-  "settings/payments": "/admin/settings?tab=payments",
-  "settings/email": "/admin/settings?tab=email",
-  "settings/storage": "/admin/settings?tab=storage",
-  "settings/integrations": "/admin/settings?tab=integrations",
-  "settings/roles": "/admin/people?tab=roles",
-  prompts: "/admin/content?type=prompt",
-  "prompts/import": "/admin/content?tab=imports",
-  "ai-studio": "/admin/content/imports/ai-studio",
-  categories: "/admin/content?tab=taxonomy",
-  purchases: "/admin/commerce?tab=orders",
-  "abandoned-cart": "/admin/commerce?tab=recovery",
-  emails: "/admin/operations?tab=templates",
-  "emails/templates": "/admin/operations?tab=templates",
-  "emails/analytics": "/admin/operations?tab=delivery",
-  "emails/marketing": "/admin/operations?tab=templates",
-  security: "/admin/operations?tab=security-events",
-  audit: "/admin/operations?tab=admin-activity",
-};
-
 function appendSafeSearch(destination: string, incoming: string): string {
   if (!incoming) return destination;
   const url = new URL(destination, "https://admin.local");
   const source = new URLSearchParams(incoming);
   source.forEach((value, key) => {
-    if (key !== "tab" && key !== "type") url.searchParams.set(key, value);
+    if (!["tab", "type", "tool", "resourceId", "draftId"].includes(key)) {
+      url.searchParams.set(key, value);
+    }
   });
   return `${url.pathname}${url.search}`;
 }
 
 export function AdminCompatibilityResolver() {
-  const { "*": splat = "" } = useParams<{ "*": string }>();
-  const { search } = useLocation();
-
-  const publisher = /^publishing\/resources\/([^/]+)\/(edit|versions\/new)$/.exec(splat);
-  if (publisher) {
-    const decoded = safeDecode(publisher[1]);
-    if (decoded) return <Navigate to={`/admin/content/resources/${encodeURIComponent(decoded)}/${publisher[2]}`} replace />;
-  }
-
-  const draft = /^(?:publishing\/imports\/)?ai-studio\/([^/]+)$/.exec(splat);
-  if (draft) {
-    const decoded = safeDecode(draft[1]);
-    if (decoded) return <Navigate to={`/admin/content/imports/ai-studio/${encodeURIComponent(decoded)}`} replace />;
-  }
-
-  const destination = LEGACY_ADMIN_PATHS[splat];
-  return <Navigate to={destination ? appendSafeSearch(destination, search) : "/admin"} replace />;
+  const { pathname, search } = useLocation();
+  const splat = pathname.replace(/^\/admin\/?/, "");
+  return <Navigate to={appendSafeSearch(resolveLegacyAdminPath(splat), search)} replace />;
 }

@@ -47,7 +47,7 @@ function makePayload(overrides?: {
         id: "lovable_ai", purpose: "ai_studio",
         configured: o.lovable,
         application_services: ["ai-studio-chat", "ai-studio-image"],
-        specialist_route: "/admin/content/new",
+        specialist_route: "/admin/content?tool=new",
       },
       {
         id: "jojoprompts_mcp", purpose: "mcp_access",

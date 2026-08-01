@@ -26,13 +26,14 @@ const draftHookSource = readFileSync(
 describe("AI Studio Admin V2 contract", () => {
   it("uses only the canonical Content workspace route for draft navigation", () => {
     expect(routesSource).toContain(
-      '"/admin/content/imports/ai-studio"',
+      '"/admin/content?tool=ai-studio"',
     );
     expect(pageSource).not.toContain('`/admin/ai-studio/');
     expect(sidebarSource).not.toContain('`/admin/ai-studio/');
-    expect(pageSource).toContain("AI_STUDIO_BASE_ROUTE");
+    expect(pageSource).toContain("aiStudioDraftRoute");
     expect(sidebarSource).toContain("AI_STUDIO_BASE_ROUTE");
-    expect(appSource).toContain('<Route path="content/*" element={<AdminWorkspacePage workspace="content" />} />');
+    expect(sidebarSource).toContain("aiStudioDraftRoute");
+    expect(appSource).toContain('<Route path="content" element={<AdminWorkspacePage workspace="content" />} />');
     expect(appSource).toContain('<Route path="*" element={<AdminCompatibilityResolver />} />');
   });
 
@@ -86,7 +87,7 @@ describe("AI Studio Admin V2 contract", () => {
 
   it("hands assets to the unified publisher without mutating legacy prompts", () => {
     expect(publishDialogSource).toContain(
-      'navigate("/admin/content/new"',
+      'navigate("/admin/content?tool=new"',
     );
     expect(publishDialogSource).toContain("buildAiStudioPublisherHandoff");
     expect(publishDialogSource).not.toContain('.from("prompts")');
@@ -94,7 +95,7 @@ describe("AI Studio Admin V2 contract", () => {
     expect(draftHookSource).not.toContain("unpublish");
     expect(pageSource).toContain("Sent to publisher");
     expect(pageSource).toContain(
-      "/admin/content/resources/${importedResourceId}/edit",
+      "/admin/content?tool=edit&resourceId=${encodeURIComponent(importedResourceId)}",
     );
   });
 });

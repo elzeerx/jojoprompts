@@ -37,7 +37,7 @@ describe("V2 Resource JSON Importer — route wiring", () => {
     expect(ELEMENTS).toMatch(
       /publishingImportsJson:\s*wrap\(<JsonResourceImporter\s*\/>\)/,
     );
-    expect(WORKSPACE).toContain('splat === "imports/json"');
+    expect(WORKSPACE).toContain('tool === "import-json"');
     expect(WORKSPACE).toContain("adminSectionElements.publishingImportsJson");
   });
 

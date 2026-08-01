@@ -17,7 +17,7 @@ type HubCard = {
 export const IMPORTS_HUB_CARDS: readonly HubCard[] = [
   {
     key: "json",
-    to: "/admin/content/imports/json",
+    to: "/admin/content?tool=import-json",
     icon: FileJson,
     title: "JSON Importer",
     titleAr: "مستورد JSON",
@@ -26,7 +26,7 @@ export const IMPORTS_HUB_CARDS: readonly HubCard[] = [
   },
   {
     key: "ai-studio",
-    to: "/admin/content/imports/ai-studio",
+    to: "/admin/content?tool=ai-studio",
     icon: Sparkles,
     title: "AI Studio",
     titleAr: "استوديو الذكاء الاصطناعي",
@@ -35,7 +35,7 @@ export const IMPORTS_HUB_CARDS: readonly HubCard[] = [
   },
   {
     key: "legacy",
-    to: "/admin/content/imports/legacy",
+    to: "/admin/content?tool=import-legacy",
     icon: Archive,
     title: "Legacy migration verification",
     titleAr: "التحقّق من الترحيل القديم",

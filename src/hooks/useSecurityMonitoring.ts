@@ -93,7 +93,7 @@ export function useSecurityMonitoring(options: SecurityMonitoringOptions = {}) {
     const currentPath = location.pathname;
     
     // Check if this is a protected route
-    const protectedRoutes = ['/admin', '/dashboard', '/prompter'];
+    const protectedRoutes = ['/admin', '/account', '/orders'];
     const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route));
     
     if (isProtectedRoute && user) {

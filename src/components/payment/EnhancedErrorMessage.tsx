@@ -216,7 +216,7 @@ export function EnhancedErrorMessage({
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Button variant="outline" asChild className="justify-start">
-              <a href="/payment-dashboard">
+              <a href="/orders">
                 <CreditCard className="h-4 w-4 mr-2" />
                 View Payment History
               </a>

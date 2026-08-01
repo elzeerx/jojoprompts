@@ -219,7 +219,7 @@ export const getDefaultRoute = (role?: string | null): string => {
     return '/admin';
   }
   if (isPrompter(role)) {
-    return '/dashboard/prompter';
+    return '/explore';
   }
   return '/prompts';
 };
