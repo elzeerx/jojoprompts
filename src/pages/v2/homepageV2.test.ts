@@ -128,4 +128,10 @@ describe("Explore filter layout contract", () => {
     expect(EXPLORE_FILTERS.includes('className="sticky')).toBe(false);
     expect(EXPLORE_FILTERS.includes("top-[8rem]")).toBe(false);
   });
+  it("gives both filter dialogs an accessible title and description", () => {
+    expect(EXPLORE_FILTERS.includes("<DrawerTitle")).toBe(true);
+    expect(EXPLORE_FILTERS.includes("<DrawerDescription")).toBe(true);
+    expect(EXPLORE_FILTERS.includes("<SheetTitle")).toBe(true);
+    expect(EXPLORE_FILTERS.includes("<SheetDescription")).toBe(true);
+  });
 });

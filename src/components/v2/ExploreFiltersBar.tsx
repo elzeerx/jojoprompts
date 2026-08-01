@@ -1,6 +1,16 @@
 import { useState } from "react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -274,9 +284,9 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
           <DrawerContent className="px-4 pb-6">
             <div className="mx-auto w-full max-w-lg">
               <div className="mb-3 mt-2 flex items-center justify-between">
-                <h3 className="text-lg font-semibold">
+                <DrawerTitle className="text-lg font-semibold">
                   {V2_COPY.filters.filters[lang]}
-                </h3>
+                </DrawerTitle>
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Close"
@@ -285,6 +295,11 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
                   <X className="h-4 w-4" aria-hidden />
                 </button>
               </div>
+              <DrawerDescription className="sr-only">
+                {lang === "ar"
+                  ? "اختَر نوع المورد والسعر والجهد والترتيب والمنصات."
+                  : "Choose resource type, price, effort, sort order, and platforms."}
+              </DrawerDescription>
               {controls}
               <div className="mt-4 flex gap-2">
                 <Button
@@ -309,9 +324,14 @@ export function ExploreFiltersBar({ filters, onChange, onReset }: Props) {
       ) : (
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent side="right" className="w-[380px] sm:max-w-md overflow-y-auto">
-            <h3 className="mb-4 text-lg font-semibold">
+            <SheetTitle className="mb-4 text-lg font-semibold">
               {V2_COPY.filters.filters[lang]}
-            </h3>
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              {lang === "ar"
+                ? "اختَر نوع المورد والسعر والجهد والترتيب والمنصات."
+                : "Choose resource type, price, effort, sort order, and platforms."}
+            </SheetDescription>
             {controls}
             <div className="mt-4 flex gap-2">
               <Button
