@@ -1,100 +1,49 @@
-# Admin V2 Phase 2 — Read-Only Status Audit
+# Investigation: stale routes in the Lovable page picker
 
-Scope: compare current source against the V2 Admin scope. No changes proposed beyond the concise remaining-work list at the end. All references verified against `src/App.tsx`, `src/pages/admin/**`, and `src/pages/admin/config/adminNavConfig.ts`.
+Investigation only — no files were changed, nothing was committed, deployed, published, or altered in Supabase.
 
-## 1. Completed & evidenced
+## What the source actually declares today
 
-Admin shell / chrome
-- Dedicated shell mounted outside public layout: `src/App.tsx:106-113` (AdminGuard → AdminLayout, no Header/Footer).
-- Layout components: `src/pages/admin/layout/AdminLayout.tsx`, `AdminSidebar.tsx`, `AdminTopBar.tsx`, `AdminCommandPalette.tsx`, `AdminSectionSkeleton.tsx`.
-- Navigation config (V2, no subscription terms, no duplicates): `src/pages/admin/config/adminNavConfig.ts:53-124`.
+Verified at the current checkout:
 
-Overview
-- `/admin` → `OverviewV2` at `src/pages/admin/sections/overview/OverviewV2.tsx` (275 lines). Includes explicit "Unavailable" fallbacks (line 251) and honest KPI formatting via `src/lib/v2/admin/overviewKpiFormat.ts`.
+- `src/App.tsx` declares exactly six static admin destinations: index (`/admin`), `content/*`, `commerce`, `people`, `operations`, `settings`, plus one wildcard `path="*"` -> `AdminCompatibilityResolver`.
+- Public/customer routes come from the static array in `src/config/routes.ts`, plus one wildcard `path="*"` -> `PublicRouteResolver`.
+- No `<Route>` element anywhere declares `/admin/abandoned-cart`, `/admin/ai-studio`, `/admin/catalog/*`, `/dashboard`, or `/favorites`.
 
-Catalog (all V2 resource types)
-- Routes `/admin/catalog[/skills|/automations|/prompts|/prompt-packs|/image-styles|/bundles]` wired at `src/App.tsx:116-123` via locked-type wrappers in `src/pages/admin/layout/adminSectionElements.tsx:67-73`.
-- Implementation: `src/pages/admin/sections/catalog/CatalogPage.tsx` + `CatalogTable.tsx`.
+So the router is already correct. The picker is not reflecting the router.
 
-Unified publisher
-- `ResourcePublisher` (845 lines) supports `new`, `edit`, `new-version` modes: `src/pages/admin/sections/publishing/ResourcePublisher.tsx`; routes at `src/App.tsx:125-127`.
+## Why the picker is still stale — two independent causes
 
-Publishing queues
-- Drafts: `src/pages/admin/sections/publishing/DraftsQueuePage.tsx` (thin wrapper) → `PublishingQueue.tsx`.
-- Review: `ReviewQueuePage.tsx` → `PublishingQueue.tsx`. Readiness gate enforced by `src/lib/v2/admin/publishingReadiness.ts` + migration `20260725114722`.
-- Versions: `VersionsRegistryPage.tsx` (474 lines) + `VersionDetailSheet.tsx`.
-- Imports: `LegacyMigrationPreview.tsx` (898 lines) + JSON importer + AI Studio route.
-- Taxonomy: `CategoriesManagement` reused at `/admin/publishing/taxonomy`.
+**1. The picker's page registry is a stored, additive manifest, not a live read of `App.tsx`.**
+It is produced by Lovable's indexing pass and persisted per project. Removing a `<Route>` produces no "route deleted" signal, so previously indexed entries survive until the registry is rebuilt from scratch. This alone explains entries that exist in no current file.
 
-Orders (commerce ops)
-- Full set wired at `src/App.tsx:139-144`: `OrdersV2Page`, `PaymentEventsPage`, `EntitlementsPage`, `RefundsPage`, `RecoveryPage`, `DiscountsPage` (all in `src/pages/admin/sections/orders/`). Detail sheets present for orders, refunds, payment events, discounts.
+**2. Even a full rebuild would re-discover most of these paths, because the strings still exist in source.**
+The indexer matches route-like path literals, and the current code intentionally keeps large legacy path tables:
 
-People
-- Users: `/admin/users` → `src/pages/admin/components/users/UsersManagement.tsx` with bulk actions, activity log, filters, create dialog.
+- `src/pages/admin/layout/AdminWorkspacePage.tsx` — ~40 legacy keys (`catalog/skills`, `catalog/prompts`, `catalog/image-styles`, `publishing/review`, `orders/refunds`, `trust/scans`, `settings/roles`, `emails/templates`, …) used by the compatibility resolver.
+- `src/components/v2/PublicRouteResolver.tsx` — `LEGACY_PUBLIC_PATHS` containing `/dashboard`, `/favorites`, `/prompts`, `/skills`, `/bundles`, `/payment-*`, …
+- `src/pages/v2/DashboardRedirect.tsx`, `src/components/layout/header.tsx`, `src/pages/admin/sections/ai-studio/*`, `imports/ai-studio` splat handling in the workspace resolver.
+- Contract tests (`adminWorkspaceRouting.test.ts`, `ImportsHub.contract.test.ts`, `publicShell.test.ts`) that assert those exact literals.
+- `public/_redirects` (inert on Lovable hosting, but still a path-bearing file).
 
-Communications
-- Templates: `/admin/communications/templates` → `EmailTemplatesManagement`.
-- Delivery health: `/admin/communications/delivery` → `EmailAnalyticsDashboard`.
+These are deliberate compatibility surfaces and must not be deleted — removing them would break old bookmarks and fail existing tests.
 
-Trust & Activity
-- Reports: `src/pages/admin/sections/trust/ReportsPage.tsx` + `ReportDetailSheet.tsx`.
-- Scans: `src/pages/admin/sections/trust/scans/` (Cloudmersive integration, Phase 6E2).
-- Admin activity: `src/pages/admin/sections/system/AuditLogPage.tsx` + `AuditEventDetailSheet.tsx` (Phase 6E3).
-- Security events: `SecurityMonitoringDashboard` at `/admin/trust/security-events`.
+## Exact safest action
 
-Settings
-- Payments (6E6), Email (6E7), Storage (6E8), Integrations (6E9), Roles (6E10) — all read-only dashboards at `src/pages/admin/sections/settings/*.tsx`, backed by JWT-verified status Edge Functions and strict normalizers under `src/lib/v2/admin/*`.
+Do nothing to the routing code. The correct fix is a registry rebuild on Lovable's side, in this order of escalation:
 
-Legacy cleanup
-- Legacy paths redirected to canonical V2 routes: `src/App.tsx:170-183` (`/admin/analytics`, `/admin/prompts`, `/admin/categories`, `/admin/purchases`, `/admin/abandoned-cart`, `/admin/emails*`, `/admin/security`, `/admin/audit`).
-- No "subscription" terminology in `adminNavConfig.ts`; language is entitlement/order-based.
+1. **Force a fresh index pass**: make any trivial change that produces a new commit (this project already commits on every edit) and then hard-reload the Lovable editor tab so the picker refetches its manifest rather than serving the cached client copy. This resolves the common case where the manifest was rebuilt but the UI held a stale copy.
+2. **If entries that exist in no file persist after that**, the stored manifest itself is stale and needs a server-side reset of the project's page registry. That is not something the app repo can trigger — request it from Lovable support with the project ID and the list of ghost paths (`/admin/abandoned-cart`, `/admin/catalog/*`, `/dashboard`, `/favorites`).
+3. **Accept the remainder**: paths that still appear as literals in the compatibility tables above will legitimately reappear in any rebuild. They are redirect sources, not pages. Cosmetically suppressing them would mean deleting the compatibility maps — an availability regression, not recommended.
 
-Responsive/mobile
-- 44px touch targets present across order/entitlement/refund/discount/publishing filters (verified via grep on `min-h-[44px]`).
-- Mobile-hardened detail sheets: `PublishingQueueDetailSheet.tsx`, `RefundDetailSheet.tsx`, scan cards (Phase 6E1/6E2 responsive corrections).
+No Supabase, deploy, publish, or Coming Soon change is involved in any step.
 
-## 2. Partially implemented / placeholder
+## Are explicit static canonical `<Route>` declarations required?
 
-- **Overview "Attention Required"**: `OverviewV2.tsx` renders KPI tiles with "Unavailable" fallbacks, but there is no verified evidence of a dedicated Attention Required panel that aggregates review-queue backlog, refund SLA breaches, failed deliveries, scan failures, and orphaned payments into an actionable list. Needs a UI-level check to confirm whether the current tiles satisfy the scope or a dedicated panel is missing.
-- **Communications → Delivery health**: route resolves to legacy `EmailAnalyticsDashboard` (`src/components/admin/EmailAnalyticsDashboard.tsx`), not a purpose-built V2 delivery-health surface. Functional but not clearly redesigned per the V2 scope; verification needed.
-- **People → Users**: still the legacy `UsersManagement` component under `src/pages/admin/components/users/`. Works and integrated, but has not been rebuilt as a V2 section. Contains a tab labelled "Activity Log" that duplicates trust-activity concerns — needs review.
-- **Publishing → Imports**: `LegacyMigrationPreview` is the landing view; JSON importer and AI Studio are exposed as sub-routes. Whether the migration preview supports full ingest for every V2 resource type (skill / automation / prompt / prompt_pack / image_style / bundle) is not verified.
-- **Catalog resource operations**: create/edit paths flow through `ResourcePublisher`, but archive/restore controls are not evidenced from this audit — need to open `CatalogTable.tsx` and `PublishingQueueDetailSheet.tsx` action menus to confirm coverage for every resource type.
+No. The picker does not need them, and adding them would be harmful.
 
-## 3. Missing routes / flows (evidence-based)
+- The canonical set is already statically declared: six admin paths in `App.tsx` and the full public list in `routes.ts`. There is no missing declaration for the picker to read.
+- The staleness is a manifest-lifecycle problem (no delete signal / cached copy), not a declaration-shape problem. Adding more `<Route>` entries adds rows to the manifest; it never removes the stale ones.
+- Statically declaring the legacy paths that the two wildcard resolvers currently handle would convert dead redirect sources back into real routed pages and make the picker permanently worse.
 
-- No dedicated `/admin/attention` or equivalent Attention Required index route — only inline tiles on `/admin`.
-- No `/admin/catalog/*/archived` or archive filter route verified; archive/restore may only be reachable via row actions (unverified).
-- No standalone Delivery Health V2 page distinct from the reused `EmailAnalyticsDashboard`.
-- No V2-native Users section under `src/pages/admin/sections/people/`.
-
-## 4. Verification still required (not performed in this read-only pass)
-
-- Confirm archive & restore actions exist and are wired for every resource type: skill, automation, prompt, prompt_pack, image_style, bundle (inspect `CatalogTable.tsx` row menu + `admin_transition_resource_lifecycle` allowed transitions).
-- Confirm full create → validate → review → publish → update-version → archive → restore → audit loop end-to-end for each of the six resource types (e.g., image_style and bundle publisher forms may differ from prompt/skill).
-- Confirm audit log surfaces every lifecycle transition (create/publish/archive/restore/refund/entitlement change/role change) — `AuditLogPage` reads `activity_events`; coverage depends on emitters across Edge Functions.
-- Confirm mobile behavior at 390×844 for: `ResourcePublisher` (multi-step form), `OverviewV2` tiles, `UsersManagement` table (legacy component pre-dates the V2 mobile pattern).
-- Confirm "Attention Required" scope: is the OverviewV2 tile grid the intended surface, or is a separate panel expected?
-- Confirm no residual subscription language in user-facing admin copy (nav is clean; page bodies not fully audited).
-
-## 5. Can Phase 2 be honestly declared complete?
-
-**No — not yet under the stated exit gate.**
-
-The exit gate requires an admin to *create, validate, review, publish, update, archive, restore, and audit every V2 resource type*. Current evidence supports:
-
-- Create / validate / review / publish / update: yes for the resource types the unified publisher handles — verified via `ResourcePublisher` modes and Drafts/Review/Versions queues.
-- Audit: yes for events emitted into `activity_events` — verified via `AuditLogPage`, but end-to-end coverage per resource-type lifecycle event is not proven in source.
-- **Archive / restore**: not evidenced in this audit for any resource type. No archive queue route, no visible archive/restore controls confirmed. This alone blocks the exit gate.
-- **All six resource types**: catalog routes exist for each, but the publisher's per-type field coverage (especially `image_style` and `bundle`) was not verified end-to-end in this pass.
-
-Additionally, the People/Users surface and Delivery Health surface are legacy-reused rather than V2-native, and the Overview "Attention Required" concept is only partially expressed.
-
-## Concise remaining-work list
-
-1. Verify and, if missing, add archive/restore actions + an archived filter/queue for every resource type; ensure lifecycle transitions emit audit events.
-2. Confirm `ResourcePublisher` covers all six V2 resource types (skill, automation, prompt, prompt_pack, image_style, bundle) end-to-end; fill gaps.
-3. Decide whether Overview's KPI tiles satisfy "Attention Required" or build a dedicated aggregation panel.
-4. Rebuild or explicitly ratify the legacy `UsersManagement` and `EmailAnalyticsDashboard` as V2-canonical surfaces (or replace).
-5. Run a mobile pass (390×844) over `ResourcePublisher`, `UsersManagement`, `OverviewV2`, and legacy templates/analytics dashboards.
-6. Spot-check `activity_events` emission for each lifecycle transition per resource type to prove audit completeness.
+The only declaration-shape caveat: because compatibility handling lives behind `path="*"`, a literal-only scanner cannot enumerate those targets as routes. That is the desired outcome — they should not be pages.
