@@ -2,6 +2,63 @@
 
 ## Current corrective locked window
 
+- Start: 2026-08-01 17:01:34 UTC / 2026-08-01 20:01:34 Asia/Kuwait.
+- Earliest close: 2026-08-02 17:01:34 UTC / 2026-08-02 20:01:34 Asia/Kuwait.
+- Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
+- Frontend baseline: `50c841bb57a02ab81c68984f515a5cc86df10566`, which contains
+  the verified absolute-lock ancestor
+  `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`.
+- Database baseline: production migration
+  `20260801170134_harden_legacy_transaction_and_discount_writes`. Local
+  reviewed filename
+  `20260801165606_harden_legacy_transaction_and_discount_writes.sql`,
+  SHA-256 `5fe4e04440d3b9b539d0851bb675c91856660acabac482882a5bcddfc8f67fdc`,
+  40 lines, 1,709 bytes.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
+
+This window supersedes the 2026-08-01 11:22 UTC window because the reviewed
+legacy transaction/discount write-hardening migration was applied to
+production. Any further runtime source, migration, Edge Function,
+payment/scanner configuration, or launch-lock change restarts the window.
+Documentation-only synchronization does not restart it.
+
+## Interim non-closing refresh — 2026-08-01 19:23 UTC
+
+This refresh is evidence only. It is clean, but it does **not** close the gate
+and must be rerun after 2026-08-02 17:01:34 UTC.
+
+- Production lock sweep passed for `/`, `/login`, `/reset-password`, `/admin`,
+  `/signup`, `/explore`, `/pricing`, and `/.lovable/oauth/consent`. Every route
+  returned the same Coming Soon document from `index-D1yCI-OC.js` with
+  `noindex,nofollow`, zero forms, inputs, buttons, or links, and no Supabase,
+  Auth, Storage, REST, or Edge Function request.
+- Logs: no Edge Function 5xx, fatal, or panic event. The only 403 was the
+  expected web-vitals negative probe. Postgres returned 35 LOG events with no
+  ERROR, FATAL, or PANIC. Auth traffic was known preview/QA activity with two
+  stale refresh-token 400s. Storage had no 5xx; expired signed-image 400s were
+  each followed by successful sign and render requests.
+- Reconciliation unchanged: 247 Auth users, profiles, and role rows with zero
+  gaps; 66 resources, 65 published, 66 versions, 1 file, and 66 products with
+  zero integrity or pointer mismatches; 3 orders (1 paid, 2 failed), 3 order
+  items, 11 payment events, and 1 failed sandbox refund with zero duplicate,
+  orphan, total, or allocation issues; 117 active entitlements and 57 lifetime
+  entries with zero orphans; 1 clean package scan; 0 receipt resends.
+- Security advisors: 184 total = 179 warning, 5 informational, 0 error, with
+  unchanged categories.
+- Performance advisors: 369 total = 280 warning, 89 informational. Four fewer
+  `multiple_permissive_policies` notices follow the applied hardening, and one
+  fewer `unused_index` informational notice is workload-stat drift. No new
+  category appeared.
+- Dependencies: npm production audit 0 critical / 2 high; full audit 0
+  critical / 3 high / 3 moderate / 1 low. The React Router RSC advisory remains
+  architecture-unreachable; the source scan found no RSC, server-router, or
+  action path. `react-router-dom` remains pinned to `7.18.1`; latest stable is
+  `7.18.2` and no stable `8.3.0` is published.
+- `bun run verify:v2` passed typecheck, scoped lint, 989 tests, and the
+  production build.
+
+## Superseded corrective locked window
+
 - Start: 2026-08-01 11:22 UTC / 2026-08-01 14:22 Asia/Kuwait.
 - Earliest close: 2026-08-02 11:22 UTC / 2026-08-02 14:22 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
@@ -21,6 +78,7 @@ checks reported static positioning, zero overlap, and no horizontal overflow.
 The mobile filter drawer opens and closes with an accessible title and
 description and no browser warnings/errors. The canonical gate passed
 TypeScript, scoped lint, 982 tests, and production build.
+
 
 ## Superseded legacy-image window
 

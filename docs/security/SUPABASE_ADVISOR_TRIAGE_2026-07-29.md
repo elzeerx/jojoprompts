@@ -264,3 +264,32 @@ absolute production-lock correction was published.
 The corrective frontend commit contains no database migration or Edge
 Function change. The advisor result remains the applicable baseline for the
 new locked window and does not authorize public launch.
+
+## Interim non-closing refresh — 2026-08-01 19:23 UTC
+
+The advisors were rerun inside the superseding controlled stability window that
+started at 2026-08-01 17:01:34 UTC (earliest close 2026-08-02 17:01:34 UTC)
+after production migration
+`20260801170134_harden_legacy_transaction_and_discount_writes` was applied.
+Local reviewed filename
+`20260801165606_harden_legacy_transaction_and_discount_writes.sql`, SHA-256
+`5fe4e04440d3b9b539d0851bb675c91856660acabac482882a5bcddfc8f67fdc`, 40 lines,
+1,709 bytes. The frontend baseline is
+`50c841bb57a02ab81c68984f515a5cc86df10566` (containing the verified
+absolute-lock ancestor `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`) and the Edge
+Function baseline remains `v2-admin-integrations-settings-status` version 14.
+`PUBLIC_LAUNCH_LOCK` remains `true`.
+
+- Security advisors: 184 total = 179 warning, 5 informational, 0 error. Object
+  categories and every reviewed disposition above are unchanged.
+- Performance advisors: 369 total = 280 warning, 89 informational. Four fewer
+  `multiple_permissive_policies` warnings are the direct, expected result of
+  the applied legacy transaction/discount write hardening. One fewer
+  `unused_index` informational notice is workload-statistics drift, not DDL. No
+  new advisor category appeared.
+
+This refresh is clean, but it is **non-closing evidence only**. It does not
+close the stability gate and must be rerun after 2026-08-02 17:01:34 UTC. Any
+runtime source, migration, Edge Function, payment/scanner configuration, or
+launch-lock change restarts the window; documentation-only synchronization does
+not. This result does not authorize disabling Coming Soon.

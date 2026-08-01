@@ -54,7 +54,7 @@ on 2026-07-29. That approval does not cover the launch-lock change.
 
 ## Applied database payload
 
-All seven controlled migrations are recorded in production. The table keeps
+All eight controlled migrations are recorded in production. The table keeps
 the local reviewed filename and payload checksum; Supabase assigned production
 versions to API-applied migrations as shown.
 
@@ -67,6 +67,7 @@ versions to API-applied migrations as shown.
 | 5 | `20260729171000_reconcile_missing_auth_profiles.sql` | `20260729163554` / `reconcile_missing_auth_profiles` | `909312ba3342aeaab28ff8b5e30478c4c6c0fe430dfd6fbcaf1e3b3e79c8ee3c` | 146 | 3,312 |
 | 6 | `20260729171438_v2_web_vitals_rum.sql` | `20260729172145` / `v2_web_vitals_rum` | `2ac3588f2996b4a3299a831888c133a658ec898ca57b127eab601fae93d2710d` | 177 | 5,565 |
 | 7 | `20260729172438_v2_web_vitals_explicit_deny_policy.sql` | `20260729172506` / `v2_web_vitals_explicit_deny_policy` | `c5028ebb72907e906da8a0dd45a45ef6f2f3fdca758808a2342443a560e7f651` | 10 | 392 |
+| 8 | `20260801165606_harden_legacy_transaction_and_discount_writes.sql` | `20260801170134` / `harden_legacy_transaction_and_discount_writes` | `5fe4e04440d3b9b539d0851bb675c91856660acabac482882a5bcddfc8f67fdc` | 40 | 1,709 |
 
 The migrations are forward-only. Prefer a reviewed corrective migration for a
 non-destructive defect. Use the restricted pre-deployment restore point only
@@ -153,28 +154,57 @@ no email was sent and no resend request or provider payload was created.
 
 ## Current stability window
 
-The catalog filter-flow and dialog-accessibility correction is a frontend
-runtime change and supersedes the legacy-image window. The conservative
-restarted window is:
+The applied legacy transaction/discount write-hardening migration is a
+production database change and supersedes the catalog filter-flow window. The
+conservative restarted window is:
 
-- Start: 2026-08-01 11:22 UTC / 2026-08-01 14:22 Asia/Kuwait.
-- Earliest close: 2026-08-02 11:22 UTC / 2026-08-02 14:22 Asia/Kuwait.
-- Baseline: `50c841bb57a02ab81c68984f515a5cc86df10566` plus
-  `v2-admin-integrations-settings-status` version 14.
+- Start: 2026-08-01 17:01:34 UTC / 2026-08-01 20:01:34 Asia/Kuwait.
+- Earliest close: 2026-08-02 17:01:34 UTC / 2026-08-02 20:01:34 Asia/Kuwait.
+- Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
+- Frontend baseline: `50c841bb57a02ab81c68984f515a5cc86df10566`, containing the
+  verified absolute-lock ancestor
+  `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`.
+- Database baseline: migration row 8 above,
+  `20260801170134_harden_legacy_transaction_and_discount_writes`.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
 
-The synchronized preview passed the consolidated public-route, six-workspace
-admin-navigation, legacy-bookmark redirect, migrated-image, and filter-flow
-checks. The production sweep of
-`/`, `/admin`, `/explore`, and `/login` returned only Coming Soon with
-`noindex,nofollow` and zero forms, inputs, buttons, or links. The immediate
-artifact comparison showed production and preview both serving
-`index-D1yCI-OC.js`. The pre-change reconciliation/advisor/dependency baseline
-remains the comparison point for the new close-out; it must be refreshed after
-this full window elapses.
+### Interim non-closing refresh — 2026-08-01 19:23 UTC
+
+This refresh is clean but is evidence only. It does **not** close the gate and
+must be rerun after 2026-08-02 17:01:34 UTC.
+
+- The production lock sweep of `/`, `/login`, `/reset-password`, `/admin`,
+  `/signup`, `/explore`, `/pricing`, and `/.lovable/oauth/consent` returned the
+  same Coming Soon document from `index-D1yCI-OC.js` with `noindex,nofollow`,
+  zero forms, inputs, buttons, or links, and no Supabase, Auth, Storage, REST,
+  or Edge Function request.
+- Logs: no Edge Function 5xx, fatal, or panic; the only 403 was the expected
+  web-vitals negative probe. Postgres had 35 LOG events and no ERROR, FATAL, or
+  PANIC. Auth traffic was known preview/QA with two stale refresh-token 400s.
+  Storage had no 5xx, and expired signed-image 400s were followed by successful
+  sign and render requests.
+- Reconciliation unchanged from the table above: 247 auth users/profiles/roles
+  with zero gaps; 66 resources, 65 published, 66 versions, 1 file, 66 products
+  with zero integrity or pointer mismatches; 3 orders (1 paid, 2 failed), 3
+  order items, 11 payment events, 1 failed sandbox refund with zero duplicate,
+  orphan, total, or allocation issues; 117 active entitlements and 57 lifetime
+  entries with zero orphans; 1 clean package scan; 0 receipt resends.
+- Security advisors: 184 total = 179 warning, 5 informational, 0 error,
+  unchanged categories.
+- Performance advisors: 369 total = 280 warning, 89 informational. Four fewer
+  `multiple_permissive_policies` notices follow the hardening; one fewer
+  `unused_index` informational notice is workload-stat drift; no new category.
+- Dependencies: production audit 0 critical / 2 high; full audit 0 critical /
+  3 high / 3 moderate / 1 low. The React Router RSC advisory remains
+  architecture-unreachable; `react-router-dom` stays pinned at `7.18.1`, latest
+  stable is `7.18.2`, and no stable `8.3.0` is published.
+- `bun run verify:v2` passed typecheck, scoped lint, 989 tests, and the
+  production build.
 
 Any further runtime source, migration, Edge Function, payment/scanner
 configuration, or launch-lock change restarts the window. Documentation-only
-and test-description-only commits do not.
+synchronization and test-description-only commits do not.
+
 
 ## Rollback references and containment order
 

@@ -85,3 +85,29 @@ packages publish compatible fixes, followed by the complete local suite.
    browser tests.
 4. If no compatible patched package exists, reconfirm that no RSC/server
    imports or router actions were introduced and keep this exception current.
+
+## Interim non-closing refresh — 2026-08-01 19:23 UTC
+
+Refreshed inside the superseding controlled stability window that started at
+2026-08-01 17:01:34 UTC, with earliest close 2026-08-02 17:01:34 UTC and
+`PUBLIC_LAUNCH_LOCK` still `true`. Baselines: frontend
+`50c841bb57a02ab81c68984f515a5cc86df10566` (containing verified absolute-lock
+ancestor `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`), database migration
+`20260801170134_harden_legacy_transaction_and_discount_writes`, and Edge
+Function `v2-admin-integrations-settings-status` version 14.
+
+- `npm audit --omit=dev`: 0 critical, 2 high.
+- Full `npm audit`: 0 critical, 3 high, 3 moderate, 1 low.
+- The React Router RSC advisory remains architecture-unreachable. A fresh
+  source scan again found no RSC, server-router, or action path.
+- `react-router-dom` remains pinned to `7.18.1`. The registry's latest stable
+  is `7.18.2`, which is still inside the advisory range, and no stable `8.3.0`
+  is published.
+- `bun run verify:v2` passed typecheck, scoped lint, 989 tests, and the
+  production build.
+
+This refresh is clean, but it is **non-closing evidence only**. It does not
+close the stability gate and must be rerun after 2026-08-02 17:01:34 UTC. Any
+runtime source, migration, Edge Function, payment/scanner configuration, or
+launch-lock change restarts the window; documentation-only synchronization does
+not. The pre-launch re-check list above still applies.
