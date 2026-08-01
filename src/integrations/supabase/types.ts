@@ -4250,6 +4250,53 @@ export type Database = {
           },
         ]
       }
+      v2_order_receipt_resend_payloads: {
+        Row: {
+          created_at: string
+          from_header: string
+          html_body: string
+          provider_headers: Json
+          recipient_email: string
+          recipient_user_id: string | null
+          reply_to: string
+          request_id: string
+          subject: string
+          text_body: string
+        }
+        Insert: {
+          created_at?: string
+          from_header: string
+          html_body: string
+          provider_headers: Json
+          recipient_email: string
+          recipient_user_id?: string | null
+          reply_to: string
+          request_id: string
+          subject: string
+          text_body: string
+        }
+        Update: {
+          created_at?: string
+          from_header?: string
+          html_body?: string
+          provider_headers?: Json
+          recipient_email?: string
+          recipient_user_id?: string | null
+          reply_to?: string
+          request_id?: string
+          subject?: string
+          text_body?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_order_receipt_resend_payloads_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "v2_order_receipt_resend_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v2_order_receipt_resend_requests: {
         Row: {
           completed_at: string | null
@@ -4318,53 +4365,6 @@ export type Database = {
           },
         ]
       }
-      v2_order_receipt_resend_payloads: {
-        Row: {
-          created_at: string
-          from_header: string
-          html_body: string
-          provider_headers: Json
-          recipient_email: string
-          recipient_user_id: string | null
-          reply_to: string
-          request_id: string
-          subject: string
-          text_body: string
-        }
-        Insert: {
-          created_at?: string
-          from_header: string
-          html_body: string
-          provider_headers: Json
-          recipient_email: string
-          recipient_user_id?: string | null
-          reply_to: string
-          request_id: string
-          subject: string
-          text_body: string
-        }
-        Update: {
-          created_at?: string
-          from_header?: string
-          html_body?: string
-          provider_headers?: Json
-          recipient_email?: string
-          recipient_user_id?: string | null
-          reply_to?: string
-          request_id?: string
-          subject?: string
-          text_body?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "v2_order_receipt_resend_payloads_request_id_fkey"
-            columns: ["request_id"]
-            isOneToOne: true
-            referencedRelation: "v2_order_receipt_resend_requests"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v2_provider_status_rate_limit: {
         Row: {
           count: number
@@ -4380,6 +4380,45 @@ export type Database = {
           count?: number
           minute_bucket?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      web_vital_samples: {
+        Row: {
+          device_class: string
+          environment: string
+          id: string
+          metric_id: string
+          metric_name: string
+          navigation_type: string
+          rating: string
+          recorded_at: string
+          route_path: string
+          value: number
+        }
+        Insert: {
+          device_class: string
+          environment: string
+          id?: string
+          metric_id: string
+          metric_name: string
+          navigation_type: string
+          rating: string
+          recorded_at?: string
+          route_path: string
+          value: number
+        }
+        Update: {
+          device_class?: string
+          environment?: string
+          id?: string
+          metric_id?: string
+          metric_name?: string
+          navigation_type?: string
+          rating?: string
+          recorded_at?: string
+          route_path?: string
+          value?: number
         }
         Relationships: []
       }
@@ -4496,10 +4535,6 @@ export type Database = {
         Args: { new_password: string; user_id: string }
         Returns: Json
       }
-      admin_get_resource_private_content: {
-        Args: { p_resource_id: string; p_version_id?: string | null }
-        Returns: Json
-      }
       admin_create_user: {
         Args: {
           user_email: string
@@ -4507,14 +4542,6 @@ export type Database = {
           user_last_name?: string
           user_password: string
           user_role?: string
-        }
-        Returns: Json
-      }
-      admin_set_user_role_v2: {
-        Args: {
-          p_actor_id: string
-          p_role: string
-          p_target_user_id: string
         }
         Returns: Json
       }
@@ -4538,7 +4565,15 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_get_resource_private_content: {
+        Args: { p_resource_id: string; p_version_id?: string }
+        Returns: Json
+      }
       admin_publish_resource: { Args: { p_resource_id: string }; Returns: Json }
+      admin_set_user_role_v2: {
+        Args: { p_actor_id: string; p_role: string; p_target_user_id: string }
+        Returns: Json
+      }
       admin_transition_resource_lifecycle: {
         Args: { p_action: string; p_resource_id: string }
         Returns: Json
@@ -4786,6 +4821,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      purge_expired_web_vital_samples: { Args: never; Returns: number }
       record_discount_usage: {
         Args: {
           discount_code_id_param: string
@@ -5132,41 +5168,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      v2_internal_claim_receipt_resend_request: {
-        Args: { p_request_id: string }
-        Returns: {
-          claimed: boolean
-          order_id: string
-          requested_by: string | null
-        }[]
-      }
-      v2_internal_claim_receipt_resend_reconciliation: {
-        Args: {
-          p_admin_user_id: string
-          p_request_id: string
-        }
-        Returns: {
-          claim_error_code: string | null
-          claimed: boolean
-          order_id: string | null
-          requested_by: string | null
-        }[]
-      }
-      v2_internal_complete_receipt_resend_request: {
-        Args: {
-          p_provider_message_id: string | null
-          p_request_id: string
-        }
-        Returns: boolean
-      }
-      v2_internal_create_receipt_resend_request: {
-        Args: {
-          p_admin_user_id: string
-          p_order_id: string
-          p_reason: string
-        }
-        Returns: string
-      }
       v2_get_entitled_resource_content: {
         Args: { p_resource_id: string }
         Returns: Json
@@ -5204,6 +5205,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      v2_internal_claim_receipt_resend_reconciliation: {
+        Args: { p_admin_user_id: string; p_request_id: string }
+        Returns: {
+          claim_error_code: string
+          claimed: boolean
+          order_id: string
+          requested_by: string
+        }[]
+      }
+      v2_internal_claim_receipt_resend_request: {
+        Args: { p_request_id: string }
+        Returns: {
+          claimed: boolean
+          order_id: string
+          requested_by: string
+        }[]
+      }
       v2_internal_claim_scan_items: {
         Args: { p_max?: number; p_scan_id: string }
         Returns: {
@@ -5220,12 +5238,20 @@ export type Database = {
           provider_data_id: string
         }[]
       }
+      v2_internal_complete_receipt_resend_request: {
+        Args: { p_provider_message_id: string; p_request_id: string }
+        Returns: boolean
+      }
       v2_internal_create_package_scan: {
         Args: {
           p_requested_by: string
           p_scanner: string
           p_version_id: string
         }
+        Returns: string
+      }
+      v2_internal_create_receipt_resend_request: {
+        Args: { p_admin_user_id: string; p_order_id: string; p_reason: string }
         Returns: string
       }
       v2_internal_effective_scan_state: {
@@ -5251,24 +5277,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      v2_internal_require_receipt_resend_reconciliation: {
-        Args: {
-          p_error_code: string
-          p_error_message: string
-          p_provider_message_id?: string | null
-          p_request_id: string
-        }
-        Returns: boolean
-      }
-      v2_internal_resolve_receipt_resend_reconciliation: {
-        Args: {
-          p_admin_user_id: string
-          p_reason: string
-          p_request_id: string
-          p_resolution: string
-        }
-        Returns: boolean
-      }
       v2_internal_record_scan_submission: {
         Args: { p_data_id: string; p_item_id: string; p_next_poll_at: string }
         Returns: undefined
@@ -5284,6 +5292,24 @@ export type Database = {
           p_version_id: string
         }
         Returns: Json
+      }
+      v2_internal_require_receipt_resend_reconciliation: {
+        Args: {
+          p_error_code: string
+          p_error_message: string
+          p_provider_message_id?: string
+          p_request_id: string
+        }
+        Returns: boolean
+      }
+      v2_internal_resolve_receipt_resend_reconciliation: {
+        Args: {
+          p_admin_user_id: string
+          p_reason: string
+          p_request_id: string
+          p_resolution: string
+        }
+        Returns: boolean
       }
       v2_lifetime_progress: { Args: never; Returns: Json }
       v2_mark_verified_payment_failure: {
