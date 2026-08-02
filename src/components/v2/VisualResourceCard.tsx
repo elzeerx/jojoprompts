@@ -36,18 +36,13 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
     82,
   );
 
-const RESOURCE_TYPE_LABELS: Record<string, { en: string; ar: string }> = {
-  image_style: { en: "Image style", ar: "نمط صورة" },
-  prompt: { en: "Prompt", ar: "برومبت" },
-  prompt_pack: { en: "Prompt pack", ar: "حزمة برومبتات" },
-};
+  const typeLabel = resourceTypeLabel(r.type, lang);
+  const priceLabel = r.product
+    ? lang === "ar"
+      ? `${formatKwd(r.product.price_fils)} د.ك`
+      : `${formatKwd(r.product.price_fils)} KD`
+    : null;
 
-function resourceTypeLabel(type: string | null | undefined, lang: "en" | "ar") {
-  if (!type) return "";
-  const known = RESOURCE_TYPE_LABELS[type];
-  if (known) return known[lang];
-  return lang === "ar" ? "" : type.replace(/_/g, " ");
-}
 
 
   const heroAspect =
