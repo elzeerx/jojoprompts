@@ -15,6 +15,24 @@ interface Props {
   onQuickPreview?: (id: string) => void;
 }
 
+/** Localized, human-readable resource type labels (no raw enum values). */
+const RESOURCE_TYPE_LABELS: Record<string, { en: string; ar: string }> = {
+  image_style: { en: "Image style", ar: "نمط صورة" },
+  prompt: { en: "Prompt", ar: "برومبت" },
+  prompt_pack: { en: "Prompt pack", ar: "حزمة برومبتات" },
+};
+
+function resourceTypeLabel(
+  type: string | null | undefined,
+  lang: "en" | "ar",
+): string {
+  if (!type) return "";
+  const known = RESOURCE_TYPE_LABELS[type];
+  if (known) return known[lang];
+  return lang === "ar" ? "" : type.replace(/_/g, " ");
+}
+
+
 /**
  * Option 2 — "Quiet editorial caption".
  * The image is unobstructed (no overlays, gradients, chips or footers);
