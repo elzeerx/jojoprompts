@@ -35,6 +35,33 @@ describe("V2 visual masonry contract", () => {
     expect(card).toContain('data-testid="caption-title"');
     expect(card).toContain('data-testid="caption-type"');
     expect(card).toContain('data-testid="visual-card-media"');
+    expect(card).toContain('data-testid="visual-resource-caption"');
+  });
+
+  it("stacks the caption on narrow cards and uses two columns at sm+", () => {
+    expect(card).toContain("grid grid-cols-1");
+    expect(card).toContain("sm:grid-cols-[minmax(0,1fr)_auto]");
+    expect(card).toContain("justify-self-start sm:justify-self-end");
+    expect(card.includes("flex items-start justify-between")).toBe(false);
+  });
+
+  it("keeps every caption action at least 44px high", () => {
+    expect(card).toContain("min-h-[44px]");
+  });
+
+  it("localizes visual resource type labels and avoids raw enum values", () => {
+    expect(card).toContain("image_style:");
+    expect(card).toContain("نمط صورة");
+    expect(card).toContain("برومبت");
+    expect(card).toContain("حزمة برومبتات");
+    expect(card).toContain("Image style");
+    expect(card).toContain("Prompt pack");
+  });
+
+  it("uses the concise lifetime label instead of the long copy", () => {
+    expect(card).toContain('"ضمن الوصول"');
+    expect(card).toContain('"Included"');
+    expect(card.includes("includedLifetime")).toBe(false);
   });
 
   it("localizes the price suffix for both languages", () => {
@@ -42,3 +69,4 @@ describe("V2 visual masonry contract", () => {
     expect(card).toContain("KD");
   });
 });
+
