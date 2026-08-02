@@ -120,18 +120,22 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
         </Link>
       )}
 
-      {/* Quiet editorial caption */}
-      <div className="mt-2 flex items-start justify-between gap-2 px-0.5">
+      {/* Quiet editorial caption — stacks on narrow cards, two columns at sm+ */}
+      <div
+        className="mt-2 grid grid-cols-1 items-start gap-2 px-0.5 sm:grid-cols-[minmax(0,1fr)_auto]"
+        data-testid="visual-resource-caption"
+      >
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-foreground" data-testid="caption-title">
             {title}
           </div>
-          <div className="truncate text-[11px] capitalize text-muted-foreground" data-testid="caption-type">
+          <div className="truncate text-[11px] text-muted-foreground" data-testid="caption-type">
             {typeLabel}
           </div>
         </div>
 
-        <div className="shrink-0">
+        <div className="min-w-0 justify-self-start sm:justify-self-end">
+
           {r.owned ? (
             <Button asChild size="sm" variant="outline" className="min-h-[44px]">
               <Link to="/library">
