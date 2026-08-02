@@ -135,16 +135,24 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
         </div>
 
         <div className="min-w-0 justify-self-start sm:justify-self-end">
-
           {r.owned ? (
-            <Button asChild size="sm" variant="outline" className="min-h-[44px]">
-              <Link to="/library">
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="min-h-[44px] max-w-full"
+              data-testid="caption-action-owned"
+            >
+              <Link to="/library" className="truncate">
                 {r.ownedVia === "library"
-                  ? V2_COPY.cards.includedLifetime[lang]
+                  ? lang === "ar"
+                    ? "ضمن الوصول"
+                    : "Included"
                   : V2_COPY.cards.owned[lang]}
               </Link>
             </Button>
           ) : isFree ? (
+
             <Button
               size="sm"
               variant="outline"
