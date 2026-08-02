@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useResourceDetail } from "@/hooks/v2/useResourceDetail";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
