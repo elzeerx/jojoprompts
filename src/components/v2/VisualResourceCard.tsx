@@ -15,6 +15,24 @@ interface Props {
   onQuickPreview?: (id: string) => void;
 }
 
+/** Localized, human-readable resource type labels (no raw enum values). */
+const RESOURCE_TYPE_LABELS: Record<string, { en: string; ar: string }> = {
+  image_style: { en: "Image style", ar: "نمط صورة" },
+  prompt: { en: "Prompt", ar: "برومبت" },
+  prompt_pack: { en: "Prompt pack", ar: "حزمة برومبتات" },
+};
+
+function resourceTypeLabel(
+  type: string | null | undefined,
+  lang: "en" | "ar",
+): string {
+  if (!type) return "";
+  const known = RESOURCE_TYPE_LABELS[type];
+  if (known) return known[lang];
+  return lang === "ar" ? "" : type.replace(/_/g, " ");
+}
+
+
 /**
  * Option 2 — "Quiet editorial caption".
  * The image is unobstructed (no overlays, gradients, chips or footers);
@@ -36,12 +54,14 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
     82,
   );
 
-  const typeLabel = (r.type ?? "").replace("_", " ");
+  const typeLabel = resourceTypeLabel(r.type, lang);
   const priceLabel = r.product
     ? lang === "ar"
       ? `${formatKwd(r.product.price_fils)} د.ك`
       : `${formatKwd(r.product.price_fils)} KD`
     : null;
+
+
 
   const heroAspect =
     r.type === "image_style"
@@ -100,27 +120,39 @@ export function VisualResourceCard({ r, onQuickPreview }: Props) {
         </Link>
       )}
 
-      {/* Quiet editorial caption */}
-      <div className="mt-2 flex items-start justify-between gap-2 px-0.5">
+      {/* Quiet editorial caption — stacks on narrow cards, two columns at sm+ */}
+      <div
+        className="mt-2 grid grid-cols-1 items-start gap-2 px-0.5 sm:grid-cols-[minmax(0,1fr)_auto]"
+        data-testid="visual-resource-caption"
+      >
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-foreground" data-testid="caption-title">
             {title}
           </div>
-          <div className="truncate text-[11px] capitalize text-muted-foreground" data-testid="caption-type">
+          <div className="truncate text-[11px] text-muted-foreground" data-testid="caption-type">
             {typeLabel}
           </div>
         </div>
 
-        <div className="shrink-0">
+        <div className="min-w-0 justify-self-start sm:justify-self-end">
           {r.owned ? (
-            <Button asChild size="sm" variant="outline" className="min-h-[44px]">
-              <Link to="/library">
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="min-h-[44px] max-w-full"
+              data-testid="caption-action-owned"
+            >
+              <Link to="/library" className="truncate">
                 {r.ownedVia === "library"
-                  ? V2_COPY.cards.includedLifetime[lang]
+                  ? lang === "ar"
+                    ? "ضمن الوصول"
+                    : "Included"
                   : V2_COPY.cards.owned[lang]}
               </Link>
             </Button>
           ) : isFree ? (
+
             <Button
               size="sm"
               variant="outline"
