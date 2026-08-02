@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useResourceDetail } from "@/hooks/v2/useResourceDetail";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,16 +67,27 @@ export function QuickPreviewSheet({ slug, open, onOpenChange }: Props) {
     acquire.mutate(data.resource.id);
   };
 
+  const sheetTitle = title || (lang === "ar" ? "معاينة سريعة" : "Quick preview");
+  const sheetDescription =
+    lang === "ar"
+      ? "معاينة سريعة للمورد مع السعر والإجراءات."
+      : "Quick preview of this resource with price and actions.";
+  const closeLabel = lang === "ar" ? "إغلاق المعاينة" : "Close preview";
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={isMobile ? "bottom" : "right"}
+        closeLabel={closeLabel}
         className={
           isMobile
             ? "h-[92dvh] overflow-y-auto p-0"
             : "w-[440px] sm:max-w-lg overflow-y-auto p-0"
         }
       >
+        <SheetTitle className="sr-only">{sheetTitle}</SheetTitle>
+        <SheetDescription className="sr-only">{sheetDescription}</SheetDescription>
+
         {isLoading ? (
           <div className="space-y-3 p-6">
             <Skeleton className="h-40 w-full" />

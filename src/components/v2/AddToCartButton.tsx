@@ -14,6 +14,10 @@ interface Props {
   resourceType: string | null;
   size?: "sm" | "default";
   fullWidth?: boolean;
+  /** "compact" renders the quiet editorial outlined price control. */
+  appearance?: "default" | "compact";
+  /** Localized price text shown by the compact appearance (e.g. "0.900 KD"). */
+  priceLabel?: string;
 }
 
 /**
@@ -28,15 +32,20 @@ export function AddToCartButton({
   resourceType,
   size = "sm",
   fullWidth,
+  appearance = "default",
+  priceLabel,
 }: Props) {
   const cart = useCart();
   const { language } = useTranslation();
   const lang = language === "ar" ? "ar" : "en";
   const inCart = cart.has(productId);
+  const compact = appearance === "compact";
+  const title = lang === "ar" && titleAr ? titleAr : titleEn;
 
   const t = {
     add: lang === "ar" ? "أضف إلى السلة" : "Add to cart",
     view: lang === "ar" ? "عرض السلة" : "View cart",
+    inCart: lang === "ar" ? "في السلة" : "In cart",
     added: lang === "ar" ? "أُضيف إلى السلة" : "Added to cart",
     dupTitle: lang === "ar" ? "موجود بالفعل في السلة" : "Already in cart",
     capTitle: lang === "ar" ? "بلغت الحد الأقصى للسلة" : "Cart is full",
@@ -47,6 +56,12 @@ export function AddToCartButton({
     invalid: lang === "ar" ? "تعذّر إضافة العنصر." : "Couldn't add this item.",
   };
 
+  const compactAddLabel =
+    lang === "ar"
+      ? `${t.add}: ${title}${priceLabel ? ` — ${priceLabel}` : ""}`
+      : `${t.add}: ${title}${priceLabel ? ` — ${priceLabel}` : ""}`;
+
+
   if (inCart) {
     return (
       <Button
@@ -55,9 +70,9 @@ export function AddToCartButton({
         variant="outline"
         className={cn("min-h-[44px]", fullWidth && "w-full")}
       >
-        <Link to="/cart">
+        <Link to="/cart" aria-label={compact ? `${t.inCart}: ${title}` : undefined}>
           <Check className="h-4 w-4 me-1" aria-hidden />
-          {t.view}
+          {compact ? t.inCart : t.view}
         </Link>
       </Button>
     );
@@ -66,7 +81,13 @@ export function AddToCartButton({
   return (
     <Button
       size={size}
-      className={cn("min-h-[44px]", fullWidth && "w-full")}
+      variant={compact ? "outline" : "default"}
+      aria-label={compact ? compactAddLabel : undefined}
+      className={cn(
+        "min-h-[44px]",
+        compact && "gap-1 px-3 text-xs font-medium",
+        fullWidth && "w-full",
+      )}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -91,12 +112,11 @@ export function AddToCartButton({
         } else {
           toast({ variant: "destructive", title: t.invalid });
         }
-
-
       }}
     >
-      <ShoppingBag className="h-4 w-4 me-1" aria-hidden />
-      {t.add}
+      <ShoppingBag className={cn("h-4 w-4", compact ? "" : "me-1")} aria-hidden />
+      {compact ? (priceLabel ?? t.add) : t.add}
     </Button>
+
   );
 }
