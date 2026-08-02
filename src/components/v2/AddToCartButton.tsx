@@ -70,9 +70,9 @@ export function AddToCartButton({
         variant="outline"
         className={cn("min-h-[44px]", fullWidth && "w-full")}
       >
-        <Link to="/cart">
+        <Link to="/cart" aria-label={compact ? `${t.inCart}: ${title}` : undefined}>
           <Check className="h-4 w-4 me-1" aria-hidden />
-          {t.view}
+          {compact ? t.inCart : t.view}
         </Link>
       </Button>
     );
@@ -81,7 +81,13 @@ export function AddToCartButton({
   return (
     <Button
       size={size}
-      className={cn("min-h-[44px]", fullWidth && "w-full")}
+      variant={compact ? "outline" : "default"}
+      aria-label={compact ? compactAddLabel : undefined}
+      className={cn(
+        "min-h-[44px]",
+        compact && "gap-1 px-3 text-xs font-medium",
+        fullWidth && "w-full",
+      )}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -106,12 +112,11 @@ export function AddToCartButton({
         } else {
           toast({ variant: "destructive", title: t.invalid });
         }
-
-
       }}
     >
-      <ShoppingBag className="h-4 w-4 me-1" aria-hidden />
-      {t.add}
+      <ShoppingBag className={cn("h-4 w-4", compact ? "" : "me-1")} aria-hidden />
+      {compact ? (priceLabel ?? t.add) : t.add}
     </Button>
+
   );
 }
