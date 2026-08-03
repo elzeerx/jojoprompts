@@ -108,8 +108,13 @@ describe("v2-admin-email-domain-verification edge function source", () => {
     expect(FN_SOURCE).not.toContain("resend_api_key:");
   });
 
-  it("checks both the transactional and auth sender domains", () => {
+  it("checks the transactional and configured auth sender domains", () => {
     expect(FN_SOURCE).toContain('TRANSACTIONAL_DOMAIN = "jojoprompts.com"');
-    expect(FN_SOURCE).toContain('AUTH_SENDER_DOMAIN = "noreply.jojoprompts.com"');
+    expect(FN_SOURCE).toContain('AUTH_SENDER_DOMAIN = "jojoprompts.com"');
+    expect(FN_SOURCE).toContain(
+      'LEGACY_AUTH_SENDER_DOMAIN = "noreply.jojoprompts.com"',
+    );
+    expect(FN_SOURCE).toContain("configured_auth_sender");
   });
+
 });
