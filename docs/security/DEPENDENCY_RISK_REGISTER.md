@@ -94,7 +94,7 @@ Refreshed inside the superseding controlled stability window that started at
 `50c841bb57a02ab81c68984f515a5cc86df10566` (containing verified absolute-lock
 ancestor `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`), database migration
 `20260801170134_harden_legacy_transaction_and_discount_writes`, and Edge
-Function `v2-admin-integrations-settings-status` version 14.
+Function `v2-admin-integrations-settings-status` version 15.
 
 - `npm audit --omit=dev`: 0 critical, 2 high.
 - Full `npm audit`: 0 critical, 3 high, 3 moderate, 1 low.

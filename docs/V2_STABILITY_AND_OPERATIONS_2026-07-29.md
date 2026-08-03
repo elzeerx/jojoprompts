@@ -14,7 +14,7 @@
   `20260801165606_harden_legacy_transaction_and_discount_writes.sql`,
   SHA-256 `5fe4e04440d3b9b539d0851bb675c91856660acabac482882a5bcddfc8f67fdc`,
   40 lines, 1,709 bytes.
-- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 15.
 
 This window supersedes the 2026-08-01 11:22 UTC window because the reviewed
 legacy transaction/discount write-hardening migration was applied to
@@ -63,7 +63,7 @@ and must be rerun after 2026-08-02 17:01:34 UTC.
 - Earliest close: 2026-08-02 11:22 UTC / 2026-08-02 14:22 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
 - Lovable baseline: `50c841bb`.
-- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 15.
 
 Lovable synchronized `50c841bb` and published the still-locked build at
 approximately 11:20 UTC on 2026-08-01. Production and preview served the same

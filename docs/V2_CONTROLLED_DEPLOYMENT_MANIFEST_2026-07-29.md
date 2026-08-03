@@ -166,7 +166,7 @@ conservative restarted window is:
   `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`.
 - Database baseline: migration row 8 above,
   `20260801170134_harden_legacy_transaction_and_discount_writes`.
-- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 15.
 
 ### Interim non-closing refresh — 2026-08-01 19:23 UTC
 

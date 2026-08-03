@@ -277,7 +277,7 @@ Local reviewed filename
 1,709 bytes. The frontend baseline is
 `50c841bb57a02ab81c68984f515a5cc86df10566` (containing the verified
 absolute-lock ancestor `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`) and the Edge
-Function baseline remains `v2-admin-integrations-settings-status` version 14.
+Function baseline remains `v2-admin-integrations-settings-status` version 15.
 `PUBLIC_LAUNCH_LOCK` remains `true`.
 
 - Security advisors: 184 total = 179 warning, 5 informational, 0 error. Object
