@@ -29,7 +29,11 @@ export type EmailDomainVerification = {
 };
 
 export const TRANSACTIONAL_DOMAIN = "jojoprompts.com";
-export const AUTH_SENDER_DOMAIN = "noreply.jojoprompts.com";
+// 2026-08-03: Supabase Auth SMTP sender was moved to noreply@jojoprompts.com,
+// which sits on the already-verified parent domain (Option A remediation).
+export const AUTH_SENDER_DOMAIN = "jojoprompts.com";
+// Previously configured, never verified in Resend. Kept for evidence/regression.
+export const LEGACY_AUTH_SENDER_DOMAIN = "noreply.jojoprompts.com";
 
 const STATUSES = new Set<SenderDomainStatus>([
   "verified", "pending", "failed", "not_found", "unknown",

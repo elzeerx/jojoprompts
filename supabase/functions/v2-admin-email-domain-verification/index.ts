@@ -19,7 +19,10 @@ import {
 
 // Domains this project must be able to send from.
 const TRANSACTIONAL_DOMAIN = "jojoprompts.com";
-const AUTH_SENDER_DOMAIN = "noreply.jojoprompts.com";
+// 2026-08-03: Auth SMTP sender moved to noreply@jojoprompts.com (verified parent
+// domain). The previous subdomain sender was never verified in Resend.
+const AUTH_SENDER_DOMAIN = "jojoprompts.com";
+const LEGACY_AUTH_SENDER_DOMAIN = "noreply.jojoprompts.com";
 
 type DomainStatus = "verified" | "pending" | "failed" | "not_found" | "unknown";
 
@@ -97,11 +100,18 @@ Deno.serve(async (req) => {
     byName.set(name, normalizeStatus(rec.status));
   }
 
-  const domains = [TRANSACTIONAL_DOMAIN, AUTH_SENDER_DOMAIN].map((name) => ({
-    domain: name,
-    role: name === TRANSACTIONAL_DOMAIN ? "transactional" as const : "auth_sender" as const,
-    status: byName.get(name) ?? "not_found" as DomainStatus,
-  }));
+  const domains = [
+    {
+      domain: TRANSACTIONAL_DOMAIN,
+      role: "transactional" as const,
+      status: byName.get(TRANSACTIONAL_DOMAIN) ?? "not_found" as DomainStatus,
+    },
+    {
+      domain: AUTH_SENDER_DOMAIN,
+      role: "auth_sender" as const,
+      status: byName.get(AUTH_SENDER_DOMAIN) ?? "not_found" as DomainStatus,
+    },
+  ];
 
   const authOk = domains.some((d) => d.role === "auth_sender" && d.status === "verified");
   const transactionalOk = domains.some(
@@ -114,13 +124,17 @@ Deno.serve(async (req) => {
     domains,
     auth_sender_ready: authOk,
     transactional_sender_ready: transactionalOk,
-    // When the auth sender domain is not verified but the transactional one is,
-    // the safe unblock is to move Supabase Auth SMTP to the verified identity.
+    // Configured Supabase Auth SMTP sender since 2026-08-03.
+    configured_auth_sender: `noreply@${AUTH_SENDER_DOMAIN}`,
+    legacy_auth_sender_domain: LEGACY_AUTH_SENDER_DOMAIN,
+    legacy_auth_sender_status: byName.get(LEGACY_AUTH_SENDER_DOMAIN) ??
+      "not_found" as DomainStatus,
     recommended_auth_sender: authOk
       ? `noreply@${AUTH_SENDER_DOMAIN}`
       : (transactionalOk ? `noreply@${TRANSACTIONAL_DOMAIN}` : null),
     total_domains_in_account: byName.size,
   };
+
 
   const res = jsonResponse(body, 200, origin);
   res.headers.set("Cache-Control", "no-store");
