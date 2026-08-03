@@ -19,7 +19,10 @@ import {
 
 // Domains this project must be able to send from.
 const TRANSACTIONAL_DOMAIN = "jojoprompts.com";
-const AUTH_SENDER_DOMAIN = "noreply.jojoprompts.com";
+// 2026-08-03: Auth SMTP sender moved to noreply@jojoprompts.com (verified parent
+// domain). The previous subdomain sender was never verified in Resend.
+const AUTH_SENDER_DOMAIN = "jojoprompts.com";
+const LEGACY_AUTH_SENDER_DOMAIN = "noreply.jojoprompts.com";
 
 type DomainStatus = "verified" | "pending" | "failed" | "not_found" | "unknown";
 
