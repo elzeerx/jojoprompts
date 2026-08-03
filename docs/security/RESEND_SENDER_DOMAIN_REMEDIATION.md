@@ -1,8 +1,26 @@
 # Resend sending-domain remediation — password recovery email blocker
 
-Status: OPEN (release blocked)
+Status: OPTION A APPLIED 2026-08-03 07:27 UTC — awaiting delivery retest
 Owner: Nawaf Alsuwaiyed
 Created: 2026-08-03
+Updated: 2026-08-03
+
+## Applied remediation (Option A)
+
+Supabase Auth → SMTP settings now read:
+
+- Sender email: `noreply@jojoprompts.com` (verified parent domain)
+- Sender name: `JojoPrompts Team`
+- Host `smtp.resend.com`, port `465`, username `resend`
+
+The unverified `noreply.jojoprompts.com` identity is no longer in use. Source
+tooling was updated to match: `AUTH_SENDER_DOMAIN` is now `jojoprompts.com`,
+with the retired subdomain retained as `LEGACY_AUTH_SENDER_DOMAIN` for evidence,
+and the probe response now reports `configured_auth_sender`.
+
+Remaining before the gate closes: the delivery retest in
+"Post-fix acceptance" below.
+
 
 ## Blocker
 
