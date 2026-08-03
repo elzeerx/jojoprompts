@@ -1,6 +1,6 @@
 # Dependency Risk Register
 
-Last reviewed: 2026-08-01
+Last reviewed: 2026-08-03
 
 ## Current audit state
 
