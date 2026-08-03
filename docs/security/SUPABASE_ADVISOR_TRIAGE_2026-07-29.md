@@ -277,7 +277,7 @@ Local reviewed filename
 1,709 bytes. The frontend baseline is
 `50c841bb57a02ab81c68984f515a5cc86df10566` (containing the verified
 absolute-lock ancestor `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`) and the Edge
-Function baseline remains `v2-admin-integrations-settings-status` version 14.
+Function baseline remains `v2-admin-integrations-settings-status` version 15.
 `PUBLIC_LAUNCH_LOCK` remains `true`.
 
 - Security advisors: 184 total = 179 warning, 5 informational, 0 error. Object
@@ -293,3 +293,40 @@ close the stability gate and must be rerun after 2026-08-02 17:01:34 UTC. Any
 runtime source, migration, Edge Function, payment/scanner configuration, or
 launch-lock change restarts the window; documentation-only synchronization does
 not. This result does not authorize disabling Coming Soon.
+
+## Close-out refresh — 2026-08-03 06:10 UTC
+
+The advisors were reviewed again at close-out, which began 2026-08-03 06:10
+UTC after the 2026-08-02 17:01:34 UTC earliest-close time.
+`PUBLIC_LAUNCH_LOCK` remains `true`; nothing was published or deployed and no
+runtime, migration, function, package, or configuration file changed.
+
+- Security advisors: 184 total = 179 warning + 5 informational + 0 error.
+  Unchanged from the previous refresh; every disposition above still applies.
+- Performance advisors: 369 total = 280 warning + 89 informational. Unchanged.
+- Baselines: frontend `50c841bb` (absolute-lock ancestor `6f6d1c90`), database
+  migration `20260801170134_harden_legacy_transaction_and_discount_writes`,
+  and Edge Function `v2-admin-integrations-settings-status` **version 15**
+  (deployed 2026-07-31 23:26:45 UTC, before this stability window). Earlier
+  version 14 references in this document were incorrect and are corrected.
+- Supabase reconciliation was clean: 247 Auth users / 247 profiles / 247 role
+  users with zero missing rows or orphans; 3 orders, 11 payment events, 1
+  failed sandbox refund, 117 active entitlements, 57 lifetime-credit entries,
+  1 clean scan, 0 receipt resend requests and payloads; orphan,
+  duplicate-event, order formula/item total, paid-allocation, file-integrity,
+  and published-version-pointer checks all zero.
+- Logs: Edge 17 events (7x202, 7x204, one controlled 400, two controlled 403)
+  with no 5xx/fatal/panic; Postgres 19 LOG with no ERROR/FATAL/PANIC; Storage
+  98x200, one stale signed-image 400, one cache event, no 5xx.
+- Field monitoring: 41 preview samples, zero production samples, zero samples
+  older than 90 days; RLS/browser grant isolation, admin aggregation RPC,
+  service-only retention RPC, and production/preview separation intact.
+
+### Blocking Auth finding
+
+At 2026-08-02 13:55:21 UTC a password-recovery request returned 500 because
+Resend rejected the message: `noreply.jojoprompts.com` is not a verified
+sending domain. Three adjacent invalid-credential 400s are expected client
+failures. The release is blocked until the sender domain is verified or
+replaced and a controlled recovery-email retest succeeds with clean Auth and
+delivery logs. This advisor result does not authorize disabling Coming Soon.

@@ -1,6 +1,6 @@
 # Dependency Risk Register
 
-Last reviewed: 2026-08-01
+Last reviewed: 2026-08-03
 
 ## Current audit state
 
@@ -94,7 +94,7 @@ Refreshed inside the superseding controlled stability window that started at
 `50c841bb57a02ab81c68984f515a5cc86df10566` (containing verified absolute-lock
 ancestor `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`), database migration
 `20260801170134_harden_legacy_transaction_and_discount_writes`, and Edge
-Function `v2-admin-integrations-settings-status` version 14.
+Function `v2-admin-integrations-settings-status` version 15.
 
 - `npm audit --omit=dev`: 0 critical, 2 high.
 - Full `npm audit`: 0 critical, 3 high, 3 moderate, 1 low.
@@ -111,3 +111,34 @@ close the stability gate and must be rerun after 2026-08-02 17:01:34 UTC. Any
 runtime source, migration, Edge Function, payment/scanner configuration, or
 launch-lock change restarts the window; documentation-only synchronization does
 not. The pre-launch re-check list above still applies.
+
+## Close-out audit refresh — 2026-08-03 06:10 UTC
+
+Close-out began 2026-08-03 06:10 UTC, after the 2026-08-02 17:01:34 UTC
+earliest-close time. `PUBLIC_LAUNCH_LOCK` remains `true`; nothing was published
+or deployed and no runtime, test, migration, function, package, or
+configuration file changed. Baselines: frontend `50c841bb` (absolute-lock
+ancestor `6f6d1c90`; the `3e4a5cf7` preview head was not published), database
+migration `20260801170134_harden_legacy_transaction_and_discount_writes`, and
+Edge Function `v2-admin-integrations-settings-status` version 15 (deployed
+2026-07-31 23:26:45 UTC, before this window).
+
+- `npm audit --omit=dev`: 0 critical, 2 high — unchanged.
+- Full `npm audit`: 0 critical, 3 high, 3 moderate, 1 low — unchanged.
+- The npm latest stable `react-router-dom` remains `7.18.2`, still inside the
+  advisory range; `react-router-dom` stays pinned to `7.18.1` and no stable
+  `8.3.0` is published.
+- A fresh source scan again found no RSC, server-router, action, or
+  `ScrollRestoration` path, so GHSA-qwww-vcr4-c8h2 remains
+  architecture-unreachable.
+- `bun run verify:v2` passed typecheck, scoped lint, 996 tests, and the
+  production build.
+
+Dependency risk is therefore unchanged and carries no new blocker. The release
+is nonetheless **blocked** by a separate operational defect: at 2026-08-02
+13:55:21 UTC password recovery returned 500 because Resend rejected the message
+(`noreply.jojoprompts.com` is not a verified sending domain). The sender domain
+must be verified or replaced and a controlled recovery-email retest must pass
+with clean Auth and delivery logs. Owner/legal acceptance remains pending under
+operational owner Nawaf Alsuwaiyed, and separate public-launch approval must
+not be requested until the email blocker is cleared.

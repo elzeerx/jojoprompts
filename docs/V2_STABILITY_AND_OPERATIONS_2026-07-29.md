@@ -14,7 +14,7 @@
   `20260801165606_harden_legacy_transaction_and_discount_writes.sql`,
   SHA-256 `5fe4e04440d3b9b539d0851bb675c91856660acabac482882a5bcddfc8f67fdc`,
   40 lines, 1,709 bytes.
-- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 15.
 
 This window supersedes the 2026-08-01 11:22 UTC window because the reviewed
 legacy transaction/discount write-hardening migration was applied to
@@ -63,7 +63,7 @@ and must be rerun after 2026-08-02 17:01:34 UTC.
 - Earliest close: 2026-08-02 11:22 UTC / 2026-08-02 14:22 Asia/Kuwait.
 - Public launch lock: `PUBLIC_LAUNCH_LOCK = true` for the entire window.
 - Lovable baseline: `50c841bb`.
-- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 15.
 
 Lovable synchronized `50c841bb` and published the still-locked build at
 approximately 11:20 UTC on 2026-08-01. Production and preview served the same
@@ -278,3 +278,58 @@ Do not launch when any of the following is true:
   point only for a catastrophic rollback.
 - Customer rights: never delete or rewrite historical payments, entitlements,
   access dates, original currencies, or refund records.
+
+## Close-out evidence — 2026-08-03 06:10 UTC
+
+Close-out began at 2026-08-03 06:10 UTC / 09:10 Asia/Kuwait, after the
+2026-08-02 17:01:34 UTC earliest-close time. `PUBLIC_LAUNCH_LOCK` remains
+`true`; nothing was published or deployed and no runtime, test, migration,
+function, package, or configuration file was changed.
+
+- Production lock sweep passed for `/`, `/login`, `/reset-password`, `/admin`,
+  `/signup`, `/explore`, `/pricing`, and `/.lovable/oauth/consent`. Every route
+  still served `index-D1yCI-OC.js` and rendered Coming Soon with
+  `noindex,nofollow` and zero forms, inputs, buttons, or links.
+- Production remains the documented `50c841bb` runtime containing the verified
+  absolute-lock ancestor `6f6d1c90`. The current `3e4a5cf7` preview head was
+  **not** published.
+- Edge Function baseline is `v2-admin-integrations-settings-status` version 15,
+  deployed 2026-07-31 23:26:45 UTC, before this stability window. Earlier
+  references to version 14 in this document were incorrect and are corrected.
+- Supabase reconciliation: 247 Auth users, 247 profiles, 247 role users, zero
+  missing rows or orphans; 3 orders, 11 payment events, 1 failed sandbox
+  refund, 117 active entitlements, 57 lifetime-credit entries, 1 clean scan,
+  0 receipt resend requests and 0 payloads. Orphan, duplicate-event, order
+  formula/item total, paid-allocation, file-integrity, and published-version
+  pointer checks were all zero.
+- Logs: Edge Functions logged 17 events (7x202, 7x204, one controlled 400, two
+  controlled 403) with no 5xx, fatal, or panic. Postgres logged 19 LOG events
+  with no ERROR, FATAL, or PANIC. Storage logged 98x200, one stale
+  signed-image 400, one cache event, and no 5xx.
+- Field monitoring: 41 preview samples, zero production samples, zero samples
+  older than 90 days. RLS/browser grant isolation, the admin aggregation RPC,
+  the service-only retention RPC, and production/preview separation are intact.
+- Advisors unchanged: security 184 = 179 warning + 5 informational + 0 error;
+  performance 369 = 280 warning + 89 informational.
+- Dependency audits unchanged: production 0 critical / 2 high; full 0 critical
+  / 3 high / 3 moderate / 1 low. The npm latest stable `react-router-dom`
+  remains `7.18.2`, and no RSC, server-router, action, or `ScrollRestoration`
+  source path exists.
+- `bun run verify:v2` passed typecheck, scoped lint, 996 tests, and the
+  production build.
+
+### Blocking Auth event — release blocked
+
+At 2026-08-02 13:55:21 UTC a password-recovery request returned 500 because
+Resend rejected the message: `noreply.jojoprompts.com` is not a verified
+sending domain. Three adjacent invalid-credential 400s in the same period are
+expected client failures and are not defects.
+
+The release is **blocked** until the sender domain is verified or replaced and
+a controlled recovery-email retest succeeds with clean Auth and delivery logs.
+
+### Ownership and approval status
+
+The operational owner remains **Nawaf Alsuwaiyed** for all four roles.
+Owner/legal acceptance is still pending, and the separate public-launch
+approval must not be requested until the email blocker above is cleared.

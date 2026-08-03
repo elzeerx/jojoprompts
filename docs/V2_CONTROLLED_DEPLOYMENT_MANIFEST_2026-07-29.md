@@ -166,7 +166,7 @@ conservative restarted window is:
   `6f6d1c9060db1a6eb1554ffa0c679d51cefb093e`.
 - Database baseline: migration row 8 above,
   `20260801170134_harden_legacy_transaction_and_discount_writes`.
-- Edge Function baseline: `v2-admin-integrations-settings-status` version 14.
+- Edge Function baseline: `v2-admin-integrations-settings-status` version 15.
 
 ### Interim non-closing refresh — 2026-08-01 19:23 UTC
 
@@ -239,3 +239,50 @@ Do not authorize public launch if any of the following remains:
 
 The final technical accessibility acceptance passed on 2026-07-30 and is
 recorded in `docs/V2_ACCESSIBILITY_ACCEPTANCE_2026-07-30.md`.
+
+## Close-out evidence — 2026-08-03 06:10 UTC
+
+Close-out began at 2026-08-03 06:10 UTC, after the 2026-08-02 17:01:34 UTC
+earliest-close time. `PUBLIC_LAUNCH_LOCK` remains `true`. Nothing was published
+or deployed, and no runtime, test, migration, function, package, or
+configuration file was changed.
+
+- Production still serves `index-D1yCI-OC.js` on `/`, `/login`,
+  `/reset-password`, `/admin`, `/signup`, `/explore`, `/pricing`, and
+  `/.lovable/oauth/consent`. Every route showed Coming Soon,
+  `noindex,nofollow`, and zero forms, inputs, buttons, or links.
+- Production remains the documented `50c841bb` runtime with absolute-lock
+  ancestor `6f6d1c90`. The current `3e4a5cf7` preview head was not published.
+- Edge Function baseline corrected to
+  `v2-admin-integrations-settings-status` version 15, deployed 2026-07-31
+  23:26:45 UTC, before this stability window.
+- Reconciliation: 247 Auth users, 247 profiles, 247 role users with zero
+  missing rows or orphans; 3 orders, 11 payment events, 1 failed sandbox
+  refund, 117 active entitlements, 57 lifetime-credit entries, 1 clean scan,
+  0 receipt resend requests and payloads. Orphan, duplicate-event, order
+  formula/item total, paid-allocation, file-integrity, and published-version
+  pointer checks were all zero.
+- Logs: Edge 17 events (7x202, 7x204, one controlled 400, two controlled 403)
+  with no 5xx, fatal, or panic; Postgres 19 LOG with no ERROR/FATAL/PANIC;
+  Storage 98x200, one stale signed-image 400, one cache event, no 5xx.
+- Field monitoring: 41 preview samples, zero production samples, zero samples
+  older than 90 days; RLS/browser grant isolation, admin aggregation RPC,
+  service-only retention RPC, and production/preview separation intact.
+- Advisors unchanged (security 184 = 179 + 5 + 0 error; performance 369 = 280
+  + 89). Audits unchanged (production 0 critical / 2 high; full 0 critical /
+  3 high / 3 moderate / 1 low), with npm latest stable `react-router-dom`
+  still `7.18.2` and no RSC/server/action/`ScrollRestoration` source path.
+- `bun run verify:v2` passed typecheck, scoped lint, 996 tests, and the
+  production build.
+
+### Blocking Auth event
+
+At 2026-08-02 13:55:21 UTC password recovery returned 500 because Resend
+rejected the message: `noreply.jojoprompts.com` is not a verified sending
+domain. Three adjacent invalid-credential 400s are expected client failures.
+The release is blocked until the sender domain is verified or replaced and a
+controlled recovery-email retest succeeds with clean Auth and delivery logs.
+
+The operational owner remains Nawaf Alsuwaiyed. Owner/legal acceptance is
+still pending, and the separate public-launch approval must not be requested
+until this email blocker is cleared.
