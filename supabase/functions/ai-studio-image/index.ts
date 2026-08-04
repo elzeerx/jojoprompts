@@ -19,6 +19,18 @@ const OPENAI_MODELS = new Set([
   "openai/gpt-image-1-mini",
 ]);
 
+const GEMINI_MODELS = new Set([
+  "google/gemini-2.5-flash-image",
+  "google/gemini-3-pro-image",
+  "google/gemini-3.1-flash-image",
+]);
+
+const DEFAULT_MODEL = "google/gemini-3-pro-image";
+
+function isSupportedModel(model: string): boolean {
+  return OPENAI_MODELS.has(model) || GEMINI_MODELS.has(model);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
