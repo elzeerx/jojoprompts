@@ -94,14 +94,27 @@ export function ImagePreviewStream({ prompt, draftId, initialThumbnailPath, onSa
       }
 
       let sawCompleted = false;
+      let streamError: string | null = null;
       const parser = createParser({
         onEvent(event) {
+          let payload: {
+            b64_json?: string;
+            type?: string;
+            error?: { message?: string };
+          };
+          try { payload = JSON.parse(event.data); } catch { return; }
+
+          // Failures arrive as a named `error` event or a provider-native
+          // frame whose payload type is "error". Both are terminal.
+          if (event.event === "error" || payload?.type === "error") {
+            streamError = payload?.error?.message || "Image generation failed";
+            return;
+          }
+
           if (
             event.event !== "image_generation.partial_image" &&
             event.event !== "image_generation.completed"
           ) return;
-          let payload: { b64_json?: string };
-          try { payload = JSON.parse(event.data); } catch { return; }
           if (!payload.b64_json) return;
           const dataUrl = `data:image/png;base64,${payload.b64_json}`;
           const final = event.event === "image_generation.completed";
@@ -123,7 +136,9 @@ export function ImagePreviewStream({ prompt, draftId, initialThumbnailPath, onSa
       } finally {
         reader.cancel().catch(() => {});
       }
-      if (!sawCompleted) {
+      if (streamError) {
+        toast.error("Image generation failed", { description: streamError });
+      } else if (!sawCompleted) {
         toast.warning("Image stream ended without a completion event");
       }
     } catch (err: unknown) {
