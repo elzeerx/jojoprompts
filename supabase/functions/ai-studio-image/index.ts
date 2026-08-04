@@ -111,6 +111,9 @@ Deno.serve(async (req) => {
 
   if (!aiRes.ok || !aiRes.body) {
     const errText = await aiRes.text().catch(() => "");
+    console.error(
+      `[ai-studio-image] gateway failed [${aiRes.status}] model=${model}: ${errText.slice(0, 1000)}`,
+    );
     let userMessage = "Image generation failed";
     if (aiRes.status === 429) userMessage = "Rate limit reached. Try again shortly.";
     else if (aiRes.status === 402) userMessage = "AI credits exhausted.";
