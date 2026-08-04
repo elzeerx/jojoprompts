@@ -21,9 +21,9 @@ interface Props {
 }
 
 const IMAGE_MODELS = [
-  { value: "google/gemini-3.1-flash-image-preview", label: "Gemini 3.1 Flash Image (fast)" },
+  { value: "google/gemini-3.1-flash-image", label: "Gemini 3.1 Flash Image (fast)" },
   { value: "google/gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image (Nano Banana)" },
-  { value: "google/gemini-3-pro-image-preview", label: "Gemini 3 Pro Image (best quality)" },
+  { value: "google/gemini-3-pro-image", label: "Gemini 3 Pro Image (best quality)" },
   { value: "openai/gpt-image-2", label: "GPT-Image 2 (OpenAI)" },
   { value: "openai/gpt-image-1-mini", label: "GPT-Image 1 Mini (cheaper)" },
 ];
