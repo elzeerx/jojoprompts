@@ -71,7 +71,16 @@ Deno.serve(async (req) => {
     });
   }
 
-  const model = body.model || "google/gemini-3.1-flash-image-preview";
+  const model = body.model || DEFAULT_MODEL;
+  if (!isSupportedModel(model)) {
+    return new Response(
+      JSON.stringify({
+        error: "Unsupported image model",
+        detail: `"${model}" is not an allowed image model.`,
+      }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
   const size = body.size || "1024x1024";
 
   // Build per-model body (OpenAI uses prompt; Gemini uses messages + modalities).
