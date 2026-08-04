@@ -19,6 +19,18 @@ const OPENAI_MODELS = new Set([
   "openai/gpt-image-1-mini",
 ]);
 
+const GEMINI_MODELS = new Set([
+  "google/gemini-2.5-flash-image",
+  "google/gemini-3-pro-image",
+  "google/gemini-3.1-flash-image",
+]);
+
+const DEFAULT_MODEL = "google/gemini-3-pro-image";
+
+function isSupportedModel(model: string): boolean {
+  return OPENAI_MODELS.has(model) || GEMINI_MODELS.has(model);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -59,7 +71,16 @@ Deno.serve(async (req) => {
     });
   }
 
-  const model = body.model || "google/gemini-3.1-flash-image-preview";
+  const model = body.model || DEFAULT_MODEL;
+  if (!isSupportedModel(model)) {
+    return new Response(
+      JSON.stringify({
+        error: "Unsupported image model",
+        detail: `"${model}" is not an allowed image model.`,
+      }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
   const size = body.size || "1024x1024";
 
   // Build per-model body (OpenAI uses prompt; Gemini uses messages + modalities).
@@ -90,6 +111,9 @@ Deno.serve(async (req) => {
 
   if (!aiRes.ok || !aiRes.body) {
     const errText = await aiRes.text().catch(() => "");
+    console.error(
+      `[ai-studio-image] gateway failed [${aiRes.status}] model=${model}: ${errText.slice(0, 1000)}`,
+    );
     let userMessage = "Image generation failed";
     if (aiRes.status === 429) userMessage = "Rate limit reached. Try again shortly.";
     else if (aiRes.status === 402) userMessage = "AI credits exhausted.";

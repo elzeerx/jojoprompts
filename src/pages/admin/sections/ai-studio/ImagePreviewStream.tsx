@@ -21,9 +21,9 @@ interface Props {
 }
 
 const IMAGE_MODELS = [
-  { value: "google/gemini-3.1-flash-image-preview", label: "Gemini 3.1 Flash Image (fast)" },
+  { value: "google/gemini-3.1-flash-image", label: "Gemini 3.1 Flash Image (fast)" },
   { value: "google/gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image (Nano Banana)" },
-  { value: "google/gemini-3-pro-image-preview", label: "Gemini 3 Pro Image (best quality)" },
+  { value: "google/gemini-3-pro-image", label: "Gemini 3 Pro Image (best quality)" },
   { value: "openai/gpt-image-2", label: "GPT-Image 2 (OpenAI)" },
   { value: "openai/gpt-image-1-mini", label: "GPT-Image 1 Mini (cheaper)" },
 ];
@@ -94,14 +94,27 @@ export function ImagePreviewStream({ prompt, draftId, initialThumbnailPath, onSa
       }
 
       let sawCompleted = false;
+      let streamError: string | null = null;
       const parser = createParser({
         onEvent(event) {
+          let payload: {
+            b64_json?: string;
+            type?: string;
+            error?: { message?: string };
+          };
+          try { payload = JSON.parse(event.data); } catch { return; }
+
+          // Failures arrive as a named `error` event or a provider-native
+          // frame whose payload type is "error". Both are terminal.
+          if (event.event === "error" || payload?.type === "error") {
+            streamError = payload?.error?.message || "Image generation failed";
+            return;
+          }
+
           if (
             event.event !== "image_generation.partial_image" &&
             event.event !== "image_generation.completed"
           ) return;
-          let payload: { b64_json?: string };
-          try { payload = JSON.parse(event.data); } catch { return; }
           if (!payload.b64_json) return;
           const dataUrl = `data:image/png;base64,${payload.b64_json}`;
           const final = event.event === "image_generation.completed";
@@ -123,7 +136,9 @@ export function ImagePreviewStream({ prompt, draftId, initialThumbnailPath, onSa
       } finally {
         reader.cancel().catch(() => {});
       }
-      if (!sawCompleted) {
+      if (streamError) {
+        toast.error("Image generation failed", { description: streamError });
+      } else if (!sawCompleted) {
         toast.warning("Image stream ended without a completion event");
       }
     } catch (err: unknown) {
